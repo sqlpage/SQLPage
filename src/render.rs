@@ -41,6 +41,9 @@ impl RenderContext<'_> {
 
     pub fn handle_error(&mut self, error: &impl std::error::Error) {
         log::warn!("SQL error {}", error);
+        if self.current_component.is_some() {
+            self.close_component();
+        }
         self.open_component("error".to_string());
         self.render_current_template_with_data(&format!("{}", error));
         self.close_component();
