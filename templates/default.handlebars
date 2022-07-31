@@ -1,4 +1,1 @@
-<div class="alert alert-danger" role="alert">
-  <h4 class="alert-heading">Error</h4>
-    <p>{{#each items}}error: {{this}} {{/each}}</p>
-</div>
+{{#each items}}{{#if tag}}<{{{tag}}}>{{content}}</{{{tag}}}>{{else}}{{content}}{{/if}}{{/each}}
