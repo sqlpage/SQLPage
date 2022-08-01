@@ -94,30 +94,46 @@ impl Drop for RenderContext<'_> {
 }
 
 
-struct SerializeRow<R: sqlx::Row>(R);
+struct SerializeRow<R: Row>(R);
 
 impl<'r, R: Row> Serialize for &'r SerializeRow<R>
     where usize: sqlx::ColumnIndex<R>,
           &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-          str: sqlx::Type<<R as Row>::Database>,
+          f64: sqlx::Decode<'r, <R as Row>::Database>,
+          i64: sqlx::Decode<'r, <R as Row>::Database>,
+          bool: sqlx::Decode<'r, <R as Row>::Database>,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer, {
         use serde::ser::SerializeMap;
-        use sqlx::decode::Decode;
+        use sqlx::{decode::Decode, TypeInfo, ValueRef};
         use serde::ser::Error;
         let columns = self.0.columns();
         let mut map = serializer.serialize_map(Some(columns.len()))?;
         for col in columns {
             let key = col.name();
             if let Ok(raw_value) = self.0.try_get_raw(col.ordinal()) {
-                let value = Decode::decode(raw_value).map_err(Error::custom)?;
-                map.serialize_entry(key, value)?;
-                /*match raw_value.type_info().name() {
-                    "TEXT" => {
-                        ()
-                    },
-                    &_ => ()
-                }*/
+                if raw_value.is_null() {
+                    map.serialize_entry(key, &())?;
+                    continue;
+                }
+                match raw_value.type_info().name() {
+                    "REAL" | "FLOAT" => {
+                        let value: f64 = Decode::decode(raw_value).map_err(Error::custom)?;
+                        map.serialize_entry(key, &value)?;
+                    }
+                    "INT" | "INTEGER" => {
+                        let value: i64 = Decode::decode(raw_value).map_err(Error::custom)?;
+                        map.serialize_entry(key, &value)?;
+                    }
+                    "BOOL" | "BOOLEAN" => {
+                        let value: bool = Decode::decode(raw_value).map_err(Error::custom)?;
+                        map.serialize_entry(key, &value)?;
+                    }
+                    _ => { // Deserialize as a string by default
+                        let value: &str = Decode::decode(raw_value).map_err(Error::custom)?;
+                        map.serialize_entry(key, value)?;
+                    }
+                }
             }
         }
         map.end()

@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sqlx = { version = "0.6.0", features = ["any", "runtime-actix-native-tls", "sqlite"] }
+sqlx = { version = "0.6.0", features = ["any", "runtime-actix-native-tls", "sqlite", "postgres", "mysql"] }
 actix-web = "4"
 handlebars = "4.3.3"
 log = "0.4.17"
