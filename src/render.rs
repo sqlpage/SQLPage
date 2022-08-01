@@ -12,9 +12,11 @@ pub struct RenderContext<'a> {
     app_state: &'a AppState,
     writer: ResponseWriter,
     current_component: Option<String>,
+    error_depth: usize,
 }
 
 const DEFAULT_COMPONENT: &str = "default";
+const MAX_ERROR_RECURION: usize = 3;
 
 impl RenderContext<'_> {
     pub fn new(app_state: &AppState, writer: ResponseWriter) -> RenderContext {
@@ -22,6 +24,7 @@ impl RenderContext<'_> {
             app_state,
             writer,
             current_component: None,
+            error_depth: 0,
         };
         this.render_template("shell_before");
         this
@@ -51,24 +54,36 @@ impl RenderContext<'_> {
         Ok(())
     }
 
-    pub fn handle_error(&mut self, error: &impl std::error::Error) {
-        log::warn!("SQL error {}", error);
+    /// Handles the rendering of an error.
+    /// Returns whether the error is irrecoverable and the rendering must stop
+    pub fn handle_error(&mut self, error: &impl std::error::Error) -> std::io::Result<()> {
+        self.error_depth += 1;
+        if self.error_depth > MAX_ERROR_RECURION {
+            return Err(std::io::ErrorKind::Interrupted.into());
+        }
+        log::warn!("SQL error: {:?}", error);
         if self.current_component.is_some() {
             self.close_component();
         }
         self.open_component("error".to_string());
         self.render_current_template_with_data(&format!("{}", error));
         self.close_component();
+        self.error_depth -= 1;
+        Ok(())
     }
 
-    pub fn handle_result<R, E: std::error::Error>(&mut self, result: &Result<R, E>) {
+    pub fn handle_result<R, E: std::error::Error>(&mut self, result: &Result<R, E>) -> std::io::Result<()> {
         if let Err(error) = result {
             self.handle_error(error)
+        } else {
+            Ok(())
         }
     }
 
-    pub async fn close(&mut self) {
-        log::warn!("close");
+    pub fn handle_result_and_log<R, E: std::error::Error>(&mut self, result: &Result<R, E>) {
+        if let Err(e) = self.handle_result(result) {
+            log::error!("{}", e);
+        }
     }
 
     fn render_template(&mut self, name: &str) {
@@ -76,7 +91,7 @@ impl RenderContext<'_> {
     }
 
     fn render_template_with_data<T: Serialize>(&mut self, name: &str, data: &T) {
-        self.handle_result(&self.app_state.all_templates.handlebars.render_to_write(
+        self.handle_result_and_log(&self.app_state.all_templates.handlebars.render_to_write(
             name,
             data,
             &self.writer,
@@ -85,7 +100,7 @@ impl RenderContext<'_> {
 
     fn render_current_template_with_data<T: Serialize>(&mut self, data: &T) {
         let name = self.current_component.as_ref().unwrap();
-        self.handle_result(&self.app_state.all_templates.handlebars.render_to_write(
+        self.handle_result_and_log(&self.app_state.all_templates.handlebars.render_to_write(
             name,
             data,
             &self.writer,
@@ -117,16 +132,16 @@ impl Drop for RenderContext<'_> {
 struct SerializeRow<R: Row>(R);
 
 impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-where
-    usize: sqlx::ColumnIndex<R>,
-    &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-    f64: sqlx::Decode<'r, <R as Row>::Database>,
-    i64: sqlx::Decode<'r, <R as Row>::Database>,
-    bool: sqlx::Decode<'r, <R as Row>::Database>,
+    where
+        usize: sqlx::ColumnIndex<R>,
+        &'r str: sqlx::Decode<'r, <R as Row>::Database>,
+        f64: sqlx::Decode<'r, <R as Row>::Database>,
+        i64: sqlx::Decode<'r, <R as Row>::Database>,
+        bool: sqlx::Decode<'r, <R as Row>::Database>,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where
+            S: Serializer,
     {
         use sqlx::{TypeInfo, ValueRef};
         let columns = self.0.columns();
@@ -276,6 +291,6 @@ fn test_custom_template() {
     {{/each}}
     </h1>",
     )
-    .unwrap();
+        .unwrap();
     assert_eq!(template.elements, vec![]);
 }
