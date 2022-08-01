@@ -7,6 +7,10 @@
         You should contact the site's administrator.
     </p>
     {{#each items}}
-        <pre><code>{{this}}</code></pre>
+        <pre><code>{{description}}</code></pre>
+        <details class="fs-5">
+            <summary>Backtrace</summary>
+            <pre class="fs-5 mt-1 p-1">{{#each backtrace}}<code>{{this}}</code>{{/each}}</pre>
+        </details>
     {{/each}}
 </div>
