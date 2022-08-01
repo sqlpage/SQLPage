@@ -1,6 +1,8 @@
 mod http;
 mod render;
 
+use sqlx::any::AnyConnectOptions;
+use sqlx::ConnectOptions;
 use render::AllTemplates;
 
 pub struct AppState {
@@ -17,7 +19,10 @@ async fn main() -> std::io::Result<()> {
     let database_url =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://site.db?mode=rwc".to_string());
 
-    let db = sqlx::AnyPool::connect(&database_url)
+    let mut connect_options: AnyConnectOptions= database_url.parse().expect("Invalid database URL");
+    connect_options.log_statements(log::LevelFilter::Trace);
+    connect_options.log_slow_statements(log::LevelFilter::Warn, std::time::Duration::from_millis(250));
+    let db = sqlx::AnyPool::connect_with(connect_options)
         .await
         .expect("Failed to connect to database");
 
