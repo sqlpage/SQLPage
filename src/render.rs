@@ -1,9 +1,7 @@
-use std::any::Any;
 use std::fs::DirEntry;
 use crate::http::ResponseWriter;
-use handlebars::{template::TemplateElement, Renderable, Template, Handlebars, TemplateError};
-use sqlx::{Column, Row, TypeInfo, ValueRef};
-use std::io::Write;
+use handlebars::{template::TemplateElement, Template, Handlebars, TemplateError};
+use sqlx::{Column, Row};
 use crate::AppState;
 use serde::{Serialize, Serializer};
 
@@ -28,7 +26,6 @@ impl RenderContext<'_> {
             let component = row.try_get("component").unwrap_or_else(|_| DEFAULT_COMPONENT.to_string());
             self.open_component(component)
         };
-        let component = self.current_component.as_ref().unwrap();
         self.render_current_template_with_data(&&SerializeRow(row));
         Ok(())
     }
@@ -180,7 +177,7 @@ pub struct AllTemplates {
 
 impl AllTemplates {
     pub fn init() -> Self {
-        let mut handlebars = Handlebars::new();
+        let handlebars = Handlebars::new();
         let mut this = Self { handlebars };
         this.register_split("shell", include_str!("../templates/shell.handlebars"))
             .expect("Embedded shell template contains an error");
@@ -195,7 +192,7 @@ impl AllTemplates {
         tpl.name = Some(name.to_string());
         let split = split_template(tpl);
         self.handlebars.register_template(&[name, "before"].join("_"), split.before_list);
-        self.handlebars.register_template(&name, split.list_content);
+        self.handlebars.register_template(name, split.list_content);
         self.handlebars.register_template(&[name, "after"].join("_"), split.after_list);
         Ok(())
     }
