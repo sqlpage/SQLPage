@@ -1,10 +1,12 @@
-use std::fs::DirEntry;
 use crate::http::ResponseWriter;
-use handlebars::{template::TemplateElement, Template, Handlebars, TemplateError, handlebars_helper};
-use sqlx::{Column, Database, Decode, Row};
 use crate::AppState;
-use serde::{Serialize, Serializer};
+use handlebars::{
+    handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError,
+};
 use serde::ser::SerializeMap;
+use serde::{Serialize, Serializer};
+use sqlx::{Column, Database, Decode, Row};
+use std::fs::DirEntry;
 
 pub struct RenderContext<'a> {
     app_state: &'a AppState,
@@ -16,22 +18,34 @@ const DEFAULT_COMPONENT: &str = "default";
 
 impl RenderContext<'_> {
     pub fn new(app_state: &AppState, writer: ResponseWriter) -> RenderContext {
-        let mut this = RenderContext { app_state, writer, current_component: None };
+        let mut this = RenderContext {
+            app_state,
+            writer,
+            current_component: None,
+        };
         this.render_template("shell_before");
         this
     }
 
-    pub async fn handle_row(&mut self, row: sqlx::any::AnyRow) -> Result<(), handlebars::RenderError> {
+    pub async fn handle_row(
+        &mut self,
+        row: sqlx::any::AnyRow,
+    ) -> Result<(), handlebars::RenderError> {
         log::trace!("handle_row: {:?}", row.columns());
         if self.current_component.is_none() {
-            let component = row.try_get("component").unwrap_or_else(|_| DEFAULT_COMPONENT.to_string());
+            let component = row
+                .try_get("component")
+                .unwrap_or_else(|_| DEFAULT_COMPONENT.to_string());
             self.open_component(component)
         };
         self.render_current_template_with_data(&&SerializeRow(row));
         Ok(())
     }
 
-    pub async fn finish_query(&mut self, result: sqlx::any::AnyQueryResult) -> Result<(), handlebars::RenderError> {
+    pub async fn finish_query(
+        &mut self,
+        result: sqlx::any::AnyQueryResult,
+    ) -> Result<(), handlebars::RenderError> {
         log::trace!("finish_query: {:?}", result);
         self.close_component();
         Ok(())
@@ -47,7 +61,6 @@ impl RenderContext<'_> {
         self.close_component();
     }
 
-
     pub fn handle_result<R, E: std::error::Error>(&mut self, result: &Result<R, E>) {
         if let Err(error) = result {
             self.handle_error(error)
@@ -58,18 +71,25 @@ impl RenderContext<'_> {
         log::warn!("close");
     }
 
-
     fn render_template(&mut self, name: &str) {
         self.render_template_with_data(name, &())
     }
 
     fn render_template_with_data<T: Serialize>(&mut self, name: &str, data: &T) {
-        self.handle_result(&self.app_state.all_templates.handlebars.render_to_write(name, data, &self.writer));
+        self.handle_result(&self.app_state.all_templates.handlebars.render_to_write(
+            name,
+            data,
+            &self.writer,
+        ));
     }
 
     fn render_current_template_with_data<T: Serialize>(&mut self, data: &T) {
         let name = self.current_component.as_ref().unwrap();
-        self.handle_result(&self.app_state.all_templates.handlebars.render_to_write(name, data, &self.writer));
+        self.handle_result(&self.app_state.all_templates.handlebars.render_to_write(
+            name,
+            data,
+            &self.writer,
+        ));
     }
 
     fn open_component(&mut self, component: String) {
@@ -94,34 +114,37 @@ impl Drop for RenderContext<'_> {
     }
 }
 
-
 struct SerializeRow<R: Row>(R);
 
 impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-    where usize: sqlx::ColumnIndex<R>,
-          &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-          f64: sqlx::Decode<'r, <R as Row>::Database>,
-          i64: sqlx::Decode<'r, <R as Row>::Database>,
-          bool: sqlx::Decode<'r, <R as Row>::Database>,
+where
+    usize: sqlx::ColumnIndex<R>,
+    &'r str: sqlx::Decode<'r, <R as Row>::Database>,
+    f64: sqlx::Decode<'r, <R as Row>::Database>,
+    i64: sqlx::Decode<'r, <R as Row>::Database>,
+    bool: sqlx::Decode<'r, <R as Row>::Database>,
 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer, {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         use sqlx::{TypeInfo, ValueRef};
         let columns = self.0.columns();
         let mut map = serializer.serialize_map(Some(columns.len()))?;
         for col in columns {
             let key = col.name();
             match self.0.try_get_raw(col.ordinal()) {
-                Ok(raw_value) if !raw_value.is_null()=> match raw_value.type_info().name() {
-                    "REAL" | "FLOAT" | "NUMERIC" | "FLOAT4" | "FLOAT8" | "DOUBLE" =>
-                        map_serialize::<_, _, f64>(&mut map, key, raw_value),
-                    "INT" | "INTEGER" | "INT8" | "INT2" | "INT4" | "TINYINT" | "SMALLINT" | "BIGINT" =>
-                        map_serialize::<_, _, i64>(&mut map, key, raw_value),
-                    "BOOL" | "BOOLEAN" =>
-                        map_serialize::<_, _, bool>(&mut map, key, raw_value),
+                Ok(raw_value) if !raw_value.is_null() => match raw_value.type_info().name() {
+                    "REAL" | "FLOAT" | "NUMERIC" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
+                        map_serialize::<_, _, f64>(&mut map, key, raw_value)
+                    }
+                    "INT" | "INTEGER" | "INT8" | "INT2" | "INT4" | "TINYINT" | "SMALLINT"
+                    | "BIGINT" => map_serialize::<_, _, i64>(&mut map, key, raw_value),
+                    "BOOL" | "BOOLEAN" => map_serialize::<_, _, bool>(&mut map, key, raw_value),
                     // Deserialize as a string by default
-                    _ => map_serialize::<_, _, &str>(&mut map, key, raw_value)
+                    _ => map_serialize::<_, _, &str>(&mut map, key, raw_value),
                 },
-                _ => map.serialize_entry(key, &()) // Serialize null
+                _ => map.serialize_entry(key, &()), // Serialize null
             }?
         }
         map.end()
@@ -129,7 +152,9 @@ impl<'r, R: Row> Serialize for &'r SerializeRow<R>
 }
 
 fn map_serialize<'r, M: SerializeMap, DB: Database, T: Decode<'r, DB> + Serialize>(
-    map: &mut M, key: &str, raw_value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+    map: &mut M,
+    key: &str,
+    raw_value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
 ) -> Result<(), M::Error> {
     let val = T::decode(raw_value).map_err(serde::ser::Error::custom)?;
     map.serialize_entry(key, &val)
@@ -181,7 +206,6 @@ fn is_template_list_item(element: &TemplateElement) -> bool {
                                     (Name(name), [Path(Relative((_, param)))]) if name == "each" && param == "items"))
 }
 
-
 pub struct AllTemplates {
     handlebars: Handlebars<'static>,
 }
@@ -204,9 +228,11 @@ impl AllTemplates {
         let mut tpl = Template::compile(tpl_str)?;
         tpl.name = Some(name.to_string());
         let split = split_template(tpl);
-        self.handlebars.register_template(&[name, "before"].join("_"), split.before_list);
+        self.handlebars
+            .register_template(&[name, "before"].join("_"), split.before_list);
         self.handlebars.register_template(name, split.list_content);
-        self.handlebars.register_template(&[name, "after"].join("_"), split.after_list);
+        self.handlebars
+            .register_template(&[name, "after"].join("_"), split.after_list);
         Ok(())
     }
 
@@ -218,14 +244,17 @@ impl AllTemplates {
                     errors.extend(self.register_dir_entry(f).err());
                 }
             }
-            Err(e) => errors.push(Box::new(e))
+            Err(e) => errors.push(Box::new(e)),
         }
         for err in errors {
             log::error!("Unable to register a template: {}", err);
         }
     }
 
-    fn register_dir_entry(&mut self, entry: std::io::Result<DirEntry>) -> Result<(), Box<dyn std::error::Error>> {
+    fn register_dir_entry(
+        &mut self,
+        entry: std::io::Result<DirEntry>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let path = entry?.path();
         if matches!(path.extension(), Some(x) if x == "handlebars") {
             let tpl_str = std::fs::read_to_string(&path)?;
@@ -247,6 +276,6 @@ fn test_custom_template() {
     {{/each}}
     </h1>",
     )
-        .unwrap();
+    .unwrap();
     assert_eq!(template.elements, vec![]);
 }
