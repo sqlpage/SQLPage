@@ -6,6 +6,7 @@ use actix_web::{
 };
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
+
 const WEB_ROOT: &str = ".";
 
 pub struct ResponseWriter {
@@ -17,9 +18,9 @@ impl std::io::Write for &ResponseWriter {
         self.response_bytes
             .send(Ok(Bytes::copy_from_slice(buf)))
             .map(|_| buf.len())
-            .map_err(|err| {
-                log::error!("Broken pipe, unable to write response response. {}", err);
-                std::io::ErrorKind::BrokenPipe.into()
+            .map_err(|_err| {
+                use std::io::*;
+                Error::new(ErrorKind::BrokenPipe, "The HTTP response writer has already been closed")
             })
     }
     fn flush(&mut self) -> std::io::Result<()> {
@@ -27,22 +28,22 @@ impl std::io::Write for &ResponseWriter {
     }
 }
 
-async fn stream_response(req: HttpRequest, sql_bytes: Bytes, response_bytes: ResponseWriter) {
+async fn stream_response(req: HttpRequest, sql_bytes: Bytes, response_bytes: ResponseWriter) -> std::io::Result<()> {
     let app_state: &web::Data<AppState> = req.app_data().expect("no app data in render");
     let sql = std::str::from_utf8(&sql_bytes).unwrap();
     let mut stream = sqlx::query(sql).fetch_many(&app_state.db);
 
     let mut renderer = RenderContext::new(app_state, response_bytes);
     while let Some(item) = stream.next().await {
-        renderer.handle_result(&item);
+        renderer.handle_result(&item)?;
         let res = match item {
             Ok(sqlx::Either::Left(result)) => renderer.finish_query(result).await,
             Ok(sqlx::Either::Right(row)) => renderer.handle_row(row).await,
             Err(_) => Ok(()),
         };
-        renderer.handle_result(&res);
+        renderer.handle_result(&res)?;
     }
-    renderer.close().await;
+    Ok(())
 }
 
 async fn render_sql(req: HttpRequest, sql_bytes: Bytes) -> actix_web::Result<HttpResponse> {
@@ -85,7 +86,7 @@ pub async fn run_server(state: AppState) -> std::io::Result<()> {
             )
             .wrap(Logger::default())
     })
-    .bind(listen_on)?
-    .run()
-    .await
+        .bind(listen_on)?
+        .run()
+        .await
 }
