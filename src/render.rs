@@ -1,6 +1,6 @@
 use std::fs::DirEntry;
 use crate::http::ResponseWriter;
-use handlebars::{template::TemplateElement, Template, Handlebars, TemplateError};
+use handlebars::{template::TemplateElement, Template, Handlebars, TemplateError, handlebars_helper};
 use sqlx::{Column, Row};
 use crate::AppState;
 use serde::{Serialize, Serializer};
@@ -193,7 +193,9 @@ pub struct AllTemplates {
 
 impl AllTemplates {
     pub fn init() -> Self {
-        let handlebars = Handlebars::new();
+        let mut handlebars = Handlebars::new();
+        handlebars_helper!(stringify: |v: Json| v.to_string());
+        handlebars.register_helper("stringify", Box::new(stringify));
         let mut this = Self { handlebars };
         this.register_split("shell", include_str!("../templates/shell.handlebars"))
             .expect("Embedded shell template contains an error");
