@@ -1,4 +1,12 @@
 <div class="alert alert-danger" role="alert">
-  <h4 class="alert-heading">Error</h4>
-    <p>{{#each items}}error: {{this}} {{/each}}</p>
+    <p>
+        <span class="status status-red">
+            <span class="status-dot status-dot-animated"></span> Error
+        </span>
+        We are sorry, but an error occurred while generating this page.
+        You should contact the site's administrator.
+    </p>
+    {{#each items}}
+        <pre><code>{{this}}</code></pre>
+    {{/each}}
 </div>
