@@ -1804,6 +1804,7 @@ dependencies = [
  "log",
  "ouroboros",
  "serde",
+ "serde_json",
  "sqlx",
  "tokio",
  "tokio-stream",

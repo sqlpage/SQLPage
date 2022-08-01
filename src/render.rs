@@ -66,7 +66,17 @@ impl RenderContext<'_> {
             self.close_component();
         }
         self.open_component("error".to_string());
-        self.render_current_template_with_data(&format!("{}", error));
+        let description = format!("{}", error);
+        let mut backtrace = vec![];
+        let mut source = error.source();
+        while let Some(s) = source {
+            backtrace.push(format!("{}", s));
+            source = s.source()
+        }
+        self.render_current_template_with_data(&serde_json::json!({
+            "description": description,
+            "backtrace": backtrace
+        }));
         self.close_component();
         self.error_depth -= 1;
         Ok(())
