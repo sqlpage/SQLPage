@@ -1,9 +1,9 @@
 mod http;
 mod render;
 
+use render::AllTemplates;
 use sqlx::any::AnyConnectOptions;
 use sqlx::ConnectOptions;
-use render::AllTemplates;
 
 pub struct AppState {
     db: sqlx::AnyPool,
@@ -19,9 +19,13 @@ async fn main() -> std::io::Result<()> {
     let database_url =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://site.db?mode=rwc".to_string());
 
-    let mut connect_options: AnyConnectOptions= database_url.parse().expect("Invalid database URL");
+    let mut connect_options: AnyConnectOptions =
+        database_url.parse().expect("Invalid database URL");
     connect_options.log_statements(log::LevelFilter::Trace);
-    connect_options.log_slow_statements(log::LevelFilter::Warn, std::time::Duration::from_millis(250));
+    connect_options.log_slow_statements(
+        log::LevelFilter::Warn,
+        std::time::Duration::from_millis(250),
+    );
     let db = sqlx::AnyPool::connect_with(connect_options)
         .await
         .expect("Failed to connect to database");
@@ -34,6 +38,10 @@ async fn main() -> std::io::Result<()> {
         .expect("LISTEN_ON must be a valid IP:PORT");
 
     let all_templates = AllTemplates::init();
-    let state = AppState { db, listen_on, all_templates };
+    let state = AppState {
+        db,
+        listen_on,
+        all_templates,
+    };
     http::run_server(state).await
 }
