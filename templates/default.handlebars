@@ -1,1 +1,17 @@
-{{#each items}}{{#if tag}}<{{{tag}}}>{{content}}</{{{tag}}}>{{else}}{{content}}{{/if}}{{/each}}
+{{#each items}}
+    {{#if tag}}
+        <{{{tag}}}>
+        {{~#each (entries this)~}}
+            {{#unless (eq key "tag")}}
+                {{~value~}}
+            {{/unless}}
+        {{~/each~}}
+        </{{{tag}}}>
+    {{else}}
+        <p>
+            {{~#each (entries this)}}
+                {{value}}
+            {{/each~}}
+        </p>
+    {{/if}}
+{{/each}}

@@ -240,6 +240,19 @@ impl AllTemplates {
         let mut handlebars = Handlebars::new();
         handlebars_helper!(stringify: |v: Json| v.to_string());
         handlebars.register_helper("stringify", Box::new(stringify));
+        handlebars_helper!(entries: |v: Json | match v {
+            serde_json::value::Value::Object(map) =>
+                map.into_iter()
+                    .map(|(k, v)| serde_json::json!({"key": k, "value": v}))
+                    .collect(),
+            serde_json::value::Value::Array(values) =>
+                values.iter()
+                    .enumerate()
+                    .map(|(k, v)| serde_json::json!({"key": k, "value": v}))
+                    .collect(),
+            _ => vec![]
+        });
+        handlebars.register_helper("entries", Box::new(entries));
         let mut this = Self { handlebars };
         this.register_split("shell", include_str!("../templates/shell.handlebars"))
             .expect("Embedded shell template contains an error");
