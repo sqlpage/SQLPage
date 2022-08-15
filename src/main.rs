@@ -37,6 +37,8 @@ async fn main() -> std::io::Result<()> {
         .parse::<std::net::SocketAddr>()
         .expect("LISTEN_ON must be a valid IP:PORT");
 
+    log::info!("Starting server on {}", listen_on);
+
     let all_templates = AllTemplates::init();
     let state = AppState {
         db,
