@@ -1,0 +1,7 @@
+<h1>
+    {{~#each (entries this)~}}
+            {{#unless (eq key "component")}}
+                {{~value~}}
+            {{/unless}}
+    {{~/each~}}
+</h1>

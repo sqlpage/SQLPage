@@ -21,38 +21,46 @@ const MAX_ERROR_RECURION: usize = 3;
 
 impl RenderContext<'_> {
     pub fn new(app_state: &AppState, writer: ResponseWriter) -> RenderContext {
-        let mut this = RenderContext {
+        RenderContext {
             app_state,
             writer,
             current_component: None,
             error_depth: 0,
-        };
-        this.render_template("shell_before");
-        this
+        }
     }
 
     pub async fn handle_row(
         &mut self,
         row: sqlx::any::AnyRow,
-    ) -> Result<(), handlebars::RenderError> {
-        log::trace!("handle_row: {:?}", row.columns());
-        if self.current_component.is_none() {
-            let component = row
-                .try_get("component")
-                .unwrap_or_else(|_| DEFAULT_COMPONENT.to_string());
-            self.open_component_with_data(component, &&SerializeRow(row))
-        } else {
-            self.render_current_template_with_data(&&SerializeRow(row));
+    ) {
+        let data = SerializeRow(row);
+        log::debug!("Processing database row: {:?}", json!(data));
+        let new_component = data.0.try_get::<&str, &str>("component");
+        let current_component = &self.current_component;
+        match (current_component, new_component) {
+            (None, Ok("head")) | (None, Err(_)) => {
+                self.render_template_with_data("shell_before", &&data);
+                self.open_component_with_data(DEFAULT_COMPONENT.to_string(), &&data);
+            }
+            (None, new_component) => {
+                self.render_template("shell_before");
+                let component = new_component.unwrap_or(DEFAULT_COMPONENT).to_string();
+                self.open_component_with_data(component, &&data);
+            }
+            (Some(current_component), Ok(new_component)) if new_component != current_component => {
+                self.open_component_with_data(new_component.to_string(), &&data);
+            }
+            (Some(_), _) => {
+                self.render_current_template_with_data(&&data);
+            }
         }
-        Ok(())
     }
 
     pub async fn finish_query(
         &mut self,
         result: sqlx::any::AnyQueryResult,
-    ) -> Result<(), handlebars::RenderError> {
+    ) {
         log::trace!("finish_query: {:?}", result);
-        Ok(())
     }
 
     /// Handles the rendering of an error.
@@ -123,6 +131,7 @@ impl RenderContext<'_> {
     }
 
     fn open_component_with_data<T: Serialize>(&mut self, component: String, data: &T) {
+        self.close_component();
         self.render_template_with_data(&[&component, "_before"].join(""), data);
         self.current_component = Some(component);
     }

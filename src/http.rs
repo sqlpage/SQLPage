@@ -39,13 +39,11 @@ async fn stream_response(req: HttpRequest, payload: Payload, sql_bytes: Bytes, r
 
     let mut renderer = RenderContext::new(app_state, response_bytes);
     while let Some(item) = stream.next().await {
-        renderer.handle_result(&item)?;
-        let res = match item {
+        match item {
             Ok(sqlx::Either::Left(result)) => renderer.finish_query(result).await,
             Ok(sqlx::Either::Right(row)) => renderer.handle_row(row).await,
-            Err(_) => Ok(()),
-        };
-        renderer.handle_result(&res)?;
+            Err(e) => if let Err(irrecoverable) = renderer.handle_error(&e) { return Err(irrecoverable); },
+        }
     }
     Ok(())
 }
