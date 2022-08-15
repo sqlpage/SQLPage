@@ -1,25 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sqlsite</title>
+<html lang="{{lang}}">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{{title}}</title>
     <link
-      href="https://unpkg.com/@tabler/core@1.0.0-beta10/dist/css/tabler.min.css"
-      rel="stylesheet"
-      integrity="sha384-jmBhmiTtTd+EXqowu+opmlXtLjL6dJL2wvAi88X3lKbN4FnIAncrMD1S7EfNxvlo"
-      crossorigin="anonymous"
+            href="https://unpkg.com/@tabler/core@1.0.0-beta10/dist/css/tabler.min.css"
+            rel="stylesheet"
+            integrity="sha384-jmBhmiTtTd+EXqowu+opmlXtLjL6dJL2wvAi88X3lKbN4FnIAncrMD1S7EfNxvlo"
+            crossorigin="anonymous"
     />
-  </head>
-  <body>
-    {{#each_row}}
-      <!-- Query executed -->
-    {{/each_row}}
+</head>
 
-    <script
-      src="https://unpkg.com/@tabler/core@1.0.0-beta10/dist/js/tabler.min.js"
-      integrity="sha384-JgcuyRdRj/DsTn/xu/nrUgqn7jKtTtSAYh6lj3VDT4e9eu1z3VovRn5RPpaX9XX8"
-      crossorigin="anonymous"
-    ></script>
-  </body>
+<body>
+{{#if title}}
+    <header class="page-header">
+        <nav class="navbar navbar-dark bg-primary">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}#{{/if}}">
+                    {{#if icon}}
+                        <img src="{{icon}}" alt="" width="32" height="32"
+                             class="d-inline-block align-text-top">
+                    {{/if}}
+                    {{title}}
+                </a>
+            </div>
+        </nav>
+    </header>
+{{/if}}
+
+<main class="layout-boxed">
+    <div class="page">
+        <main class="page-wrapper container-xl mt-3">
+            {{#each_row}}
+                <!-- Query executed -->
+            {{/each_row}}
+        </main>
+    </div>
+</main>
+
+<script
+        src="https://unpkg.com/@tabler/core@1.0.0-beta10/dist/js/tabler.min.js"
+        integrity="sha384-JgcuyRdRj/DsTn/xu/nrUgqn7jKtTtSAYh6lj3VDT4e9eu1z3VovRn5RPpaX9XX8"
+        crossorigin="anonymous"
+></script>
+
+</body>
 </html>
