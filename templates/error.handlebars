@@ -8,9 +8,15 @@
     </p>
     {{#each items}}
         <pre><code>{{description}}</code></pre>
-        <details class="fs-5">
-            <summary>Backtrace</summary>
-            <pre class="fs-5 mt-1 p-1">{{#each backtrace}}<code>{{this}}</code>{{/each}}</pre>
-        </details>
+        {{#if backtrace}}
+            <details class="fs-5">
+                <summary>Backtrace</summary>
+                <pre class="fs-5 mt-1 p-1">
+                    {{~#each backtrace~}}
+                        <code>{{this}}</code>
+                    {{~/each~}}
+                </pre>
+            </details>
+        {{/if}}
     {{/each}}
 </div>
