@@ -6,7 +6,7 @@
         We are sorry, but an error occurred while generating this page.
         You should contact the site's administrator.
     </p>
-    {{#each items}}
+    {{#each_row}}
         <pre><code>{{description}}</code></pre>
         {{#if backtrace}}
             <details class="fs-5">
@@ -18,5 +18,5 @@
                 </pre>
             </details>
         {{/if}}
-    {{/each}}
+    {{/each_row}}
 </div>

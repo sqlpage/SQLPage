@@ -1,4 +1,4 @@
-{{#each items}}
+{{#each_row}}
     {{#if tag}}
         <{{{tag}}}>
         {{~#each (entries this)~}}
@@ -14,4 +14,4 @@
             {{/each~}}
         </p>
     {{/if}}
-{{/each}}
+{{/each_row}}
