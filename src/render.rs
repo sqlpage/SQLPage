@@ -17,7 +17,7 @@ pub struct RenderContext<'a> {
 }
 
 const DEFAULT_COMPONENT: &str = "default";
-const MAX_ERROR_RECURION: usize = 3;
+const MAX_ERROR_RECURSION: usize = 3;
 
 impl RenderContext<'_> {
     pub fn new(app_state: &AppState, writer: ResponseWriter) -> RenderContext {
@@ -67,7 +67,7 @@ impl RenderContext<'_> {
     /// Returns whether the error is irrecoverable and the rendering must stop
     pub fn handle_error(&mut self, error: &impl std::error::Error) -> std::io::Result<()> {
         self.error_depth += 1;
-        if self.error_depth > MAX_ERROR_RECURION {
+        if self.error_depth > MAX_ERROR_RECURSION {
             return Err(std::io::ErrorKind::Interrupted.into());
         }
         log::warn!("SQL error: {:?}", error);
