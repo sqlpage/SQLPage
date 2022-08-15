@@ -7,6 +7,7 @@ use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use sqlx::{Column, Database, Decode, Row};
 use std::fs::DirEntry;
+use serde_json::json;
 
 pub struct RenderContext<'a> {
     app_state: &'a AppState,
@@ -39,9 +40,10 @@ impl RenderContext<'_> {
             let component = row
                 .try_get("component")
                 .unwrap_or_else(|_| DEFAULT_COMPONENT.to_string());
-            self.open_component(component)
-        };
-        self.render_current_template_with_data(&&SerializeRow(row));
+            self.open_component_with_data(component, &&SerializeRow(row))
+        } else {
+             self.render_current_template_with_data(&&SerializeRow(row));
+        }
         Ok(())
     }
 
@@ -50,7 +52,6 @@ impl RenderContext<'_> {
         result: sqlx::any::AnyQueryResult,
     ) -> Result<(), handlebars::RenderError> {
         log::trace!("finish_query: {:?}", result);
-        self.close_component();
         Ok(())
     }
 
@@ -118,7 +119,11 @@ impl RenderContext<'_> {
     }
 
     fn open_component(&mut self, component: String) {
-        self.render_template(&[&component, "_before"].join(""));
+        self.open_component_with_data(component, &json!(null));
+    }
+
+    fn open_component_with_data<T: Serialize>(&mut self, component: String, data: &T) {
+        self.render_template_with_data(&[&component, "_before"].join(""), data);
         self.current_component = Some(component);
     }
 
