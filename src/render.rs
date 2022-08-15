@@ -42,7 +42,7 @@ impl RenderContext<'_> {
                 .unwrap_or_else(|_| DEFAULT_COMPONENT.to_string());
             self.open_component_with_data(component, &&SerializeRow(row))
         } else {
-             self.render_current_template_with_data(&&SerializeRow(row));
+            self.render_current_template_with_data(&&SerializeRow(row));
         }
         Ok(())
     }
@@ -228,12 +228,10 @@ fn split_template(mut original: Template) -> SplitTemplate {
 
 fn is_template_list_item(element: &TemplateElement) -> bool {
     use handlebars::template::*;
-    use handlebars::Path::*;
     use Parameter::*;
     matches!(element,
                     TemplateElement::HelperBlock(tpl)
-                        if matches!((&tpl.name, &tpl.params[..]),
-                                    (Name(name), [Path(Relative((_, param)))]) if name == "each" && param == "items"))
+                        if matches!(&tpl.name, Name(name) if name == "each_row"))
 }
 
 pub struct AllTemplates {
@@ -309,16 +307,14 @@ impl AllTemplates {
 }
 
 #[test]
-fn test_custom_template() {
-    let template = handlebars::Template::compile(
-        "
-    <h1> 
-        Hello {{name}} ! 
-    {{#each items}}
-        <li>{{this}}</li>
-    {{/each}}
-    </h1>",
-    )
-        .unwrap();
-    assert_eq!(template.elements, vec![]);
+fn test_split_template() {
+    let template = Template::compile(
+        "Hello {{name}} ! \
+        {{#each_row}}<li>{{this}}</li>{{/each_row}}\
+        end",
+    ).unwrap();
+    let split = split_template(template);
+    assert_eq!(split.before_list.elements, Template::compile("Hello {{name}} ! ").unwrap().elements);
+    assert_eq!(split.list_content.elements, Template::compile("<li>{{this}}</li>").unwrap().elements);
+    assert_eq!(split.after_list.elements, Template::compile("end").unwrap().elements);
 }
