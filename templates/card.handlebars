@@ -1,0 +1,20 @@
+<div class="
+    row
+    row-cols-1 row-cols-sm-2
+    row-cols-md-{{#if columns}}{{columns}}{{else}}3{{/if}}
+    gx-2 gy-2">
+    {{#each_row}}
+        <div class="col">
+        <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card">
+                {{#if status}}
+                    <div class="card-status-start bg-{{status}}"></div>
+                {{/if}}
+                <div class="card-body">
+                    <h3 class="card-title">{{title}}</h3>
+                    <p class="text-muted">{{body}}</p>
+                </div>
+                <div class="card-footer">{{footer}}</div>
+            </{{#if link}}a {{else}}div{{/if}}>
+        </div>
+    {{/each_row}}
+</div>
