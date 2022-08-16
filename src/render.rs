@@ -252,6 +252,8 @@ impl AllTemplates {
         let mut handlebars = Handlebars::new();
         handlebars_helper!(stringify: |v: Json| v.to_string());
         handlebars.register_helper("stringify", Box::new(stringify));
+        handlebars_helper!(default: |a: Json, b:Json| if dbg!(a).is_null() {b} else {a}.clone());
+        handlebars.register_helper("default", Box::new(default));
         handlebars_helper!(entries: |v: Json | match v {
             serde_json::value::Value::Object(map) =>
                 map.into_iter()
