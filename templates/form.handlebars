@@ -1,0 +1,8 @@
+<form class="mb-2" method="{{default method "post"}}">
+    {{#each_row}}
+        <label class="form-label mb-2">{{default label name}}
+            <input type="{{type}}" name="{{name}}" class="form-control mt-1" placeholder="{{placeholder}}">
+        </label>
+    {{/each_row}}
+    <input class="btn btn-primary" type="submit">
+</form>
