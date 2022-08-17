@@ -1,13 +1,16 @@
 mod http;
 mod render;
 
+use std::path::Path;
 use render::AllTemplates;
 use sqlx::any::AnyConnectOptions;
-use sqlx::ConnectOptions;
+use sqlx::{AnyPool, ConnectOptions};
+use sqlx::migrate::Migrator;
 
 const WEB_ROOT: &str = ".";
 const CONFIG_DIR: &str = "sqlsite";
 const TEMPLATES_DIR: &str = "sqlsite/templates";
+const MIGRATIONS_DIR: &str = "sqlsite/migrations";
 
 pub struct AppState {
     db: sqlx::AnyPool,
@@ -34,6 +37,14 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to connect to database");
 
+    if let Err(e) = apply_migrations(&db).await {
+        log::error!("An error occurred while running the database migration.
+        The path '{MIGRATIONS_DIR}' has to point to a directory, which contains valid SQL files
+        with names using the format '<VERSION>_<DESCRIPTION>.sql',
+        where <VERSION> is a positive number, and <DESCRIPTION> is a string.
+        The current state of migrations will be stored in a table called _sqlx_migrations.\n {e:?}")
+    }
+
     log::info!("Connected to database: {database_url}");
 
     let listen_on = std::env::var("LISTEN_ON")
@@ -50,4 +61,15 @@ async fn main() -> std::io::Result<()> {
         all_templates,
     };
     http::run_server(state).await
+}
+
+async fn apply_migrations(db: &AnyPool) -> anyhow::Result<()> {
+    let migrations_dir = Path::new(MIGRATIONS_DIR);
+    if !migrations_dir.exists() {
+        log::debug!("Not applying database migrations because '{}' does not exist", MIGRATIONS_DIR);
+        return Ok(())
+    }
+    let migrator = Migrator::new(migrations_dir).await?;
+    migrator.run(db).await?;
+    Ok(())
 }
