@@ -1,5 +1,6 @@
+use std::path::Component;
 use crate::render::RenderContext;
-use crate::AppState;
+use crate::{AppState, CONFIG_DIR, WEB_ROOT};
 use actix_web::{body::BodyStream, dev::Service, dev::ServiceResponse, http::header::CONTENT_TYPE, middleware::Logger, web, web::Bytes, App, HttpRequest, HttpResponse, HttpServer, FromRequest};
 use actix_web::dev::Payload;
 use actix_web::http::Method;
@@ -9,7 +10,6 @@ use futures_util::TryFutureExt;
 use sqlx::any::AnyArguments;
 use sqlx::Arguments;
 
-const WEB_ROOT: &str = ".";
 
 pub struct ResponseWriter {
     response_bytes: tokio::sync::mpsc::UnboundedSender<actix_web::Result<Bytes>>,
@@ -115,6 +115,8 @@ pub async fn run_server(state: AppState) -> std::io::Result<()> {
             .default_service(
                 actix_files::Files::new("/", WEB_ROOT)
                     .index_file("index.sql")
+                    .path_filter(|path, _|
+                        !matches!(path.components().next(), Some(Component::Normal(x)) if x == CONFIG_DIR))
                     .show_files_listing()
                     .use_last_modified(true),
             )

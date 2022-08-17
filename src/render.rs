@@ -1,5 +1,5 @@
 use crate::http::ResponseWriter;
-use crate::AppState;
+use crate::{AppState, TEMPLATES_DIR};
 use handlebars::{
     handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError,
 };
@@ -252,7 +252,7 @@ impl AllTemplates {
         let mut handlebars = Handlebars::new();
         handlebars_helper!(stringify: |v: Json| v.to_string());
         handlebars.register_helper("stringify", Box::new(stringify));
-        handlebars_helper!(default: |a: Json, b:Json| if dbg!(a).is_null() {b} else {a}.clone());
+        handlebars_helper!(default: |a: Json, b:Json| if a.is_null() {b} else {a}.clone());
         handlebars.register_helper("default", Box::new(default));
         handlebars_helper!(entries: |v: Json | match v {
             serde_json::value::Value::Object(map) =>
@@ -268,9 +268,9 @@ impl AllTemplates {
         });
         handlebars.register_helper("entries", Box::new(entries));
         let mut this = Self { handlebars };
-        this.register_split("shell", include_str!("../templates/shell.handlebars"))
+        this.register_split("shell", include_str!("../sqlsite/templates/shell.handlebars"))
             .expect("Embedded shell template contains an error");
-        this.register_split("error", include_str!("../templates/error.handlebars"))
+        this.register_split("error", include_str!("../sqlsite/templates/error.handlebars"))
             .expect("Embedded shell template contains an error");
         this.register_dir();
         this
@@ -290,7 +290,7 @@ impl AllTemplates {
 
     fn register_dir(&mut self) {
         let mut errors = vec![];
-        match std::fs::read_dir("templates") {
+        match std::fs::read_dir(TEMPLATES_DIR) {
             Ok(dir) => {
                 for f in dir {
                     errors.extend(self.register_dir_entry(f).err());

@@ -5,6 +5,10 @@ use render::AllTemplates;
 use sqlx::any::AnyConnectOptions;
 use sqlx::ConnectOptions;
 
+const WEB_ROOT: &str = ".";
+const CONFIG_DIR: &str = "sqlsite";
+const TEMPLATES_DIR: &str = "sqlsite/templates";
+
 pub struct AppState {
     db: sqlx::AnyPool,
     all_templates: AllTemplates,
