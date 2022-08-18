@@ -11,11 +11,12 @@ use sqlx::any::AnyArguments;
 use sqlx::Arguments;
 
 
+#[derive(Clone)]
 pub struct ResponseWriter {
     response_bytes: tokio::sync::mpsc::UnboundedSender<actix_web::Result<Bytes>>,
 }
 
-impl std::io::Write for &ResponseWriter {
+impl std::io::Write for ResponseWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.response_bytes
             .send(Ok(Bytes::copy_from_slice(buf)))

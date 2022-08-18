@@ -1,12 +1,11 @@
 use crate::http::ResponseWriter;
 use crate::{AppState, TEMPLATES_DIR};
-use handlebars::{
-    handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError,
-};
+use handlebars::{handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError, Renderable, JsonValue, Context, BlockContext};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use sqlx::{Column, Database, Decode, Row};
 use std::fs::DirEntry;
+use std::io::Error;
 use serde_json::json;
 
 pub struct RenderContext<'a> {
@@ -113,7 +112,7 @@ impl RenderContext<'_> {
         self.handle_result_and_log(&self.app_state.all_templates.handlebars.render_to_write(
             name,
             data,
-            &self.writer,
+            self.writer.clone(),
         ));
     }
 
@@ -122,7 +121,7 @@ impl RenderContext<'_> {
         self.handle_result_and_log(&self.app_state.all_templates.handlebars.render_to_write(
             name,
             data,
-            &self.writer,
+            self.writer.clone(),
         ));
     }
 
@@ -203,6 +202,52 @@ struct SplitTemplate {
     before_list: Template,
     list_content: Template,
     after_list: Template,
+}
+
+
+impl handlebars::Output for ResponseWriter {
+    fn write(&mut self, seg: &str) -> std::io::Result<()> {
+        std::io::Write::write_all(self, seg.as_bytes())
+    }
+}
+
+struct SplitTemplateRenderer<'registry> {
+    split_template: &'registry SplitTemplate,
+    block_context: Option<BlockContext<'registry>>,
+    registry: &'registry Handlebars<'registry>,
+    output: ResponseWriter,
+}
+
+impl<'reg> SplitTemplateRenderer<'reg> {
+    fn render_start(&mut self, data: JsonValue) -> Result<(), handlebars::RenderError> {
+        let mut render_context = handlebars::RenderContext::new(None);
+        let mut ctx = Context::from(data);
+        self.split_template.before_list.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
+        let mut blk = render_context.block_mut().map(std::mem::take).unwrap_or_default();
+        blk.set_base_value(std::mem::take(ctx.data_mut()));
+        self.block_context = Some(blk);
+        Ok(())
+    }
+
+    fn render_item(&mut self, data: JsonValue) -> Result<(), handlebars::RenderError> {
+        let mut render_context = handlebars::RenderContext::new(None);
+        render_context.push_block(self.block_context.take().unwrap_or_default());
+        let mut blk = BlockContext::new();
+        blk.set_base_value(data);
+        render_context.push_block(blk);
+        let ctx = Context::null();
+        self.split_template.list_content.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
+        render_context.pop_block();
+        self.block_context = render_context.block_mut().map(std::mem::take);
+        Ok(())
+    }
+
+    fn render_end(&mut self) -> Result<(), handlebars::RenderError> {
+        let mut render_context = handlebars::RenderContext::new(None);
+        render_context.push_block(self.block_context.take().unwrap_or_default());
+        let mut ctx = Context::null();
+        self.split_template.after_list.render(self.registry, &ctx, &mut render_context, &mut self.output)
+    }
 }
 
 fn split_template(mut original: Template) -> SplitTemplate {
@@ -328,4 +373,19 @@ fn test_split_template() {
     assert_eq!(split.before_list.elements, Template::compile("Hello {{name}} ! ").unwrap().elements);
     assert_eq!(split.list_content.elements, Template::compile("<li>{{this}}</li>").unwrap().elements);
     assert_eq!(split.after_list.elements, Template::compile("end").unwrap().elements);
+}
+
+#[test]
+fn test_nest() {
+    let registry = handlebars::Handlebars::new();
+    let template = Template::compile("{{a}} {{../b}}").unwrap();
+    let mut output = handlebars::StringOutput::new();
+    let mut render_context = handlebars::RenderContext::new(None);
+    let mut block_ctx = handlebars::BlockContext::new();
+    block_ctx.set_base_value(json!({"b": 13}));
+    render_context.push_block(block_ctx.clone());
+    block_ctx.set_base_value(json!({"a": 12}));
+    render_context.push_block(block_ctx);
+    template.render(&registry, &Context::from(json!({"a": 555})), &mut render_context, &mut output);
+    assert_eq!(output.into_string().unwrap(), "12 13");
 }
