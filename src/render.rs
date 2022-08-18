@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::http::ResponseWriter;
 use crate::{AppState, TEMPLATES_DIR};
 use handlebars::{handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError, Renderable, JsonValue, Context, BlockContext};
@@ -5,75 +6,74 @@ use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use sqlx::{Column, Database, Decode, Row};
 use std::fs::DirEntry;
-use std::io::Error;
 use serde_json::json;
+
+type TplRenderer<'a> = SplitTemplateRenderer<'a, ResponseWriter>;
 
 pub struct RenderContext<'a> {
     app_state: &'a AppState,
     writer: ResponseWriter,
-    current_component: Option<String>,
-    error_depth: usize,
+    current_component: Option<TplRenderer<'a>>,
+    shell_renderer: TplRenderer<'a>,
+
 }
 
 const DEFAULT_COMPONENT: &str = "default";
-const MAX_ERROR_RECURSION: usize = 3;
 
 impl RenderContext<'_> {
     pub fn new(app_state: &AppState, writer: ResponseWriter) -> RenderContext {
+        let shell_renderer = Self::create_renderer("shell", app_state, &writer).expect("shell must always exist");
         RenderContext {
             app_state,
             writer,
             current_component: None,
-            error_depth: 0,
+            shell_renderer,
         }
     }
 
     pub async fn handle_row(
         &mut self,
         row: sqlx::any::AnyRow,
-    ) {
+    ) -> anyhow::Result<()> {
         let data = SerializeRow(row);
         log::debug!("Processing database row: {:?}", json!(data));
         let new_component = data.0.try_get::<&str, &str>("component");
-        let current_component = &self.current_component;
+        let current_component = self.current_component.as_ref().map(|c| c.name());
         match (current_component, new_component) {
             (None, Ok("head")) | (None, Err(_)) => {
-                self.render_template_with_data("shell_before", &&data);
-                self.open_component_with_data(DEFAULT_COMPONENT.to_string(), &&data);
+                self.shell_renderer.render_start(json!(&&data))?;
+                self.open_component_with_data(DEFAULT_COMPONENT, &&data)?;
             }
             (None, new_component) => {
-                self.render_template("shell_before");
-                let component = new_component.unwrap_or(DEFAULT_COMPONENT).to_string();
-                self.open_component_with_data(component, &&data);
+                self.shell_renderer.render_start(json!(null))?;
+                let component = new_component.unwrap_or(DEFAULT_COMPONENT);
+                self.open_component_with_data(component, &&data)?;
             }
             (Some(current_component), Ok(new_component)) if new_component != current_component => {
-                self.open_component_with_data(new_component.to_string(), &&data);
+                self.open_component_with_data(new_component, &&data)?;
             }
             (Some(_), _) => {
-                self.render_current_template_with_data(&&data);
+                self.render_current_template_with_data(&&data)?;
             }
         }
+        Ok(())
     }
 
     pub async fn finish_query(
         &mut self,
         result: sqlx::any::AnyQueryResult,
-    ) {
+    ) -> anyhow::Result<()> {
         log::trace!("finish_query: {:?}", result);
+        Ok(())
     }
 
     /// Handles the rendering of an error.
     /// Returns whether the error is irrecoverable and the rendering must stop
-    pub fn handle_error(&mut self, error: &impl std::error::Error) -> std::io::Result<()> {
-        self.error_depth += 1;
-        if self.error_depth > MAX_ERROR_RECURSION {
-            return Err(std::io::ErrorKind::Interrupted.into());
-        }
+    pub fn handle_error(&mut self, error: &impl std::error::Error) -> anyhow::Result<()> {
         log::warn!("SQL error: {:?}", error);
-        if self.current_component.is_some() {
-            self.close_component();
-        }
-        self.open_component("error".to_string());
+        self.close_component()?;
+        let saved_component = self.current_component.take();
+        self.open_component("error")?;
         let description = format!("{}", error);
         let mut backtrace = vec![];
         let mut source = error.source();
@@ -81,16 +81,16 @@ impl RenderContext<'_> {
             backtrace.push(format!("{}", s));
             source = s.source()
         }
-        self.render_current_template_with_data(&serde_json::json!({
+        self.render_current_template_with_data(&json!({
             "description": description,
             "backtrace": backtrace
-        }));
-        self.close_component();
-        self.error_depth -= 1;
+        }))?;
+        self.close_component()?;
+        self.current_component = saved_component;
         Ok(())
     }
 
-    pub fn handle_result<R, E: std::error::Error>(&mut self, result: &Result<R, E>) -> std::io::Result<()> {
+    pub fn handle_result<R, E: std::error::Error>(&mut self, result: &Result<R, E>) -> anyhow::Result<()> {
         if let Err(error) = result {
             self.handle_error(error)
         } else {
@@ -104,51 +104,62 @@ impl RenderContext<'_> {
         }
     }
 
-    fn render_template(&mut self, name: &str) {
-        self.render_template_with_data(name, &())
+    fn render_current_template_with_data<T: Serialize>(&mut self, data: &T) -> anyhow::Result<()> {
+        use anyhow::Context;
+        let rdr = self.current_component.as_mut()
+            .with_context(|| format!("Tried to render the following data but no component is selected: {}", serde_json::to_string(data).unwrap_or_default()))?;
+        rdr.render_item(json!(data))?;
+        self.shell_renderer.render_item(JsonValue::Null)?;
+        Ok(())
     }
 
-    fn render_template_with_data<T: Serialize>(&mut self, name: &str, data: &T) {
-        self.handle_result_and_log(&self.app_state.all_templates.handlebars.render_to_write(
-            name,
-            data,
-            self.writer.clone(),
-        ));
+    fn open_component(&mut self, component: &str) -> anyhow::Result<()> {
+        self.open_component_with_data(component, &json!(null))
     }
 
-    fn render_current_template_with_data<T: Serialize>(&mut self, data: &T) {
-        let name = self.current_component.as_ref().unwrap();
-        self.handle_result_and_log(&self.app_state.all_templates.handlebars.render_to_write(
-            name,
-            data,
-            self.writer.clone(),
-        ));
+    fn create_renderer<'a>(component: &str, app_state: &'a AppState, writer: &ResponseWriter) -> anyhow::Result<TplRenderer<'a>> {
+        use anyhow::Context;
+        let split_template = app_state.all_templates.split_templates
+            .get(component)
+            .with_context(|| format!("The component '{component}' was not found."))?;
+        Ok(SplitTemplateRenderer::new(
+            split_template,
+            &app_state.all_templates.handlebars,
+            writer.clone(),
+        ))
     }
 
-    fn open_component(&mut self, component: String) {
-        self.open_component_with_data(component, &json!(null));
+    fn set_current_component(&mut self, component: &str) -> anyhow::Result<()> {
+        self.current_component = Some(Self::create_renderer(
+            component,
+            self.app_state,
+            &self.writer,
+        )?);
+        Ok(())
     }
 
-    fn open_component_with_data<T: Serialize>(&mut self, component: String, data: &T) {
-        self.close_component();
-        self.render_template_with_data(&[&component, "_before"].join(""), data);
-        self.current_component = Some(component);
+    fn open_component_with_data<T: Serialize>(&mut self, component: &str, data: &T) -> anyhow::Result<()> {
+        self.close_component()?;
+        self.set_current_component(component)?;
+        self.current_component.as_mut().unwrap().render_start(json!(data))?;
+        Ok(())
     }
 
-    fn close_component(&mut self) {
-        if let Some(component) = self.current_component.take() {
-            self.render_template(&(component + "_after"));
-            self.render_template("shell");
+    fn close_component(&mut self) -> anyhow::Result<()> {
+        if let Some(component) = &mut self.current_component {
+            component.render_end()?;
         }
+        Ok(())
     }
 }
 
 impl Drop for RenderContext<'_> {
     fn drop(&mut self) {
-        if let Some(component) = self.current_component.take() {
-            self.render_template(&(component + "_after"));
+        if let Some(mut component) = self.current_component.take() {
+            self.handle_result_and_log(&component.render_end());
         }
-        self.render_template("shell_after");
+        let res = self.shell_renderer.render_end();
+        self.handle_result_and_log(&res);
     }
 }
 
@@ -211,14 +222,30 @@ impl handlebars::Output for ResponseWriter {
     }
 }
 
-struct SplitTemplateRenderer<'registry> {
+struct SplitTemplateRenderer<'registry, OUTPUT: handlebars::Output> {
     split_template: &'registry SplitTemplate,
     block_context: Option<BlockContext<'registry>>,
     registry: &'registry Handlebars<'registry>,
-    output: ResponseWriter,
+    output: OUTPUT,
 }
 
-impl<'reg> SplitTemplateRenderer<'reg> {
+impl<'reg, OUTPUT: handlebars::Output> SplitTemplateRenderer<'reg, OUTPUT> {
+    fn new(
+        split_template: &'reg SplitTemplate,
+        registry: &'reg Handlebars<'reg>,
+        output: OUTPUT,
+    ) -> Self {
+        Self {
+            split_template,
+            block_context: None,
+            registry,
+            output,
+        }
+    }
+    fn name(&self) -> &str {
+        self.split_template.list_content.name.as_deref().unwrap_or_default()
+    }
+
     fn render_start(&mut self, data: JsonValue) -> Result<(), handlebars::RenderError> {
         let mut render_context = handlebars::RenderContext::new(None);
         let mut ctx = Context::from(data);
@@ -230,23 +257,28 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     }
 
     fn render_item(&mut self, data: JsonValue) -> Result<(), handlebars::RenderError> {
-        let mut render_context = handlebars::RenderContext::new(None);
-        render_context.push_block(self.block_context.take().unwrap_or_default());
-        let mut blk = BlockContext::new();
-        blk.set_base_value(data);
-        render_context.push_block(blk);
-        let ctx = Context::null();
-        self.split_template.list_content.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
-        render_context.pop_block();
-        self.block_context = render_context.block_mut().map(std::mem::take);
+        if let Some(block_context) = self.block_context.take() {
+            let mut render_context = handlebars::RenderContext::new(None);
+            render_context.push_block(block_context);
+            let mut blk = BlockContext::new();
+            blk.set_base_value(data);
+            render_context.push_block(blk);
+            let ctx = Context::null();
+            self.split_template.list_content.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
+            render_context.pop_block();
+            self.block_context = render_context.block_mut().map(std::mem::take);
+        }
         Ok(())
     }
 
     fn render_end(&mut self) -> Result<(), handlebars::RenderError> {
-        let mut render_context = handlebars::RenderContext::new(None);
-        render_context.push_block(self.block_context.take().unwrap_or_default());
-        let mut ctx = Context::null();
-        self.split_template.after_list.render(self.registry, &ctx, &mut render_context, &mut self.output)
+        if let Some(block_context) = self.block_context.take() {
+            let mut render_context = handlebars::RenderContext::new(None);
+            render_context.push_block(block_context);
+            let ctx = Context::null();
+            self.split_template.after_list.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
+        }
+        Ok(())
     }
 }
 
@@ -290,6 +322,7 @@ fn is_template_list_item(element: &TemplateElement) -> bool {
 
 pub struct AllTemplates {
     handlebars: Handlebars<'static>,
+    split_templates: HashMap<String, SplitTemplate>,
 }
 
 impl AllTemplates {
@@ -312,7 +345,8 @@ impl AllTemplates {
             _ => vec![]
         });
         handlebars.register_helper("entries", Box::new(entries));
-        let mut this = Self { handlebars };
+        let split_templates = HashMap::new();
+        let mut this = Self { handlebars, split_templates };
         this.register_split("shell", include_str!("../sqlsite/templates/shell.handlebars"))
             .expect("Embedded shell template contains an error");
         this.register_split("error", include_str!("../sqlsite/templates/error.handlebars"))
@@ -321,15 +355,11 @@ impl AllTemplates {
         this
     }
 
-    fn register_split(&mut self, name: &str, tpl_str: &str) -> Result<(), TemplateError> {
+    fn register_split<S: ToString>(&mut self, name: S, tpl_str: &str) -> Result<(), TemplateError> {
         let mut tpl = Template::compile(tpl_str)?;
         tpl.name = Some(name.to_string());
         let split = split_template(tpl);
-        self.handlebars
-            .register_template(&[name, "before"].join("_"), split.before_list);
-        self.handlebars.register_template(name, split.list_content);
-        self.handlebars
-            .register_template(&[name, "after"].join("_"), split.after_list);
+        self.split_templates.insert(name.to_string(), split);
         Ok(())
     }
 
@@ -376,16 +406,24 @@ fn test_split_template() {
 }
 
 #[test]
-fn test_nest() {
-    let registry = handlebars::Handlebars::new();
-    let template = Template::compile("{{a}} {{../b}}").unwrap();
-    let mut output = handlebars::StringOutput::new();
-    let mut render_context = handlebars::RenderContext::new(None);
-    let mut block_ctx = handlebars::BlockContext::new();
-    block_ctx.set_base_value(json!({"b": 13}));
-    render_context.push_block(block_ctx.clone());
-    block_ctx.set_base_value(json!({"a": 12}));
-    render_context.push_block(block_ctx);
-    template.render(&registry, &Context::from(json!({"a": 555})), &mut render_context, &mut output);
-    assert_eq!(output.into_string().unwrap(), "12 13");
+fn test_split_template_render() -> anyhow::Result<()> {
+    let reg = Handlebars::new();
+    let template = Template::compile(
+        "Hello {{name}} !\
+        {{#each_row}} ({{x}} : {{../name}}) {{/each_row}}\
+        Goodbye {{name}}",
+    )?;
+    let split = split_template(template);
+    let mut rdr = SplitTemplateRenderer::new(
+        &split,
+        &reg,
+        handlebars::StringOutput::new(),
+    );
+    rdr.render_start(json!({"name": "SQL"}))?;
+    rdr.render_item(json!({"x": 1}))?;
+    rdr.render_item(json!({"x": 2}))?;
+    rdr.render_end()?;
+    assert_eq!(rdr.output.into_string()?,
+               "Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
+    Ok(())
 }

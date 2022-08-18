@@ -5,6 +5,7 @@ use actix_web::{body::BodyStream, dev::Service, dev::ServiceResponse, http::head
 use actix_web::dev::Payload;
 use actix_web::http::Method;
 use actix_web::web::Form;
+use anyhow::Context;
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
 use sqlx::any::AnyArguments;
@@ -31,21 +32,26 @@ impl std::io::Write for ResponseWriter {
     }
 }
 
-async fn stream_response(req: HttpRequest, payload: Payload, sql_bytes: Bytes, response_bytes: ResponseWriter) -> std::io::Result<()> {
-    let app_state: &web::Data<AppState> = req.app_data().expect("no app data in render");
-    let sql = std::str::from_utf8(&sql_bytes).unwrap();
+async fn stream_response(req: HttpRequest, payload: Payload, sql_bytes: Bytes, response_bytes: ResponseWriter) -> anyhow::Result<()> {
+    let app_state: &web::Data<AppState> = req.app_data().context("no app data in render")?;
+    let sql = std::str::from_utf8(&sql_bytes)?;
     let mut arguments = AnyArguments::default();
     arguments.add(request_argument_json(&req, payload).await);
     let mut stream = sqlx::query_with(sql, arguments).fetch_many(&app_state.db);
 
     let mut renderer = RenderContext::new(app_state, response_bytes);
     while let Some(item) = stream.next().await {
-        match item {
+        let render_result = match item {
             Ok(sqlx::Either::Left(result)) => renderer.finish_query(result).await,
             Ok(sqlx::Either::Right(row)) => renderer.handle_row(row).await,
-            Err(e) => if let Err(irrecoverable) = renderer.handle_error(&e) { return Err(irrecoverable); },
+            Err(e) => renderer.handle_error(&e),
+        };
+        if let Err(e) = render_result {
+            renderer.handle_error(&e.root_cause())
+                .context("An error occurred while trying to display an other error. Aborting.")?;
         }
     }
+    log::debug!("Successfully finished rendering the page");
     Ok(())
 }
 
@@ -76,7 +82,11 @@ async fn render_sql(req: HttpRequest, payload: Payload, sql_bytes: Bytes) -> act
     let writer = ResponseWriter {
         response_bytes: sender,
     };
-    actix_web::rt::spawn(stream_response(req, payload, sql_bytes, writer));
+    actix_web::rt::spawn(async {
+        if let Err(err) = stream_response(req, payload, sql_bytes, writer).await {
+            log::error!("Unable to serve page: {}", err);
+        }
+    });
     Ok(HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(BodyStream::new(
