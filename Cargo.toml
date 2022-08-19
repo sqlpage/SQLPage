@@ -13,7 +13,6 @@ log = "0.4.17"
 env_logger = "0.9.0"
 actix-files = "0.6.2"
 futures-util = "0.3.21"
-ouroboros = "0.15.0"
 tokio = { version = "1.20.1", features = ["sync"] }
 tokio-stream = "0.1.9"
 anyhow = "1.0.58"

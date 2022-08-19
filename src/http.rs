@@ -1,3 +1,4 @@
+use std::mem;
 use std::path::Component;
 use crate::render::RenderContext;
 use crate::{AppState, CONFIG_DIR, WEB_ROOT};
@@ -5,30 +6,52 @@ use actix_web::{body::BodyStream, dev::Service, dev::ServiceResponse, http::head
 use actix_web::dev::Payload;
 use actix_web::http::Method;
 use actix_web::web::Form;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
 use sqlx::any::AnyArguments;
 use sqlx::Arguments;
-
+use std::io::Write;
 
 #[derive(Clone)]
 pub struct ResponseWriter {
+    buffer: Vec<u8>,
     response_bytes: tokio::sync::mpsc::UnboundedSender<actix_web::Result<Bytes>>,
 }
 
-impl std::io::Write for ResponseWriter {
+impl ResponseWriter {
+    fn new(response_bytes: tokio::sync::mpsc::UnboundedSender<actix_web::Result<Bytes>>) -> Self {
+        Self {
+            response_bytes,
+            buffer: Vec::new(),
+        }
+    }
+    fn close_with_error(&self, msg: String) {
+        let _ = self.response_bytes.send(Err(actix_web::error::ErrorInternalServerError(msg)));
+    }
+}
+
+impl Write for ResponseWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.buffer.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        if self.buffer.is_empty() { return Ok(()); }
         self.response_bytes
-            .send(Ok(Bytes::copy_from_slice(buf)))
-            .map(|_| buf.len())
+            .send(Ok(mem::take(&mut self.buffer).into()))
             .map_err(|_err| {
                 use std::io::*;
                 Error::new(ErrorKind::BrokenPipe, "The HTTP response writer has already been closed")
             })
     }
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
+}
+
+impl Drop for ResponseWriter {
+    fn drop(&mut self) {
+        if let Err(e) = self.flush() {
+            log::error!("Could not flush data to client: {e}");
+        }
     }
 }
 
@@ -47,9 +70,14 @@ async fn stream_response(req: HttpRequest, payload: Payload, sql_bytes: Bytes, r
             Err(e) => renderer.handle_error(&e),
         };
         if let Err(e) = render_result {
-            renderer.handle_error(&e.root_cause())
-                .context("An error occurred while trying to display an other error. Aborting.")?;
+            if let Err(nested_err) = renderer.handle_error(&e.root_cause()) {
+                renderer.writer.close_with_error(nested_err.to_string());
+                bail!("An error occurred while trying to display an other error. \
+                    \nRoot error: {e}\n
+                    \nNested error: {nested_err}");
+            }
         }
+        renderer.writer.flush()?;
     }
     log::debug!("Successfully finished rendering the page");
     Ok(())
@@ -79,9 +107,7 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
 
 async fn render_sql(req: HttpRequest, payload: Payload, sql_bytes: Bytes) -> actix_web::Result<HttpResponse> {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
-    let writer = ResponseWriter {
-        response_bytes: sender,
-    };
+    let writer = ResponseWriter::new(sender);
     actix_web::rt::spawn(async {
         if let Err(err) = stream_response(req, payload, sql_bytes, writer).await {
             log::error!("Unable to serve page: {}", err);

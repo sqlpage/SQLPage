@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use crate::http::ResponseWriter;
 use crate::{AppState, TEMPLATES_DIR};
 use handlebars::{handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError, Renderable, JsonValue, Context, BlockContext};
 use serde::ser::SerializeMap;
@@ -8,21 +7,19 @@ use sqlx::{Column, Database, Decode, Row};
 use std::fs::DirEntry;
 use serde_json::json;
 
-type TplRenderer<'a> = SplitTemplateRenderer<'a, ResponseWriter>;
-
-pub struct RenderContext<'a> {
+pub struct RenderContext<'a, W: std::io::Write> {
     app_state: &'a AppState,
-    writer: ResponseWriter,
-    current_component: Option<TplRenderer<'a>>,
-    shell_renderer: TplRenderer<'a>,
+    pub writer: W,
+    current_component: Option<SplitTemplateRenderer<'a>>,
+    shell_renderer: SplitTemplateRenderer<'a>,
 
 }
 
 const DEFAULT_COMPONENT: &str = "default";
 
-impl RenderContext<'_> {
-    pub fn new(app_state: &AppState, writer: ResponseWriter) -> RenderContext {
-        let shell_renderer = Self::create_renderer("shell", app_state, &writer).expect("shell must always exist");
+impl<W: std::io::Write> RenderContext<'_, W> {
+    pub fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
+        let shell_renderer = Self::create_renderer("shell", app_state).expect("shell must always exist");
         RenderContext {
             app_state,
             writer,
@@ -41,11 +38,11 @@ impl RenderContext<'_> {
         let current_component = self.current_component.as_ref().map(|c| c.name());
         match (current_component, new_component) {
             (None, Ok("head")) | (None, Err(_)) => {
-                self.shell_renderer.render_start(json!(&&data))?;
+                self.shell_renderer.render_start(&mut self.writer, json!(&&data))?;
                 self.open_component_with_data(DEFAULT_COMPONENT, &&data)?;
             }
             (None, new_component) => {
-                self.shell_renderer.render_start(json!(null))?;
+                self.shell_renderer.render_start(&mut self.writer, json!(null))?;
                 let component = new_component.unwrap_or(DEFAULT_COMPONENT);
                 self.open_component_with_data(component, &&data)?;
             }
@@ -108,8 +105,8 @@ impl RenderContext<'_> {
         use anyhow::Context;
         let rdr = self.current_component.as_mut()
             .with_context(|| format!("Tried to render the following data but no component is selected: {}", serde_json::to_string(data).unwrap_or_default()))?;
-        rdr.render_item(json!(data))?;
-        self.shell_renderer.render_item(JsonValue::Null)?;
+        rdr.render_item(&mut self.writer, json!(data))?;
+        self.shell_renderer.render_item(&mut self.writer, JsonValue::Null)?;
         Ok(())
     }
 
@@ -117,7 +114,7 @@ impl RenderContext<'_> {
         self.open_component_with_data(component, &json!(null))
     }
 
-    fn create_renderer<'a>(component: &str, app_state: &'a AppState, writer: &ResponseWriter) -> anyhow::Result<TplRenderer<'a>> {
+    fn create_renderer<'a>(component: &str, app_state: &'a AppState) -> anyhow::Result<SplitTemplateRenderer<'a>> {
         use anyhow::Context;
         let split_template = app_state.all_templates.split_templates
             .get(component)
@@ -125,40 +122,36 @@ impl RenderContext<'_> {
         Ok(SplitTemplateRenderer::new(
             split_template,
             &app_state.all_templates.handlebars,
-            writer.clone(),
         ))
     }
 
     fn set_current_component(&mut self, component: &str) -> anyhow::Result<()> {
-        self.current_component = Some(Self::create_renderer(
-            component,
-            self.app_state,
-            &self.writer,
-        )?);
+        self.current_component = Some(Self::create_renderer(component, self.app_state)?);
         Ok(())
     }
 
     fn open_component_with_data<T: Serialize>(&mut self, component: &str, data: &T) -> anyhow::Result<()> {
         self.close_component()?;
         self.set_current_component(component)?;
-        self.current_component.as_mut().unwrap().render_start(json!(data))?;
+        self.current_component.as_mut().unwrap().render_start(&mut self.writer, json!(data))?;
         Ok(())
     }
 
     fn close_component(&mut self) -> anyhow::Result<()> {
         if let Some(component) = &mut self.current_component {
-            component.render_end()?;
+            component.render_end(&mut self.writer)?;
         }
         Ok(())
     }
 }
 
-impl Drop for RenderContext<'_> {
+impl<W: std::io::Write> Drop for RenderContext<'_, W> {
     fn drop(&mut self) {
         if let Some(mut component) = self.current_component.take() {
-            self.handle_result_and_log(&component.render_end());
+            let res = component.render_end(&mut self.writer);
+            self.handle_result_and_log(&res);
         }
-        let res = self.shell_renderer.render_end();
+        let res = self.shell_renderer.render_end(&mut self.writer);
         self.handle_result_and_log(&res);
     }
 }
@@ -216,67 +209,74 @@ struct SplitTemplate {
 }
 
 
-impl handlebars::Output for ResponseWriter {
+struct HandlebarWriterOutput<W: std::io::Write>(W);
+
+impl<W: std::io::Write> handlebars::Output for HandlebarWriterOutput<W> {
     fn write(&mut self, seg: &str) -> std::io::Result<()> {
-        std::io::Write::write_all(self, seg.as_bytes())
+        std::io::Write::write_all(&mut self.0, seg.as_bytes())
     }
 }
 
-struct SplitTemplateRenderer<'registry, OUTPUT: handlebars::Output> {
+struct SplitTemplateRenderer<'registry> {
     split_template: &'registry SplitTemplate,
     block_context: Option<BlockContext<'registry>>,
     registry: &'registry Handlebars<'registry>,
-    output: OUTPUT,
+    row_index: usize,
 }
 
-impl<'reg, OUTPUT: handlebars::Output> SplitTemplateRenderer<'reg, OUTPUT> {
+impl<'reg> SplitTemplateRenderer<'reg> {
     fn new(
         split_template: &'reg SplitTemplate,
         registry: &'reg Handlebars<'reg>,
-        output: OUTPUT,
     ) -> Self {
         Self {
             split_template,
             block_context: None,
             registry,
-            output,
+            row_index: 0,
         }
     }
     fn name(&self) -> &str {
         self.split_template.list_content.name.as_deref().unwrap_or_default()
     }
 
-    fn render_start(&mut self, data: JsonValue) -> Result<(), handlebars::RenderError> {
+    fn render_start<W: std::io::Write>(&mut self, writer: W, data: JsonValue) -> Result<(), handlebars::RenderError> {
         let mut render_context = handlebars::RenderContext::new(None);
         let mut ctx = Context::from(data);
-        self.split_template.before_list.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
+        let mut output = HandlebarWriterOutput(writer);
+        self.split_template.before_list.render(self.registry, &ctx, &mut render_context, &mut output)?;
         let mut blk = render_context.block_mut().map(std::mem::take).unwrap_or_default();
         blk.set_base_value(std::mem::take(ctx.data_mut()));
         self.block_context = Some(blk);
+        self.row_index = 0;
         Ok(())
     }
 
-    fn render_item(&mut self, data: JsonValue) -> Result<(), handlebars::RenderError> {
+    fn render_item<W: std::io::Write>(&mut self, writer: W, data: JsonValue) -> Result<(), handlebars::RenderError> {
         if let Some(block_context) = self.block_context.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             render_context.push_block(block_context);
             let mut blk = BlockContext::new();
             blk.set_base_value(data);
+            blk.set_local_var("row_index", JsonValue::Number(self.row_index.into()));
             render_context.push_block(blk);
             let ctx = Context::null();
-            self.split_template.list_content.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
+            let mut output = HandlebarWriterOutput(writer);
+            self.split_template.list_content.render(self.registry, &ctx, &mut render_context, &mut output)?;
             render_context.pop_block();
             self.block_context = render_context.block_mut().map(std::mem::take);
+            self.row_index += 1;
         }
         Ok(())
     }
 
-    fn render_end(&mut self) -> Result<(), handlebars::RenderError> {
+    fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), handlebars::RenderError> {
         if let Some(block_context) = self.block_context.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             render_context.push_block(block_context);
             let ctx = Context::null();
-            self.split_template.after_list.render(self.registry, &ctx, &mut render_context, &mut self.output)?;
+            let mut output = HandlebarWriterOutput(writer);
+            self.split_template.after_list.render(self.registry, &ctx, &mut render_context, &mut output)?;
         }
         Ok(())
     }
@@ -414,16 +414,15 @@ fn test_split_template_render() -> anyhow::Result<()> {
         Goodbye {{name}}",
     )?;
     let split = split_template(template);
+    let mut output = Vec::new();
     let mut rdr = SplitTemplateRenderer::new(
         &split,
         &reg,
-        handlebars::StringOutput::new(),
     );
-    rdr.render_start(json!({"name": "SQL"}))?;
-    rdr.render_item(json!({"x": 1}))?;
-    rdr.render_item(json!({"x": 2}))?;
-    rdr.render_end()?;
-    assert_eq!(rdr.output.into_string()?,
-               "Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
+    rdr.render_start(&mut output, json!({"name": "SQL"}))?;
+    rdr.render_item(&mut output, json!({"x": 1}))?;
+    rdr.render_item(&mut output, json!({"x": 2}))?;
+    rdr.render_end(&mut output)?;
+    assert_eq!(output, b"Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
     Ok(())
 }
