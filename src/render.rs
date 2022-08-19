@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::{AppState, TEMPLATES_DIR};
-use handlebars::{handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError, Renderable, JsonValue, Context, BlockContext};
+use handlebars::{handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError, Renderable, JsonValue, Context, BlockContext, RenderError};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use sqlx::{Column, Database, Decode, Row};
@@ -16,6 +16,7 @@ pub struct RenderContext<'a, W: std::io::Write> {
 }
 
 const DEFAULT_COMPONENT: &str = "default";
+const DELAYED_CONTENTS: &str = "_delayed_contents";
 
 impl<W: std::io::Write> RenderContext<'_, W> {
     pub fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
@@ -270,8 +271,14 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         Ok(())
     }
 
-    fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), handlebars::RenderError> {
+    fn render_end<W: std::io::Write>(&mut self, mut writer: W) -> Result<(), RenderError> {
         if let Some(block_context) = self.block_context.take() {
+            let delayed = block_context.get_local_var(DELAYED_CONTENTS)
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty());
+            if let Some(contents) = delayed {
+                writer.write_all(contents.as_bytes())?;
+            }
             let mut render_context = handlebars::RenderContext::new(None);
             render_context.push_block(block_context);
             let ctx = Context::null();
@@ -325,6 +332,38 @@ pub struct AllTemplates {
     split_templates: HashMap<String, SplitTemplate>,
 }
 
+fn without_top_block<'a, 'reg, 'rc, R>(rc: &'a mut handlebars::RenderContext<'reg, 'rc>, action: impl FnOnce(&mut handlebars::RenderContext<'reg, 'rc>) -> R) -> R {
+    let top = rc.block_mut().map(std::mem::take).unwrap_or_default();
+    rc.pop_block();
+    let r = action(rc);
+    rc.push_block(top);
+    r
+}
+
+fn delayed_helper<'reg, 'rc>(
+    h: &handlebars::Helper<'reg, 'rc>,
+    r: &'reg Handlebars<'reg>,
+    ctx: &'rc Context,
+    rc: &mut handlebars::RenderContext<'reg, 'rc>,
+    _out: &mut dyn handlebars::Output,
+) -> handlebars::HelperResult {
+    let inner = h.template()
+        .ok_or_else(|| RenderError::new("missing delayed contents"))?;
+    let mut str_out = handlebars::StringOutput::new();
+    inner.render(r, ctx, rc, &mut str_out)?;
+    without_top_block(rc, move |rc| {
+        let block = rc.block_mut()
+            .ok_or_else(|| RenderError::new("Cannot use delayed output without a block context"))?;
+        let old_delayed_render = block.get_local_var(DELAYED_CONTENTS)
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        let delayed_render = str_out.into_string()? + old_delayed_render;
+        block.set_local_var(DELAYED_CONTENTS, JsonValue::String(delayed_render));
+        Ok::<_, RenderError>(())
+    })?;
+    Ok(())
+}
+
 impl AllTemplates {
     pub fn init() -> Self {
         let mut handlebars = Handlebars::new();
@@ -345,6 +384,7 @@ impl AllTemplates {
             _ => vec![]
         });
         handlebars.register_helper("entries", Box::new(entries));
+        handlebars.register_helper("delayed", Box::new(delayed_helper));
         let split_templates = HashMap::new();
         let mut this = Self { handlebars, split_templates };
         this.register_split("shell", include_str!("../sqlsite/templates/shell.handlebars"))
