@@ -1,0 +1,28 @@
+<div class="card my-2">
+    <div class="card-body">
+        <div id="table-default" class="table-responsive">
+            <table class="table">
+                {{#each_row}}
+                    {{#if (eq @row_index 0)}}
+                        <thead>
+                        <tr>
+                            {{~#each (entries this)}}
+                                <th>
+                                    <button class="table-sort" data-sort="sort-{{key}}">{{key}}</button>
+                                </th>
+                            {{/each~}}
+                        </tr>
+                        </thead>
+                    <tbody class="table-tbody">
+                    {{/if}}
+                <tr>
+                    {{~#each (entries this)}}
+                        <td class="sort-{{key}}">{{value}}</td>
+                    {{/each~}}
+                </tr>
+                {{/each_row}}
+            </tbody>
+            </table>
+        </div>
+    </div>
+</div>
