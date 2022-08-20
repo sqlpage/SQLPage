@@ -1,48 +1,122 @@
+/** @typedef { { [name:string]: {data:{x:number,y:number}[], name:string} } } Series */
+
+/** 
+ * @param {Series} series 
+ * @returns {Series} */
+function align_categories(series) {
+  const new_series = series.map(s => ({ name: s.name, data: [] }));
+  do {
+    var category = null;
+    series.forEach((s, s_i) => {
+      const point = s.data[0];
+      let new_point = { x: category, y: NaN };
+      if (point) {
+        if (category == null) category = point.x;
+        if (category === point.x) {
+          new_point = s.data.shift();
+        }
+      }
+      new_series[s_i].data.push(new_point);
+    })
+    new_series.forEach(s => s.data[s.data.length - 1].x = category);
+  } while (category != null);
+  new_series.forEach(s => s.data.pop());
+  return new_series;
+}
+
 for (const c of document.getElementsByClassName("chart")) {
   try {
-    const series = {};
-    JSON.parse(c.dataset.contents).forEach(([name, x, y]) => {
-      series[name] = series[name] || { name, data: [] }
-      series[name].data.push([x, y]);
+    const data = JSON.parse(c.querySelector("data").innerText);
+    /** @type { Series } */
+    const series_map = {};
+    data.points.forEach(([name, x, y]) => {
+      series_map[name] = series_map[name] || { name, data: [] }
+      series_map[name].data.push({ x, y });
     })
-    c.innerHTML = "";
-    new ApexCharts(c, {
+    if (data.xmin == null) data.xmin = undefined;
+    if (data.xmax == null) data.xmax = undefined;
+    if (data.ymin == null) data.ymin = 0;
+    if (data.ymax == null) data.ymax = undefined;
+
+    let series = Object.values(series_map);
+
+    // tickamount is the number of intervals, not the number of ticks
+    const tickAmount = data.xticks ||
+      Math.min(30, Math.max(...series.map(s => s.data.length - 1)));
+
+    const categories = typeof data.points[0][1] === "string";
+    if (categories) series = align_categories(series);
+
+    const options = {
       chart: {
-        type: 'line',
+        type: data.type || 'line',
         fontFamily: 'inherit',
         parentHeightOffset: 0,
-        height: 250,
+        height: c.style.height,
+        stacked: !!data.stacked,
         toolbar: {
           show: false,
         },
         animations: {
           enabled: false
+        },
+        zoom: {
+          enabled: false
         }
+      },
+      theme: {
+        palette: 'palette4',
       },
       dataLabels: {
         enabled: false,
       },
       fill: {
-        opacity: .16,
-        type: 'solid'
+        opacity: .7,
+        type: data.type === 'area' ? 'gradient' : 'solid',
       },
       stroke: {
-        width: 4,
+        width: data.type === 'area' ? 3 : 1,
         lineCap: "round",
         curve: "smooth",
       },
       xaxis: {
-        labels: {
-          padding: 0,
-        },
         tooltip: {
           enabled: false
         },
-        axisBorder: {
-          show: false,
+        min: data.xmin,
+        max: data.xmax,
+        tickAmount,
+        title: {
+          text: data.xtitle || undefined,
         },
+        type: data.time ? 'datetime' : categories ? 'category' : undefined,
       },
-      series: Object.values(series),
-    }).render()
+      yaxis: {
+        logarithmic: !!data.logarithmic,
+        min: data.ymin,
+        max: data.ymax,
+        title: {
+          text: data.ytitle || undefined,
+        }
+      },
+      markers: {
+        size: data.marker || 0,
+        strokeWidth: 0,
+        hover: {
+          sizeOffset: 5,
+        }
+      },
+      tooltip: {
+        fixed: {
+          enabled: true,
+        }
+      },
+      series
+    };
+    c.innerHTML = "";
+    const chart = new ApexCharts(c, options);
+    chart.render();
+    if (window.charts) window.charts.push(chart);
+    else window.charts = [chart];
   } catch (e) { console.log(e) }
 }

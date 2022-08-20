@@ -50,7 +50,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
                 let component = new_component.unwrap_or(DEFAULT_COMPONENT);
                 self.open_component_with_data(component, &&data)?;
             }
-            (Some(current_component), Ok(new_component)) if new_component != current_component => {
+            (Some(_current_component), Ok(new_component)) => {
                 self.open_component_with_data(new_component, &&data)?;
             }
             (Some(_), _) => {
