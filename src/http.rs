@@ -26,8 +26,11 @@ impl ResponseWriter {
             buffer: Vec::new(),
         }
     }
-    fn close_with_error(&self, msg: String) {
-        let _ = self.response_bytes.send(Err(actix_web::error::ErrorInternalServerError(msg)));
+    fn close_with_error(&mut self, msg: String) {
+        if !self.response_bytes.is_closed() {
+            let _ = self.flush();
+            let _ = self.response_bytes.send(Err(actix_web::error::ErrorInternalServerError(msg)));
+        }
     }
 }
 

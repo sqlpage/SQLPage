@@ -13,7 +13,7 @@ const TEMPLATES_DIR: &str = "sqlsite/templates";
 const MIGRATIONS_DIR: &str = "sqlsite/migrations";
 
 pub struct AppState {
-    db: sqlx::AnyPool,
+    db: AnyPool,
     all_templates: AllTemplates,
     listen_on: std::net::SocketAddr,
 }
