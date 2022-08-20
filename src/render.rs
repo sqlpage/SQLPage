@@ -1,18 +1,20 @@
-use std::collections::HashMap;
 use crate::{AppState, TEMPLATES_DIR};
-use handlebars::{handlebars_helper, template::TemplateElement, Handlebars, Template, TemplateError, Renderable, JsonValue, Context, BlockContext, RenderError};
+use handlebars::{
+    handlebars_helper, template::TemplateElement, BlockContext, Context, Handlebars, JsonValue,
+    RenderError, Renderable, Template, TemplateError,
+};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
-use sqlx::{Column, Database, Decode, Row};
-use std::fs::DirEntry;
 use serde_json::json;
+use sqlx::{Column, Database, Decode, Row};
+use std::collections::HashMap;
+use std::fs::DirEntry;
 
 pub struct RenderContext<'a, W: std::io::Write> {
     app_state: &'a AppState,
     pub writer: W,
     current_component: Option<SplitTemplateRenderer<'a>>,
     shell_renderer: SplitTemplateRenderer<'a>,
-
 }
 
 const DEFAULT_COMPONENT: &str = "default";
@@ -20,7 +22,8 @@ const DELAYED_CONTENTS: &str = "_delayed_contents";
 
 impl<W: std::io::Write> RenderContext<'_, W> {
     pub fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
-        let shell_renderer = Self::create_renderer("shell", app_state).expect("shell must always exist");
+        let shell_renderer =
+            Self::create_renderer("shell", app_state).expect("shell must always exist");
         RenderContext {
             app_state,
             writer,
@@ -29,21 +32,20 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         }
     }
 
-    pub async fn handle_row(
-        &mut self,
-        row: sqlx::any::AnyRow,
-    ) -> anyhow::Result<()> {
+    pub async fn handle_row(&mut self, row: sqlx::any::AnyRow) -> anyhow::Result<()> {
         let data = SerializeRow(row);
         log::debug!("Processing database row: {:?}", json!(data));
         let new_component = data.0.try_get::<&str, &str>("component");
         let current_component = self.current_component.as_ref().map(|c| c.name());
         match (current_component, new_component) {
             (None, Ok("head")) | (None, Err(_)) => {
-                self.shell_renderer.render_start(&mut self.writer, json!(&&data))?;
+                self.shell_renderer
+                    .render_start(&mut self.writer, json!(&&data))?;
                 self.open_component_with_data(DEFAULT_COMPONENT, &&data)?;
             }
             (None, new_component) => {
-                self.shell_renderer.render_start(&mut self.writer, json!(null))?;
+                self.shell_renderer
+                    .render_start(&mut self.writer, json!(null))?;
                 let component = new_component.unwrap_or(DEFAULT_COMPONENT);
                 self.open_component_with_data(component, &&data)?;
             }
@@ -57,10 +59,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    pub async fn finish_query(
-        &mut self,
-        result: sqlx::any::AnyQueryResult,
-    ) -> anyhow::Result<()> {
+    pub async fn finish_query(&mut self, result: sqlx::any::AnyQueryResult) -> anyhow::Result<()> {
         log::trace!("finish_query: {:?}", result);
         Ok(())
     }
@@ -88,7 +87,10 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    pub fn handle_result<R, E: std::error::Error>(&mut self, result: &Result<R, E>) -> anyhow::Result<()> {
+    pub fn handle_result<R, E: std::error::Error>(
+        &mut self,
+        result: &Result<R, E>,
+    ) -> anyhow::Result<()> {
         if let Err(error) = result {
             self.handle_error(error)
         } else {
@@ -104,10 +106,15 @@ impl<W: std::io::Write> RenderContext<'_, W> {
 
     fn render_current_template_with_data<T: Serialize>(&mut self, data: &T) -> anyhow::Result<()> {
         use anyhow::Context;
-        let rdr = self.current_component.as_mut()
-            .with_context(|| format!("Tried to render the following data but no component is selected: {}", serde_json::to_string(data).unwrap_or_default()))?;
+        let rdr = self.current_component.as_mut().with_context(|| {
+            format!(
+                "Tried to render the following data but no component is selected: {}",
+                serde_json::to_string(data).unwrap_or_default()
+            )
+        })?;
         rdr.render_item(&mut self.writer, json!(data))?;
-        self.shell_renderer.render_item(&mut self.writer, JsonValue::Null)?;
+        self.shell_renderer
+            .render_item(&mut self.writer, JsonValue::Null)?;
         Ok(())
     }
 
@@ -115,9 +122,14 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         self.open_component_with_data(component, &json!(null))
     }
 
-    fn create_renderer<'a>(component: &str, app_state: &'a AppState) -> anyhow::Result<SplitTemplateRenderer<'a>> {
+    fn create_renderer<'a>(
+        component: &str,
+        app_state: &'a AppState,
+    ) -> anyhow::Result<SplitTemplateRenderer<'a>> {
         use anyhow::Context;
-        let split_template = app_state.all_templates.split_templates
+        let split_template = app_state
+            .all_templates
+            .split_templates
             .get(component)
             .with_context(|| format!("The component '{component}' was not found."))?;
         Ok(SplitTemplateRenderer::new(
@@ -131,10 +143,17 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    fn open_component_with_data<T: Serialize>(&mut self, component: &str, data: &T) -> anyhow::Result<()> {
+    fn open_component_with_data<T: Serialize>(
+        &mut self,
+        component: &str,
+        data: &T,
+    ) -> anyhow::Result<()> {
         self.close_component()?;
         self.set_current_component(component)?;
-        self.current_component.as_mut().unwrap().render_start(&mut self.writer, json!(data))?;
+        self.current_component
+            .as_mut()
+            .unwrap()
+            .render_start(&mut self.writer, json!(data))?;
         Ok(())
     }
 
@@ -160,16 +179,16 @@ impl<W: std::io::Write> Drop for RenderContext<'_, W> {
 struct SerializeRow<R: Row>(R);
 
 impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-    where
-        usize: sqlx::ColumnIndex<R>,
-        &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-        f64: sqlx::Decode<'r, <R as Row>::Database>,
-        i64: sqlx::Decode<'r, <R as Row>::Database>,
-        bool: sqlx::Decode<'r, <R as Row>::Database>,
+where
+    usize: sqlx::ColumnIndex<R>,
+    &'r str: sqlx::Decode<'r, <R as Row>::Database>,
+    f64: sqlx::Decode<'r, <R as Row>::Database>,
+    i64: sqlx::Decode<'r, <R as Row>::Database>,
+    bool: sqlx::Decode<'r, <R as Row>::Database>,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         use sqlx::{TypeInfo, ValueRef};
         let columns = self.0.columns();
@@ -209,7 +228,6 @@ struct SplitTemplate {
     after_list: Template,
 }
 
-
 struct HandlebarWriterOutput<W: std::io::Write>(W);
 
 impl<W: std::io::Write> handlebars::Output for HandlebarWriterOutput<W> {
@@ -226,10 +244,7 @@ struct SplitTemplateRenderer<'registry> {
 }
 
 impl<'reg> SplitTemplateRenderer<'reg> {
-    fn new(
-        split_template: &'reg SplitTemplate,
-        registry: &'reg Handlebars<'reg>,
-    ) -> Self {
+    fn new(split_template: &'reg SplitTemplate, registry: &'reg Handlebars<'reg>) -> Self {
         Self {
             split_template,
             block_context: None,
@@ -238,22 +253,42 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         }
     }
     fn name(&self) -> &str {
-        self.split_template.list_content.name.as_deref().unwrap_or_default()
+        self.split_template
+            .list_content
+            .name
+            .as_deref()
+            .unwrap_or_default()
     }
 
-    fn render_start<W: std::io::Write>(&mut self, writer: W, data: JsonValue) -> Result<(), handlebars::RenderError> {
+    fn render_start<W: std::io::Write>(
+        &mut self,
+        writer: W,
+        data: JsonValue,
+    ) -> Result<(), handlebars::RenderError> {
         let mut render_context = handlebars::RenderContext::new(None);
         let mut ctx = Context::from(data);
         let mut output = HandlebarWriterOutput(writer);
-        self.split_template.before_list.render(self.registry, &ctx, &mut render_context, &mut output)?;
-        let mut blk = render_context.block_mut().map(std::mem::take).unwrap_or_default();
+        self.split_template.before_list.render(
+            self.registry,
+            &ctx,
+            &mut render_context,
+            &mut output,
+        )?;
+        let mut blk = render_context
+            .block_mut()
+            .map(std::mem::take)
+            .unwrap_or_default();
         blk.set_base_value(std::mem::take(ctx.data_mut()));
         self.block_context = Some(blk);
         self.row_index = 0;
         Ok(())
     }
 
-    fn render_item<W: std::io::Write>(&mut self, writer: W, data: JsonValue) -> Result<(), handlebars::RenderError> {
+    fn render_item<W: std::io::Write>(
+        &mut self,
+        writer: W,
+        data: JsonValue,
+    ) -> Result<(), handlebars::RenderError> {
         if let Some(block_context) = self.block_context.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             render_context.push_block(block_context);
@@ -263,7 +298,12 @@ impl<'reg> SplitTemplateRenderer<'reg> {
             render_context.push_block(blk);
             let ctx = Context::null();
             let mut output = HandlebarWriterOutput(writer);
-            self.split_template.list_content.render(self.registry, &ctx, &mut render_context, &mut output)?;
+            self.split_template.list_content.render(
+                self.registry,
+                &ctx,
+                &mut render_context,
+                &mut output,
+            )?;
             render_context.pop_block();
             self.block_context = render_context.block_mut().map(std::mem::take);
             self.row_index += 1;
@@ -273,7 +313,8 @@ impl<'reg> SplitTemplateRenderer<'reg> {
 
     fn render_end<W: std::io::Write>(&mut self, mut writer: W) -> Result<(), RenderError> {
         if let Some(block_context) = self.block_context.take() {
-            let delayed = block_context.get_local_var(DELAYED_CONTENTS)
+            let delayed = block_context
+                .get_local_var(DELAYED_CONTENTS)
                 .and_then(|v| v.as_str())
                 .filter(|s| !s.is_empty());
             if let Some(contents) = delayed {
@@ -283,7 +324,12 @@ impl<'reg> SplitTemplateRenderer<'reg> {
             render_context.push_block(block_context);
             let ctx = Context::null();
             let mut output = HandlebarWriterOutput(writer);
-            self.split_template.after_list.render(self.registry, &ctx, &mut render_context, &mut output)?;
+            self.split_template.after_list.render(
+                self.registry,
+                &ctx,
+                &mut render_context,
+                &mut output,
+            )?;
         }
         Ok(())
     }
@@ -332,7 +378,10 @@ pub struct AllTemplates {
     split_templates: HashMap<String, SplitTemplate>,
 }
 
-fn without_top_block<'a, 'reg, 'rc, R>(rc: &'a mut handlebars::RenderContext<'reg, 'rc>, action: impl FnOnce(&mut handlebars::RenderContext<'reg, 'rc>) -> R) -> R {
+fn without_top_block<'a, 'reg, 'rc, R>(
+    rc: &'a mut handlebars::RenderContext<'reg, 'rc>,
+    action: impl FnOnce(&mut handlebars::RenderContext<'reg, 'rc>) -> R,
+) -> R {
     let top = rc.block_mut().map(std::mem::take).unwrap_or_default();
     rc.pop_block();
     let r = action(rc);
@@ -347,14 +396,17 @@ fn delayed_helper<'reg, 'rc>(
     rc: &mut handlebars::RenderContext<'reg, 'rc>,
     _out: &mut dyn handlebars::Output,
 ) -> handlebars::HelperResult {
-    let inner = h.template()
+    let inner = h
+        .template()
         .ok_or_else(|| RenderError::new("missing delayed contents"))?;
     let mut str_out = handlebars::StringOutput::new();
     inner.render(r, ctx, rc, &mut str_out)?;
     without_top_block(rc, move |rc| {
-        let block = rc.block_mut()
+        let block = rc
+            .block_mut()
             .ok_or_else(|| RenderError::new("Cannot use delayed output without a block context"))?;
-        let old_delayed_render = block.get_local_var(DELAYED_CONTENTS)
+        let old_delayed_render = block
+            .get_local_var(DELAYED_CONTENTS)
             .and_then(|v| v.as_str())
             .unwrap_or_default();
         let delayed_render = str_out.into_string()? + old_delayed_render;
@@ -386,11 +438,20 @@ impl AllTemplates {
         handlebars.register_helper("entries", Box::new(entries));
         handlebars.register_helper("delayed", Box::new(delayed_helper));
         let split_templates = HashMap::new();
-        let mut this = Self { handlebars, split_templates };
-        this.register_split("shell", include_str!("../sqlsite/templates/shell.handlebars"))
-            .expect("Embedded shell template contains an error");
-        this.register_split("error", include_str!("../sqlsite/templates/error.handlebars"))
-            .expect("Embedded shell template contains an error");
+        let mut this = Self {
+            handlebars,
+            split_templates,
+        };
+        this.register_split(
+            "shell",
+            include_str!("../sqlsite/templates/shell.handlebars"),
+        )
+        .expect("Embedded shell template contains an error");
+        this.register_split(
+            "error",
+            include_str!("../sqlsite/templates/error.handlebars"),
+        )
+        .expect("Embedded shell template contains an error");
         this.register_dir();
         this
     }
@@ -438,11 +499,21 @@ fn test_split_template() {
         "Hello {{name}} ! \
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
-    ).unwrap();
+    )
+    .unwrap();
     let split = split_template(template);
-    assert_eq!(split.before_list.elements, Template::compile("Hello {{name}} ! ").unwrap().elements);
-    assert_eq!(split.list_content.elements, Template::compile("<li>{{this}}</li>").unwrap().elements);
-    assert_eq!(split.after_list.elements, Template::compile("end").unwrap().elements);
+    assert_eq!(
+        split.before_list.elements,
+        Template::compile("Hello {{name}} ! ").unwrap().elements
+    );
+    assert_eq!(
+        split.list_content.elements,
+        Template::compile("<li>{{this}}</li>").unwrap().elements
+    );
+    assert_eq!(
+        split.after_list.elements,
+        Template::compile("end").unwrap().elements
+    );
 }
 
 #[test]
@@ -455,10 +526,7 @@ fn test_split_template_render() -> anyhow::Result<()> {
     )?;
     let split = split_template(template);
     let mut output = Vec::new();
-    let mut rdr = SplitTemplateRenderer::new(
-        &split,
-        &reg,
-    );
+    let mut rdr = SplitTemplateRenderer::new(&split, &reg);
     rdr.render_start(&mut output, json!({"name": "SQL"}))?;
     rdr.render_item(&mut output, json!({"x": 1}))?;
     rdr.render_item(&mut output, json!({"x": 2}))?;
