@@ -1,17 +1,21 @@
-use std::mem;
-use std::path::Component;
 use crate::render::RenderContext;
 use crate::{AppState, CONFIG_DIR, WEB_ROOT};
-use actix_web::{body::BodyStream, dev::Service, dev::ServiceResponse, http::header::CONTENT_TYPE, middleware::Logger, web, web::Bytes, App, HttpRequest, HttpResponse, HttpServer, FromRequest};
 use actix_web::dev::Payload;
+use actix_web::error::ErrorInternalServerError;
 use actix_web::http::Method;
 use actix_web::web::Form;
+use actix_web::{
+    body::BodyStream, dev::Service, dev::ServiceResponse, http::header::CONTENT_TYPE,
+    middleware::Logger, web, web::Bytes, App, FromRequest, HttpRequest, HttpResponse, HttpServer,
+};
 use anyhow::{bail, Context};
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
 use sqlx::any::AnyArguments;
 use sqlx::Arguments;
 use std::io::Write;
+use std::mem;
+use std::path::Component;
 
 #[derive(Clone)]
 pub struct ResponseWriter {
@@ -29,7 +33,7 @@ impl ResponseWriter {
     fn close_with_error(&mut self, msg: String) {
         if !self.response_bytes.is_closed() {
             let _ = self.flush();
-            let _ = self.response_bytes.send(Err(actix_web::error::ErrorInternalServerError(msg)));
+            let _ = self.response_bytes.send(Err(ErrorInternalServerError(msg)));
         }
     }
 }
@@ -40,12 +44,17 @@ impl Write for ResponseWriter {
         Ok(buf.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
-        if self.buffer.is_empty() { return Ok(()); }
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
         self.response_bytes
             .send(Ok(mem::take(&mut self.buffer).into()))
             .map_err(|_err| {
                 use std::io::*;
-                Error::new(ErrorKind::BrokenPipe, "The HTTP response writer has already been closed")
+                Error::new(
+                    ErrorKind::BrokenPipe,
+                    "The HTTP response writer has already been closed",
+                )
             })
     }
 }
@@ -58,7 +67,12 @@ impl Drop for ResponseWriter {
     }
 }
 
-async fn stream_response(req: HttpRequest, payload: Payload, sql_bytes: Bytes, response_bytes: ResponseWriter) -> anyhow::Result<()> {
+async fn stream_response(
+    req: HttpRequest,
+    payload: Payload,
+    sql_bytes: Bytes,
+    response_bytes: ResponseWriter,
+) -> anyhow::Result<()> {
     let app_state: &web::Data<AppState> = req.app_data().context("no app data in render")?;
     let sql = std::str::from_utf8(&sql_bytes)?;
     let mut arguments = AnyArguments::default();
@@ -75,9 +89,11 @@ async fn stream_response(req: HttpRequest, payload: Payload, sql_bytes: Bytes, r
         if let Err(e) = render_result {
             if let Err(nested_err) = renderer.handle_error(&e.root_cause()) {
                 renderer.writer.close_with_error(nested_err.to_string());
-                bail!("An error occurred while trying to display an other error. \
+                bail!(
+                    "An error occurred while trying to display an other error. \
                     \nRoot error: {e}\n
-                    \nNested error: {nested_err}");
+                    \nNested error: {nested_err}"
+                );
             }
         }
         renderer.writer.flush()?;
@@ -87,17 +103,22 @@ async fn stream_response(req: HttpRequest, payload: Payload, sql_bytes: Bytes, r
 }
 
 async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> String {
-    let headers: serde_json::Map<String, serde_json::Value> = req.headers()
+    let headers: serde_json::Map<String, serde_json::Value> = req
+        .headers()
         .iter()
-        .map(|(name, value)| (
-            name.to_string(),
-            serde_json::Value::String(String::from_utf8_lossy(value.as_bytes()).to_string())
-        )).collect();
+        .map(|(name, value)| {
+            (
+                name.to_string(),
+                serde_json::Value::String(String::from_utf8_lossy(value.as_bytes()).to_string()),
+            )
+        })
+        .collect();
     let query = web::Query::<serde_json::Value>::from_query(req.query_string())
         .map(|q| q.into_inner())
         .unwrap_or_default();
     let client_ip = req.peer_addr().map(|addr| addr.ip());
-    let form = Form::<serde_json::Value>::from_request(req, &mut payload).await
+    let form = Form::<serde_json::Value>::from_request(req, &mut payload)
+        .await
         .map(|form| form.into_inner())
         .unwrap_or_default();
     serde_json::json!({
@@ -105,10 +126,15 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         "client_ip": client_ip,
         "query": query,
         "form": form
-    }).to_string()
+    })
+    .to_string()
 }
 
-async fn render_sql(req: HttpRequest, payload: Payload, sql_bytes: Bytes) -> actix_web::Result<HttpResponse> {
+async fn render_sql(
+    req: HttpRequest,
+    payload: Payload,
+    sql_bytes: Bytes,
+) -> actix_web::Result<HttpResponse> {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
     let writer = ResponseWriter::new(sender);
     actix_web::rt::spawn(async {
