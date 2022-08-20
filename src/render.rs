@@ -8,6 +8,7 @@ use serde::{Serialize, Serializer};
 use serde_json::json;
 use sqlx::{Column, Database, Decode, Row};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs::DirEntry;
 
 pub struct RenderContext<'a, W: std::io::Write> {
@@ -163,32 +164,31 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         }
         Ok(())
     }
-}
 
-impl<W: std::io::Write> Drop for RenderContext<'_, W> {
-    fn drop(&mut self) {
+    pub fn close(mut self) -> W {
         if let Some(mut component) = self.current_component.take() {
             let res = component.render_end(&mut self.writer);
             self.handle_result_and_log(&res);
         }
         let res = self.shell_renderer.render_end(&mut self.writer);
         self.handle_result_and_log(&res);
+        self.writer
     }
 }
 
 struct SerializeRow<R: Row>(R);
 
 impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-where
-    usize: sqlx::ColumnIndex<R>,
-    &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-    f64: sqlx::Decode<'r, <R as Row>::Database>,
-    i64: sqlx::Decode<'r, <R as Row>::Database>,
-    bool: sqlx::Decode<'r, <R as Row>::Database>,
+    where
+        usize: sqlx::ColumnIndex<R>,
+        &'r str: sqlx::Decode<'r, <R as Row>::Database>,
+        f64: sqlx::Decode<'r, <R as Row>::Database>,
+        i64: sqlx::Decode<'r, <R as Row>::Database>,
+        bool: sqlx::Decode<'r, <R as Row>::Database>,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where
+            S: Serializer,
     {
         use sqlx::{TypeInfo, ValueRef};
         let columns = self.0.columns();
@@ -446,12 +446,12 @@ impl AllTemplates {
             "shell",
             include_str!("../sqlsite/templates/shell.handlebars"),
         )
-        .expect("Embedded shell template contains an error");
+            .expect("Embedded shell template contains an error");
         this.register_split(
             "error",
             include_str!("../sqlsite/templates/error.handlebars"),
         )
-        .expect("Embedded shell template contains an error");
+            .expect("Embedded shell template contains an error");
         this.register_dir();
         this
     }
@@ -484,10 +484,12 @@ impl AllTemplates {
         entry: std::io::Result<DirEntry>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let path = entry?.path();
-        if matches!(path.extension(), Some(x) if x == "handlebars") {
-            let tpl_str = std::fs::read_to_string(&path)?;
-            let name = path.file_stem().unwrap().to_string_lossy();
+        let tpl_str = std::fs::read_to_string(&path)?;
+        let name = path.file_stem().unwrap().to_string_lossy();
+        if path.extension() == Some(OsStr::new("handlebars")) {
             self.register_split(&name, &tpl_str)?;
+        } else {
+            self.handlebars.register_partial(&name, &tpl_str)?;
         }
         Ok(())
     }
@@ -500,7 +502,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-    .unwrap();
+        .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,

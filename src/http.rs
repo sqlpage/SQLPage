@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
 /// This prevents a single request from using up all available memory
-const MAX_PENDING_MESSAGES: usize = 4;
+const MAX_PENDING_MESSAGES: usize = 128;
 
 #[derive(Clone)]
 pub struct ResponseWriter {
@@ -68,7 +68,9 @@ impl Write for ResponseWriter {
         Ok(buf.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
-        Err(std::io::ErrorKind::WouldBlock.into())
+        self.response_bytes
+            .try_send(Ok(mem::take(&mut self.buffer).into()))
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::WouldBlock, e.to_string()))
     }
 }
 
@@ -101,7 +103,7 @@ async fn stream_response(
         };
         if let Err(e) = render_result {
             if let Err(nested_err) = renderer.handle_error(&e.root_cause()) {
-                renderer.writer.close_with_error(nested_err.to_string());
+                renderer.close().close_with_error(nested_err.to_string());
                 bail!(
                     "An error occurred while trying to display an other error. \
                     \nRoot error: {e}\n
@@ -111,6 +113,7 @@ async fn stream_response(
         }
         renderer.writer.async_flush().await?;
     }
+    renderer.close().async_flush().await?;
     log::debug!("Successfully finished rendering the page");
     Ok(())
 }
@@ -140,7 +143,7 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         "query": query,
         "form": form
     })
-    .to_string()
+        .to_string()
 }
 
 async fn render_sql(

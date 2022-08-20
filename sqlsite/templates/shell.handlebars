@@ -14,6 +14,11 @@
             integrity="sha384-FhEOA/pIE4BfDuwGksHaZD8ms5j+dfB9QIWo7naDMzAVoCE1My4G2iu8/n/R3AAH"
             crossorigin="anonymous"
             defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta11/dist/css/tabler-vendors.min.css"
+          integrity="sha384-WFdUKD97fI2WrhpO8dRhRBawO9FvR1+g+gz1s2Rt0lAWFPATzL9i0HGMR7SoGq/V" crossorigin="anonymous">
+    <script src="https://unpkg.com/apexcharts@3.35.4/dist/apexcharts.min.js"
+            integrity="sha384-P22J6p3xDoXwqyCO6kIEY8d8auHYzb4BvaHXROlaGLZ8PhYSh8c+phglRxT8v1qS"
+            crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -36,18 +41,13 @@
 <main class="layout-boxed">
     <div class="page">
         <main class="page-wrapper container-xl mt-3">
-                    {{~#each_row~}}<!--end query-->{{~/each_row~}}
+            {{~#each_row~}}{{~/each_row~}}
         </main>
     </div>
 </main>
 
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-      for(const r of document.getElementsByClassName("data-list"))
-        new List(r, {valueNames: [...r.getElementsByClassName("sort")].map(t=>t.dataset.sort), indexAsync: true})
-    })
-</script>
+<script>document.addEventListener('DOMContentLoaded', function () { {{> table}} {{> chart}} })</script>
 
 </body>
 </html>
