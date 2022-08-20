@@ -1,24 +1,33 @@
 <div class="card my-2">
     <div class="card-body">
-        <div id="table-default" class="table-responsive">
+        <div class="table-responsive {{#if (or sort search)}}data-list{{/if}}">
+            {{#if search}}
+                <div class="p-2">
+                    <input type="search" class="form-control form-control-rounded fs-6 search" placeholder="Search…">
+                </div>
+            {{/if}}
             <table class="table">
                 {{~#each_row~}}
                     {{#if (eq @row_index 0)}}
                         <thead>
                         <tr>
-                            {{#each (entries this)}}
+                            {{#each this}}
                                 <th>
-                                    <button class="table-sort" data-sort="sort-{{key}}">{{key}}</button>
+                                    {{#if ../../sort}}
+                                        <button class="table-sort sort" data-sort="{{@key}}">{{@key}}</button>
+                                    {{else}}
+                                        {{@key}}
+                                    {{/if}}
                                 </th>
                             {{/each}}
                         </tr>
                         </thead>
-                    <tbody class="table-tbody">{{#delayed}}</tbody>{{/delayed}}
+                    <tbody class="table-tbody list">{{#delayed}}</tbody>{{/delayed}}
                     {{/if}}
 
                     <tr>
-                        {{~#each (entries this)~}}
-                            <td class="sort-{{key}}">{{value}}</td>
+                        {{~#each this~}}
+                            <td class="{{@key}}">{{this}}</td>
                         {{~/each~}}
                     </tr>
                 {{~/each_row~}}

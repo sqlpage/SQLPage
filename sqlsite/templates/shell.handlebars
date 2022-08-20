@@ -7,6 +7,13 @@
     <title>{{title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="{{description}}"/>
+    <script src="https://unpkg.com/@tabler/core@1.0.0-beta11/dist/js/tabler.min.js"
+            integrity="sha384-f28j+F3H/adoEZHOH9YnzfHewG+lesL9nwfgglZp2EzrlmP5vJQng5PDeGmlwBVq"
+            crossorigin="anonymous" async defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/2.3.1/list.min.js"
+            integrity="sha384-FhEOA/pIE4BfDuwGksHaZD8ms5j+dfB9QIWo7naDMzAVoCE1My4G2iu8/n/R3AAH"
+            crossorigin="anonymous"
+            defer></script>
 </head>
 
 <body>
@@ -34,8 +41,13 @@
     </div>
 </main>
 
-<script src="https://unpkg.com/@tabler/core@1.0.0-beta11/dist/js/tabler.min.js"
-        integrity="sha384-f28j+F3H/adoEZHOH9YnzfHewG+lesL9nwfgglZp2EzrlmP5vJQng5PDeGmlwBVq"
-        crossorigin="anonymous" defer></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+      for(const r of document.getElementsByClassName("data-list"))
+        new List(r, {valueNames: [...r.getElementsByClassName("sort")].map(t=>t.dataset.sort), indexAsync: true})
+    })
+</script>
+
 </body>
 </html>
