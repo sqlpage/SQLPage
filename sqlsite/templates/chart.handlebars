@@ -1,0 +1,25 @@
+<div class="card my-2">
+    <div class="card-body">
+        <div class="d-flex">
+            <h3 class="card-title">{{title}}</h3>
+        </div>
+        <div class="chart" style="height: {{default height 250}}px;" data-contents="
+[
+ {{~#each_row~}}
+     {{~#if (gt @row_index 0)}},{{/if~}}
+[
+    {{~ stringify (default series ../title) ~}},
+    {{~ stringify (default x label) ~}},
+    {{~ stringify (default y value) ~}}
+]
+{{~/each_row~}}
+]
+">
+            <div class="d-flex justify-content-center h-100 align-items-center">
+                <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
