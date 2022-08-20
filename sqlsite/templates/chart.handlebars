@@ -3,23 +3,39 @@
         <div class="d-flex">
             <h3 class="card-title">{{title}}</h3>
         </div>
-        <div class="chart" style="height: {{default height 250}}px;" data-contents="
-[
- {{~#each_row~}}
-     {{~#if (gt @row_index 0)}},{{/if~}}
-[
-    {{~ stringify (default series ../title) ~}},
-    {{~ stringify (default x label) ~}},
-    {{~ stringify (default y value) ~}}
-]
-{{~/each_row~}}
-]
-">
+        <div class="chart" style="height: {{default height 250}}px;">
             <div class="d-flex justify-content-center h-100 align-items-center">
                 <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
                     <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
+            <data hidden>
+{
+    "type": {{stringify type}},
+    "time": {{stringify time}},
+    "marker": {{stringify marker}},
+    "xtitle": {{stringify xtitle}},
+    "ytitle": {{stringify ytitle}},
+    "xticks": {{stringify xticks}},
+    "xmin": {{stringify xmin}},
+    "ymin": {{stringify ymin}},
+    "xmax": {{stringify xmax}},
+    "ymax": {{stringify ymax}},
+    "logarithmic": {{stringify logarithmic}},
+    "stacked": {{stringify stacked}},
+    "height": {{stringify (default height 250)}},
+    "points": [
+    {{~#each_row~}}
+        {{~#if (gt @row_index 0)}},{{/if~}}
+        [
+            {{~ stringify (default series ../title) ~}},
+            {{~ stringify (default x label) ~}},
+            {{~ stringify (default y value) ~}}
+        ]
+    {{~/each_row~}}
+    ]
+}
+            </data>
         </div>
     </div>
 </div>
