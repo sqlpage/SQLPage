@@ -16,15 +16,20 @@ use sqlx::Arguments;
 use std::io::Write;
 use std::mem;
 use std::path::Component;
+use tokio::sync::mpsc;
+
+/// If the sending queue exceeds this number of outgoing messages, an error will be thrown
+/// This prevents a single request from using up all available memory
+const MAX_PENDING_MESSAGES: usize = 4;
 
 #[derive(Clone)]
 pub struct ResponseWriter {
     buffer: Vec<u8>,
-    response_bytes: tokio::sync::mpsc::UnboundedSender<actix_web::Result<Bytes>>,
+    response_bytes: mpsc::Sender<actix_web::Result<Bytes>>,
 }
 
 impl ResponseWriter {
-    fn new(response_bytes: tokio::sync::mpsc::UnboundedSender<actix_web::Result<Bytes>>) -> Self {
+    fn new(response_bytes: mpsc::Sender<actix_web::Result<Bytes>>) -> Self {
         Self {
             response_bytes,
             buffer: Vec::new(),
@@ -33,29 +38,37 @@ impl ResponseWriter {
     fn close_with_error(&mut self, msg: String) {
         if !self.response_bytes.is_closed() {
             let _ = self.flush();
-            let _ = self.response_bytes.send(Err(ErrorInternalServerError(msg)));
+            let _ = self
+                .response_bytes
+                .try_send(Err(ErrorInternalServerError(msg)));
         }
     }
-}
 
-impl Write for ResponseWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.buffer.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
+    async fn async_flush(&mut self) -> std::io::Result<()> {
         if self.buffer.is_empty() {
             return Ok(());
         }
         self.response_bytes
             .send(Ok(mem::take(&mut self.buffer).into()))
-            .map_err(|_err| {
+            .await
+            .map_err(|err| {
                 use std::io::*;
                 Error::new(
                     ErrorKind::BrokenPipe,
-                    "The HTTP response writer has already been closed",
+                    format!("The HTTP response writer with a capacity of {} has already been closed: {err}", MAX_PENDING_MESSAGES),
                 )
             })
+    }
+}
+
+impl Write for ResponseWriter {
+    #[inline(always)]
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.buffer.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Err(std::io::ErrorKind::WouldBlock.into())
     }
 }
 
@@ -96,7 +109,7 @@ async fn stream_response(
                 );
             }
         }
-        renderer.writer.flush()?;
+        renderer.writer.async_flush().await?;
     }
     log::debug!("Successfully finished rendering the page");
     Ok(())
@@ -135,7 +148,7 @@ async fn render_sql(
     payload: Payload,
     sql_bytes: Bytes,
 ) -> actix_web::Result<HttpResponse> {
-    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+    let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
     let writer = ResponseWriter::new(sender);
     actix_web::rt::spawn(async {
         if let Err(err) = stream_response(req, payload, sql_bytes, writer).await {
@@ -145,7 +158,7 @@ async fn render_sql(
     Ok(HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(BodyStream::new(
-            tokio_stream::wrappers::UnboundedReceiverStream::new(receiver),
+            tokio_stream::wrappers::ReceiverStream::new(receiver),
         )))
 }
 
