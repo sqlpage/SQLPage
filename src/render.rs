@@ -36,10 +36,10 @@ impl<W: std::io::Write> RenderContext<'_, W> {
     pub async fn handle_row(&mut self, row: sqlx::any::AnyRow) -> anyhow::Result<()> {
         let data = SerializeRow(row);
         log::debug!("<- Processing database row: {}", serde_json::to_string(&&data).unwrap_or_else(|e|e.to_string()));
-        let new_component = data.0.try_get::<&str, &str>("component");
+        let new_component = data.0.try_get::<Option<&str>, &str>("component").ok().flatten();
         let current_component = self.current_component.as_ref().map(|c| c.name());
         match (current_component, new_component) {
-            (None, Ok("head")) | (None, Err(_)) => {
+            (None, Some("head")) | (None, None) => {
                 self.shell_renderer
                     .render_start(&mut self.writer, json!(&&data))?;
                 self.open_component_with_data(DEFAULT_COMPONENT, &&data)?;
@@ -50,7 +50,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
                 let component = new_component.unwrap_or(DEFAULT_COMPONENT);
                 self.open_component_with_data(component, &&data)?;
             }
-            (Some(_current_component), Ok(new_component)) => {
+            (Some(_current_component), Some(new_component)) => {
                 self.open_component_with_data(new_component, &&data)?;
             }
             (Some(_), _) => {
