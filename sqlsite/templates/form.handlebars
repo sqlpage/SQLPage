@@ -1,48 +1,54 @@
-<form class="mb-2" method="{{default method "post"}}">
-    {{#each_row}}
-        {{#if (or (eq type "radio") (eq type "checkbox"))}}
-            <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column my-1">
-                <label class="form-selectgroup-item flex-fill">
-                    <input type="{{type}}" name="{{name}}" value="{{value}}" class="form-selectgroup-input">
-                    <div class="form-selectgroup-label d-flex align-items-center p-3">
-                        <div class="me-3">
-                            <span class="form-selectgroup-check"></span>
-                        </div>
-                        <div>
-                            {{default label value}}
-                            {{#if description}}
-                                <small class="form-hint mt-0">{{description}}</small>
-                            {{/if}}
-                        </div>
-                    </div>
-                </label>
-            </div>
-        {{else}}
-            <label class="form-label mb-2">
-                {{default label name}}
-                {{~#if required}}<span class="text-danger ms-1" aria-label="required" title="required">*</span>{{/if}}
-                <input
-                        type="{{type}}"
-                        name="{{name}}"
-                        class="form-control"
-                        placeholder="{{placeholder}}"
-                    {{#if value}}value="{{value}}" {{/if~}}
-                    {{~#if max}}max="{{max}}" {{/if~}}
-                    {{~#if min}}min="{{min}}" {{/if~}}
-                    {{~#if step}}step="{{step}}" {{/if~}}
-                    {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
-                    {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
-                    {{~#if required}}required="required" {{/if~}}
-                    {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
-                    {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
-                    {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
-                >
-                {{#if description}}
-                    <small class="form-hint mt-0">{{description}}</small>
-                {{/if}}
-            </label>
+<form class="my-3" method="{{default method "post"}}">
+    <fieldset class="form-fieldset">
+        {{#if title}}
+            <h2 class="text-center mb-3">{{title}}</h2>
         {{/if}}
+        {{#each_row}}
+            {{#if (or (eq type "radio") (eq type "checkbox"))}}
+                <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column my-1">
+                    <label class="form-selectgroup-item flex-fill">
+                        <input type="{{type}}" name="{{name}}" value="{{value}}" class="form-selectgroup-input">
+                        <div class="form-selectgroup-label d-flex align-items-center p-3">
+                            <div class="me-3">
+                                <span class="form-selectgroup-check"></span>
+                            </div>
+                            <div>
+                                {{default label value}}
+                                {{#if description}}
+                                    <small class="form-hint mt-0">{{description}}</small>
+                                {{/if}}
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            {{else}}
+                <label class="form-label mb-2">
+                    {{default label name}}
+                    {{~#if required}}
+                        <span class="text-danger ms-1" aria-label="required" title="required">*</span>{{/if}}
+                    <input
+                            type="{{type}}"
+                            name="{{name}}"
+                            class="form-control"
+                            placeholder="{{placeholder}}"
+                        {{#if value}}value="{{value}}" {{/if~}}
+                        {{~#if max}}max="{{max}}" {{/if~}}
+                        {{~#if min}}min="{{min}}" {{/if~}}
+                        {{~#if step}}step="{{step}}" {{/if~}}
+                        {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
+                        {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
+                        {{~#if required}}required="required" {{/if~}}
+                        {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
+                        {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
+                        {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
+                    >
+                    {{#if description}}
+                        <small class="form-hint mt-0">{{description}}</small>
+                    {{/if}}
+                </label>
+            {{/if}}
 
-    {{/each_row}}
-    <input class="btn btn-primary" type="submit" {{#if validate}}value="{{validate}}"{{/if}}>
+        {{/each_row}}
+        <input class="btn btn-primary" type="submit" {{#if validate}}value="{{validate}}"{{/if}}>
+    </fieldset>
 </form>
