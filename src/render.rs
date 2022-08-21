@@ -35,7 +35,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
 
     pub async fn handle_row(&mut self, row: sqlx::any::AnyRow) -> anyhow::Result<()> {
         let data = SerializeRow(row);
-        log::debug!("Processing database row: {:?}", json!(data));
+        log::debug!("<- Processing database row: {}", serde_json::to_string(&&data).unwrap_or_else(|e|e.to_string()));
         let new_component = data.0.try_get::<&str, &str>("component");
         let current_component = self.current_component.as_ref().map(|c| c.name());
         match (current_component, new_component) {
@@ -61,7 +61,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
     }
 
     pub async fn finish_query(&mut self, result: sqlx::any::AnyQueryResult) -> anyhow::Result<()> {
-        log::trace!("finish_query: {:?}", result);
+        log::debug!("-> Query finished with {:?}", result);
         Ok(())
     }
 
@@ -288,7 +288,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         &mut self,
         writer: W,
         data: JsonValue,
-    ) -> Result<(), handlebars::RenderError> {
+    ) -> Result<(), RenderError> {
         if let Some(block_context) = self.block_context.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             render_context.push_block(block_context);
@@ -312,14 +312,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     }
 
     fn render_end<W: std::io::Write>(&mut self, mut writer: W) -> Result<(), RenderError> {
-        if let Some(block_context) = self.block_context.take() {
-            let delayed = block_context
-                .get_local_var(DELAYED_CONTENTS)
-                .and_then(|v| v.as_str())
-                .filter(|s| !s.is_empty());
-            if let Some(contents) = delayed {
-                writer.write_all(contents.as_bytes())?;
-            }
+        if let Some(mut block_context) = self.block_context.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             render_context.push_block(block_context);
             let ctx = Context::null();
@@ -389,7 +382,7 @@ fn without_top_block<'a, 'reg, 'rc, R>(
     r
 }
 
-fn delayed_helper<'reg, 'rc>(
+fn delay_helper<'reg, 'rc>(
     h: &handlebars::Helper<'reg, 'rc>,
     r: &'reg Handlebars<'reg>,
     ctx: &'rc Context,
@@ -416,6 +409,31 @@ fn delayed_helper<'reg, 'rc>(
     Ok(())
 }
 
+
+fn flush_delayed_helper<'reg, 'rc>(
+    h: &handlebars::Helper<'reg, 'rc>,
+    r: &'reg Handlebars<'reg>,
+    ctx: &'rc Context,
+    rc: &mut handlebars::RenderContext<'reg, 'rc>,
+    writer: &mut dyn handlebars::Output,
+) -> handlebars::HelperResult {
+    if let Some(block_context) = rc.block_mut() {
+        let delayed = block_context
+            .get_local_var(DELAYED_CONTENTS)
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty());
+        if let Some(contents) = delayed {
+            writer.write(contents)?;
+            block_context.set_local_var(DELAYED_CONTENTS, JsonValue::Null);
+            Ok(())
+        } else {
+            without_top_block(rc, |rc| {
+                flush_delayed_helper(h, r, ctx, rc, writer)
+            })
+        }
+    } else { Ok(()) }
+}
+
 impl AllTemplates {
     pub fn init() -> Self {
         let mut handlebars = Handlebars::new();
@@ -436,7 +454,8 @@ impl AllTemplates {
             _ => vec![]
         });
         handlebars.register_helper("entries", Box::new(entries));
-        handlebars.register_helper("delayed", Box::new(delayed_helper));
+        handlebars.register_helper("delay", Box::new(delay_helper));
+        handlebars.register_helper("flush_delayed", Box::new(flush_delayed_helper));
         let split_templates = HashMap::new();
         let mut this = Self {
             handlebars,
