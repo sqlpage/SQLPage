@@ -1,5 +1,5 @@
-<h1 class="mt-2">{{title}}</h1>
-<p>
+<h1 class="my-3 {{#if (default center true)}}text-center{{/if}}">{{title}}</h1>
+<p class="mx-auto" style="max-width: {{default width 80}}ch">
     {{contents}}
     {{#each_row}}
         {{#if link}}
