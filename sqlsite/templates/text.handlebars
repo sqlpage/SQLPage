@@ -1,0 +1,16 @@
+<h1 class="mt-2">{{title}}</h1>
+<p>
+    {{contents}}
+    {{#each_row}}
+        {{#if link}}
+        <a href="{{link}}">{{#delay}}</a>{{/delay}}
+        {{/if}}
+        <span class="
+            {{~#if color}}text-{{color}} {{/if~}}
+            {{~#if bold}}fw-bold {{/if~}}
+            {{~#if italics}}fst-italic {{/if~}}
+            {{~#if underline}}text-decoration-underline {{/if~}}
+        ">{{contents}}</span>
+    {{flush_delayed}}
+    {{/each_row}}
+</p>

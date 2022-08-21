@@ -22,7 +22,7 @@
                             {{/each}}
                         </tr>
                         </thead>
-                    <tbody class="table-tbody list">{{#delayed}}</tbody>{{/delayed}}
+                    <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
                     {{/if}}
 
                     <tr>
@@ -31,6 +31,7 @@
                         {{~/each~}}
                     </tr>
                 {{~/each_row~}}
+                {{flush_delayed}}
             </table>
         </div>
     </div>
