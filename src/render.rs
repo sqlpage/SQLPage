@@ -3,10 +3,8 @@ use handlebars::{
     handlebars_helper, template::TemplateElement, BlockContext, Context, Handlebars, JsonValue,
     RenderError, Renderable, Template, TemplateError,
 };
-use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 use serde_json::json;
-use sqlx::{Column, Database, Decode, Row};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::DirEntry;
@@ -33,28 +31,29 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         }
     }
 
-    pub async fn handle_row(&mut self, row: sqlx::any::AnyRow) -> anyhow::Result<()> {
-        let data = SerializeRow(row);
-        log::debug!("<- Processing database row: {}", serde_json::to_string(&&data).unwrap_or_else(|e|e.to_string()));
-        let new_component = data.0.try_get::<Option<&str>, &str>("component").ok().flatten();
+    pub async fn handle_row(&mut self, data: JsonValue) -> anyhow::Result<()> {
+        log::debug!("<- Processing database row: {}", serde_json::to_string(&data).unwrap_or_else(|e|e.to_string()));
+        let new_component = data.as_object()
+            .and_then(|o| o.get("component"))
+            .and_then(|c| c.as_str());
         let current_component = self.current_component.as_ref().map(|c| c.name());
         match (current_component, new_component) {
             (None, Some("head")) | (None, None) => {
                 self.shell_renderer
-                    .render_start(&mut self.writer, json!(&&data))?;
-                self.open_component_with_data(DEFAULT_COMPONENT, &&data)?;
+                    .render_start(&mut self.writer, json!(&data))?;
+                self.open_component_with_data(DEFAULT_COMPONENT, &data)?;
             }
             (None, new_component) => {
                 self.shell_renderer
                     .render_start(&mut self.writer, json!(null))?;
                 let component = new_component.unwrap_or(DEFAULT_COMPONENT);
-                self.open_component_with_data(component, &&data)?;
+                self.open_component_with_data(component, &data)?;
             }
             (Some(_current_component), Some(new_component)) => {
-                self.open_component_with_data(new_component, &&data)?;
+                self.open_component_with_data(new_component, &data)?;
             }
             (Some(_), _) => {
-                self.render_current_template_with_data(&&data)?;
+                self.render_current_template_with_data(&data)?;
             }
         }
         Ok(())
@@ -176,51 +175,6 @@ impl<W: std::io::Write> RenderContext<'_, W> {
     }
 }
 
-struct SerializeRow<R: Row>(R);
-
-impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-    where
-        usize: sqlx::ColumnIndex<R>,
-        &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-        f64: sqlx::Decode<'r, <R as Row>::Database>,
-        i64: sqlx::Decode<'r, <R as Row>::Database>,
-        bool: sqlx::Decode<'r, <R as Row>::Database>,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-    {
-        use sqlx::{TypeInfo, ValueRef};
-        let columns = self.0.columns();
-        let mut map = serializer.serialize_map(Some(columns.len()))?;
-        for col in columns {
-            let key = col.name();
-            match self.0.try_get_raw(col.ordinal()) {
-                Ok(raw_value) if !raw_value.is_null() => match raw_value.type_info().name() {
-                    "REAL" | "FLOAT" | "NUMERIC" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
-                        map_serialize::<_, _, f64>(&mut map, key, raw_value)
-                    }
-                    "INT" | "INTEGER" | "INT8" | "INT2" | "INT4" | "TINYINT" | "SMALLINT"
-                    | "BIGINT" => map_serialize::<_, _, i64>(&mut map, key, raw_value),
-                    "BOOL" | "BOOLEAN" => map_serialize::<_, _, bool>(&mut map, key, raw_value),
-                    // Deserialize as a string by default
-                    _ => map_serialize::<_, _, &str>(&mut map, key, raw_value),
-                },
-                _ => map.serialize_entry(key, &()), // Serialize null
-            }?
-        }
-        map.end()
-    }
-}
-
-fn map_serialize<'r, M: SerializeMap, DB: Database, T: Decode<'r, DB> + Serialize>(
-    map: &mut M,
-    key: &str,
-    raw_value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
-) -> Result<(), M::Error> {
-    let val = T::decode(raw_value).map_err(serde::ser::Error::custom)?;
-    map.serialize_entry(key, &val)
-}
 
 struct SplitTemplate {
     before_list: Template,

@@ -12,10 +12,13 @@ use anyhow::{bail, Context};
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
 use sqlx::any::AnyArguments;
-use sqlx::Arguments;
+use sqlx::{Arguments, Column, Database, Decode, Row};
 use std::io::Write;
 use std::mem;
 use std::path::Component;
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeMap;
+use serde_json::json;
 use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -98,7 +101,7 @@ async fn stream_response(
     while let Some(item) = stream.next().await {
         let render_result = match item {
             Ok(sqlx::Either::Left(result)) => renderer.finish_query(result).await,
-            Ok(sqlx::Either::Right(row)) => renderer.handle_row(row).await,
+            Ok(sqlx::Either::Right(row)) => renderer.handle_row(json!(SerializeRow(row))).await,
             Err(e) => renderer.handle_error(&e),
         };
         if let Err(e) = render_result {
@@ -116,6 +119,53 @@ async fn stream_response(
     renderer.close().async_flush().await?;
     log::debug!("Successfully finished rendering the page");
     Ok(())
+}
+
+
+struct SerializeRow<R: Row>(R);
+
+impl<'r, R: Row> Serialize for &'r SerializeRow<R>
+    where
+        usize: sqlx::ColumnIndex<R>,
+        &'r str: sqlx::Decode<'r, <R as Row>::Database>,
+        f64: sqlx::Decode<'r, <R as Row>::Database>,
+        i64: sqlx::Decode<'r, <R as Row>::Database>,
+        bool: sqlx::Decode<'r, <R as Row>::Database>,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+    {
+        use sqlx::{TypeInfo, ValueRef};
+        let columns = self.0.columns();
+        let mut map = serializer.serialize_map(Some(columns.len()))?;
+        for col in columns {
+            let key = col.name();
+            match self.0.try_get_raw(col.ordinal()) {
+                Ok(raw_value) if !raw_value.is_null() => match raw_value.type_info().name() {
+                    "REAL" | "FLOAT" | "NUMERIC" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
+                        map_serialize::<_, _, f64>(&mut map, key, raw_value)
+                    }
+                    "INT" | "INTEGER" | "INT8" | "INT2" | "INT4" | "TINYINT" | "SMALLINT"
+                    | "BIGINT" => map_serialize::<_, _, i64>(&mut map, key, raw_value),
+                    "BOOL" | "BOOLEAN" => map_serialize::<_, _, bool>(&mut map, key, raw_value),
+                    // Deserialize as a string by default
+                    _ => map_serialize::<_, _, &str>(&mut map, key, raw_value),
+                },
+                _ => map.serialize_entry(key, &()), // Serialize null
+            }?
+        }
+        map.end()
+    }
+}
+
+fn map_serialize<'r, M: SerializeMap, DB: Database, T: Decode<'r, DB> + Serialize>(
+    map: &mut M,
+    key: &str,
+    raw_value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
+) -> Result<(), M::Error> {
+    let val = T::decode(raw_value).map_err(serde::ser::Error::custom)?;
+    map.serialize_entry(key, &val)
 }
 
 async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> String {
