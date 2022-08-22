@@ -1,4 +1,4 @@
-<form class="my-3" method="{{default method "post"}}">
+<form class="my-3" method="{{default method "post"}}" {{#if action}}action="{{action}}"{{/if}}>
     <fieldset class="form-fieldset">
         {{#if title}}
             <h2 class="text-center mb-3">{{title}}</h2>
@@ -27,7 +27,7 @@
                     {{~#if required}}
                         <span class="text-danger ms-1" aria-label="required" title="required">*</span>{{/if}}
                     <input
-                            type="{{type}}"
+                            type="{{default type "text"}}"
                             name="{{name}}"
                             class="form-control"
                             placeholder="{{placeholder}}"

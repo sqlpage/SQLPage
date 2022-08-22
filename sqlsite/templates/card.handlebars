@@ -2,18 +2,21 @@
     row
     row-cols-1 row-cols-sm-2
     row-cols-md-{{#if columns}}{{columns}}{{else}}3{{/if}}
-    gx-2 gy-2">
+    gx-2 gy-2
+    mb-2">
     {{#each_row}}
         <div class="col">
-        <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card">
-                {{#if status}}
-                    <div class="card-status-start bg-{{status}}"></div>
+            <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card h-100">
+                {{#if color}}
+                    <div class="card-status-start bg-{{color}}"></div>
                 {{/if}}
                 <div class="card-body">
                     <h2 class="card-title">{{title}}</h2>
                     <p class="text-muted">{{body}}</p>
                 </div>
-                <div class="card-footer">{{footer}}</div>
+                {{#if footer}}
+                    <div class="card-footer py-2">{{footer}}</div>
+                {{/if}}
             </{{#if link}}a {{else}}div{{/if}}>
         </div>
     {{/each_row}}

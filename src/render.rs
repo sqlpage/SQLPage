@@ -311,8 +311,8 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         Ok(())
     }
 
-    fn render_end<W: std::io::Write>(&mut self, mut writer: W) -> Result<(), RenderError> {
-        if let Some(mut block_context) = self.block_context.take() {
+    fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), RenderError> {
+        if let Some(block_context) = self.block_context.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             render_context.push_block(block_context);
             let ctx = Context::null();
