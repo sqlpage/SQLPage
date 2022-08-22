@@ -1,10 +1,10 @@
-DROP TABLE IF EXISTS example_value;
+DROP TABLE IF EXISTS example;
 DROP TABLE IF EXISTS parameter;
 DROP TABLE IF EXISTS component;
 
 CREATE TABLE component(
     name TEXT PRIMARY KEY,
-    description TEXT,
+    description TEXT NOT NULL,
     icon TEXT -- icon name from tabler icon
 );
 
@@ -12,18 +12,17 @@ CREATE TABLE parameter(
     top_level BOOLEAN DEFAULT FALSE,
     name TEXT,
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
-    description TEXT,
+    description TEXT NOT NULL,
     type TEXT,
     optional BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (component, top_level, name)
 );
 
-CREATE TABLE example_value(
+CREATE TABLE example(
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
-    parameter TEXT,
-    top_level BOOLEAN,
-    value TEXT,
-    FOREIGN KEY (component, top_level, parameter) REFERENCES parameter(component, top_level, name) ON DELETE CASCADE
+    description TEXT,
+    properties TEXT,
+    FOREIGN KEY (component) REFERENCES component(name) ON DELETE CASCADE
 );
 
 INSERT INTO component(name, icon, description) VALUES
@@ -58,6 +57,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('italics', 'Whether the span of text should be displayed as italics.', 'BOOLEAN', FALSE, TRUE)
 );
 
+INSERT INTO example(component, description, properties) VALUES
+    ('text', 'Rendering a simple text paragraph.', json('[{"component":"text"}, {"contents":"Blah", "bold":true}]'));
+
 INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', 'A series of input fields that can be filled in by the user. The form contents can be posted and handled by another SQLPage. The form contents are accessible from the target page as ($1->>''$.form.x'') for a form field named x.');
 
@@ -79,6 +81,17 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE)
 );
+
+INSERT INTO component(name, icon, description) VALUES
+    ('dynamic', 'repeat', 'A special component that can be used to render other components, the number and properties of which are not known in advance.');
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'dynamic', * FROM (VALUES
+    -- top level
+    ('properties', 'A json object or array that contains the names and properties of other components', 'JSON', TRUE, TRUE)
+);
+
+INSERT INTO example(component, description, properties) VALUES
+    ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]'));
 
 select
     'SQLPage documentation' as title,
@@ -122,3 +135,29 @@ select
     CASE WHEN top_level THEN 'lime' ELSE 'azure' END || CASE WHEN optional THEN '-lt' ELSE '' END as color
 from parameter where component = $1->>'$.query.component'
 ORDER BY (NOT top_level), optional, name;
+
+select
+    'dynamic' as component,
+    json_array(
+        json_object('component', 'code'),
+        json_object(
+            'title', 'Example',
+            'description', description,
+            'contents', (
+                select
+                     group_concat(
+                        'SELECT ' || x'0A' ||
+                            (
+                                select group_concat(
+                                    '    ' || quote(value) || ' as ' || key, ',' || x'0A'
+                                ) from json_each(top.value)
+                            ) || ';',
+                        x'0A'
+                     )
+                from json_each(properties) top
+            )
+        ),
+        json_object('component', 'title', 'level', 3, 'contents', 'Result'),
+        json_object('component', 'dynamic', 'properties', properties)
+    ) as properties
+from example where component = $1->>'$.query.component';

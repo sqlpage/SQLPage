@@ -1,23 +1,27 @@
+use std::borrow:: Cow;
 use crate::{AppState, TEMPLATES_DIR};
 use handlebars::{
     handlebars_helper, template::TemplateElement, BlockContext, Context, Handlebars, JsonValue,
     RenderError, Renderable, Template, TemplateError,
 };
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::DirEntry;
+use anyhow::{Context as AnyhowContext};
 
 pub struct RenderContext<'a, W: std::io::Write> {
     app_state: &'a AppState,
     pub writer: W,
     current_component: Option<SplitTemplateRenderer<'a>>,
     shell_renderer: SplitTemplateRenderer<'a>,
+    recursion_depth: usize,
 }
 
 const DEFAULT_COMPONENT: &str = "default";
 const DELAYED_CONTENTS: &str = "_delayed_contents";
+const MAX_RECURSION_DEPTH: usize = 256;
 
 impl<W: std::io::Write> RenderContext<'_, W> {
     pub fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
@@ -28,10 +32,11 @@ impl<W: std::io::Write> RenderContext<'_, W> {
             writer,
             current_component: None,
             shell_renderer,
+            recursion_depth: 0,
         }
     }
 
-    pub async fn handle_row(&mut self, data: JsonValue) -> anyhow::Result<()> {
+    pub fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         log::debug!("<- Processing database row: {}", serde_json::to_string(&data).unwrap_or_else(|e|e.to_string()));
         let new_component = data.as_object()
             .and_then(|o| o.get("component"))
@@ -49,12 +54,41 @@ impl<W: std::io::Write> RenderContext<'_, W> {
                 let component = new_component.unwrap_or(DEFAULT_COMPONENT);
                 self.open_component_with_data(component, &data)?;
             }
+            (Some(_current_component), Some("dynamic")) => {
+                self.render_dynamic(data)?;
+            }
             (Some(_current_component), Some(new_component)) => {
                 self.open_component_with_data(new_component, &data)?;
             }
             (Some(_), _) => {
                 self.render_current_template_with_data(&data)?;
             }
+        }
+        Ok(())
+    }
+
+    fn render_dynamic(&mut self, data: &Value) -> anyhow::Result<()> {
+        anyhow::ensure!(self.recursion_depth <= MAX_RECURSION_DEPTH, "Maximum recursion depth exceeded in the dynamic component.");
+        let properties: Vec<Cow<JsonValue>> = data.get("properties")
+            .and_then(|props| {
+                match props {
+                    Value::String(s) => {
+                        match serde_json::from_str::<JsonValue>(s).ok()? {
+                            Value::Array(values) => Some(values.into_iter().map(Cow::Owned).collect()),
+                            obj @ Value::Object(_) => Some(vec![Cow::Owned(obj)]),
+                            _ => None
+                        }
+                    }
+                    obj @ Value::Object(_) => Some(vec![Cow::Borrowed(obj)]),
+                    _ => None,
+                }
+            })
+            .context("The dynamic component requires a parameter called 'parameters' that is a json ")?;
+        for p in properties {
+            self.recursion_depth += 1;
+            let res = self.handle_row(&p);
+            self.recursion_depth -= 1;
+            res?;
         }
         Ok(())
     }

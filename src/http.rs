@@ -101,7 +101,7 @@ async fn stream_response(
     while let Some(item) = stream.next().await {
         let render_result = match item {
             Ok(sqlx::Either::Left(result)) => renderer.finish_query(result).await,
-            Ok(sqlx::Either::Right(row)) => renderer.handle_row(json!(SerializeRow(row))).await,
+            Ok(sqlx::Either::Right(row)) => renderer.handle_row(&json!(SerializeRow(row))),
             Err(e) => renderer.handle_error(&e),
         };
         if let Err(e) = render_result {
