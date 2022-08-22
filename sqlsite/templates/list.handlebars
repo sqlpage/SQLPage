@@ -1,0 +1,28 @@
+<div class="card my-2">
+    {{#if title}}
+        <div class="card-header ">
+            <h2 class="card-title">{{title}}</h2>
+        </div>
+    {{/if}}
+    <div class="list-group list-group-flush list-group-hoverable">
+        {{#each_row}}
+            <{{#if link}}a href="{{link}}" {{else}}div{{/if}}
+                           class="list-group-item list-group-item-action {{#if active}}active{{/if}}">
+                <div class="row align-items-center">
+                    {{#if color}}
+                        <div class="col-auto"><span class="badge bg-{{color}}"></span></div>
+                    {{/if}}
+                    {{#if icon}}
+                        <div class="col-auto">
+                            <i class="ti ti-{{icon}}"></i>
+                        </div>
+                    {{/if}}
+                    <div class="col text-truncate">
+                        {{title}}
+                        <div class="d-block text-muted text-truncate mt-n1">{{description}}</div>
+                    </div>
+                </div>
+            </{{#if link}}a {{else}}div{{/if}}>
+        {{/each_row}}
+    </div>
+</div>

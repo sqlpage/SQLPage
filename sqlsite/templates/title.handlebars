@@ -1,7 +1,1 @@
-<h1 class="mt-2 mb-1">
-    {{~#each (entries this)~}}
-            {{#unless (eq key "component")}}
-                {{~value~}}
-            {{/unless}}
-    {{~/each~}}
-</h1>
+<h{{default level 1}} class="mt-2 mb-1">{{contents}}</h{{default level 1}}>
