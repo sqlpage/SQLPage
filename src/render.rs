@@ -17,6 +17,7 @@ pub struct RenderContext<'a, W: std::io::Write> {
     current_component: Option<SplitTemplateRenderer<'a>>,
     shell_renderer: SplitTemplateRenderer<'a>,
     recursion_depth: usize,
+    current_statement: usize,
 }
 
 const DEFAULT_COMPONENT: &str = "default";
@@ -33,6 +34,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
             current_component: None,
             shell_renderer,
             recursion_depth: 0,
+            current_statement: 1,
         }
     }
 
@@ -94,7 +96,8 @@ impl<W: std::io::Write> RenderContext<'_, W> {
     }
 
     pub async fn finish_query(&mut self, result: sqlx::any::AnyQueryResult) -> anyhow::Result<()> {
-        log::debug!("-> Query finished with {:?}", result);
+        log::debug!("-> Query {} finished with {:?}", self.current_statement, result);
+        self.current_statement += 1;
         Ok(())
     }
 
@@ -113,6 +116,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
             source = s.source()
         }
         self.render_current_template_with_data(&json!({
+            "query_number": self.current_statement,
             "description": description,
             "backtrace": backtrace
         }))?;
