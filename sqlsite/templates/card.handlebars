@@ -1,3 +1,6 @@
+{{#if title}}
+    <h1 class="my-2">{{title}}</h1>
+{{/if}}
 <div class="
     row
     row-cols-1 row-cols-sm-2
@@ -6,16 +9,21 @@
     mb-2">
     {{#each_row}}
         <div class="col">
-            <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card h-100">
+            <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card h-100 {{#if active}}card-active{{/if}}">
                 {{#if color}}
                     <div class="card-status-start bg-{{color}}"></div>
                 {{/if}}
                 <div class="card-body">
                     <h2 class="card-title">{{title}}</h2>
-                    <p class="text-muted">{{body}}</p>
+                    <p class="text-muted">{{description}}</p>
                 </div>
                 {{#if footer}}
                     <div class="card-footer py-2">{{footer}}</div>
+                {{/if}}
+                {{#if icon}}
+                    <div class="ribbon bg-{{color}}">
+                        <i class="ti ti-{{icon}}"></i>
+                    </div>
                 {{/if}}
             </{{#if link}}a {{else}}div{{/if}}>
         </div>
