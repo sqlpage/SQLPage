@@ -47,6 +47,29 @@ INSERT INTO example(component, description, properties) VALUES
             '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world"}]'));
 
 INSERT INTO component(name, icon, description) VALUES
+    ('card', 'credit-card', 'A grid where each element is a small card that displays a piece of data.');
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'card', * FROM (VALUES
+    -- top level
+    ('title', 'Text header at the top of the list of cards.', 'TEXT', TRUE, TRUE),
+    ('columns', 'The number of columns in the grid of cards. This is just a hint, the grid will adjust dynamically to the user''s screen size, rendering fewer columns if needed to fit the contents.', 'INTEGER', TRUE, TRUE),
+    -- item level
+    ('title', 'Name of the card, displayed at the top.', 'TEXT', FALSE, FALSE),
+    ('description', 'The body of the card.', 'TEXT', FALSE, TRUE),
+    ('footer', 'Muted text to display at the bottom of the card.', 'TEXT', FALSE, TRUE),
+    ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
+    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the card.', 'TEXT', FALSE, TRUE),
+    ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'TEXT', FALSE, TRUE),
+    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+);
+
+INSERT INTO example(component, description, properties) VALUES
+    ('card', 'The most basic card', json('[{"component":"card"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
+    ('card', 'A beautiful card grid with bells and whistles.',
+            json('[{"component":"card", "title":"Popular websites", "columns": 2}, '||
+            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
+            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "active": true, "footer": "Owned by the Wikimedia Foundation"}]'));
+
+INSERT INTO component(name, icon, description) VALUES
     ('text', 'align-left', 'A paragraph of text. The entire component will render as a single paragraph, with each item being rendered as a span of text inside it, the styling of which can be customized using parameters.');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'text', * FROM (VALUES
@@ -183,7 +206,7 @@ select 'title' as component, 3 as level, 'Parameters' as contents where $1->>'$.
 select 'card' as component, 3 AS columns where $1->>'$.query.component' IS NOT NULL;
 select
     name || (CASE WHEN top_level THEN ' (top-level)' ELSE '' END) as title,
-    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as body,
+    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
     type as footer,
     CASE WHEN top_level THEN 'lime' ELSE 'azure' END || CASE WHEN optional THEN '-lt' ELSE '' END as color
 from parameter where component = $1->>'$.query.component'
