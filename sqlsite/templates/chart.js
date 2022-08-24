@@ -44,8 +44,12 @@ for (const c of document.getElementsByClassName("chart")) {
     const tickAmount = data.xticks ||
       Math.min(30, Math.max(...series.map(s => s.data.length - 1)));
 
+    let labels;
     const categories = typeof data.points[0][1] === "string";
-    if (categories) series = align_categories(series);
+    if (data.type === "pie") {
+        labels = data.points.map(([name, x, y]) => x || name);
+        series = data.points.map(([name, x, y]) => y);
+    } else if (categories) series = align_categories(series);
 
     const options = {
       chart: {
@@ -68,7 +72,7 @@ for (const c of document.getElementsByClassName("chart")) {
         palette: 'palette4',
       },
       dataLabels: {
-        enabled: false,
+        enabled: !!data.labels,
       },
       fill: {
         opacity: .7,
@@ -111,8 +115,9 @@ for (const c of document.getElementsByClassName("chart")) {
           enabled: true,
         }
       },
-      series
+      series,
     };
+    if (labels) options.labels = labels;
     c.innerHTML = "";
     const chart = new ApexCharts(c, options);
     chart.render();

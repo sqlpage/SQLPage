@@ -39,6 +39,13 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('active', 'Whether this item in the list is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 );
 
+INSERT INTO example(component, description, properties) VALUES
+    ('list', 'The most basic list', json('[{"component":"list"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
+    ('list', 'A beautiful list with bells and whistles.',
+            json('[{"component":"list", "title":"Popular websites"}, '||
+            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "active": true}, '||
+            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world"}]'));
+
 INSERT INTO component(name, icon, description) VALUES
     ('text', 'align-left', 'A paragraph of text. The entire component will render as a single paragraph, with each item being rendered as a span of text inside it, the styling of which can be customized using parameters.');
 
@@ -47,6 +54,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'Text header before the paragraph.', 'TEXT', TRUE, TRUE),
     ('center', 'Whether to center the title.', 'BOOLEAN', TRUE, TRUE),
     ('width', 'How wide the paragraph should be, in characters.', 'INTEGER', TRUE, TRUE),
+    ('html', 'Raw html code to include on the page. Don''t use that if you are not sure what you are doing, it may have security implications.', 'TEXT', TRUE, TRUE),
     -- item level
     ('contents', 'A span of text to display', 'TEXT', FALSE, FALSE),
     ('link', 'An URL to which the user should be taken when they click on this span of text.', 'URL', FALSE, TRUE),
@@ -58,7 +66,14 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 );
 
 INSERT INTO example(component, description, properties) VALUES
-    ('text', 'Rendering a simple text paragraph.', json('[{"component":"text"}, {"contents":"Blah", "bold":true}]'));
+    ('text', 'Rendering a simple text paragraph.', json('[{"component":"text", "contents":"Hello, world ! <3"}]')),
+    ('text', 'Rendering a paragraph with links and styling.',
+            json('[{"component":"text", "title":"About SQL"}, '||
+            '{"contents":"SQL", "bold":true, "italics": true}, '||
+            '{"contents":" is a domain-specific language used in programming and designed for managing data held in a "},'||
+            '{"contents": "relational database management system", "link": "https://en.wikipedia.org/wiki/Relational_database"},'||
+            '{"contents": ". It is particularly useful in handling structured data."}]')
+);
 
 INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', 'A series of input fields that can be filled in by the user. The form contents can be posted and handled by another SQLPage. The form contents are accessible from the target page as ($1->>''$.form.x'') for a form field named x.');
@@ -81,6 +96,44 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE)
 );
+INSERT INTO example(component, description, properties) VALUES
+    ('form', 'A user registration form.', json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
+    '{"name": "First name", "placeholder": "John"}, '||
+    '{"name": "Last name", "required": true, "description": "We need your last name for legal purposes."},'||
+    '{"name": "Birth date", "type": "date", "max": "2010-01-01"}]'));
+
+INSERT INTO component(name, icon, description) VALUES
+    ('chart', 'timeline', 'A component that plots data. Line, area, bar, and pie charts are all supported. Each item in the component is a data point in the graph.');
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'chart', * FROM (VALUES
+    -- top level
+    ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
+    ('type', 'The type of chart: "line", "area", "bar", "column", or "pie".', 'TEXT', TRUE, FALSE),
+    ('time', 'Whether the x-axis represents time. If set to true, the values will be formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
+    ('ymin', 'The minimal value for the y-axis.', 'NUMBER', TRUE, TRUE),
+    ('ymax', 'The maximum value for the y-axis.', 'NUMBER', TRUE, TRUE),
+    ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
+    ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
+    ('logarithmic', 'Display the y-axis in logarithmic scale..', 'BOOLEAN', TRUE, TRUE),
+    -- item level
+    ('x', 'The value of the point on the horizontal axis', 'NUMBER', FALSE, FALSE),
+    ('y', 'The value of the point on the vertical axis', 'NUMBER', FALSE, FALSE),
+    ('label', 'An alias for parameter "x"', 'NUMBER', FALSE, TRUE),
+    ('value', 'An alias for parameter "y"', 'NUMBER', FALSE, TRUE),
+    ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
+);
+INSERT INTO example(component, description, properties) VALUES
+    ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true}, '||
+    '{"label": "Yes", "value": 65}, '||
+    '{"label": "No", "value": 35}]')),
+    ('chart', 'An area chart', json('[{"component":"chart", "title": "Syracuse", "type": "area"}, '||
+    '{"x":0,"y":15},{"x":1,"y":46},{"x":2,"y":23},{"x":3,"y":70},{"x":4,"y":35},{"x":5,"y":106}]')),
+    ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true}, '||
+    '{"series": "Marketing", "x": 2021, "value": 35}, '||
+    '{"series": "Marketing", "x": 2022, "value": 15}, '||
+    '{"series": "Human resources", "x": 2021, "value": 30}, '||
+    '{"series": "Human resources", "x": 2022, "value": 55}]'));
+
 
 INSERT INTO component(name, icon, description) VALUES
     ('dynamic', 'repeat', 'A special component that can be used to render other components, the number and properties of which are not known in advance.');
@@ -141,7 +194,7 @@ select
     json_array(
         json_object('component', 'code'),
         json_object(
-            'title', 'Example',
+            'title', 'Example ' || (row_number() OVER ()),
             'description', description,
             'contents', (
                 select
