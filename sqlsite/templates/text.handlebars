@@ -1,21 +1,22 @@
+{{{~html~}}}
 {{#if title}}
     <h1 id="{{id}}" class="my-3 {{#if (default center true)}}text-center{{/if}}">{{title}}</h1>
 {{/if}}
 <p class="mx-auto" style="max-width: {{default width 80}}ch" {{#if (not title)}}id="{{id}}"{{/if}}>
     {{contents}}
-    {{#each_row}}
-        {{#if link}}
+    {{~#each_row~}}
+        {{~#if link~}}
         <a href="{{link}}">{{#delay}}</a>{{/delay}}
-        {{/if}}
-        {{#if code}}
+        {{~/if~}}
+        {{~#if code~}}
         <code>{{#delay}}</code>{{/delay}}
-        {{/if}}
+        {{~/if~}}
         <span class="
             {{~#if color}}text-{{color}} {{/if~}}
             {{~#if bold}}fw-bold {{/if~}}
             {{~#if italics}}fst-italic {{/if~}}
             {{~#if underline}}text-decoration-underline {{/if~}}
         ">{{contents}}</span>
-        {{flush_delayed}}
-    {{/each_row}}
+        {{~flush_delayed~}}
+    {{~/each_row~}}
 </p>
