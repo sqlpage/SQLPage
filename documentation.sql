@@ -204,7 +204,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]'));
 
 INSERT INTO component(name, icon, description) VALUES
-    ('shell', 'file-dots', 'Personalize the "shell" surrounding your page contents. You can set properties that relate to the entire page instead of a single component in it. This component should never be manually selected with "SELECT ''shell'' as component". Instead, its top-level properties should be included in the very first select statement in your SQL file.');
+    ('shell', 'file-dots', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page. This component should never be manually selected with "SELECT ''shell'' as component". Instead, its top-level properties should be included directly in the very first SELECT statement in your SQL file.');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'shell', * FROM (VALUES
     -- top level
