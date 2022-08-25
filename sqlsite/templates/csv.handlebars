@@ -1,0 +1,24 @@
+<div class="my-2">
+    <a href="data:text/csv;charset=UTF-8,
+{{~#each_row~}}
+        {{~#if (eq @row_index 0)~}}{{! header }}
+            {{~#each this~}}
+                %22{{! %22 = double-quote}}
+                {{~@key~}}
+                %22
+                {{~default ../separator ","~}}
+            {{~/each~}}
+        %0A{{! %0A = newline}}
+        {{~/if~}}
+        {{~#each this~}}
+        %22{{this}}%22{{default ../separator ","}}
+        {{~/each~}}
+    %0A
+{{~/each_row~}}
+"
+       download="{{default filename title}}.csv"
+       class="btn btn-{{default color "primary"}}">
+        <i class="icon ti ti-{{default icon "download"}}"></i>
+        {{default title "Download"}}
+    </a>
+</div>

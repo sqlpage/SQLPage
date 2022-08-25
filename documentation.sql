@@ -157,6 +157,40 @@ INSERT INTO example(component, description, properties) VALUES
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
     '{"series": "Human resources", "x": 2022, "value": 55}]'));
 
+INSERT INTO component(name, icon, description) VALUES
+    ('table', 'table', 'A table with optional filtering and sorting. Unlike most others, this component does not have a fixed set of item properties, any property that is used will be rendered directly as a column in the table.');
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'table', * FROM (VALUES
+    -- top level
+    ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
+    ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE)
+);
+
+INSERT INTO example(component, description, properties) VALUES
+    ('table', 'A table of users with filtering and sorting.',
+        json('[{"component":"table", "sort":true, "search":true}, '||
+        '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
+        '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]'));
+
+
+INSERT INTO component(name, icon, description) VALUES
+    ('csv', 'download', 'A button that lets the user download data as a CSV file. Each column from the items in the component will map to a column in the resulting CSV.');
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'csv', * FROM (VALUES
+    -- top level
+    ('separator', 'How individual values should be separated in the CSV. "," by default, set it to "\t" for tab-separated values.', 'TEXT', TRUE, TRUE),
+    ('title', 'The text displayed on the download button.', 'TEXT', TRUE, FALSE),
+    ('filename', 'The name of the file that should be downloaded (without the extension).', 'TEXT', TRUE, TRUE),
+    ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'TEXT', TRUE, TRUE),
+    ('color', 'Color of the button', 'TEXT', TRUE, TRUE)
+);
+
+INSERT INTO example(component, description, properties) VALUES
+    ('csv', 'CSV download button',
+        json('[{"component":"csv", "title": "Download my data", "filename": "people", "icon": "file-download", "color": "green"}, '||
+        '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
+        '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]'));
+
 
 INSERT INTO component(name, icon, description) VALUES
     ('dynamic', 'repeat', 'A special component that can be used to render other components, the number and properties of which are not known in advance.');
@@ -169,11 +203,27 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties) VALUES
     ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]'));
 
+INSERT INTO component(name, icon, description) VALUES
+    ('shell', 'file-dots', 'Personalize the "shell" surrounding your page contents. You can set properties that relate to the entire page instead of a single component in it. This component should never be manually selected with "SELECT ''shell'' as component". Instead, its top-level properties should be included in the very first select statement in your SQL file.');
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'shell', * FROM (VALUES
+    -- top level
+    ('title', 'The title of your page. Will be shown in a top bar above the page contents. Also usually displayed by web browsers as the name of the web page''s tab.', 'TEXT', TRUE, TRUE),
+    ('description', 'A description of the page. It can be displayed by search engines when your page appears in their results.', 'TEXT', TRUE, TRUE),
+    ('link', 'The target of the link in the top navigation bar.', 'URL', TRUE, TRUE),
+    ('image', 'The URL of an image to display next to the page title.', 'URL', TRUE, TRUE),
+    ('norobot', 'Forbid robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE)
+);
+
+INSERT INTO example(component, description, properties) VALUES
+    ('shell', 'This example contains the values used for the shell of the page you are currently viewing.',
+     json('[{"title": "SQLPage documentation", "link": "/", "lang": "en-US", "description": "Documentation for the SQLPage low-code web application framework."}]'));
+
 select
     'SQLPage documentation' as title,
     '/' as link,
-    'en' as lang,
-    'SQLPage documentation' as description;
+    'en-US' as lang,
+    'Documentation for the SQLPage low-code web application framework.' as description;
 
 
 select 'text' as component, 'SQLPage documentation' as title;
