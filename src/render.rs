@@ -317,21 +317,28 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     }
 }
 
-#[test]
-fn test_split_template_render() -> anyhow::Result<()> {
-    let reg = Handlebars::new();
-    let template = Template::compile(
-        "Hello {{name}} !\
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::templates::split_template;
+    use handlebars::Template;
+
+    #[test]
+    fn test_split_template_render() -> anyhow::Result<()> {
+        let reg = Handlebars::new();
+        let template = Template::compile(
+            "Hello {{name}} !\
         {{#each_row}} ({{x}} : {{../name}}) {{/each_row}}\
         Goodbye {{name}}",
-    )?;
-    let split = split_template(template);
-    let mut output = Vec::new();
-    let mut rdr = SplitTemplateRenderer::new(&split, &reg);
-    rdr.render_start(&mut output, json!({"name": "SQL"}))?;
-    rdr.render_item(&mut output, json!({"x": 1}))?;
-    rdr.render_item(&mut output, json!({"x": 2}))?;
-    rdr.render_end(&mut output)?;
-    assert_eq!(output, b"Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
-    Ok(())
+        )?;
+        let split = split_template(template);
+        let mut output = Vec::new();
+        let mut rdr = SplitTemplateRenderer::new(&split, &reg);
+        rdr.render_start(&mut output, json!({"name": "SQL"}))?;
+        rdr.render_item(&mut output, json!({"x": 1}))?;
+        rdr.render_item(&mut output, json!({"x": 2}))?;
+        rdr.render_end(&mut output)?;
+        assert_eq!(output, b"Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
+        Ok(())
+    }
 }
