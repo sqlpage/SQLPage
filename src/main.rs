@@ -1,11 +1,12 @@
 mod http;
 mod render;
+mod templates;
 
-use render::AllTemplates;
 use sqlx::any::AnyConnectOptions;
 use sqlx::migrate::Migrator;
 use sqlx::{AnyPool, ConnectOptions};
 use std::path::Path;
+use templates::AllTemplates;
 
 const WEB_ROOT: &str = ".";
 const CONFIG_DIR: &str = "sqlsite";

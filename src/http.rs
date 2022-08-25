@@ -11,14 +11,14 @@ use actix_web::{
 use anyhow::{bail, Context};
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
+use serde::ser::SerializeMap;
+use serde::{Serialize, Serializer};
+use serde_json::json;
 use sqlx::any::AnyArguments;
 use sqlx::{Arguments, Column, Database, Decode, Row};
 use std::io::Write;
 use std::mem;
 use std::path::Component;
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeMap;
-use serde_json::json;
 use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -121,20 +121,19 @@ async fn stream_response(
     Ok(())
 }
 
-
 struct SerializeRow<R: Row>(R);
 
 impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-    where
-        usize: sqlx::ColumnIndex<R>,
-        &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-        f64: sqlx::Decode<'r, <R as Row>::Database>,
-        i64: sqlx::Decode<'r, <R as Row>::Database>,
-        bool: sqlx::Decode<'r, <R as Row>::Database>,
+where
+    usize: sqlx::ColumnIndex<R>,
+    &'r str: sqlx::Decode<'r, <R as Row>::Database>,
+    f64: sqlx::Decode<'r, <R as Row>::Database>,
+    i64: sqlx::Decode<'r, <R as Row>::Database>,
+    bool: sqlx::Decode<'r, <R as Row>::Database>,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         use sqlx::{TypeInfo, ValueRef};
         let columns = self.0.columns();
@@ -192,7 +191,8 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         "client_ip": client_ip,
         "query": query,
         "form": form
-    }).to_string()
+    })
+    .to_string()
 }
 
 async fn render_sql(
