@@ -1,3 +1,4 @@
+use crate::database::{stream_query_results, DbItem, SerializeRow};
 use crate::render::RenderContext;
 use crate::{AppState, CONFIG_DIR, WEB_ROOT};
 use actix_web::dev::Payload;
@@ -11,11 +12,7 @@ use actix_web::{
 use anyhow::{bail, Context};
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
-use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
 use serde_json::json;
-use sqlx::any::AnyArguments;
-use sqlx::{Arguments, Column, Database, Decode, Row};
 use std::io::Write;
 use std::mem;
 use std::path::Component;
@@ -38,12 +35,13 @@ impl ResponseWriter {
             buffer: Vec::new(),
         }
     }
-    fn close_with_error(&mut self, msg: String) {
+    async fn close_with_error(&mut self, msg: String) {
         if !self.response_bytes.is_closed() {
-            let _ = self.flush();
+            let _ = self.async_flush().await;
             let _ = self
                 .response_bytes
-                .try_send(Err(ErrorInternalServerError(msg)));
+                .send(Err(ErrorInternalServerError(msg)))
+                .await;
         }
     }
 
@@ -92,21 +90,22 @@ async fn stream_response(
     response_bytes: ResponseWriter,
 ) -> anyhow::Result<()> {
     let app_state: &web::Data<AppState> = req.app_data().context("no app data in render")?;
-    let sql = std::str::from_utf8(&sql_bytes)?;
-    let mut arguments = AnyArguments::default();
-    arguments.add(request_argument_json(&req, payload).await);
-    let mut stream = sqlx::query_with(sql, arguments).fetch_many(&app_state.db);
+    let req_param = request_argument_json(&req, payload).await;
+    let mut stream = stream_query_results(&app_state.db, &sql_bytes, &req_param);
 
     let mut renderer = RenderContext::new(app_state, response_bytes);
     while let Some(item) = stream.next().await {
         let render_result = match item {
-            Ok(sqlx::Either::Left(result)) => renderer.finish_query(result).await,
-            Ok(sqlx::Either::Right(row)) => renderer.handle_row(&json!(SerializeRow(row))),
-            Err(e) => renderer.handle_error(&e),
+            DbItem::FinishedQuery(result) => renderer.finish_query(result).await,
+            DbItem::Row(row) => renderer.handle_row(&json!(SerializeRow(row))),
+            DbItem::Error(e) => renderer.handle_error(&e),
         };
         if let Err(e) = render_result {
             if let Err(nested_err) = renderer.handle_error(&e.root_cause()) {
-                renderer.close().close_with_error(nested_err.to_string());
+                renderer
+                    .close()
+                    .close_with_error(nested_err.to_string())
+                    .await;
                 bail!(
                     "An error occurred while trying to display an other error. \
                     \nRoot error: {e}\n
@@ -119,52 +118,6 @@ async fn stream_response(
     renderer.close().async_flush().await?;
     log::debug!("Successfully finished rendering the page");
     Ok(())
-}
-
-struct SerializeRow<R: Row>(R);
-
-impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-where
-    usize: sqlx::ColumnIndex<R>,
-    &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-    f64: sqlx::Decode<'r, <R as Row>::Database>,
-    i64: sqlx::Decode<'r, <R as Row>::Database>,
-    bool: sqlx::Decode<'r, <R as Row>::Database>,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use sqlx::{TypeInfo, ValueRef};
-        let columns = self.0.columns();
-        let mut map = serializer.serialize_map(Some(columns.len()))?;
-        for col in columns {
-            let key = col.name();
-            match self.0.try_get_raw(col.ordinal()) {
-                Ok(raw_value) if !raw_value.is_null() => match raw_value.type_info().name() {
-                    "REAL" | "FLOAT" | "NUMERIC" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
-                        map_serialize::<_, _, f64>(&mut map, key, raw_value)
-                    }
-                    "INT" | "INTEGER" | "INT8" | "INT2" | "INT4" | "TINYINT" | "SMALLINT"
-                    | "BIGINT" => map_serialize::<_, _, i64>(&mut map, key, raw_value),
-                    "BOOL" | "BOOLEAN" => map_serialize::<_, _, bool>(&mut map, key, raw_value),
-                    // Deserialize as a string by default
-                    _ => map_serialize::<_, _, &str>(&mut map, key, raw_value),
-                },
-                _ => map.serialize_entry(key, &()), // Serialize null
-            }?
-        }
-        map.end()
-    }
-}
-
-fn map_serialize<'r, M: SerializeMap, DB: Database, T: Decode<'r, DB> + Serialize>(
-    map: &mut M,
-    key: &str,
-    raw_value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
-) -> Result<(), M::Error> {
-    let val = T::decode(raw_value).map_err(serde::ser::Error::custom)?;
-    map.serialize_entry(key, &val)
 }
 
 async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> String {
