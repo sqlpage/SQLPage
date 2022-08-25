@@ -1,3 +1,4 @@
+mod database;
 mod http;
 mod render;
 mod templates;
