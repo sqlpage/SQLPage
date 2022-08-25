@@ -187,13 +187,12 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         .await
         .map(|form| form.into_inner())
         .unwrap_or_default();
-    serde_json::json!({
+    json!({
         "headers": headers,
         "client_ip": client_ip,
         "query": query,
         "form": form
-    })
-        .to_string()
+    }).to_string()
 }
 
 async fn render_sql(
