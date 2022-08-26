@@ -1,6 +1,7 @@
 use futures_util::stream::{self, Stream};
 use futures_util::StreamExt;
 use std::future::ready;
+use serde_json::{Map, Value};
 
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow};
 use sqlx::{Arguments, Column, Decode, Either, Row};
@@ -33,10 +34,9 @@ pub enum DbItem {
 }
 
 
-pub fn row_to_json(row: AnyRow) -> serde_json::Value {
+pub fn row_to_json(row: AnyRow) -> Value {
     use sqlx::{TypeInfo, ValueRef};
-    use serde_json::{Value, Map};
-    use Value::{Null, Object, Array};
+    use Value::{Null, Object};
 
     let columns = row.columns();
     let mut map = Map::new();
@@ -63,18 +63,24 @@ pub fn row_to_json(row: AnyRow) -> serde_json::Value {
                 Null
             }
         };
-        use serde_json::map::Entry::*;
-        match map.entry(key) {
-            Vacant(vacant) => { vacant.insert(value); }
-            Occupied(mut old_entry) => match old_entry.get_mut() {
-                Array(old_array) => { old_array.push(value) }
-                old_scalar => {
-                    *old_scalar = Array(vec![old_scalar.take(), value])
-                }
+        map = add_value_to_map(map, (key, value));
+    }
+    Object(map)
+}
+
+pub fn add_value_to_map(mut map: Map<String, Value>, (key, value): (String, Value)) -> Map<String, Value> {
+    use Value::{Array};
+    use serde_json::map::Entry::*;
+    match map.entry(key) {
+        Vacant(vacant) => { vacant.insert(value); }
+        Occupied(mut old_entry) => match old_entry.get_mut() {
+            Array(old_array) => { old_array.push(value) }
+            old_scalar => {
+                *old_scalar = Array(vec![old_scalar.take(), value])
             }
         }
     }
-    Object(map)
+    map
 }
 
 #[actix_web::test]
