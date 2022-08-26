@@ -1,17 +1,15 @@
 use futures_util::stream::{self, Stream};
 use futures_util::StreamExt;
-use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
 use std::future::ready;
 
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow};
-use sqlx::{Arguments, Column, Database, Decode, Either, Row};
+use sqlx::{Arguments, Column, Decode, Either, Row};
 
 pub fn stream_query_results<'a>(
     db: &'a sqlx::AnyPool,
     sql_source: &'a [u8],
     argument: &'a str,
-) -> impl Stream<Item = DbItem> + 'a {
+) -> impl Stream<Item=DbItem> + 'a {
     let mut arguments = AnyArguments::default();
     arguments.add(argument);
     match std::str::from_utf8(sql_source) {
@@ -21,11 +19,11 @@ pub fn stream_query_results<'a>(
             stream::once(ready(Err(error))).boxed()
         }
     }
-    .map(|res| match res {
-        Ok(Either::Right(r)) => DbItem::Row(r),
-        Ok(Either::Left(r)) => DbItem::FinishedQuery(r),
-        Err(e) => DbItem::Error(e),
-    })
+        .map(|res| match res {
+            Ok(Either::Right(r)) => DbItem::Row(r),
+            Ok(Either::Left(r)) => DbItem::FinishedQuery(r),
+            Err(e) => DbItem::Error(e),
+        })
 }
 
 pub enum DbItem {
@@ -34,48 +32,38 @@ pub enum DbItem {
     Error(sqlx::Error),
 }
 
-pub struct SerializeRow<R: Row>(pub R);
 
-impl<'r, R: Row> Serialize for &'r SerializeRow<R>
-where
-    usize: sqlx::ColumnIndex<R>,
-    &'r str: sqlx::Decode<'r, <R as Row>::Database>,
-    f64: sqlx::Decode<'r, <R as Row>::Database>,
-    i64: sqlx::Decode<'r, <R as Row>::Database>,
-    bool: sqlx::Decode<'r, <R as Row>::Database>,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use sqlx::{TypeInfo, ValueRef};
-        let columns = self.0.columns();
-        let mut map = serializer.serialize_map(Some(columns.len()))?;
-        for col in columns {
-            let key = col.name();
-            match self.0.try_get_raw(col.ordinal()) {
-                Ok(raw_value) if !raw_value.is_null() => match raw_value.type_info().name() {
-                    "REAL" | "FLOAT" | "NUMERIC" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
-                        map_serialize::<_, _, f64>(&mut map, key, raw_value)
-                    }
-                    "INT" | "INTEGER" | "INT8" | "INT2" | "INT4" | "TINYINT" | "SMALLINT"
-                    | "BIGINT" => map_serialize::<_, _, i64>(&mut map, key, raw_value),
-                    "BOOL" | "BOOLEAN" => map_serialize::<_, _, bool>(&mut map, key, raw_value),
-                    // Deserialize as a string by default
-                    _ => map_serialize::<_, _, &str>(&mut map, key, raw_value),
-                },
-                _ => map.serialize_entry(key, &()), // Serialize null
-            }?
-        }
-        map.end()
+pub fn row_to_json(row: AnyRow) -> serde_json::Value {
+    use sqlx::{TypeInfo, ValueRef};
+    use serde_json::{Value, Map};
+    use Value::{Null, Object};
+
+    let columns = row.columns();
+    let mut map = Map::new();
+    for col in columns {
+        let key = col.name().to_string();
+        let value: Value = match row.try_get_raw(col.ordinal()) {
+            Ok(raw_value) if !raw_value.is_null() => match raw_value.type_info().name() {
+                "REAL" | "FLOAT" | "NUMERIC" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
+                    <f64 as Decode<sqlx::any::Any>>::decode(raw_value).unwrap_or(f64::NAN).into()
+                }
+                "INT" | "INTEGER" | "INT8" | "INT2" | "INT4" | "TINYINT" | "SMALLINT" | "BIGINT" => {
+                    <i64 as Decode<sqlx::any::Any>>::decode(raw_value).unwrap_or_default().into()
+                }
+                "BOOL" | "BOOLEAN" => <bool as Decode<sqlx::any::Any>>::decode(raw_value).unwrap_or_default().into(),
+                "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => <&[u8] as Decode<sqlx::any::Any>>::decode(raw_value)
+                    .and_then(|rv| serde_json::from_slice::<Value>(rv).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Sync + Send>))
+                    .unwrap_or_default(),
+                // Deserialize as a string by default
+                _ => <String as Decode<sqlx::any::Any>>::decode(raw_value).unwrap_or_default().into(),
+            },
+            Ok(_null) => Null,
+            Err(e) => {
+                log::warn!("Unable to extract value from row: {:?}", e);
+                Null
+            }
+        };
+        map.insert(key, value);
     }
-}
-
-fn map_serialize<'r, M: SerializeMap, DB: Database, T: Decode<'r, DB> + Serialize>(
-    map: &mut M,
-    key: &str,
-    raw_value: <DB as sqlx::database::HasValueRef<'r>>::ValueRef,
-) -> Result<(), M::Error> {
-    let val = T::decode(raw_value).map_err(serde::ser::Error::custom)?;
-    map.serialize_entry(key, &val)
+    Object(map)
 }

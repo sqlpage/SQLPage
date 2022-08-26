@@ -1,4 +1,4 @@
-use crate::database::{stream_query_results, DbItem, SerializeRow};
+use crate::database::{stream_query_results, DbItem, row_to_json};
 use crate::render::RenderContext;
 use crate::{AppState, CONFIG_DIR, WEB_ROOT};
 use actix_web::dev::Payload;
@@ -97,7 +97,7 @@ async fn stream_response(
     while let Some(item) = stream.next().await {
         let render_result = match item {
             DbItem::FinishedQuery(result) => renderer.finish_query(result).await,
-            DbItem::Row(row) => renderer.handle_row(&json!(SerializeRow(row))),
+            DbItem::Row(row) => renderer.handle_row(&row_to_json(row)),
             DbItem::Error(e) => renderer.handle_error(&e),
         };
         if let Err(e) = render_result {
