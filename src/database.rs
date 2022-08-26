@@ -36,7 +36,7 @@ pub enum DbItem {
 pub fn row_to_json(row: AnyRow) -> serde_json::Value {
     use sqlx::{TypeInfo, ValueRef};
     use serde_json::{Value, Map};
-    use Value::{Null, Object};
+    use Value::{Null, Object, Array};
 
     let columns = row.columns();
     let mut map = Map::new();
@@ -63,11 +63,36 @@ pub fn row_to_json(row: AnyRow) -> serde_json::Value {
                 Null
             }
         };
-        let entry = map.entry(key).or_insert(Value::Array(Vec::with_capacity(1)));
-        match entry {
-            Value::Array(x) => { x.push(value) }
-            old => *old = Value::Array(vec![old.take(), value])
+        use serde_json::map::Entry::*;
+        match map.entry(key) {
+            Vacant(vacant) => { vacant.insert(value); }
+            Occupied(mut old_entry) => match old_entry.get_mut() {
+                Array(old_array) => { old_array.push(value) }
+                old_scalar => {
+                    *old_scalar = Array(vec![old_scalar.take(), value])
+                }
+            }
         }
     }
     Object(map)
+}
+
+#[actix_web::test]
+async fn test_row_to_json() -> anyhow::Result<()> {
+    use sqlx::Connection;
+    let mut c = sqlx::AnyConnection::connect("sqlite://:memory:").await?;
+    let row = sqlx::query("SELECT \
+        3.14159 as one_value, \
+        1 as two_values, \
+        2 as two_values, \
+        'x' as three_values, \
+        'y' as three_values, \
+        'z' as three_values \
+    ").fetch_one(&mut c).await?;
+    assert_eq!(row_to_json(row), serde_json::json!({
+        "one_value": 3.14159,
+        "two_values": [1,2],
+        "three_values": ["x","y","z"],
+    }));
+    Ok(())
 }
