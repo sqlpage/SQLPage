@@ -140,6 +140,9 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         .map(|form| form.into_inner())
         .unwrap_or_default()
         .into_iter()
+        .map(|(key, value)|
+            if key.ends_with("[]") { (key, vec![value].into()) } else { (key, value) }
+        )
         .fold(serde_json::Map::new(), add_value_to_map);
     json!({
         "headers": headers,
