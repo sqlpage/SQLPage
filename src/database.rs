@@ -63,7 +63,11 @@ pub fn row_to_json(row: AnyRow) -> serde_json::Value {
                 Null
             }
         };
-        map.insert(key, value);
+        let entry = map.entry(key).or_insert(Value::Array(Vec::with_capacity(1)));
+        match entry {
+            Value::Array(x) => { x.push(value) }
+            old => *old = Value::Array(vec![old.take(), value])
+        }
     }
     Object(map)
 }
