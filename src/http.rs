@@ -1,4 +1,4 @@
-use crate::database::{stream_query_results, DbItem, row_to_json};
+use crate::database::{stream_query_results, DbItem, row_to_json, add_value_to_map};
 use crate::render::RenderContext;
 use crate::{AppState, CONFIG_DIR, WEB_ROOT};
 use actix_web::dev::Payload;
@@ -135,17 +135,19 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         .map(|q| q.into_inner())
         .unwrap_or_default();
     let client_ip = req.peer_addr().map(|addr| addr.ip());
-    let form = Form::<serde_json::Value>::from_request(req, &mut payload)
+    let form = Form::<Vec<(String, serde_json::Value)>>::from_request(req, &mut payload)
         .await
         .map(|form| form.into_inner())
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .fold(serde_json::Map::new(), add_value_to_map);
     json!({
         "headers": headers,
         "client_ip": client_ip,
         "query": query,
         "form": form
     })
-    .to_string()
+        .to_string()
 }
 
 async fn render_sql(
