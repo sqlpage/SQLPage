@@ -9,10 +9,10 @@
             {{#each_row}}
                 <div class="datagrid-item">
                     <div class="datagrid-title">{{title}}</div>
-                    <div class="datagrid-content">
+                    <div class="datagrid-content {{#if active}}fw-bold{{/if}}">
                         {{#if link}}<a href="{{link}}">{{/if}}
                         {{#if color}}
-                        <span class="status status-{{color}}">
+                        <span class="status status-{{color}} {{#if active}}fw-bold{{/if}}">
                         {{/if}}
                         {{#if icon}}
                             <i class="icon ti ti-{{icon}}"></i>
@@ -26,6 +26,9 @@
                         </span>
                         {{/if}}
                         {{#if link}}</a>{{/if}}
+                        {{#if footer}}
+                            <small class="text-muted d-block">{{footer}}</small>
+                        {{/if}}
                     </div>
                 </div>
             {{/each_row}}
