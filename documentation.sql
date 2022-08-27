@@ -69,6 +69,33 @@ INSERT INTO example(component, description, properties) VALUES
             '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
             '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "active": true, "footer": "Owned by the Wikimedia Foundation"}]'));
 
+
+INSERT INTO component(name, icon, description) VALUES
+    ('datagrid', 'grid-dots', 'Display small pieces of information in a clear and readable way.');
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'datagrid', * FROM (VALUES
+    -- top level
+    ('title', 'Text header at the top of the list of cards.', 'TEXT', TRUE, TRUE),
+    -- item level
+    ('title', 'Name of the card, displayed at the top.', 'TEXT', FALSE, FALSE),
+    ('description', 'The body of the card.', 'TEXT', FALSE, TRUE),
+    ('footer', 'Muted text to display at the bottom of the card.', 'TEXT', FALSE, TRUE),
+    ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
+    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the card.', 'TEXT', FALSE, TRUE),
+    ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'TEXT', FALSE, TRUE),
+    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+);
+
+INSERT INTO example(component, description, properties) VALUES
+    ('datagrid', 'Just some sections of information.', json('[{"component":"datagrid"},{"title":"Language","description":"SQL"},{"title":"Creation date","description":"1974"}, {"title":"Language family","description":"Query language"}]')),
+    ('datagrid', 'A beautiful data grid with nice colors and icons.',
+            json('[{"component":"datagrid", "title":"User"}, '||
+            '{"title": "Pseudo", "description": "lovasoa"},' ||
+            '{"title": "Status", "description": "Active", "color": "green"},' ||
+            '{"title": "Email Status", "description": "Validated", "icon": "check"},' ||
+            '{"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/"},' ||
+            '{"title":"Search engine", "link":"https://google.com", "description": "Google", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
+            '{"title":"Encyclopedia", "link":"https://wikipedia.org", "description": "Wikipedia", "color": "blue", "icon":"world", "active": true, "footer": "Owned by the Wikimedia Foundation"}]'));
+
 INSERT INTO component(name, icon, description) VALUES
     ('text', 'align-left', 'A paragraph of text. The entire component will render as a single paragraph, with each item being rendered as a span of text inside it, the styling of which can be customized using parameters.');
 
@@ -204,7 +231,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]'));
 
 INSERT INTO component(name, icon, description) VALUES
-    ('shell', 'file-dots', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page. This component should never be manually selected with "SELECT ''shell'' as component". Instead, its top-level properties should be included directly in the very first SELECT statement in your SQL file.');
+    ('shell', 'layout-navbar', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page. This component should never be manually selected with "SELECT ''shell'' as component". Instead, its top-level properties should be included directly in the very first SELECT statement in your SQL file.');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'shell', * FROM (VALUES
     -- top level
