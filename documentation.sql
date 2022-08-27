@@ -71,17 +71,17 @@ INSERT INTO example(component, description, properties) VALUES
 
 
 INSERT INTO component(name, icon, description) VALUES
-    ('datagrid', 'grid-dots', 'Display small pieces of information in a clear and readable way.');
+    ('datagrid', 'grid-dots', 'Display small pieces of information in a clear and readable way. Each item has a name and is associated with a value.');
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'datagrid', * FROM (VALUES
     -- top level
-    ('title', 'Text header at the top of the list of cards.', 'TEXT', TRUE, TRUE),
+    ('title', 'Text header at the top of the data grid.', 'TEXT', TRUE, TRUE),
     -- item level
-    ('title', 'Name of the card, displayed at the top.', 'TEXT', FALSE, FALSE),
-    ('description', 'The body of the card.', 'TEXT', FALSE, TRUE),
-    ('footer', 'Muted text to display at the bottom of the card.', 'TEXT', FALSE, TRUE),
-    ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
-    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the card.', 'TEXT', FALSE, TRUE),
-    ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'TEXT', FALSE, TRUE),
+    ('title', 'Name of the piece of information.', 'TEXT', FALSE, FALSE),
+    ('description', 'Value to display below the name.', 'TEXT', FALSE, TRUE),
+    ('footer', 'Muted text to display below the value.', 'TEXT', FALSE, TRUE),
+    ('link', 'A target URL to which the user should be taken when they click on the value.', 'URL', FALSE, TRUE),
+    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the value.', 'TEXT', FALSE, TRUE),
+    ('color', 'If set to a color name, the value will be displayed in a pill of that color.', 'TEXT', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 );
 
@@ -91,10 +91,10 @@ INSERT INTO example(component, description, properties) VALUES
             json('[{"component":"datagrid", "title":"User"}, '||
             '{"title": "Pseudo", "description": "lovasoa"},' ||
             '{"title": "Status", "description": "Active", "color": "green"},' ||
-            '{"title": "Email Status", "description": "Validated", "icon": "check"},' ||
+            '{"title": "Email Status", "description": "Validated", "icon": "check", "active": true},' ||
             '{"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/"},' ||
             '{"title":"Search engine", "link":"https://google.com", "description": "Google", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
-            '{"title":"Encyclopedia", "link":"https://wikipedia.org", "description": "Wikipedia", "color": "blue", "icon":"world", "active": true, "footer": "Owned by the Wikimedia Foundation"}]'));
+            '{"title":"Encyclopedia", "link":"https://wikipedia.org", "description": "Wikipedia", "color": "blue", "icon":"world", "footer": "Owned by the Wikimedia Foundation"}]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('text', 'align-left', 'A paragraph of text. The entire component will render as a single paragraph, with each item being rendered as a span of text inside it, the styling of which can be customized using parameters.');
