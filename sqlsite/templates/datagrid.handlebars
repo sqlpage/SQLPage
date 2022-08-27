@@ -1,0 +1,34 @@
+<div class="card my-2">
+    {{#if title}}
+        <div class="card-header">
+            <h2 class="card-title">{{title}}</h2>
+        </div>
+    {{/if}}
+    <div class="card-body">
+        <div class="datagrid">
+            {{#each_row}}
+                <div class="datagrid-item">
+                    <div class="datagrid-title">{{title}}</div>
+                    <div class="datagrid-content">
+                        {{#if link}}<a href="{{link}}">{{/if}}
+                        {{#if color}}
+                        <span class="status status-{{color}}">
+                        {{/if}}
+                        {{#if icon}}
+                            <i class="icon ti ti-{{icon}}"></i>
+                        {{/if}}
+                        {{#if description}}
+                            {{description}}
+                        {{else}}
+                            –
+                        {{/if}}
+                        {{#if color}}
+                        </span>
+                        {{/if}}
+                        {{#if link}}</a>{{/if}}
+                    </div>
+                </div>
+            {{/each_row}}
+        </div>
+    </div>
+</div>
