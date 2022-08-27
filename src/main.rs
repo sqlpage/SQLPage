@@ -10,9 +10,9 @@ use std::path::Path;
 use templates::AllTemplates;
 
 const WEB_ROOT: &str = ".";
-const CONFIG_DIR: &str = "sqlsite";
-const TEMPLATES_DIR: &str = "sqlsite/templates";
-const MIGRATIONS_DIR: &str = "sqlsite/migrations";
+const CONFIG_DIR: &str = "sqlpage";
+const TEMPLATES_DIR: &str = "sqlpage/templates";
+const MIGRATIONS_DIR: &str = "sqlpage/migrations";
 
 pub struct AppState {
     db: AnyPool,

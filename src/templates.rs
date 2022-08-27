@@ -149,12 +149,12 @@ impl AllTemplates {
         };
         this.register_split(
             "shell",
-            include_str!("../sqlsite/templates/shell.handlebars"),
+            include_str!("../sqlpage/templates/shell.handlebars"),
         )
         .expect("Embedded shell template contains an error");
         this.register_split(
             "error",
-            include_str!("../sqlsite/templates/error.handlebars"),
+            include_str!("../sqlpage/templates/error.handlebars"),
         )
         .expect("Embedded shell template contains an error");
         this.register_dir();
