@@ -155,7 +155,7 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         "query": query,
         "form": form
     })
-        .to_string()
+    .to_string()
 }
 
 async fn render_sql(
