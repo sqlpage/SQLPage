@@ -2,6 +2,7 @@ mod database;
 mod http;
 mod render;
 mod templates;
+mod utils;
 
 use sqlx::any::AnyConnectOptions;
 use sqlx::migrate::Migrator;
@@ -17,6 +18,9 @@ const MIGRATIONS_DIR: &str = "sqlpage/migrations";
 pub struct AppState {
     db: AnyPool,
     all_templates: AllTemplates,
+}
+
+pub struct Config {
     listen_on: std::net::SocketAddr,
 }
 
@@ -59,12 +63,9 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting server on {}", listen_on);
 
     let all_templates = AllTemplates::init();
-    let state = AppState {
-        db,
-        listen_on,
-        all_templates,
-    };
-    http::run_server(state).await
+    let state = AppState { db, all_templates };
+    let config = Config { listen_on };
+    http::run_server(config, state).await
 }
 
 async fn apply_migrations(db: &AnyPool) -> anyhow::Result<()> {
