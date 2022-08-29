@@ -1,6 +1,8 @@
-# SQLpage
+# <center>SQLpage</center>
 
-SQLPage is a full-[**SQL**](https://en.wikipedia.org/wiki/SQL) webapp builder.
+[![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
+
+SQLPage is an [**SQL**](https://en.wikipedia.org/wiki/SQL)-only webapp builder.
 It is meant for data scientists, analysts, and business intelligence teams
 to build powerful data-centric applications quickly,
 without worrying about any of the traditional web programming languages and concepts.
@@ -21,13 +23,20 @@ SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
 [rust](https://en.wikipedia.org/wiki/Rust_(programming_language)).
 When it receives a request to a URL ending in `.sql`, it finds the corresponding
 SQL file, runs it on the database,
-passing it information from the web request as an SQL statement parameter.
+passing it information from the web request as SQL statement parameters.
 When the database starts returning rows for the query,
 SQLPage maps each piece of information in the row to a parameter 
 in one of its pre-defined components' templates, and streams the result back
-to the browser.
+to the user's browser.
 
-### Technologies and libraries used
+## Get started
+
+ - [Install docker](https://docs.docker.com/get-docker/)
+ - In a terminal, run the following command: `docker run -it --name sqlpage lovasoa/sqlpage --port 8080:8080 --volume "$(pwd):/var/www"`
+ - Create a file called index.sql with the contents from [this example](./index.sql) 
+ - Open https://localhost:8080 in your browser
+
+## Technologies and libraries used
 
  - [actix web](https://actix.rs/) handles HTTP requests at an incredible speed,
  - [tabler](https://preview.tabler.io) handles the styling for professional-looking clean components,
