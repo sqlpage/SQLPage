@@ -1,6 +1,7 @@
-use crate::database::{stream_query_results, DbItem, row_to_json, add_value_to_map};
+use crate::database::{row_to_json, stream_query_results, DbItem};
 use crate::render::RenderContext;
-use crate::{AppState, CONFIG_DIR, WEB_ROOT};
+use crate::utils::add_value_to_map;
+use crate::{AppState, Config, CONFIG_DIR, WEB_ROOT};
 use actix_web::dev::Payload;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::Method;
@@ -140,9 +141,13 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         .map(|form| form.into_inner())
         .unwrap_or_default()
         .into_iter()
-        .map(|(key, value)|
-            if key.ends_with("[]") { (key, vec![value].into()) } else { (key, value) }
-        )
+        .map(|(key, value)| {
+            if key.ends_with("[]") {
+                (key, vec![value].into())
+            } else {
+                (key, value)
+            }
+        })
         .fold(serde_json::Map::new(), add_value_to_map);
     json!({
         "headers": headers,
@@ -187,8 +192,8 @@ async fn postprocess_response(
     Ok(ServiceResponse::new(req, new_resp))
 }
 
-pub async fn run_server(state: AppState) -> std::io::Result<()> {
-    let listen_on = state.listen_on;
+pub async fn run_server(config: Config, state: AppState) -> std::io::Result<()> {
+    let listen_on = config.listen_on;
     let app_state = web::Data::new(state);
 
     HttpServer::new(move || {
