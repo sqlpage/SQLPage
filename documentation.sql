@@ -96,6 +96,31 @@ INSERT INTO example(component, description, properties) VALUES
             '{"title":"Search engine", "link":"https://google.com", "description": "Google", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
             '{"title":"Encyclopedia", "link":"https://wikipedia.org", "description": "Wikipedia", "color": "blue", "icon":"world", "footer": "Owned by the Wikimedia Foundation"}]'));
 
+
+INSERT INTO component(name, icon, description) VALUES
+    ('steps', 'dots-circle-horizontal', 'Guide users through multi-stage processes, displaying a clear list of previous and future steps.');
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'steps', * FROM (VALUES
+    -- top level
+    ('color', 'Color of the bars displayed between steps.', 'TEXT', TRUE, TRUE),
+    ('counter', 'Display the number of the step on top of its name.', 'TEXT', TRUE, TRUE),
+    -- item level
+    ('title', 'Name of the step.', 'TEXT', FALSE, TRUE),
+    ('description', 'Tooltip to display when the user passes their mouse over the step''s name.', 'TEXT', FALSE, TRUE),
+    ('link', 'A target URL to which the user should be taken when they click on the step.', 'URL', FALSE, TRUE),
+    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the step name.', 'TEXT', FALSE, TRUE),
+    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+);
+
+INSERT INTO example(component, description, properties) VALUES
+    ('steps', 'Online store checkout steps.', json('[{"component":"steps"},{"title":"Shopping"},{"title":"Store pickup"}, {"title":"Payment","active":true},{"title":"Review & Order"}]')),
+    ('steps', 'A progress indicator with custom color, auto-generated step numbers, icons, and description tooltips.',
+            json('[{"component":"steps", "counter": true, "color":"purple"}, '||
+            '{"title": "Registration form", "icon":"forms", "link": "https://github.com/lovasoa/sqlpage", "description": "Initial account data creation."},' ||
+            '{"title": "Email confirmation", "icon": "mail", "link": "https://sql.ophir.dev", "description": "Confirm your email by clicking on a link in a validation email."},' ||
+            '{"title": "ID verification", "description": "Checking personal information", "icon": "user", "link": "#"},' ||
+            '{"title": "Final account approval", "description": "ophir.dev", "link": "https://ophir.dev/", "icon":"eye-check", "active": true},' ||
+            '{"title":"Account creation", "icon":"check"}]'));
+
 INSERT INTO component(name, icon, description) VALUES
     ('text', 'align-left', 'A paragraph of text. The entire component will render as a single paragraph, with each item being rendered as a span of text inside it, the styling of which can be customized using parameters.');
 
