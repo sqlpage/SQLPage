@@ -1,4 +1,4 @@
-use crate::database::{row_to_json, stream_query_results, DbItem};
+use crate::database::{stream_query_results, DbItem};
 use crate::render::RenderContext;
 use crate::utils::add_value_to_map;
 use crate::{AppState, Config, CONFIG_DIR, WEB_ROOT};
@@ -97,8 +97,8 @@ async fn stream_response(
     let mut renderer = RenderContext::new(app_state, response_bytes);
     while let Some(item) = stream.next().await {
         let render_result = match item {
-            DbItem::FinishedQuery(result) => renderer.finish_query(result).await,
-            DbItem::Row(row) => renderer.handle_row(&row_to_json(row)),
+            DbItem::FinishedQuery => renderer.finish_query().await,
+            DbItem::Row(row) => renderer.handle_row(&row),
             DbItem::Error(e) => renderer.handle_error(&e),
         };
         if let Err(e) = render_result {
@@ -155,7 +155,7 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         "query": query,
         "form": form
     })
-    .to_string()
+        .to_string()
 }
 
 async fn render_sql(
