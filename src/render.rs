@@ -95,12 +95,8 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    pub async fn finish_query(&mut self, result: sqlx::any::AnyQueryResult) -> anyhow::Result<()> {
-        log::debug!(
-            "-> Query {} finished with {:?}",
-            self.current_statement,
-            result
-        );
+    pub async fn finish_query(&mut self) -> anyhow::Result<()> {
+        log::debug!("-> Query {} finished",self.current_statement);
         self.current_statement += 1;
         Ok(())
     }
