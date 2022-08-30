@@ -2,3 +2,6 @@
 site.db
 docs/
 README.md
+Dockerfile
+.dockerignore
+.github/
