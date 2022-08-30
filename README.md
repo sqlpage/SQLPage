@@ -32,7 +32,7 @@ to the user's browser.
 ## Get started
 
  - [Install docker](https://docs.docker.com/get-docker/)
- - In a terminal, run the following command: `docker run -it --name sqlpage lovasoa/sqlpage --port 8080:8080 --volume "$(pwd):/var/www"`
+ - In a terminal, run the following command: `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/sqlpage`
  - Create a file called index.sql with the contents from [this example](./index.sql) 
  - Open https://localhost:8080 in your browser
 
