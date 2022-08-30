@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - 'main'
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
   docker:
@@ -26,6 +28,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: lovasoa/sqlsite:latest
+          tags: lovasoa/sqlsite:latest,lovasoa/sqlsite:${{ github.ref }}
           cache-from: type=registry,ref=lovasoa/sqlsite:latest
           cache-to: type=inline
