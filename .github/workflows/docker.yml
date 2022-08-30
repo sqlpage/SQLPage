@@ -28,6 +28,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: lovasoa/sqlsite:latest,lovasoa/sqlsite:${{ github.ref }}
+          tags: lovasoa/sqlsite:latest,lovasoa/sqlsite:${{ github.ref_name }}
           cache-from: type=registry,ref=lovasoa/sqlsite:latest
           cache-to: type=inline
