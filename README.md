@@ -1,4 +1,4 @@
-# <center>SQLpage</center>
+<h1 align="center">SQLpage</h1>
 
 [![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
 
