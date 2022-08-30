@@ -65,6 +65,9 @@ jobs:
           asset_label: sqlpage for Windows
           asset_content_type: application/vnd.microsoft.portable-executable
 
+      - name: cleanup
+        run: rm -rf ./*
+
       - uses: actions/download-artifact@v1
         with: { name: sqlpage macos-latest, path: . }
       - run: chmod +x sqlpage && tar --create --file sqlpage-macos.tgz --gzip sqlpage
@@ -78,6 +81,9 @@ jobs:
           asset_name: sqlpage-macos.tgz
           asset_label: sqlpage for MacOS
           asset_content_type: application/octet-stream
+
+      - name: cleanup
+        run: rm -rf ./*
 
       - uses: actions/download-artifact@v1
         with: { name: sqlpage ubuntu-18.04, path: . }
