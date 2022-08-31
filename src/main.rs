@@ -1,19 +1,21 @@
-mod database;
-mod http;
 mod render;
 mod templates;
 mod utils;
+mod webserver;
 
 use sqlx::any::AnyConnectOptions;
-use sqlx::migrate::Migrator;
 use sqlx::{AnyPool, ConnectOptions};
-use std::path::Path;
 use templates::AllTemplates;
 
 const WEB_ROOT: &str = ".";
 const CONFIG_DIR: &str = "sqlpage";
 const TEMPLATES_DIR: &str = "sqlpage/templates";
 const MIGRATIONS_DIR: &str = "sqlpage/migrations";
+
+#[cfg(not(feature = "lambda-web"))]
+const DEFAULT_DATABASE: &str = "sqlite://site.db?mode=rwc";
+#[cfg(feature = "lambda-web")]
+const DEFAULT_DATABASE: &str = "sqlite://:memory:";
 
 pub struct AppState {
     db: AnyPool,
@@ -30,7 +32,7 @@ async fn main() -> std::io::Result<()> {
 
     // Connect to the database
     let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://site.db?mode=rwc".to_string());
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DATABASE.to_string());
 
     let mut connect_options: AnyConnectOptions =
         database_url.parse().expect("Invalid database URL");
@@ -39,11 +41,11 @@ async fn main() -> std::io::Result<()> {
         log::LevelFilter::Warn,
         std::time::Duration::from_millis(250),
     );
-    let db = sqlx::AnyPool::connect_with(connect_options)
+    let db = AnyPool::connect_with(connect_options)
         .await
         .expect("Failed to connect to database");
 
-    if let Err(e) = apply_migrations(&db).await {
+    if let Err(e) = webserver::apply_migrations(&db).await {
         log::error!(
             "An error occurred while running the database migration.
         The path '{MIGRATIONS_DIR}' has to point to a directory, which contains valid SQL files
@@ -65,19 +67,5 @@ async fn main() -> std::io::Result<()> {
     let all_templates = AllTemplates::init();
     let state = AppState { db, all_templates };
     let config = Config { listen_on };
-    http::run_server(config, state).await
-}
-
-async fn apply_migrations(db: &AnyPool) -> anyhow::Result<()> {
-    let migrations_dir = Path::new(MIGRATIONS_DIR);
-    if !migrations_dir.exists() {
-        log::debug!(
-            "Not applying database migrations because '{}' does not exist",
-            MIGRATIONS_DIR
-        );
-        return Ok(());
-    }
-    let migrator = Migrator::new(migrations_dir).await?;
-    migrator.run(db).await?;
-    Ok(())
+    webserver::http::run_server(config, state).await
 }

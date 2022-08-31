@@ -33,5 +33,5 @@ jobs:
         with:
           push: true
           tags: lovasoa/sqlsite:latest,lovasoa/sqlsite:${{ github.ref_name }}
-          cache-from: type=registry,ref=lovasoa/sqlsite:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
