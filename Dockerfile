@@ -12,6 +12,16 @@ RUN touch src/main.rs && \
     cargo test --release && \
     cargo build --release
 
+FROM builder AS lambda-build
+RUN   apk add zip
+RUN cargo build --release --features lambda-web
+RUN   mv target/release/sqlpage bootstrap && \
+      strip --strip-all bootstrap && \
+      size bootstrap && \
+      ldd  bootstrap && \
+      zip -9 -r deploy.zip bootstrap index.sql documentation.sql sqlpage
+CMD ["./bootstrap"]
+
 FROM alpine:3.16
 RUN rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/src/sqlpage/target/release/sqlpage /usr/local/bin/sqlpage

@@ -1,6 +1,6 @@
-use crate::database::{stream_query_results, DbItem};
 use crate::render::RenderContext;
 use crate::utils::add_value_to_map;
+use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, CONFIG_DIR, WEB_ROOT};
 use actix_web::dev::Payload;
 use actix_web::error::ErrorInternalServerError;
@@ -155,7 +155,7 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
         "query": query,
         "form": form
     })
-        .to_string()
+    .to_string()
 }
 
 async fn render_sql(
@@ -196,7 +196,7 @@ pub async fn run_server(config: Config, state: AppState) -> std::io::Result<()> 
     let listen_on = config.listen_on;
     let app_state = web::Data::new(state);
 
-    HttpServer::new(move || {
+    let factory = move || {
         App::new()
             .app_data(app_state.clone())
             .wrap_fn(|mut req, srv| {
@@ -215,8 +215,13 @@ pub async fn run_server(config: Config, state: AppState) -> std::io::Result<()> 
                     .use_last_modified(true),
             )
             .wrap(Logger::default())
-    })
-        .bind(listen_on)?
-        .run()
-        .await
+    };
+
+    #[cfg(feature = "lambda-web")]
+    if lambda_web::is_running_on_lambda() {
+        return lambda_web::run_actix_on_lambda(factory)
+            .await
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Unsupported, e));
+    }
+    HttpServer::new(factory).bind(listen_on)?.run().await
 }

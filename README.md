@@ -13,32 +13,54 @@ displaying your data as text, lists, grids, plots, and forms.
 
 ## Supported databases
 
- - [sqlite](https://www.sqlite.org/index.html)
- - [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *CockroachDB* and *Aurora*.
- - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*. 
+- [sqlite](https://www.sqlite.org/index.html)
+- [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *CockroachDB* and *Aurora*.
+- [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 
 ## How it works
 
-SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in 
+SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
 [rust](https://en.wikipedia.org/wiki/Rust_(programming_language)).
 When it receives a request to a URL ending in `.sql`, it finds the corresponding
 SQL file, runs it on the database,
 passing it information from the web request as SQL statement parameters.
 When the database starts returning rows for the query,
-SQLPage maps each piece of information in the row to a parameter 
+SQLPage maps each piece of information in the row to a parameter
 in one of its pre-defined components' templates, and streams the result back
 to the user's browser.
 
 ## Get started
 
- - [Install docker](https://docs.docker.com/get-docker/)
- - In a terminal, run the following command: `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/sqlpage`
- - Create a file called index.sql with the contents from [this example](./index.sql) 
- - Open https://localhost:8080 in your browser
+- [Install docker](https://docs.docker.com/get-docker/)
+- In a terminal, run the following
+  command: `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/sqlpage`
+- Create a file called index.sql with the contents from [this example](./index.sql)
+- Open https://localhost:8080 in your browser
+
+## Environment variables
+
+| variable       | default                   | description                                              |
+|----------------|---------------------------|----------------------------------------------------------|
+| `LISTEN_ON`    | 0.0.0.0:8080              | Interface and port on which the web server should listen |
+| `DATABASE_URL` | sqlite://site.db?mode=rwc | Database connection URL                                  |
+
+## Serverless
+
+You can run SQLpage [serverless](https://en.wikipedia.org/wiki/Serverless_computing)
+by compiling it to an [AWS Lambda function](https://aws.amazon.com/lambda/).
+An easy way to do so is using the provided docker image:
+
+```bash
+ docker build -t sqlpage-lambda . --target lambda-build
+ docker run sqlpage-lambda cat deploy.zip > deploy.zip
+```
+
+You can then use `deploy.zip` as the source for an AWS Lambda,
+selecting *Custom runtime on Amazon Linux 2* as a runtime.
 
 ## Technologies and libraries used
 
- - [actix web](https://actix.rs/) handles HTTP requests at an incredible speed,
- - [tabler](https://preview.tabler.io) handles the styling for professional-looking clean components,
- - [tabler icons](https://tabler-icons.io) is a large set of icons you can select directly from your SQL,
- - [handlebars](https://handlebarsjs.com/guide/) render HTML pages from readable templates for each component.
+- [actix web](https://actix.rs/) handles HTTP requests at an incredible speed,
+- [tabler](https://preview.tabler.io) handles the styling for professional-looking clean components,
+- [tabler icons](https://tabler-icons.io) is a large set of icons you can select directly from your SQL,
+- [handlebars](https://handlebarsjs.com/guide/) render HTML pages from readable templates for each component.

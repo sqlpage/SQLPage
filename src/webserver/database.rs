@@ -11,7 +11,7 @@ pub fn stream_query_results<'a>(
     db: &'a sqlx::AnyPool,
     sql_source: &'a [u8],
     argument: &'a str,
-) -> impl Stream<Item=DbItem> + 'a {
+) -> impl Stream<Item = DbItem> + 'a {
     let mut arguments = AnyArguments::default();
     arguments.add(argument);
     match std::str::from_utf8(sql_source) {
@@ -21,14 +21,14 @@ pub fn stream_query_results<'a>(
             stream::once(ready(Err(error))).boxed()
         }
     }
-        .map(|res| match res {
-            Ok(Either::Right(r)) => DbItem::Row(row_to_json(r)),
-            Ok(Either::Left(res)) => {
-                log::debug!("Finished query with result: {:?}", res);
-                DbItem::FinishedQuery
-            }
-            Err(e) => DbItem::Error(e),
-        })
+    .map(|res| match res {
+        Ok(Either::Right(r)) => DbItem::Row(row_to_json(r)),
+        Ok(Either::Left(res)) => {
+            log::debug!("Finished query with result: {:?}", res);
+            DbItem::FinishedQuery
+        }
+        Err(e) => DbItem::Error(e),
+    })
 }
 
 pub enum DbItem {
@@ -98,8 +98,8 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-        .fetch_one(&mut c)
-        .await?;
+    .fetch_one(&mut c)
+    .await?;
     assert_eq!(
         row_to_json(row),
         serde_json::json!({
