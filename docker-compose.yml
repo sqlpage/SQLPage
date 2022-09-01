@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://postgres:secret@postgres
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: secret
