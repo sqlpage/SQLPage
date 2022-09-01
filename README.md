@@ -11,6 +11,74 @@ With SQLPage, you write simple `.sql` files containing queries to your database
 to select, group, update, insert, and delete your data, and you get good-looking clean webpages
 displaying your data as text, lists, grids, plots, and forms.
 
+## Examples
+
+<table>
+<thead>
+<tr><td>Code<td>Result</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```sql
+SELECT 
+    'list' as component,
+    'Popular websites' as title;
+SELECT 
+    name as title,
+    url as link,
+    CASE type
+      WHEN 1 THEN 'green'
+      ELSE 'red'
+    END as color,
+    description, icon, active
+FROM website;
+```
+
+<td>
+
+![SQLPage list component](./docs/demo-list.png)
+
+</tr>
+<tr>
+<td>
+
+```sql
+SELECT
+  'chart' as component,
+  'Syracuse' as title, 'area' as type;
+SELECT month AS x, FROM SUM(revenue) AS y
+FROM income GROUP BY month;  
+```
+
+<td>
+
+![SQLPage list component](./docs/demo-graph.png)
+
+</tr>
+<tr>
+<td>
+
+```sql
+SELECT 
+    'form' as component,
+    'User' as title,
+    'Create new user' as validate;
+SELECT 
+    name, type, placeholder, required,
+    description, min, max
+FROM user_form;
+```
+
+<td>
+
+![SQLPage list component](./docs/demo-form.png)
+
+</tr>
+</tbody>
+</table>
+
 ## Supported databases
 
 - [sqlite](https://www.sqlite.org/index.html)
@@ -51,8 +119,8 @@ by compiling it to an [AWS Lambda function](https://aws.amazon.com/lambda/).
 An easy way to do so is using the provided docker image:
 
 ```bash
- docker build -t sqlpage-lambda . --target lambda-build
- docker run sqlpage-lambda cat deploy.zip > deploy.zip
+ docker build -t sqlpage-lambda-builder . -f lambda.Dockerfile --target builder
+ docker run sqlpage-lambda-builder cat deploy.zip > deploy.zip
 ```
 
 You can then use `deploy.zip` as the source for an AWS Lambda,
