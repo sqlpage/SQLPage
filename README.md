@@ -48,7 +48,7 @@ FROM website;
 SELECT
   'chart' as component,
   'Syracuse' as title, 'area' as type;
-SELECT month AS x, FROM SUM(revenue) AS y
+SELECT month AS x, SUM(revenue) AS y
 FROM income GROUP BY month;  
 ```
 
