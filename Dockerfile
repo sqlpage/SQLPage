@@ -3,7 +3,7 @@ RUN rustup component add clippy rustfmt
 RUN apk add --no-cache musl-dev
 WORKDIR /usr/src/sqlpage
 RUN cargo init .
-COPY Cargo.toml Cargo.lock .
+COPY Cargo.toml Cargo.lock ./
 RUN cargo build --release
 COPY . .
 RUN touch src/main.rs && \
