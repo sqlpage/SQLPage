@@ -6,6 +6,9 @@ use std::path::Path;
 mod database;
 pub mod http;
 
+pub use database::init_database;
+pub use database::Database;
+
 pub async fn apply_migrations(db: &AnyPool) -> anyhow::Result<()> {
     let migrations_dir = Path::new(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
