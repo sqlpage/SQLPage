@@ -3,8 +3,9 @@ mod templates;
 mod utils;
 mod webserver;
 
-use sqlx::any::AnyConnectOptions;
-use sqlx::{AnyPool, ConnectOptions};
+use crate::webserver::{init_database, Database};
+use std::env;
+use std::net::{SocketAddr, ToSocketAddrs};
 use templates::AllTemplates;
 
 const WEB_ROOT: &str = ".";
@@ -18,7 +19,7 @@ const DEFAULT_DATABASE: &str = "sqlite://site.db?mode=rwc";
 const DEFAULT_DATABASE: &str = "sqlite://:memory:";
 
 pub struct AppState {
-    db: AnyPool,
+    db: Database,
     all_templates: AllTemplates,
 }
 
@@ -28,22 +29,12 @@ pub struct Config {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    init_logging();
 
     // Connect to the database
-    let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DATABASE.to_string());
+    let database_url = get_database_url();
 
-    let mut connect_options: AnyConnectOptions =
-        database_url.parse().expect("Invalid database URL");
-    connect_options.log_statements(log::LevelFilter::Trace);
-    connect_options.log_slow_statements(
-        log::LevelFilter::Warn,
-        std::time::Duration::from_millis(250),
-    );
-    let db = AnyPool::connect_with(connect_options)
-        .await
-        .expect("Failed to connect to database");
+    let db = init_database(&database_url).await;
 
     if let Err(e) = webserver::apply_migrations(&db).await {
         log::error!(
@@ -56,16 +47,31 @@ async fn main() -> std::io::Result<()> {
     }
 
     log::info!("Connected to database: {database_url}");
-
-    let listen_on = std::env::var("LISTEN_ON")
-        .unwrap_or_else(|_| "0.0.0.0:8080".to_string())
-        .parse::<std::net::SocketAddr>()
-        .expect("LISTEN_ON must be a valid IP:PORT");
-
+    let listen_on = get_listen_on();
     log::info!("Starting server on {}", listen_on);
-
     let all_templates = AllTemplates::init();
     let state = AppState { db, all_templates };
     let config = Config { listen_on };
     webserver::http::run_server(config, state).await
+}
+
+fn get_listen_on() -> SocketAddr {
+    let host_str = env::var("LISTEN_ON").unwrap_or_else(|_| "0.0.0.0:8080".to_string());
+    let mut host_addr = host_str
+        .to_socket_addrs()
+        .expect("Invalid hostname")
+        .next()
+        .expect("No hostname");
+    if let Ok(port) = env::var("PORT") {
+        host_addr.set_port(port.parse().expect("Invalid PORT"));
+    }
+    host_addr
+}
+
+fn init_logging() {
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+}
+
+fn get_database_url() -> String {
+    env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DATABASE.to_string())
 }

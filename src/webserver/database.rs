@@ -4,11 +4,13 @@ use serde_json::{Map, Value};
 use std::future::ready;
 
 use crate::utils::add_value_to_map;
-use sqlx::any::{AnyArguments, AnyRow};
-use sqlx::{Arguments, Column, Decode, Either, Row};
+use sqlx::any::{AnyArguments, AnyConnectOptions, AnyRow};
+use sqlx::{AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Row};
+
+pub type Database = AnyPool;
 
 pub fn stream_query_results<'a>(
-    db: &'a sqlx::AnyPool,
+    db: &'a Database,
     sql_source: &'a [u8],
     argument: &'a str,
 ) -> impl Stream<Item = DbItem> + 'a {
@@ -82,6 +84,19 @@ fn row_to_json(row: AnyRow) -> Value {
         map = add_value_to_map(map, (key, value));
     }
     Object(map)
+}
+
+pub async fn init_database(database_url: &str) -> Database {
+    let mut connect_options: AnyConnectOptions =
+        database_url.parse().expect("Invalid database URL");
+    connect_options.log_statements(log::LevelFilter::Trace);
+    connect_options.log_slow_statements(
+        log::LevelFilter::Warn,
+        std::time::Duration::from_millis(250),
+    );
+    AnyPool::connect_with(connect_options)
+        .await
+        .expect("Failed to connect to database")
 }
 
 #[actix_web::test]
