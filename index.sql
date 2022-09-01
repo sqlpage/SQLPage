@@ -20,7 +20,7 @@ select 'Welcome to sqlpage!', 'Look at how easy it is to write a website !';
 -- We can switch to another component at any time just with a select statement.
 -- Let's draw a chart
 select 'chart' as component,
-       'Prix du pétrole' as title,
+       'Revenue per country' as title,
        'bar'             as type,
        'time'            as xtitle,
        'price'           as ytitle,
@@ -34,7 +34,7 @@ union select 'Brasil', '2022-03',1
 union select 'Brasil', '2022-04',1;
 
 -- Let's make a new chart, this time generating the data with a more complex query
-select 'chart' as component, 'Conjecture de syracuse' as title, 'area' as type;
+select 'chart' as component, 'Collatz conjecture' as title, 'area' as type;
 WITH RECURSIVE cnt(x,y) AS (
     VALUES(0,15) UNION ALL
     SELECT
