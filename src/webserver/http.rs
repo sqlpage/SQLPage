@@ -92,7 +92,7 @@ async fn stream_response(
 ) -> anyhow::Result<()> {
     let app_state: &web::Data<AppState> = req.app_data().context("no app data in render")?;
     let req_param = request_argument_json(&req, payload).await;
-    let mut stream = stream_query_results(&app_state.db, &sql_bytes, &req_param);
+    let mut stream = stream_query_results(&app_state.db, &sql_bytes, &req_param).await;
 
     let mut renderer = RenderContext::new(app_state, response_bytes);
     while let Some(item) = stream.next().await {

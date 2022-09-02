@@ -10,6 +10,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:secret@postgres
   postgres:
+    ports:
+      - "5432:5432"
     image: postgres
     environment:
       POSTGRES_PASSWORD: secret
