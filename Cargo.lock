@@ -1776,6 +1776,7 @@ dependencies = [
  "actix-files",
  "actix-web",
  "anyhow",
+ "async-stream",
  "env_logger",
  "futures-util",
  "handlebars",
@@ -1783,9 +1784,19 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "sqlparser",
  "sqlx",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "sqlparser"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6483de5881514f11fe570f53fcee3cd9194e91eb43659cb356df69f99ef0f83e"
+dependencies = [
+ "log",
 ]
 
 [[package]]

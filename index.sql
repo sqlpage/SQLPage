@@ -60,13 +60,14 @@ SELECT
     '?x=' || a.x as link -- This is the interesting part. Each card has a link. When you click the card, the current page is reloaded with '?x=a' appended to the end of the URL
 FROM cnt as a, cnt as b
 WHERE -- The powerful thing is here
-    ($1->>'$.query.x') IS NULL OR -- The syntax ($1->>'$.query.x') allows us to extract the value of 'a' when the URL ends with '?x=a'. It will be null if the URL does not contain '?x='
-    b.x = CAST ($1->>'$.query.x' AS INT); -- So when we click the card for "a times b", we will reload the page, and display only the multiplication table of a
+    ($1::json->'query'->'x') IS NULL OR -- The syntax ($1->>'$.query.x') allows us to extract the value of 'a' when the URL ends with '?x=a'. It will be null if the URL does not contain '?x='
+    b.x = ($1::json->'query'->>'x')::int; -- So when we click the card for "a times b", we will reload the page, and display only the multiplication table of a
 
 -- Until now, we have only read data. Let's see how we can write new data to our database
 
--- I am creating a temporary table for this example, but you could use an existing table in your database to persist the data
-create temporary table if not exists users(name text);
+-- I am creating a table directly for this example, but you would normally use an existing table in your database
+-- or create the table in a migration file in 'sqlpage/migrations/00_create_users.sql'
+create table if not exists users(name text);
 
 -- Let's display a form to our users
 select 'form' as component, 'Create' as validate, 'New User' as title;
@@ -79,8 +80,8 @@ select 'checkbox' as type, 'checks[]' as name, 1 as value, 'Accept the terms and
 select 'checkbox' as type, 'checks[]' as name, 2 as value, 'Subscribe to the newsletter' as label;
 
 -- We can access the values entered in the form using the syntax ($1->>'$.form.xxx') where 'xxx' is the name of one of the fields in the form
-insert into users select ($1->>'$.form.First name')
-where ($1->>'$.form.First name') IS NOT NULL; -- We don't want to add a line in the database if the page was loaded without entering a value in the form, so we add a WHERE clause
+insert into users select ($1::json->'form'->>'First name')
+where ($1::json->'form'->>'First name') IS NOT NULL; -- We don't want to add a line in the database if the page was loaded without entering a value in the form, so we add a WHERE clause
 
 -- Let's show the users we have in our database
 select 'list' as component, 'Users' as title;

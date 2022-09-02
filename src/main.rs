@@ -24,7 +24,7 @@ pub struct AppState {
 }
 
 pub struct Config {
-    listen_on: std::net::SocketAddr,
+    listen_on: SocketAddr,
 }
 
 #[actix_web::main]
@@ -36,15 +36,7 @@ async fn main() -> std::io::Result<()> {
 
     let db = init_database(&database_url).await;
 
-    if let Err(e) = webserver::apply_migrations(&db).await {
-        log::error!(
-            "An error occurred while running the database migration.
-        The path '{MIGRATIONS_DIR}' has to point to a directory, which contains valid SQL files
-        with names using the format '<VERSION>_<DESCRIPTION>.sql',
-        where <VERSION> is a positive number, and <DESCRIPTION> is a string.
-        The current state of migrations will be stored in a table called _sqlx_migrations.\n {e:?}"
-        )
-    }
+    webserver::apply_migrations(&db).await?;
 
     log::info!("Connected to database: {database_url}");
     let listen_on = get_listen_on();
