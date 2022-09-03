@@ -4,6 +4,7 @@ use serde_json::{Map, Value};
 use std::fmt::Display;
 use std::future::ready;
 use std::path::Path;
+use anyhow::Context;
 
 use crate::utils::add_value_to_map;
 use crate::MIGRATIONS_DIR;
@@ -16,7 +17,7 @@ pub struct Database {
     connection: AnyPool,
 }
 
-pub async fn apply_migrations(db: &Database) -> std::io::Result<()> {
+pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
     let migrations_dir = Path::new(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
         log::debug!(
@@ -47,7 +48,7 @@ pub async fn stream_query_results<'a>(
     db: &'a Database,
     sql_source: &'a [u8],
     argument: &'a str,
-) -> impl Stream<Item = DbItem> + 'a {
+) -> impl Stream<Item=DbItem> + 'a {
     stream_query_results_direct(db, sql_source, argument)
         .await
         .unwrap_or_else(|e| {
@@ -89,7 +90,7 @@ pub async fn stream_query_results_direct<'a>(
             }
         }
     }
-    .boxed())
+        .boxed())
 }
 
 fn bind_parameters<'a>(
@@ -164,7 +165,7 @@ fn row_to_json(row: AnyRow) -> Value {
     Object(map)
 }
 
-pub async fn init_database(database_url: &str) -> Database {
+pub async fn init_database(database_url: &str) -> anyhow::Result<Database> {
     let mut connect_options: AnyConnectOptions =
         database_url.parse().expect("Invalid database URL");
     connect_options.log_statements(log::LevelFilter::Trace);
@@ -174,8 +175,8 @@ pub async fn init_database(database_url: &str) -> Database {
     );
     let connection = AnyPool::connect_with(connect_options)
         .await
-        .expect("Failed to connect to database");
-    Database { connection }
+        .with_context(|| "Failed to connect to database")?;
+    Ok(Database { connection })
 }
 
 mod sql {
@@ -214,8 +215,8 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-    .fetch_one(&mut c)
-    .await?;
+        .fetch_one(&mut c)
+        .await?;
     assert_eq!(
         row_to_json(row),
         serde_json::json!({

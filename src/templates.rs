@@ -121,7 +121,7 @@ fn flush_delayed_helper<'reg, 'rc>(
 }
 
 impl AllTemplates {
-    pub fn init() -> Self {
+    pub fn init() -> anyhow::Result<Self> {
         let mut handlebars = Handlebars::new();
         handlebars_helper!(stringify: |v: Json| v.to_string());
         handlebars.register_helper("stringify", Box::new(stringify));
@@ -150,15 +150,13 @@ impl AllTemplates {
         this.register_split(
             "shell",
             include_str!("../sqlpage/templates/shell.handlebars"),
-        )
-        .expect("Embedded shell template contains an error");
+        )?;
         this.register_split(
             "error",
             include_str!("../sqlpage/templates/error.handlebars"),
-        )
-        .expect("Embedded shell template contains an error");
+        )?;
         this.register_dir();
-        this
+        Ok(this)
     }
 
     fn register_split<S: ToString>(&mut self, name: S, tpl_str: &str) -> Result<(), TemplateError> {
@@ -207,7 +205,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-    .unwrap();
+        .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,
