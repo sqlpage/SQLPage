@@ -205,7 +205,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-        .unwrap();
+    .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,

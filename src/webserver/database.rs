@@ -1,10 +1,9 @@
+use anyhow::Context;
 use futures_util::stream::{self, BoxStream, Stream};
 use futures_util::StreamExt;
 use serde_json::{Map, Value};
-use std::fmt::Display;
 use std::future::ready;
 use std::path::Path;
-use anyhow::Context;
 
 use crate::utils::add_value_to_map;
 use crate::MIGRATIONS_DIR;
@@ -26,21 +25,23 @@ pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
         );
         return Ok(());
     }
-    let migrator = Migrator::new(migrations_dir).await.map_err(migration_err)?;
-    migrator.run(&db.connection).await.map_err(migration_err)?;
+    let migrator = Migrator::new(migrations_dir)
+        .await
+        .with_context(|| migration_err("preparing the database migration"))?;
+    migrator
+        .run(&db.connection)
+        .await
+        .with_context(|| migration_err("running the migration"))?;
     Ok(())
 }
 
-fn migration_err(e: impl Display) -> std::io::Error {
-    std::io::Error::new(
-        std::io::ErrorKind::Other,
-        format!(
-            "An error occurred while running the database migration.
+fn migration_err(operation: &'static str) -> String {
+    format!(
+        "An error occurred while {operation}.
         The path '{MIGRATIONS_DIR}' has to point to a directory, which contains valid SQL files
         with names using the format '<VERSION>_<DESCRIPTION>.sql',
         where <VERSION> is a positive number, and <DESCRIPTION> is a string.
-        The current state of migrations will be stored in a table called _sqlx_migrations.\n {e}"
-        ),
+        The current state of migrations will be stored in a table called _sqlx_migrations."
     )
 }
 
@@ -48,7 +49,7 @@ pub async fn stream_query_results<'a>(
     db: &'a Database,
     sql_source: &'a [u8],
     argument: &'a str,
-) -> impl Stream<Item=DbItem> + 'a {
+) -> impl Stream<Item = DbItem> + 'a {
     stream_query_results_direct(db, sql_source, argument)
         .await
         .unwrap_or_else(|e| {
@@ -90,7 +91,7 @@ pub async fn stream_query_results_direct<'a>(
             }
         }
     }
-        .boxed())
+    .boxed())
 }
 
 fn bind_parameters<'a>(
@@ -215,8 +216,8 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-        .fetch_one(&mut c)
-        .await?;
+    .fetch_one(&mut c)
+    .await?;
     assert_eq!(
         row_to_json(row),
         serde_json::json!({

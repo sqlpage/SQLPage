@@ -220,7 +220,7 @@ pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
     #[cfg(feature = "lambda-web")]
     if lambda_web::is_running_on_lambda() {
         lambda_web::run_actix_on_lambda(factory).await?;
-        return Ok(())
+        return Ok(());
     }
     HttpServer::new(factory).bind(listen_on)?.run().await?;
     Ok(())

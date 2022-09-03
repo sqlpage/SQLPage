@@ -6,9 +6,9 @@ mod utils;
 mod webserver;
 
 use crate::webserver::{init_database, Database};
+use anyhow::Context;
 use std::env;
 use std::net::{SocketAddr, ToSocketAddrs};
-use anyhow::Context;
 use templates::AllTemplates;
 
 const WEB_ROOT: &str = ".";
@@ -61,7 +61,8 @@ fn get_listen_on() -> anyhow::Result<SocketAddr> {
     let host_str = env::var("LISTEN_ON").unwrap_or_else(|_| "0.0.0.0:8080".to_string());
     let mut host_addr = host_str
         .to_socket_addrs()?
-        .next().with_context(|| format!("host '{}' does not resolve to an IP", host_str))?;
+        .next()
+        .with_context(|| format!("host '{}' does not resolve to an IP", host_str))?;
     if let Ok(port) = env::var("PORT") {
         host_addr.set_port(port.parse().with_context(|| "Invalid PORT")?);
     }
