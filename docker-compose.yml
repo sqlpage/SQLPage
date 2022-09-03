@@ -1,17 +1,22 @@
 services:
   web:
-    build: .
+    build: { context: ".", args: {SKIP_CHECK: 1}}
     ports:
       - "8080:8080"
     volumes:
       - .:/var/www
     depends_on:
-      - postgres
+      - db
     environment:
-      DATABASE_URL: postgres://postgres:secret@postgres
-  postgres:
+      DATABASE_URL: ${DB:-postgres}://root:secret@db/sqlpage
+  db: # The DB environment variable can be set to "mariadb" or "postgres" to test the code with different databases
     ports:
       - "5432:5432"
-    image: postgres
+      - "3306:3306"
+    image: ${DB:-postgres}
     environment:
+      POSTGRES_USER: root
+      POSTGRES_DB: sqlpage
       POSTGRES_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: sqlpage
