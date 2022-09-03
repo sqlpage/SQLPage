@@ -174,6 +174,11 @@ pub async fn init_database(database_url: &str) -> anyhow::Result<Database> {
         log::LevelFilter::Warn,
         std::time::Duration::from_millis(250),
     );
+    log::debug!(
+        "Connecting to a {:?} database on {}",
+        connect_options.kind(),
+        database_url
+    );
     let connection = AnyPool::connect_with(connect_options)
         .await
         .with_context(|| "Failed to connect to database")?;
