@@ -6,11 +6,14 @@ RUN cargo init .
 COPY Cargo.toml Cargo.lock ./
 RUN cargo build --release
 COPY . .
-RUN touch src/main.rs && \
-    cargo clippy --release && \
-    cargo fmt --all -- --check && \
-    cargo test --release && \
-    cargo build --release
+RUN touch src/main.rs
+ARG SKIP_CHECK
+RUN if [[ -z "$SKIP_CHECK" ]] ; then \
+        cargo clippy --release && \
+        cargo fmt --all -- --check && \
+        cargo test --release; \
+    fi
+RUN cargo build --release
 
 FROM alpine:3.16
 RUN rm -rf /var/lib/apt/lists/*
