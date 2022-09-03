@@ -1,3 +1,5 @@
+extern crate core;
+
 mod render;
 mod templates;
 mod utils;
@@ -6,6 +8,7 @@ mod webserver;
 use crate::webserver::{init_database, Database};
 use std::env;
 use std::net::{SocketAddr, ToSocketAddrs};
+use anyhow::Context;
 use templates::AllTemplates;
 
 const WEB_ROOT: &str = ".";
@@ -28,36 +31,41 @@ pub struct Config {
 }
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() {
     init_logging();
+    if let Err(e) = start().await {
+        log::error!("{:?}", e);
+        std::process::exit(1);
+    }
+}
 
+async fn start() -> anyhow::Result<()> {
     // Connect to the database
     let database_url = get_database_url();
 
-    let db = init_database(&database_url).await;
+    let db = init_database(&database_url).await?;
 
     webserver::apply_migrations(&db).await?;
 
     log::info!("Connected to database: {database_url}");
-    let listen_on = get_listen_on();
+    let listen_on = get_listen_on()?;
     log::info!("Starting server on {}", listen_on);
-    let all_templates = AllTemplates::init();
+    let all_templates = AllTemplates::init()?;
     let state = AppState { db, all_templates };
     let config = Config { listen_on };
-    webserver::http::run_server(config, state).await
+    webserver::http::run_server(config, state).await?;
+    Ok(())
 }
 
-fn get_listen_on() -> SocketAddr {
+fn get_listen_on() -> anyhow::Result<SocketAddr> {
     let host_str = env::var("LISTEN_ON").unwrap_or_else(|_| "0.0.0.0:8080".to_string());
     let mut host_addr = host_str
-        .to_socket_addrs()
-        .expect("Invalid hostname")
-        .next()
-        .expect("No hostname");
+        .to_socket_addrs()?
+        .next().with_context(|| format!("host '{}' does not resolve to an IP", host_str))?;
     if let Ok(port) = env::var("PORT") {
-        host_addr.set_port(port.parse().expect("Invalid PORT"));
+        host_addr.set_port(port.parse().with_context(|| "Invalid PORT")?);
     }
-    host_addr
+    Ok(host_addr)
 }
 
 fn init_logging() {

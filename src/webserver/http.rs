@@ -192,7 +192,7 @@ async fn postprocess_response(
     Ok(ServiceResponse::new(req, new_resp))
 }
 
-pub async fn run_server(config: Config, state: AppState) -> std::io::Result<()> {
+pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
     let listen_on = config.listen_on;
     let app_state = web::Data::new(state);
 
@@ -219,9 +219,9 @@ pub async fn run_server(config: Config, state: AppState) -> std::io::Result<()> 
 
     #[cfg(feature = "lambda-web")]
     if lambda_web::is_running_on_lambda() {
-        return lambda_web::run_actix_on_lambda(factory)
-            .await
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Unsupported, e));
+        lambda_web::run_actix_on_lambda(factory).await?;
+        return Ok(())
     }
-    HttpServer::new(factory).bind(listen_on)?.run().await
+    HttpServer::new(factory).bind(listen_on)?.run().await?;
+    Ok(())
 }
