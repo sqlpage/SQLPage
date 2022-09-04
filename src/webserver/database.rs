@@ -49,7 +49,7 @@ pub async fn stream_query_results<'a>(
     db: &'a Database,
     sql_source: &'a [u8],
     argument: &'a str,
-) -> impl Stream<Item = DbItem> + 'a {
+) -> impl Stream<Item=DbItem> + 'a {
     stream_query_results_direct(db, sql_source, argument)
         .await
         .unwrap_or_else(|e| {
@@ -91,7 +91,7 @@ pub async fn stream_query_results_direct<'a>(
             }
         }
     }
-    .boxed())
+        .boxed())
 }
 
 fn bind_parameters<'a>(
@@ -186,8 +186,9 @@ pub async fn init_database(database_url: &str) -> anyhow::Result<Database> {
 }
 
 mod sql {
-    use sqlparser::dialect::GenericDialect;
+    use sqlparser::dialect::{GenericDialect};
     use sqlparser::parser::Parser;
+    use sqlparser::ast::{DriveMut, Value, visitor_enter_fn_mut};
     use sqlx::any::AnyStatement;
     use sqlx::{Executor, Statement};
 
@@ -205,6 +206,31 @@ mod sql {
         }
         Ok(res)
     }
+
+    fn extract_parameters(sql_ast: &mut sqlparser::ast::Statement) -> Vec<String> {
+        let mut parameters: Vec<String> = Vec::new();
+        sql_ast.drive_mut(&mut visitor_enter_fn_mut(|value: &mut Value| {
+            if let Value::Placeholder(param) = value {
+                let pos = if let Some(pos) = parameters.iter().position(|e| e == param) {
+                    pos + 1
+                } else {
+                    parameters.push(std::mem::take(param));
+                    parameters.len()
+                };
+                *param = format!("${pos}");
+            }
+        }));
+        parameters
+    }
+
+    #[test]
+    fn test_statement_rewrite() {
+        let sql = "select $a from t where $x > $a OR $x = 0";
+        let mut ast = Parser::parse_sql(&GenericDialect, sql).unwrap();
+        let parameters = extract_parameters(&mut ast[0]);
+        assert_eq!(ast[0].to_string(), "SELECT $1 FROM t WHERE $2 > $1 OR $2 = 0");
+        assert_eq!(parameters, ["$a", "$x"]);
+    }
 }
 
 #[actix_web::test]
@@ -221,8 +247,8 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-    .fetch_one(&mut c)
-    .await?;
+        .fetch_one(&mut c)
+        .await?;
     assert_eq!(
         row_to_json(row),
         serde_json::json!({
