@@ -266,8 +266,8 @@ mod sql {
                 let name = name.to_owned();
                 match prefix {
                     "$" => StmtParam::GetOrPostParam(name),
-                    "?" => StmtParam::GetParam(name),
-                    _ => StmtParam::PostParam(name),
+                    ":" => StmtParam::PostParam(name),
+                    _ => StmtParam::GetParam(name),
                 }
             })
             .collect()
