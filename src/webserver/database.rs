@@ -1,18 +1,18 @@
-use std::fmt::{Display, Formatter};
 use anyhow::Context;
 use futures_util::stream::{self, BoxStream, Stream};
 use futures_util::StreamExt;
 use serde_json::{Map, Value};
+use std::fmt::{Display, Formatter};
 use std::future::ready;
 use std::path::Path;
 
 use crate::utils::add_value_to_map;
+use crate::webserver::http::RequestInfo;
 use crate::MIGRATIONS_DIR;
 use sqlx::any::{AnyArguments, AnyConnectOptions, AnyQueryResult, AnyRow, AnyStatement};
 use sqlx::migrate::Migrator;
 use sqlx::query::Query;
 use sqlx::{AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Row, Statement};
-use crate::webserver::http::RequestInfo;
 
 pub struct Database {
     connection: AnyPool,
@@ -51,12 +51,10 @@ pub async fn stream_query_results<'a>(
     db: &'a Database,
     sql_source: &'a [u8],
     request: &'a RequestInfo,
-) -> impl Stream<Item=DbItem> + 'a {
+) -> impl Stream<Item = DbItem> + 'a {
     stream_query_results_direct(db, sql_source, request)
         .await
-        .unwrap_or_else(|error| {
-            stream::once(ready(Err(error))).boxed()
-        })
+        .unwrap_or_else(|error| stream::once(ready(Err(error))).boxed())
         .map(|res| match res {
             Ok(Either::Right(r)) => DbItem::Row(row_to_json(r)),
             Ok(Either::Left(res)) => {
@@ -71,9 +69,7 @@ pub async fn stream_query_results_direct<'a>(
     db: &'a Database,
     sql_source: &'a [u8],
     request: &'a RequestInfo,
-) -> anyhow::Result<
-    BoxStream<'a, anyhow::Result<Either<AnyQueryResult, AnyRow>>>
-> {
+) -> anyhow::Result<BoxStream<'a, anyhow::Result<Either<AnyQueryResult, AnyRow>>>> {
     let src = std::str::from_utf8(sql_source)?;
     // TODO: cache prepared statements for file
     let statements = sql::prepare_statements(db, src).await?;
@@ -91,7 +87,7 @@ pub async fn stream_query_results_direct<'a>(
             }
         }
     }
-        .boxed())
+    .boxed())
 }
 
 fn bind_parameters<'a>(
@@ -103,16 +99,20 @@ fn bind_parameters<'a>(
         let argument = match param {
             StmtParam::GetParam(x) => request.get_variables.get(x).cloned(),
             StmtParam::PostParam(x) => request.post_variables.get(x).cloned(),
-            StmtParam::GetOrPostParam(x) => {
-                request.post_variables.get(x)
-                    .or_else(|| request.get_variables.get(x))
-                    .cloned()
-            }
+            StmtParam::GetOrPostParam(x) => request
+                .post_variables
+                .get(x)
+                .or_else(|| request.get_variables.get(x))
+                .cloned(),
         };
-        log::debug!("Binding value {} in statement {}", argument.clone().unwrap_or_default(), stmt);
+        log::debug!(
+            "Binding value {} in statement {}",
+            argument.clone().unwrap_or_default(),
+            stmt
+        );
         match argument {
-            None | Some(Value::Null) => { arguments.add(None::<bool>) }
-            Some(Value::Bool(b)) => { arguments.add(b) }
+            None | Some(Value::Null) => arguments.add(None::<bool>),
+            Some(Value::Bool(b)) => arguments.add(b),
             Some(Value::Number(n)) => {
                 if let Some(int_n) = n.as_i64() {
                     arguments.add(int_n)
@@ -120,8 +120,8 @@ fn bind_parameters<'a>(
                     arguments.add(n.as_f64().unwrap_or(f64::NAN))
                 }
             }
-            Some(Value::String(s)) => { arguments.add(s) }
-            Some(other) => { arguments.add(other.to_string()) }
+            Some(Value::String(s)) => arguments.add(s),
+            Some(other) => arguments.add(other.to_string()),
         }
     }
     stmt.statement.query_with(arguments)
@@ -222,16 +222,16 @@ enum StmtParam {
 }
 
 mod sql {
-    use anyhow::Context;
     use super::PreparedStatement;
     use crate::webserver::database::StmtParam;
-    use sqlparser::ast::{visitor_fn_mut, DriveMut, Value, Expr, DataType, VisitorEvent};
+    use anyhow::Context;
+    use sqlparser::ast::{visitor_fn_mut, DataType, DriveMut, Expr, Value, VisitorEvent};
     use sqlparser::dialect::GenericDialect;
     use sqlparser::parser::Parser;
-    use sqlx::{Executor, Statement};
     use sqlx::any::{AnyKind, AnyTypeInfo};
-    use sqlx::postgres::{PgTypeInfo};
     use sqlx::postgres::types::Oid;
+    use sqlx::postgres::PgTypeInfo;
+    use sqlx::{Executor, Statement};
 
     pub(super) async fn prepare_statements(
         db: &super::Database,
@@ -246,16 +246,24 @@ mod sql {
             let parameters = map_params(param_names);
             let query = stmt.to_string();
             let param_types = get_param_types(&parameters);
-            let stmt_res = db.connection.prepare_with(&query, &param_types).await
+            let stmt_res = db
+                .connection
+                .prepare_with(&query, &param_types)
+                .await
                 .with_context(|| format!("Parsing SQL string: '{}'", query));
-            res.push(stmt_res.map(|statement|
-                PreparedStatement { statement: statement.to_owned(), parameters }));
+            res.push(stmt_res.map(|statement| PreparedStatement {
+                statement: statement.to_owned(),
+                parameters,
+            }));
         }
         Ok(res)
     }
 
     fn get_param_types(parameters: &[StmtParam]) -> Vec<AnyTypeInfo> {
-        parameters.iter().map(|_p| PgTypeInfo::with_oid(Oid(25)).into()).collect()
+        parameters
+            .iter()
+            .map(|_p| PgTypeInfo::with_oid(Oid(25)).into())
+            .collect()
     }
 
     fn map_params(names: Vec<String>) -> Vec<StmtParam> {
@@ -277,7 +285,9 @@ mod sql {
         let mut parameters: Vec<String> = Vec::new();
         sql_ast.drive_mut(&mut visitor_fn_mut(|value: &mut Expr, event| {
             // Only update the nodes AFTER they have been visited
-            if let VisitorEvent::Enter = event { return; }
+            if let VisitorEvent::Enter = event {
+                return;
+            }
             if let Expr::Value(Value::Placeholder(param)) = value {
                 let new_expr = make_placeholder(db, parameters.len());
                 let name = std::mem::take(param);
@@ -287,7 +297,6 @@ mod sql {
         }));
         parameters
     }
-
 
     fn make_placeholder(db: AnyKind, current_count: usize) -> Expr {
         let name = match db {
@@ -301,7 +310,10 @@ mod sql {
             _ => DataType::Text,
         };
         let value = Expr::Value(Value::Placeholder(name));
-        Expr::Cast { expr: Box::new(value), data_type }
+        Expr::Cast {
+            expr: Box::new(value),
+            data_type,
+        }
     }
 
     #[test]
@@ -311,7 +323,7 @@ mod sql {
         let parameters = extract_parameters(&mut ast[0], AnyKind::Postgres);
         assert_eq!(
             ast[0].to_string(),
-            "SELECT $1 FROM t WHERE $2 > $3 OR $4 = 0"
+            "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($3 AS TEXT) OR CAST($4 AS TEXT) = 0"
         );
         assert_eq!(parameters, ["$a", "$x", "$a", "$x"]);
     }
@@ -331,8 +343,8 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-        .fetch_one(&mut c)
-        .await?;
+    .fetch_one(&mut c)
+    .await?;
     assert_eq!(
         row_to_json(row),
         serde_json::json!({
