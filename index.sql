@@ -71,16 +71,16 @@ create table if not exists users(name text);
 -- Let's display a form to our users
 select 'form' as component, 'Create' as validate, 'New User' as title;
 select 'number' as type, 'age' as placeholder;
-select 'firstName' as name, 'First name' as label, true as autocomplete, true as required, 'We need your name for legal reasons.' as description;
+select 'First Name' as name, true as autocomplete, true as required, 'We need your name for legal reasons.' as description;
 select 'Last name' as name, true as autocomplete;
 select 'radio' as type, 'favorite_food' as name, 'banana' as value, 'I like bananas the most' as label;
 select 'radio' as type, 'favorite_food' as name, 'cake' as value, 'I like cake more' as label, 'Bananas are okay, but I prefer cake' as description;
 select 'checkbox' as type, 'checks[]' as name, 1 as value, 'Accept the terms and conditions' as label;
 select 'checkbox' as type, 'checks[]' as name, 2 as value, 'Subscribe to the newsletter' as label;
 
--- We can access the values entered in the form using the syntax $xxx where 'xxx' is the name of one of the fields in the form
-insert into users select $firstName
-where $firstName IS NOT NULL; -- We don't want to add a line in the database if the page was loaded without entering a value in the form, so we add a WHERE clause
+-- We can access the values entered in the form using the syntax :xxx where 'xxx' is the name of one of the fields in the form
+insert into users select :"First Name"
+where :"First Name" IS NOT NULL; -- We don't want to add a line in the database if the page was loaded without entering a value in the form, so we add a WHERE clause
 
 -- Let's show the users we have in our database
 select 'list' as component, 'Users' as title;
@@ -88,4 +88,4 @@ select name as title from users;
 
 -- The debug component displays the raw results returned by a query
 select 'debug' as component;
-select $x as x, $firstName as firstName, $checks as checks;
+select $x as x, :"First Name" as firstName, :checks as checks;
