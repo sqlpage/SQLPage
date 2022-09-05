@@ -10,10 +10,16 @@ pub fn add_value_to_map(
         Vacant(vacant) => {
             vacant.insert(value);
         }
-        Occupied(mut old_entry) => match old_entry.get_mut() {
-            Array(old_array) => old_array.push(value),
-            old_scalar => *old_scalar = Array(vec![old_scalar.take(), value]),
-        },
+        Occupied(mut old_entry) => {
+            let mut new_array = if let Array(v) = value { v } else { vec![value] };
+            match old_entry.get_mut() {
+                Array(old_array) => old_array.extend(new_array.into_iter()),
+                old_scalar => {
+                    new_array.insert(0, old_scalar.take());
+                    *old_scalar = Array(new_array)
+                }
+            }
+        }
     }
     map
 }

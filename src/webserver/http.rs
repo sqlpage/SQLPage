@@ -13,9 +13,9 @@ use actix_web::{
 use anyhow::{bail, Context};
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
-use serde_json::json;
 use std::io::Write;
 use std::mem;
+use std::net::IpAddr;
 use std::path::Component;
 use tokio::sync::mpsc;
 
@@ -99,10 +99,10 @@ async fn stream_response(
         let render_result = match item {
             DbItem::FinishedQuery => renderer.finish_query().await,
             DbItem::Row(row) => renderer.handle_row(&row),
-            DbItem::Error(e) => renderer.handle_error(&e),
+            DbItem::Error(e) => renderer.handle_anyhow_error(&e),
         };
         if let Err(e) = render_result {
-            if let Err(nested_err) = renderer.handle_error(&e.root_cause()) {
+            if let Err(nested_err) = renderer.handle_anyhow_error(&e) {
                 renderer
                     .close()
                     .close_with_error(nested_err.to_string())
@@ -121,7 +121,14 @@ async fn stream_response(
     Ok(())
 }
 
-async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> String {
+pub struct RequestInfo {
+    pub get_variables: serde_json::Map<String, serde_json::Value>,
+    pub post_variables: serde_json::Map<String, serde_json::Value>,
+    pub headers: serde_json::Map<String, serde_json::Value>,
+    pub client_ip: Option<IpAddr>,
+}
+
+async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> RequestInfo {
     let headers: serde_json::Map<String, serde_json::Value> = req
         .headers()
         .iter()
@@ -132,30 +139,25 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Strin
             )
         })
         .collect();
-    let query = web::Query::<serde_json::Value>::from_query(req.query_string())
+    let get_variables = web::Query::<serde_json::Map<String, serde_json::Value>>::from_query(req.query_string())
         .map(|q| q.into_inner())
         .unwrap_or_default();
     let client_ip = req.peer_addr().map(|addr| addr.ip());
-    let form = Form::<Vec<(String, serde_json::Value)>>::from_request(req, &mut payload)
+    let post_variables = Form::<Vec<(String, serde_json::Value)>>::from_request(req, &mut payload)
         .await
         .map(|form| form.into_inner())
         .unwrap_or_default()
         .into_iter()
-        .map(|(key, value)| {
+        .map(|(mut key, value)| {
             if key.ends_with("[]") {
+                key.replace_range((key.len()-2).., "");
                 (key, vec![value].into())
             } else {
                 (key, value)
             }
         })
         .fold(serde_json::Map::new(), add_value_to_map);
-    json!({
-        "headers": headers,
-        "client_ip": client_ip,
-        "query": query,
-        "form": form
-    })
-    .to_string()
+    RequestInfo { headers, get_variables, post_variables, client_ip }
 }
 
 async fn render_sql(

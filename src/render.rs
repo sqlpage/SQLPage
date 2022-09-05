@@ -125,12 +125,17 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
+    pub fn handle_anyhow_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+        let std_err = AsRef::<(dyn std::error::Error + 'static)>::as_ref(error);
+        self.handle_error(&std_err)
+    }
+
     pub fn handle_result<R, E: std::error::Error>(
         &mut self,
         result: &Result<R, E>,
     ) -> anyhow::Result<()> {
         if let Err(error) = result {
-            self.handle_error(error)
+            self.handle_error(&error)
         } else {
             Ok(())
         }
