@@ -139,9 +139,10 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Reque
             )
         })
         .collect();
-    let get_variables = web::Query::<serde_json::Map<String, serde_json::Value>>::from_query(req.query_string())
-        .map(|q| q.into_inner())
-        .unwrap_or_default();
+    let get_variables =
+        web::Query::<serde_json::Map<String, serde_json::Value>>::from_query(req.query_string())
+            .map(|q| q.into_inner())
+            .unwrap_or_default();
     let client_ip = req.peer_addr().map(|addr| addr.ip());
     let post_variables = Form::<Vec<(String, serde_json::Value)>>::from_request(req, &mut payload)
         .await
@@ -150,14 +151,19 @@ async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> Reque
         .into_iter()
         .map(|(mut key, value)| {
             if key.ends_with("[]") {
-                key.replace_range((key.len()-2).., "");
+                key.replace_range((key.len() - 2).., "");
                 (key, vec![value].into())
             } else {
                 (key, value)
             }
         })
         .fold(serde_json::Map::new(), add_value_to_map);
-    RequestInfo { headers, get_variables, post_variables, client_ip }
+    RequestInfo {
+        headers,
+        get_variables,
+        post_variables,
+        client_ip,
+    }
 }
 
 async fn render_sql(
