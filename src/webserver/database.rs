@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use anyhow::Context;
 use futures_util::stream::{self, BoxStream, Stream};
 use futures_util::StreamExt;
@@ -11,6 +12,7 @@ use sqlx::any::{AnyArguments, AnyConnectOptions, AnyQueryResult, AnyRow, AnyStat
 use sqlx::migrate::Migrator;
 use sqlx::query::Query;
 use sqlx::{AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Row, Statement};
+use crate::webserver::http::RequestInfo;
 
 pub struct Database {
     connection: AnyPool,
@@ -48,12 +50,11 @@ fn migration_err(operation: &'static str) -> String {
 pub async fn stream_query_results<'a>(
     db: &'a Database,
     sql_source: &'a [u8],
-    argument: &'a str,
-) -> impl Stream<Item = DbItem> + 'a {
-    stream_query_results_direct(db, sql_source, argument)
+    request: &'a RequestInfo,
+) -> impl Stream<Item=DbItem> + 'a {
+    stream_query_results_direct(db, sql_source, request)
         .await
-        .unwrap_or_else(|e| {
-            let error = sqlx::Error::Decode(e);
+        .unwrap_or_else(|error| {
             stream::once(ready(Err(error))).boxed()
         })
         .map(|res| match res {
@@ -69,10 +70,9 @@ pub async fn stream_query_results<'a>(
 pub async fn stream_query_results_direct<'a>(
     db: &'a Database,
     sql_source: &'a [u8],
-    argument: &'a str,
-) -> Result<
-    BoxStream<'a, Result<Either<AnyQueryResult, AnyRow>, sqlx::Error>>,
-    Box<dyn std::error::Error + Sync + Send>,
+    request: &'a RequestInfo,
+) -> anyhow::Result<
+    BoxStream<'a, anyhow::Result<Either<AnyQueryResult, AnyRow>>>
 > {
     let src = std::str::from_utf8(sql_source)?;
     // TODO: cache prepared statements for file
@@ -81,37 +81,56 @@ pub async fn stream_query_results_direct<'a>(
         for res in statements.into_iter() {
             match res {
                 Ok(stmt)=>{
-                    let query = bind_parameters(&stmt, argument);
+                    let query = bind_parameters(&stmt, request);
                     let mut stream = query.fetch_many(&db.connection);
                     while let Some(elem) = stream.next().await {
-                        yield elem
+                        yield elem.with_context(|| format!("Error while running SQL: {}", stmt))
                     }
                 },
-                Err(e) => yield Err(e),
+                Err(e) => yield Err(anyhow::Error::from(e)),
             }
         }
     }
-    .boxed())
+        .boxed())
 }
 
 fn bind_parameters<'a>(
-    stmt: &'a AnyStatement,
-    argument: &'a str,
+    stmt: &'a PreparedStatement,
+    request: &RequestInfo,
 ) -> Query<'a, sqlx::Any, AnyArguments<'a>> {
-    let num_params = stmt
-        .parameters()
-        .map_or(0, |e| e.either(|args| args.len(), |n| n));
     let mut arguments = AnyArguments::default();
-    for _ in 0..num_params {
-        arguments.add(argument);
+    for param in &stmt.parameters {
+        let argument = match param {
+            StmtParam::GetParam(x) => request.get_variables.get(x).cloned(),
+            StmtParam::PostParam(x) => request.post_variables.get(x).cloned(),
+            StmtParam::GetOrPostParam(x) => {
+                request.post_variables.get(x)
+                    .or_else(|| request.get_variables.get(x))
+                    .cloned()
+            }
+        };
+        log::debug!("Binding value {} in statement {}", argument.clone().unwrap_or_default(), stmt);
+        match argument {
+            None | Some(Value::Null) => { arguments.add(None::<bool>) }
+            Some(Value::Bool(b)) => { arguments.add(b) }
+            Some(Value::Number(n)) => {
+                if let Some(int_n) = n.as_i64() {
+                    arguments.add(int_n)
+                } else {
+                    arguments.add(n.as_f64().unwrap_or(f64::NAN))
+                }
+            }
+            Some(Value::String(s)) => { arguments.add(s) }
+            Some(other) => { arguments.add(other.to_string()) }
+        }
     }
-    stmt.query_with(arguments)
+    stmt.statement.query_with(arguments)
 }
 
 pub enum DbItem {
     Row(Value),
     FinishedQuery,
-    Error(sqlx::Error),
+    Error(anyhow::Error),
 }
 
 fn row_to_json(row: AnyRow) -> Value {
@@ -185,56 +204,116 @@ pub async fn init_database(database_url: &str) -> anyhow::Result<Database> {
     Ok(Database { connection })
 }
 
+struct PreparedStatement {
+    statement: AnyStatement<'static>,
+    parameters: Vec<StmtParam>,
+}
+
+impl Display for PreparedStatement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.statement.sql())
+    }
+}
+
+enum StmtParam {
+    GetParam(String),
+    PostParam(String),
+    GetOrPostParam(String),
+}
+
 mod sql {
-    use sqlparser::ast::{visitor_enter_fn_mut, DriveMut, Value};
+    use anyhow::Context;
+    use super::PreparedStatement;
+    use crate::webserver::database::StmtParam;
+    use sqlparser::ast::{visitor_fn_mut, DriveMut, Value, Expr, DataType, VisitorEvent};
     use sqlparser::dialect::GenericDialect;
     use sqlparser::parser::Parser;
-    use sqlx::any::AnyStatement;
     use sqlx::{Executor, Statement};
+    use sqlx::any::{AnyKind, AnyTypeInfo};
+    use sqlx::postgres::{PgTypeInfo};
+    use sqlx::postgres::types::Oid;
 
-    pub async fn prepare_statements(
+    pub(super) async fn prepare_statements(
         db: &super::Database,
         sql: &str,
-    ) -> anyhow::Result<Vec<sqlx::Result<AnyStatement<'static>>>> {
+    ) -> anyhow::Result<Vec<anyhow::Result<PreparedStatement>>> {
         let dialect = GenericDialect {};
         let ast = Parser::parse_sql(&dialect, sql)?;
+        let db_kind = db.connection.any_kind();
         let mut res = Vec::with_capacity(ast.len());
-        for stmt in ast {
+        for mut stmt in ast {
+            let param_names = extract_parameters(&mut stmt, db_kind);
+            let parameters = map_params(param_names);
             let query = stmt.to_string();
-            let s = db.connection.prepare(&query).await;
-            res.push(s.map(|r| r.to_owned()));
+            let param_types = get_param_types(&parameters);
+            let stmt_res = db.connection.prepare_with(&query, &param_types).await
+                .with_context(|| format!("Parsing SQL string: '{}'", query));
+            res.push(stmt_res.map(|statement|
+                PreparedStatement { statement: statement.to_owned(), parameters }));
         }
         Ok(res)
     }
 
-    #[allow(dead_code)]
-    fn extract_parameters(sql_ast: &mut sqlparser::ast::Statement) -> Vec<String> {
+    fn get_param_types(parameters: &[StmtParam]) -> Vec<AnyTypeInfo> {
+        parameters.iter().map(|_p| PgTypeInfo::with_oid(Oid(25)).into()).collect()
+    }
+
+    fn map_params(names: Vec<String>) -> Vec<StmtParam> {
+        names
+            .into_iter()
+            .map(|name| {
+                let (prefix, name) = name.split_at(1);
+                let name = name.to_owned();
+                match prefix {
+                    "$" => StmtParam::GetOrPostParam(name),
+                    "?" => StmtParam::GetParam(name),
+                    _ => StmtParam::PostParam(name),
+                }
+            })
+            .collect()
+    }
+
+    fn extract_parameters(sql_ast: &mut sqlparser::ast::Statement, db: AnyKind) -> Vec<String> {
         let mut parameters: Vec<String> = Vec::new();
-        sql_ast.drive_mut(&mut visitor_enter_fn_mut(|value: &mut Value| {
-            if let Value::Placeholder(param) = value {
-                let maybe_position = parameters.iter().position(|e| e == param);
-                let pos = if let Some(pos) = maybe_position {
-                    pos + 1
-                } else {
-                    parameters.push(std::mem::take(param));
-                    parameters.len()
-                };
-                *param = format!("${pos}");
+        sql_ast.drive_mut(&mut visitor_fn_mut(|value: &mut Expr, event| {
+            // Only update the nodes AFTER they have been visited
+            if let VisitorEvent::Enter = event { return; }
+            if let Expr::Value(Value::Placeholder(param)) = value {
+                let new_expr = make_placeholder(db, parameters.len());
+                let name = std::mem::take(param);
+                parameters.push(name);
+                *value = new_expr
             }
         }));
         parameters
+    }
+
+
+    fn make_placeholder(db: AnyKind, current_count: usize) -> Expr {
+        let name = match db {
+            // Postgres only supports numbered parameters
+            AnyKind::Postgres => format!("${}", current_count + 1),
+            _ => format!("?"),
+        };
+        let data_type = match db {
+            // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
+            AnyKind::MySql => DataType::Char(None),
+            _ => DataType::Text,
+        };
+        let value = Expr::Value(Value::Placeholder(name));
+        Expr::Cast { expr: Box::new(value), data_type }
     }
 
     #[test]
     fn test_statement_rewrite() {
         let sql = "select $a from t where $x > $a OR $x = 0";
         let mut ast = Parser::parse_sql(&GenericDialect, sql).unwrap();
-        let parameters = extract_parameters(&mut ast[0]);
+        let parameters = extract_parameters(&mut ast[0], AnyKind::Postgres);
         assert_eq!(
             ast[0].to_string(),
-            "SELECT $1 FROM t WHERE $2 > $1 OR $2 = 0"
+            "SELECT $1 FROM t WHERE $2 > $3 OR $4 = 0"
         );
-        assert_eq!(parameters, ["$a", "$x"]);
+        assert_eq!(parameters, ["$a", "$x", "$a", "$x"]);
     }
 }
 
@@ -252,8 +331,8 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-    .fetch_one(&mut c)
-    .await?;
+        .fetch_one(&mut c)
+        .await?;
     assert_eq!(
         row_to_json(row),
         serde_json::json!({
