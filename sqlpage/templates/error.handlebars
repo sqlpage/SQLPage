@@ -1,4 +1,4 @@
-<div class="alert alert-danger mt-2" role="alert">
+<div class="alert alert-danger text-muted mt-2" role="alert">
     <p>
         <span class="status status-red">
             <span class="status-dot status-dot-animated"></span> Error
@@ -16,11 +16,9 @@
         {{#if backtrace}}
             <details class="fs-5">
                 <summary>Backtrace</summary>
-                <pre class="fs-5 mt-1 p-1">
-                    {{~#each backtrace~}}
-                        <code>{{this}}</code>
-                    {{~/each~}}
-                </pre>
+                {{~#each backtrace~}}
+                    <pre class="fs-5 mt-1 p-1 my-1"><code>{{this}}</code></pre>
+                {{~/each~}}
             </details>
         {{/if}}
     {{/each_row}}
