@@ -1,5 +1,4 @@
 use crate::render::RenderContext;
-use crate::utils::add_value_to_map;
 use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, CONFIG_DIR, WEB_ROOT};
 use actix_web::dev::Payload;
@@ -13,6 +12,8 @@ use actix_web::{
 use anyhow::{bail, Context};
 use futures_util::StreamExt;
 use futures_util::TryFutureExt;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
 use std::net::IpAddr;
@@ -92,6 +93,10 @@ async fn stream_response(
 ) -> anyhow::Result<()> {
     let app_state: &web::Data<AppState> = req.app_data().context("no app data in render")?;
     let req_param = request_argument_json(&req, payload).await;
+    log::debug!(
+        "Received a request with the following parameters: {:?}",
+        req_param
+    );
     let mut stream = stream_query_results(&app_state.db, &sql_bytes, &req_param).await;
 
     let mut renderer = RenderContext::new(app_state, response_bytes);
@@ -121,47 +126,86 @@ async fn stream_response(
     Ok(())
 }
 
+type ParamMap = HashMap<String, SingleOrVec>;
+
+#[derive(Debug)]
+pub enum SingleOrVec {
+    Single(String),
+    Vec(Vec<String>),
+}
+
+impl SingleOrVec {
+    fn merge(&mut self, other: Self) {
+        match (self, other) {
+            (Self::Single(old), Self::Single(new)) => *old = new,
+            (old, mut new) => {
+                let mut v = old.take_vec();
+                v.extend_from_slice(&new.take_vec());
+                *old = Self::Vec(v)
+            }
+        }
+    }
+    fn take_vec(&mut self) -> Vec<String> {
+        match self {
+            SingleOrVec::Single(x) => vec![mem::take(x)],
+            SingleOrVec::Vec(v) => mem::take(v),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct RequestInfo {
-    pub get_variables: serde_json::Map<String, serde_json::Value>,
-    pub post_variables: serde_json::Map<String, serde_json::Value>,
-    pub headers: serde_json::Map<String, serde_json::Value>,
+    pub get_variables: ParamMap,
+    pub post_variables: ParamMap,
+    pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
 }
 
+fn param_map(values: Vec<(String, String)>) -> ParamMap {
+    values
+        .into_iter()
+        .fold(HashMap::new(), |mut map, (mut k, v)| {
+            let entry = if !k.ends_with("[]") {
+                SingleOrVec::Single(v)
+            } else {
+                k.replace_range(k.len() - 2.., "");
+                SingleOrVec::Vec(vec![v])
+            };
+            match map.entry(k) {
+                Entry::Occupied(mut s) => {
+                    SingleOrVec::merge(s.get_mut(), entry);
+                }
+                Entry::Vacant(v) => {
+                    v.insert(entry);
+                }
+            }
+            map
+        })
+}
+
 async fn request_argument_json(req: &HttpRequest, mut payload: Payload) -> RequestInfo {
-    let headers: serde_json::Map<String, serde_json::Value> = req
+    let headers: Vec<(String, String)> = req
         .headers()
         .iter()
         .map(|(name, value)| {
             (
                 name.to_string(),
-                serde_json::Value::String(String::from_utf8_lossy(value.as_bytes()).to_string()),
+                String::from_utf8_lossy(value.as_bytes()).to_string(),
             )
         })
         .collect();
-    let get_variables =
-        web::Query::<serde_json::Map<String, serde_json::Value>>::from_query(req.query_string())
-            .map(|q| q.into_inner())
-            .unwrap_or_default();
+    let get_variables = web::Query::<Vec<(String, String)>>::from_query(req.query_string())
+        .map(|q| q.into_inner())
+        .unwrap_or_default();
     let client_ip = req.peer_addr().map(|addr| addr.ip());
-    let post_variables = Form::<Vec<(String, serde_json::Value)>>::from_request(req, &mut payload)
+    let post_variables = Form::<Vec<(String, String)>>::from_request(req, &mut payload)
         .await
         .map(|form| form.into_inner())
-        .unwrap_or_default()
-        .into_iter()
-        .map(|(mut key, value)| {
-            if key.ends_with("[]") {
-                key.replace_range((key.len() - 2).., "");
-                (key, vec![value].into())
-            } else {
-                (key, value)
-            }
-        })
-        .fold(serde_json::Map::new(), add_value_to_map);
+        .unwrap_or_default();
     RequestInfo {
-        headers,
-        get_variables,
-        post_variables,
+        headers: param_map(headers),
+        get_variables: param_map(get_variables),
+        post_variables: param_map(post_variables),
         client_ip,
     }
 }

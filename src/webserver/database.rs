@@ -7,7 +7,7 @@ use std::future::ready;
 use std::path::Path;
 
 use crate::utils::add_value_to_map;
-use crate::webserver::http::RequestInfo;
+use crate::webserver::http::{RequestInfo, SingleOrVec};
 use crate::MIGRATIONS_DIR;
 use sqlx::any::{AnyArguments, AnyConnectOptions, AnyQueryResult, AnyRow, AnyStatement};
 use sqlx::migrate::Migrator;
@@ -92,36 +92,25 @@ pub async fn stream_query_results_direct<'a>(
 
 fn bind_parameters<'a>(
     stmt: &'a PreparedStatement,
-    request: &RequestInfo,
+    request: &'a RequestInfo,
 ) -> Query<'a, sqlx::Any, AnyArguments<'a>> {
     let mut arguments = AnyArguments::default();
     for param in &stmt.parameters {
         let argument = match param {
-            StmtParam::Get(x) => request.get_variables.get(x).cloned(),
-            StmtParam::Post(x) => request.post_variables.get(x).cloned(),
+            StmtParam::Get(x) => request.get_variables.get(x),
+            StmtParam::Post(x) => request.post_variables.get(x),
             StmtParam::GetOrPost(x) => request
                 .post_variables
                 .get(x)
-                .or_else(|| request.get_variables.get(x))
-                .cloned(),
+                .or_else(|| request.get_variables.get(x)),
         };
-        log::debug!(
-            "Binding value {} in statement {}",
-            argument.clone().unwrap_or_default(),
-            stmt
-        );
+        log::debug!("Binding value {:?} in statement {}", &argument, stmt);
         match argument {
-            None | Some(Value::Null) => arguments.add(None::<bool>),
-            Some(Value::Bool(b)) => arguments.add(b),
-            Some(Value::Number(n)) => {
-                if let Some(int_n) = n.as_i64() {
-                    arguments.add(int_n)
-                } else {
-                    arguments.add(n.as_f64().unwrap_or(f64::NAN))
-                }
+            None => arguments.add(None::<String>),
+            Some(SingleOrVec::Single(s)) => arguments.add(s),
+            Some(SingleOrVec::Vec(v)) => {
+                arguments.add(serde_json::to_string(v).unwrap_or_default())
             }
-            Some(Value::String(s)) => arguments.add(s),
-            Some(other) => arguments.add(other.to_string()),
         }
     }
     stmt.statement.query_with(arguments)
