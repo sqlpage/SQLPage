@@ -16,10 +16,7 @@ const CONFIG_DIR: &str = "sqlpage";
 const TEMPLATES_DIR: &str = "sqlpage/templates";
 const MIGRATIONS_DIR: &str = "sqlpage/migrations";
 
-#[cfg(not(feature = "lambda-web"))]
-const DEFAULT_DATABASE: &str = "sqlite://site.db?mode=rwc";
-#[cfg(feature = "lambda-web")]
-const DEFAULT_DATABASE: &str = "sqlite://:memory:";
+const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 
 pub struct AppState {
     db: Database,
@@ -74,5 +71,23 @@ fn init_logging() {
 }
 
 fn get_database_url() -> String {
-    env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DATABASE.to_string())
+    env::var("DATABASE_URL").unwrap_or_else(|_| default_database_url())
+}
+
+fn default_database_url() -> String {
+    let prefix = "sqlite://".to_owned();
+
+    #[cfg(not(feature = "lambda-web"))]
+    if std::path::Path::new(DEFAULT_DATABASE_FILE).exists() {
+        log::info!("No DATABASE_URL, using the default sqlite database './{DEFAULT_DATABASE_FILE}'");
+        return prefix + DEFAULT_DATABASE_FILE;
+    } else if let Ok(tmp_file) = std::fs::File::create(DEFAULT_DATABASE_FILE) {
+        log::info!("No DATABASE_URL provided, the current directory is writeable, creating {DEFAULT_DATABASE_FILE}");
+        drop(tmp_file);
+        std::fs::remove_file(DEFAULT_DATABASE_FILE).expect("removing temp file");
+        return prefix + DEFAULT_DATABASE_FILE + "?mode=rwc";
+    }
+
+    log::warn!("No DATABASE_URL provided, and the current directory is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
+    prefix + ":memory:"
 }

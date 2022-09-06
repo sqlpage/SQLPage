@@ -97,9 +97,9 @@ fn bind_parameters<'a>(
     let mut arguments = AnyArguments::default();
     for param in &stmt.parameters {
         let argument = match param {
-            StmtParam::GetParam(x) => request.get_variables.get(x).cloned(),
-            StmtParam::PostParam(x) => request.post_variables.get(x).cloned(),
-            StmtParam::GetOrPostParam(x) => request
+            StmtParam::Get(x) => request.get_variables.get(x).cloned(),
+            StmtParam::Post(x) => request.post_variables.get(x).cloned(),
+            StmtParam::GetOrPost(x) => request
                 .post_variables
                 .get(x)
                 .or_else(|| request.get_variables.get(x))
@@ -216,9 +216,9 @@ impl Display for PreparedStatement {
 }
 
 enum StmtParam {
-    GetParam(String),
-    PostParam(String),
-    GetOrPostParam(String),
+    Get(String),
+    Post(String),
+    GetOrPost(String),
 }
 
 mod sql {
@@ -250,7 +250,7 @@ mod sql {
                 .connection
                 .prepare_with(&query, &param_types)
                 .await
-                .with_context(|| format!("Parsing SQL string: '{}'", query));
+                .with_context(|| format!("Preparing SQL statement: '{}'", query));
             res.push(stmt_res.map(|statement| PreparedStatement {
                 statement: statement.to_owned(),
                 parameters,
@@ -273,9 +273,9 @@ mod sql {
                 let (prefix, name) = name.split_at(1);
                 let name = name.to_owned();
                 match prefix {
-                    "$" => StmtParam::GetOrPostParam(name),
-                    ":" => StmtParam::PostParam(name),
-                    _ => StmtParam::GetParam(name),
+                    "$" => StmtParam::GetOrPost(name),
+                    ":" => StmtParam::Post(name),
+                    _ => StmtParam::Get(name),
                 }
             })
             .collect()
@@ -302,7 +302,7 @@ mod sql {
         let name = match db {
             // Postgres only supports numbered parameters
             AnyKind::Postgres => format!("${}", current_count + 1),
-            _ => format!("?"),
+            _ => '?'.to_string(),
         };
         let data_type = match db {
             // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
