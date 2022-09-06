@@ -79,7 +79,9 @@ fn default_database_url() -> String {
 
     #[cfg(not(feature = "lambda-web"))]
     if std::path::Path::new(DEFAULT_DATABASE_FILE).exists() {
-        log::info!("No DATABASE_URL, using the default sqlite database './{DEFAULT_DATABASE_FILE}'");
+        log::info!(
+            "No DATABASE_URL, using the default sqlite database './{DEFAULT_DATABASE_FILE}'"
+        );
         return prefix + DEFAULT_DATABASE_FILE;
     } else if let Ok(tmp_file) = std::fs::File::create(DEFAULT_DATABASE_FILE) {
         log::info!("No DATABASE_URL provided, the current directory is writeable, creating {DEFAULT_DATABASE_FILE}");
