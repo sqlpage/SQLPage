@@ -21,6 +21,7 @@ COPY --from=builder /usr/src/sqlpage/target/release/sqlpage /usr/local/bin/sqlpa
 RUN addgroup -S sqlpage && adduser -S sqlpage -G sqlpage
 WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/index.sql .
+COPY --from=builder /usr/src/sqlpage/sqlpage ./sqlpage
 USER sqlpage
 EXPOSE 8080
 CMD ["sqlpage"]
