@@ -216,7 +216,8 @@ async fn render_sql(
     let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
     let writer = ResponseWriter::new(sender);
     let req_param = extract_request_info(srv_req).await;
-    let app_state = srv_req.app_data::<web::Data<AppState>>()
+    let app_state = srv_req
+        .app_data::<web::Data<AppState>>()
         .ok_or_else(|| ErrorInternalServerError("no state"))?
         .clone(); // Cheap reference count increase
     actix_web::rt::spawn(async move {
