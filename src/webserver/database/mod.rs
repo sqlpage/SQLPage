@@ -55,10 +55,10 @@ fn migration_err(operation: &'static str) -> String {
 
 pub async fn stream_query_results<'a>(
     db: &'a Database,
-    sql_source: &'a [u8],
+    sql_file: &'a ParsedSqlFile,
     request: &'a RequestInfo,
 ) -> impl Stream<Item = DbItem> + 'a {
-    stream_query_results_direct(db, sql_source, request)
+    stream_query_results_direct(db, sql_file, request)
         .await
         .unwrap_or_else(|error| stream::once(ready(Err(error))).boxed())
         .map(|res| match res {
@@ -73,23 +73,20 @@ pub async fn stream_query_results<'a>(
 
 pub async fn stream_query_results_direct<'a>(
     db: &'a Database,
-    sql_source: &'a [u8],
+    sql_file: &'a ParsedSqlFile,
     request: &'a RequestInfo,
 ) -> anyhow::Result<BoxStream<'a, anyhow::Result<Either<AnyQueryResult, AnyRow>>>> {
-    let src = std::str::from_utf8(sql_source)?;
-    // TODO: cache prepared statements for file
-    let sql_file = ParsedSqlFile::new(db, src).await?;
     Ok(async_stream::stream! {
-        for res in sql_file.statements.into_iter() {
+        for res in sql_file.statements.iter() {
             match res {
                 Ok(stmt)=>{
-                    let query = bind_parameters(&stmt, request);
+                    let query = bind_parameters(stmt, request);
                     let mut stream = query.fetch_many(&db.connection);
                     while let Some(elem) = stream.next().await {
                         yield elem.with_context(|| format!("Error while running SQL: {}", stmt))
                     }
                 },
-                Err(e) => yield Err(anyhow::Error::from(e)),
+                Err(e) => yield Err(anyhow::anyhow!("Unable to prepare SQL statement: {}", e)),
             }
         }
     }
