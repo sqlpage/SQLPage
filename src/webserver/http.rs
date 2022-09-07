@@ -1,23 +1,22 @@
 use crate::render::RenderContext;
 use crate::webserver::database::{stream_query_results, DbItem};
-use crate::{AppState, Config, CONFIG_DIR, WEB_ROOT};
-use actix_web::dev::{Payload, ServiceRequest};
+use crate::{AppState, Config, ParsedSqlFile, CONFIG_DIR};
+use actix_web::dev:: ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::http::Method;
-use actix_web::web::{Data, Form};
+use actix_web::web::Form;
 use actix_web::{
-    body::BodyStream, dev::Service, dev::ServiceResponse, http::header::CONTENT_TYPE,
-    middleware::Logger, web, web::Bytes, App, FromRequest, HttpRequest, HttpResponse, HttpServer,
+    body::BodyStream, dev::Service, dev::ServiceResponse,
+    middleware::Logger, web, web::Bytes, App, FromRequest, HttpResponse, HttpServer,
 };
-use anyhow::{bail, Context};
+use anyhow::bail;
 use futures_util::StreamExt;
-use futures_util::TryFutureExt;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
 use std::net::IpAddr;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -88,14 +87,14 @@ impl Drop for ResponseWriter {
 async fn stream_response(
     app_state: &AppState,
     req_param: RequestInfo,
-    sql_bytes: Bytes,
+    sql_file: Arc<ParsedSqlFile>,
     response_bytes: ResponseWriter,
 ) -> anyhow::Result<()> {
     log::debug!(
         "Received a request with the following parameters: {:?}",
         req_param
     );
-    let mut stream = stream_query_results(&app_state.db, &sql_bytes, &req_param).await;
+    let mut stream = stream_query_results(&app_state.db, &sql_file, &req_param).await;
 
     let mut renderer = RenderContext::new(app_state, response_bytes);
     while let Some(item) = stream.next().await {
@@ -211,7 +210,7 @@ async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
 
 async fn render_sql(
     srv_req: &mut ServiceRequest,
-    sql_bytes: Bytes,
+    sql_file: Arc<ParsedSqlFile>,
 ) -> actix_web::Result<HttpResponse> {
     let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
     let writer = ResponseWriter::new(sender);
@@ -221,7 +220,8 @@ async fn render_sql(
         .ok_or_else(|| ErrorInternalServerError("no state"))?
         .clone(); // Cheap reference count increase
     actix_web::rt::spawn(async move {
-        if let Err(err) = stream_response(&app_state, req_param, sql_bytes, writer).await {
+        let sql_file = Arc::clone(&sql_file);
+        if let Err(err) = stream_response(&app_state, req_param, sql_file, writer).await {
             log::error!("Unable to serve page: {}", err);
         }
     });
@@ -230,23 +230,6 @@ async fn render_sql(
         .body(BodyStream::new(
             tokio_stream::wrappers::ReceiverStream::new(receiver),
         )))
-}
-
-async fn postprocess_response(
-    serv_resp: ServiceResponse,
-    payload: Payload,
-) -> actix_web::Result<ServiceResponse> {
-    let (req, old_resp) = serv_resp.into_parts();
-    let ctype = old_resp.headers().get(CONTENT_TYPE);
-    if ctype.map(|ct| ct == "application/x-sql").unwrap_or(false) {
-        let sql = actix_web::body::to_bytes(old_resp.into_body()).await?;
-        let mut srv_req = ServiceRequest::from_parts(req, payload);
-        let new_resp = render_sql(&mut srv_req, sql).await?;
-        let old_req = srv_req.into_parts().0;
-        Ok(ServiceResponse::new(old_req, new_resp))
-    } else {
-        Ok(ServiceResponse::new(req, old_resp))
-    }
 }
 
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
@@ -267,6 +250,20 @@ fn path_to_sql_file(root: &Path, path: &str) -> Option<PathBuf> {
     }
 }
 
+async fn process_sql_request(
+    mut req: ServiceRequest,
+    sql_path: PathBuf,
+) -> actix_web::Result<ServiceResponse> {
+    let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
+    let sql_file = app_state
+        .sql_file_cache
+        .get(app_state, &sql_path)
+        .await
+        .map_err(ErrorInternalServerError)?;
+    let response = render_sql(&mut req, sql_file).await?;
+    Ok(req.into_response(response))
+}
+
 pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
     let listen_on = config.listen_on;
     let app_state = web::Data::new(state);
@@ -274,16 +271,20 @@ pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
     let factory = move || {
         App::new()
             .app_data(app_state.clone())
-            .wrap_fn(|mut req, srv| {
-                let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-                if let Some(sql_path) = path_to_sql_file(&app_state.web_root, req.path()) {
-                    let file = app_state.sql_file_cache.get(&app_state, &sql_path);
+            .wrap_fn(|req, srv| {
+                let app_state: web::Data<AppState> = web::Data::clone(req.app_data().expect("app_state"));
+                let sql_file_path = path_to_sql_file(&app_state.web_root, req.path());
+                let sql_file = if let Some(sql_path) = sql_file_path {
+                    Ok((req, sql_path))
+                } else {
+                    Err(srv.call(req))
+                };
+                async move {
+                    match sql_file {
+                        Ok((req, sql_path)) => process_sql_request(req, sql_path).await,
+                        Err(fallback) => fallback.await
+                    }
                 }
-                // Remove the payload from the request so that it can be used later by our sql service
-                let payload = Payload::take(req.parts_mut().1);
-                // Make all requests GET so that they can be served by the file server
-                req.head_mut().method = Method::GET;
-                srv.call(req).and_then(|resp| postprocess_response(resp, payload))
             })
             .default_service(
                 actix_files::Files::new("/", &app_state.web_root)

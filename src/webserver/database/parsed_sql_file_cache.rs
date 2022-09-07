@@ -42,7 +42,7 @@ impl<T> Cached<T> {
             / (MAX_STALE_CACHE_MS as u128)
     }
     fn needs_check(&self) -> bool {
-        self.last_check_time() + Duration::from_millis(MAX_STALE_CACHE_MS) < SystemTime::now()
+        self.last_check_time() + Duration::from_millis(MAX_STALE_CACHE_MS) <= SystemTime::now()
     }
 }
 
@@ -57,21 +57,23 @@ impl FileCache<ParsedSqlFile> {
         app_state: &AppState,
         path: &PathBuf,
     ) -> anyhow::Result<Arc<ParsedSqlFile>> {
-        let read_lock = self.cache.read().expect("lock");
-        if let Some(cached) = read_lock.get(path) {
-            if !cached.needs_check() {
-                log::trace!("Cache answer without filesystem lookup for {:?}", path);
-                return Ok(Arc::clone(&cached.content));
-            }
-            if let Ok(modified) = std::fs::metadata(path).and_then(|m| m.modified()) {
-                if modified <= cached.last_check_time() {
-                    log::trace!("Cache answer with filesystem metadata read for {:?}", path);
-                    cached.update_check_time();
+        {
+            let read_lock = self.cache.read().expect("lock");
+            if let Some(cached) = read_lock.get(path) {
+                if !cached.needs_check() {
+                    log::trace!("Cache answer without filesystem lookup for {:?}", path);
                     return Ok(Arc::clone(&cached.content));
+                }
+                if let Ok(modified) = std::fs::metadata(path).and_then(|m| m.modified()) {
+                    if modified <= cached.last_check_time() {
+                        log::trace!("Cache answer with filesystem metadata read for {:?}", path);
+                        cached.update_check_time();
+                        return Ok(Arc::clone(&cached.content));
+                    }
                 }
             }
         }
-        drop(read_lock);
+        // Read lock is released
         log::trace!("Loading and parsing {:?}", path);
         let file_contents = std::fs::read_to_string(path)
             .with_context(|| format!("Reading {:?} to load it in cache", path));
