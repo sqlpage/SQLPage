@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use anyhow::Context;
-use crate::AppState;
 use crate::webserver::database::ParsedSqlFile;
+use crate::AppState;
+use anyhow::Context;
+use std::path::PathBuf;
 
 use std::collections::HashMap;
 use std::sync::atomic::{
@@ -10,7 +10,6 @@ use std::sync::atomic::{
 };
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
-
 
 const MAX_STALE_CACHE_MS: u64 = 100;
 
@@ -53,7 +52,11 @@ pub struct FileCache<T> {
 }
 
 impl FileCache<ParsedSqlFile> {
-    pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<ParsedSqlFile>> {
+    pub async fn get(
+        &self,
+        app_state: &AppState,
+        path: &PathBuf,
+    ) -> anyhow::Result<Arc<ParsedSqlFile>> {
         let read_lock = self.cache.read().expect("lock");
         if let Some(cached) = read_lock.get(path) {
             if !cached.needs_check() {
@@ -76,8 +79,8 @@ impl FileCache<ParsedSqlFile> {
             Ok(contents) => ParsedSqlFile::new(&app_state.db, &contents)
                 .await
                 .with_context(|| format!("Parsing {:?}", path)),
-            Err(e) => Err(e)
-        } ;
+            Err(e) => Err(e),
+        };
 
         let mut write_lock = self.cache.write().expect("write lock");
         match parsed {
