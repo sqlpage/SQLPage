@@ -5,11 +5,13 @@ mod templates;
 mod utils;
 mod webserver;
 
-use crate::webserver::{init_database, Database};
+use crate::webserver::{Database, init_database};
 use anyhow::Context;
 use std::env;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::path::PathBuf;
 use templates::AllTemplates;
+use crate::webserver::database::{FileCache, ParsedSqlFile};
 
 const WEB_ROOT: &str = ".";
 const CONFIG_DIR: &str = "sqlpage";
@@ -21,6 +23,8 @@ const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 pub struct AppState {
     db: Database,
     all_templates: AllTemplates,
+    web_root: PathBuf,
+    sql_file_cache: FileCache<ParsedSqlFile>
 }
 
 pub struct Config {
@@ -48,7 +52,9 @@ async fn start() -> anyhow::Result<()> {
     let listen_on = get_listen_on()?;
     log::info!("Starting server on {}", listen_on);
     let all_templates = AllTemplates::init()?;
-    let state = AppState { db, all_templates };
+    let web_root = std::fs::canonicalize(WEB_ROOT)?;
+    let sql_file_cache = FileCache::default();
+    let state = AppState { db, all_templates, web_root, sql_file_cache };
     let config = Config { listen_on };
     webserver::http::run_server(config, state).await?;
     Ok(())
