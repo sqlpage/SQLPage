@@ -8,12 +8,13 @@ select 'sqlpage' as title, '/' as link, 'en' as lang, 'My cool app' as descripti
 
 -- Let's start with the text component :
 select 'text' as component,
-       'Welcome to SQLPage' as title; -- The text component has a property called "title" that we use to set the title of our block of text
+       'Welcome to SQLPage' as title, -- The text component has a property called "title" that we use to set the title of our block of text
+       true as center; -- Properties can be textual, numeric, or booleans
 -- We are now inside the text component. Each row that will be returned by our SELECT queries will be a span of text
-select 'Welcome to sqlpage!', 'Look at how easy it is to write a website !' as contents;
-select 'I can''t believe I am writing a website with nothing but SQL ! ' as contents,
+select 'Look at how easy it is to write a website ! ' as contents;
+select 'I can''t believe I am writing a website with nothing but SQL! ' as contents,
         true as italics; -- The text component has a property called "contents" and another called "italics".
-select 'This is a normal SQL query. This text is hardcoded, but it could as well come from a database.' as contents;
+select 'This is a normal SQL query. This text is hardcoded, but it could as well come from a database. ' as contents;
 select 'See the source code of this page.' as contents,
         'https://github.com/lovasoa/SQLpage/blob/main/index.sql' as link;
 

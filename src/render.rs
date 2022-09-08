@@ -105,7 +105,12 @@ impl<W: std::io::Write> RenderContext<'_, W> {
     /// Returns whether the error is irrecoverable and the rendering must stop
     pub fn handle_error(&mut self, error: &impl std::error::Error) -> anyhow::Result<()> {
         log::warn!("SQL error: {:?}", error);
-        self.close_component()?;
+        if self.current_component.is_some() {
+            self.close_component()?;
+        } else {
+            self.shell_renderer
+                .render_start(&mut self.writer, json!(null))?;
+        }
         let saved_component = self.current_component.take();
         self.open_component("error")?;
         let description = format!("{}", error);

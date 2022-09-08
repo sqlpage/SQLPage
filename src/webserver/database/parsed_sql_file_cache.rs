@@ -78,9 +78,7 @@ impl FileCache<ParsedSqlFile> {
         let file_contents = std::fs::read_to_string(path)
             .with_context(|| format!("Reading {:?} to load it in cache", path));
         let parsed = match file_contents {
-            Ok(contents) => ParsedSqlFile::new(&app_state.db, &contents)
-                .await
-                .with_context(|| format!("Parsing {:?}", path)),
+            Ok(contents) => Ok(ParsedSqlFile::new(&app_state.db, &contents).await),
             Err(e) => Err(e),
         };
 
