@@ -1,7 +1,7 @@
 mod parsed_sql_file_cache;
 mod sql;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use futures_util::stream::{self, BoxStream, Stream};
 use futures_util::StreamExt;
 use serde_json::{Map, Value};
@@ -86,11 +86,19 @@ pub async fn stream_query_results_direct<'a>(
                         yield elem.with_context(|| format!("Error while running SQL: {}", stmt))
                     }
                 },
-                Err(e) => yield Err(anyhow::anyhow!("Unable to prepare SQL statement: {}", e)),
+                Err(e) => yield Err(clone_anyhow_err(e)),
             }
         }
     }
     .boxed())
+}
+
+fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
+    let mut e = anyhow!("An error occurred during the preparation phase of the SQL");
+    for c in err.chain().rev() {
+        e = e.context(c.to_string());
+    }
+    e
 }
 
 fn bind_parameters<'a>(

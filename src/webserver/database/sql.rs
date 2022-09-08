@@ -5,6 +5,8 @@ use anyhow::Context;
 use sqlparser::ast::{visitor_fn_mut, DataType, DriveMut, Expr, Value, VisitorEvent};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
+use sqlparser::tokenizer::Token::{SemiColon, EOF};
+use sqlparser::tokenizer::Tokenizer;
 use sqlx::any::{AnyKind, AnyTypeInfo};
 use sqlx::postgres::types::Oid;
 use sqlx::postgres::PgTypeInfo;
@@ -16,12 +18,24 @@ pub struct ParsedSqlFile {
 }
 
 impl ParsedSqlFile {
-    pub(super) async fn new(db: &Database, sql: &str) -> anyhow::Result<ParsedSqlFile> {
+    pub(super) async fn new(db: &Database, sql: &str) -> ParsedSqlFile {
         let dialect = GenericDialect {};
-        let ast = Parser::parse_sql(&dialect, sql)?;
+        let tokens = Tokenizer::new(&dialect, sql).tokenize();
+        let mut parser = match tokens {
+            Ok(tokens) => Parser::new(tokens, &dialect),
+            Err(e) => return Self::from_err(e),
+        };
         let db_kind = db.connection.any_kind();
-        let mut statements = Vec::with_capacity(ast.len());
-        for mut stmt in ast {
+        let mut statements = Vec::with_capacity(8);
+        while parser.peek_token() != EOF {
+            let mut stmt = match parser.parse_statement() {
+                Ok(stmt) => stmt,
+                Err(err) => {
+                    statements.push(Err(anyhow::Error::from(err)));
+                    break;
+                }
+            };
+            while parser.consume_token(&SemiColon) {}
             let param_names = extract_parameters(&mut stmt, db_kind);
             let parameters = map_params(param_names);
             let query = stmt.to_string();
@@ -36,7 +50,15 @@ impl ParsedSqlFile {
                 parameters,
             }));
         }
-        Ok(ParsedSqlFile { statements })
+        statements.shrink_to_fit();
+        ParsedSqlFile { statements }
+    }
+    fn from_err(e: impl Into<anyhow::Error>) -> Self {
+        Self {
+            statements: vec![Err(e
+                .into()
+                .context("SQLPage could not parse the SQL file"))],
+        }
     }
 }
 
