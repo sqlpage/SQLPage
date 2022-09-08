@@ -1,12 +1,12 @@
 use crate::render::RenderContext;
 use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, ParsedSqlFile, CONFIG_DIR};
-use actix_web::dev:: ServiceRequest;
+use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::Form;
 use actix_web::{
-    body::BodyStream, dev::Service, dev::ServiceResponse,
-    middleware::Logger, web, web::Bytes, App, FromRequest, HttpResponse, HttpServer,
+    body::BodyStream, dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App,
+    FromRequest, HttpResponse, HttpServer,
 };
 use anyhow::bail;
 use futures_util::StreamExt;
