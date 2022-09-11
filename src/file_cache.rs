@@ -80,7 +80,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         let file_contents = std::fs::read_to_string(path)
             .with_context(|| format!("Reading {:?} to load it in cache", path));
         let parsed = match file_contents {
-            Ok(contents) => Ok(T::from_str_with_state(app_state, &contents).await),
+            Ok(contents) => Ok(T::from_str_with_state(app_state, &contents).await?),
             Err(e) => Err(e),
         };
 
@@ -103,6 +103,6 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
 }
 
 #[async_trait(? Send)]
-pub trait AsyncFromStrWithState {
-    async fn from_str_with_state(app_state: &AppState, source: &str) -> Self;
+pub trait AsyncFromStrWithState: Sized {
+    async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self>;
 }

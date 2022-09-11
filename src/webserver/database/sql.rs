@@ -66,8 +66,8 @@ impl ParsedSqlFile {
 
 #[async_trait(?Send)]
 impl AsyncFromStrWithState for ParsedSqlFile {
-    async fn from_str_with_state(app_state: &AppState, source: &str) -> Self {
-        ParsedSqlFile::new(&app_state.db, source).await
+    async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self> {
+        Ok(ParsedSqlFile::new(&app_state.db, source).await)
     }
 }
 
