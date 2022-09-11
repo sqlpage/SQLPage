@@ -174,12 +174,9 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         component: &str,
         app_state: &'a AppState,
     ) -> anyhow::Result<SplitTemplateRenderer<'a>> {
-        use anyhow::Context;
         let split_template = app_state
             .all_templates
-            .split_templates
-            .get(component)
-            .with_context(|| format!("The component '{component}' was not found."))?;
+            .get_template(component)?;
         Ok(SplitTemplateRenderer::new(
             split_template,
             &app_state.all_templates.handlebars,
