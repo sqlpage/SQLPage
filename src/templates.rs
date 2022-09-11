@@ -1,4 +1,6 @@
-use crate::TEMPLATES_DIR;
+use crate::file_cache::AsyncFromStrWithState;
+use crate::{AppState, TEMPLATES_DIR};
+use async_trait::async_trait;
 use handlebars::{
     handlebars_helper, template::TemplateElement, Context, Handlebars, JsonValue, RenderError,
     Renderable, Template, TemplateError,
@@ -42,6 +44,14 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
             elements: elements_after,
             mapping: mapping_after,
         },
+    }
+}
+
+#[async_trait(?Send)]
+impl AsyncFromStrWithState for SplitTemplate {
+    async fn from_str_with_state(_app_state: &AppState, source: &str) -> anyhow::Result<Self> {
+        let tpl = Template::compile(source)?;
+        Ok(split_template(tpl))
     }
 }
 
