@@ -55,7 +55,7 @@ fn is_template_list_item(element: &TemplateElement) -> bool {
 
 pub struct AllTemplates {
     pub handlebars: Handlebars<'static>,
-    pub split_templates: HashMap<String, SplitTemplate>,
+    split_templates: HashMap<String, SplitTemplate>,
 }
 
 fn without_top_block<'a, 'reg, 'rc, R>(
@@ -196,6 +196,12 @@ impl AllTemplates {
         }
         Ok(())
     }
+
+    pub fn get_template(&self, name: &str) -> anyhow::Result<&SplitTemplate> {
+        use anyhow::Context;
+        self.split_templates.get(name)
+            .with_context(|| format!("The component '{name}' was not found."))
+    }
 }
 
 #[test]
@@ -205,7 +211,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-    .unwrap();
+        .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,
