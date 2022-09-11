@@ -1,7 +1,9 @@
 use super::PreparedStatement;
+use crate::file_cache::AsyncFromStrWithState;
 use crate::webserver::database::StmtParam;
-use crate::Database;
+use crate::{AppState, Database};
 use anyhow::Context;
+use async_trait::async_trait;
 use sqlparser::ast::{visitor_fn_mut, DataType, DriveMut, Expr, Value, VisitorEvent};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
@@ -59,6 +61,13 @@ impl ParsedSqlFile {
                 .into()
                 .context("SQLPage could not parse the SQL file"))],
         }
+    }
+}
+
+#[async_trait(?Send)]
+impl AsyncFromStrWithState for ParsedSqlFile {
+    async fn from_str_with_state(app_state: &AppState, source: &str) -> Self {
+        ParsedSqlFile::new(&app_state.db, source).await
     }
 }
 

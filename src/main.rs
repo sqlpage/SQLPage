@@ -1,5 +1,6 @@
 extern crate core;
 
+mod file_cache;
 mod render;
 mod templates;
 mod utils;
@@ -53,7 +54,7 @@ async fn start() -> anyhow::Result<()> {
     log::info!("Starting server on {}", listen_on);
     let all_templates = AllTemplates::init()?;
     let web_root = std::fs::canonicalize(WEB_ROOT)?;
-    let sql_file_cache = FileCache::default();
+    let sql_file_cache = FileCache::new();
     let state = AppState {
         db,
         all_templates,
