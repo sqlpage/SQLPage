@@ -1,8 +1,8 @@
-use crate::webserver::database::ParsedSqlFile;
 use crate::AppState;
 use anyhow::Context;
 use std::path::PathBuf;
 
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::atomic::{
     AtomicU64,
@@ -47,16 +47,18 @@ impl<T> Cached<T> {
 }
 
 #[derive(Default)]
-pub struct FileCache<T> {
+pub struct FileCache<T: AsyncFromStrWithState> {
     cache: Arc<RwLock<HashMap<PathBuf, Cached<T>>>>,
 }
 
-impl FileCache<ParsedSqlFile> {
-    pub async fn get(
-        &self,
-        app_state: &AppState,
-        path: &PathBuf,
-    ) -> anyhow::Result<Arc<ParsedSqlFile>> {
+impl<T: AsyncFromStrWithState> FileCache<T> {
+    pub fn new() -> Self {
+        Self {
+            cache: Default::default(),
+        }
+    }
+
+    pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
         {
             let read_lock = self.cache.read().expect("lock");
             if let Some(cached) = read_lock.get(path) {
@@ -78,7 +80,7 @@ impl FileCache<ParsedSqlFile> {
         let file_contents = std::fs::read_to_string(path)
             .with_context(|| format!("Reading {:?} to load it in cache", path));
         let parsed = match file_contents {
-            Ok(contents) => Ok(ParsedSqlFile::new(&app_state.db, &contents).await),
+            Ok(contents) => Ok(T::from_str_with_state(app_state, &contents).await),
             Err(e) => Err(e),
         };
 
@@ -98,4 +100,9 @@ impl FileCache<ParsedSqlFile> {
             }
         }
     }
+}
+
+#[async_trait(? Send)]
+pub trait AsyncFromStrWithState {
+    async fn from_str_with_state(app_state: &AppState, source: &str) -> Self;
 }

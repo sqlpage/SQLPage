@@ -199,7 +199,8 @@ impl AllTemplates {
 
     pub fn get_template(&self, name: &str) -> anyhow::Result<&SplitTemplate> {
         use anyhow::Context;
-        self.split_templates.get(name)
+        self.split_templates
+            .get(name)
             .with_context(|| format!("The component '{name}' was not found."))
     }
 }
@@ -211,7 +212,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-        .unwrap();
+    .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,

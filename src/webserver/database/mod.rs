@@ -1,4 +1,3 @@
-mod parsed_sql_file_cache;
 mod sql;
 
 use anyhow::{anyhow, Context};
@@ -17,7 +16,7 @@ use sqlx::migrate::Migrator;
 use sqlx::query::Query;
 use sqlx::{AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Row, Statement};
 
-pub use parsed_sql_file_cache::FileCache;
+pub use crate::file_cache::FileCache;
 pub use sql::ParsedSqlFile;
 
 pub struct Database {
