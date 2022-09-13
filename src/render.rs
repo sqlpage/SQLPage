@@ -1,10 +1,12 @@
 use crate::templates::SplitTemplate;
 use crate::AppState;
 use anyhow::Context as AnyhowContext;
-use handlebars::{BlockContext, Context, Handlebars, JsonValue, RenderError, Renderable};
+use handlebars::{BlockContext, Context, Handlebars, JsonValue, RenderError, Renderable, Template};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
+use std::sync::Arc;
+use async_recursion::async_recursion;
 
 pub struct RenderContext<'a, W: std::io::Write> {
     app_state: &'a AppState,
@@ -19,9 +21,9 @@ const DEFAULT_COMPONENT: &str = "default";
 const MAX_RECURSION_DEPTH: usize = 256;
 
 impl<W: std::io::Write> RenderContext<'_, W> {
-    pub fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
+    pub async fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
         let shell_renderer =
-            Self::create_renderer("shell", app_state).expect("shell must always exist");
+            Self::create_renderer("shell", app_state).await.expect("shell must always exist");
         RenderContext {
             app_state,
             writer,
@@ -32,7 +34,8 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         }
     }
 
-    pub fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
+    #[async_recursion(? Send)]
+    pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         log::debug!(
             "<- Processing database row: {}",
             serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
@@ -46,19 +49,19 @@ impl<W: std::io::Write> RenderContext<'_, W> {
             (None, Some("head")) | (None, None) => {
                 self.shell_renderer
                     .render_start(&mut self.writer, json!(&data))?;
-                self.open_component_with_data(DEFAULT_COMPONENT, &data)?;
+                self.open_component_with_data(DEFAULT_COMPONENT, &data).await?;
             }
             (None, new_component) => {
                 self.shell_renderer
                     .render_start(&mut self.writer, json!(null))?;
                 let component = new_component.unwrap_or(DEFAULT_COMPONENT);
-                self.open_component_with_data(component, &data)?;
+                self.open_component_with_data(component, &data).await?;
             }
             (Some(_current_component), Some("dynamic")) => {
-                self.render_dynamic(data)?;
+                self.render_dynamic(data).await?;
             }
             (Some(_current_component), Some(new_component)) => {
-                self.open_component_with_data(new_component, &data)?;
+                self.open_component_with_data(new_component, &data).await?;
             }
             (Some(_), _) => {
                 self.render_current_template_with_data(&data)?;
@@ -67,7 +70,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    fn render_dynamic(&mut self, data: &Value) -> anyhow::Result<()> {
+    async fn render_dynamic(&mut self, data: &Value) -> anyhow::Result<()> {
         anyhow::ensure!(
             self.recursion_depth <= MAX_RECURSION_DEPTH,
             "Maximum recursion depth exceeded in the dynamic component."
@@ -88,7 +91,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
             )?;
         for p in properties {
             self.recursion_depth += 1;
-            let res = self.handle_row(&p);
+            let res = self.handle_row(&p).await;
             self.recursion_depth -= 1;
             res?;
         }
@@ -103,7 +106,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
 
     /// Handles the rendering of an error.
     /// Returns whether the error is irrecoverable and the rendering must stop
-    pub fn handle_error(&mut self, error: &impl std::error::Error) -> anyhow::Result<()> {
+    pub async fn handle_error(&mut self, error: &impl std::error::Error) -> anyhow::Result<()> {
         log::warn!("SQL error: {:?}", error);
         if self.current_component.is_some() {
             self.close_component()?;
@@ -112,7 +115,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
                 .render_start(&mut self.writer, json!(null))?;
         }
         let saved_component = self.current_component.take();
-        self.open_component("error")?;
+        self.open_component("error").await?;
         let description = format!("{}", error);
         let mut backtrace = vec![];
         let mut source = error.source();
@@ -130,24 +133,24 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    pub fn handle_anyhow_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+    pub async fn handle_anyhow_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
         let std_err = AsRef::<(dyn std::error::Error + 'static)>::as_ref(error);
-        self.handle_error(&std_err)
+        self.handle_error(&std_err).await
     }
 
-    pub fn handle_result<R, E: std::error::Error>(
+    pub async fn handle_result<R, E: std::error::Error>(
         &mut self,
         result: &Result<R, E>,
     ) -> anyhow::Result<()> {
         if let Err(error) = result {
-            self.handle_error(&error)
+            self.handle_error(&error).await
         } else {
             Ok(())
         }
     }
 
-    pub fn handle_result_and_log<R, E: std::error::Error>(&mut self, result: &Result<R, E>) {
-        if let Err(e) = self.handle_result(result) {
+    pub async fn handle_result_and_log<R, E: std::error::Error>(&mut self, result: &Result<R, E>) {
+        if let Err(e) = self.handle_result(result).await {
             log::error!("{}", e);
         }
     }
@@ -166,33 +169,33 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    fn open_component(&mut self, component: &str) -> anyhow::Result<()> {
-        self.open_component_with_data(component, &json!(null))
+    async fn open_component(&mut self, component: &str) -> anyhow::Result<()> {
+        self.open_component_with_data(component, &json!(null)).await
     }
 
-    fn create_renderer<'a>(
+    async fn create_renderer<'a>(
         component: &str,
         app_state: &'a AppState,
     ) -> anyhow::Result<SplitTemplateRenderer<'a>> {
-        let split_template = app_state.all_templates.get_template(component)?;
+        let split_template = app_state.all_templates.get_template(app_state, component).await?;
         Ok(SplitTemplateRenderer::new(
             split_template,
             &app_state.all_templates.handlebars,
         ))
     }
 
-    fn set_current_component(&mut self, component: &str) -> anyhow::Result<()> {
-        self.current_component = Some(Self::create_renderer(component, self.app_state)?);
+    async fn set_current_component(&mut self, component: &str) -> anyhow::Result<()> {
+        self.current_component = Some(Self::create_renderer(component, self.app_state).await?);
         Ok(())
     }
 
-    fn open_component_with_data<T: Serialize>(
+    async fn open_component_with_data<T: Serialize>(
         &mut self,
         component: &str,
         data: &T,
     ) -> anyhow::Result<()> {
         self.close_component()?;
-        self.set_current_component(component)?;
+        self.set_current_component(component).await?;
         self.current_component
             .as_mut()
             .unwrap()
@@ -207,13 +210,13 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    pub fn close(mut self) -> W {
+    pub async fn close(mut self) -> W {
         if let Some(mut component) = self.current_component.take() {
             let res = component.render_end(&mut self.writer);
-            self.handle_result_and_log(&res);
+            self.handle_result_and_log(&res).await;
         }
         let res = self.shell_renderer.render_end(&mut self.writer);
-        self.handle_result_and_log(&res);
+        self.handle_result_and_log(&res).await;
         self.writer
     }
 }
@@ -227,14 +230,14 @@ impl<W: std::io::Write> handlebars::Output for HandlebarWriterOutput<W> {
 }
 
 pub struct SplitTemplateRenderer<'registry> {
-    split_template: &'registry SplitTemplate,
+    split_template: Arc<SplitTemplate>,
     block_context: Option<BlockContext<'registry>>,
     registry: &'registry Handlebars<'registry>,
     row_index: usize,
 }
 
 impl<'reg> SplitTemplateRenderer<'reg> {
-    fn new(split_template: &'reg SplitTemplate, registry: &'reg Handlebars<'reg>) -> Self {
+    fn new(split_template: Arc<SplitTemplate>, registry: &'reg Handlebars<'reg>) -> Self {
         Self {
             split_template,
             block_context: None,
@@ -254,11 +257,15 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         &mut self,
         writer: W,
         data: JsonValue,
-    ) -> Result<(), handlebars::RenderError> {
+    ) -> Result<(), RenderError> {
         let mut render_context = handlebars::RenderContext::new(None);
         let mut ctx = Context::from(data);
         let mut output = HandlebarWriterOutput(writer);
-        self.split_template.before_list.render(
+        // see https://github.com/sunng87/handlebars-rust/issues/529
+        let tpl: &'static Template = unsafe {
+            std::mem::transmute(&self.split_template.before_list)
+        };
+        tpl.render(
             self.registry,
             &ctx,
             &mut render_context,
@@ -288,7 +295,11 @@ impl<'reg> SplitTemplateRenderer<'reg> {
             render_context.push_block(blk);
             let ctx = Context::null();
             let mut output = HandlebarWriterOutput(writer);
-            self.split_template.list_content.render(
+            // https://github.com/sunng87/handlebars-rust/issues/529
+            let tpl: &'static Template = unsafe {
+                std::mem::transmute(&self.split_template.list_content)
+            };
+            tpl.render(
                 self.registry,
                 &ctx,
                 &mut render_context,

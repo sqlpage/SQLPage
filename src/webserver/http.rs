@@ -96,17 +96,17 @@ async fn stream_response(
     );
     let mut stream = stream_query_results(&app_state.db, &sql_file, &req_param).await;
 
-    let mut renderer = RenderContext::new(app_state, response_bytes);
+    let mut renderer = RenderContext::new(app_state, response_bytes).await;
     while let Some(item) = stream.next().await {
         let render_result = match item {
             DbItem::FinishedQuery => renderer.finish_query().await,
-            DbItem::Row(row) => renderer.handle_row(&row),
-            DbItem::Error(e) => renderer.handle_anyhow_error(&e),
+            DbItem::Row(row) => renderer.handle_row(&row).await,
+            DbItem::Error(e) => renderer.handle_anyhow_error(&e).await,
         };
         if let Err(e) = render_result {
-            if let Err(nested_err) = renderer.handle_anyhow_error(&e) {
+            if let Err(nested_err) = renderer.handle_anyhow_error(&e).await {
                 renderer
-                    .close()
+                    .close().await
                     .close_with_error(nested_err.to_string())
                     .await;
                 bail!(
@@ -118,7 +118,7 @@ async fn stream_response(
         }
         renderer.writer.async_flush().await?;
     }
-    renderer.close().async_flush().await?;
+    renderer.close().await.async_flush().await?;
     log::debug!("Successfully finished rendering the page");
     Ok(())
 }

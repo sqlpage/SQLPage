@@ -46,7 +46,6 @@ impl<T> Cached<T> {
     }
 }
 
-#[derive(Default)]
 pub struct FileCache<T: AsyncFromStrWithState> {
     cache: Arc<RwLock<HashMap<PathBuf, Cached<T>>>>,
 }
@@ -94,7 +93,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 Ok(new_val)
             }
             Err(e) => {
-                log::trace!("Evicting {:?} from the cache", path);
+                log::trace!("Evicting {path:?} from the cache because the following error occurred: {e}");
                 write_lock.remove(path);
                 Err(e)
             }
