@@ -1,13 +1,12 @@
 use crate::file_cache::AsyncFromStrWithState;
-use crate::{AppState, TEMPLATES_DIR};
+use crate::{AppState, FileCache, TEMPLATES_DIR};
 use async_trait::async_trait;
 use handlebars::{
     handlebars_helper, template::TemplateElement, Context, Handlebars, JsonValue, RenderError,
-    Renderable, Template, TemplateError,
+    Renderable, Template,
 };
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::fs::DirEntry;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 pub(crate) const DELAYED_CONTENTS: &str = "_delayed_contents";
 
@@ -47,7 +46,7 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait(? Send)]
 impl AsyncFromStrWithState for SplitTemplate {
     async fn from_str_with_state(_app_state: &AppState, source: &str) -> anyhow::Result<Self> {
         let tpl = Template::compile(source)?;
@@ -65,7 +64,7 @@ fn is_template_list_item(element: &TemplateElement) -> bool {
 
 pub struct AllTemplates {
     pub handlebars: Handlebars<'static>,
-    split_templates: HashMap<String, SplitTemplate>,
+    split_templates: FileCache<SplitTemplate>,
 }
 
 fn without_top_block<'a, 'reg, 'rc, R>(
@@ -152,65 +151,22 @@ impl AllTemplates {
         handlebars.register_helper("entries", Box::new(entries));
         handlebars.register_helper("delay", Box::new(delay_helper));
         handlebars.register_helper("flush_delayed", Box::new(flush_delayed_helper));
-        let split_templates = HashMap::new();
-        let mut this = Self {
+        let this = Self {
             handlebars,
-            split_templates,
+            split_templates: FileCache::new(),
         };
-        this.register_split(
-            "shell",
-            include_str!("../sqlpage/templates/shell.handlebars"),
-        )?;
-        this.register_split(
-            "error",
-            include_str!("../sqlpage/templates/error.handlebars"),
-        )?;
-        this.register_dir();
         Ok(this)
     }
 
-    fn register_split<S: ToString>(&mut self, name: S, tpl_str: &str) -> Result<(), TemplateError> {
-        let mut tpl = Template::compile(tpl_str)?;
-        tpl.name = Some(name.to_string());
-        let split = split_template(tpl);
-        self.split_templates.insert(name.to_string(), split);
-        Ok(())
-    }
-
-    fn register_dir(&mut self) {
-        let mut errors = vec![];
-        match std::fs::read_dir(TEMPLATES_DIR) {
-            Ok(dir) => {
-                for f in dir {
-                    errors.extend(self.register_dir_entry(f).err());
-                }
-            }
-            Err(e) => errors.push(Box::new(e)),
-        }
-        for err in errors {
-            log::error!("Unable to register a template: {}", err);
-        }
-    }
-
-    fn register_dir_entry(
-        &mut self,
-        entry: std::io::Result<DirEntry>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let path = entry?.path();
-        let tpl_str = std::fs::read_to_string(&path)?;
-        let name = path.file_stem().unwrap().to_string_lossy();
-        if path.extension() == Some(OsStr::new("handlebars")) {
-            self.register_split(&name, &tpl_str)?;
-        } else {
-            self.handlebars.register_partial(&name, &tpl_str)?;
-        }
-        Ok(())
-    }
-
-    pub fn get_template(&self, name: &str) -> anyhow::Result<&SplitTemplate> {
+    pub async fn get_template(&self, app_state: &AppState, name: &str) -> anyhow::Result<Arc<SplitTemplate>> {
         use anyhow::Context;
+        let mut path: PathBuf = PathBuf::with_capacity(TEMPLATES_DIR.len() + name.len() + ".handlebars".len() + 2);
+        path.push(TEMPLATES_DIR);
+        path.push(name);
+        path.set_extension("handlebars");
         self.split_templates
-            .get(name)
+            .get(app_state, &path)
+            .await
             .with_context(|| format!("The component '{name}' was not found."))
     }
 }
@@ -222,7 +178,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-    .unwrap();
+        .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,
