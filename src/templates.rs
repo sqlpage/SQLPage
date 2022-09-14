@@ -158,9 +158,14 @@ impl AllTemplates {
         Ok(this)
     }
 
-    pub async fn get_template(&self, app_state: &AppState, name: &str) -> anyhow::Result<Arc<SplitTemplate>> {
+    pub async fn get_template(
+        &self,
+        app_state: &AppState,
+        name: &str,
+    ) -> anyhow::Result<Arc<SplitTemplate>> {
         use anyhow::Context;
-        let mut path: PathBuf = PathBuf::with_capacity(TEMPLATES_DIR.len() + name.len() + ".handlebars".len() + 2);
+        let mut path: PathBuf =
+            PathBuf::with_capacity(TEMPLATES_DIR.len() + name.len() + ".handlebars".len() + 2);
         path.push(TEMPLATES_DIR);
         path.push(name);
         path.set_extension("handlebars");
@@ -178,7 +183,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-        .unwrap();
+    .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,

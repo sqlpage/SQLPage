@@ -93,7 +93,9 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 Ok(new_val)
             }
             Err(e) => {
-                log::trace!("Evicting {path:?} from the cache because the following error occurred: {e}");
+                log::trace!(
+                    "Evicting {path:?} from the cache because the following error occurred: {e}"
+                );
                 write_lock.remove(path);
                 Err(e)
             }

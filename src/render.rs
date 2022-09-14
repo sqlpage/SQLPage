@@ -1,12 +1,12 @@
 use crate::templates::SplitTemplate;
 use crate::AppState;
 use anyhow::Context as AnyhowContext;
+use async_recursion::async_recursion;
 use handlebars::{BlockContext, Context, Handlebars, JsonValue, RenderError, Renderable, Template};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::sync::Arc;
-use async_recursion::async_recursion;
 
 pub struct RenderContext<'a, W: std::io::Write> {
     app_state: &'a AppState,
@@ -22,8 +22,9 @@ const MAX_RECURSION_DEPTH: usize = 256;
 
 impl<W: std::io::Write> RenderContext<'_, W> {
     pub async fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
-        let shell_renderer =
-            Self::create_renderer("shell", app_state).await.expect("shell must always exist");
+        let shell_renderer = Self::create_renderer("shell", app_state)
+            .await
+            .expect("shell must always exist");
         RenderContext {
             app_state,
             writer,
@@ -49,7 +50,8 @@ impl<W: std::io::Write> RenderContext<'_, W> {
             (None, Some("head")) | (None, None) => {
                 self.shell_renderer
                     .render_start(&mut self.writer, json!(&data))?;
-                self.open_component_with_data(DEFAULT_COMPONENT, &data).await?;
+                self.open_component_with_data(DEFAULT_COMPONENT, &data)
+                    .await?;
             }
             (None, new_component) => {
                 self.shell_renderer
@@ -177,7 +179,10 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         component: &str,
         app_state: &'a AppState,
     ) -> anyhow::Result<SplitTemplateRenderer<'a>> {
-        let split_template = app_state.all_templates.get_template(app_state, component).await?;
+        let split_template = app_state
+            .all_templates
+            .get_template(app_state, component)
+            .await?;
         Ok(SplitTemplateRenderer::new(
             split_template,
             &app_state.all_templates.handlebars,
@@ -262,15 +267,9 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         let mut ctx = Context::from(data);
         let mut output = HandlebarWriterOutput(writer);
         // see https://github.com/sunng87/handlebars-rust/issues/529
-        let tpl: &'static Template = unsafe {
-            std::mem::transmute(&self.split_template.before_list)
-        };
-        tpl.render(
-            self.registry,
-            &ctx,
-            &mut render_context,
-            &mut output,
-        )?;
+        let tpl: &'static Template =
+            unsafe { std::mem::transmute(&self.split_template.before_list) };
+        tpl.render(self.registry, &ctx, &mut render_context, &mut output)?;
         let mut blk = render_context
             .block_mut()
             .map(std::mem::take)
@@ -296,15 +295,9 @@ impl<'reg> SplitTemplateRenderer<'reg> {
             let ctx = Context::null();
             let mut output = HandlebarWriterOutput(writer);
             // https://github.com/sunng87/handlebars-rust/issues/529
-            let tpl: &'static Template = unsafe {
-                std::mem::transmute(&self.split_template.list_content)
-            };
-            tpl.render(
-                self.registry,
-                &ctx,
-                &mut render_context,
-                &mut output,
-            )?;
+            let tpl: &'static Template =
+                unsafe { std::mem::transmute(&self.split_template.list_content) };
+            tpl.render(self.registry, &ctx, &mut render_context, &mut output)?;
             render_context.pop_block();
             self.block_context = render_context.block_mut().map(std::mem::take);
             self.row_index += 1;
