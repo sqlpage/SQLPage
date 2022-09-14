@@ -345,7 +345,7 @@ mod tests {
         )?;
         let split = split_template(template);
         let mut output = Vec::new();
-        let mut rdr = SplitTemplateRenderer::new(&split, &reg);
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), &reg);
         rdr.render_start(&mut output, json!({"name": "SQL"}))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
