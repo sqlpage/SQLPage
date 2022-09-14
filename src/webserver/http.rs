@@ -4,10 +4,7 @@ use crate::{AppState, Config, ParsedSqlFile, CONFIG_DIR};
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::Form;
-use actix_web::{
-    body::BodyStream, dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App,
-    FromRequest, HttpResponse, HttpServer,
-};
+use actix_web::{body::BodyStream, dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App, FromRequest, HttpResponse, HttpServer, Responder};
 use anyhow::bail;
 use futures_util::StreamExt;
 use std::collections::hash_map::Entry;
@@ -17,6 +14,7 @@ use std::mem;
 use std::net::IpAddr;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+use actix_web::http::header::{CacheControl, CacheDirective};
 use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -264,6 +262,13 @@ async fn process_sql_request(
     Ok(req.into_response(response))
 }
 
+async fn handle_static_js() -> impl Responder {
+    HttpResponse::Ok()
+        .content_type("text/javascript;charset=UTF-8")
+        .append_header(CacheControl(vec![CacheDirective::MaxAge(3600u32)]))
+        .body(&include_bytes!("../../sqlpage/sqlpage.js")[..])
+}
+
 pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
     let listen_on = config.listen_on;
     let app_state = web::Data::new(state);
@@ -271,6 +276,7 @@ pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
     let factory = move || {
         App::new()
             .app_data(app_state.clone())
+            .route("sqlpage.js", actix_web::web::get().to(handle_static_js))
             .wrap_fn(|req, srv| {
                 let app_state: web::Data<AppState> = web::Data::clone(req.app_data().expect("app_state"));
                 let sql_file_path = path_to_sql_file(&app_state.web_root, req.path());
