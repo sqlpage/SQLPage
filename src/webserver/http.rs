@@ -3,8 +3,12 @@ use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, ParsedSqlFile, CONFIG_DIR};
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::web::Form;
-use actix_web::{body::BodyStream, dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App, FromRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{
+    body::BodyStream, dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App,
+    FromRequest, HttpResponse, HttpServer, Responder,
+};
 use anyhow::bail;
 use futures_util::StreamExt;
 use std::collections::hash_map::Entry;
@@ -14,7 +18,6 @@ use std::mem;
 use std::net::IpAddr;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
-use actix_web::http::header::{CacheControl, CacheDirective};
 use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -104,7 +107,8 @@ async fn stream_response(
         if let Err(e) = render_result {
             if let Err(nested_err) = renderer.handle_anyhow_error(&e).await {
                 renderer
-                    .close().await
+                    .close()
+                    .await
                     .close_with_error(nested_err.to_string())
                     .await;
                 bail!(
