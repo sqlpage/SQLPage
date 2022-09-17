@@ -107,10 +107,10 @@ to the user's browser.
 
 ## Environment variables
 
-| variable       | default                   | description                                              |
-|----------------|---------------------------|----------------------------------------------------------|
-| `LISTEN_ON`    | 0.0.0.0:8080              | Interface and port on which the web server should listen |
-| `DATABASE_URL` | sqlite://site.db?mode=rwc | Database connection URL                                  |
+| variable       | default                      | description                                              |
+|----------------|------------------------------|----------------------------------------------------------|
+| `LISTEN_ON`    | 0.0.0.0:8080                 | Interface and port on which the web server should listen |
+| `DATABASE_URL` | sqlite://sqlpage.db?mode=rwc | Database connection URL                                  |
 
 ## Serverless
 
