@@ -28,9 +28,18 @@ impl<T> Cached<T> {
         s.update_check_time();
         s
     }
+    /// Creates a cached entry that will never need checking
+    fn new_static(content: T) -> Self {
+        let this = Self::new(content);
+        this.last_checked_at.store(u64::MAX, Release);
+        this
+    }
     fn last_check_time(&self) -> SystemTime {
-        SystemTime::UNIX_EPOCH
-            + Duration::from_millis(self.last_checked_at.load(Acquire) * MAX_STALE_CACHE_MS)
+        let millis = self
+            .last_checked_at
+            .load(Acquire)
+            .saturating_mul(MAX_STALE_CACHE_MS);
+        SystemTime::UNIX_EPOCH + Duration::from_millis(millis)
     }
     fn update_check_time(&self) {
         self.last_checked_at.store(Self::elapsed() as u64, Release);
@@ -55,6 +64,15 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         Self {
             cache: Default::default(),
         }
+    }
+
+    /// Adds a static file to the cache so that it will never be looked up from the disk
+    pub fn add_static(&mut self, path: PathBuf, contents: T) -> anyhow::Result<()> {
+        log::trace!("Adding static file {path:?} to the cache.");
+        let cached = Cached::new_static(contents);
+        let mut cache = self.cache.write().expect("cache");
+        cache.insert(path, cached);
+        Ok(())
     }
 
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {

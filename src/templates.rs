@@ -5,6 +5,7 @@ use handlebars::{
     handlebars_helper, template::TemplateElement, Context, Handlebars, JsonValue, RenderError,
     Renderable, Template,
 };
+use include_dir::{include_dir, Dir};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -129,6 +130,8 @@ fn flush_delayed_helper<'reg, 'rc>(
     }
 }
 
+const STATIC_TEMPLATES: Dir = include_dir!("$CARGO_MANIFEST_DIR/sqlpage/templates");
+
 impl AllTemplates {
     pub fn init() -> anyhow::Result<Self> {
         let mut handlebars = Handlebars::new();
@@ -151,11 +154,25 @@ impl AllTemplates {
         handlebars.register_helper("entries", Box::new(entries));
         handlebars.register_helper("delay", Box::new(delay_helper));
         handlebars.register_helper("flush_delayed", Box::new(flush_delayed_helper));
-        let this = Self {
+        let mut this = Self {
             handlebars,
             split_templates: FileCache::new(),
         };
+        this.preregister_static_templates()?;
         Ok(this)
+    }
+
+    /// Embeds pre-defined templates directly in the binary in release mode
+    pub fn preregister_static_templates(&mut self) -> anyhow::Result<()> {
+        for file in STATIC_TEMPLATES.files() {
+            let mut path = PathBuf::from(TEMPLATES_DIR);
+            path.push(file.path());
+            let source = String::from_utf8_lossy(file.contents());
+            let tpl = Template::compile(&source)?;
+            let split_template = split_template(tpl);
+            self.split_templates.add_static(path, split_template)?;
+        }
+        Ok(())
     }
 
     pub async fn get_template(
