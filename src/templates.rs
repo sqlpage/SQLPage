@@ -113,9 +113,9 @@ fn delay_helper<'reg, 'rc>(
 }
 
 fn flush_delayed_helper<'reg, 'rc>(
-    h: &handlebars::Helper<'rc>,
-    r: &'reg Handlebars<'reg>,
-    ctx: &'rc Context,
+    _h: &handlebars::Helper<'rc>,
+    _r: &'reg Handlebars<'reg>,
+    _ctx: &'rc Context,
     rc: &mut handlebars::RenderContext<'reg, 'rc>,
     writer: &mut dyn handlebars::Output,
 ) -> handlebars::HelperResult {
