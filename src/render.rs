@@ -2,7 +2,7 @@ use crate::templates::SplitTemplate;
 use crate::AppState;
 use anyhow::Context as AnyhowContext;
 use async_recursion::async_recursion;
-use handlebars::{Context, Handlebars, JsonValue, RenderError, Renderable};
+use handlebars::{Context, Handlebars, JsonValue, RenderError, Renderable, BlockContext};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
@@ -288,6 +288,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     ) -> Result<(), RenderError> {
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
+            render_context.push_block(BlockContext::new());
             let blk = render_context
                 .block_mut()
                 .expect("context created without block");
@@ -349,7 +350,7 @@ mod tests {
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
         rdr.render_end(&mut output)?;
-        assert_eq!(output, b"Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
+        assert_eq!(String::from_utf8_lossy(&output), "Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
         Ok(())
     }
 }
