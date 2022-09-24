@@ -88,7 +88,8 @@ FROM user_form;
 ## How it works
 
 SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
-[rust](https://en.wikipedia.org/wiki/Rust_(programming_language)).
+[rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
+and distributed as a single executable file.
 When it receives a request to a URL ending in `.sql`, it finds the corresponding
 SQL file, runs it on the database,
 passing it information from the web request as SQL statement parameters.

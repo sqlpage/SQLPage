@@ -1,4 +1,4 @@
-FROM rust:1.63-alpine3.16 as builder
+FROM rust:1.64-alpine3.16 as builder
 RUN rustup component add clippy rustfmt
 RUN apk add --no-cache musl-dev
 WORKDIR /usr/src/sqlpage
@@ -21,7 +21,6 @@ COPY --from=builder /usr/src/sqlpage/target/release/sqlpage /usr/local/bin/sqlpa
 RUN addgroup -S sqlpage && adduser -S sqlpage -G sqlpage
 WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/index.sql .
-COPY --from=builder /usr/src/sqlpage/sqlpage ./sqlpage
 USER sqlpage
 EXPOSE 8080
 CMD ["sqlpage"]
