@@ -68,19 +68,24 @@ pub struct AllTemplates {
     split_templates: FileCache<SplitTemplate>,
 }
 
-fn without_top_block<'a, 'reg, 'rc, R>(
+fn with_each_block<'a, 'reg, 'rc>(
     rc: &'a mut handlebars::RenderContext<'reg, 'rc>,
-    action: impl FnOnce(&mut handlebars::RenderContext<'reg, 'rc>) -> R,
-) -> R {
-    let top = rc.block_mut().map(std::mem::take).unwrap_or_default();
-    rc.pop_block();
-    let r = action(rc);
-    rc.push_block(top);
-    r
+    mut action: impl FnMut(&mut handlebars::BlockContext<'rc>, bool) -> Result<(), RenderError>,
+) -> Result<(), RenderError> {
+    let mut blks = Vec::new();
+    while let Some(mut top) = rc.block_mut().map(std::mem::take) {
+        rc.pop_block();
+        action(&mut top, rc.block().is_none())?;
+        blks.push(top);
+    }
+    while let Some(blk) = blks.pop() {
+        rc.push_block(blk);
+    }
+    Ok(())
 }
 
 fn delay_helper<'reg, 'rc>(
-    h: &handlebars::Helper<'reg, 'rc>,
+    h: &handlebars::Helper<'rc>,
     r: &'reg Handlebars<'reg>,
     ctx: &'rc Context,
     rc: &mut handlebars::RenderContext<'reg, 'rc>,
@@ -91,29 +96,30 @@ fn delay_helper<'reg, 'rc>(
         .ok_or_else(|| RenderError::new("missing delayed contents"))?;
     let mut str_out = handlebars::StringOutput::new();
     inner.render(r, ctx, rc, &mut str_out)?;
-    without_top_block(rc, move |rc| {
-        let block = rc
-            .block_mut()
-            .ok_or_else(|| RenderError::new("Cannot use delayed output without a block context"))?;
-        let old_delayed_render = block
-            .get_local_var(DELAYED_CONTENTS)
-            .and_then(|v| v.as_str())
-            .unwrap_or_default();
-        let delayed_render = str_out.into_string()? + old_delayed_render;
-        block.set_local_var(DELAYED_CONTENTS, JsonValue::String(delayed_render));
-        Ok::<_, RenderError>(())
+    let mut delayed_render = str_out.into_string()?;
+    with_each_block(rc, |block, is_last| {
+        if is_last {
+            let old_delayed_render = block
+                .get_local_var(DELAYED_CONTENTS)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
+            delayed_render += old_delayed_render;
+            let contents = JsonValue::String(std::mem::take(&mut delayed_render));
+            block.set_local_var(DELAYED_CONTENTS, contents);
+        }
+        Ok(())
     })?;
     Ok(())
 }
 
 fn flush_delayed_helper<'reg, 'rc>(
-    h: &handlebars::Helper<'reg, 'rc>,
+    h: &handlebars::Helper<'rc>,
     r: &'reg Handlebars<'reg>,
     ctx: &'rc Context,
     rc: &mut handlebars::RenderContext<'reg, 'rc>,
     writer: &mut dyn handlebars::Output,
 ) -> handlebars::HelperResult {
-    if let Some(block_context) = rc.block_mut() {
+    with_each_block(rc, |block_context, _last| {
         let delayed = block_context
             .get_local_var(DELAYED_CONTENTS)
             .and_then(|v| v.as_str())
@@ -121,13 +127,9 @@ fn flush_delayed_helper<'reg, 'rc>(
         if let Some(contents) = delayed {
             writer.write(contents)?;
             block_context.set_local_var(DELAYED_CONTENTS, JsonValue::Null);
-            Ok(())
-        } else {
-            without_top_block(rc, |rc| flush_delayed_helper(h, r, ctx, rc, writer))
         }
-    } else {
         Ok(())
-    }
+    })
 }
 
 const STATIC_TEMPLATES: Dir = include_dir!("$CARGO_MANIFEST_DIR/sqlpage/templates");
@@ -200,7 +202,7 @@ fn test_split_template() {
         {{#each_row}}<li>{{this}}</li>{{/each_row}}\
         end",
     )
-    .unwrap();
+        .unwrap();
     let split = split_template(template);
     assert_eq!(
         split.before_list.elements,
