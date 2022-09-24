@@ -2,7 +2,7 @@ use crate::templates::SplitTemplate;
 use crate::AppState;
 use anyhow::Context as AnyhowContext;
 use async_recursion::async_recursion;
-use handlebars::{BlockContext, Context, Handlebars, JsonValue, RenderError, Renderable, Template};
+use handlebars::{Context, Handlebars, JsonValue, RenderError, Renderable};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
@@ -236,7 +236,8 @@ impl<W: std::io::Write> handlebars::Output for HandlebarWriterOutput<W> {
 
 pub struct SplitTemplateRenderer<'registry> {
     split_template: Arc<SplitTemplate>,
-    block_context: Option<BlockContext<'registry>>,
+    local_vars: Option<handlebars::LocalVars>,
+    ctx: Context,
     registry: &'registry Handlebars<'registry>,
     row_index: usize,
 }
@@ -245,9 +246,10 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     fn new(split_template: Arc<SplitTemplate>, registry: &'reg Handlebars<'reg>) -> Self {
         Self {
             split_template,
-            block_context: None,
+            local_vars: None,
             registry,
             row_index: 0,
+            ctx: Context::null(),
         }
     }
     fn name(&self) -> &str {
@@ -264,18 +266,12 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         data: JsonValue,
     ) -> Result<(), RenderError> {
         let mut render_context = handlebars::RenderContext::new(None);
-        let mut ctx = Context::from(data);
+        *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
-        // see https://github.com/sunng87/handlebars-rust/issues/529
-        let tpl: &'static Template =
-            unsafe { std::mem::transmute(&self.split_template.before_list) };
-        tpl.render(self.registry, &ctx, &mut render_context, &mut output)?;
-        let mut blk = render_context
+        self.split_template.before_list.render(self.registry, &self.ctx, &mut render_context, &mut output)?;
+        self.local_vars = render_context
             .block_mut()
-            .map(std::mem::take)
-            .unwrap_or_default();
-        blk.set_base_value(std::mem::take(ctx.data_mut()));
-        self.block_context = Some(blk);
+            .map(|blk| std::mem::take(blk.local_variables_mut()));
         self.row_index = 0;
         Ok(())
     }
@@ -285,35 +281,28 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         writer: W,
         data: JsonValue,
     ) -> Result<(), RenderError> {
-        if let Some(block_context) = self.block_context.take() {
+        if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
-            render_context.push_block(block_context);
-            let mut blk = BlockContext::new();
+            let blk = render_context.block_mut().expect("context created without block");
             blk.set_base_value(data);
+            *blk.local_variables_mut() = local_vars;
             blk.set_local_var("row_index", JsonValue::Number(self.row_index.into()));
-            render_context.push_block(blk);
-            let ctx = Context::null();
             let mut output = HandlebarWriterOutput(writer);
-            // https://github.com/sunng87/handlebars-rust/issues/529
-            let tpl: &'static Template =
-                unsafe { std::mem::transmute(&self.split_template.list_content) };
-            tpl.render(self.registry, &ctx, &mut render_context, &mut output)?;
-            render_context.pop_block();
-            self.block_context = render_context.block_mut().map(std::mem::take);
+            self.split_template.list_content.render(self.registry, &self.ctx, &mut render_context, &mut output)?;
+            self.local_vars = render_context.block_mut().map(|blk| std::mem::take(blk.local_variables_mut()));
             self.row_index += 1;
         }
         Ok(())
     }
 
     fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), RenderError> {
-        if let Some(block_context) = self.block_context.take() {
+        if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
-            render_context.push_block(block_context);
-            let ctx = Context::null();
+            *render_context.block_mut().expect("ctx created without block").local_variables_mut() = local_vars;
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.after_list.render(
                 self.registry,
-                &ctx,
+                &self.ctx,
                 &mut render_context,
                 &mut output,
             )?;
