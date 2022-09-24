@@ -15,6 +15,5 @@ RUN   mv target/release/sqlpage bootstrap && \
 
 FROM public.ecr.aws/lambda/provided:al2 as runner
 COPY --from=builder /usr/src/sqlpage/bootstrap /main
-COPY --from=builder /usr/src/sqlpage/sqlpage ./sqlpage
 COPY --from=builder /usr/src/sqlpage/index.sql ./index.sql
 ENTRYPOINT ["/main"]
