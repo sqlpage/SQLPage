@@ -268,7 +268,12 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         let mut render_context = handlebars::RenderContext::new(None);
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
-        self.split_template.before_list.render(self.registry, &self.ctx, &mut render_context, &mut output)?;
+        self.split_template.before_list.render(
+            self.registry,
+            &self.ctx,
+            &mut render_context,
+            &mut output,
+        )?;
         self.local_vars = render_context
             .block_mut()
             .map(|blk| std::mem::take(blk.local_variables_mut()));
@@ -283,13 +288,22 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     ) -> Result<(), RenderError> {
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
-            let blk = render_context.block_mut().expect("context created without block");
+            let blk = render_context
+                .block_mut()
+                .expect("context created without block");
             blk.set_base_value(data);
             *blk.local_variables_mut() = local_vars;
             blk.set_local_var("row_index", JsonValue::Number(self.row_index.into()));
             let mut output = HandlebarWriterOutput(writer);
-            self.split_template.list_content.render(self.registry, &self.ctx, &mut render_context, &mut output)?;
-            self.local_vars = render_context.block_mut().map(|blk| std::mem::take(blk.local_variables_mut()));
+            self.split_template.list_content.render(
+                self.registry,
+                &self.ctx,
+                &mut render_context,
+                &mut output,
+            )?;
+            self.local_vars = render_context
+                .block_mut()
+                .map(|blk| std::mem::take(blk.local_variables_mut()));
             self.row_index += 1;
         }
         Ok(())
@@ -298,7 +312,10 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), RenderError> {
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
-            *render_context.block_mut().expect("ctx created without block").local_variables_mut() = local_vars;
+            *render_context
+                .block_mut()
+                .expect("ctx created without block")
+                .local_variables_mut() = local_vars;
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.after_list.render(
                 self.registry,
