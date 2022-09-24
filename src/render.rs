@@ -2,7 +2,7 @@ use crate::templates::SplitTemplate;
 use crate::AppState;
 use anyhow::Context as AnyhowContext;
 use async_recursion::async_recursion;
-use handlebars::{Context, Handlebars, JsonValue, RenderError, Renderable, BlockContext};
+use handlebars::{BlockContext, Context, Handlebars, JsonValue, RenderError, Renderable};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
@@ -288,13 +288,14 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     ) -> Result<(), RenderError> {
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
-            render_context.push_block(BlockContext::new());
             let blk = render_context
                 .block_mut()
                 .expect("context created without block");
-            blk.set_base_value(data);
             *blk.local_variables_mut() = local_vars;
+            let mut blk = BlockContext::new();
+            blk.set_base_value(data);
             blk.set_local_var("row_index", JsonValue::Number(self.row_index.into()));
+            render_context.push_block(blk);
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.list_content.render(
                 self.registry,
@@ -302,6 +303,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
                 &mut render_context,
                 &mut output,
             )?;
+            render_context.pop_block();
             self.local_vars = render_context
                 .block_mut()
                 .map(|blk| std::mem::take(blk.local_variables_mut()));
@@ -350,7 +352,30 @@ mod tests {
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
         rdr.render_end(&mut output)?;
-        assert_eq!(String::from_utf8_lossy(&output), "Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL");
+        assert_eq!(
+            String::from_utf8_lossy(&output),
+            "Hello SQL ! (1 : SQL)  (2 : SQL) Goodbye SQL"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_delayed() -> anyhow::Result<()> {
+        let reg = crate::templates::AllTemplates::init().unwrap().handlebars;
+        let template = Template::compile(
+            "{{#each_row}}<b> {{x}} {{#delay}} {{x}} </b>{{/delay}}{{/each_row}}{{flush_delayed}}",
+        )?;
+        let split = split_template(template);
+        let mut output = Vec::new();
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), &reg);
+        rdr.render_start(&mut output, json!(null))?;
+        rdr.render_item(&mut output, json!({"x": 1}))?;
+        rdr.render_item(&mut output, json!({"x": 2}))?;
+        rdr.render_end(&mut output)?;
+        assert_eq!(
+            String::from_utf8_lossy(&output),
+            "<b> 1 <b> 2  2 </b> 1 </b>"
+        );
         Ok(())
     }
 }
