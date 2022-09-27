@@ -808,7 +808,7 @@ dependencies = [
 [[package]]
 name = "handlebars"
 version = "4.3.5-alpha.0"
-source = "git+https://github.com/sunng87/handlebars-rust.git?branch=master#9eaf0613e7ed1821b337304d9e9b87113ad3a911"
+source = "git+https://github.com/sunng87/handlebars-rust.git?branch=master#77efaac9a0c2e429331758292467ac7313e7b483"
 dependencies = [
  "log",
  "pest",
@@ -1832,8 +1832,8 @@ dependencies = [
 
 [[package]]
 name = "sqlparser"
-version = "0.22.0"
-source = "git+https://github.com/lovasoa/sqlparser-rs.git?branch=sqlpage#a1737973e41a171944d48d45e38bf94c1fd87465"
+version = "0.23.0"
+source = "git+https://github.com/lovasoa/sqlparser-rs.git?branch=ast-visitor#1d09ff47a3fd516bcc922b2f1a03ce1a9ec966fc"
 dependencies = [
  "derive-visitor",
  "log",
