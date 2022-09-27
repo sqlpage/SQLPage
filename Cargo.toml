@@ -19,7 +19,7 @@ anyhow = "1.0.58"
 serde = "1.0.140"
 serde_json = { version = "1.0.82", features = ["preserve_order"] }
 lambda-web = { version = "0.2.0", features = ["actix4"], optional = true }
-sqlparser = { version = "0.22.0", git = "https://github.com/lovasoa/sqlparser-rs.git", branch = "sqlpage", features = ["derive-visitor"] }
+sqlparser = { version = "0.23.0", git = "https://github.com/lovasoa/sqlparser-rs.git", branch = "ast-visitor", features = ["derive-visitor"] }
 async-stream = "0.3"
 async-trait = "0.1.57"
 async-recursion = "1.0.0"
