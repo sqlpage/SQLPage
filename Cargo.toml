@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql"] }
 actix-web = { version = "4", features = ["rustls"] }
-handlebars = { version = "4.3.5-alpha.0", git = "https://github.com/sunng87/handlebars-rust.git", branch = "master" }
+handlebars = { version = "5.0.0-beta.0", git = "https://github.com/sunng87/handlebars-rust.git", branch = "master" }
 log = "0.4.17"
 env_logger = "0.9.0"
 actix-files = "0.6.2"
@@ -19,7 +19,7 @@ anyhow = "1.0.58"
 serde = "1.0.140"
 serde_json = { version = "1.0.82", features = ["preserve_order"] }
 lambda-web = { version = "0.2.0", features = ["actix4"], optional = true }
-sqlparser = { version = "0.23.0", git = "https://github.com/lovasoa/sqlparser-rs.git", branch = "ast-visitor", features = ["derive-visitor"] }
+sqlparser = { version = "0.26", git = "https://github.com/lovasoa/sqlparser-rs.git", branch = "ast-visitor", features = ["derive-visitor"] }
 async-stream = "0.3"
 async-trait = "0.1.57"
 async-recursion = "1.0.0"
