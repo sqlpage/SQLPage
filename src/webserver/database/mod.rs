@@ -56,7 +56,7 @@ pub async fn stream_query_results<'a>(
     db: &'a Database,
     sql_file: &'a ParsedSqlFile,
     request: &'a RequestInfo,
-) -> impl Stream<Item=DbItem> + 'a {
+) -> impl Stream<Item = DbItem> + 'a {
     stream_query_results_direct(db, sql_file, request)
         .await
         .unwrap_or_else(|error| stream::once(ready(Err(error))).boxed())
@@ -89,7 +89,7 @@ pub async fn stream_query_results_direct<'a>(
             }
         }
     }
-        .boxed())
+    .boxed())
 }
 
 fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
@@ -194,10 +194,10 @@ impl Database {
             std::time::Duration::from_millis(250),
         );
         log::debug!(
-        "Connecting to a {:?} database on {}",
-        connect_options.kind(),
-        database_url
-    );
+            "Connecting to a {:?} database on {}",
+            connect_options.kind(),
+            database_url
+        );
         let connection = AnyPool::connect_with(connect_options)
             .await
             .with_context(|| "Failed to connect to database")?;
@@ -236,8 +236,8 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-        .fetch_one(&mut c)
-        .await?;
+    .fetch_one(&mut c)
+    .await?;
     assert_eq!(
         row_to_json(&row),
         serde_json::json!({
