@@ -46,7 +46,7 @@ impl ParsedSqlFile {
                 .connection
                 .prepare_with(&query, &param_types)
                 .await
-                .with_context(|| format!("Preparing SQL statement: '{}'", query));
+                .with_context(|| format!("Preparing SQL statement: '{query}'"));
             statements.push(stmt_res.map(|statement| PreparedStatement {
                 statement: statement.to_owned(),
                 parameters,
@@ -104,7 +104,7 @@ fn extract_parameters(sql_ast: &mut sqlparser::ast::Statement, db: AnyKind) -> V
             let new_expr = make_placeholder(db, parameters.len());
             let name = std::mem::take(param);
             parameters.push(name);
-            *value = new_expr
+            *value = new_expr;
         }
     }));
     parameters

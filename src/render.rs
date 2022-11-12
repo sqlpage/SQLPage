@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::sync::Arc;
 
+#[allow(clippy::module_name_repetitions)]
 pub struct RenderContext<'a, W: std::io::Write> {
     app_state: &'a AppState,
     pub writer: W,
@@ -44,10 +45,10 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         let new_component = data
             .as_object()
             .and_then(|o| o.get("component"))
-            .and_then(|c| c.as_str());
-        let current_component = self.current_component.as_ref().map(|c| c.name());
+            .and_then(JsonValue::as_str);
+        let current_component = self.current_component.as_ref().map(SplitTemplateRenderer::name);
         match (current_component, new_component) {
-            (None, Some("head")) | (None, None) => {
+            (None, Some("head") | None) => {
                 self.shell_renderer
                     .render_start(&mut self.writer, json!(&data))?;
                 self.open_component_with_data(DEFAULT_COMPONENT, &data)
@@ -100,6 +101,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
+    #[allow(clippy::unused_async)]
     pub async fn finish_query(&mut self) -> anyhow::Result<()> {
         log::debug!("-> Query {} finished", self.current_statement);
         self.current_statement += 1;
@@ -118,12 +120,12 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         }
         let saved_component = self.current_component.take();
         self.open_component("error").await?;
-        let description = format!("{}", error);
+        let description = error.to_string();
         let mut backtrace = vec![];
         let mut source = error.source();
         while let Some(s) = source {
-            backtrace.push(format!("{}", s));
-            source = s.source()
+            backtrace.push(format!("{s}"));
+            source = s.source();
         }
         self.render_current_template_with_data(&json!({
             "query_number": self.current_statement,

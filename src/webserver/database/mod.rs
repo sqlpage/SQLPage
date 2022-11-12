@@ -56,12 +56,12 @@ pub async fn stream_query_results<'a>(
     db: &'a Database,
     sql_file: &'a ParsedSqlFile,
     request: &'a RequestInfo,
-) -> impl Stream<Item = DbItem> + 'a {
+) -> impl Stream<Item=DbItem> + 'a {
     stream_query_results_direct(db, sql_file, request)
         .await
         .unwrap_or_else(|error| stream::once(ready(Err(error))).boxed())
         .map(|res| match res {
-            Ok(Either::Right(r)) => DbItem::Row(row_to_json(r)),
+            Ok(Either::Right(r)) => DbItem::Row(row_to_json(&r)),
             Ok(Either::Left(res)) => {
                 log::debug!("Finished query with result: {:?}", res);
                 DbItem::FinishedQuery
@@ -89,7 +89,7 @@ pub async fn stream_query_results_direct<'a>(
             }
         }
     }
-    .boxed())
+        .boxed())
 }
 
 fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
@@ -119,7 +119,7 @@ fn bind_parameters<'a>(
             None => arguments.add(None::<String>),
             Some(SingleOrVec::Single(s)) => arguments.add(s),
             Some(SingleOrVec::Vec(v)) => {
-                arguments.add(serde_json::to_string(v).unwrap_or_default())
+                arguments.add(serde_json::to_string(v).unwrap_or_default());
             }
         }
     }
@@ -132,7 +132,7 @@ pub enum DbItem {
     Error(anyhow::Error),
 }
 
-fn row_to_json(row: AnyRow) -> Value {
+fn row_to_json(row: &AnyRow) -> Value {
     use sqlx::{TypeInfo, ValueRef};
     use Value::{Null, Object};
 
@@ -184,23 +184,25 @@ fn row_to_json(row: AnyRow) -> Value {
     Object(map)
 }
 
-pub async fn init_database(database_url: &str) -> anyhow::Result<Database> {
-    let mut connect_options: AnyConnectOptions =
-        database_url.parse().expect("Invalid database URL");
-    connect_options.log_statements(log::LevelFilter::Trace);
-    connect_options.log_slow_statements(
-        log::LevelFilter::Warn,
-        std::time::Duration::from_millis(250),
-    );
-    log::debug!(
+impl Database {
+    pub async fn init(database_url: &str) -> anyhow::Result<Self> {
+        let mut connect_options: AnyConnectOptions =
+            database_url.parse().expect("Invalid database URL");
+        connect_options.log_statements(log::LevelFilter::Trace);
+        connect_options.log_slow_statements(
+            log::LevelFilter::Warn,
+            std::time::Duration::from_millis(250),
+        );
+        log::debug!(
         "Connecting to a {:?} database on {}",
         connect_options.kind(),
         database_url
     );
-    let connection = AnyPool::connect_with(connect_options)
-        .await
-        .with_context(|| "Failed to connect to database")?;
-    Ok(Database { connection })
+        let connection = AnyPool::connect_with(connect_options)
+            .await
+            .with_context(|| "Failed to connect to database")?;
+        Ok(Database { connection })
+    }
 }
 
 struct PreparedStatement {
@@ -234,10 +236,10 @@ async fn test_row_to_json() -> anyhow::Result<()> {
         'z' as three_values \
     ",
     )
-    .fetch_one(&mut c)
-    .await?;
+        .fetch_one(&mut c)
+        .await?;
     assert_eq!(
-        row_to_json(row),
+        row_to_json(&row),
         serde_json::json!({
             "one_value": 3.14159,
             "two_values": [1,2],

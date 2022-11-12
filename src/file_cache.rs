@@ -42,13 +42,14 @@ impl<T> Cached<T> {
         SystemTime::UNIX_EPOCH + Duration::from_millis(millis)
     }
     fn update_check_time(&self) {
-        self.last_checked_at.store(Self::elapsed() as u64, Release);
+        let elapsed = u64::try_from(Self::elapsed()).expect("too far in the future");
+        self.last_checked_at.store(elapsed, Release);
     }
     fn elapsed() -> u128 {
         (SystemTime::now().duration_since(SystemTime::UNIX_EPOCH))
             .unwrap()
             .as_millis()
-            / (MAX_STALE_CACHE_MS as u128)
+            / u128::from(MAX_STALE_CACHE_MS)
     }
     fn needs_check(&self) -> bool {
         self.last_check_time() + Duration::from_millis(MAX_STALE_CACHE_MS) <= SystemTime::now()
@@ -62,17 +63,16 @@ pub struct FileCache<T: AsyncFromStrWithState> {
 impl<T: AsyncFromStrWithState> FileCache<T> {
     pub fn new() -> Self {
         Self {
-            cache: Default::default(),
+            cache: Arc::default(),
         }
     }
 
     /// Adds a static file to the cache so that it will never be looked up from the disk
-    pub fn add_static(&mut self, path: PathBuf, contents: T) -> anyhow::Result<()> {
+    pub fn add_static(&mut self, path: PathBuf, contents: T) {
         log::trace!("Adding static file {path:?} to the cache.");
         let cached = Cached::new_static(contents);
         let mut cache = self.cache.write().expect("cache");
         cache.insert(path, cached);
-        Ok(())
     }
 
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
@@ -95,7 +95,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         // Read lock is released
         log::trace!("Loading and parsing {:?}", path);
         let file_contents = std::fs::read_to_string(path)
-            .with_context(|| format!("Reading {:?} to load it in cache", path));
+            .with_context(|| format!("Reading {path:?} to load it in cache"));
         let parsed = match file_contents {
             Ok(contents) => Ok(T::from_str_with_state(app_state, &contents).await?),
             Err(e) => Err(e),
@@ -106,7 +106,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
             Ok(item) => {
                 let value = Cached::new(item);
                 let new_val = Arc::clone(&value.content);
-                write_lock.insert(path.to_owned(), value);
+                write_lock.insert(path.clone(), value);
                 log::trace!("{:?} loaded in cache", path);
                 Ok(new_val)
             }

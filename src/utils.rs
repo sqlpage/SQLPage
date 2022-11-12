@@ -4,7 +4,7 @@ pub fn add_value_to_map(
     mut map: Map<String, Value>,
     (key, value): (String, Value),
 ) -> Map<String, Value> {
-    use serde_json::map::Entry::*;
+    use serde_json::map::Entry::{Occupied, Vacant};
     use Value::Array;
     match map.entry(key) {
         Vacant(vacant) => {
@@ -16,7 +16,7 @@ pub fn add_value_to_map(
                 Array(old_array) => old_array.extend(new_array.into_iter()),
                 old_scalar => {
                     new_array.insert(0, old_scalar.take());
-                    *old_scalar = Array(new_array)
+                    *old_scalar = Array(new_array);
                 }
             }
         }
