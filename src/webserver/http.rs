@@ -45,7 +45,8 @@ impl ResponseWriter {
             if let Err(e) = self
                 .response_bytes
                 .send(Err(ErrorInternalServerError(msg)))
-                .await {
+                .await
+            {
                 log::error!("Unable to send error back to client: {e}");
             }
         }

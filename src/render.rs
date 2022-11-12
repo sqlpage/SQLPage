@@ -46,7 +46,10 @@ impl<W: std::io::Write> RenderContext<'_, W> {
             .as_object()
             .and_then(|o| o.get("component"))
             .and_then(JsonValue::as_str);
-        let current_component = self.current_component.as_ref().map(SplitTemplateRenderer::name);
+        let current_component = self
+            .current_component
+            .as_ref()
+            .map(SplitTemplateRenderer::name);
         match (current_component, new_component) {
             (None, Some("head") | None) => {
                 self.shell_renderer
