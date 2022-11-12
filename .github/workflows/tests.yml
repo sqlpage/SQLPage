@@ -1,0 +1,37 @@
+name: Lint, format, and test
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/release.yml'
+  pull_request:
+    branches:
+      - 'main'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up cargo cache
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: tests-${{ runner.os }}-check-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: tests-${{ runner.os }}-check-
+    - run: cargo fmt --all -- --check
+    - run: cargo clippy
+    - run: cargo test
