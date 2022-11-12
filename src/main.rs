@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 extern crate core;
 
 mod file_cache;
@@ -7,7 +8,7 @@ mod utils;
 mod webserver;
 
 use crate::webserver::database::{FileCache, ParsedSqlFile};
-use crate::webserver::{init_database, Database};
+use crate::webserver::Database;
 use anyhow::Context;
 use std::env;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -45,7 +46,7 @@ async fn start() -> anyhow::Result<()> {
     // Connect to the database
     let database_url = get_database_url();
 
-    let db = init_database(&database_url).await?;
+    let db = Database::init(&database_url).await?;
 
     webserver::apply_migrations(&db).await?;
 
@@ -71,7 +72,7 @@ fn get_listen_on() -> anyhow::Result<SocketAddr> {
     let mut host_addr = host_str
         .to_socket_addrs()?
         .next()
-        .with_context(|| format!("host '{}' does not resolve to an IP", host_str))?;
+        .with_context(|| format!("host '{host_str}' does not resolve to an IP"))?;
     if let Ok(port) = env::var("PORT") {
         host_addr.set_port(port.parse().with_context(|| "Invalid PORT")?);
     }

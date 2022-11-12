@@ -37,13 +37,17 @@ impl ResponseWriter {
             buffer: Vec::new(),
         }
     }
-    async fn close_with_error(&mut self, msg: String) {
+    async fn close_with_error(&mut self, mut msg: String) {
         if !self.response_bytes.is_closed() {
-            let _ = self.async_flush().await;
-            let _ = self
+            if let Err(e) = self.async_flush().await {
+                msg.push_str(&format!("Unable to flush data: {e}"));
+            }
+            if let Err(e) = self
                 .response_bytes
                 .send(Err(ErrorInternalServerError(msg)))
-                .await;
+                .await {
+                log::error!("Unable to send error back to client: {e}");
+            }
         }
     }
 
@@ -55,17 +59,17 @@ impl ResponseWriter {
             .send(Ok(mem::take(&mut self.buffer).into()))
             .await
             .map_err(|err| {
-                use std::io::*;
+                use std::io::{Error, ErrorKind};
                 Error::new(
                     ErrorKind::BrokenPipe,
-                    format!("The HTTP response writer with a capacity of {} has already been closed: {err}", MAX_PENDING_MESSAGES),
+                    format!("The HTTP response writer with a capacity of {MAX_PENDING_MESSAGES} has already been closed: {err}"),
                 )
             })
     }
 }
 
 impl Write for ResponseWriter {
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.buffer.extend_from_slice(buf);
         Ok(buf.len())
@@ -140,7 +144,7 @@ impl SingleOrVec {
             (old, mut new) => {
                 let mut v = old.take_vec();
                 v.extend_from_slice(&new.take_vec());
-                *old = Self::Vec(v)
+                *old = Self::Vec(v);
             }
         }
     }
@@ -164,11 +168,11 @@ fn param_map(values: Vec<(String, String)>) -> ParamMap {
     values
         .into_iter()
         .fold(HashMap::new(), |mut map, (mut k, v)| {
-            let entry = if !k.ends_with("[]") {
-                SingleOrVec::Single(v)
-            } else {
+            let entry = if k.ends_with("[]") {
                 k.replace_range(k.len() - 2.., "");
                 SingleOrVec::Vec(vec![v])
+            } else {
+                SingleOrVec::Single(v)
             };
             match map.entry(k) {
                 Entry::Occupied(mut s) => {
@@ -194,13 +198,13 @@ async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
         })
         .collect();
     let get_variables = web::Query::<Vec<(String, String)>>::from_query(req.query_string())
-        .map(|q| q.into_inner())
+        .map(web::Query::into_inner)
         .unwrap_or_default();
     let client_ip = req.peer_addr().map(|addr| addr.ip());
     let (http_req, payload) = req.parts_mut();
     let post_variables = Form::<Vec<(String, String)>>::from_request(http_req, payload)
         .await
-        .map(|form| form.into_inner())
+        .map(Form::into_inner)
         .unwrap_or_default();
     RequestInfo {
         headers: param_map(headers),
@@ -238,7 +242,9 @@ async fn render_sql(
 fn path_to_sql_file(root: &Path, path: &str) -> Option<PathBuf> {
     let mut path_buf: PathBuf = PathBuf::from(root);
     path_buf.push(path.strip_prefix('/')?);
-    if !path.ends_with(".sql") {
+    let request_path = PathBuf::from(path);
+    let extension = request_path.extension();
+    if !matches!(extension, Some(ext) if ext.eq_ignore_ascii_case("sql")) {
         path_buf.push("index.sql");
         if !path_buf.is_file() {
             return None;
@@ -266,6 +272,7 @@ async fn process_sql_request(
     Ok(req.into_response(response))
 }
 
+#[allow(clippy::unused_async)]
 async fn handle_static_js() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/javascript;charset=UTF-8")

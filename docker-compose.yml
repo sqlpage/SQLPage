@@ -1,6 +1,6 @@
 services:
   web:
-    build: { context: ".", args: {SKIP_CHECK: 1}}
+    build: { context: "." }
     ports:
       - "8080:8080"
     volumes:

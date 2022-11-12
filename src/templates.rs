@@ -27,7 +27,7 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
         mapping_after = original.mapping.split_off(idx + 1);
         if let Some(TemplateElement::HelperBlock(tpl)) = original.elements.pop() {
             original.mapping.pop();
-            items_template = tpl.template
+            items_template = tpl.template;
         }
     }
     let mut list_content = items_template.unwrap_or_default();
@@ -56,13 +56,14 @@ impl AsyncFromStrWithState for SplitTemplate {
 }
 
 fn is_template_list_item(element: &TemplateElement) -> bool {
-    use handlebars::template::*;
-    use Parameter::*;
+    use handlebars::template::Parameter;
+    use Parameter::Name;
     matches!(element,
                     TemplateElement::HelperBlock(tpl)
                         if matches!(&tpl.name, Name(name) if name == "each_row"))
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub struct AllTemplates {
     pub handlebars: Handlebars<'static>,
     split_templates: FileCache<SplitTemplate>,
@@ -101,7 +102,7 @@ fn delay_helper<'reg, 'rc>(
         if is_last {
             let old_delayed_render = block
                 .get_local_var(DELAYED_CONTENTS)
-                .and_then(|v| v.as_str())
+                .and_then(JsonValue::as_str)
                 .unwrap_or_default();
             delayed_render += old_delayed_render;
             let contents = JsonValue::String(std::mem::take(&mut delayed_render));
@@ -122,7 +123,7 @@ fn flush_delayed_helper<'reg, 'rc>(
     with_each_block(rc, |block_context, _last| {
         let delayed = block_context
             .get_local_var(DELAYED_CONTENTS)
-            .and_then(|v| v.as_str())
+            .and_then(JsonValue::as_str)
             .filter(|s| !s.is_empty());
         if let Some(contents) = delayed {
             writer.write(contents)?;
@@ -172,7 +173,7 @@ impl AllTemplates {
             let source = String::from_utf8_lossy(file.contents());
             let tpl = Template::compile(&source)?;
             let split_template = split_template(tpl);
-            self.split_templates.add_static(path, split_template)?;
+            self.split_templates.add_static(path, split_template);
         }
         Ok(())
     }
