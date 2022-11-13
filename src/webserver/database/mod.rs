@@ -26,12 +26,13 @@ pub struct Database {
 pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
     let migrations_dir = Path::new(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
-        log::debug!(
+        log::info!(
             "Not applying database migrations because '{}' does not exist",
             MIGRATIONS_DIR
         );
         return Ok(());
     }
+    log::info!("Applying migrations from '{MIGRATIONS_DIR}'");
     let migrator = Migrator::new(migrations_dir)
         .await
         .with_context(|| migration_err("preparing the database migration"))?;
@@ -185,7 +186,7 @@ fn row_to_json(row: &AnyRow) -> Value {
 }
 
 impl Database {
-    pub async fn init(database_url: &str) -> anyhow::Result<Self> {
+    pub fn init(database_url: &str) -> Self {
         let mut connect_options: AnyConnectOptions =
             database_url.parse().expect("Invalid database URL");
         connect_options.log_statements(log::LevelFilter::Trace);
@@ -198,10 +199,8 @@ impl Database {
             connect_options.kind(),
             database_url
         );
-        let connection = AnyPool::connect_with(connect_options)
-            .await
-            .with_context(|| "Failed to connect to database")?;
-        Ok(Database { connection })
+        let connection = AnyPool::connect_lazy_with(connect_options);
+        Database { connection }
     }
 }
 
