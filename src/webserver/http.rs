@@ -6,10 +6,12 @@ use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::web::Form;
 use actix_web::{
-    body::BodyStream, dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App,
-    FromRequest, HttpResponse, HttpServer, Responder,
+    dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App, FromRequest,
+    HttpResponse, HttpServer, Responder,
 };
-use anyhow::bail;
+
+use crate::utils::log_error;
+use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -91,43 +93,95 @@ impl Drop for ResponseWriter {
 }
 
 async fn stream_response(
-    app_state: &AppState,
-    req_param: RequestInfo,
-    sql_file: Arc<ParsedSqlFile>,
-    response_bytes: ResponseWriter,
-) -> anyhow::Result<()> {
-    log::debug!(
-        "Received a request with the following parameters: {:?}",
-        req_param
-    );
-    let mut stream = stream_query_results(&app_state.db, &sql_file, &req_param).await;
-
-    let mut renderer = RenderContext::new(app_state, response_bytes).await;
+    stream: impl Stream<Item = DbItem>,
+    mut renderer: RenderContext<ResponseWriter>,
+) {
+    let mut stream = Box::pin(stream);
     while let Some(item) = stream.next().await {
         let render_result = match item {
             DbItem::FinishedQuery => renderer.finish_query().await,
             DbItem::Row(row) => renderer.handle_row(&row).await,
-            DbItem::Error(e) => renderer.handle_anyhow_error(&e).await,
+            DbItem::Error(e) => renderer.handle_error(&e).await,
         };
         if let Err(e) = render_result {
-            if let Err(nested_err) = renderer.handle_anyhow_error(&e).await {
+            if let Err(nested_err) = renderer.handle_error(&e).await {
                 renderer
                     .close()
                     .await
                     .close_with_error(nested_err.to_string())
                     .await;
-                bail!(
+                log::error!(
                     "An error occurred while trying to display an other error. \
                     \nRoot error: {e}\n
                     \nNested error: {nested_err}"
                 );
+                return;
             }
         }
-        renderer.writer.async_flush().await?;
+        log_error(&renderer.writer.async_flush().await);
     }
-    renderer.close().await.async_flush().await?;
+    log_error(&renderer.close().await.async_flush().await);
     log::debug!("Successfully finished rendering the page");
-    Ok(())
+}
+
+async fn build_response_header_and_stream(
+    app_state: Arc<AppState>,
+    _database_entries: &mut impl Stream<Item = DbItem>,
+) -> actix_web::Result<ResponseWithWriter> {
+    let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
+    let writer = ResponseWriter::new(sender);
+    let renderer = RenderContext::new(app_state, writer).await;
+    let http_response = HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .streaming(tokio_stream::wrappers::ReceiverStream::new(receiver));
+    Ok(ResponseWithWriter {
+        http_response,
+        renderer,
+    })
+}
+
+struct ResponseWithWriter {
+    http_response: HttpResponse,
+    renderer: RenderContext<ResponseWriter>,
+}
+
+async fn render_sql(
+    srv_req: &mut ServiceRequest,
+    sql_file: Arc<ParsedSqlFile>,
+) -> actix_web::Result<HttpResponse> {
+    let req_param = extract_request_info(srv_req).await;
+    log::debug!("Received a request with the following parameters: {req_param:?}");
+    let app_state = srv_req
+        .app_data::<web::Data<AppState>>()
+        .ok_or_else(|| ErrorInternalServerError("no state"))?
+        .clone()
+        .into_inner(); // Cheap reference count increase
+
+    let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
+    tokio::task::spawn_local(async move {
+        let mut database_entries_stream =
+            stream_query_results(&app_state.db, &sql_file, &req_param).await;
+        match build_response_header_and_stream(Arc::clone(&app_state), &mut database_entries_stream)
+            .await
+        {
+            Ok(ResponseWithWriter {
+                http_response,
+                renderer,
+            }) => {
+                resp_send
+                    .send(http_response)
+                    .unwrap_or_else(|_| log::error!("could not send headers"));
+                stream_response(database_entries_stream, renderer).await;
+            }
+            Err(e) => {
+                let http_response = ErrorInternalServerError(e).into();
+                resp_send
+                    .send(http_response)
+                    .unwrap_or_else(|_| log::error!("could not send headers"));
+            }
+        }
+    });
+    resp_recv.await.map_err(ErrorInternalServerError)
 }
 
 type ParamMap = HashMap<String, SingleOrVec>;
@@ -213,30 +267,6 @@ async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
         post_variables: param_map(post_variables),
         client_ip,
     }
-}
-
-async fn render_sql(
-    srv_req: &mut ServiceRequest,
-    sql_file: Arc<ParsedSqlFile>,
-) -> actix_web::Result<HttpResponse> {
-    let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
-    let writer = ResponseWriter::new(sender);
-    let req_param = extract_request_info(srv_req).await;
-    let app_state = srv_req
-        .app_data::<web::Data<AppState>>()
-        .ok_or_else(|| ErrorInternalServerError("no state"))?
-        .clone(); // Cheap reference count increase
-    actix_web::rt::spawn(async move {
-        let sql_file = Arc::clone(&sql_file);
-        if let Err(err) = stream_response(&app_state, req_param, sql_file, writer).await {
-            log::error!("Unable to serve page: {}", err);
-        }
-    });
-    Ok(HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(BodyStream::new(
-            tokio_stream::wrappers::ReceiverStream::new(receiver),
-        )))
 }
 
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches

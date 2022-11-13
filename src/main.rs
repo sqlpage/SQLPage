@@ -29,6 +29,24 @@ pub struct AppState {
     sql_file_cache: FileCache<ParsedSqlFile>,
 }
 
+impl AppState {
+    fn init() -> anyhow::Result<Self> {
+        // Connect to the database
+        let database_url = get_database_url();
+        let db = Database::init(&database_url);
+        log::info!("Connecting to database: {database_url}");
+        let all_templates = AllTemplates::init()?;
+        let web_root = std::fs::canonicalize(WEB_ROOT)?;
+        let sql_file_cache = FileCache::new();
+        Ok(AppState {
+            db,
+            all_templates,
+            web_root,
+            sql_file_cache,
+        })
+    }
+}
+
 pub struct Config {
     listen_on: SocketAddr,
 }
@@ -43,25 +61,10 @@ async fn main() {
 }
 
 async fn start() -> anyhow::Result<()> {
-    // Connect to the database
-    let database_url = get_database_url();
-
-    let db = Database::init(&database_url).await?;
-
-    webserver::apply_migrations(&db).await?;
-
-    log::info!("Connected to database: {database_url}");
+    let state = AppState::init()?;
+    webserver::apply_migrations(&state.db).await?;
     let listen_on = get_listen_on()?;
     log::info!("Starting server on {}", listen_on);
-    let all_templates = AllTemplates::init()?;
-    let web_root = std::fs::canonicalize(WEB_ROOT)?;
-    let sql_file_cache = FileCache::new();
-    let state = AppState {
-        db,
-        all_templates,
-        web_root,
-        sql_file_cache,
-    };
     let config = Config { listen_on };
     webserver::http::run_server(config, state).await?;
     Ok(())
@@ -89,6 +92,10 @@ fn get_database_url() -> String {
 
 fn default_database_url() -> String {
     let prefix = "sqlite://".to_owned();
+
+    if cfg!(test) {
+        return prefix + ":memory:";
+    }
 
     #[cfg(not(feature = "lambda-web"))]
     if std::path::Path::new(DEFAULT_DATABASE_FILE).exists() {

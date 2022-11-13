@@ -1,19 +1,19 @@
 use crate::templates::SplitTemplate;
 use crate::AppState;
-use anyhow::Context as AnyhowContext;
+use anyhow::{format_err, Context as AnyhowContext};
 use async_recursion::async_recursion;
-use handlebars::{BlockContext, Context, Handlebars, JsonValue, RenderError, Renderable};
+use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::sync::Arc;
 
 #[allow(clippy::module_name_repetitions)]
-pub struct RenderContext<'a, W: std::io::Write> {
-    app_state: &'a AppState,
+pub struct RenderContext<W: std::io::Write> {
+    app_state: Arc<AppState>,
     pub writer: W,
-    current_component: Option<SplitTemplateRenderer<'a>>,
-    shell_renderer: SplitTemplateRenderer<'a>,
+    current_component: Option<SplitTemplateRenderer>,
+    shell_renderer: SplitTemplateRenderer,
     recursion_depth: usize,
     current_statement: usize,
 }
@@ -21,9 +21,9 @@ pub struct RenderContext<'a, W: std::io::Write> {
 const DEFAULT_COMPONENT: &str = "default";
 const MAX_RECURSION_DEPTH: usize = 256;
 
-impl<W: std::io::Write> RenderContext<'_, W> {
-    pub async fn new(app_state: &AppState, writer: W) -> RenderContext<W> {
-        let shell_renderer = Self::create_renderer("shell", app_state)
+impl<W: std::io::Write> RenderContext<W> {
+    pub async fn new(app_state: Arc<AppState>, writer: W) -> RenderContext<W> {
+        let shell_renderer = Self::create_renderer("shell", Arc::clone(&app_state))
             .await
             .expect("shell must always exist");
         RenderContext {
@@ -113,7 +113,7 @@ impl<W: std::io::Write> RenderContext<'_, W> {
 
     /// Handles the rendering of an error.
     /// Returns whether the error is irrecoverable and the rendering must stop
-    pub async fn handle_error(&mut self, error: &impl std::error::Error) -> anyhow::Result<()> {
+    pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
         log::warn!("SQL error: {:?}", error);
         if self.current_component.is_some() {
             self.close_component()?;
@@ -140,23 +140,15 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         Ok(())
     }
 
-    pub async fn handle_anyhow_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
-        let std_err = AsRef::<(dyn std::error::Error + 'static)>::as_ref(error);
-        self.handle_error(&std_err).await
-    }
-
-    pub async fn handle_result<R, E: std::error::Error>(
-        &mut self,
-        result: &Result<R, E>,
-    ) -> anyhow::Result<()> {
+    pub async fn handle_result<R>(&mut self, result: &anyhow::Result<R>) -> anyhow::Result<()> {
         if let Err(error) = result {
-            self.handle_error(&error).await
+            self.handle_error(error).await
         } else {
             Ok(())
         }
     }
 
-    pub async fn handle_result_and_log<R, E: std::error::Error>(&mut self, result: &Result<R, E>) {
+    pub async fn handle_result_and_log<R>(&mut self, result: &anyhow::Result<R>) {
         if let Err(e) = self.handle_result(result).await {
             log::error!("{}", e);
         }
@@ -180,22 +172,20 @@ impl<W: std::io::Write> RenderContext<'_, W> {
         self.open_component_with_data(component, &json!(null)).await
     }
 
-    async fn create_renderer<'a>(
+    async fn create_renderer(
         component: &str,
-        app_state: &'a AppState,
-    ) -> anyhow::Result<SplitTemplateRenderer<'a>> {
+        app_state: Arc<AppState>,
+    ) -> anyhow::Result<SplitTemplateRenderer> {
         let split_template = app_state
             .all_templates
-            .get_template(app_state, component)
+            .get_template(&app_state, component)
             .await?;
-        Ok(SplitTemplateRenderer::new(
-            split_template,
-            &app_state.all_templates.handlebars,
-        ))
+        Ok(SplitTemplateRenderer::new(split_template, app_state))
     }
 
     async fn set_current_component(&mut self, component: &str) -> anyhow::Result<()> {
-        self.current_component = Some(Self::create_renderer(component, self.app_state).await?);
+        self.current_component =
+            Some(Self::create_renderer(component, Arc::clone(&self.app_state)).await?);
         Ok(())
     }
 
@@ -222,10 +212,15 @@ impl<W: std::io::Write> RenderContext<'_, W> {
 
     pub async fn close(mut self) -> W {
         if let Some(mut component) = self.current_component.take() {
-            let res = component.render_end(&mut self.writer);
+            let res = component
+                .render_end(&mut self.writer)
+                .map_err(|e| format_err!("Unable to render the component closing: {e}"));
             self.handle_result_and_log(&res).await;
         }
-        let res = self.shell_renderer.render_end(&mut self.writer);
+        let res = self
+            .shell_renderer
+            .render_end(&mut self.writer)
+            .map_err(|e| format_err!("Unable to render the shell closing: {e}"));
         self.handle_result_and_log(&res).await;
         self.writer
     }
@@ -239,20 +234,20 @@ impl<W: std::io::Write> handlebars::Output for HandlebarWriterOutput<W> {
     }
 }
 
-pub struct SplitTemplateRenderer<'registry> {
+pub struct SplitTemplateRenderer {
     split_template: Arc<SplitTemplate>,
     local_vars: Option<handlebars::LocalVars>,
     ctx: Context,
-    registry: &'registry Handlebars<'registry>,
+    app_state: Arc<AppState>,
     row_index: usize,
 }
 
-impl<'reg> SplitTemplateRenderer<'reg> {
-    fn new(split_template: Arc<SplitTemplate>, registry: &'reg Handlebars<'reg>) -> Self {
+impl SplitTemplateRenderer {
+    fn new(split_template: Arc<SplitTemplate>, app_state: Arc<AppState>) -> Self {
         Self {
             split_template,
             local_vars: None,
-            registry,
+            app_state,
             row_index: 0,
             ctx: Context::null(),
         }
@@ -275,7 +270,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
         self.split_template.before_list.render(
-            self.registry,
+            &self.app_state.all_templates.handlebars,
             &self.ctx,
             &mut render_context,
             &mut output,
@@ -305,7 +300,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
             render_context.push_block(blk);
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.list_content.render(
-                self.registry,
+                &self.app_state.all_templates.handlebars,
                 &self.ctx,
                 &mut render_context,
                 &mut output,
@@ -329,7 +324,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
                 .local_variables_mut() = local_vars;
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.after_list.render(
-                self.registry,
+                &self.app_state.all_templates.handlebars,
                 &self.ctx,
                 &mut render_context,
                 &mut output,
@@ -345,9 +340,8 @@ mod tests {
     use crate::templates::split_template;
     use handlebars::Template;
 
-    #[test]
-    fn test_split_template_render() -> anyhow::Result<()> {
-        let reg = Handlebars::new();
+    #[tokio::test]
+    async fn test_split_template_render() -> anyhow::Result<()> {
         let template = Template::compile(
             "Hello {{name}} !\
         {{#each_row}} ({{x}} : {{../name}}) {{/each_row}}\
@@ -355,7 +349,8 @@ mod tests {
         )?;
         let split = split_template(template);
         let mut output = Vec::new();
-        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), &reg);
+        let app_state = Arc::new(AppState::init().unwrap());
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state);
         rdr.render_start(&mut output, json!({"name": "SQL"}))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
@@ -367,15 +362,15 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_delayed() -> anyhow::Result<()> {
-        let reg = crate::templates::AllTemplates::init().unwrap().handlebars;
+    #[tokio::test]
+    async fn test_delayed() -> anyhow::Result<()> {
         let template = Template::compile(
             "{{#each_row}}<b> {{x}} {{#delay}} {{x}} </b>{{/delay}}{{/each_row}}{{flush_delayed}}",
         )?;
         let split = split_template(template);
         let mut output = Vec::new();
-        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), &reg);
+        let app_state = Arc::new(AppState::init().unwrap());
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state);
         rdr.render_start(&mut output, json!(null))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
