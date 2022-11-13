@@ -46,7 +46,11 @@ impl ParsedSqlFile {
                 .connection
                 .prepare_with(&query, &param_types)
                 .await
-                .with_context(|| format!("Preparing SQL statement: '{query}'"));
+                .with_context(|| format!("Failed to prepare SQL statement: '{query}'"));
+            match &stmt_res {
+                Ok(_) => log::debug!("Successfully prepared SQL statement '{query}'"),
+                Err(err) => log::warn!("{err:#}"),
+            }
             statements.push(stmt_res.map(|statement| PreparedStatement {
                 statement: statement.to_owned(),
                 parameters,
@@ -64,7 +68,7 @@ impl ParsedSqlFile {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait(? Send)]
 impl AsyncFromStrWithState for ParsedSqlFile {
     async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self> {
         Ok(ParsedSqlFile::new(&app_state.db, source).await)
