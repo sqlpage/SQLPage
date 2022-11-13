@@ -270,6 +270,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         writer: W,
         data: JsonValue,
     ) -> Result<(), RenderError> {
+        log::trace!("Starting rendering of a new page with the following page-level data: {data}");
         let mut render_context = handlebars::RenderContext::new(None);
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
@@ -291,6 +292,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
         writer: W,
         data: JsonValue,
     ) -> Result<(), RenderError> {
+        log::trace!("Rendering a new item in the page: {data:?}");
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             let blk = render_context
@@ -318,6 +320,7 @@ impl<'reg> SplitTemplateRenderer<'reg> {
     }
 
     fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), RenderError> {
+        log::trace!("Closing the current page");
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             *render_context
