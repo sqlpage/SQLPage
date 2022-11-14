@@ -340,7 +340,7 @@ mod tests {
     use crate::templates::split_template;
     use handlebars::Template;
 
-    #[tokio::test]
+    #[actix_web::test]
     async fn test_split_template_render() -> anyhow::Result<()> {
         let template = Template::compile(
             "Hello {{name}} !\
@@ -362,7 +362,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[actix_web::test]
     async fn test_delayed() -> anyhow::Result<()> {
         let template = Template::compile(
             "{{#each_row}}<b> {{x}} {{#delay}} {{x}} </b>{{/delay}}{{/each_row}}{{flush_delayed}}",

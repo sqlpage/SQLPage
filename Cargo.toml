@@ -13,7 +13,7 @@ log = "0.4.17"
 env_logger = "0.9.0"
 actix-files = "0.6.2"
 futures-util = "0.3.21"
-tokio = { version = "1.20.1", features = ["full"] }
+tokio = { version = "1.20.1", features = ["rt"] }
 tokio-stream = "0.1.9"
 anyhow = "1.0.58"
 serde = "1.0.140"
