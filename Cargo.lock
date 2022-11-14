@@ -1820,7 +1820,7 @@ dependencies = [
 [[package]]
 name = "sqlparser"
 version = "0.27.0"
-source = "git+https://github.com/lovasoa/sqlparser-rs.git?branch=ast-visitor#1c20fc151a8fff3c956a9c958bec2a75cda0025a"
+source = "git+https://github.com/lovasoa/sqlparser-rs.git?branch=ast-visitor#d55be7106cb407b687d430e50e368c07dedd11b8"
 dependencies = [
  "derive-visitor",
  "log",

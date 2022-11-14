@@ -158,7 +158,7 @@ async fn render_sql(
         .into_inner(); // Cheap reference count increase
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
-    tokio::task::spawn_local(async move {
+    actix_web::rt::spawn(async move {
         let mut database_entries_stream =
             stream_query_results(&app_state.db, &sql_file, &req_param).await;
         match build_response_header_and_stream(Arc::clone(&app_state), &mut database_entries_stream)
