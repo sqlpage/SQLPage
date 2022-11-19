@@ -1,4 +1,4 @@
-use crate::render::RenderContext;
+use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, ParsedSqlFile, CONFIG_DIR};
 use actix_web::dev::ServiceRequest;
@@ -19,6 +19,7 @@ use std::io::Write;
 use std::mem;
 use std::net::IpAddr;
 use std::path::{Component, Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -93,7 +94,7 @@ impl Drop for ResponseWriter {
 }
 
 async fn stream_response(
-    stream: impl Stream<Item = DbItem>,
+    stream: impl Stream<Item=DbItem>,
     mut renderer: RenderContext<ResponseWriter>,
 ) {
     let mut stream = Box::pin(stream);
@@ -124,25 +125,44 @@ async fn stream_response(
     log::debug!("Successfully finished rendering the page");
 }
 
-async fn build_response_header_and_stream(
+async fn build_response_header_and_stream<S: Stream<Item=DbItem>>(
     app_state: Arc<AppState>,
-    _database_entries: &mut impl Stream<Item = DbItem>,
-) -> actix_web::Result<ResponseWithWriter> {
+    database_entries: S,
+) -> actix_web::Result<ResponseWithWriter<S>> {
     let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
     let writer = ResponseWriter::new(sender);
-    let renderer = RenderContext::new(app_state, writer).await;
-    let http_response = HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .streaming(tokio_stream::wrappers::ReceiverStream::new(receiver));
-    Ok(ResponseWithWriter {
-        http_response,
-        renderer,
-    })
+    let mut head_context = HeaderContext::new(app_state, writer);
+    let mut stream = Box::pin(database_entries);
+    while let Some(item) = stream.next().await {
+        match item {
+            DbItem::Row(data) => {
+                match head_context.handle_row(data).await.map_err(ErrorInternalServerError)? {
+                    PageContext::Header(h) => { head_context = h; }
+                    PageContext::Body { mut http_response, renderer } => {
+                        let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+                        let http_response = http_response.streaming(body_stream);
+                        return Ok(ResponseWithWriter {
+                            http_response,
+                            renderer,
+                            database_entries_stream: stream,
+                        });
+                    }
+                }
+            }
+            DbItem::FinishedQuery => { log::debug!("finished query"); }
+            DbItem::Error(err) => {
+                log::error!("An error occurred while preparing HTTP headers: {err}");
+                return Err(ErrorInternalServerError(err))
+            }
+        }
+    }
+    Err(ErrorInternalServerError("no SQL statements to execute"))
 }
 
-struct ResponseWithWriter {
+struct ResponseWithWriter<S> {
     http_response: HttpResponse,
     renderer: RenderContext<ResponseWriter>,
+    database_entries_stream: Pin<Box<S>>,
 }
 
 async fn render_sql(
@@ -159,15 +179,14 @@ async fn render_sql(
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
-        let mut database_entries_stream =
-            stream_query_results(&app_state.db, &sql_file, &req_param).await;
-        match build_response_header_and_stream(Arc::clone(&app_state), &mut database_entries_stream)
-            .await
-        {
+        let database_entries_stream = stream_query_results(&app_state.db, &sql_file, &req_param).await;
+        let response_with_writer = build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
+        match response_with_writer {
             Ok(ResponseWithWriter {
-                http_response,
-                renderer,
-            }) => {
+                   http_response,
+                   renderer,
+                   database_entries_stream
+               }) => {
                 resp_send
                     .send(http_response)
                     .unwrap_or_else(|_| log::error!("could not send headers"));
