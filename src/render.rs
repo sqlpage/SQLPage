@@ -26,7 +26,8 @@ pub struct HeaderContext<W: std::io::Write> {
 
 impl<W: std::io::Write> HeaderContext<W> {
     pub fn new(app_state: Arc<AppState>, writer: W) -> Self {
-        let response = HttpResponseBuilder::new(StatusCode::OK);
+        let mut response = HttpResponseBuilder::new(StatusCode::OK);
+        response.content_type("text/html; charset=utf-8");
         Self { app_state, writer, response }
     }
     pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
@@ -38,10 +39,12 @@ impl<W: std::io::Write> HeaderContext<W> {
     }
 
     fn add_http_header(mut self, data: &JsonValue) -> anyhow::Result<Self> {
-        let msg = || format!("The http_header component expects two top-level properties called 'name' and 'value'. Received the following properties instead: {data}");
-        let name = get_object_str(data, "name").with_context(msg)?;
-        let value = get_object_str(data, "value").with_context(msg)?;
-        self.response.insert_header((name, value));
+        let obj = data.as_object().with_context(|| "expected object")?;
+        for (name, value) in obj {
+            if name == "component" { continue; }
+            let value_str = value.as_str().with_context(|| "http header values must be strings")?;
+            self.response.insert_header((name.as_str(), value_str));
+        }
         Ok(self)
     }
 
