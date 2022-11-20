@@ -299,22 +299,22 @@ select
     description,
     icon,
     '?component='||name||'#component' as link,
-    $1->>'$.query.component' = name as active
+    $component = name as active
 from component;
 
 select 'text' as component,
     'The "'||($1->>'$.query.component')||'" component' as title,
     'component' as id;
-select description as contents from component where name = $1->>'$.query.component';
+select description as contents from component where name = $component;
 
-select 'title' as component, 3 as level, 'Parameters' as contents where $1->>'$.query.component' IS NOT NULL;
-select 'card' as component, 3 AS columns where $1->>'$.query.component' IS NOT NULL;
+select 'title' as component, 3 as level, 'Parameters' as contents where $component IS NOT NULL;
+select 'card' as component, 3 AS columns where $component IS NOT NULL;
 select
     name || (CASE WHEN top_level THEN ' (top-level)' ELSE '' END) as title,
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
     type as footer,
     CASE WHEN top_level THEN 'lime' ELSE 'azure' END || CASE WHEN optional THEN '-lt' ELSE '' END as color
-from parameter where component = $1->>'$.query.component'
+from parameter where component = $component
 ORDER BY (NOT top_level), optional, name;
 
 select
@@ -341,4 +341,4 @@ select
         json_object('component', 'title', 'level', 3, 'contents', 'Result'),
         json_object('component', 'dynamic', 'properties', properties)
     ) as properties
-from example where component = $1->>'$.query.component';
+from example where component = $component;
