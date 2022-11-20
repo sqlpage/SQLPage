@@ -161,8 +161,11 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
             DbItem::FinishedQuery => {
                 log::debug!("finished query");
             }
-            DbItem::Error(err) => {
-                log::error!("An error occurred while preparing HTTP headers: {err}");
+            DbItem::Error(source_err) => {
+                let err = anyhow::format_err!(
+                    "An error occurred at the top of your SQL file: {source_err:#}"
+                );
+                log::error!("Response building error: {err}");
                 return Err(ErrorInternalServerError(err));
             }
         }
