@@ -6,13 +6,14 @@ use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{visitor_fn_mut, DataType, DriveMut, Expr, Value, VisitorEvent};
 use sqlparser::dialect::GenericDialect;
-use sqlparser::parser::Parser;
+use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{SemiColon, EOF};
 use sqlparser::tokenizer::Tokenizer;
 use sqlx::any::{AnyKind, AnyTypeInfo};
 use sqlx::postgres::types::Oid;
 use sqlx::postgres::PgTypeInfo;
 use sqlx::{Executor, Statement};
+use std::fmt::Write;
 
 #[derive(Default)]
 pub struct ParsedSqlFile {
@@ -33,8 +34,7 @@ impl ParsedSqlFile {
             let mut stmt = match parser.parse_statement() {
                 Ok(stmt) => stmt,
                 Err(err) => {
-                    statements.push(Err(anyhow::Error::from(err)));
-                    break;
+                    return Self::finish_with_error(err, parser, statements);
                 }
             };
             while parser.consume_token(&SemiColon) {}
@@ -51,14 +51,34 @@ impl ParsedSqlFile {
                 Ok(_) => log::debug!("Successfully prepared SQL statement '{query}'"),
                 Err(err) => log::warn!("{err:#}"),
             }
-            statements.push(stmt_res.map(|statement| PreparedStatement {
+            let statement_result = stmt_res.map(|statement| PreparedStatement {
                 statement: statement.to_owned(),
                 parameters,
-            }));
+            });
+            statements.push(statement_result);
         }
         statements.shrink_to_fit();
         ParsedSqlFile { statements }
     }
+
+    fn finish_with_error(
+        err: ParserError,
+        mut parser: Parser,
+        mut statements: Vec<anyhow::Result<PreparedStatement>>,
+    ) -> ParsedSqlFile {
+        let mut err_msg = "SQL syntax error before: ".to_string();
+        for _ in 0..32 {
+            let next_token = parser.next_token();
+            if next_token == EOF {
+                break;
+            }
+            let _ = write!(&mut err_msg, "{next_token} ");
+        }
+        let error = anyhow::Error::from(err).context(err_msg);
+        statements.push(Err(error));
+        ParsedSqlFile { statements }
+    }
+
     fn from_err(e: impl Into<anyhow::Error>) -> Self {
         Self {
             statements: vec![Err(e
