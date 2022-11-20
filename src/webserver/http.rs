@@ -94,7 +94,7 @@ impl Drop for ResponseWriter {
 }
 
 async fn stream_response(
-    stream: impl Stream<Item=DbItem>,
+    stream: impl Stream<Item = DbItem>,
     mut renderer: RenderContext<ResponseWriter>,
 ) {
     let mut stream = Box::pin(stream);
@@ -125,7 +125,7 @@ async fn stream_response(
     log::debug!("Successfully finished rendering the page");
 }
 
-async fn build_response_header_and_stream<S: Stream<Item=DbItem>>(
+async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     app_state: Arc<AppState>,
     database_entries: S,
 ) -> actix_web::Result<ResponseWithWriter<S>> {
@@ -136,9 +136,18 @@ async fn build_response_header_and_stream<S: Stream<Item=DbItem>>(
     while let Some(item) = stream.next().await {
         match item {
             DbItem::Row(data) => {
-                match head_context.handle_row(data).await.map_err(ErrorInternalServerError)? {
-                    PageContext::Header(h) => { head_context = h; }
-                    PageContext::Body { mut http_response, renderer } => {
+                match head_context
+                    .handle_row(data)
+                    .await
+                    .map_err(ErrorInternalServerError)?
+                {
+                    PageContext::Header(h) => {
+                        head_context = h;
+                    }
+                    PageContext::Body {
+                        mut http_response,
+                        renderer,
+                    } => {
                         let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
                         let http_response = http_response.streaming(body_stream);
                         return Ok(ResponseWithWriter {
@@ -149,10 +158,12 @@ async fn build_response_header_and_stream<S: Stream<Item=DbItem>>(
                     }
                 }
             }
-            DbItem::FinishedQuery => { log::debug!("finished query"); }
+            DbItem::FinishedQuery => {
+                log::debug!("finished query");
+            }
             DbItem::Error(err) => {
                 log::error!("An error occurred while preparing HTTP headers: {err}");
-                return Err(ErrorInternalServerError(err))
+                return Err(ErrorInternalServerError(err));
             }
         }
     }
@@ -179,14 +190,16 @@ async fn render_sql(
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
-        let database_entries_stream = stream_query_results(&app_state.db, &sql_file, &req_param).await;
-        let response_with_writer = build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
+        let database_entries_stream =
+            stream_query_results(&app_state.db, &sql_file, &req_param).await;
+        let response_with_writer =
+            build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
         match response_with_writer {
             Ok(ResponseWithWriter {
-                   http_response,
-                   renderer,
-                   database_entries_stream
-               }) => {
+                http_response,
+                renderer,
+                database_entries_stream,
+            }) => {
                 resp_send
                     .send(http_response)
                     .unwrap_or_else(|_| log::error!("could not send headers"));
