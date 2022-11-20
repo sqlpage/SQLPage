@@ -94,7 +94,7 @@ impl Drop for ResponseWriter {
 }
 
 async fn stream_response(
-    stream: impl Stream<Item=DbItem>,
+    stream: impl Stream<Item = DbItem>,
     mut renderer: RenderContext<ResponseWriter>,
 ) {
     let mut stream = Box::pin(stream);
@@ -125,7 +125,7 @@ async fn stream_response(
     log::debug!("Successfully finished rendering the page");
 }
 
-async fn build_response_header_and_stream<S: Stream<Item=DbItem>>(
+async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     app_state: Arc<AppState>,
     database_entries: S,
 ) -> actix_web::Result<ResponseWithWriter<S>> {
@@ -199,10 +199,10 @@ async fn render_sql(
             build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
         match response_with_writer {
             Ok(ResponseWithWriter {
-                   http_response,
-                   renderer,
-                   database_entries_stream,
-               }) => {
+                http_response,
+                renderer,
+                database_entries_stream,
+            }) => {
                 resp_send
                     .send(http_response)
                     .unwrap_or_else(|_| log::error!("could not send headers"));
@@ -342,7 +342,11 @@ async fn process_sql_request(
 async fn handle_static_js() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/javascript;charset=UTF-8")
-        .append_header(CacheControl(vec![CacheDirective::MaxAge(3600u32), CacheDirective::Public, CacheDirective::MaxStale(600)]))
+        .append_header(CacheControl(vec![
+            CacheDirective::MaxAge(3600u32),
+            CacheDirective::Public,
+            CacheDirective::MaxStale(600),
+        ]))
         .body(&include_bytes!("../../sqlpage/sqlpage.js")[..])
 }
 
