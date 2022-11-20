@@ -1,3 +1,6 @@
+-- This line, at the top of the page, tells web browsers to keep the page locally in cache once they have it.
+select 'http_header' as component, 'max-age=3600' as "Cache-Control";
+
 DROP TABLE IF EXISTS example;
 DROP TABLE IF EXISTS parameter;
 DROP TABLE IF EXISTS component;

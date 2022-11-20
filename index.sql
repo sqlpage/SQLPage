@@ -1,7 +1,7 @@
 -- Welcome to SQLPage ! This is a short demonstration of a few things you can do with SQLPage
 
--- The first SELECT in your page allow you to customize your web page, giving it a title and a description
-select 'sqlpage' as title, '/' as link, 'en' as lang, 'My cool app' as description;
+-- Using the 'shell' component at the top allows you to customize your web page, giving it a title and a description
+select 'shell' as component, 'sqlpage' as title, '/' as link, 'en' as lang, 'My cool app' as description;
 
 -- Making a web page with SQLPage works by using a set of predefined "components"
 --  and filling them with contents from the results of your SQL queries
