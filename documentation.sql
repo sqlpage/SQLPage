@@ -335,7 +335,7 @@ select
                             ) || ';',
                         x'0A'
                      )
-                from json_each(properties) top
+                from json_each(properties) AS top
             )
         ),
         json_object('component', 'title', 'level', 3, 'contents', 'Result'),
