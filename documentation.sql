@@ -5,13 +5,13 @@ DROP TABLE IF EXISTS example;
 DROP TABLE IF EXISTS parameter;
 DROP TABLE IF EXISTS component;
 
-CREATE TABLE component(
+CREATE TABLE IF NOT EXISTS component(
     name TEXT PRIMARY KEY,
     description TEXT NOT NULL,
     icon TEXT -- icon name from tabler icon
 );
 
-CREATE TABLE parameter(
+CREATE TABLE IF NOT EXISTS parameter(
     top_level BOOLEAN DEFAULT FALSE,
     name TEXT,
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
@@ -21,7 +21,7 @@ CREATE TABLE parameter(
     PRIMARY KEY (component, top_level, name)
 );
 
-CREATE TABLE example(
+CREATE TABLE IF NOT EXISTS example(
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
     description TEXT,
     properties TEXT,
