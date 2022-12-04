@@ -8,9 +8,9 @@ edition = "2021"
 [dependencies]
 sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql"] }
 actix-web = { version = "4", features = ["rustls"] }
-handlebars = { version = "5.0.0-beta.0", git = "https://github.com/sunng87/handlebars-rust.git", branch = "master" }
+handlebars = "5.0.0-beta.0"
 log = "0.4.17"
-env_logger = "0.9.0"
+env_logger = "0.10.0"
 actix-files = "0.6.2"
 futures-util = "0.3.21"
 tokio = { version = "1.20.1", features = ["rt"] }
