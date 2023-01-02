@@ -5,6 +5,9 @@ edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
 license-file = "LICENSE.txt"
+homepage = "https://sql.ophir.dev/"
+repository = "https://github.com/lovasoa/SQLpage"
+documentation = "https://docs.rs/sqlpage"
 
 [dependencies]
 sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql"] }
