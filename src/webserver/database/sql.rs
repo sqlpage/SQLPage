@@ -4,7 +4,7 @@ use crate::webserver::database::StmtParam;
 use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
-use sqlparser::ast::{visitor_fn_mut, DataType, DriveMut, Expr, Value, VisitorEvent};
+use sqlparser::ast::{DataType, Expr, Value, VisitMut, VisitorMut};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{SemiColon, EOF};
@@ -14,6 +14,7 @@ use sqlx::postgres::types::Oid;
 use sqlx::postgres::PgTypeInfo;
 use sqlx::{Executor, Statement};
 use std::fmt::Write;
+use std::ops::ControlFlow;
 
 #[derive(Default)]
 pub struct ParsedSqlFile {
@@ -23,12 +24,11 @@ pub struct ParsedSqlFile {
 impl ParsedSqlFile {
     pub(super) async fn new(db: &Database, sql: &str) -> ParsedSqlFile {
         let dialect = GenericDialect {};
-        let tokens = Tokenizer::new(&dialect, sql).tokenize();
+        let tokens = Tokenizer::new(&dialect, sql).tokenize_with_location();
         let mut parser = match tokens {
-            Ok(tokens) => Parser::new(tokens, &dialect),
+            Ok(tokens) => Parser::new(&dialect).with_tokens_with_locations(tokens),
             Err(e) => return Self::from_err(e),
         };
-        let db_kind = db.connection.any_kind();
         let mut statements = Vec::with_capacity(8);
         while parser.peek_token() != EOF {
             let mut stmt = match parser.parse_statement() {
@@ -38,7 +38,8 @@ impl ParsedSqlFile {
                 }
             };
             while parser.consume_token(&SemiColon) {}
-            let param_names = extract_parameters(&mut stmt, db_kind);
+            let db_kind = db.connection.any_kind();
+            let param_names = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
             let parameters = map_params(param_names);
             let query = stmt.to_string();
             let param_types = get_param_types(&parameters);
@@ -117,38 +118,53 @@ fn map_params(names: Vec<String>) -> Vec<StmtParam> {
         .collect()
 }
 
-fn extract_parameters(sql_ast: &mut sqlparser::ast::Statement, db: AnyKind) -> Vec<String> {
-    let mut parameters: Vec<String> = Vec::new();
-    sql_ast.drive_mut(&mut visitor_fn_mut(|value: &mut Expr, event| {
-        // Only update the nodes AFTER they have been visited
-        if let VisitorEvent::Enter = event {
-            return;
-        }
-        if let Expr::Value(Value::Placeholder(param)) = value {
-            let new_expr = make_placeholder(db, parameters.len());
-            let name = std::mem::take(param);
-            parameters.push(name);
-            *value = new_expr;
-        }
-    }));
-    parameters
+struct ParameterExtractor {
+    db_kind: AnyKind,
+    parameters: Vec<String>,
 }
 
-fn make_placeholder(db: AnyKind, current_count: usize) -> Expr {
-    let name = match db {
-        // Postgres only supports numbered parameters
-        AnyKind::Postgres => format!("${}", current_count + 1),
-        _ => '?'.to_string(),
-    };
-    let data_type = match db {
-        // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
-        AnyKind::MySql => DataType::Char(None),
-        _ => DataType::Text,
-    };
-    let value = Expr::Value(Value::Placeholder(name));
-    Expr::Cast {
-        expr: Box::new(value),
-        data_type,
+impl ParameterExtractor {
+    fn extract_parameters(
+        sql_ast: &mut sqlparser::ast::Statement,
+        db_kind: AnyKind,
+    ) -> Vec<String> {
+        let mut this = Self {
+            db_kind,
+            parameters: vec![],
+        };
+        sql_ast.visit(&mut this);
+        this.parameters
+    }
+
+    fn make_placeholder(&self) -> Expr {
+        let name = match self.db_kind {
+            // Postgres only supports numbered parameters
+            AnyKind::Postgres => format!("${}", self.parameters.len() + 1),
+            _ => '?'.to_string(),
+        };
+        let data_type = match self.db_kind {
+            // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
+            AnyKind::MySql => DataType::Char(None),
+            _ => DataType::Text,
+        };
+        let value = Expr::Value(Value::Placeholder(name));
+        Expr::Cast {
+            expr: Box::new(value),
+            data_type,
+        }
+    }
+}
+
+impl VisitorMut for ParameterExtractor {
+    type Break = ();
+    fn post_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
+        if let Expr::Value(Value::Placeholder(param)) = value {
+            let new_expr = self.make_placeholder();
+            let name = std::mem::take(param);
+            self.parameters.push(name);
+            *value = new_expr;
+        }
+        ControlFlow::<()>::Continue(())
     }
 }
 
@@ -156,7 +172,7 @@ fn make_placeholder(db: AnyKind, current_count: usize) -> Expr {
 fn test_statement_rewrite() {
     let sql = "select $a from t where $x > $a OR $x = 0";
     let mut ast = Parser::parse_sql(&GenericDialect, sql).unwrap();
-    let parameters = extract_parameters(&mut ast[0], AnyKind::Postgres);
+    let parameters = ParameterExtractor::extract_parameters(&mut ast[0], AnyKind::Postgres);
     assert_eq!(
         ast[0].to_string(),
         "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($3 AS TEXT) OR CAST($4 AS TEXT) = 0"
