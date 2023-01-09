@@ -154,13 +154,15 @@ INSERT INTO example(component, description, properties) VALUES
 );
 
 INSERT INTO component(name, icon, description) VALUES
-    ('form', 'cursor-text', 'A series of input fields that can be filled in by the user. The form contents can be posted and handled by another SQLPage. The form contents are accessible from the target page as ($1->>''$.form.x'') for a form field named x.');
+    ('form', 'cursor-text', 'A series of input fields that can be filled in by the user. ' ||
+    'The form contents can be posted and handled by another SQLPage. ' ||
+    'The value entered by the user in a field named x will be accessible to the target SQL page as $x.');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
-    ('method', 'Set this to ''GET'' to pass the form contents directly as URL parameters, accessible from the target page as ($1->>''$.form.x'')', 'TEXT', TRUE, TRUE),
-    ('action', 'An optional link to a target page that will handle the results of the form. By default the target page is the current page.', 'TEXT', TRUE, TRUE),
-    ('title', 'A name to display at the top of the form.', 'TEXT', TRUE, TRUE),
+    ('method', 'Set this to ''GET'' to pass the form contents directly as URL parameters. If the user enters a value v in a field named x, submitting the form will load target.sql?x=v. If target.sql contains SELECT $x, it will display the value v.', 'TEXT', TRUE, TRUE),
+    ('action', 'An optional link to a target page that will handle the results of the form. By default the target page is the current page. Setting it to the name of a different sql file will load that file when the user submits the form.', 'TEXT', TRUE, TRUE),
+    ('title', 'A name to display at the top of the form. It will be displayed in a larger font size at the top of the form.', 'TEXT', TRUE, TRUE),
     ('validate', 'The text to display in the button at the bottom of the form that submits the values.', 'TEXT', TRUE, TRUE),
     -- item level
     ('type', 'The type of input to use: text for a simple text field, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter.', 'TEXT', FALSE, FALSE),
@@ -303,7 +305,7 @@ select
 from component;
 
 select 'text' as component,
-    'The "'||($1->>'$.query.component')||'" component' as title,
+    'The "'||$component||'" component' as title,
     'component' as id;
 select description as contents from component where name = $component;
 
