@@ -1,7 +1,7 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, ParsedSqlFile, CONFIG_DIR};
-use actix_web::dev::ServiceRequest;
+use actix_web::dev::{ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::web::Form;
@@ -11,6 +11,7 @@ use actix_web::{
 };
 
 use crate::utils::log_error;
+use actix_web::body::MessageBody;
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::collections::hash_map::Entry;
@@ -350,12 +351,18 @@ async fn handle_static_js() -> impl Responder {
         .body(&include_bytes!("../../sqlpage/sqlpage.js")[..])
 }
 
-pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
-    let listen_on = config.listen_on;
-    let app_state = web::Data::new(state);
-
-    let factory = move || {
-        App::new()
+pub fn create_app(
+    app_state: web::Data<AppState>,
+) -> App<
+    impl ServiceFactory<
+        ServiceRequest,
+        Config = (),
+        Response = ServiceResponse<impl MessageBody>,
+        Error = actix_web::Error,
+        InitError = (),
+    >,
+> {
+    App::new()
             .app_data(app_state.clone())
             .route("sqlpage.js", web::get().to(handle_static_js))
             .wrap_fn(|req, srv| {
@@ -382,13 +389,20 @@ pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
                     .use_last_modified(true),
             )
             .wrap(Logger::default())
-    };
+}
+
+pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
+    let listen_on = config.listen_on;
+    let state = web::Data::new(state);
 
     #[cfg(feature = "lambda-web")]
     if lambda_web::is_running_on_lambda() {
         lambda_web::run_actix_on_lambda(factory).await?;
         return Ok(());
     }
-    HttpServer::new(factory).bind(listen_on)?.run().await?;
+    HttpServer::new(move || create_app(web::Data::clone(&state)))
+        .bind(listen_on)?
+        .run()
+        .await?;
     Ok(())
 }
