@@ -363,7 +363,6 @@ pub fn create_app(
     >,
 > {
     App::new()
-            .app_data(app_state.clone())
             .route("sqlpage.js", web::get().to(handle_static_js))
             .wrap_fn(|req, srv| {
                 let app_state: web::Data<AppState> = web::Data::clone(req.app_data().expect("app_state"));
@@ -394,6 +393,7 @@ pub fn create_app(
             .add(("Content-Security-Policy", "script-src 'self' https://cdn.jsdelivr.net"))
         )
         .wrap(middleware::Compress::default())
+        .app_data(app_state)
 }
 
 pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
