@@ -6,8 +6,8 @@ use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::web::Form;
 use actix_web::{
-    dev::Service, dev::ServiceResponse, middleware::Logger, web, web::Bytes, App, FromRequest,
-    HttpResponse, HttpServer, Responder,
+    dev::Service, dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App,
+    FromRequest, HttpResponse, HttpServer, Responder,
 };
 
 use crate::utils::log_error;
@@ -389,6 +389,11 @@ pub fn create_app(
                     .use_last_modified(true),
             )
             .wrap(Logger::default())
+        .wrap(middleware::DefaultHeaders::new()
+            .add(("Server", format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))))
+            .add(("Content-Security-Policy", "script-src 'self' https://cdn.jsdelivr.net"))
+        )
+        .wrap(middleware::Compress::default())
 }
 
 pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
