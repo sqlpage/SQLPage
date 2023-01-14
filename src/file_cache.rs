@@ -79,7 +79,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 log::trace!("Cache answer without filesystem lookup for {:?}", path);
                 return Ok(Arc::clone(&cached.content));
             }
-            if let Ok(modified) = std::fs::metadata(path).and_then(|m| m.modified()) {
+            if let Ok(modified) = tokio::fs::metadata(path).await.and_then(|m| m.modified()) {
                 if modified <= cached.last_check_time() {
                     log::trace!("Cache answer with filesystem metadata read for {:?}", path);
                     cached.update_check_time();
@@ -89,7 +89,8 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         }
         // Read lock is released
         log::trace!("Loading and parsing {:?}", path);
-        let file_contents = std::fs::read_to_string(path)
+        let file_contents = tokio::fs::read_to_string(path)
+            .await
             .with_context(|| format!("Reading {path:?} to load it in cache"));
         let parsed = match file_contents {
             Ok(contents) => Ok(T::from_str_with_state(app_state, &contents).await?),
