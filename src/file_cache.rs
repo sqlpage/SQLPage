@@ -79,12 +79,19 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 log::trace!("Cache answer without filesystem lookup for {:?}", path);
                 return Ok(Arc::clone(&cached.content));
             }
-            if let Ok(modified) = tokio::fs::metadata(path).await.and_then(|m| m.modified()) {
-                if modified <= cached.last_check_time() {
-                    log::trace!("Cache answer with filesystem metadata read for {:?}", path);
-                    cached.update_check_time();
-                    return Ok(Arc::clone(&cached.content));
+            let modified_res = tokio::fs::metadata(path).await.and_then(|m| m.modified());
+            match modified_res {
+                Ok(modified) => {
+                    if modified <= cached.last_check_time() {
+                        log::trace!("Cache answer with filesystem metadata read for {:?}", path);
+                        cached.update_check_time();
+                        return Ok(Arc::clone(&cached.content));
+                    }
                 }
+                Err(e) => log::warn!(
+                    "Unable to check when '{}' was last modified. Re-reading the file: {e:#}",
+                    path.display()
+                ),
             }
         }
         // Read lock is released
