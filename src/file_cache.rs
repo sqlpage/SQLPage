@@ -1,14 +1,13 @@
 use crate::AppState;
 use anyhow::Context;
-use std::path::PathBuf;
-
 use async_trait::async_trait;
-use std::collections::HashMap;
+use dashmap::DashMap;
+use std::path::PathBuf;
 use std::sync::atomic::{
     AtomicU64,
     Ordering::{Acquire, Release},
 };
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 const MAX_STALE_CACHE_MS: u64 = 100;
@@ -57,7 +56,7 @@ impl<T> Cached<T> {
 }
 
 pub struct FileCache<T: AsyncFromStrWithState> {
-    cache: Arc<RwLock<HashMap<PathBuf, Cached<T>>>>,
+    cache: Arc<DashMap<PathBuf, Cached<T>>>,
 }
 
 impl<T: AsyncFromStrWithState> FileCache<T> {
@@ -71,24 +70,20 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
     pub fn add_static(&mut self, path: PathBuf, contents: T) {
         log::trace!("Adding static file {path:?} to the cache.");
         let cached = Cached::new_static(contents);
-        let mut cache = self.cache.write().expect("cache");
-        cache.insert(path, cached);
+        self.cache.insert(path, cached);
     }
 
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
-        {
-            let read_lock = self.cache.read().expect("lock");
-            if let Some(cached) = read_lock.get(path) {
-                if !cached.needs_check() {
-                    log::trace!("Cache answer without filesystem lookup for {:?}", path);
+        if let Some(cached) = self.cache.get(path) {
+            if !cached.needs_check() {
+                log::trace!("Cache answer without filesystem lookup for {:?}", path);
+                return Ok(Arc::clone(&cached.content));
+            }
+            if let Ok(modified) = std::fs::metadata(path).and_then(|m| m.modified()) {
+                if modified <= cached.last_check_time() {
+                    log::trace!("Cache answer with filesystem metadata read for {:?}", path);
+                    cached.update_check_time();
                     return Ok(Arc::clone(&cached.content));
-                }
-                if let Ok(modified) = std::fs::metadata(path).and_then(|m| m.modified()) {
-                    if modified <= cached.last_check_time() {
-                        log::trace!("Cache answer with filesystem metadata read for {:?}", path);
-                        cached.update_check_time();
-                        return Ok(Arc::clone(&cached.content));
-                    }
                 }
             }
         }
@@ -101,12 +96,11 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
             Err(e) => Err(e),
         };
 
-        let mut write_lock = self.cache.write().expect("write lock");
         match parsed {
             Ok(item) => {
                 let value = Cached::new(item);
                 let new_val = Arc::clone(&value.content);
-                write_lock.insert(path.clone(), value);
+                self.cache.insert(path.clone(), value);
                 log::trace!("{:?} loaded in cache", path);
                 Ok(new_val)
             }
@@ -114,7 +108,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 log::trace!(
                     "Evicting {path:?} from the cache because the following error occurred: {e}"
                 );
-                write_lock.remove(path);
+                self.cache.remove(path);
                 Err(e)
             }
         }
