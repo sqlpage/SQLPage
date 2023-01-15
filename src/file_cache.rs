@@ -1,6 +1,7 @@
 use crate::AppState;
 use anyhow::Context;
 use async_trait::async_trait;
+use chrono::{DateTime, TimeZone, Utc};
 use dashmap::DashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{
@@ -8,7 +9,7 @@ use std::sync::atomic::{
     Ordering::{Acquire, Release},
 };
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 const MAX_STALE_CACHE_MS: u64 = 100;
 
@@ -33,25 +34,30 @@ impl<T> Cached<T> {
         this.last_checked_at.store(u64::MAX, Release);
         this
     }
-    fn last_check_time(&self) -> SystemTime {
-        let millis = self
-            .last_checked_at
+    fn last_check_time(&self) -> DateTime<Utc> {
+        self.last_checked_at
             .load(Acquire)
-            .saturating_mul(MAX_STALE_CACHE_MS);
-        SystemTime::UNIX_EPOCH + Duration::from_millis(millis)
+            .saturating_mul(MAX_STALE_CACHE_MS)
+            .try_into()
+            .ok()
+            .and_then(|millis| Utc.timestamp_millis_opt(millis).single())
+            .expect("file timestamp out of bound")
     }
     fn update_check_time(&self) {
-        let elapsed = u64::try_from(Self::elapsed()).expect("too far in the future");
-        self.last_checked_at.store(elapsed, Release);
+        self.last_checked_at.store(Self::elapsed(), Release);
     }
-    fn elapsed() -> u128 {
-        (SystemTime::now().duration_since(SystemTime::UNIX_EPOCH))
-            .unwrap()
-            .as_millis()
-            / u128::from(MAX_STALE_CACHE_MS)
+    fn elapsed() -> u64 {
+        let timestamp_millis = (SystemTime::now().duration_since(SystemTime::UNIX_EPOCH))
+            .expect("invalid duration")
+            .as_millis();
+        let elapsed_intervals = timestamp_millis / u128::from(MAX_STALE_CACHE_MS);
+        u64::try_from(elapsed_intervals).expect("invalid date")
     }
     fn needs_check(&self) -> bool {
-        self.last_check_time() + Duration::from_millis(MAX_STALE_CACHE_MS) <= SystemTime::now()
+        self.last_checked_at
+            .load(Acquire)
+            .saturating_add(MAX_STALE_CACHE_MS)
+            < Self::elapsed()
     }
 }
 
@@ -79,24 +85,25 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 log::trace!("Cache answer without filesystem lookup for {:?}", path);
                 return Ok(Arc::clone(&cached.content));
             }
-            let modified_res = tokio::fs::metadata(path).await.and_then(|m| m.modified());
-            match modified_res {
-                Ok(modified) => {
-                    if modified <= cached.last_check_time() {
-                        log::trace!("Cache answer with filesystem metadata read for {:?}", path);
-                        cached.update_check_time();
-                        return Ok(Arc::clone(&cached.content));
-                    }
+            match app_state
+                .file_system
+                .modified_since(app_state, path, cached.last_check_time())
+                .await
+            {
+                Ok(false) => {
+                    log::trace!("Cache answer with filesystem metadata read for {:?}", path);
+                    cached.update_check_time();
+                    return Ok(Arc::clone(&cached.content));
                 }
-                Err(e) => log::warn!(
-                    "Unable to check when '{}' was last modified. Re-reading the file: {e:#}",
-                    path.display()
-                ),
+                Ok(true) => log::trace!("{path:?} was changed, updating cache..."),
+                Err(e) => log::warn!("Cannot read metadata of {path:?}, re-loading it: {e:#}"),
             }
         }
         // Read lock is released
         log::trace!("Loading and parsing {:?}", path);
-        let file_contents = tokio::fs::read_to_string(path)
+        let file_contents = app_state
+            .file_system
+            .read_file(app_state, path)
             .await
             .with_context(|| format!("Reading {path:?} to load it in cache"));
         let parsed = match file_contents {

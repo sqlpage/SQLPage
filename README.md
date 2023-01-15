@@ -128,6 +128,23 @@ An easy way to do so is using the provided docker image:
 You can then use `deploy.zip` as the source for an AWS Lambda,
 selecting *Custom runtime on Amazon Linux 2* as a runtime.
 
+### Hosting sql files directly inside the database
+
+When running serverless, you can include the SQL files directly in the image that you are deploying.
+But if you want to be able to update your sql files on the fly without creating a new image,
+you can store the files directly inside the database, in a table that has the following structure: 
+
+```sql
+CREATE TABLE sqlpage_files(
+  path VARCHAR(255) NOT NULL PRIMARY KEY,
+  contents TEXT,
+  last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Make sure to update `last_modified` every time you update the contents of a file (or do it inside a TRIGGER).
+SQLPage will re-parse a file from the database only when it has been modified.
+
 ## Technologies and libraries used
 
 - [actix web](https://actix.rs/) handles HTTP requests at an incredible speed,

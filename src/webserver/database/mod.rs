@@ -11,16 +11,33 @@ use std::path::Path;
 use crate::utils::add_value_to_map;
 use crate::webserver::http::{RequestInfo, SingleOrVec};
 use crate::MIGRATIONS_DIR;
-use sqlx::any::{AnyArguments, AnyConnectOptions, AnyQueryResult, AnyRow, AnyStatement};
+use sqlx::any::{
+    AnyArguments, AnyConnectOptions, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo,
+};
 use sqlx::migrate::Migrator;
 use sqlx::query::Query;
-use sqlx::{AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Row, Statement};
+use sqlx::{AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Executor, Row, Statement};
 
 pub use crate::file_cache::FileCache;
+pub use sql::make_placeholder;
 pub use sql::ParsedSqlFile;
 
 pub struct Database {
-    connection: AnyPool,
+    pub(crate) connection: AnyPool,
+}
+
+impl Database {
+    pub(crate) async fn prepare_with(
+        &self,
+        query: &str,
+        param_types: &[AnyTypeInfo],
+    ) -> anyhow::Result<AnyStatement<'static>> {
+        self.connection
+            .prepare_with(query, param_types)
+            .await
+            .map(|s| s.to_owned())
+            .with_context(|| format!("Failed to prepare SQL statement: '{query}'"))
+    }
 }
 
 pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
@@ -186,7 +203,7 @@ fn row_to_json(row: &AnyRow) -> Value {
 }
 
 impl Database {
-    pub fn init(database_url: &str) -> Self {
+    pub async fn init(database_url: &str) -> anyhow::Result<Self> {
         let mut connect_options: AnyConnectOptions =
             database_url.parse().expect("Invalid database URL");
         connect_options.log_statements(log::LevelFilter::Trace);
@@ -199,8 +216,10 @@ impl Database {
             connect_options.kind(),
             database_url
         );
-        let connection = AnyPool::connect_lazy_with(connect_options);
-        Database { connection }
+        let connection = AnyPool::connect_with(connect_options)
+            .await
+            .with_context(|| format!("Unable to open connection to {}", database_url))?;
+        Ok(Database { connection })
     }
 }
 
