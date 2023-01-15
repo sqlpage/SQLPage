@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
 use std::net::IpAddr;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Component, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -306,22 +306,15 @@ async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
 }
 
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
-fn path_to_sql_file(root: &Path, path: &str) -> Option<PathBuf> {
-    let mut path_buf: PathBuf = PathBuf::from(root);
-    path_buf.push(path.strip_prefix('/')?);
-    let request_path = PathBuf::from(path);
-    let extension = request_path.extension();
-    if !matches!(extension, Some(ext) if ext.eq_ignore_ascii_case("sql")) {
-        path_buf.push("index.sql");
-        if !path_buf.is_file() {
-            return None;
+fn path_to_sql_file(path: &str) -> Option<PathBuf> {
+    let mut path = PathBuf::from(path.strip_prefix('/').unwrap_or(path));
+    match path.extension() {
+        None => {
+            path.push("index.sql");
+            Some(path)
         }
-    }
-    let final_path = path_buf.canonicalize().ok()?;
-    if final_path.starts_with(root) {
-        Some(final_path)
-    } else {
-        None
+        Some(ext) if ext == "sql" => Some(path),
+        Some(_other) => None,
     }
 }
 
@@ -334,7 +327,11 @@ async fn process_sql_request(
         .sql_file_cache
         .get(app_state, &sql_path)
         .await
-        .map_err(ErrorInternalServerError)?;
+        .map_err(|e| {
+            ErrorInternalServerError(format!(
+                "An error occurred while trying to handle your request: {e:#}"
+            ))
+        })?;
     let response = render_sql(&mut req, sql_file).await?;
     Ok(req.into_response(response))
 }
@@ -365,8 +362,7 @@ pub fn create_app(
     App::new()
             .route("sqlpage.js", web::get().to(handle_static_js))
             .wrap_fn(|req, srv| {
-                let app_state: web::Data<AppState> = web::Data::clone(req.app_data().expect("app_state"));
-                let sql_file_path = path_to_sql_file(&app_state.web_root, req.path());
+                let sql_file_path = path_to_sql_file(req.path());
                 let sql_file = if let Some(sql_path) = sql_file_path {
                     Ok((req, sql_path))
                 } else {
@@ -381,7 +377,6 @@ pub fn create_app(
             })
             .default_service(
                 actix_files::Files::new("/", &app_state.web_root)
-                    .index_file("index.sql")
                     .path_filter(|path, _|
                         !matches!(path.components().next(), Some(Component::Normal(x)) if x == CONFIG_DIR))
                     .show_files_listing()

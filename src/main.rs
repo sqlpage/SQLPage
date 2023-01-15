@@ -17,7 +17,6 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use templates::AllTemplates;
 
-const WEB_ROOT: &str = ".";
 const CONFIG_DIR: &str = "sqlpage";
 const TEMPLATES_DIR: &str = "sqlpage/templates";
 const MIGRATIONS_DIR: &str = "sqlpage/migrations";
@@ -39,9 +38,9 @@ impl AppState {
         let db = Database::init(&database_url).await?;
         log::info!("Connecting to database: {database_url}");
         let all_templates = AllTemplates::init()?;
-        let web_root = std::fs::canonicalize(WEB_ROOT)?;
+        let web_root = get_web_root();
         let sql_file_cache = FileCache::new();
-        let file_system = FileSystem::init(&db).await;
+        let file_system = FileSystem::init(&web_root, &db).await;
         Ok(AppState {
             db,
             all_templates,
@@ -50,6 +49,13 @@ impl AppState {
             file_system,
         })
     }
+}
+
+fn get_web_root() -> PathBuf {
+    env::var("WEB_ROOT").map_or_else(
+        |_| PathBuf::from(&std::path::Component::CurDir),
+        PathBuf::from,
+    )
 }
 
 pub struct Config {
