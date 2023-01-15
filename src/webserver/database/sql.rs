@@ -2,7 +2,6 @@ use super::PreparedStatement;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::webserver::database::StmtParam;
 use crate::{AppState, Database};
-use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{DataType, Expr, Value, VisitMut, VisitorMut};
 use sqlparser::dialect::GenericDialect;
@@ -10,9 +9,7 @@ use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{SemiColon, EOF};
 use sqlparser::tokenizer::Tokenizer;
 use sqlx::any::{AnyKind, AnyTypeInfo};
-use sqlx::postgres::types::Oid;
-use sqlx::postgres::PgTypeInfo;
-use sqlx::{Executor, Statement};
+use sqlx::Postgres;
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
@@ -43,17 +40,13 @@ impl ParsedSqlFile {
             let parameters = map_params(param_names);
             let query = stmt.to_string();
             let param_types = get_param_types(&parameters);
-            let stmt_res = db
-                .connection
-                .prepare_with(&query, &param_types)
-                .await
-                .with_context(|| format!("Failed to prepare SQL statement: '{query}'"));
+            let stmt_res = db.prepare_with(&query, &param_types).await;
             match &stmt_res {
                 Ok(_) => log::debug!("Successfully prepared SQL statement '{query}'"),
                 Err(err) => log::warn!("{err:#}"),
             }
             let statement_result = stmt_res.map(|statement| PreparedStatement {
-                statement: statement.to_owned(),
+                statement,
                 parameters,
             });
             statements.push(statement_result);
@@ -99,7 +92,7 @@ impl AsyncFromStrWithState for ParsedSqlFile {
 fn get_param_types(parameters: &[StmtParam]) -> Vec<AnyTypeInfo> {
     parameters
         .iter()
-        .map(|_p| PgTypeInfo::with_oid(Oid(25)).into())
+        .map(|_p| <str as sqlx::Type<Postgres>>::type_info().into())
         .collect()
 }
 
@@ -137,11 +130,7 @@ impl ParameterExtractor {
     }
 
     fn make_placeholder(&self) -> Expr {
-        let name = match self.db_kind {
-            // Postgres only supports numbered parameters
-            AnyKind::Postgres => format!("${}", self.parameters.len() + 1),
-            _ => '?'.to_string(),
-        };
+        let name = make_placeholder(self.db_kind, self.parameters.len() + 1);
         let data_type = match self.db_kind {
             // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
             AnyKind::MySql => DataType::Char(None),
@@ -152,6 +141,15 @@ impl ParameterExtractor {
             expr: Box::new(value),
             data_type,
         }
+    }
+}
+
+#[inline]
+pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
+    match db_kind {
+        // Postgres only supports numbered parameters
+        AnyKind::Postgres => format!("${arg_number}"),
+        _ => '?'.to_string(),
     }
 }
 

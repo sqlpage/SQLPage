@@ -2,11 +2,13 @@
 extern crate core;
 
 mod file_cache;
+mod filesystem;
 mod render;
 mod templates;
 mod utils;
 mod webserver;
 
+use crate::filesystem::FileSystem;
 use crate::webserver::database::{FileCache, ParsedSqlFile};
 use crate::webserver::Database;
 use anyhow::Context;
@@ -27,22 +29,25 @@ pub struct AppState {
     all_templates: AllTemplates,
     web_root: PathBuf,
     sql_file_cache: FileCache<ParsedSqlFile>,
+    file_system: FileSystem,
 }
 
 impl AppState {
-    fn init() -> anyhow::Result<Self> {
+    async fn init() -> anyhow::Result<Self> {
         // Connect to the database
         let database_url = get_database_url();
-        let db = Database::init(&database_url);
+        let db = Database::init(&database_url).await?;
         log::info!("Connecting to database: {database_url}");
         let all_templates = AllTemplates::init()?;
         let web_root = std::fs::canonicalize(WEB_ROOT)?;
         let sql_file_cache = FileCache::new();
+        let file_system = FileSystem::init(&db).await;
         Ok(AppState {
             db,
             all_templates,
             web_root,
             sql_file_cache,
+            file_system,
         })
     }
 }
@@ -61,7 +66,7 @@ async fn main() {
 }
 
 async fn start() -> anyhow::Result<()> {
-    let state = AppState::init()?;
+    let state = AppState::init().await?;
     webserver::apply_migrations(&state.db).await?;
     let listen_on = get_listen_on()?;
     log::info!("Starting server on {}", listen_on);

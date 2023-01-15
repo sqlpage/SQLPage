@@ -10,7 +10,8 @@ repository = "https://github.com/lovasoa/SQLpage"
 documentation = "https://docs.rs/sqlpage"
 
 [dependencies]
-sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql"] }
+sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "chrono"] }
+chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls"] }
 handlebars = "5.0.0-beta.0"
 log = "0.4.17"
