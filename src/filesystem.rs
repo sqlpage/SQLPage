@@ -6,7 +6,7 @@ use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
 use sqlx::postgres::types::PgTimeTz;
 use sqlx::{Postgres, Statement, Type};
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 pub(crate) struct FileSystem {
     local_root: PathBuf,
@@ -14,9 +14,9 @@ pub(crate) struct FileSystem {
 }
 
 impl FileSystem {
-    pub async fn init(db: &Database) -> Self {
+    pub async fn init(local_root: &Path, db: &Database) -> Self {
         Self {
-            local_root: PathBuf::new(),
+            local_root: PathBuf::from(local_root),
             db_fs_queries: match DbFsQueries::init(db).await {
                 Ok(q) => Some(q),
                 Err(e) => {
@@ -37,7 +37,8 @@ impl FileSystem {
         path: &Path,
         since: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
-        let local_result = file_modified_since_local(&self.local_root.join(path), since).await;
+        let local_path = self.safe_local_path(path)?;
+        let local_result = file_modified_since_local(&local_path, since).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(modified), _) => Ok(modified),
             (Err(e), Some(db_fs)) if e.kind() == ErrorKind::NotFound => {
@@ -53,7 +54,8 @@ impl FileSystem {
     }
 
     pub async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<String> {
-        let local_result = tokio::fs::read_to_string(&self.local_root.join(path)).await;
+        let local_path = self.safe_local_path(path)?;
+        let local_result = tokio::fs::read_to_string(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
             (Err(e), Some(db_fs)) if e.kind() == ErrorKind::NotFound => {
@@ -62,6 +64,14 @@ impl FileSystem {
             }
             (Err(e), _) => Err(e).with_context(|| format!("Unable to read local file {path:?}")),
         }
+    }
+
+    fn safe_local_path(&self, path: &Path) -> anyhow::Result<PathBuf> {
+        anyhow::ensure!(
+            path.components().all(|c| matches!(c, Component::Normal(_))),
+            "Unsupported path: {path:?}"
+        );
+        Ok(self.local_root.join(path))
     }
 }
 

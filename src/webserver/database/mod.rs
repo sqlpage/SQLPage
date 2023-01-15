@@ -218,7 +218,7 @@ impl Database {
         );
         let connection = AnyPool::connect_with(connect_options)
             .await
-            .with_context(|| format!("Unable to open connection to {}", database_url))?;
+            .with_context(|| format!("Unable to open connection to {database_url}"))?;
         Ok(Database { connection })
     }
 }
