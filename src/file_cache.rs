@@ -103,9 +103,10 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         log::trace!("Loading and parsing {:?}", path);
         let file_contents = app_state
             .file_system
-            .read_file(app_state, path)
+            .read_to_string(app_state, path)
             .await
             .with_context(|| format!("Couldn't load {path:?} into cache"));
+
         let parsed = match file_contents {
             Ok(contents) => Ok(T::from_str_with_state(app_state, &contents).await?),
             Err(e) => Err(e),

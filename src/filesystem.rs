@@ -4,7 +4,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
 use sqlx::postgres::types::PgTimeTz;
-use sqlx::{Postgres, Statement, Type};
+use sqlx::{Executor, Postgres, Statement, Type};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
@@ -14,9 +14,9 @@ pub(crate) struct FileSystem {
 }
 
 impl FileSystem {
-    pub async fn init(local_root: &Path, db: &Database) -> Self {
+    pub async fn init(local_root: impl Into<PathBuf>, db: &Database) -> Self {
         Self {
-            local_root: PathBuf::from(local_root),
+            local_root: local_root.into(),
             db_fs_queries: match DbFsQueries::init(db).await {
                 Ok(q) => Some(q),
                 Err(e) => {
@@ -53,14 +53,24 @@ impl FileSystem {
         }
     }
 
-    pub async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<String> {
+    pub async fn read_to_string(
+        &self,
+        app_state: &AppState,
+        path: &Path,
+    ) -> anyhow::Result<String> {
+        let bytes = self.read_file(app_state, path).await?;
+        String::from_utf8(bytes)
+            .with_context(|| format!("The file at {path:?} contains invalid UTF8 characters"))
+    }
+
+    pub async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
         let local_path = self.safe_local_path(path)?;
-        let local_result = tokio::fs::read_to_string(&local_path).await;
+        let local_result = tokio::fs::read(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
             (Err(e), Some(db_fs)) if e.kind() == ErrorKind::NotFound => {
                 // no local file, try the database
-                db_fs.read_file(app_state, path).await
+                db_fs.read_file(app_state, path.as_ref()).await
             }
             (Err(e), _) => Err(e).with_context(|| format!("Unable to read local file {path:?}")),
         }
@@ -142,13 +152,38 @@ impl DbFsQueries {
             })
     }
 
-    async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<String> {
+    async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
         self.read_file
-            .query_as::<(String,)>()
+            .query_as::<(Vec<u8>,)>()
             .bind(path.display().to_string())
             .fetch_one(&app_state.db.connection)
             .await
             .map(|(modified,)| modified)
             .with_context(|| format!("Unable to read {path:?} from the database"))
     }
+}
+
+#[actix_web::test]
+async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
+    let state = AppState::init().await?;
+    state
+        .db
+        .connection
+        .execute(
+            r#"
+        CREATE TABLE sqlpage_files(
+          path VARCHAR(255) NOT NULL PRIMARY KEY,
+          contents BLOB,
+          last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO sqlpage_files(path, contents) VALUES ('unit test file.txt', 'Héllö world! 😀');
+    "#,
+        )
+        .await?;
+    let fs = FileSystem::init("/", &state.db).await;
+    let actual = fs
+        .read_to_string(&state, "unit test file.txt".as_ref())
+        .await?;
+    assert_eq!(actual, "Héllö world! 😀");
+    Ok(())
 }
