@@ -1,13 +1,13 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::database::{stream_query_results, DbItem};
-use crate::{AppState, Config, ParsedSqlFile, CONFIG_DIR};
-use actix_web::dev::{ServiceFactory, ServiceRequest};
+use crate::{AppState, Config, ParsedSqlFile};
+use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
-use actix_web::http::header::{CacheControl, CacheDirective};
+use actix_web::http::header::{CacheControl, CacheDirective, ContentType};
 use actix_web::web::Form;
 use actix_web::{
-    dev::Service, dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App,
-    FromRequest, HttpResponse, HttpServer, Responder,
+    dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, FromRequest,
+    HttpResponse, HttpServer, Responder,
 };
 
 use crate::utils::log_error;
@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
 use std::net::IpAddr;
-use std::path::{Component, PathBuf};
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -348,6 +348,38 @@ async fn handle_static_js() -> impl Responder {
         .body(&include_bytes!("../../sqlpage/sqlpage.js")[..])
 }
 
+async fn serve_file(path: &str, state: &AppState) -> actix_web::Result<HttpResponse> {
+    let path = path.strip_prefix('/').unwrap_or(path);
+    state
+        .file_system
+        .read_file(state, path.as_ref())
+        .await
+        .map_err(actix_web::error::ErrorBadRequest)
+        .map(|b| {
+            HttpResponse::Ok()
+                .insert_header(
+                    mime_guess::from_path(path)
+                        .first()
+                        .map(ContentType)
+                        .unwrap_or(ContentType::octet_stream()),
+                )
+                .body(b)
+        })
+}
+
+async fn main_handler(mut service_request: ServiceRequest) -> actix_web::Result<ServiceResponse> {
+    let path = service_request.path();
+    let sql_file_path = path_to_sql_file(path);
+    if let Some(sql_path) = sql_file_path {
+        process_sql_request(service_request, sql_path).await
+    } else {
+        let app_state = service_request.extract::<web::Data<AppState>>().await?;
+        let path = service_request.path();
+        let response = serve_file(path, &app_state).await?;
+        Ok(service_request.into_response(response))
+    }
+}
+
 pub fn create_app(
     app_state: web::Data<AppState>,
 ) -> App<
@@ -360,32 +392,19 @@ pub fn create_app(
     >,
 > {
     App::new()
-            .route("sqlpage.js", web::get().to(handle_static_js))
-            .wrap_fn(|req, srv| {
-                let sql_file_path = path_to_sql_file(req.path());
-                let sql_file = if let Some(sql_path) = sql_file_path {
-                    Ok((req, sql_path))
-                } else {
-                    Err(srv.call(req))
-                };
-                async move {
-                    match sql_file {
-                        Ok((req, sql_path)) => process_sql_request(req, sql_path).await,
-                        Err(fallback) => fallback.await
-                    }
-                }
-            })
-            .default_service(
-                actix_files::Files::new("/", &app_state.web_root)
-                    .path_filter(|path, _|
-                        !matches!(path.components().next(), Some(Component::Normal(x)) if x == CONFIG_DIR))
-                    .show_files_listing()
-                    .use_last_modified(true),
-            )
-            .wrap(Logger::default())
-        .wrap(middleware::DefaultHeaders::new()
-            .add(("Server", format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))))
-            .add(("Content-Security-Policy", "script-src 'self' https://cdn.jsdelivr.net"))
+        .route("sqlpage.js", web::get().to(handle_static_js))
+        .default_service(fn_service(main_handler))
+        .wrap(Logger::default())
+        .wrap(
+            middleware::DefaultHeaders::new()
+                .add((
+                    "Server",
+                    format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
+                ))
+                .add((
+                    "Content-Security-Policy",
+                    "script-src 'self' https://cdn.jsdelivr.net",
+                )),
         )
         .wrap(middleware::Compress::default())
         .app_data(app_state)

@@ -4,7 +4,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
 use sqlx::postgres::types::PgTimeTz;
-use sqlx::{Executor, Postgres, Statement, Type};
+use sqlx::{Postgres, Statement, Type};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
@@ -77,10 +77,12 @@ impl FileSystem {
     }
 
     fn safe_local_path(&self, path: &Path) -> anyhow::Result<PathBuf> {
-        anyhow::ensure!(
-            path.components().all(|c| matches!(c, Component::Normal(_))),
-            "Unsupported path: {path:?}"
-        );
+        for component in path.components() {
+            anyhow::ensure!(
+                matches!(component, Component::Normal(_)),
+                "Unsupported path: {path:?}. Path component {component:?} is not allowed."
+            );
+        }
         Ok(self.local_root.join(path))
     }
 }
@@ -165,6 +167,7 @@ impl DbFsQueries {
 
 #[actix_web::test]
 async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
+    use sqlx::Executor;
     let state = AppState::init().await?;
     state
         .db

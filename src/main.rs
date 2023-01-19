@@ -17,7 +17,6 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use templates::AllTemplates;
 
-const CONFIG_DIR: &str = "sqlpage";
 const TEMPLATES_DIR: &str = "sqlpage/templates";
 const MIGRATIONS_DIR: &str = "sqlpage/migrations";
 
@@ -26,7 +25,6 @@ const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 pub struct AppState {
     db: Database,
     all_templates: AllTemplates,
-    web_root: PathBuf,
     sql_file_cache: FileCache<ParsedSqlFile>,
     file_system: FileSystem,
 }
@@ -44,7 +42,6 @@ impl AppState {
         Ok(AppState {
             db,
             all_templates,
-            web_root,
             sql_file_cache,
             file_system,
         })
