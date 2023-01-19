@@ -137,7 +137,7 @@ you can store the files directly inside the database, in a table that has the fo
 ```sql
 CREATE TABLE sqlpage_files(
   path VARCHAR(255) NOT NULL PRIMARY KEY,
-  contents TEXT,
+  contents BLOB,
   last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
