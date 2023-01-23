@@ -133,15 +133,36 @@ fn flush_delayed_helper<'reg, 'rc>(
     })
 }
 
+fn sum_helper<'reg, 'rc>(
+    helper: &handlebars::Helper<'rc>,
+    _r: &'reg Handlebars<'reg>,
+    _ctx: &'rc Context,
+    _rc: &mut handlebars::RenderContext<'reg, 'rc>,
+    writer: &mut dyn handlebars::Output,
+) -> handlebars::HelperResult {
+    let mut sum = 0f64;
+    for v in helper.params() {
+        sum += v
+            .value()
+            .as_f64()
+            .ok_or_else(|| RenderError::new("invalid number in sum"))?;
+    }
+    write!(writer, "{sum}")?;
+    Ok(())
+}
+
 const STATIC_TEMPLATES: Dir = include_dir!("$CARGO_MANIFEST_DIR/sqlpage/templates");
 
 impl AllTemplates {
     pub fn init() -> anyhow::Result<Self> {
         let mut handlebars = Handlebars::new();
+
         handlebars_helper!(stringify: |v: Json| v.to_string());
         handlebars.register_helper("stringify", Box::new(stringify));
+
         handlebars_helper!(default: |a: Json, b:Json| if a.is_null() {b} else {a}.clone());
         handlebars.register_helper("default", Box::new(default));
+
         handlebars_helper!(entries: |v: Json | match v {
             serde_json::value::Value::Object(map) =>
                 map.into_iter()
@@ -154,9 +175,18 @@ impl AllTemplates {
                     .collect(),
             _ => vec![]
         });
+
         handlebars.register_helper("entries", Box::new(entries));
         handlebars.register_helper("delay", Box::new(delay_helper));
         handlebars.register_helper("flush_delayed", Box::new(flush_delayed_helper));
+
+        handlebars_helper!(plus: |a: Json, b:Json| a.as_i64().unwrap_or_default() + b.as_i64().unwrap_or_default());
+        handlebars.register_helper("plus", Box::new(plus));
+
+        handlebars_helper!(minus: |a: Json, b:Json| a.as_i64().unwrap_or_default() - b.as_i64().unwrap_or_default());
+        handlebars.register_helper("minus", Box::new(minus));
+
+        handlebars.register_helper("sum", Box::new(sum_helper));
         let mut this = Self {
             handlebars,
             split_templates: FileCache::new(),
