@@ -9,9 +9,9 @@ RUN touch src/main.rs
 RUN cargo build --release
 
 FROM alpine:3.17
-RUN rm -rf /var/lib/apt/lists/*
+RUN rm -rf /var/lib/apt/lists/* && \
+    addgroup -S sqlpage && adduser -S sqlpage -G sqlpage
 COPY --from=builder /usr/src/sqlpage/target/release/sqlpage /usr/local/bin/sqlpage
-RUN addgroup -S sqlpage && adduser -S sqlpage -G sqlpage
 WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/index.sql .
 USER sqlpage
