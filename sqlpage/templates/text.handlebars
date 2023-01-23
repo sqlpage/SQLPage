@@ -5,6 +5,7 @@
 <p class="{{#if center}}mx-auto{{/if}}" style="max-width: {{default width 80}}ch" {{#if (not title)}}id="{{id}}"{{/if}}>
     {{contents}}
     {{~#each_row~}}
+        {{~#if break~}}</p><p>{{~/if~}}
         {{~#if link~}}
         <a href="{{link}}">{{#delay}}</a>{{/delay}}
         {{~/if~}}
@@ -16,6 +17,7 @@
             {{~#if bold}}fw-bold {{/if~}}
             {{~#if italics}}fst-italic {{/if~}}
             {{~#if underline}}text-decoration-underline {{/if~}}
+            {{~#if size}}fs-{{minus 7 size}} {{/if~}}
         ">{{contents}}</span>
         {{~flush_delayed~}}
     {{~/each_row~}}
