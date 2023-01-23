@@ -5,3 +5,4 @@ README.md
 *Dockerfile
 .dockerignore
 .github/
+examples/
