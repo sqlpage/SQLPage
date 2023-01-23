@@ -53,6 +53,22 @@ pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
     let migrator = Migrator::new(migrations_dir)
         .await
         .with_context(|| migration_err("preparing the database migration"))?;
+    if migrator.migrations.is_empty() {
+        log::info!("No migration found. \
+        You can specify database operations to apply when the server first starts by creating files \
+        in {MIGRATIONS_DIR}/<VERSION>_<DESCRIPTION>.sql \
+        where <VERSION> is a number and <DESCRIPTION> is a short string.");
+        return Ok(());
+    }
+    log::info!("Found {} migrations:", migrator.migrations.len());
+    for m in migrator.iter() {
+        log::info!(
+            "\t[{:04}] {:?} {}",
+            m.version,
+            m.migration_type,
+            m.description
+        );
+    }
     migrator
         .run(&db.connection)
         .await
