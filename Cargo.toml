@@ -9,6 +9,13 @@ homepage = "https://sql.ophir.dev/"
 repository = "https://github.com/lovasoa/SQLpage"
 documentation = "https://docs.rs/sqlpage"
 
+[profile.superoptimized]
+inherits = "release"
+strip = "debuginfo"
+lto = "fat"
+panic = "abort"
+codegen-units = 4
+
 [dependencies]
 sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "chrono"] }
 chrono = "0.4.23"
