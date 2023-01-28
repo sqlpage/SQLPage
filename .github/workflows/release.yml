@@ -15,18 +15,18 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-18.04]
         include:
           - os: windows-latest
-            binary_path: target/release/sqlpage.exe
+            binary_path: target/superoptimized/sqlpage.exe
           - os: macos-latest
-            binary_path: target/release/sqlpage
+            binary_path: target/superoptimized/sqlpage
           - os: ubuntu-18.04
-            binary_path: target/release/sqlpage
+            binary_path: target/superoptimized/sqlpage
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with: {toolchain: stable, override: true}
       - name: build
         uses: actions-rs/cargo@v1
-        with: { command: build, args: --release --locked }
+        with: { command: build, args: --profile superoptimized --locked }
       - uses: actions/upload-artifact@v1
         with:
           name: sqlpage ${{ matrix.os }}
