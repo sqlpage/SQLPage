@@ -1,5 +1,5 @@
 /target
-site.db
+sqlpage.db
 docs/
 README.md
 *Dockerfile
