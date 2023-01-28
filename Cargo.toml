@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -14,7 +14,7 @@ inherits = "release"
 strip = "debuginfo"
 lto = "fat"
 panic = "abort"
-codegen-units = 4
+codegen-units = 2
 
 [dependencies]
 sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "chrono"] }
