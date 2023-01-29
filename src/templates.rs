@@ -187,6 +187,13 @@ impl AllTemplates {
         handlebars.register_helper("minus", Box::new(minus));
 
         handlebars.register_helper("sum", Box::new(sum_helper));
+
+        handlebars_helper!(to_array: |x: Json| match x {
+            JsonValue::Array(arr) => arr.clone(),
+            other => vec![other.clone()]
+        });
+        handlebars.register_helper("to_array", Box::new(to_array));
+
         let mut this = Self {
             handlebars,
             split_templates: FileCache::new(),

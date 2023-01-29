@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{language}}">
+<html lang="{{language}}" style="font-size: 18px">
 <head>
     <meta charset="utf-8"/>
     <title>{{default title "SQLPage"}}</title>
@@ -26,29 +26,48 @@
           integrity="sha384-swGeMi9+uRunpz44HGkid0/L1Ud704D+qdaEAOQfA6SLGa5DMxL1CQl+4nAakber" crossorigin="anonymous">
 </head>
 
-<body>
-{{#if title}}
-    <header class="page-header">
-        <nav class="navbar navbar-dark bg-primary">
+<body class="layout-boxed">
+<div class="page">
+    {{#if title}}
+        <nav class="navbar navbar-expand-md navbar-light">
             <div class="container-fluid">
-                <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}#{{/if}}">
+                <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
+                    {{#if image}}
+                        <img src="{{image}}" alt="{{title}}" width="32" height="32"
+                             class="navbar-brand-image">
+                    {{/if}}
                     {{#if icon}}
-                        <img src="{{image}}" alt="" width="32" height="32"
-                             class="d-inline-block align-text-top">
+                        <i class="icon ti ti-{{icon}}"></i>
                     {{/if}}
                     {{title}}
                 </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false"
+                        aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbar-menu">
+                    <ul class="navbar-nav ms-auto">
+                        {{#each (to_array menu_item)}}
+                            <li class="nav-item">
+                                <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
+                            </li>
+                        {{/each}}
+                    </ul>
+                    {{#if search_target}}
+                        <form class="d-flex" role="search" target="{{search_target}}">
+                            <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"
+                                   name="search">
+                            <button class="btn btn-outline-success" type="submit">Search</button>
+                        </form>
+                    {{/if}}
+                </div>
             </div>
         </nav>
-    </header>
-{{/if}}
-
-<main class="layout-boxed">
-    <div class="page">
-        <main class="page-wrapper container-xl mt-3">
-            {{~#each_row~}}{{~/each_row~}}
-        </main>
-    </div>
-</main>
+    {{/if}}
+    <main class="page-wrapper container-xl pt-3 px-md-5 px-sm-3">
+        {{~#each_row~}}{{~/each_row~}}
+    </main>
+</div>
 </body>
 </html>
