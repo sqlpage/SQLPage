@@ -17,7 +17,7 @@ CREATE TABLE parameter(
 CREATE TABLE example(
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
     description TEXT,
-    properties TEXT,
+    properties JSON,
     FOREIGN KEY (component) REFERENCES component(name) ON DELETE CASCADE
 );
 
@@ -33,7 +33,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the item.', 'TEXT', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed as a dot near the list item contents.', 'TEXT', FALSE, TRUE),
     ('active', 'Whether this item in the list is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('list', 'The most basic list', json('[{"component":"list"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
@@ -56,7 +56,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the card.', 'TEXT', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'TEXT', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('card', 'The most basic card', json('[{"component":"card"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
@@ -79,7 +79,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the value.', 'TEXT', FALSE, TRUE),
     ('color', 'If set to a color name, the value will be displayed in a pill of that color.', 'TEXT', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('datagrid', 'Just some sections of information.', json('[{"component":"datagrid"},{"title":"Language","description":"SQL"},{"title":"Creation date","description":"1974"}, {"title":"Language family","description":"Query language"}]')),
@@ -105,7 +105,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('link', 'A target URL to which the user should be taken when they click on the step.', 'URL', FALSE, TRUE),
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the step name.', 'TEXT', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('steps', 'Online store checkout steps.', json('[{"component":"steps"},{"title":"Shopping"},{"title":"Store pickup"}, {"title":"Payment","active":true},{"title":"Review & Order"}]')),
@@ -136,7 +136,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('italics', 'Whether the span of text should be displayed as italics.', 'BOOLEAN', FALSE, TRUE),
     ('break', 'Indicates that the current span of text starts a new paragraph.', 'BOOLEAN', FALSE, TRUE),
     ('size', 'A number between 1 and 6 indicating the font size.', 'INTEGER', FALSE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('text', 'Rendering a simple text paragraph.', json('[{"component":"text", "contents":"Hello, world ! <3"}]')),
@@ -170,7 +170,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE)
-);
+) x;
 INSERT INTO example(component, description, properties) VALUES
     ('form', 'A user registration form.', json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
@@ -196,7 +196,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('label', 'An alias for parameter "x"', 'NUMBER', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'NUMBER', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
-);
+) x;
 INSERT INTO example(component, description, properties) VALUES
     ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true}, '||
     '{"label": "Yes", "value": 65}, '||
@@ -216,7 +216,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- top level
     ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
     ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('table', 'A table of users with filtering and sorting.',
@@ -235,7 +235,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('filename', 'The name of the file that should be downloaded (without the extension).', 'TEXT', TRUE, TRUE),
     ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'TEXT', TRUE, TRUE),
     ('color', 'Color of the button', 'TEXT', TRUE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('csv', 'CSV download button',
@@ -250,7 +250,7 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'dynamic', * FROM (VALUES
     -- top level
     ('properties', 'A json object or array that contains the names and properties of other components', 'JSON', TRUE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]'));
@@ -268,7 +268,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('menu_item', 'Adds a menu item in the navigation bar at the top of the page. The menu item will have the specified name, and will link to as .sql file of the same name.', 'TEXT', TRUE, TRUE),
     ('search_target', 'When this is set, a search field will appear in the top navigation bar, and load the specified sql file with an URL parameter named "search" when the user searches something.', 'TEXT', TRUE, TRUE),
     ('norobot', 'Forbids robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE)
-);
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('shell', 'This example contains the values used for the shell of the page you are currently viewing.',

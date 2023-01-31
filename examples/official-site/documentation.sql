@@ -43,28 +43,30 @@ select
 from parameter where component = $component
 ORDER BY (NOT top_level), optional, name;
 
+
 select
     'dynamic' as component,
-    json_array(
-        json_object('component', 'code'),
-        json_object(
-            'title', 'Example ' || (row_number() OVER ()),
-            'description', description,
-            'contents', (
+    '[
+        {"component": "code"},
+        {
+            "title": "Example ' || (row_number() OVER ()) || '",
+            "description": ' || json_quote(description) || ',
+            "contents": ' || json_quote((
                 select
                      group_concat(
-                        'SELECT ' || x'0A' ||
+                        'SELECT ' || char(10) ||
                             (
                                 select group_concat(
-                                    '    ' || quote(value) || ' as ' || key, ',' || x'0A'
+                                    '    ' || quote(value::text) || ' as ' || key, ',' || char(10)
                                 ) from json_each(top.value)
                             ) || ';',
-                        x'0A'
+                        char(10)
                      )
                 from json_each(properties) AS top
-            )
-        ),
-        json_object('component', 'title', 'level', 3, 'contents', 'Result'),
-        json_object('component', 'dynamic', 'properties', properties)
-    ) as properties
+        )) || '
+        },
+        {"component": "title", "level": 3, "contents": "Result"},
+        {"component": "dynamic", "properties": ' || properties ||' }
+    ]
+    ' as properties
 from example where component = $component;
