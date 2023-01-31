@@ -1,11 +1,12 @@
 -- This line, at the top of the page, tells web browsers to keep the page locally in cache once they have it.
-select 'http_header' as component, 'max-age=3600' as "Cache-Control";
-select
+select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
+select 'shell' as component,
     'SQLPage documentation' as title,
+    'file-database' as icon,
     '/' as link,
     'en-US' as lang,
-    'Documentation for the SQLPage low-code web application framework.' as description;
-
+    'SQLPage documentation: API reference listing all available components in the low-code web application framework' as description,
+    'index' as menu_item;
 
 select 'text' as component, 'SQLPage documentation' as title;
 select 'Building an application with SQLPage is quite simple.' ||

@@ -1,11 +1,11 @@
-
+select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 -- Using the 'shell' component at the top allows you to customize your web page, giving it a title and a description
 select 'shell' as component,
     'SQLPage' as title,
     'file-database' as icon,
-     '/' as link,
-      'en' as lang,
-    'Official SQLPage webpage: write web applications in SQL !' as description,
+    '/' as link,
+    'en-US' as lang,
+    'Official SQLPage website: write web applications in SQL !' as description,
     'documentation' as menu_item;
 
 select 'text' as component, 'SQLPage: turn any database into a webapp' as title;
