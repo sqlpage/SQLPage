@@ -1,3 +1,3 @@
-FROM lovasoa/sqlpage
+FROM lovasoa/sqlpage:latest
 
 COPY . .
