@@ -2,7 +2,7 @@ use crate::templates::SplitTemplate;
 use crate::AppState;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponseBuilder;
-use anyhow::{format_err, Context as AnyhowContext};
+use anyhow::{bail, format_err, Context as AnyhowContext};
 use async_recursion::async_recursion;
 use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
 use serde::Serialize;
@@ -135,7 +135,9 @@ impl<W: std::io::Write> RenderContext<W> {
         let current_component = SplitTemplateRenderer::name(&self.current_component);
         match (current_component, new_component) {
             (_current_component, Some("dynamic")) => {
-                self.render_dynamic(data).await?;
+                self.render_dynamic(data).await.with_context(|| {
+                    format!("Unable to render dynamic component with properties {data}")
+                })?;
             }
             (_current_component, Some(new_component)) => {
                 self.open_component_with_data(new_component, &data).await?;
@@ -152,20 +154,24 @@ impl<W: std::io::Write> RenderContext<W> {
             self.recursion_depth <= MAX_RECURSION_DEPTH,
             "Maximum recursion depth exceeded in the dynamic component."
         );
-        let properties: Vec<Cow<JsonValue>> = data
-            .get("properties")
-            .and_then(|props| match props {
-                Value::String(s) => match serde_json::from_str::<JsonValue>(s).ok()? {
-                    Value::Array(values) => Some(values.into_iter().map(Cow::Owned).collect()),
-                    obj @ Value::Object(_) => Some(vec![Cow::Owned(obj)]),
-                    _ => None,
-                },
-                obj @ Value::Object(_) => Some(vec![Cow::Borrowed(obj)]),
-                _ => None,
-            })
-            .context(
-                "The dynamic component requires a parameter called 'properties' that is a json ",
-            )?;
+        let properties_key = "properties";
+        let properties_obj = data
+            .get(properties_key)
+            .with_context(|| format!("Missing '{properties_key}' key."))?;
+        let properties: Vec<Cow<JsonValue>> = match properties_obj {
+            Value::String(s) => match serde_json::from_str::<JsonValue>(s)
+                .with_context(|| "parsing json properties")?
+            {
+                Value::Array(values) => values.into_iter().map(Cow::Owned).collect(),
+                obj @ Value::Object(_) => vec![Cow::Owned(obj)],
+                other => bail!(
+                    "Expected properties string to parse as array or object, got {other} instead."
+                ),
+            },
+            obj @ Value::Object(_) => vec![Cow::Borrowed(obj)],
+            Value::Array(values) => values.into_iter().map(Cow::Borrowed).collect(),
+            other => bail!("Expected properties of type array or object, got {other} instead."),
+        };
         for p in properties {
             self.recursion_depth += 1;
             let res = self.handle_row(&p).await;
