@@ -164,7 +164,7 @@ impl<W: std::io::Write> RenderContext<W> {
                 _ => None,
             })
             .context(
-                "The dynamic component requires a parameter called 'parameters' that is a json ",
+                "The dynamic component requires a parameter called 'properties' that is a json ",
             )?;
         for p in properties {
             self.recursion_depth += 1;
