@@ -404,6 +404,7 @@ impl SplitTemplateRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app_config;
     use crate::templates::split_template;
     use handlebars::Template;
 
@@ -416,7 +417,8 @@ mod tests {
         )?;
         let split = split_template(template);
         let mut output = Vec::new();
-        let app_state = Arc::new(AppState::init().await.unwrap());
+        let config = app_config::tests::test_config();
+        let app_state = Arc::new(AppState::init(&config).await.unwrap());
         let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state);
         rdr.render_start(&mut output, json!({"name": "SQL"}))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
@@ -436,7 +438,8 @@ mod tests {
         )?;
         let split = split_template(template);
         let mut output = Vec::new();
-        let app_state = Arc::new(AppState::init().await.unwrap());
+        let config = app_config::tests::test_config();
+        let app_state = Arc::new(AppState::init(&config).await.unwrap());
         let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state);
         rdr.render_start(&mut output, json!(null))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;

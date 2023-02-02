@@ -107,12 +107,15 @@ to the user's browser.
 - Create a file called index.sql with the contents from [this example](./index.sql)
 - Open https://localhost:8080 in your browser
 
-## Environment variables
+## Configuration
 
-| variable       | default                      | description                                              |
-|----------------|------------------------------|----------------------------------------------------------|
-| `LISTEN_ON`    | 0.0.0.0:8080                 | Interface and port on which the web server should listen |
-| `DATABASE_URL` | sqlite://sqlpage.db?mode=rwc | Database connection URL                                  |
+SQLPage can be configured through either a configuration file placed in `sqlpage/sqlpage.json`
+or environment variables such as `DATABASE_URL` or `LISTEN_ON`.
+
+For more information, read [`configuration.md`](./configuration.md).
+
+Additionally, custom components can be created by placing [`.handlebars`](https://handlebarsjs.com/guide/)
+files in `sqlpage/templates`.
 
 ## Serverless
 

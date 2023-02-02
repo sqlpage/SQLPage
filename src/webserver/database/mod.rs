@@ -7,20 +7,24 @@ use serde_json::{Map, Value};
 use std::fmt::{Display, Formatter};
 use std::future::ready;
 use std::path::Path;
+use std::time::Duration;
 
+use crate::app_config::AppConfig;
+pub use crate::file_cache::FileCache;
 use crate::utils::add_value_to_map;
 use crate::webserver::http::{RequestInfo, SingleOrVec};
 use crate::MIGRATIONS_DIR;
-use sqlx::any::{
-    AnyArguments, AnyConnectOptions, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo,
-};
-use sqlx::migrate::Migrator;
-use sqlx::query::Query;
-use sqlx::{AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Executor, Row, Statement};
-
-pub use crate::file_cache::FileCache;
 pub use sql::make_placeholder;
 pub use sql::ParsedSqlFile;
+use sqlx::any::{
+    AnyArguments, AnyConnectOptions, AnyKind, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo,
+};
+use sqlx::migrate::Migrator;
+use sqlx::pool::PoolOptions;
+use sqlx::query::Query;
+use sqlx::{
+    Any, AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Executor, Row, Statement,
+};
 
 pub struct Database {
     pub(crate) connection: AnyPool,
@@ -219,7 +223,8 @@ fn row_to_json(row: &AnyRow) -> Value {
 }
 
 impl Database {
-    pub async fn init(database_url: &str) -> anyhow::Result<Self> {
+    pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
+        let database_url = &config.database_url;
         let mut connect_options: AnyConnectOptions =
             database_url.parse().expect("Invalid database URL");
         connect_options.log_statements(log::LevelFilter::Trace);
@@ -232,10 +237,47 @@ impl Database {
             connect_options.kind(),
             database_url
         );
-        let connection = AnyPool::connect_with(connect_options)
+        log::info!("Connecting to database: {database_url}");
+        let connection = Self::create_pool_options(config, connect_options.kind())
+            .connect_with(connect_options)
             .await
             .with_context(|| format!("Unable to open connection to {database_url}"))?;
+        log::debug!("Initialized database pool: {connection:#?}");
         Ok(Database { connection })
+    }
+
+    fn create_pool_options(config: &AppConfig, db_kind: AnyKind) -> PoolOptions<Any> {
+        PoolOptions::new()
+            .max_connections(if let Some(max) = config.max_database_pool_connections {
+                max
+            } else {
+                // Different databases have a different number of max concurrent connections allowed by default
+                match db_kind {
+                    AnyKind::Postgres => 50,
+                    AnyKind::MySql => 75,
+                    AnyKind::Sqlite => 64,
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!("unsupported database"),
+                }
+            })
+            .idle_timeout(
+                config
+                    .database_connection_idle_timeout_seconds
+                    .map(Duration::from_secs_f64)
+                    .or_else(|| match db_kind {
+                        AnyKind::Sqlite => None,
+                        _ => Some(Duration::from_secs(30 * 60)),
+                    }),
+            )
+            .max_lifetime(
+                config
+                    .database_connection_max_lifetime_seconds
+                    .map(Duration::from_secs_f64)
+                    .or_else(|| match db_kind {
+                        AnyKind::Sqlite => None,
+                        _ => Some(Duration::from_secs(60 * 60)),
+                    }),
+            )
     }
 }
 

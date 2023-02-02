@@ -1,5 +1,5 @@
 use crate::webserver::{make_placeholder, Database};
-use crate::AppState;
+use crate::{app_config, AppState};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
@@ -168,7 +168,8 @@ impl DbFsQueries {
 #[actix_web::test]
 async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use sqlx::Executor;
-    let state = AppState::init().await?;
+    let config = app_config::tests::test_config();
+    let state = AppState::init(&config).await?;
     state
         .db
         .connection

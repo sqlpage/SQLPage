@@ -1,0 +1,7 @@
+{
+  "database_url": "sqlite://./sqlpage.db",
+  "max_database_pool_connections": 25,
+  "database_connection_idle_timeout_seconds": 60,
+  "database_connection_max_lifetime_seconds": 3600,
+  "port": 8282
+}
