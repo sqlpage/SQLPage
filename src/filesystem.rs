@@ -1,5 +1,5 @@
 use crate::webserver::{make_placeholder, Database};
-use crate::{app_config, AppState};
+use crate::AppState;
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};

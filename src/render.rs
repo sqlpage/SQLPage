@@ -169,7 +169,7 @@ impl<W: std::io::Write> RenderContext<W> {
                 ),
             },
             obj @ Value::Object(_) => vec![Cow::Borrowed(obj)],
-            Value::Array(values) => values.into_iter().map(Cow::Borrowed).collect(),
+            Value::Array(values) => values.iter().map(Cow::Borrowed).collect(),
             other => bail!("Expected properties of type array or object, got {other} instead."),
         };
         for p in properties {
