@@ -167,6 +167,7 @@ impl DbFsQueries {
 
 #[actix_web::test]
 async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
+    use crate::app_config;
     use sqlx::Executor;
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
