@@ -114,13 +114,13 @@ pub async fn stream_query_results_direct<'a>(
     request: &'a RequestInfo,
 ) -> anyhow::Result<BoxStream<'a, anyhow::Result<Either<AnyQueryResult, AnyRow>>>> {
     Ok(async_stream::stream! {
-        for res in sql_file.statements.iter() {
+        for res in &sql_file.statements {
             match res {
                 Ok(stmt)=>{
                     let query = bind_parameters(stmt, request);
                     let mut stream = query.fetch_many(&db.connection);
                     while let Some(elem) = stream.next().await {
-                        yield elem.with_context(|| format!("Error while running SQL: {}", stmt))
+                        yield elem.with_context(|| format!("Error while running SQL: {stmt}"))
                     }
                 },
                 Err(e) => yield Err(clone_anyhow_err(e)),
