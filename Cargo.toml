@@ -17,7 +17,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { version = "0.6.0", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "chrono"] }
+sqlx = { version = "0.6", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "chrono"] }
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls"] }
 handlebars = "5.0.0-beta.0"
@@ -28,11 +28,11 @@ futures-util = "0.3.21"
 dashmap = "5.4.0"
 tokio = { version = "1.24.1", features = ["rt"] }
 tokio-stream = "0.1.9"
-anyhow = "1.0.58"
-serde = "1.0.140"
+anyhow = "1"
+serde = "1"
 serde_json = { version = "1.0.82", features = ["preserve_order"] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.30", features = ["visitor"] }
+sqlparser = { version = "0.32", features = ["visitor"] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
