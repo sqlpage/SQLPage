@@ -29,12 +29,6 @@ impl<T> Cached<T> {
         s.update_check_time();
         s
     }
-    /// Creates a cached entry that will never need checking
-    fn new_static(content: T) -> Self {
-        let this = Self::new(content);
-        this.last_checked_at.store(u64::MAX, Release);
-        this
-    }
     fn last_check_time(&self) -> DateTime<Utc> {
         self.last_checked_at
             .load(Acquire)
@@ -112,28 +106,23 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         }
         // Read lock is released
         log::trace!("Loading and parsing {:?}", path);
-        let file_contents = app_state
-            .file_system
-            .read_to_string(app_state, path)
-            .await;
+        let file_contents = app_state.file_system.read_to_string(app_state, path).await;
 
         let parsed = match file_contents {
             Ok(contents) => {
                 let value = T::from_str_with_state(app_state, &contents).await?;
                 Ok(Cached::new(value))
-            },
+            }
             // If a file is not found, we try to load it from the static files
             Err(e) => {
                 if let Some(static_file) = self.static_files.get(path) {
-                    log::trace!(
-                        "File {path:?} not found, loading it from static files instead."
-                    );
+                    log::trace!("File {path:?} not found, loading it from static files instead.");
                     let cached: Cached<T> = static_file.make_fresh();
                     Ok(cached)
                 } else {
                     Err(e).with_context(|| format!("Couldn't load {path:?} into cache"))
                 }
-            },
+            }
         };
 
         match parsed {

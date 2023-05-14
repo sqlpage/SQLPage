@@ -34,8 +34,12 @@ impl AppState {
         let db = Database::init(config).await?;
         let all_templates = AllTemplates::init()?;
         let web_root = get_web_root();
-        let sql_file_cache = FileCache::new();
+        let mut sql_file_cache = FileCache::new();
         let file_system = FileSystem::init(&web_root, &db).await;
+        sql_file_cache.add_static(
+            PathBuf::from("index.sql"),
+            ParsedSqlFile::new(&db, include_str!("../index.sql")).await,
+        );
         Ok(AppState {
             db,
             all_templates,
