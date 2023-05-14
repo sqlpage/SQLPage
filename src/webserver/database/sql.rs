@@ -19,7 +19,7 @@ pub struct ParsedSqlFile {
 }
 
 impl ParsedSqlFile {
-    pub(super) async fn new(db: &Database, sql: &str) -> ParsedSqlFile {
+    pub async fn new(db: &Database, sql: &str) -> ParsedSqlFile {
         let dialect = GenericDialect {};
         let tokens = Tokenizer::new(&dialect, sql).tokenize_with_location();
         let mut parser = match tokens {
