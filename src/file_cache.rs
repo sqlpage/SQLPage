@@ -3,6 +3,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use dashmap::DashMap;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{
     AtomicU64,
@@ -59,24 +60,34 @@ impl<T> Cached<T> {
             .saturating_add(MAX_STALE_CACHE_MS)
             < Self::elapsed()
     }
+    /// Creates a new cached entry with the same content but a new check time set to now
+    fn make_fresh(&self) -> Self {
+        Self {
+            last_checked_at: AtomicU64::from(Self::elapsed()),
+            content: Arc::clone(&self.content),
+        }
+    }
 }
 
 pub struct FileCache<T: AsyncFromStrWithState> {
     cache: Arc<DashMap<PathBuf, Cached<T>>>,
+    /// Files that are loaded at the beginning of the program,
+    /// and used as fallback when there is no match for the request in the file system
+    static_files: HashMap<PathBuf, Cached<T>>,
 }
 
 impl<T: AsyncFromStrWithState> FileCache<T> {
     pub fn new() -> Self {
         Self {
             cache: Arc::default(),
+            static_files: HashMap::new(),
         }
     }
 
     /// Adds a static file to the cache so that it will never be looked up from the disk
     pub fn add_static(&mut self, path: PathBuf, contents: T) {
         log::trace!("Adding static file {path:?} to the cache.");
-        let cached = Cached::new_static(contents);
-        self.cache.insert(path, cached);
+        self.static_files.insert(path, Cached::new(contents));
     }
 
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
@@ -96,7 +107,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                     return Ok(Arc::clone(&cached.content));
                 }
                 Ok(true) => log::trace!("{path:?} was changed, updating cache..."),
-                Err(e) => log::warn!("Cannot read metadata of {path:?}, re-loading it: {e:#}"),
+                Err(e) => log::info!("Cannot read metadata of {path:?}, re-loading it: {e:#}"),
             }
         }
         // Read lock is released
@@ -104,17 +115,29 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         let file_contents = app_state
             .file_system
             .read_to_string(app_state, path)
-            .await
-            .with_context(|| format!("Couldn't load {path:?} into cache"));
+            .await;
 
         let parsed = match file_contents {
-            Ok(contents) => Ok(T::from_str_with_state(app_state, &contents).await?),
-            Err(e) => Err(e),
+            Ok(contents) => {
+                let value = T::from_str_with_state(app_state, &contents).await?;
+                Ok(Cached::new(value))
+            },
+            // If a file is not found, we try to load it from the static files
+            Err(e) => {
+                if let Some(static_file) = self.static_files.get(path) {
+                    log::trace!(
+                        "File {path:?} not found, loading it from static files instead."
+                    );
+                    let cached: Cached<T> = static_file.make_fresh();
+                    Ok(cached)
+                } else {
+                    Err(e).with_context(|| format!("Couldn't load {path:?} into cache"))
+                }
+            },
         };
 
         match parsed {
-            Ok(item) => {
-                let value = Cached::new(item);
+            Ok(value) => {
                 let new_val = Arc::clone(&value.content);
                 self.cache.insert(path.clone(), value);
                 log::trace!("{:?} loaded in cache", path);
