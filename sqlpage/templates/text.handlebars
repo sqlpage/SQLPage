@@ -1,6 +1,6 @@
 {{{~html~}}}
 {{#if title}}
-    <h1 id="{{id}}" class="mt-3 {{#if (default center true)}}text-center{{/if}}">{{title}}</h1>
+    <h1 id="{{id}}" class="mt-3 {{#if center}}text-center{{/if}}">{{title}}</h1>
 {{/if}}
 <p class="{{#if center}}mx-auto{{/if}}" {{#if (not title)}}id="{{id}}"{{/if}}>
     {{contents}}

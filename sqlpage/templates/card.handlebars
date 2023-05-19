@@ -1,12 +1,16 @@
 {{#if title}}
-    <h1 class="my-2">{{title}}</h1>
+    <h2 class="mt-3 mb-0">{{title}}</h2>
+{{/if}}
+{{#if description}}
+    <p>{{description}}</p>
 {{/if}}
 <div class="
     row
-    row-cols-1 row-cols-sm-2
-    row-cols-md-{{#if columns}}{{columns}}{{else}}3{{/if}}
+    row-cols-1
+    {{#if (gt columns 2)}}row-cols-md-2{{/if}}
+    row-cols-xl-{{#if columns}}{{columns}}{{else}}3{{/if}}
     gx-2 gy-2
-    mb-2">
+    mt-1 mb-3">
     {{#each_row}}
         <div class="col">
             <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card h-100 {{#if active}}card-active{{/if}}">
@@ -21,7 +25,7 @@
                     <div class="card-footer py-2">{{footer}}</div>
                 {{/if}}
                 {{#if icon}}
-                    <div class="ribbon bg-{{color}}">
+                    <div class="ribbon bg-{{color}} fs-2">
                         <i class="ti ti-{{icon}}"></i>
                     </div>
                 {{/if}}
