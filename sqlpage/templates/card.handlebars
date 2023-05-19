@@ -7,8 +7,12 @@
 <div class="
     row
     row-cols-1
-    {{#if (gt columns 2)}}row-cols-md-2{{/if}}
-    row-cols-xl-{{#if columns}}{{columns}}{{else}}3{{/if}}
+    {{#if columns}}
+        {{#if (gt columns 2)}}row-cols-md-2{{/if}}
+        row-cols-xl-{{columns}}
+    {{else}}
+        row-cols-xl-3
+    {{/if}}
     gx-2 gy-2
     mt-1 mb-3">
     {{#each_row}}
