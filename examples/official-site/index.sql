@@ -14,6 +14,7 @@ SELECT 'hero' as component,
     'https://upload.wikimedia.org/wikipedia/commons/e/e4/Lac_de_Zoug.jpg' as image,
     '/documentation.sql' as link,
     'Get started !' as link_text;
+-- the mantra: fast, beautiful, easy
 SELECT 'Fast' as title,
     'Pages load instantly, even on slow mobile networks.' as description,
     'mail-fast' as icon,
@@ -27,7 +28,7 @@ SELECT 'Easy' as title,
     'sofa' as icon,
     'blue' as color;
 
--- Using the 'card' component to explain SQLPage
+-- Quick feature overview
 SELECT 'card' as component,
     'Build SQL-only Websites !' as title,
     1 as columns;
@@ -51,7 +52,7 @@ SELECT 'Start Simple, Scale to Advanced' as title,
     'world-cog' as icon,
     'orange' as color;
 
-
+-- User personas: who is SQLPage for ?
 SELECT 'card' as component,
     'Is SQLPage for you ?' as title,
     'SQLPage empowers SQL-savvy individuals to create dynamic websites without complex programming. It''s for you if you want to build something simple yet dynamic quickly.
