@@ -1,0 +1,40 @@
+<header class="row align-items-center">
+  <div class="hero-title col text-center">
+    <h1 class="lh-lg" style="font-size: 3rem">{{title}}</h1>
+    <p class="fs-1 mx-5 text-muted">{{description}}</p>
+    {{#if link}}
+      <a href="{{link}}" class="btn btn-primary mb-3">{{default link_text "Go"}}</a>
+    {{/if}}
+  </div>
+  {{#if image}}
+    <img src="{{image}}" alt="{{title}}" class="hero-image img-fluid col-xl-6" />
+  {{/if}}
+</header>
+
+<hr />
+
+<div class="row justify-content-center mt-2">
+  {{~#each_row~}}
+  <div class="col-lg-6 col-xxl-4 mb-4">
+    <div class="card bg-light border-0 h-100">
+      <div class="card-body text-center p-4 p-lg-5 pt-0 pt-lg-0">
+        {{#if icon}}
+        <div style="margin-top: -1.5rem;" class="badge bg-{{default color 'success'}} fs-1 mb-4 p-2">
+          <i class="ti ti-{{icon}}"></i>
+        </div>
+        {{/if}}
+        <h2>
+          {{#if link}}
+          <a href="{{link}}">
+          {{/if}}
+            {{title}}
+          {{#if link}}
+          </a>
+          {{/if}}
+          </h2>
+        <p class="mb-0">{{description}}</p>
+      </div>
+    </div>
+  </div>
+  {{~/each_row~}}
+</div>

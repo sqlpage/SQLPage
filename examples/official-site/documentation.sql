@@ -27,23 +27,35 @@ select
     icon,
     '?component='||name||'#component' as link,
     $component = name as active
-from component;
+from component
+order by name;
 
 select 'text' as component,
     'The "'||$component||'" component' as title,
     'component' as id;
 select description as contents from component where name = $component;
 
-select 'title' as component, 3 as level, 'Parameters' as contents where $component IS NOT NULL;
+select 'title' as component, 3 as level, 'Top-level parameters' as contents where $component IS NOT NULL;
 select 'card' as component, 3 AS columns where $component IS NOT NULL;
 select
-    name || (CASE WHEN top_level THEN ' (top-level)' ELSE '' END) as title,
+    name as title,
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
     type as footer,
-    CASE WHEN top_level THEN 'lime' ELSE 'azure' END || CASE WHEN optional THEN '-lt' ELSE '' END as color
-from parameter where component = $component
-ORDER BY (NOT top_level), optional, name;
+    CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
+from parameter where component = $component AND top_level
+ORDER BY optional, name;
 
+
+select 'title' as component, 3 as level, 'Row-level parameters' as contents
+WHERE $component IS NOT NULL AND EXISTS (SELECT 1 from parameter where component = $component AND NOT top_level);
+select 'card' as component, 3 AS columns where $component IS NOT NULL;
+select
+    name as title,
+    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
+    type as footer,
+    CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
+from parameter where component = $component AND NOT top_level
+ORDER BY optional, name;
 
 select
     'dynamic' as component,
