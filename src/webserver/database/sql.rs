@@ -66,7 +66,7 @@ impl ParsedSqlFile {
             if next_token == EOF {
                 break;
             }
-            let _ = write!(&mut err_msg, "{next_token} ");
+            _ = write!(&mut err_msg, "{next_token} ");
         }
         let error = anyhow::Error::from(err).context(err_msg);
         statements.push(Err(error));
