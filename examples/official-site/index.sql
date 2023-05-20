@@ -16,15 +16,15 @@ SELECT 'hero' as component,
     'Get started !' as link_text;
 -- the mantra: fast, beautiful, easy
 SELECT 'Fast' as title,
-    'Pages load instantly, even on slow mobile networks.' as description,
+    'Pages load instantly, even on slow mobile networks. SQLPage is written in a fast and secure programming language: Rust.' as description,
     'mail-fast' as icon,
     'red' as color;
 SELECT 'Beautiful' as title,
-    'Uses pre-defined components that look professional.' as description,
+    'Uses pre-defined components that look professional. The page you are looking at right now is built with SQLPage.' as description,
     'eye' as icon,
     'green' as color;
 SELECT 'Easy' as title,
-    'You can teach yourself enough SQL to use SQLPage in a weekend.' as description,
+    'You can teach yourself enough SQL to select, update, and insert data in a database through SQLPage in a weekend.' as description,
     'sofa' as icon,
     'blue' as color;
 
@@ -33,7 +33,9 @@ SELECT 'card' as component,
     'Build SQL-only Websites !' as title,
     1 as columns;
 SELECT 'Write database queries, nothing more' as title,
-    'SQLPage is a tool that allows you to build websites using SQL queries. It empowers people who have access to databases but don''t know programming to create beautiful dynamic websites.' as description,
+    'SQLPage is a tool that allows you to build websites using SQL queries.
+    It empowers people who have access to databases but don''t know programming to create beautiful dynamic websites.
+    All SQL operations are supported, you can not only visualize database contents, but also UPDATE and INSERT data coming from your users.' as description,
     'paint' as icon,
     'blue' as color;
 SELECT 'Build Websites Quickly and Easily' as title,
