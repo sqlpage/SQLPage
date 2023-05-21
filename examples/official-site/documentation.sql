@@ -70,7 +70,14 @@ select
                         'SELECT ' || char(10) ||
                             (
                                 select group_concat(
-                                    '    ' || quote(value::text) || ' as ' || key, ',' || char(10)
+                                    '    ' ||
+                                    CASE typeof(value) 
+                                        WHEN 'integer' THEN value::text
+                                        ELSE quote(value::text)
+                                    END ||
+                                    ' as ' ||
+                                    key
+                                , ',' || char(10)
                                 ) from json_each(top.value)
                             ) || ';',
                         char(10)
