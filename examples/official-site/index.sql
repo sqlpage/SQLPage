@@ -16,7 +16,7 @@ SELECT 'hero' as component,
     'Get started !' as link_text;
 -- the mantra: fast, beautiful, easy
 SELECT 'Fast' as title,
-    'Pages load instantly, even on slow mobile networks. SQLPage is written in a fast and secure programming language: Rust.' as description,
+    'Pages load instantly, even on slow mobile networks, and whatever the size of your database.' as description,
     'mail-fast' as icon,
     'red' as color;
 SELECT 'Beautiful' as title,
@@ -40,11 +40,15 @@ SELECT 'Write database queries, nothing more' as title,
     'blue' as color;
 SELECT 'Build Websites Quickly and Easily' as title,
     'SQLPage will let you create websites without the need to learn complex programming languages.
-    Reuse your database querying skills to fill simple predefined component with data. It''s a fast and efficient way to get a website up and running.' as description,
+    Reuse your database querying skills to fill simple predefined components with data.
+    SQLPage is written in a fast and secure programming language: Rust.
+    We made all the optimizations so that you don''t have to. Think about your data, and nothing else.' as description,
     'rocket' as icon,
     'green' as color;
 SELECT 'Iterate and Experiment with Ease' as title,
-    'SQLPage allows you to iterate quickly on your database design. You can easily experiment with different components, layouts, and styles to see how they work in practice. This flexibility helps you fine-tune your website and avoid costly mistakes.' as description,
+    'SQLPage allows you to iterate quickly on your database design without thinking too much about the rest.
+    You will quickly find which components and layouts look good with your data.
+    This flexibility helps you avoid costly mistakes: at the beginning of your project, you should be thinking about your data, and not agonize over technical micro-decisions in your frontend.' as description,
     'flask' as icon,
     'purple' as color;
 SELECT 'Start Simple, Scale to Advanced' as title,
@@ -58,7 +62,7 @@ SELECT 'Start Simple, Scale to Advanced' as title,
 SELECT 'card' as component,
     'Is SQLPage for you ?' as title,
     'SQLPage empowers SQL-savvy individuals to create dynamic websites without complex programming. It''s for you if you want to build something simple yet dynamic quickly.
-    If you are a web designer, a front-end developer, or don''t know what a database is, then there may be other tools better suited to your needs.' as description,
+    It''s not for you if you are a web designer, a front-end developer, or don''t know what a database is.' as description,
     4 as columns;
 SELECT 'Business Analyst' as title,
     'Replace static dashboards with dynamic websites' as description,
