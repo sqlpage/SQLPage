@@ -1,5 +1,4 @@
 use serde_json::{Map, Value};
-use std::fmt::Display;
 
 pub fn add_value_to_map(
     mut map: Map<String, Value>,
@@ -23,10 +22,4 @@ pub fn add_value_to_map(
         }
     }
     map
-}
-
-pub fn log_error<R, E: Display>(r: &Result<R, E>) {
-    if let Err(e) = r {
-        log::error!("{e}");
-    }
 }

@@ -1,6 +1,7 @@
 use crate::file_cache::AsyncFromStrWithState;
 use crate::{AppState, FileCache, TEMPLATES_DIR};
 use async_trait::async_trait;
+use handlebars::RenderErrorReason;
 use handlebars::{
     handlebars_helper, template::TemplateElement, Context, Handlebars, JsonValue, RenderError,
     Renderable, Template,
@@ -94,7 +95,7 @@ fn delay_helper<'reg, 'rc>(
 ) -> handlebars::HelperResult {
     let inner = h
         .template()
-        .ok_or_else(|| RenderError::new("missing delayed contents"))?;
+        .ok_or_else(|| RenderErrorReason::BlockContentRequired)?;
     let mut str_out = handlebars::StringOutput::new();
     inner.render(r, ctx, rc, &mut str_out)?;
     let mut delayed_render = str_out.into_string()?;
@@ -145,7 +146,7 @@ fn sum_helper<'reg, 'rc>(
         sum += v
             .value()
             .as_f64()
-            .ok_or_else(|| RenderError::new("invalid number in sum"))?;
+            .ok_or_else(|| RenderErrorReason::InvalidParamType("number"))?;
     }
     write!(writer, "{sum}")?;
     Ok(())
