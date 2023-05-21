@@ -101,7 +101,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                     return Ok(Arc::clone(&cached.content));
                 }
                 Ok(true) => log::trace!("{path:?} was changed, updating cache..."),
-                Err(e) => log::info!("Cannot read metadata of {path:?}, re-loading it: {e:#}"),
+                Err(e) => log::trace!("Cannot read metadata of {path:?}, re-loading it: {e:#}"),
             }
         }
         // Read lock is released

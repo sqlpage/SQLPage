@@ -10,7 +10,6 @@ use actix_web::{
     HttpResponse, HttpServer, Responder,
 };
 
-use crate::utils::log_error;
 use actix_web::body::MessageBody;
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
@@ -100,6 +99,7 @@ async fn stream_response(
 ) {
     let mut stream = Box::pin(stream);
     while let Some(item) = stream.next().await {
+        log::trace!("Received item from database: {item:?}");
         let render_result = match item {
             DbItem::FinishedQuery => renderer.finish_query().await,
             DbItem::Row(row) => renderer.handle_row(&row).await,
@@ -120,9 +120,18 @@ async fn stream_response(
                 return;
             }
         }
-        log_error(&renderer.writer.async_flush().await);
+        if let Err(e) = &renderer.writer.async_flush().await {
+            log::error!(
+                "Stopping rendering early because we were unable to flush data to client: {e}"
+            );
+            // If we cannot write to the client anymore, there is nothing we can do, so we just stop rendering
+            return;
+        }
     }
-    log_error(&renderer.close().await.async_flush().await);
+    if let Err(e) = &renderer.close().await.async_flush().await {
+        log::error!("Unable to flush data to client after rendering the page end: {e}");
+        return;
+    }
     log::debug!("Successfully finished rendering the page");
 }
 

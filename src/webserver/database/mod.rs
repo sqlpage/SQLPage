@@ -164,6 +164,7 @@ fn bind_parameters<'a>(
     stmt.statement.query_with(arguments)
 }
 
+#[derive(Debug)]
 pub enum DbItem {
     Row(Value),
     FinishedQuery,
