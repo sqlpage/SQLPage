@@ -1,0 +1,31 @@
+{{#each_row}}
+<div class="
+    alert
+    alert-{{default color "info"}}
+    {{#if dismissible}}alert-dismissible{{/if}}
+    {{#if important}}alert-important{{/if}}
+" role="alert">
+  <div class="d-flex">
+
+    {{#if icon}}
+    <div class="icon alert-icon">
+      <i class="ti ti-{{icon}}"></i>
+    </div>
+    {{/if}}
+
+    <div>
+      {{#if title}}<h4 class="alert-title" {{#if important}}style="color:inherit"{{/if}}>{{title}}</h4>{{/if}}
+      {{#if description}}<div class="alert-description">{{description}}</div>{{/if}}
+      {{#if link}}
+          <a href="{{link}}"
+              class="btn btn-sm alert-link mt-2 px-2 {{#if important}}text-{{default color 'info'}}{{/if}}"
+          >{{default link_text "Ok"}}</a>
+      {{/if}}
+    </div>
+
+  </div>
+  {{#if dismissible}}
+    <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+  {{/if}}
+</div>
+{{/each_row}}
