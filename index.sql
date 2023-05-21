@@ -10,7 +10,7 @@ select 'shell' as component,
 select 'hero' as component,
     'It works !' as title,
     -- The text component has a property called "title" that we use to set the title of our block of text
-    'If you can see this, then SQLPage is running correctly on your server. Congratulations ! ' as description;
+    'If you can see this, then SQLPage is running correctly on your server. Congratulations! ' as description;
 -- Properties can be textual, numeric, or booleans
 
 -- Let's start with the text component
