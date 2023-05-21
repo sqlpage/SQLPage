@@ -256,7 +256,7 @@ impl Database {
                 match db_kind {
                     AnyKind::Postgres => 50,
                     AnyKind::MySql => 75,
-                    AnyKind::Sqlite => 64,
+                    AnyKind::Sqlite => 16,
                     #[allow(unreachable_patterns)]
                     _ => unreachable!("unsupported database"),
                 }
