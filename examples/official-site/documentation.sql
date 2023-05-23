@@ -1,12 +1,6 @@
 -- This line, at the top of the page, tells web browsers to keep the page locally in cache once they have it.
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
-select 'shell' as component,
-    'SQLPage documentation' as title,
-    'file-database' as icon,
-    '/' as link,
-    'en-US' as lang,
-    'SQLPage documentation: API reference listing all available components in the low-code web application framework' as description,
-    'index' as menu_item;
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, 'SQLPage documentation' as title;
 select 'Building an application with SQLPage is quite simple.' ||
@@ -84,9 +78,15 @@ select
                      )
                 from json_each(properties) AS top
         )) || '
-        },
-        {"component": "title", "level": 3, "contents": "Result"},
-        {"component": "dynamic", "properties": ' || properties ||' }
+        }, '||
+        CASE component
+            WHEN 'shell' THEN '{"component": "text", "contents": ""}'
+            WHEN 'http_header' THEN '{ "component": "text", "contents": "" }'
+            ELSE '
+                {"component": "title", "level": 3, "contents": "Result"},
+                {"component": "dynamic", "properties": ' || properties ||' }
+            '
+        END || '
     ]
     ' as properties
 from example where component = $component;

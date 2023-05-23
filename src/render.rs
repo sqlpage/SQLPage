@@ -153,6 +153,10 @@ impl<W: std::io::Write> RenderContext<W> {
                     format!("Unable to render dynamic component with properties {data}")
                 })?;
             }
+            (_, Some("http_header")) => {
+                bail!("The http_header component can not be used in the body of the page, only as the very first component in the page. \
+                       The HTTP headers have already be sent for the current page, they cannot be changed now.");
+            }
             (_current_component, Some(new_component)) => {
                 self.open_component_with_data(new_component, &data).await?;
             }
