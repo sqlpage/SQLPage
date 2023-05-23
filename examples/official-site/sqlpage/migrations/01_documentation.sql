@@ -152,8 +152,10 @@ INSERT INTO example(component, description, properties) VALUES
 
 INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', 'A series of input fields that can be filled in by the user. ' ||
-    'The form contents can be posted and handled by another SQLPage. ' ||
-    'The value entered by the user in a field named x will be accessible to the target SQL page as $x.');
+    'The form contents can be posted and handled by another sql file in your site. ' ||
+    'The value entered by the user in a field named x will be accessible to the target SQL page as a variable named $x.
+    For instance, you can create a SQL page named "create_user.sql" that would contain "INSERT INTO users(name) VALUES($name)"
+    and a form with its action property set to "create_user.sql" that would contain a field named "name"."');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
@@ -162,7 +164,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'A name to display at the top of the form. It will be displayed in a larger font size at the top of the form.', 'TEXT', TRUE, TRUE),
     ('validate', 'The text to display in the button at the bottom of the form that submits the values.', 'TEXT', TRUE, TRUE),
     -- item level
-    ('type', 'The type of input to use: text for a simple text field, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter.', 'TEXT', FALSE, FALSE),
+    ('type', 'The type of input to use: text for a simple text field, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter. This is set to "text" by default.', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
@@ -174,6 +176,12 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
+    (
+    'form',
+    'A form that asks the user for a parameter named "component", and then posts the results to another page named "documentation.sql".
+    That file could contain a sql statement like "SELECT * FROM documentation WHERE component_name = $component" to display the documentation for the component the user selected.
+    Or it could contain a sql statement like "INSERT INTO components(name) VALUES ($component)" to allow users to create a new component.',
+    json('[{"component":"form", "action": "documentation.sql"}, {"name": "component"}]')),
     ('form', 'A user registration form.', json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
     '{"name": "Last name", "required": true, "description": "We need your last name for legal purposes."},'||
