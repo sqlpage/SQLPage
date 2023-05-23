@@ -10,7 +10,7 @@ select 'The two most important concepts in SQLPage are ' as contents;
 select 'components' as contents, true as bold;
 select ' and ' as contents;
 select 'parameters' as contents, true as bold;
-select '.' as contents;
+select '. ' as contents;
 select 'This page documents all the components that you can use in SQLPage and their parameters. ' ||
      'Use this as a reference when building your SQL application.' as contents;
 
