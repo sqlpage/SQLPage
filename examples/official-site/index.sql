@@ -105,3 +105,40 @@ SELECT 'Startup Founder' as title,
     'Startup founders can quickly build a Minimum Viable Product (MVP) using their SQL expertise with SQLPage, creating a functional website with database integration to validate their business idea and gather user feedback.' as footer,
     'pink' as color,
     'rocket' as icon;
+
+-- Useful links
+SELECT 'list' as component,
+    'Useful links' as title,
+    'Here are some useful links to get you started with SQLPage.' as description;
+SELECT 'Official website' as title,
+    'https://sql.ophir.dev' as link,
+    'The project''s official home page.' as description,
+    'blue' as color,
+    'home' as icon,
+    TRUE as active;
+SELECT 'SQLPage Documentation' as title,
+    'documentation.sql' as link,
+    'List of all available components, with examples of how to use them.' as description,
+    'purple' as color,
+    'book' as icon;
+SELECT 'Examples' as title,
+    'https://github.com/lovasoa/SQLpage/tree/main/examples/' as link,
+    'SQL source code for examples and demos of websites built with SQLPage.' as description,
+    'green' as color,
+    'code' as icon;
+-- github link
+SELECT 'Source code' as title,
+    'https://github.com/lovasoa/SQLPage' as link,
+    'The rust source code for SQLPage itself is open and available on Github.' as description,
+    'black' as color,
+    'brand-github' as icon;
+SELECT 'Technical instructions to get started' as title,
+    'https://github.com/lovasoa/SQLpage/blob/main/README.md#sqlpage' as link,
+    'The official README file on Github contains instructions to get started using SQLPage.' as description,
+    'yellow' as color,
+    'file-text' as icon;
+SELECT 'Report a bug, make a suggestion' as title,
+    'https://github.com/lovasoa/SQLPage/issues' as link,
+    'If you have a question, a suggestion, or if you found a bug, please open an issue on Github.' as description,
+    'red' as color,
+    'bug' as icon;
