@@ -22,6 +22,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.19.0/tabler-icons.min.css"
         integrity="sha384-a8pgu0eDAmHMVlQuzUEoHyapgzLXfOaTTNrMzPivsvAts7LkllyAYpRE4saDWQj7" crossorigin="anonymous">
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler.min.css" integrity="sha384-wIPtnwKyfjylOkP4ccy+aMlHOLIfVWHDdlJ35pBwbLDH4HHXq5yG4NknAhu6Rraf" crossorigin="anonymous">
+
+   {{#if font}}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}">
+    <style>:root { --tblr-font-sans-serif: '{{font}}';}</style>
+    {{/if}}
+
 </head>
 
 <body class="layout-boxed">
