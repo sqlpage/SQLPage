@@ -116,6 +116,11 @@ SELECT 'Official website' as title,
     'blue' as color,
     'home' as icon,
     TRUE as active;
+SELECT 'Download' as title,
+    'https://github.com/lovasoa/SQLpage/releases' as link,
+    'SQLPage is distributed as a single binary that you can execute locally or on a web server to get started quickly.' as description,
+    'green' as color,
+    'download' as icon;
 SELECT 'SQLPage Documentation' as title,
     'documentation.sql' as link,
     'List of all available components, with examples of how to use them.' as description,
@@ -124,13 +129,13 @@ SELECT 'SQLPage Documentation' as title,
 SELECT 'Examples' as title,
     'https://github.com/lovasoa/SQLpage/tree/main/examples/' as link,
     'SQL source code for examples and demos of websites built with SQLPage.' as description,
-    'green' as color,
+    'teal' as color,
     'code' as icon;
 -- github link
 SELECT 'Source code' as title,
     'https://github.com/lovasoa/SQLPage' as link,
     'The rust source code for SQLPage itself is open and available on Github.' as description,
-    'black' as color,
+    'github' as color,
     'brand-github' as icon;
 SELECT 'Technical instructions to get started' as title,
     'https://github.com/lovasoa/SQLpage/blob/main/README.md#sqlpage' as link,
