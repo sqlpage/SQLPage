@@ -269,9 +269,18 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon', 'Name of an icon (from tabler-icons.io) to display next to the title in the navigation bar.', 'TEXT', TRUE, TRUE),
     ('menu_item', 'Adds a menu item in the navigation bar at the top of the page. The menu item will have the specified name, and will link to as .sql file of the same name.', 'TEXT', TRUE, TRUE),
     ('search_target', 'When this is set, a search field will appear in the top navigation bar, and load the specified sql file with an URL parameter named "search" when the user searches something.', 'TEXT', TRUE, TRUE),
-    ('norobot', 'Forbids robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE)
+    ('norobot', 'Forbids robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE),
+    ('fonr', 'Name of a font to display the text in. This has to be a valid font name from fonts.google.com.', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('shell', 'This example contains the values used for the shell of the page you are currently viewing.',
-     json('[{"title": "SQLPage documentation", "link": "/", "lang": "en-US", "description": "Documentation for the SQLPage low-code web application framework."}]'));
+     json('[{
+            "title": "SQLPage documentation",
+            "link": "/",
+            "menu_item": "index",
+            "lang": "en-US",
+            "description": "Documentation for the SQLPage low-code web application framework.",
+            "font": "Poppins",
+            "icon": "book"
+        }]'));
