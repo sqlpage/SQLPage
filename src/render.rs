@@ -85,6 +85,7 @@ pub struct RenderContext<W: std::io::Write> {
 
 const DEFAULT_COMPONENT: &str = "default";
 const SHELL_COMPONENT: &str = "shell";
+const DYNAMIC_COMPONENT: &str = "dynamic";
 const MAX_RECURSION_DEPTH: usize = 256;
 
 impl<W: std::io::Write> RenderContext<W> {
@@ -99,12 +100,25 @@ impl<W: std::io::Write> RenderContext<W> {
             .with_context(|| "The shell component should always exist")?;
 
         let mut initial_component = get_object_str(&initial_row, "component");
-        let shell_properties;
-        if initial_component == Some(SHELL_COMPONENT) {
-            shell_properties = initial_row.take();
-            initial_component = None;
-        } else {
-            shell_properties = json!(null);
+        let mut shell_properties = JsonValue::Null;
+        match initial_component {
+            Some(SHELL_COMPONENT) => {
+                shell_properties = initial_row.take();
+                initial_component = None;
+            },
+            Some(DYNAMIC_COMPONENT) => {
+                let dynamic_properties = Self::extract_dynamic_properties(&initial_row)?;
+                for prop in dynamic_properties {
+                    match get_object_str(&prop, "component") {
+                        None | Some(SHELL_COMPONENT) => {
+                            shell_properties = prop.into_owned();
+                            initial_component = None;
+                        },
+                        _ => bail!("Dynamic components at the top level are not supported, except for setting the shell component properties"),
+                    }
+                }
+            },
+            _ => log::trace!("The first row is not a shell component, so we will render a shell with default properties"),
         }
         log::debug!("Rendering the shell with properties: {shell_properties}");
         shell_renderer.render_start(&mut writer, shell_properties)?;
@@ -134,7 +148,7 @@ impl<W: std::io::Write> RenderContext<W> {
         let new_component = get_object_str(data, "component");
         let current_component = SplitTemplateRenderer::name(&self.current_component);
         match (current_component, new_component) {
-            (_current_component, Some("dynamic")) => {
+            (_current_component, Some(DYNAMIC_COMPONENT)) => {
                 self.render_dynamic(data).await.with_context(|| {
                     format!("Unable to render dynamic component with properties {data}")
                 })?;
@@ -149,16 +163,12 @@ impl<W: std::io::Write> RenderContext<W> {
         Ok(())
     }
 
-    async fn render_dynamic(&mut self, data: &Value) -> anyhow::Result<()> {
-        anyhow::ensure!(
-            self.recursion_depth <= MAX_RECURSION_DEPTH,
-            "Maximum recursion depth exceeded in the dynamic component."
-        );
+    fn extract_dynamic_properties<'a>(data: &'a Value) -> anyhow::Result<Vec<Cow<'a, JsonValue>>> {
         let properties_key = "properties";
         let properties_obj = data
             .get(properties_key)
             .with_context(|| format!("Missing '{properties_key}' key."))?;
-        let properties: Vec<Cow<JsonValue>> = match properties_obj {
+        Ok(match properties_obj {
             Value::String(s) => match serde_json::from_str::<JsonValue>(s)
                 .with_context(|| "parsing json properties")?
             {
@@ -171,10 +181,17 @@ impl<W: std::io::Write> RenderContext<W> {
             obj @ Value::Object(_) => vec![Cow::Borrowed(obj)],
             Value::Array(values) => values.iter().map(Cow::Borrowed).collect(),
             other => bail!("Expected properties of type array or object, got {other} instead."),
-        };
-        for p in properties {
+        })
+    }
+
+    async fn render_dynamic(&mut self, data: &Value) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            self.recursion_depth <= MAX_RECURSION_DEPTH,
+            "Maximum recursion depth exceeded in the dynamic component."
+        );
+        for dynamic_row_obj in Self::extract_dynamic_properties(data)? {
             self.recursion_depth += 1;
-            let res = self.handle_row(&p).await;
+            let res = self.handle_row(&dynamic_row_obj).await;
             self.recursion_depth -= 1;
             res?;
         }
