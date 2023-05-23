@@ -66,7 +66,14 @@ VALUES (
 INSERT INTO example (component, description, properties)
 VALUES (
         'http_header',
-        'Set cache control directives for caching behavior.',
+        'Set cache control directives for caching behavior. In this example, the response can be cached by the browser
+        and served from the cache for up to 600 seconds (10 minutes) after it is first requested.
+        During that time, even if the cached response becomes stale (outdated), the browser can still use it (stale-while-revalidate)
+        for up to 3600 seconds (1 hour) while it retrieves a fresh copy from the server in the background.
+        If there is an error while trying to retrieve a fresh copy from the server,
+        the browser can continue to serve the stale response for up to 86400 seconds (24 hours) (stale-if-error) instead of showing an error page.
+        This caching behavior helps improve the performance and responsiveness of the website by reducing the number of requests made to the server
+        and allowing the browser to serve content from its cache when appropriate.',
         JSON(
             '[{
                     "component": "http_header",
@@ -76,11 +83,12 @@ VALUES (
     ),
     (
         'http_header',
-        'Redirect the user to another page.',
+        'Redirect the user to another page. In this example, the user is redirected to a file named another-page.sql at the root of the website. The current page will not be displayed at all.
+        This is useful in particular for content creation pages that contain only INSERT statements, because you can redirect the user to the page that lists the content after it has been created.',
         JSON(
             '[{
                     "component": "http_header",
-                    "Location": "/another-page"
+                    "Location": "/another-page.sql"
             }]'
         )
     );
