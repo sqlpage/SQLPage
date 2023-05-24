@@ -185,7 +185,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('form', 'A user registration form.', json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
     '{"name": "Last name", "required": true, "description": "We need your last name for legal purposes."},'||
-    '{"name": "Birth date", "type": "date", "max": "2010-01-01"}]'));
+    '{"name": "Birth date", "type": "date", "max": "2010-01-01", "value": "1994-04-16"}]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('chart', 'timeline', 'A component that plots data. Line, area, bar, and pie charts are all supported. Each item in the component is a data point in the graph.');
