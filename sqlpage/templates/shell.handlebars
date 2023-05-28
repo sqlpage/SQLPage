@@ -24,8 +24,10 @@
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler.min.css" integrity="sha384-wIPtnwKyfjylOkP4ccy+aMlHOLIfVWHDdlJ35pBwbLDH4HHXq5yG4NknAhu6Rraf" crossorigin="anonymous">
 
    {{#if font}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}">
-    <style>:root { --tblr-font-sans-serif: '{{font}}';}</style>
+        <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
     {{/if}}
 
 </head>
