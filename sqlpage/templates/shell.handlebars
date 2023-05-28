@@ -3,11 +3,23 @@
 <head>
     <meta charset="utf-8"/>
     <title>{{default title "SQLPage"}}</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler.min.css" integrity="sha384-wIPtnwKyfjylOkP4ccy+aMlHOLIfVWHDdlJ35pBwbLDH4HHXq5yG4NknAhu6Rraf" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.19.0/tabler-icons.min.css"
+        integrity="sha384-a8pgu0eDAmHMVlQuzUEoHyapgzLXfOaTTNrMzPivsvAts7LkllyAYpRE4saDWQj7" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler-vendors.min.css" integrity="sha384-VSCERlBdnM/ilb9aI3CK4gNrv89TNC27TqAxwT7fsASeINwhoj2l28B1SUvoe7L0" crossorigin="anonymous">
+   
+   {{#if font}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
+        <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
+    {{/if}}
+
     {{#if norobot}}
         <meta name="robots" content="noindex,nofollow">
     {{/if}}
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="description" content="{{description}}"/>
+
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/js/tabler.min.js"
      integrity="sha384-DnBu3uHMkeDdH3JZaljVS533JqQjgcRVO+uZ3YiBXQYcYITM6HER+4+RPGobVEEZ" crossorigin="anonymous" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js"
@@ -15,21 +27,10 @@
             defer></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.2/dist/apexcharts.min.js"
             integrity="sha384-Gz6s6rVcBsmuS2DlDdEbW5Nnhwk2Xl5wlAS9/gIZjLwMV9mPDecvdiblvikpT7lv"
-            crossorigin="anonymous"></script>
+            crossorigin="anonymous" defer></script>
     <script src="/sqlpage.js" defer></script>
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler-vendors.min.css" integrity="sha384-VSCERlBdnM/ilb9aI3CK4gNrv89TNC27TqAxwT7fsASeINwhoj2l28B1SUvoe7L0" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.19.0/tabler-icons.min.css"
-        integrity="sha384-a8pgu0eDAmHMVlQuzUEoHyapgzLXfOaTTNrMzPivsvAts7LkllyAYpRE4saDWQj7" crossorigin="anonymous">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler.min.css" integrity="sha384-wIPtnwKyfjylOkP4ccy+aMlHOLIfVWHDdlJ35pBwbLDH4HHXq5yG4NknAhu6Rraf" crossorigin="anonymous">
-
-   {{#if font}}
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}">
-        <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
-    {{/if}}
-
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="{{description}}"/>
 </head>
 
 <body class="layout-boxed">
