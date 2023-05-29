@@ -12,7 +12,7 @@ select 'shell' as component,
 SELECT 'hero' as component,
     'SQLPage' as title,
     'Open-source low-code web application framework. Write full websites using only simple database queries.' as description,
-    'https://upload.wikimedia.org/wikipedia/commons/e/e4/Lac_de_Zoug.jpg' as image,
+    'Lac_de_Zoug.jpg' as image,
     '/documentation.sql' as link,
     'Get started !' as link_text;
 -- the mantra: fast, beautiful, easy
