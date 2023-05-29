@@ -3,7 +3,9 @@ use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
-use actix_web::http::header::{CacheControl, CacheDirective, ContentType};
+use actix_web::http::header::{
+    CacheControl, CacheDirective, ContentType, Header, HttpDate, IfModifiedSince, LastModified,
+};
 use actix_web::web::Form;
 use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, FromRequest,
@@ -11,6 +13,7 @@ use actix_web::{
 };
 
 use actix_web::body::MessageBody;
+use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::collections::hash_map::Entry;
@@ -21,6 +24,7 @@ use std::net::IpAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -357,8 +361,23 @@ async fn handle_static_js() -> impl Responder {
         .body(&include_bytes!("../../sqlpage/sqlpage.js")[..])
 }
 
-async fn serve_file(path: &str, state: &AppState) -> actix_web::Result<HttpResponse> {
+async fn serve_file(
+    path: &str,
+    state: &AppState,
+    if_modified_since: Option<IfModifiedSince>,
+) -> actix_web::Result<HttpResponse> {
     let path = path.strip_prefix('/').unwrap_or(path);
+    if let Some(IfModifiedSince(date)) = if_modified_since {
+        let since = DateTime::<Utc>::from(SystemTime::from(date));
+        let modified = state
+            .file_system
+            .modified_since(state, path.as_ref(), since)
+            .await
+            .map_err(actix_web::error::ErrorBadRequest)?;
+        if !modified {
+            return Ok(HttpResponse::NotModified().finish());
+        }
+    }
     state
         .file_system
         .read_file(state, path.as_ref())
@@ -372,6 +391,7 @@ async fn serve_file(path: &str, state: &AppState) -> actix_web::Result<HttpRespo
                         .map(ContentType)
                         .unwrap_or(ContentType::octet_stream()),
                 )
+                .insert_header(LastModified(HttpDate::from(SystemTime::now())))
                 .body(b)
         })
 }
@@ -384,7 +404,8 @@ async fn main_handler(mut service_request: ServiceRequest) -> actix_web::Result<
     } else {
         let app_state = service_request.extract::<web::Data<AppState>>().await?;
         let path = service_request.path();
-        let response = serve_file(path, &app_state).await?;
+        let if_modified_since = IfModifiedSince::parse(&service_request).ok();
+        let response = serve_file(path, &app_state, if_modified_since).await?;
         Ok(service_request.into_response(response))
     }
 }
