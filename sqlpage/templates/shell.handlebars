@@ -15,11 +15,6 @@
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
         <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
     {{/if}}
-
-    {{#if norobot}}
-        <meta name="robots" content="noindex,nofollow">
-    {{/if}}
-
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/js/tabler.min.js"
      integrity="sha384-DnBu3uHMkeDdH3JZaljVS533JqQjgcRVO+uZ3YiBXQYcYITM6HER+4+RPGobVEEZ" crossorigin="anonymous" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js"
@@ -31,6 +26,13 @@
     <script src="/sqlpage.js" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="{{description}}"/>
+    {{#if norobot}}
+        <meta name="robots" content="noindex,nofollow">
+    {{/if}}
+
+    {{#if refresh}}
+        <meta http-equiv="refresh" content="{{refresh}}">
+    {{/if}}
 </head>
 
 <body class="layout-boxed">
