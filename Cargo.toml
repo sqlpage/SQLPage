@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
