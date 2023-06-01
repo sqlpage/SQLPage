@@ -23,3 +23,11 @@ pub fn add_value_to_map(
     }
     map
 }
+
+macro_rules! static_filename {
+    ($filename:expr) => {
+        include_str!(concat!(env!("OUT_DIR"), "/", $filename, ".filename.txt"))
+    };
+}
+
+pub(crate) use static_filename;

@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -26,7 +26,7 @@ env_logger = "0.10.0"
 mime_guess = "2.0.4"
 futures-util = "0.3.21"
 dashmap = "5.4.0"
-tokio = { version = "1.24.1", features = ["rt"] }
+tokio = { version = "1.24.1", features = ["macros", "rt"] }
 tokio-stream = "0.1.9"
 anyhow = "1"
 serde = "1"
@@ -38,3 +38,6 @@ async-trait = "0.1.61"
 async-recursion = "1.0.0"
 include_dir = "0.7.2"
 config = { version = "0.13.3", features = ["json"] }
+
+[build-dependencies]
+ureq = "2.6.2"

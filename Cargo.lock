@@ -1991,7 +1991,7 @@ dependencies = [
 
 [[package]]
 name = "sqlpage"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2014,6 +2014,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tokio-stream",
+ "ureq",
 ]
 
 [[package]]
@@ -2458,6 +2459,22 @@ name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
+
+[[package]]
+name = "ureq"
+version = "2.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "338b31dd1314f68f3aabf3ed57ab922df95ffcd902476ca7ba3c4ce7b908c46d"
+dependencies = [
+ "base64 0.13.1",
+ "flate2",
+ "log",
+ "once_cell",
+ "rustls",
+ "url",
+ "webpki",
+ "webpki-roots",
+]
 
 [[package]]
 name = "url"
