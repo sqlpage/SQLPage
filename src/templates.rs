@@ -1,4 +1,5 @@
 use crate::file_cache::AsyncFromStrWithState;
+use crate::utils::static_filename;
 use crate::{AppState, FileCache, TEMPLATES_DIR};
 use async_trait::async_trait;
 use handlebars::RenderErrorReason;
@@ -194,6 +195,13 @@ impl AllTemplates {
             other => vec![other.clone()]
         });
         handlebars.register_helper("to_array", Box::new(to_array));
+
+        handlebars_helper!(static_path: |x: str| match x {
+            "sqlpage.js" => static_filename!("sqlpage.js"),
+            "sqlpage.css" => static_filename!("sqlpage.css"),
+            _ => "!!unknown static path!!"
+        });
+        handlebars.register_helper("static_path", Box::new(static_path));
 
         let mut this = Self {
             handlebars,

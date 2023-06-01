@@ -3,13 +3,11 @@ use crate::webserver::database::{stream_query_results, DbItem};
 use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
-use actix_web::http::header::{
-    CacheControl, CacheDirective, ContentType, Header, HttpDate, IfModifiedSince, LastModified,
-};
+use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::web::Form;
 use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, FromRequest,
-    HttpResponse, HttpServer, Responder,
+    HttpResponse, HttpServer,
 };
 
 use actix_web::body::MessageBody;
@@ -26,6 +24,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
+
+use super::static_content;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
 /// This prevents a single request from using up all available memory
@@ -349,18 +349,6 @@ async fn process_sql_request(
     Ok(req.into_response(response))
 }
 
-#[allow(clippy::unused_async)]
-async fn handle_static_js() -> impl Responder {
-    HttpResponse::Ok()
-        .content_type("text/javascript;charset=UTF-8")
-        .append_header(CacheControl(vec![
-            CacheDirective::MaxAge(3600u32),
-            CacheDirective::Public,
-            CacheDirective::MaxStale(600),
-        ]))
-        .body(&include_bytes!("../../sqlpage/sqlpage.js")[..])
-}
-
 async fn serve_file(
     path: &str,
     state: &AppState,
@@ -422,7 +410,8 @@ pub fn create_app(
     >,
 > {
     App::new()
-        .route("sqlpage.js", web::get().to(handle_static_js))
+        .service(static_content::js())
+        .service(static_content::css())
         .default_service(fn_service(main_handler))
         .wrap(Logger::default())
         .wrap(
