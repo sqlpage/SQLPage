@@ -23,6 +23,7 @@ pub struct HeaderContext<W: std::io::Write> {
     app_state: Arc<AppState>,
     pub writer: W,
     response: HttpResponseBuilder,
+    has_status: bool,
 }
 
 impl<W: std::io::Write> HeaderContext<W> {
@@ -33,14 +34,30 @@ impl<W: std::io::Write> HeaderContext<W> {
             app_state,
             writer,
             response,
+            has_status: false,
         }
     }
     pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
         log::debug!("Handling header row: {data}");
         match get_object_str(&data, "component") {
+            Some("status_code") => self.status_code(&data).map(PageContext::Header),
             Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
             _ => self.start_body(data).await,
         }
+    }
+
+    fn status_code(mut self, data: &JsonValue) -> anyhow::Result<Self> {
+        let status_code = data
+            .as_object()
+            .and_then(|m| m.get("status"))
+            .with_context(|| "status_code component requires a status")?
+            .as_u64()
+            .with_context(|| "status must be a number")?;
+        let code = u16::try_from(status_code)
+            .with_context(|| format!("status must be a number between 0 and {}", u16::MAX))?;
+        self.response.status(StatusCode::from_u16(code)?);
+        self.has_status = true;
+        Ok(self)
     }
 
     fn add_http_header(mut self, data: &JsonValue) -> anyhow::Result<Self> {
@@ -52,6 +69,10 @@ impl<W: std::io::Write> HeaderContext<W> {
             let value_str = value
                 .as_str()
                 .with_context(|| "http header values must be strings")?;
+            if name.eq_ignore_ascii_case("location") && !self.has_status {
+                self.response.status(StatusCode::FOUND);
+                self.has_status = true;
+            }
             self.response.insert_header((name.as_str(), value_str));
         }
         Ok(self)
