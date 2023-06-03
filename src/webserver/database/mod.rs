@@ -186,10 +186,10 @@ fn row_to_json(row: &AnyRow) -> Value {
                         .unwrap_or(f64::NAN)
                         .into()
                 }
-                "INT8" | "BIGINT" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
+                "INT8" | "BIGINT" | "INTEGER" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
                     .unwrap_or_default()
                     .into(),
-                "INT" | "INTEGER" | "INT4" => <i32 as Decode<sqlx::any::Any>>::decode(raw_value)
+                "INT" | "INT4" => <i32 as Decode<sqlx::any::Any>>::decode(raw_value)
                     .unwrap_or_default()
                     .into(),
                 "INT2" | "SMALLINT" => <i16 as Decode<sqlx::any::Any>>::decode(raw_value)
