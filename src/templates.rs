@@ -96,7 +96,7 @@ fn delay_helper<'reg, 'rc>(
 ) -> handlebars::HelperResult {
     let inner = h
         .template()
-        .ok_or_else(|| RenderErrorReason::BlockContentRequired)?;
+        .ok_or(RenderErrorReason::BlockContentRequired)?;
     let mut str_out = handlebars::StringOutput::new();
     inner.render(r, ctx, rc, &mut str_out)?;
     let mut delayed_render = str_out.into_string()?;
@@ -147,7 +147,7 @@ fn sum_helper<'reg, 'rc>(
         sum += v
             .value()
             .as_f64()
-            .ok_or_else(|| RenderErrorReason::InvalidParamType("number"))?;
+            .ok_or(RenderErrorReason::InvalidParamType("number"))?;
     }
     write!(writer, "{sum}")?;
     Ok(())

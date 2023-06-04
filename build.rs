@@ -37,7 +37,7 @@ fn inline_dependencies(path_in: &str, path_out: &Path) {
         }
     }
     std::fs::write(
-        &format!("{}.filename.txt", path_out.display()),
+        format!("{}.filename.txt", path_out.display()),
         hashed_filename(path_out),
     )
     .unwrap();

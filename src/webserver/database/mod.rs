@@ -305,7 +305,7 @@ async fn test_row_to_json() -> anyhow::Result<()> {
     let mut c = sqlx::AnyConnection::connect("sqlite://:memory:").await?;
     let row = sqlx::query(
         "SELECT \
-        3.14159 as one_value, \
+        123.456 as one_value, \
         1 as two_values, \
         2 as two_values, \
         'x' as three_values, \
@@ -318,7 +318,7 @@ async fn test_row_to_json() -> anyhow::Result<()> {
     assert_eq!(
         row_to_json(&row),
         serde_json::json!({
-            "one_value": 3.14159,
+            "one_value": 123.456,
             "two_values": [1,2],
             "three_values": ["x","y","z"],
         })

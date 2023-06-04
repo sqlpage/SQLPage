@@ -188,7 +188,7 @@ impl<W: std::io::Write> RenderContext<W> {
         Ok(())
     }
 
-    fn extract_dynamic_properties<'a>(data: &'a Value) -> anyhow::Result<Vec<Cow<'a, JsonValue>>> {
+    fn extract_dynamic_properties(data: &Value) -> anyhow::Result<Vec<Cow<'_, JsonValue>>> {
         let properties_key = "properties";
         let properties_obj = data
             .get(properties_key)
