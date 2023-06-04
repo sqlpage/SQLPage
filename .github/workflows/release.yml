@@ -12,89 +12,40 @@ jobs:
     strategy:
       matrix:
         # Use an older ubuntu to compile with an older glibc
-        os: [macos-latest, windows-latest, ubuntu-18.04]
+        os: [macos-latest, windows-latest, ubuntu-20.04]
         include:
           - os: windows-latest
             binary_path: target/superoptimized/sqlpage.exe
           - os: macos-latest
             binary_path: target/superoptimized/sqlpage
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             binary_path: target/superoptimized/sqlpage
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with: {toolchain: stable, override: true}
-      - name: build
-        uses: actions-rs/cargo@v1
-        with: { command: build, args: --profile superoptimized --locked }
-      - uses: actions/upload-artifact@v1
+      - uses: actions/checkout@v3
+      - run: cargo build --profile superoptimized --locked
+      - uses: actions/upload-artifact@v3
         with:
           name: sqlpage ${{ matrix.os }}
           path: ${{ matrix.binary_path }}
   create_release:
     name: Create Release
     needs: build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@master
-      - name: get commit message
-        run: echo commitmsg=$(git tag --format='%(subject)' -l | tail -n 1) >> $GITHUB_ENV
+        uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+      - run: cd 'sqlpage macos-latest' && chmod +x sqlpage && tar --create --file sqlpage-macos.tgz --gzip sqlpage
+      - run: cd 'sqlpage ubuntu-20.04' && chmod +x sqlpage && tar --create --file sqlpage-linux.tgz --gzip sqlpage
       - name: Create Release
         id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
+          name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: ${{ env.commitmsg }}
           draft: false
-          prerelease: false
-
-      - uses: actions/download-artifact@v1
-        with: { name: sqlpage windows-latest, path: . }
-      - name: Upload Windows binary
-        uses: lovasoa/upload-release-asset@851d9cc59fe8113912edffbd8fddaa09470a5ac0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: sqlpage.exe
-          asset_name: sqlpage.exe
-          asset_label: sqlpage for Windows
-          asset_content_type: application/vnd.microsoft.portable-executable
-
-      - name: cleanup
-        run: rm -rf ./*
-
-      - uses: actions/download-artifact@v1
-        with: { name: sqlpage macos-latest, path: . }
-      - run: chmod +x sqlpage && tar --create --file sqlpage-macos.tgz --gzip sqlpage
-      - name: Upload MacOs binary
-        uses: lovasoa/upload-release-asset@851d9cc59fe8113912edffbd8fddaa09470a5ac0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: sqlpage-macos.tgz
-          asset_name: sqlpage-macos.tgz
-          asset_label: sqlpage for MacOS
-          asset_content_type: application/octet-stream
-
-      - name: cleanup
-        run: rm -rf ./*
-
-      - uses: actions/download-artifact@v1
-        with: { name: sqlpage ubuntu-18.04, path: . }
-      - run: chmod +x sqlpage && tar --create --file sqlpage-linux.tgz --gzip sqlpage
-      - name: Upload Linux binary
-        uses: lovasoa/upload-release-asset@851d9cc59fe8113912edffbd8fddaa09470a5ac0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: sqlpage-linux.tgz
-          asset_name: sqlpage-linux.tgz
-          asset_label: sqlpage for Linux
-          asset_content_type: application/octet-stream
+          prerelease: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          files: |
+            sqlpage windows-latest/sqlpage.exe
+            sqlpage ubuntu-20.04/sqlpage-linux.tgz
+            sqlpage macos-latest/sqlpage-macos.tgz
