@@ -1,4 +1,3 @@
-{{#each_row}}
 <div class="
     alert
     alert-{{default color "info"}}
@@ -21,6 +20,11 @@
               class="btn btn-sm alert-link mt-2 px-2 {{#if important}}text-{{default color 'info'}}{{/if}}"
           >{{default link_text "Ok"}}</a>
       {{/if}}
+      {{#each_row}}
+          <a href="{{link}}"
+              class="btn btn-sm btn-{{default color 'primary'}} mt-2 px-2"
+          >{{default title "Ok"}}</a>
+      {{/each_row}}
     </div>
 
   </div>
@@ -28,4 +32,3 @@
     <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
   {{/if}}
 </div>
-{{/each_row}}
