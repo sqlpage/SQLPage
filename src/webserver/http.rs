@@ -14,6 +14,7 @@ use actix_web::body::MessageBody;
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Write;
@@ -385,17 +386,27 @@ async fn serve_file(
 }
 
 async fn main_handler(mut service_request: ServiceRequest) -> actix_web::Result<ServiceResponse> {
-    let path = service_request.path();
-    let sql_file_path = path_to_sql_file(path);
+    let path = req_path(&service_request);
+    let sql_file_path = path_to_sql_file(&path);
     if let Some(sql_path) = sql_file_path {
+        log::debug!("Processing SQL request: {:?}", sql_path);
         process_sql_request(service_request, sql_path).await
     } else {
+        log::debug!("Serving file: {:?}", path);
         let app_state = service_request.extract::<web::Data<AppState>>().await?;
-        let path = service_request.path();
+        let path = req_path(&service_request);
         let if_modified_since = IfModifiedSince::parse(&service_request).ok();
-        let response = serve_file(path, &app_state, if_modified_since).await?;
+        let response = serve_file(&path, &app_state, if_modified_since).await?;
         Ok(service_request.into_response(response))
     }
+}
+
+
+/// Extracts the path from a request and percent-decodes it
+fn req_path<'a>(req: &'a ServiceRequest) -> Cow<'a, str> {
+    let encoded_path = req.path();
+    percent_encoding::percent_decode_str(encoded_path)
+        .decode_utf8_lossy()
 }
 
 pub fn create_app(

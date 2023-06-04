@@ -2008,6 +2008,7 @@ dependencies = [
  "lambda-web",
  "log",
  "mime_guess",
+ "percent-encoding",
  "serde",
  "serde_json",
  "sqlparser",
