@@ -22,6 +22,17 @@ jobs:
             binary_path: target/superoptimized/sqlpage
     steps:
       - uses: actions/checkout@v3
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: release-${{ runner.os }}-check-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: release-${{ runner.os }}-check-
       - run: cargo build --profile superoptimized --locked
       - uses: actions/upload-artifact@v3
         with:
