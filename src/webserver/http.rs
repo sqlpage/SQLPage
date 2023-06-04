@@ -403,7 +403,7 @@ async fn main_handler(mut service_request: ServiceRequest) -> actix_web::Result<
 
 
 /// Extracts the path from a request and percent-decodes it
-fn req_path<'a>(req: &'a ServiceRequest) -> Cow<'a, str> {
+fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
     let encoded_path = req.path();
     percent_encoding::percent_decode_str(encoded_path)
         .decode_utf8_lossy()
