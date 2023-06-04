@@ -41,6 +41,7 @@
                         {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
                         {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
                         {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
+                        {{~#if autofocus}}autofocus {{/if~}}
                     >
                     {{#if description}}
                         <small class="form-hint mt-0">{{description}}</small>
