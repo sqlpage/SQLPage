@@ -20,6 +20,7 @@ codegen-units = 2
 sqlx = { version = "0.6", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "chrono"] }
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls"] }
+percent-encoding = "2.2.0"
 handlebars = "5.0.0-beta.0"
 log = "0.4.17"
 env_logger = "0.10.0"
