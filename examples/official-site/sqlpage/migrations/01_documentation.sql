@@ -173,7 +173,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('min', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
-    ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE)
+    ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
+    ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOL', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     (
