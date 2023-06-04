@@ -7,7 +7,7 @@ INSERT INTO questions (
 VALUES (
         'How tall is the Eiffel Tower in meters (including the tip)?',
         'GEOG',
-        'There is 330 meters from the ground to the tip of the Eiffel Tower',
+        'The Eiffel Tower stands at a height of 330 meters, including the tip. This measurement includes the pinnacle that crowns the tower, providing an accurate representation of its total height from the ground to the highest point.',
         330
     ),
     (
@@ -25,7 +25,7 @@ VALUES (
     (
         'How many bones are there in the human body?',
         'SCIE',
-        'An adult human body has 206 bones.',
+        'The human body has 206 bones. This count includes all the bones in the skeleton, ranging from the tiny bones in the ear to the larger bones in the arms, legs, spine, and skull. The number of bones can vary slightly due to fusion of certain bones during growth and development.',
         206
     ),
     (
