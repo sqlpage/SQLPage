@@ -48,6 +48,7 @@ jobs:
       - uses: actions/download-artifact@v3
       - run: cd 'sqlpage macos-latest' && chmod +x sqlpage && tar --create --file sqlpage-macos.tgz --gzip sqlpage
       - run: cd 'sqlpage ubuntu-20.04' && chmod +x sqlpage && tar --create --file sqlpage-linux.tgz --gzip sqlpage
+      - run: cd 'sqlpage windows-latest' && zip -r sqlpage-windows.zip *.exe
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
@@ -56,6 +57,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           draft: false
           files: |
-            sqlpage windows-latest/sqlpage.exe
+            sqlpage windows-latest/sqlpage-windows.zip
             sqlpage ubuntu-20.04/sqlpage-linux.tgz
             sqlpage macos-latest/sqlpage-macos.tgz
