@@ -4,12 +4,12 @@ SELECT 'hero' as component,
     'Unleash your inner executive in this thrilling board game of corporate espionage. Make the right choices to lead your company to success!' as description,
     'New Game.sql' as link,
     'Start a New Game' as link_text;
-SELECT 'Answer questions' as title,
-    'Each turn, a question will be presented to the group. One player will be assigned as the infiltrator and receive a specific wrong answer. Engage in lively debates and exchange ideas to uncover the truth and make accurate decisions.' as description,
+SELECT 'Lively discussions' as title,
+    'Each turn, a question will be presented to the group. One player will be assigned as the infiltrator and receive a specific wrong answer. Engage in lively real-life debates and exchange ideas to uncover the truth and make accurate decisions.' as description,
     'help-hexagon' as icon,
     'blue' as color;
 SELECT 'Hidden Votes' as title,
-    'After the discussion phase, all players submit their individual answers privately. The answers are revealed simultaneously, and points are awarded based on their proximity to the true answer.' as description,
+    'After the discussion phase, all players submit their individual answers privately. Points are awarded based on their proximity to the true answer.' as description,
     'file' as icon,
     'green' as color;
 SELECT 'Role Assignment' as title,
