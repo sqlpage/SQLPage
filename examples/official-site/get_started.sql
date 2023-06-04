@@ -15,7 +15,12 @@ SELECT 'list' as component,
     'Are you comfortable with command line applications ?' as title;
 
 SELECT 'Yes, I can use the terminal' as title,
-    '?cli=1' as link,
-    'I can type commands in a terminal and have used the command line before.' as description,
-    'blue' as color,
-    'plus' as icon;
+    'manual_setup.sql' as link,
+    'I can type commands in a terminal and have used the command line before. I want the technical instructions.' as description,
+    'black' as color,
+    'prompt' as icon;
+SELECT 'No, I want to do it the easy way' as title,
+    'hosted.sql' as link,
+    'I don''t want to have anything to do with scary hacker things. I will pay a monthly fee, and never have to configure a server myself.' as description,
+    'green' as color,
+    'mood-happy' as icon;
