@@ -131,6 +131,11 @@ SELECT 'Examples' as title,
     'SQL source code for examples and demos of websites built with SQLPage.' as description,
     'teal' as color,
     'code' as icon;
+SELECT 'Corporate Conundrum' as title,
+    'https://conundrum.ophir.dev' as link,
+    'A demo web application powered by SQLPage, designed for playing a fun trivia board game with friends.' as description,
+    'cyan' as color,
+    'affiliate' as icon;
 -- github link
 SELECT 'Source code' as title,
     'https://github.com/lovasoa/SQLPage' as link,
