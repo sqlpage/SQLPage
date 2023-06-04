@@ -15,8 +15,6 @@ Unleash your inner executive as you step into the shoes of top-level employees i
 
 **Hidden Votes**: After the discussion phase, all players simultaneously submit their individual answers privately, without revealing them to others.
 
-**Answer Reveal**: Once all the answers are submitted, they are revealed simultaneously.
-
 **Scoring System**: Points are awarded based on the proximity of each player's answer to the true answer.
 
  - If a player's answer is closer to the true answer than to the wrong answer provided by the saboteur, they earn one point.
