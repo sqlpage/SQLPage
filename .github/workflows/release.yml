@@ -55,7 +55,6 @@ jobs:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
-          prerelease: ${{ startsWith(github.ref, 'refs/tags/v') }}
           files: |
             sqlpage windows-latest/sqlpage.exe
             sqlpage ubuntu-20.04/sqlpage-linux.tgz
