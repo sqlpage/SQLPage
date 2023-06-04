@@ -101,6 +101,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- top level
     ('color', 'Color of the bars displayed between steps.', 'TEXT', TRUE, TRUE),
     ('counter', 'Display the number of the step on top of its name.', 'TEXT', TRUE, TRUE),
+    ('title', 'Title of the section.', 'TEXT', TRUE, TRUE),
+    ('description', 'Description of the section.', 'TEXT', TRUE, TRUE),
     -- item level
     ('title', 'Name of the step.', 'TEXT', FALSE, TRUE),
     ('description', 'Tooltip to display when the user passes their mouse over the step''s name.', 'TEXT', FALSE, TRUE),

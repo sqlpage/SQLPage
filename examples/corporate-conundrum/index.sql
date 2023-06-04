@@ -22,10 +22,10 @@ SELECT 'Continuing Gameplay' as title,
     'purple' as color;
 
 
-SELECT 'title' as component, 'Game rules' as contents;
 SELECT 'steps' as component,
     1 as counter,
-    'cyan' as color;
+    'cyan' as color,
+    'Game rules' as title;
 SELECT 'Create game' as title,
     'plus' as icon,
     'Create a new game from the home page.' as description;
