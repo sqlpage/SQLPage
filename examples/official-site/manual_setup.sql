@@ -47,7 +47,7 @@ SELECT 'text' as component;
 SELECT '
 SELECT
  ''Hello'' AS title,
- ''world'' description,
+ ''world'' AS description,
  ''https://wikipedia.org'' AS link;' as contents, TRUE as code;
 
 SELECT 'text' as component, 'The list of components you can use and their properties is available in ' as contents;
