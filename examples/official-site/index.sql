@@ -54,7 +54,7 @@ SELECT 'Iterate and Experiment with Ease' as title,
     'purple' as color;
 SELECT 'Start Simple, Scale to Advanced' as title,
     'SQLPage is a great starting point for building websites, especially if you''re new to coding. As your needs grow,
-    you can gradually transition to a full-featured programming languege while reusing the database structure and queries you wrote in SQLPage.
+    you can gradually transition to a full-featured programming language while reusing the database structure and queries you wrote in SQLPage.
     SQLPage helps you transition smoothly while providing a solid foundation for your website.' as description,
     'world-cog' as icon,
     'orange' as color;
