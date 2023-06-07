@@ -203,7 +203,7 @@ impl AllTemplates {
         });
         handlebars.register_helper("static_path", Box::new(static_path));
 
-        handlebars_helper!(markdown_helper: |x: str| 
+        handlebars_helper!(markdown_helper: |x: str|
             markdown::to_html_with_options(x, &markdown::Options::gfm())
             .unwrap_or_else(|s|s)
         );
