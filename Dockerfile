@@ -1,4 +1,4 @@
-FROM rust:1.67-alpine3.17 as builder
+FROM rust:1.70-alpine3.17 as builder
 RUN apk add --no-cache musl-dev
 WORKDIR /usr/src/sqlpage
 RUN cargo init .
