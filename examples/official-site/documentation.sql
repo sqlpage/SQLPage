@@ -3,16 +3,35 @@ select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, 'SQLPage documentation' as title;
-select 'Building an application with SQLPage is quite simple.' ||
-    'To create a new web page, just create a new SQL file. ' ||
-    'For each SELECT statement that you write, the data it returns will be analyzed and rendered to the user.';
-select 'The two most important concepts in SQLPage are ' as contents;
-select 'components' as contents, true as bold;
-select ' and ' as contents;
-select 'parameters' as contents, true as bold;
-select '. ' as contents;
-select 'This page documents all the components that you can use in SQLPage and their parameters. ' ||
-     'Use this as a reference when building your SQL application.' as contents;
+select '
+Building an application with SQLPage is quite simple.
+To create a new web page, just create a new SQL file. 
+For each SELECT statement that you write, the data it returns will be analyzed and rendered to the user.
+The two most important concepts in SQLPage are **components** and **parameters**.
+
+ - **components** are small user interface elements that you can use to display your data in a certain way.
+ - *top-level* **parameters** are the properties of these components, allowing you to customize their appearance and behavior.
+ - *row-level* **parameters** constitute the data that you want to display in the components.
+
+To select a component and set its top-level properties, you write the following SQL statement: 
+
+```sql
+SELECT ''component_name'' AS component, ''my value'' AS top_level_parameter_1;
+```
+
+Then, you can set its row-level parameters by writing a second SELECT statement:
+
+```sql
+SELECT my_column_1 AS row_level_parameter_1, my_column_2 AS row_level_parameter_2 FROM my_table;
+```
+
+This page documents all the components provided by default in SQLPage and their parameters.
+Use this as a reference when building your SQL application.
+
+If you have some frontend development experience, you can also create your own components, by placing
+[`.handlebars`](https://handlebarsjs.com/guide/) files in a folder called `sqlpage/templates` at the root of your server.
+[See example](https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates/list.handlebars).
+' as contents_md;
 
 select 'list' as component, 'components' as title;
 select
@@ -57,7 +76,7 @@ select
         {"component": "code"},
         {
             "title": "Example ' || (row_number() OVER ()) || '",
-            "description": ' || json_quote(description) || ',
+            "description_md": ' || json_quote(description) || ',
             "contents": ' || json_quote((
                 select
                      group_concat(

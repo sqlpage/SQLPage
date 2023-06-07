@@ -233,9 +233,23 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties) VALUES
     (
     'form',
-    'A form that asks the user for a parameter named "component", and then posts the results to another page named "documentation.sql".
-    That file could contain a sql statement like "SELECT * FROM documentation WHERE component_name = $component" to display the documentation for the component the user selected.
-    Or it could contain a sql statement like "INSERT INTO components(name) VALUES ($component)" to allow users to create a new component.',
+    '
+A form that asks the user for a parameter named `component`, and then posts the results to another page named `documentation.sql`.
+That file could contain a sql statement like 
+```sql
+SELECT * FROM documentation WHERE component_name = $component
+```
+to display the documentation for the component the user selected.
+
+Or it could contain a sql statement like
+```sql
+INSERT INTO components(name) VALUES ($component)
+```
+
+to allow users to create a new component.
+
+When loading the page, the value for `$component` will be `NULL` if no value has been submitted.
+',
     json('[{"component":"form", "action": "documentation.sql"}, {"name": "component"}]')),
     ('form', 'A user registration form.', json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
