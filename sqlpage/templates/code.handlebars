@@ -2,6 +2,9 @@
     {{#each_row}}
         <h2>{{title}}</h2>
         <p>{{description}}</p>
+        {{#if description_md}}
+            {{{markdown description_md}}}
+        {{/if}}
         <pre class="mb-0"><code>{{contents}}</code></pre>
     {{/each_row}}
 </div>
