@@ -1,8 +1,10 @@
-<h1 align="center">SQLpage</h1>
+<h1 align="center">
+[SQLpage](https://sql.ophir.dev)
+</h1>
 
 [![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
 
-SQLPage is an [**SQL**](https://en.wikipedia.org/wiki/SQL)-only webapp builder.
+[SQLpage](https://sql.ophir.dev) is an **SQL**-only webapp builder.
 It is meant for data scientists, analysts, and business intelligence teams
 to build powerful data-centric applications quickly,
 without worrying about any of the traditional web programming languages and concepts.
@@ -69,6 +71,10 @@ SELECT
     name, type, placeholder, required,
     description, min, max
 FROM user_form;
+
+INSERT INTO user (first_name, last_name, birth_date)
+SELECT ($first_name, $last_name, $birth_date)
+WHERE $first_name IS NOT NULL;
 ```
 
 <td>
