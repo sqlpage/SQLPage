@@ -141,23 +141,29 @@ impl<W: std::io::Write> RenderContext<W> {
             },
             _ => log::trace!("The first row is not a shell component, so we will render a shell with default properties"),
         }
+
         log::debug!("Rendering the shell with properties: {shell_properties}");
         shell_renderer.render_start(&mut writer, shell_properties)?;
 
-        let current_component_name = initial_component.unwrap_or(DEFAULT_COMPONENT);
-        log::debug!("Creating the first component in the page: '{current_component_name}'");
-        let current_component = Self::create_renderer(current_component_name, Arc::clone(&app_state))
+        let current_component = Self::create_renderer(DEFAULT_COMPONENT, Arc::clone(&app_state))
             .await
-            .with_context(|| format!("Unable to open the rendering context because opening the {current_component_name} component failed"))?;
+            .with_context(|| format!("Unable to open the rendering context because opening the {DEFAULT_COMPONENT} component failed"))?;
 
-        Ok(RenderContext {
+        let mut initial_context = RenderContext {
             app_state,
             writer,
             current_component,
             shell_renderer,
             recursion_depth: 0,
             current_statement: 1,
-        })
+        };
+
+        if let Some(component) = initial_component {
+            log::trace!("The page starts with a component without a shell: {component}");
+            initial_context.handle_row(&initial_row).await?;
+        }
+
+        Ok(initial_context)
     }
 
     #[async_recursion(? Send)]
