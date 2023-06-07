@@ -19,7 +19,12 @@
                     {{/if}}
                     <div class="col text-truncate">
                         {{title}}
-                        <div class="d-block text-muted text-truncate mt-n1">{{description}}</div>
+                        <div class="d-block text-muted text-truncate mt-n1">
+                            {{~description~}}
+                            {{~#if description_md~}}
+                                <div style="margin-bottom: -1rem">{{{markdown description_md}}}</div>
+                            {{~/if~}}
+                        </div>
                     </div>
                 </div>
             </{{#if link}}a {{else}}div{{/if}}>

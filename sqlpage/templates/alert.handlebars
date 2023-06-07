@@ -14,7 +14,16 @@
 
     <div>
       {{#if title}}<h4 class="alert-title" {{#if important}}style="color:inherit"{{/if}}>{{title}}</h4>{{/if}}
-      {{#if description}}<div class="alert-description">{{description}}</div>{{/if}}
+      {{~#if description~}}
+          <div class="alert-description">
+            {{~description~}}
+          </div>
+      {{~/if~}}
+      {{~#if description_md~}}
+          <div class="alert-description">
+              {{{~markdown description_md~}}}
+          </div>
+      {{~/if~}}
       {{#if link}}
           <a href="{{link}}"
               class="btn btn-sm alert-link mt-2 px-2 {{#if important}}text-{{default color 'info'}}{{/if}}"

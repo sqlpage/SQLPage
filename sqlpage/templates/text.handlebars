@@ -2,6 +2,9 @@
 {{#if title}}
     <h1 id="{{id}}" class="mt-3 {{#if center}}text-center{{/if}}">{{title}}</h1>
 {{/if}}
+{{#if contents_md}}
+    {{{markdown contents_md}}}
+{{/if}}
 <p class="{{#if center}}mx-auto{{/if}}" {{#if (not title)}}id="{{id}}"{{/if}}>
     {{contents}}
     {{~#each_row~}}
@@ -20,5 +23,8 @@
             {{~#if size}}fs-{{minus 7 size}} {{/if~}}
         ">{{contents}}</span>
         {{~flush_delayed~}}
+        {{~#if contents_md~}}
+            {{{markdown contents_md}}}
+        {{~/if~}}
     {{~/each_row~}}
 </p>
