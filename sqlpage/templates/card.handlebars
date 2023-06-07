@@ -23,10 +23,20 @@
                 {{/if}}
                 <div class="card-body">
                     <h2 class="card-title fs-3">{{title}}</h2>
-                    <p class="text-muted">{{description}}</p>
+                    <div class="text-muted">
+                        {{~description~}}
+                        {{~#if description_md~}}
+                            {{{markdown description_md}}}
+                        {{~/if~}}
+                    </div>
                 </div>
                 {{#if footer}}
-                    <div class="card-footer py-2">{{footer}}</div>
+                    <div class="card-footer py-2">
+                        {{footer}}
+                        {{~#if footer_md~}}
+                            {{{markdown footer_md}}}
+                        {{~/if~}}
+                    </div>
                 {{/if}}
                 {{#if icon}}
                     <div class="ribbon bg-{{color}} fs-2">

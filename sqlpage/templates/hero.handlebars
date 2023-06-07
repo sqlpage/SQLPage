@@ -1,7 +1,12 @@
 <header class="row align-items-center">
   <div class="hero-title col text-center">
     <h1 class="lh-lg" style="font-size: 3rem">{{title}}</h1>
-    <p class="fs-1 mx-5 text-muted">{{description}}</p>
+    <div class="fs-1 mx-5 text-muted">
+      {{~description~}}
+      {{~#if description_md~}}
+          {{{markdown description_md}}}
+      {{~/if~}}
+    </div>
     {{#if link}}
       <a href="{{link}}" class="btn btn-primary mb-3">{{default link_text "Go"}}</a>
     {{/if}}
@@ -32,7 +37,12 @@
           </a>
           {{/if}}
           </h2>
-        <p class="mb-0">{{description}}</p>
+        <div class="mb-0">
+          {{~description~}}
+          {{~#if description_md~}}
+              {{{markdown description_md}}}
+          {{~/if~}}
+        </div>
       </div>
     </div>
   </div>

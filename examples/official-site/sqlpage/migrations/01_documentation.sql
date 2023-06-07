@@ -29,6 +29,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- item level
     ('title', 'Name of the list item, displayed prominently.', 'TEXT', FALSE, FALSE),
     ('description', 'A description of the list item, displayed as greyed-out text.', 'TEXT', FALSE, TRUE),
+    ('description_md', 'A description of the list item, displayed as greyed-out text, in Markdown format, allowing you to use rich text formatting, including **bold** and *italic* text.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the list item.', 'URL', FALSE, TRUE),
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the item.', 'TEXT', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed as a dot near the list item contents.', 'TEXT', FALSE, TRUE),
@@ -37,6 +38,11 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('list', 'The most basic list', json('[{"component":"list"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
+    ('list', 'A list with rich text descriptions', json('[{"component":"list"},
+        {"title":"SQLPage", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, and **SQLite**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
+        {"title":"Tabler", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},
+        {"title":"Tabler Icons", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
+    ]')),
     ('list', 'A beautiful list with bells and whistles.',
             json('[{"component":"list", "title":"Popular websites"}, '||
             '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "active": true}, '||
@@ -52,8 +58,15 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('columns', 'The number of columns in the grid of cards. This is just a hint, the grid will adjust dynamically to the user''s screen size, rendering fewer columns if needed to fit the contents.', 'INTEGER', TRUE, TRUE),
     -- item level
     ('title', 'Name of the card, displayed at the top.', 'TEXT', FALSE, FALSE),
-    ('description', 'The body of the card.', 'TEXT', FALSE, TRUE),
+    ('description', 'The body of the card, where you put the main text contents of the card.
+        This does not support rich text formatting, only plain text.
+        If you want to use rich text formatting, use the `description_md` property instead.', 'TEXT', FALSE, TRUE),
+    ('description_md', '
+        The body of the card, in Markdown format.
+        This is useful if you want to display a lot of text in the card, with many options for formatting, such as
+        line breaks, **bold**, *italics*, lists, #titles, [links](target.sql), ![images](photo.jpg), etc.', 'TEXT', FALSE, TRUE),
     ('footer', 'Muted text to display at the bottom of the card.', 'TEXT', FALSE, TRUE),
+    ('footer_md', 'Muted text to display at the bottom of the card, with rich text formatting in Markdown format.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the card.', 'TEXT', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'TEXT', FALSE, TRUE),
@@ -62,6 +75,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('card', 'The most basic card', json('[{"component":"card"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
+    ('card', 'A card with a Markdown description',
+            json('[{"component":"card"}, {"title":"A card with a Markdown description", "description_md": "This is a card with a **Markdown** description. \n\n'||
+            'This is useful if you want to display a lot of text in the card, with many options for formatting, such as '||
+            '\n - **bold**, \n - *italics*, \n - [links](index.sql), \n - etc."}]')),
     ('card', 'A beautiful card grid with bells and whistles.',
             json('[{"component":"card", "title":"Popular websites", "columns": 2}, '||
             '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
@@ -130,6 +147,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('center', 'Whether to center the title.', 'BOOLEAN', TRUE, TRUE),
     ('width', 'How wide the paragraph should be, in characters.', 'INTEGER', TRUE, TRUE),
     ('html', 'Raw html code to include on the page. Don''t use that if you are not sure what you are doing, it may have security implications.', 'TEXT', TRUE, TRUE),
+    ('contents', 'A top-level paragraph of text to display, without any formatting, without having to make additional queries.', 'TEXT', TRUE, TRUE),
+    ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', TRUE, TRUE),
     -- item level
     ('contents', 'A span of text to display', 'TEXT', FALSE, FALSE),
     ('link', 'An URL to which the user should be taken when they click on this span of text.', 'URL', FALSE, TRUE),
@@ -144,6 +163,39 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('text', 'Rendering a simple text paragraph.', json('[{"component":"text", "contents":"Hello, world ! <3"}]')),
+    ('text', 'Rendering rich text using markdown', json('[{"component":"text", "contents_md":"\n'||
+    '# Markdown in SQLPage\n\n' ||
+    '## Simple formatting\n\n' ||
+    'SQLPage supports only plain text as column values, but markdown allows easily adding **bold**, *italics*, and [links](index.sql).\n\n' ||
+    '## Lists\n' ||
+    '### Unordered lists\n' ||
+    '* SQLPage is easy\n' ||
+    '* SQLPage is fun\n' ||
+    '* SQLPage is free\n\n' ||
+    '### Ordered lists\n' ||
+    '1. SQLPage is fast\n' ||
+    '2. SQLPage is safe\n' ||
+    '3. SQLPage is open-source\n\n' ||
+    '## Code\n' ||
+    '```sql\n' ||
+    'SELECT ''list'' AS component;\n' ||
+    'SELECT name as title FROM users;\n' ||
+    '```\n\n' ||
+    '## Tables\n\n' ||
+    '| SQLPage component | Description  | Documentation link  |\n' ||
+    '| --- | --- | --- |\n' ||
+    '| text | A paragraph of text. | [Documentation](https://sql.ophir.dev/documentation.sql?component=text) |\n' ||
+    '| list | A list of items. | [Documentation](https://sql.ophir.dev/documentation.sql?component=list) |\n' ||
+    '| steps | A progress indicator. | [Documentation](https://sql.ophir.dev/documentation.sql?component=steps) |\n' ||
+    '| form | A series of input fields. | [Documentation](https://sql.ophir.dev/documentation.sql?component=form) |\n\n' ||
+    '## Quotes\n' ||
+    '> Fantastic.\n>\n' ||
+    '> — [HackerNews User](https://news.ycombinator.com/item?id=36194473#36209061) about SQLPage\n\n' ||
+    '## Images\n' ||
+    '![SQLPage logo](https://sql.ophir.dev/favicon.ico)\n\n' ||
+    '## Horizontal rules\n' ||
+    '---\n\n' ||
+    '"}]')),
     ('text', 'Rendering a paragraph with links and styling.',
             json('[{"component":"text", "title":"About SQL"}, '||
             '{"contents":"SQL", "bold":true, "italics": true}, '||

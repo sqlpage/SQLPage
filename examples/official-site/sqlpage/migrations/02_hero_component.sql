@@ -93,10 +93,12 @@ VALUES (
             '[{
             "component":"hero",
             "title": "SQLPage",
-            "description": "Documentation for the SQLPage low-code web application framework.",
+            "description_md": "Documentation for the *SQLPage* low-code web application framework.",
             "image": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Lac_de_Zoug.jpg",
             "link": "/documentation.sql",
-            "link_text": "Read Now!"
-        },' || '{"title": "Fast", "description": "Pages load instantly, even on slow mobile networks.", "icon": "car", "color": "red", "link": "/"},' || '{"title": "Beautiful", "description": "Uses pre-defined components that look professional.", "icon": "eye", "color": "green", "link": "/"},' || '{"title": "Easy", "description": "You can teach yourself enough SQL to use SQLPage in a weekend.", "icon": "sofa", "color": "blue", "link": "/"}' || ']'
+            "link_text": "Read Now!"},' ||
+         '{"title": "Fast", "description": "Pages load instantly, even on slow mobile networks.", "icon": "car", "color": "red", "link": "/"},' ||
+         '{"title": "Beautiful", "description": "Uses pre-defined components that look professional.", "icon": "eye", "color": "green", "link": "/"},' ||
+         '{"title": "Easy", "description_md": "You can teach yourself enough SQL to use [**SQLPage**](https://sql.ophir.dev) in a weekend.", "icon": "sofa", "color": "blue", "link": "/"}' || ']'
         )
     );

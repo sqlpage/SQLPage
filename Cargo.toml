@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.6.6"
+version = "0.6.7"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -39,6 +39,7 @@ async-trait = "0.1.61"
 async-recursion = "1.0.0"
 include_dir = "0.7.2"
 config = { version = "0.13.3", features = ["json"] }
+markdown = { version = "1.0.0-alpha.9", features = ["log"] }
 
 [build-dependencies]
 ureq = "2.6.2"

@@ -47,6 +47,14 @@ VALUES (
     ),
     (
         'alert',
+        'description_md',
+        'Detailed description or content of the alert message, in Markdown format, allowing you to use rich text formatting, including **bold** and *italic* text.',
+        'TEXT',
+        TRUE,
+        TRUE
+    ),
+    (
+        'alert',
         'dismissible',
         'Whether the user can close the alert message.',
         'TEXT',
@@ -100,8 +108,7 @@ VALUES (
         'TEXT',
         FALSE,
         TRUE
-    )
-;
+    );
 -- Insert example(s) for the component
 INSERT INTO example(component, description, properties)
 VALUES (
@@ -163,5 +170,19 @@ VALUES (
                 "link":"https://github.com/lovasoa/SQLPage",
                 "link_text":"See source code"
             }]'
+        )
+    ),
+    (
+        'alert',
+        'An alert message with a Markdown-formatted description',
+        JSON(
+            '[
+        {
+            "component":"alert",
+            "title":"Free and open source",
+            "icon": "free-rights",
+            "color": "info",
+            "description_md":"*SQLPage* is entirely free and open source. You can **contribute** to it on [GitHub](https://github.com/lovasoa/SQLPage)."
+        }]'
         )
     );
