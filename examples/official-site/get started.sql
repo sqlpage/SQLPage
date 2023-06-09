@@ -75,7 +75,7 @@ Connect to a custom database
 ============================
 
 By default, SQLPage uses a [SQLite](https://www.sqlite.org/about.html) database stored in a file named `sqlpage.db` in your website''s root folder.
-You can change this by creating a file named `sqlpage/config.json` in your website''s root folder with the following contents:
+You can change this by creating a file named `sqlpage/sqlpage.json` in your website''s root folder with the following contents:
 
 ```sql
 { "database_url": "sqlite://:memory:" }
@@ -89,7 +89,53 @@ Later, when you want to deploy your website online, you can switch back to a per
  - PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://www.postgresql.org/docs/15/libpq-connect.html#id-1.7.3.8.3.6)),
  - MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://dev.mysql.com/doc/refman/8.0/en/connecting-using-uri-or-key-value-pairs.html)),
  
-For more information about the properties that can be set in config.json, see [SQLPage''s configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
+For more information about the properties that can be set in sqlpage.json, see [SQLPage''s configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
+
+
+Use dynamic SQL queries to let users interact with your database
+=================================================================
+
+### Displaying a form
+
+Let''s create a form to let our users insert data into our database. Add the following code to your `index.sql` file:
+
+```sql
+SELECT ''form'' AS component, ''Add a user'' AS title;
+SELECT ''Username'' as name, TRUE as required;
+```
+
+The snippet above uses the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component) to display a form on your website.
+
+### Handling form submission
+Nothing happens when you submit the form at the moment. Let '' s fix that.
+Add the following below the previous code:
+
+```sql
+INSERT INTO users (name)
+SELECT :Username
+WHERE :Username IS NOT NULL;
+```
+
+The snippet above uses an [`INSERT INTO SELECT` SQL statement](https://www.sqlite.org/lang_insert.html) to insert a new row into the `users` table
+when the form is submitted.
+It uses a `WHERE` clause to make sure that the `INSERT` statement is only executed when the `:Username` parameter is present.
+The `:Username` parameter is set to `NULL` when you initially load the page, and then SQLPage automatically sets it to the value 
+from the text field when the user submits the form.
+
+There are three types of parameters you can use in your SQL queries:
+ - `:ParameterName` is a [POST](https://en.wikipedia.org/wiki/POST_(HTTP)) parameter. It is set to the value of the field with the corresponding `name` in a form. If no form was submitted, it is set to `NULL`.
+ - `$ParameterName` works the same as `:ParameterName`, but it can also be set through a [query parameter](https://en.wikipedia.org/wiki/Query_string) in the URL.
+    If you add `?x=1&y=2` to the end of the URL of your page, `?x` will be set to the string `''1''` and `?y` will be set to the string `''2''`.
+    If a query parameter was not provided, it is set to `NULL`.
+
+### Displaying contents from the database
+
+Now, users are present in our database, but we can''t see them. Let''s fix that by adding the following code to our `index.sql` file:
+
+```sql
+SELECT ''list'' AS component, ''Users'' AS title;
+SELECT name AS title,  name || '' is a user on this website.'' as description FROM users;
+```
 
 Deploy your SQLPage website online
 ==================================
@@ -99,7 +145,6 @@ If you want to make your SQLPage website accessible online for everyone to brows
 Once you have signed up with a VPS provider, create a new VPS instance. The steps may vary depending on the provider, but generally, you will need to:
 
 1. Choose the appropriate server type and specifications. SQLPage uses very few resources, so you should be fine with the cheaper options.
-
 2. Set up SSH access.
 
 Once your VPS instance is up and running, you can connect to it using SSH. The provider should provide you with the necessary instructions on how to connect via SSH.
