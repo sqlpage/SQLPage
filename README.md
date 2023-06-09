@@ -1,5 +1,5 @@
 <h1 align="center">
-[SQLpage](https://sql.ophir.dev)
+SQLpage
 </h1>
 
 [![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
