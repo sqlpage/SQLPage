@@ -80,7 +80,7 @@ passing it information from the web request as SQL statement parameters.
 When the database starts returning rows for the query,
 SQLPage maps each piece of information in the row to a parameter in the template of a pre-defined component,
 and streams the result back to the user''s browser.
-' as footer_md,
+' as description_md,
     'flask' as icon,
     'purple' as color;
 SELECT 'Start Simple, Scale to Advanced' as title,
