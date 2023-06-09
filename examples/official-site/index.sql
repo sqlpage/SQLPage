@@ -1,25 +1,28 @@
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 -- Using the 'shell' component at the top allows you to customize your web page, giving it a title and a description
 select 'shell' as component,
-    'SQLPage' as title,
+    'SQLPage: Build SQL-only web applications' as title,
     'database' as icon,
     '/' as link,
     'en-US' as lang,
     'Official SQLPage website: write web applications in SQL !' as description,
+    'get started' as menu_item,
     'documentation' as menu_item,
+    20 as font_size,
     'Poppins' as font;
 
 SELECT 'hero' as component,
     'SQLPage' as title,
     'Open-source *low-code* web application framework.
-    Create **full websites** writing only simple database queries.' as description_md,
+
+Create **full websites** writing only simple database queries.' as description_md,
     'Lac_de_Zoug.jpg' as image,
-    '/get_started.sql' as link,
-    'Get started !' as link_text;
+    'get started.sql' as link,
+    'Build your first SQL website now !' as link_text;
 -- the mantra: fast, beautiful, easy
 SELECT 'Fast' as title,
     'Pages load instantly, even on slow mobile networks.
-    SQLPage comes as a **single lightweight executable** with great performance even on cheap servers.' as description_md,
+    SQLPage is designed as a single **lightweight** executable, ensuring fast performance even on low-cost servers.' as description_md,
     'mail-fast' as icon,
     'red' as color;
 SELECT 'Beautiful' as title,
@@ -36,25 +39,27 @@ SELECT 'Easy' as title,
 SELECT 'card' as component,
     'What is SQLPage ?' as title,
     1 as columns;
-SELECT 'SQLPage takes your SQL queries and renders a beautiful web app' as title,
+SELECT 'SQLPage transforms your SQL queries into stunning websites' as title,
     '
 SQLPage is a tool that allows you to **build websites** using nothing more than **SQL queries**.
 You write simple text files containing SQL queries, SQLPage runs them on your database, and **renders the results as a website**.
 
-You can display the information you *SELECT* from your database in lists, tables, cards and other user interface widgets.
-But you can also *INSERT*, *UPDATE* and *DELETE* data from your database using SQLPage, and build a full CRUD (create read update delete) webapp.' as description_md,
+You can display the information you `SELECT` from your database in lists, tables, cards and other user interface widgets.
+But you can also `INSERT`, `UPDATE` and `DELETE` data from your database using SQLPage, and build a full webapp with **C**reate, **R**ead,
+**U**pdate, **D**elete functionality.' as description_md,
     'paint' as icon,
     'blue' as color;
 SELECT 'Pre-built components let you construct websites Quickly and Easily' as title,
-    'At the core of SQLPage is [a rich library of **components**](./documentation.sql). They are themselves built with traditional web technologies, but you never have to edit them if you don''t want to.
-    SQLPage just fills in the properties of the components with the data returned by your SQL queries.
+    'At the core of SQLPage is [a rich library of **components**](./documentation.sql).
+    These components are built using traditional web technologies, but you never have to edit them if you don''t want to.
+    SQLPage populates the components with data returned by your SQL queries.
     You can build entire web applications just by combining the components that come bundled with SQLPage.
 
-For instance, the current list of features on this page is built with the following simple SQL query:
+As an example, the list of features on this page is generated using a simple SQL query that looks like this:
 
 ```sql
 SELECT ''card'' as component, ''What is SQLPage ?'' as title;
-SELECT ''Pre-built components […]'' as title, ''At the core of SQLPage […]'' as description;
+SELECT header AS title, contents AS description FROM homepage_features;
 ```
 
 Additionnally, SQLPage itself is written in a fast and secure programming language: Rust.
@@ -69,13 +74,12 @@ Like [PHP](https://en.wikipedia.org/wiki/PHP), SQLPage just receives a request, 
 SQLPage is a *web server* written in
 [rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
 and [distributed as a single executable file](https://github.com/lovasoa/SQLpage/releases).
-When it receives a request to a URL ending in `.sql`, it finds the corresponding
+When it receives a request with a URL ending in `.sql`, it finds the corresponding
 SQL file, runs it on the database,
 passing it information from the web request as SQL statement parameters.
 When the database starts returning rows for the query,
-SQLPage maps each piece of information in the row to a parameter
-in one of its pre-defined components'' templates, and streams the result back
-to the user''s browser.
+SQLPage maps each piece of information in the row to a parameter in the template of a pre-defined component,
+and streams the result back to the user''s browser.
 ' as description_md,
     'flask' as icon,
     'purple' as color;
@@ -83,17 +87,23 @@ SELECT 'Start Simple, Scale to Advanced' as title,
     'SQLPage is a great starting point for building websites, especially if you''re new to coding, or want to test out a new idea quickly.
     Then if the app becomes important, you can take the same underlying data structure and wrap it in a more established framework with a dedicated front end.
     And if it doesn''t, you only spent a few hours on it!
-    
-    SQLPage doesn''t make any asumption about the structure of your database, so it is easy to transition to and from it without having to change your database schema.
-    helps you transition smoothly while providing a solid foundation for your website.' as description,
+
+    SQLPage does not impose any specific database structure, allowing for seamless integration with other tools and frameworks.
+    SQLPage is a solid foundation for your website development, because it lets you focus on what matters at the beginning, without closing the door to future improvements.' as description,
     'world-cog' as icon,
     'orange' as color;
 
 -- User personas: who is SQLPage for ?
 SELECT 'card' as component,
     'Is SQLPage for you ?' as title,
-    'SQLPage empowers SQL-savvy individuals to create dynamic websites without complex programming. It''s for you if you want to build something simple yet dynamic quickly.
-    It''s not for you if you are a web designer, a front-end developer, or don''t know what a database is.' as description,
+    '
+SQLPage empowers SQL-savvy individuals to create dynamic websites without complex programming.
+
+ - If you are looking to quickly build something simple yet dynamic, SQLPage is for you.
+ - If you want to customize how every pixel of your website looks, SQLPage is not for you.
+
+Compared to other low-code platforms, SQLPage focuses on SQL-driven development, more lightweight performance, and total openness.
+Where other platforms try to lock you in, SQLPage makes it trivial to switch to something else when your application grows.' as description_md,
     4 as columns;
 SELECT 'Business Analyst' as title,
     'Replace static dashboards with dynamic websites' as description,
