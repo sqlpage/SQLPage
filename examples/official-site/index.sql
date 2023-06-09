@@ -1,14 +1,14 @@
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 -- Using the 'shell' component at the top allows you to customize your web page, giving it a title and a description
 select 'shell' as component,
-    'SQLPage: Build SQL-only web applications' as title,
+    'SQLPage' as title,
     'database' as icon,
     '/' as link,
     'en-US' as lang,
     'Official SQLPage website: write web applications in SQL !' as description,
     'get started' as menu_item,
     'documentation' as menu_item,
-    20 as font_size,
+    19 as font_size,
     'Poppins' as font;
 
 SELECT 'hero' as component,
@@ -80,7 +80,7 @@ passing it information from the web request as SQL statement parameters.
 When the database starts returning rows for the query,
 SQLPage maps each piece of information in the row to a parameter in the template of a pre-defined component,
 and streams the result back to the user''s browser.
-' as description_md,
+' as footer_md,
     'flask' as icon,
     'purple' as color;
 SELECT 'Start Simple, Scale to Advanced' as title,
