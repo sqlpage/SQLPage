@@ -25,8 +25,8 @@
                     <div class="card-status-start bg-{{color}}"></div>
                 {{/if}}
                 <div class="card-body">
-                    <h2 class="card-title fs-3">{{title}}</h2>
-                    <div class="text-muted">
+                    <h2 class="card-title fs-3 me-3">{{title}}</h2>
+                    <div>
                         {{~description~}}
                         {{~#if description_md~}}
                             {{{markdown description_md}}}
@@ -34,11 +34,13 @@
                     </div>
                 </div>
                 {{#if footer}}
-                    <div class="card-footer py-2">
+                    <div class="card-footer text-muted py-2">
                         {{footer}}
-                        {{~#if footer_md~}}
-                            {{{markdown footer_md}}}
-                        {{~/if~}}
+                    </div>
+                {{/if}}
+                {{#if footer_md}}
+                    <div class="card-footer text-muted py-2">
+                        {{{markdown footer_md}}}
                     </div>
                 {{/if}}
                 {{#if icon}}
