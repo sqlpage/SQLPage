@@ -62,7 +62,7 @@ Your database schema
 The database schema for your SQLPage website can be defined using SQL scripts located in the **`sqlpage/migrations`** subdirectory of your website''s root folder.
 Each script represents a migration that sets up or modifies the database structure.
 The scripts are executed in alphabetical order, so you can prefix them with a number to control the order in which they are executed.
-If you don'' want SQLPage to manage your database schema, you can ignore  the `sqlpage/migrations` folder completely,
+If you don''t want SQLPage to manage your database schema, you can ignore  the `sqlpage/migrations` folder completely,
 and manually create and update database tables using your own favorite tools.
 
 For our first website, let''s create a file located in `sqlpage/migrations/0001_create_users_table.sql` with the following contents:
