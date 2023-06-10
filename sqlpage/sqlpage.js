@@ -115,11 +115,6 @@ function sqlpage_chart() {
               sizeOffset: 5,
             }
           },
-          tooltip: {
-            fixed: {
-              enabled: true,
-            }
-          },
           series,
         };
         if (labels) options.labels = labels;
