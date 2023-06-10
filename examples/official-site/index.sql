@@ -150,12 +150,7 @@ SELECT 'Startup Founder' as title,
 SELECT 'list' as component,
     'Useful links' as title,
     'Here are some useful links to get you started with SQLPage.' as description;
-SELECT 'Official website' as title,
-    'https://sql.ophir.dev' as link,
-    'The project''s official home page.' as description,
-    'blue' as color,
-    'home' as icon,
-    TRUE as active;
+
 SELECT 'Download' as title,
     'https://github.com/lovasoa/SQLpage/releases' as link,
     'SQLPage is distributed as a single binary that you can execute locally or on a web server to get started quickly.' as description,
@@ -171,18 +166,18 @@ SELECT 'Examples' as title,
     'SQL source code for examples and demos of websites built with SQLPage.' as description,
     'teal' as color,
     'code' as icon;
-SELECT 'Corporate Conundrum' as title,
-    'https://conundrum.ophir.dev' as link,
-    'A demo web application powered by SQLPage, designed for playing a fun trivia board game with friends.' as description,
-    'cyan' as color,
-    'affiliate' as icon;
+SELECT 'Community' as title,
+    'https://github.com/lovasoa/SQLpage/discussions' as link,
+    'Come to our community page to discuss SQLPage with other users and ask questions.' as description,
+    'pink' as color,
+    'user-heart' as icon;
 -- github link
 SELECT 'Source code' as title,
     'https://github.com/lovasoa/SQLPage' as link,
     'The rust source code for SQLPage itself is open and available on Github.' as description,
     'github' as color,
     'brand-github' as icon;
-SELECT 'Technical instructions to get started' as title,
+SELECT 'Technical documentation on Github' as title,
     'https://github.com/lovasoa/SQLpage/blob/main/README.md#sqlpage' as link,
     'The official README file on Github contains instructions to get started using SQLPage.' as description,
     'yellow' as color,
@@ -192,3 +187,14 @@ SELECT 'Report a bug, make a suggestion' as title,
     'If you have a question, a suggestion, or if you found a bug, please open an issue on Github.' as description,
     'red' as color,
     'bug' as icon;
+SELECT 'Official website' as title,
+    'https://sql.ophir.dev' as link,
+    'The project''s official home page.' as description,
+    'blue' as color,
+    'home' as icon,
+    TRUE as active;
+SELECT 'Corporate Conundrum' as title,
+    'https://conundrum.ophir.dev' as link,
+    'A demo web application powered by SQLPage, designed for playing a fun trivia board game with friends.' as description,
+    'cyan' as color,
+    'affiliate' as icon;

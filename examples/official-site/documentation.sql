@@ -4,6 +4,9 @@ select 'dynamic' as component, properties FROM example WHERE component = 'shell'
 
 select 'text' as component, 'SQLPage documentation' as title;
 select '
+If you are completely new to SQLPage, you should start by reading the [get started tutorial](get%20started.sql),
+which will guide you through the process of creating your first SQLPage application.
+
 Building an application with SQLPage is quite simple.
 To create a new web page, just create a new SQL file. 
 For each SELECT statement that you write, the data it returns will be analyzed and rendered to the user.
