@@ -1,7 +1,7 @@
 use crate::templates::SplitTemplate;
 use crate::AppState;
 use actix_web::http::StatusCode;
-use actix_web::HttpResponseBuilder;
+use actix_web::{HttpResponse, HttpResponseBuilder};
 use anyhow::{bail, format_err, Context as AnyhowContext};
 use async_recursion::async_recursion;
 use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
@@ -85,6 +85,11 @@ impl<W: std::io::Write> HeaderContext<W> {
             renderer,
             http_response,
         })
+    }
+
+    pub async fn close(mut self) -> anyhow::Result<(RenderContext<W>, HttpResponse)> {
+        let renderer = RenderContext::new(self.app_state, self.writer, JsonValue::Null).await?;
+        Ok((renderer, self.response.finish()))
     }
 }
 
