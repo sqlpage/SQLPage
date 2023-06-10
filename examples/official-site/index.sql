@@ -169,7 +169,7 @@ SELECT 'Examples' as title,
 SELECT 'Community' as title,
     'https://github.com/lovasoa/SQLpage/discussions' as link,
     'Come to our community page to discuss SQLPage with other users and ask questions.' as description,
-    'pink' as color,
+    'green' as color,
     'user-heart' as icon;
 -- github link
 SELECT 'Source code' as title,
