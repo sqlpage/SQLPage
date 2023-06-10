@@ -137,6 +137,10 @@ SELECT ''list'' AS component, ''Users'' AS title;
 SELECT name AS title,  name || '' is a user on this website.'' as description FROM users;
 ```
 
+### Your first SQLPage website is ready!
+
+You can view [the full source code for this example on Github](https://github.com/lovasoa/SQLpage/tree/main/examples/simple-website-example)
+
 Deploy your SQLPage website online
 ==================================
 
