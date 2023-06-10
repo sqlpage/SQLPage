@@ -267,6 +267,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('ymin', 'The minimal value for the y-axis.', 'NUMBER', TRUE, TRUE),
     ('ymax', 'The maximum value for the y-axis.', 'NUMBER', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
+    ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
     ('logarithmic', 'Display the y-axis in logarithmic scale..', 'BOOLEAN', TRUE, TRUE),
     -- item level
@@ -277,11 +278,11 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
+    ('chart', 'An area chart', json('[{"component":"chart", "title": "Syracuse", "type": "area", "color": "indigo"}, '||
+    '{"x":0,"y":15},{"x":1,"y":46},{"x":2,"y":23},{"x":3,"y":70},{"x":4,"y":35},{"x":5,"y":106}]')),
     ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true}, '||
     '{"label": "Yes", "value": 65}, '||
     '{"label": "No", "value": 35}]')),
-    ('chart', 'An area chart', json('[{"component":"chart", "title": "Syracuse", "type": "area"}, '||
-    '{"x":0,"y":15},{"x":1,"y":46},{"x":2,"y":23},{"x":3,"y":70},{"x":4,"y":35},{"x":5,"y":106}]')),
     ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true}, '||
     '{"series": "Marketing", "x": 2021, "value": 35}, '||
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
