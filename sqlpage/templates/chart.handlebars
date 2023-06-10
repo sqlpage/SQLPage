@@ -25,6 +25,7 @@
     "logarithmic": {{stringify logarithmic}},
     "stacked": {{stringify stacked}},
     "height": {{stringify (default height 250)}},
+    "colors": {{stringify (to_array color)}},
     "points": [
     {{~#each_row~}}
         {{~#if (gt @row_index 0)}},{{/if~}}

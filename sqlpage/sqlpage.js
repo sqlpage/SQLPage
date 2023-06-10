@@ -3,6 +3,10 @@
 /* !include https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.js */
 
 function sqlpage_chart() {
+
+    const tblrColors = Object.fromEntries(['azure', 'red', 'lime', 'blue', 'pink', 'indigo', 'purple', 'yellow', 'cyan', 'green', 'orange', 'cyan']
+                  .map(c => [c, getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + c)]));
+
     /** @typedef { { [name:string]: {data:{x:number,y:number}[], name:string} } } Series */
 
     /**
@@ -43,6 +47,11 @@ function sqlpage_chart() {
         if (data.ymin == null) data.ymin = 0;
         if (data.ymax == null) data.ymax = undefined;
 
+        const colors = [
+          ...data.colors.filter(c => c).map(c => tblrColors[c]),
+          ...Object.values(tblrColors)
+        ];
+
         let series = Object.values(series_map);
 
         // tickamount is the number of intervals, not the number of ticks
@@ -80,7 +89,6 @@ function sqlpage_chart() {
             enabled: !!data.labels,
           },
           fill: {
-            opacity: .7,
             type: data.type === 'area' ? 'gradient' : 'solid',
           },
           stroke: {
@@ -115,6 +123,10 @@ function sqlpage_chart() {
               sizeOffset: 5,
             }
           },
+          tooltip: {
+            fillSeriesColor: false,
+          },
+          colors,
           series,
         };
         if (labels) options.labels = labels;
