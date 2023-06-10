@@ -185,7 +185,16 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
             }
         }
     }
-    Err(ErrorInternalServerError("no SQL statements to execute"))
+    log::debug!("No SQL statements left to execute for the body of the response");
+    let (renderer, http_response) = head_context
+        .close()
+        .await
+        .map_err(ErrorInternalServerError)?;
+    Ok(ResponseWithWriter {
+        http_response,
+        renderer,
+        database_entries_stream: stream,
+    })
 }
 
 struct ResponseWithWriter<S> {
