@@ -1,6 +1,6 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/js/tabler.min.js */
 /* !include https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js */
-/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.37.2/dist/apexcharts.min.js */
+/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.js */
 
 function sqlpage_chart() {
     /** @typedef { { [name:string]: {data:{x:number,y:number}[], name:string} } } Series */
