@@ -254,6 +254,8 @@ When loading the page, the value for `$component` will be `NULL` if no value has
     ('form', 'A user registration form.', json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
     '{"name": "Last name", "required": true, "description": "We need your last name for legal purposes."},'||
+    '{"name": "Resume", "type": "textarea"},'||
+    '{"name": "Gender", "type": "select", "options": [{"name": "Female", "value": 0}, {"name": "Male", "value": 1}, {"name": "Other", "value": 2}]},'||
     '{"name": "Birth date", "type": "date", "max": "2010-01-01", "value": "1994-04-16"}]'));
 
 INSERT INTO component(name, icon, description) VALUES
