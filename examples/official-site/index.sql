@@ -16,7 +16,7 @@ SELECT 'hero' as component,
     'Open-source *low-code* web application framework.
 
 Create **full websites** writing only simple database queries.' as description_md,
-    'Lac_de_Zoug.jpg' as image,
+    'sqlpage_introduction_video.webm' as video,
     'get started.sql' as link,
     'Build your first SQL website now !' as link_text;
 -- the mantra: fast, beautiful, easy
