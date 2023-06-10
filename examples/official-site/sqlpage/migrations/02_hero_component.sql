@@ -39,6 +39,13 @@ FROM (
                 TRUE
             ),
             (
+                'video',
+                'The URL of a video to display next to the page title.',
+                'URL',
+                TRUE,
+                TRUE
+            ),
+            (
                 'link',
                 'Creates a large "call to action" button below the description, linking to the specified URL.',
                 'URL',
@@ -94,9 +101,9 @@ VALUES (
             "component":"hero",
             "title": "SQLPage",
             "description_md": "Documentation for the *SQLPage* low-code web application framework.",
-            "image": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Lac_de_Zoug.jpg",
+            "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Lac_de_Zoug.jpg/640px-Lac_de_Zoug.jpg",
             "link": "/documentation.sql",
-            "link_text": "Read Now!"},' ||
+            "link_text": "Read Documentation !"},' ||
          '{"title": "Fast", "description": "Pages load instantly, even on slow mobile networks.", "icon": "car", "color": "red", "link": "/"},' ||
          '{"title": "Beautiful", "description": "Uses pre-defined components that look professional.", "icon": "eye", "color": "green", "link": "/"},' ||
          '{"title": "Easy", "description_md": "You can teach yourself enough SQL to use [**SQLPage**](https://sql.ophir.dev) in a weekend.", "icon": "sofa", "color": "blue", "link": "/"}' || ']'
