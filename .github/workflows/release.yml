@@ -51,7 +51,7 @@ jobs:
           mv 'sqlpage macos-latest/sqlpage' sqlpage.bin;
           tar --create --file sqlpage-macos.tgz --gzip sqlpage.bin;
           mv 'sqlpage ubuntu-20.04/sqlpage' sqlpage.bin;
-          tar --create --file sqlpage-linux.tgz --gzip sqlpage-linux.bin
+          tar --create --file sqlpage-linux.tgz --gzip sqlpage.bin
           cd 'sqlpage windows-latest' && zip -r sqlpage-windows.zip *.exe
       - name: Create Release
         id: create_release
