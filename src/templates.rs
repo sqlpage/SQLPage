@@ -162,6 +162,17 @@ impl AllTemplates {
         handlebars_helper!(stringify: |v: Json| v.to_string());
         handlebars.register_helper("stringify", Box::new(stringify));
 
+        handlebars_helper!(parse_json: |v: Json| match v {
+            obj @ serde_json::value::Value::String(s) =>
+                serde_json::from_str(s)
+                .unwrap_or_else(|_| {
+                    log::warn!("Failed to parse JSON string: {}", s);
+                    obj.clone()
+                }),
+            other => other.clone()
+        });
+        handlebars.register_helper("parse_json", Box::new(parse_json));
+
         handlebars_helper!(default: |a: Json, b:Json| if a.is_null() {b} else {a}.clone());
         handlebars.register_helper("default", Box::new(default));
 
