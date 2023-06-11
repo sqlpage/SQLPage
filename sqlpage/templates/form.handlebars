@@ -26,23 +26,45 @@
                     {{default label name}}
                     {{~#if required}}
                         <span class="text-danger ms-1" aria-label="required" title="required">*</span>{{/if}}
-                    <input
-                            type="{{default type "text"}}"
+                    {{#if (eq type 'textarea')}}
+                        <textarea
                             name="{{name}}"
                             class="form-control"
                             placeholder="{{placeholder}}"
-                        {{#if value}}value="{{value}}" {{/if~}}
-                        {{~#if max}}max="{{max}}" {{/if~}}
-                        {{~#if min}}min="{{min}}" {{/if~}}
-                        {{~#if step}}step="{{step}}" {{/if~}}
-                        {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
-                        {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
-                        {{~#if required}}required="required" {{/if~}}
+                            rows="{{default rows 3}}"
+                            {{#if value}}value="{{value}}" {{/if~}}
+                            {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
+                            {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
+                            {{~#if required}}required="required" {{/if~}}
+                            {{~#if autofocus}}autofocus {{/if~}}
+                        ></textarea>
+                    {{else}}{{#if (eq type 'select')}}
+                        <select name="{{name}}" class="form-select"
+                         {{~#if required}} required="required" {{/if~}}
+                         {{~#if autofocus}} autofocus {{/if~}}
+                         {{~#if multiple}} multiple {{/if~}}
+                        >
+                            {{#each (parse_json options)}}
+                                <option value="{{value}}" {{#if (eq ../value value)}}selected{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                    {{else}}
+                    <input name="{{name}}" class="form-control" 
+                        {{~#if type}} type="{{type}}" {{/if~}}
+                        {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
+                        {{~#if value}} value="{{value}}" {{/if~}}
+                        {{~#if max}} max="{{max}}" {{/if~}}
+                        {{~#if min}} min="{{min}}" {{/if~}}
+                        {{~#if step}} step="{{step}}" {{/if~}}
+                        {{~#if minlength}} minlength="{{minlength}}" {{/if~}}
+                        {{~#if maxlength}} maxlength="{{maxlength}}" {{/if~}}
+                        {{~#if required}} required="required" {{/if~}}
                         {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
                         {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
                         {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
                         {{~#if autofocus}}autofocus {{/if~}}
                     >
+                    {{/if}}{{/if}}
                     {{#if description}}
                         <small class="form-hint mt-0">{{description}}</small>
                     {{/if}}

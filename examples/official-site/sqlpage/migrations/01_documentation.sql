@@ -223,6 +223,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
     ('value', 'A default value that will already be present in the field when the user loads the page.', 'TEXT', FALSE, TRUE),
+    ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select.', 'JSON', FALSE, TRUE),
     ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOL', FALSE, TRUE),
     ('min', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
@@ -251,12 +252,31 @@ to allow users to create a new component.
 When loading the page, the value for `$component` will be `NULL` if no value has been submitted.
 ',
     json('[{"component":"form", "action": "documentation.sql"}, {"name": "component"}]')),
-    ('form', 'A user registration form.', json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
+    ('form', 'A user registration form, illustrating the use of required fields, and different input types.', 
+    json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
     '{"name": "Last name", "required": true, "description": "We need your last name for legal purposes."},'||
     '{"name": "Resume", "type": "textarea"},'||
-    '{"name": "Gender", "type": "select", "options": [{"name": "Female", "value": 0}, {"name": "Male", "value": 1}, {"name": "Other", "value": 2}]},'||
-    '{"name": "Birth date", "type": "date", "max": "2010-01-01", "value": "1994-04-16"}]'));
+    '{"name": "Birth date", "type": "date", "max": "2010-01-01", "value": "1994-04-16"}]')),
+    ('form', 'This example illustrates the use of the `select` type.
+In this select input, the various options are hardcoded, but they could also be loaded from a database table,
+using a function to convert the rows into a json array like 
+ - `json_group_array()` in SQLite,
+ - `json_agg()` in Postgres, or
+ - `JSON_ARRAYAGG()` in MySQL.
+
+
+In SQLite, the query would look like
+```sql
+SELECT 
+    ''select'' as type,
+    json_group_array(json_object("label", name, "value", id)) as options
+FROM fruits
+```
+', json('[{"component":"form"}, '||
+    '{"name": "Fruit", "type": "select", "value": 1, "options": '||
+        '"[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
+    ]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('chart', 'timeline', 'A component that plots data. Line, area, bar, and pie charts are all supported. Each item in the component is a data point in the graph.');
