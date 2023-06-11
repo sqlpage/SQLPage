@@ -27,7 +27,13 @@
 
                     <tr>
                         {{~#each this~}}
-                            <td class="{{@key}}">{{this}}</td>
+                            <td class="{{@key}}">
+                                {{~#if (array_contains ../../markdown @key)~}}
+                                    {{{markdown this}}}
+                                {{~else~}}
+                                    {{this}}
+                                {{~/if~}}
+                            </td>
                         {{~/each~}}
                     </tr>
                 {{~/each_row~}}

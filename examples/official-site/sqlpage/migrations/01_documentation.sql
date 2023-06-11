@@ -317,14 +317,22 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'table', * FROM (VALUES
     -- top level
     ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
-    ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE)
+    ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE),
+    ('markdown', 'Set this to the name of a column whose content should be interpreted as markdown . Used to display rich text with links in the table. This argument can be repeated multiple times to intepret multiple columns as markdown.', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
+    ('table', 'The most basic table.',
+        json('[{"component":"table"}, {"a": 1, "b": 2}, {"a": 3, "b": 4}]')),
     ('table', 'A table of users with filtering and sorting.',
         json('[{"component":"table", "sort":true, "search":true}, '||
         '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
-        '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]'));
+        '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]')),
+    ('table', 'A table that uses markdown to display links',
+        json('[{"component":"table", "markdown": "Documentation"}, '||
+        '{"name": "table", "description": "Displays SQL results as a searchable table.", "Documentation": "[docs](documentation.sql?component=table)"},
+        {"name": "chart", "description": "Show graphs based on numeric data.", "Documentation": "[docs](documentation.sql?component=chart)"}
+        ]'));
 
 
 INSERT INTO component(name, icon, description) VALUES

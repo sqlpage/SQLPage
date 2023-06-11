@@ -190,6 +190,8 @@ impl AllTemplates {
         });
 
         handlebars.register_helper("entries", Box::new(entries));
+
+        // delay helper: store a piece of information in memory that can be output later with flush_delayed
         handlebars.register_helper("delay", Box::new(delay_helper));
         handlebars.register_helper("flush_delayed", Box::new(flush_delayed_helper));
 
@@ -201,16 +203,28 @@ impl AllTemplates {
 
         handlebars.register_helper("sum", Box::new(sum_helper));
 
+        // to_array: convert a value to a single-element array. If the value is already an array, return it as-is.
         handlebars_helper!(to_array: |x: Json| match x {
             JsonValue::Array(arr) => arr.clone(),
             other => vec![other.clone()]
         });
         handlebars.register_helper("to_array", Box::new(to_array));
 
+        // array_contains: check if an array contains an element. If the first argument is not an array, it is compared to the second argument.
+        handlebars_helper!(array_contains: |array: Json, element: Json| match array {
+            JsonValue::Array(arr) => arr.contains(element),
+            other => other == element
+        });
+        handlebars.register_helper("array_contains", Box::new(array_contains));
+
+        // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
         handlebars_helper!(static_path: |x: str| match x {
             "sqlpage.js" => static_filename!("sqlpage.js"),
             "sqlpage.css" => static_filename!("sqlpage.css"),
-            _ => "!!unknown static path!!"
+            unknown => {
+                log::error!("Unknown static path: {}", unknown);
+                "!!unknown static path!!"
+            }
         });
         handlebars.register_helper("static_path", Box::new(static_path));
 
