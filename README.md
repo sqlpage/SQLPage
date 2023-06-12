@@ -31,7 +31,7 @@ SELECT
     name as title,
     url as link,
     CASE type
-      WHEN 1 THEN 'green'
+      WHEN 1 THEN 'blue'
       ELSE 'red'
     END as color,
     description, icon, active
@@ -49,9 +49,9 @@ FROM website;
 ```sql
 SELECT
   'chart' as component,
-  'Syracuse' as title, 'area' as type;
-SELECT month AS x, SUM(revenue) AS y
-FROM income GROUP BY month;  
+  'Quarterly Revenue' as title, 'area' as type;
+SELECT quarter AS x, SUM(revenue) AS y
+FROM finances GROUP BY quarter
 ```
 
 <td>
@@ -63,13 +63,8 @@ FROM income GROUP BY month;
 <td>
 
 ```sql
-SELECT 
-    'form' as component,
-    'User' as title,
-    'Create new user' as validate;
-SELECT 
-    name, type, placeholder, required,
-    description, min, max
+SELECT 'form' as component, 'User' as title, 'Create new user' as validate;
+SELECT name, type, placeholder, required, description
 FROM user_form;
 
 INSERT INTO user (first_name, last_name, birth_date)
@@ -92,6 +87,8 @@ WHERE $first_name IS NOT NULL;
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 
 ## How it works
+
+![architecture diagram](./docs/architecture.png)
 
 SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
 [rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
