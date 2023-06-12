@@ -88,7 +88,7 @@ WHERE $first_name IS NOT NULL;
 
 ## How it works
 
-![architecture diagram](./docs/architecture.png)
+![architecture diagram](./docs/architecture.jpg)
 
 SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
 [rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
