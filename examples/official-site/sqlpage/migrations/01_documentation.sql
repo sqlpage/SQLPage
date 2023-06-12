@@ -300,8 +300,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
-    ('chart', 'An area chart', json('[{"component":"chart", "title": "Syracuse", "type": "area", "color": "indigo"}, '||
-    '{"x":0,"y":15},{"x":1,"y":46},{"x":2,"y":23},{"x":3,"y":70},{"x":4,"y":35},{"x":5,"y":106}]')),
+    ('chart', 'An area chart', json('[{"component":"chart", "title": "Quarterly Revenue", "type": "area", "color": "indigo"}, '||
+    '{"x":"2022-Q1","y":15},{"x":"2022-Q2","y":46},{"x":"2022-Q3","y":23},{"x":"2023-Q1","y":70},{"x":"2023-Q2","y":35},{"x":"2023-Q3","y":106}]')),
     ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true}, '||
     '{"label": "Yes", "value": 65}, '||
     '{"label": "No", "value": 35}]')),
