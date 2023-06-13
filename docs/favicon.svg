@@ -13,6 +13,9 @@
    id="svg156"
    sodipodi:docname="favicon.svg"
    inkscape:version="1.2.2 (732a01da63, 2022-12-09, custom)"
+   inkscape:export-filename="../8caa430f/favicon.png"
+   inkscape:export-xdpi="48"
+   inkscape:export-ydpi="48"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -165,21 +168,22 @@
      inkscape:deskcolor="#d1d1d1"
      showgrid="false"
      inkscape:zoom="0.76367188"
-     inkscape:cx="491.70332"
-     inkscape:cy="540.15345"
-     inkscape:window-width="2486"
-     inkscape:window-height="1376"
+     inkscape:cx="493.01278"
+     inkscape:cy="542.77237"
+     inkscape:window-width="1846"
+     inkscape:window-height="1016"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg156" />
   <rect
-     style="fill:#0f3953;stroke:none;stroke-width:67.6876;fill-opacity:1"
+     style="fill:#0f3953;fill-opacity:1;stroke:none;stroke-width:67.6876"
      id="rect1828"
      width="1024"
      height="1024"
      x="0"
-     y="0" />
+     y="0"
+     ry="62.076725" />
   <path
      stroke="none"
      d="M 0,19.024721 H 1024 V 997.91138 H 0 Z"
