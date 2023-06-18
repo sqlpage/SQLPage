@@ -46,7 +46,7 @@ SELECT answers.game_id,
     impostor,
     abs(answer_value - true_answer) > abs(answer_value - wrong_answer) as impostor_won
 FROM answers
-    INNER JOIN game_questions ON answers.question_id = game_questions.question_id
+    INNER JOIN game_questions ON answers.question_id = game_questions.question_id AND answers.game_id = game_questions.game_id
     INNER JOIN questions ON game_questions.question_id = questions.id;
 
 CREATE TABLE shell(
