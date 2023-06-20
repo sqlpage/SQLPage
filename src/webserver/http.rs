@@ -276,9 +276,10 @@ pub struct RequestInfo {
     pub post_variables: ParamMap,
     pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
+    pub cookies: ParamMap,
 }
 
-fn param_map(values: Vec<(String, String)>) -> ParamMap {
+fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) -> ParamMap {
     values
         .into_iter()
         .fold(HashMap::new(), |mut map, (mut k, v)| {
@@ -301,30 +302,35 @@ fn param_map(values: Vec<(String, String)>) -> ParamMap {
 }
 
 async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
-    let headers: Vec<(String, String)> = req
-        .headers()
-        .iter()
-        .map(|(name, value)| {
-            (
-                name.to_string(),
-                String::from_utf8_lossy(value.as_bytes()).to_string(),
-            )
-        })
-        .collect();
-    let get_variables = web::Query::<Vec<(String, String)>>::from_query(req.query_string())
-        .map(web::Query::into_inner)
-        .unwrap_or_default();
-    let client_ip = req.peer_addr().map(|addr| addr.ip());
     let (http_req, payload) = req.parts_mut();
     let post_variables = Form::<Vec<(String, String)>>::from_request(http_req, payload)
         .await
         .map(Form::into_inner)
         .unwrap_or_default();
+
+    let headers = req.headers().iter().map(|(name, value)| {
+        (
+            name.to_string(),
+            String::from_utf8_lossy(value.as_bytes()).to_string(),
+        )
+    });
+    let get_variables = web::Query::<Vec<(String, String)>>::from_query(req.query_string())
+        .map(web::Query::into_inner)
+        .unwrap_or_default();
+    let client_ip = req.peer_addr().map(|addr| addr.ip());
+
+    let raw_cookies = req.cookies();
+    let cookies = raw_cookies
+        .iter()
+        .flat_map(|c| c.iter())
+        .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()));
+
     RequestInfo {
         headers: param_map(headers),
         get_variables: param_map(get_variables),
         post_variables: param_map(post_variables),
         client_ip,
+        cookies: param_map(cookies),
     }
 }
 

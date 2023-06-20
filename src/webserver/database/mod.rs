@@ -151,6 +151,7 @@ fn bind_parameters<'a>(
                 .post_variables
                 .get(x)
                 .or_else(|| request.get_variables.get(x)),
+            StmtParam::Cookie(x) => request.cookies.get(x),
         };
         log::debug!("Binding value {:?} in statement {}", &argument, stmt);
         match argument {
@@ -293,10 +294,12 @@ impl Display for PreparedStatement {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum StmtParam {
     Get(String),
     Post(String),
     GetOrPost(String),
+    Cookie(String),
 }
 
 #[actix_web::test]

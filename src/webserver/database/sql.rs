@@ -3,7 +3,10 @@ use crate::file_cache::AsyncFromStrWithState;
 use crate::webserver::database::StmtParam;
 use crate::{AppState, Database};
 use async_trait::async_trait;
-use sqlparser::ast::{DataType, Expr, Value, VisitMut, VisitorMut};
+use sqlparser::ast::{
+    DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Value, VisitMut,
+    VisitorMut,
+};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{SemiColon, EOF};
@@ -36,8 +39,7 @@ impl ParsedSqlFile {
             };
             while parser.consume_token(&SemiColon) {}
             let db_kind = db.connection.any_kind();
-            let param_names = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
-            let parameters = map_params(param_names);
+            let parameters = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
             let query = stmt.to_string();
             let param_types = get_param_types(&parameters);
             let stmt_res = db.prepare_with(&query, &param_types).await;
@@ -96,31 +98,28 @@ fn get_param_types(parameters: &[StmtParam]) -> Vec<AnyTypeInfo> {
         .collect()
 }
 
-fn map_params(names: Vec<String>) -> Vec<StmtParam> {
-    names
-        .into_iter()
-        .map(|name| {
-            let (prefix, name) = name.split_at(1);
-            let name = name.to_owned();
-            match prefix {
-                "$" => StmtParam::GetOrPost(name),
-                ":" => StmtParam::Post(name),
-                _ => StmtParam::Get(name),
-            }
-        })
-        .collect()
+fn map_param(mut name: String) -> StmtParam {
+    if name.is_empty() {
+        return StmtParam::GetOrPost(name);
+    }
+    let prefix = name.remove(0);
+    match prefix {
+        '$' => StmtParam::GetOrPost(name),
+        ':' => StmtParam::Post(name),
+        _ => StmtParam::Get(name),
+    }
 }
 
 struct ParameterExtractor {
     db_kind: AnyKind,
-    parameters: Vec<String>,
+    parameters: Vec<StmtParam>,
 }
 
 impl ParameterExtractor {
     fn extract_parameters(
         sql_ast: &mut sqlparser::ast::Statement,
         db_kind: AnyKind,
-    ) -> Vec<String> {
+    ) -> Vec<StmtParam> {
         let mut this = Self {
             db_kind,
             parameters: vec![],
@@ -142,6 +141,40 @@ impl ParameterExtractor {
             data_type,
         }
     }
+
+    fn handle_builtin_function(
+        &mut self,
+        func_name: &str,
+        mut arguments: Vec<FunctionArg>,
+    ) -> Expr {
+        #[allow(clippy::single_match_else)]
+        match (func_name, arguments.as_mut_slice()) {
+            (
+                "cookie",
+                [FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
+                    Value::SingleQuotedString(cookie_name),
+                )))],
+            ) => {
+                let placeholder = self.make_placeholder();
+                self.parameters
+                    .push(StmtParam::Cookie(std::mem::take(cookie_name)));
+                placeholder
+            }
+            _ => {
+                log::warn!(
+                    "Unsupported SQLPage function: {func_name} with arguments {arguments:#?}"
+                );
+                Expr::Function(Function {
+                    name: ObjectName(vec![Ident::new("unsupported_sqlpage_function")]),
+                    args: arguments,
+                    special: false,
+                    distinct: false,
+                    over: None,
+                    order_by: vec![],
+                })
+            }
+        }
+    }
 }
 
 #[inline]
@@ -156,11 +189,36 @@ pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
 impl VisitorMut for ParameterExtractor {
     type Break = ();
     fn post_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
-        if let Expr::Value(Value::Placeholder(param)) = value {
-            let new_expr = self.make_placeholder();
-            let name = std::mem::take(param);
-            self.parameters.push(name);
-            *value = new_expr;
+        match value {
+            Expr::Value(Value::Placeholder(param)) => {
+                let new_expr = self.make_placeholder();
+                let name = std::mem::take(param);
+                self.parameters.push(map_param(name));
+                *value = new_expr;
+            }
+            Expr::Function(Function {
+                name: ObjectName(func_name_parts),
+                args,
+                special: false,
+                distinct: false,
+                over: None,
+                ..
+            }) => {
+                if let [Ident {
+                    value: func_name_part_0,
+                    ..
+                }, Ident {
+                    value: func_name, ..
+                }] = &func_name_parts[..]
+                {
+                    if func_name_part_0 == "sqlpage" {
+                        log::debug!("Handling builtin function: {func_name}");
+                        let arguments = std::mem::take(args);
+                        *value = self.handle_builtin_function(func_name, arguments);
+                    }
+                }
+            }
+            _ => (),
         }
         ControlFlow::<()>::Continue(())
     }
@@ -168,12 +226,21 @@ impl VisitorMut for ParameterExtractor {
 
 #[test]
 fn test_statement_rewrite() {
-    let sql = "select $a from t where $x > $a OR $x = 0";
+    let sql = "select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')";
     let mut ast = Parser::parse_sql(&GenericDialect, sql).unwrap();
     let parameters = ParameterExtractor::extract_parameters(&mut ast[0], AnyKind::Postgres);
     assert_eq!(
         ast[0].to_string(),
-        "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($3 AS TEXT) OR CAST($4 AS TEXT) = 0"
+        "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($3 AS TEXT) OR CAST($4 AS TEXT) = CAST($5 AS TEXT)"
     );
-    assert_eq!(parameters, ["$a", "$x", "$a", "$x"]);
+    assert_eq!(
+        parameters,
+        [
+            StmtParam::GetOrPost("a".to_string()),
+            StmtParam::GetOrPost("x".to_string()),
+            StmtParam::GetOrPost("a".to_string()),
+            StmtParam::GetOrPost("x".to_string()),
+            StmtParam::Cookie("cookoo".to_string()),
+        ]
+    );
 }
