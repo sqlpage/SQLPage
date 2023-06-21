@@ -42,6 +42,7 @@ impl<W: std::io::Write> HeaderContext<W> {
         match get_object_str(&data, "component") {
             Some("status_code") => self.status_code(&data).map(PageContext::Header),
             Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
+            Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
             _ => self.start_body(data).await,
         }
     }
@@ -78,6 +79,46 @@ impl<W: std::io::Write> HeaderContext<W> {
         Ok(self)
     }
 
+    fn add_cookie(mut self, data: &JsonValue) -> anyhow::Result<Self> {
+        let obj = data.as_object().with_context(|| "expected object")?;
+        let name = obj
+            .get("name")
+            .and_then(JsonValue::as_str)
+            .with_context(|| "cookie name must be a string")?;
+        let mut cookie = actix_web::cookie::Cookie::named(name);
+
+        let remove = obj.get("remove");
+        if remove == Some(&json!(true)) || remove == Some(&json!(1)) {
+            self.response.cookie(cookie);
+            return Ok(self);
+        }
+
+        let value = obj
+            .get("value")
+            .and_then(JsonValue::as_str)
+            .with_context(|| "cookie value must be a string")?;
+        cookie.set_value(value);
+        let http_only = obj.get("http_only");
+        cookie.set_http_only(http_only != Some(&json!(false)) && http_only != Some(&json!(0)));
+        let secure = obj.get("secure");
+        cookie.set_secure(secure != Some(&json!(false)) && secure != Some(&json!(0)));
+        let path = obj.get("path").and_then(JsonValue::as_str);
+        if let Some(path) = path {
+            cookie.set_path(path);
+        }
+        let domain = obj.get("domain").and_then(JsonValue::as_str);
+        if let Some(domain) = domain {
+            cookie.set_domain(domain);
+        }
+        let expires = obj.get("expires").and_then(JsonValue::as_i64);
+        if let Some(expires) = expires {
+            cookie.set_expires(actix_web::cookie::Expiration::DateTime(
+                actix_web::cookie::time::OffsetDateTime::from_unix_timestamp(expires)?,
+            ));
+        }
+        self.response.cookie(cookie);
+        Ok(self)
+    }
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
         let renderer = RenderContext::new(self.app_state, self.writer, data).await?;
         let http_response = self.response;
