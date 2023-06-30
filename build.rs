@@ -21,6 +21,15 @@ fn inline_dependencies(path_in: &str, path_out: &Path) {
     // the URL in the generated file.
     println!("cargo:rerun-if-changed={}", path_in);
     let original = File::open(path_in).unwrap();
+    process_input_file(path_out, original);
+    std::fs::write(
+        format!("{}.filename.txt", path_out.display()),
+        hashed_filename(path_out),
+    )
+    .unwrap();
+}
+
+fn process_input_file(path_out: &Path, original: File) {
     let mut outfile = BufWriter::new(File::create(path_out).unwrap());
     for l in BufReader::new(original).lines() {
         let line = l.unwrap();
@@ -36,11 +45,6 @@ fn inline_dependencies(path_in: &str, path_out: &Path) {
             writeln!(outfile, "{}", line).unwrap();
         }
     }
-    std::fs::write(
-        format!("{}.filename.txt", path_out.display()),
-        hashed_filename(path_out),
-    )
-    .unwrap();
 }
 
 // Given a filename, creates a new unique filename based on the file contents
@@ -48,7 +52,10 @@ fn hashed_filename(path: &Path) -> String {
     let mut file = File::open(path).unwrap();
     let mut buf = [0u8; 4096];
     let mut hasher = DefaultHasher::new();
-    while let Ok(bytes_read) = file.read(&mut buf) {
+    loop {
+        let bytes_read = file
+            .read(&mut buf)
+            .expect(&format!("error reading {}", path.display()));
         if bytes_read == 0 {
             break;
         }
