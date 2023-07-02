@@ -110,6 +110,13 @@ to the user's browser.
 - Create a file called index.sql with the contents from [this example](./index.sql)
 - Open https://localhost:8080 in your browser
 
+
+## Examples
+
+- [Tiny splitwise clone](./examples/splitwise): a shared expense tracker app
+- [Corporate Conundrum](./examples/corporate-conundrum/): a board game implemented in SQL
+- [SQLPage's own official website and documentation](./examples/official-site/): the website you are currently reading
+
 ## Configuration
 
 SQLPage can be configured through either a configuration file placed in `sqlpage/sqlpage.json`
