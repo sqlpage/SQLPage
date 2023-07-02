@@ -11,6 +11,7 @@ use actix_web::{
 };
 
 use actix_web::body::MessageBody;
+use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
@@ -428,7 +429,9 @@ pub fn create_app(
     impl ServiceFactory<
         ServiceRequest,
         Config = (),
-        Response = ServiceResponse<impl MessageBody>,
+        Response = ServiceResponse<
+            impl MessageBody<Error = impl std::fmt::Display + std::fmt::Debug>,
+        >,
         Error = actix_web::Error,
         InitError = (),
     >,
@@ -460,9 +463,16 @@ pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
 
     #[cfg(feature = "lambda-web")]
     if lambda_web::is_running_on_lambda() {
-        lambda_web::run_actix_on_lambda(factory).await?;
+        lambda_web::run_actix_on_lambda(factory)
+            .await
+            .map_err(|e| anyhow::anyhow!("Unable to start the lambda: {e}"))?;
         return Ok(());
     }
-    HttpServer::new(factory).bind(listen_on)?.run().await?;
+    HttpServer::new(factory)
+        .bind(listen_on)
+        .with_context(|| "Unable to listen to the specified port")?
+        .run()
+        .await
+        .with_context(|| "Unable to start the application")?;
     Ok(())
 }
