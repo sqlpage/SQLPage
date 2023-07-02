@@ -234,6 +234,15 @@ impl AllTemplates {
         );
         handlebars.register_helper("markdown", Box::new(markdown_helper));
 
+        handlebars_helper!(buildinfo_helper: |x: str|
+            match x {
+                "CARGO_PKG_NAME" => env!("CARGO_PKG_NAME"),
+                "CARGO_PKG_VERSION" => env!("CARGO_PKG_VERSION"),
+                _ => "!!unknown buildinfo key!!"
+            }
+        );
+        handlebars.register_helper("buildinfo", Box::new(buildinfo_helper));
+
         let mut this = Self {
             handlebars,
             split_templates: FileCache::new(),

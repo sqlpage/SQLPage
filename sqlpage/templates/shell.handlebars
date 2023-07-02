@@ -24,6 +24,7 @@
     {{#if refresh}}
         <meta http-equiv="refresh" content="{{refresh}}">
     {{/if}}
+    <meta name="generator" content="SQLPage"/>
 </head>
 
 <body class="layout-boxed">
@@ -68,6 +69,14 @@
     <main class="page-wrapper container-xl pt-3 px-md-5 px-sm-3">
         {{~#each_row~}}{{~/each_row~}}
     </main>
+</div>
+<div class="w-100 text-center fs-6 my-2 text-secondary">
+    {{#if footer}}
+        {{{markdown footer}}}
+    {{else}}
+        <!-- You can change this footer using the 'footer' parameter of the 'shell' component -->
+        Built with <a class="text-reset" href="https://sql.ophir.dev" title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
+    {{/if}}
 </div>
 </body>
 </html>
