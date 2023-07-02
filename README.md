@@ -115,7 +115,7 @@ to the user's browser.
 
 - [Tiny splitwise clone](./examples/splitwise): a shared expense tracker app
 - [Corporate Conundrum](./examples/corporate-conundrum/): a board game implemented in SQL
-- [SQLPage's own official website and documentation](./examples/official-site/): the website you are currently reading
+- [SQLPage's own official website and documentation](./examples/official-site/): The SQL source code for the project's official site, https://sql.ophir.dev
 
 ## Configuration
 
