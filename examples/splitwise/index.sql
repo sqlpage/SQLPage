@@ -1,9 +1,8 @@
-
 -- Simple form to create a shared expense account
 SELECT 'form' as component,
-    'Nouveau compte partagé' as title,
-    'Créer le compte de dépenses partagé !' as validate;
-SELECT 'Nom du compte' AS label,
+    'New shared expense account' as title,
+    'Create the shared expense account!' as validate;
+SELECT 'Account Name' AS label,
     'shared_expense_name' AS name;
 
 -- Insert the shared expense account posted by the form into the database
