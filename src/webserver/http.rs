@@ -456,15 +456,13 @@ pub fn create_app(
 pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
     let listen_on = config.listen_on;
     let state = web::Data::new(state);
+    let factory = move || create_app(web::Data::clone(&state));
 
     #[cfg(feature = "lambda-web")]
     if lambda_web::is_running_on_lambda() {
         lambda_web::run_actix_on_lambda(factory).await?;
         return Ok(());
     }
-    HttpServer::new(move || create_app(web::Data::clone(&state)))
-        .bind(listen_on)?
-        .run()
-        .await?;
+    HttpServer::new(factory).bind(listen_on)?.run().await?;
     Ok(())
 }

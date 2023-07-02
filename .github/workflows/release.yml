@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch: {}
   push:
     # Sequence of patterns matched against refs/tags
     tags:
@@ -38,13 +39,21 @@ jobs:
         with:
           name: sqlpage ${{ matrix.os }}
           path: ${{ matrix.binary_path }}
-  create_release:
-    name: Create Release
-    needs: build
+  build-aws:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - run: docker build -t sqlpage-lambda-builder . -f lambda.Dockerfile --target builder
+      - run: docker run sqlpage-lambda-builder cat deploy.zip > sqlpage-aws-lambda.zip
+      - uses: actions/upload-artifact@v3
+        with:
+          name: sqlpage aws lambda serverless image
+          path: sqlpage-aws-lambda.zip
+  create_release:
+    name: Create Release
+    needs: [build, build-aws]
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/download-artifact@v3
       - run: |
           chmod +x sqlpage*/sqlpage;
@@ -64,3 +73,4 @@ jobs:
             sqlpage windows-latest/sqlpage-windows.zip
             sqlpage-linux.tgz
             sqlpage-macos.tgz
+            sqlpage aws lambda serverless image/sqlpage-aws-lambda.zip

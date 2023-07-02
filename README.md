@@ -135,10 +135,11 @@ An easy way to do so is using the provided docker image:
 
 ```bash
  docker build -t sqlpage-lambda-builder . -f lambda.Dockerfile --target builder
- docker run sqlpage-lambda-builder cat deploy.zip > deploy.zip
+ docker run sqlpage-lambda-builder cat deploy.zip > sqlpage-aws-lambda.zip
 ```
 
-You can then use `deploy.zip` as the source for an AWS Lambda,
+You can then just add your own SQL files to `sqlpage-aws-lambda.zip`,
+and [upload it to AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-package.html#gettingstarted-package-zip),
 selecting *Custom runtime on Amazon Linux 2* as a runtime.
 
 ### Hosting sql files directly inside the database
