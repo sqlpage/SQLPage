@@ -307,7 +307,7 @@ INSERT INTO example(component, description, properties) VALUES
     '{"label": "Yes", "value": 65}, '||
     '{"label": "No", "value": 35}]')),
     ('chart', 'A basic bar chart', json('[{"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true}, '||
-    '{"label": "Tom", "value": -35}, {"label": "Olive", "value": 15}]')),
+    '{"label": "Tom", "value": 35}, {"label": "Olive", "value": 15}]')),
     ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true}, '||
     '{"series": "Marketing", "x": 2021, "value": 35}, '||
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
