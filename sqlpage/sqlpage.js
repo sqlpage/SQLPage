@@ -44,7 +44,7 @@ function sqlpage_chart() {
         })
         if (data.xmin == null) data.xmin = undefined;
         if (data.xmax == null) data.xmax = undefined;
-        if (data.ymin == null) data.ymin = 0;
+        if (data.ymin == null) data.ymin = undefined;
         if (data.ymax == null) data.ymax = undefined;
 
         const colors = [
@@ -126,6 +126,7 @@ function sqlpage_chart() {
           tooltip: {
             fillSeriesColor: false,
           },
+          bar: { horizontal: !!data.horizontal },
           colors,
           series,
         };
