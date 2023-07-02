@@ -291,7 +291,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
-    ('logarithmic', 'Display the y-axis in logarithmic scale..', 'BOOLEAN', TRUE, TRUE),
+    ('logarithmic', 'Display the y-axis in logarithmic scale.', 'BOOLEAN', TRUE, TRUE),
+    ('horizontal', 'Displays a bar chart with horizontal bars instead of vertical ones.', 'BOOLEAN', TRUE, TRUE),
     -- item level
     ('x', 'The value of the point on the horizontal axis', 'NUMBER', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'NUMBER', FALSE, FALSE),
@@ -305,6 +306,8 @@ INSERT INTO example(component, description, properties) VALUES
     ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true}, '||
     '{"label": "Yes", "value": 65}, '||
     '{"label": "No", "value": 35}]')),
+    ('chart', 'A basic bar chart', json('[{"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true}, '||
+    '{"label": "Tom", "value": -35}, {"label": "Olive", "value": 15}]')),
     ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true}, '||
     '{"series": "Marketing", "x": 2021, "value": 35}, '||
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
