@@ -4,6 +4,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use std::net::{SocketAddr, ToSocketAddrs};
 
+#[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 
 #[derive(Debug, Deserialize)]
