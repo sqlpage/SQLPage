@@ -35,3 +35,4 @@ jobs:
     - run: cargo fmt --all -- --check
     - run: cargo clippy
     - run: cargo test
+    - run: cargo test --all-features
