@@ -5,8 +5,8 @@ RUN cargo init .
 COPY Cargo.toml Cargo.lock ./
 RUN cargo build --profile superoptimized
 COPY . .
-RUN touch src/main.rs
-RUN cargo build --profile superoptimized
+RUN touch src/main.rs && \
+    cargo build --profile superoptimized
 
 FROM alpine:3.17
 RUN rm -rf /var/lib/apt/lists/* && \
