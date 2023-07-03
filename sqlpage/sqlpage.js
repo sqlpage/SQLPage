@@ -126,7 +126,7 @@ function sqlpage_chart() {
           tooltip: {
             fillSeriesColor: false,
           },
-          bar: { horizontal: !!data.horizontal },
+          plotOptions: { bar: { horizontal: !!data.horizontal } },
           colors,
           series,
         };
