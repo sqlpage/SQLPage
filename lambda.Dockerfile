@@ -11,7 +11,7 @@ RUN   mv target/release/sqlpage bootstrap && \
       strip --strip-all bootstrap && \
       size bootstrap && \
       ldd  bootstrap && \
-      zip -9 -r deploy.zip bootstrap index.sql documentation.sql sqlpage
+      zip -9 -r deploy.zip bootstrap index.sql
 
 FROM public.ecr.aws/lambda/provided:al2 as runner
 COPY --from=builder /usr/src/sqlpage/bootstrap /main
