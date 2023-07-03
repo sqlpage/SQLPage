@@ -384,7 +384,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('font', 'Name of a font to display the text in. This has to be a valid font name from fonts.google.com.', 'TEXT', TRUE, TRUE),
     ('font_size', 'Font size on the page, in pixels. Set to 18 by default.', 'INTEGER', TRUE, TRUE),
     ('language', 'The language of the page. This can be used by search engines and screen readers to determine in which language the page is written.', 'TEXT', TRUE, TRUE),
-    ('refresh', 'Number of seconds after which the page should refresh. This can be useful to display dynamic content that updates automatically.', 'INTEGER', TRUE, TRUE)
+    ('refresh', 'Number of seconds after which the page should refresh. This can be useful to display dynamic content that updates automatically.', 'INTEGER', TRUE, TRUE),
+    ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -396,5 +397,6 @@ INSERT INTO example(component, description, properties) VALUES
             "lang": "en-US",
             "description": "Documentation for the SQLPage low-code web application framework.",
             "font": "Poppins",
-            "icon": "book"
+            "icon": "book",
+            "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]'));
