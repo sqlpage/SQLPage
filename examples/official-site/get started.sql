@@ -97,7 +97,7 @@ Use dynamic SQL queries to let users interact with your database
 
 ### Displaying a form
 
-Let''s create a form to let our users insert data into our database. Add the following code to your `index.sql` file:
+Let’s create a form to let our users insert data into our database. Add the following code to your `index.sql` file:
 
 ```sql
 SELECT ''form'' AS component, ''Add a user'' AS title;
@@ -107,7 +107,7 @@ SELECT ''Username'' as name, TRUE as required;
 The snippet above uses the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component) to display a form on your website.
 
 ### Handling form submission
-Nothing happens when you submit the form at the moment. Let '' s fix that.
+Nothing happens when you submit the form at the moment. Let’s fix that.
 Add the following below the previous code:
 
 ```sql
@@ -125,12 +125,12 @@ from the text field when the user submits the form.
 There are three types of parameters you can use in your SQL queries:
  - `:ParameterName` is a [POST](https://en.wikipedia.org/wiki/POST_(HTTP)) parameter. It is set to the value of the field with the corresponding `name` in a form. If no form was submitted, it is set to `NULL`.
  - `$ParameterName` works the same as `:ParameterName`, but it can also be set through a [query parameter](https://en.wikipedia.org/wiki/Query_string) in the URL.
-    If you add `?x=1&y=2` to the end of the URL of your page, `?x` will be set to the string `''1''` and `?y` will be set to the string `''2''`.
+    If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `''1''` and `$y` will be set to the string `''2''`.
     If a query parameter was not provided, it is set to `NULL`.
 
 ### Displaying contents from the database
 
-Now, users are present in our database, but we can''t see them. Let''s fix that by adding the following code to our `index.sql` file:
+Now, users are present in our database, but we can’t see them. Let’s fix that by adding the following code to our `index.sql` file:
 
 ```sql
 SELECT ''list'' AS component, ''Users'' AS title;
