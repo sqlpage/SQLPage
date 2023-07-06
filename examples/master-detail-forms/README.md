@@ -3,7 +3,9 @@
 This example shows how to handle inserting data into multiple tables
 with a one-to-many relationship.
 
-![db schema](./screenshots/db-schema.png)
+| Database Schema | SQLPage Form |
+| --- | --- |
+| ![db schema](./screenshots/db-schema.png) | ![user addition](./screenshots//user-add-screenshot.png) |
 
 A single master page features two forms based on two related tables or views.
 Users insert data in the master form first to update information from the parent table.
