@@ -257,7 +257,9 @@ When loading the page, the value for `$component` will be `NULL` if no value has
     '{"name": "First name", "placeholder": "John"}, '||
     '{"name": "Last name", "required": true, "description": "We need your last name for legal purposes."},'||
     '{"name": "Resume", "type": "textarea"},'||
-    '{"name": "Birth date", "type": "date", "max": "2010-01-01", "value": "1994-04-16"}]')),
+    '{"name": "Birth date", "type": "date", "max": "2010-01-01", "value": "1994-04-16"},'||
+    '{"label": "I accept the terms and conditions", "name": "terms", "type": "checkbox", "required": true}'||
+    ']')),
     ('form', 'This example illustrates the use of the `select` type.
 In this select input, the various options are hardcoded, but they could also be loaded from a database table,
 using a function to convert the rows into a json array like 
