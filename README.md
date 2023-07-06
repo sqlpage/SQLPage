@@ -115,6 +115,7 @@ to the user's browser.
 
 - [Tiny splitwise clone](./examples/splitwise): a shared expense tracker app
 - [Corporate Conundrum](./examples/corporate-conundrum/): a board game implemented in SQL
+- [Master-Detail Form](./examples/master-detail-form/): shows how to implement a simple set of forms to insert data into database tables that have a one-to-many relationship.
 - [SQLPage's own official website and documentation](./examples/official-site/): The SQL source code for the project's official site, https://sql.ophir.dev
 
 ## Configuration
