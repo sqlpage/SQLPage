@@ -1,6 +1,6 @@
 use crate::templates::SplitTemplate;
 use crate::AppState;
-use actix_web::http::StatusCode;
+use actix_web::http::{header, StatusCode};
 use actix_web::{HttpResponse, HttpResponseBuilder};
 use anyhow::{bail, format_err, Context as AnyhowContext};
 use async_recursion::async_recursion;
@@ -118,7 +118,8 @@ impl<W: std::io::Write> HeaderContext<W> {
             ));
         }
         log::trace!("Setting cookie {}", cookie);
-        self.response.cookie(cookie);
+        self.response
+            .append_header((header::SET_COOKIE, cookie.encoded().to_string()));
         Ok(self)
     }
 
@@ -136,7 +137,9 @@ impl<W: std::io::Write> HeaderContext<W> {
     pub async fn close(mut self) -> anyhow::Result<(RenderContext<W>, HttpResponse)> {
         let renderer = RenderContext::new(self.app_state, self.writer, JsonValue::Null)
             .await
-            .with_context(|| "Failed to create a render context when closing the header context.")?;
+            .with_context(|| {
+                "Failed to create a render context when closing the header context."
+            })?;
         Ok((renderer, self.response.finish()))
     }
 }
