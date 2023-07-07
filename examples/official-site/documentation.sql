@@ -30,6 +30,7 @@ SELECT my_column_1 AS row_level_parameter_1, my_column_2 AS row_level_parameter_
 
 This page documents all the components provided by default in SQLPage and their parameters.
 Use this as a reference when building your SQL application.
+If at any point you need help, you can ask for it on the [SQLPage forum](https://github.com/lovasoa/SQLpage/discussions).
 
 If you have some frontend development experience, you can also create your own components, by placing
 [`.handlebars`](https://handlebarsjs.com/guide/) files in a folder called `sqlpage/templates` at the root of your server.
