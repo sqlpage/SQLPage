@@ -17,7 +17,7 @@ In this example, we store encrypted user passwords in the database, but we let t
 For that to be safe, you need to make sure that:
  - the database is not accessible by untrusted users
  - the database logs and configuration files are not accessible by untrusted users
- - your connection to the database is encrypted [(use SSL)](https://www.postgresql.org/docs/current/ssl-tcp.html). It should be the case by default if you use a recent version of PostgreSQL and a popular distribution.
+ - either your connection to the database is encrypted [(use SSL)](https://www.postgresql.org/docs/current/ssl-tcp.html) or you can trust all the machines on the network between your application and the database. Connections should be encrypted by default if you use a recent version of PostgreSQL and a popular distribution.
 
 ## Screenshots
 
