@@ -90,6 +90,7 @@ impl<W: std::io::Write> HeaderContext<W> {
         let remove = obj.get("remove");
         if remove == Some(&json!(true)) || remove == Some(&json!(1)) {
             self.response.cookie(cookie);
+            log::trace!("Removing cookie {}", name);
             return Ok(self);
         }
 
@@ -116,11 +117,15 @@ impl<W: std::io::Write> HeaderContext<W> {
                 actix_web::cookie::time::OffsetDateTime::from_unix_timestamp(expires)?,
             ));
         }
+        log::trace!("Setting cookie {}", cookie);
         self.response.cookie(cookie);
         Ok(self)
     }
+
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
-        let renderer = RenderContext::new(self.app_state, self.writer, data).await?;
+        let renderer = RenderContext::new(self.app_state, self.writer, data)
+            .await
+            .with_context(|| "Failed to create a render context from the header context.")?;
         let http_response = self.response;
         Ok(PageContext::Body {
             renderer,
@@ -129,7 +134,9 @@ impl<W: std::io::Write> HeaderContext<W> {
     }
 
     pub async fn close(mut self) -> anyhow::Result<(RenderContext<W>, HttpResponse)> {
-        let renderer = RenderContext::new(self.app_state, self.writer, JsonValue::Null).await?;
+        let renderer = RenderContext::new(self.app_state, self.writer, JsonValue::Null)
+            .await
+            .with_context(|| "Failed to create a render context when closing the header context.")?;
         Ok((renderer, self.response.finish()))
     }
 }

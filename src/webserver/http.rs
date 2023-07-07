@@ -152,11 +152,10 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     while let Some(item) = stream.next().await {
         match item {
             DbItem::Row(data) => {
-                match head_context
-                    .handle_row(data)
-                    .await
-                    .map_err(ErrorInternalServerError)?
-                {
+                match head_context.handle_row(data).await.map_err(|e| {
+                    log::error!("Error while handling header context data: {e}");
+                    ErrorInternalServerError(e)
+                })? {
                     PageContext::Header(h) => {
                         head_context = h;
                     }
@@ -187,10 +186,10 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
         }
     }
     log::debug!("No SQL statements left to execute for the body of the response");
-    let (renderer, http_response) = head_context
-        .close()
-        .await
-        .map_err(ErrorInternalServerError)?;
+    let (renderer, http_response) = head_context.close().await.map_err(|e| {
+        log::error!("Error while closing header context: {e}");
+        ErrorInternalServerError(e)
+    })?;
     Ok(ResponseWithWriter {
         http_response,
         renderer,
@@ -230,10 +229,11 @@ async fn render_sql(
             }) => {
                 resp_send
                     .send(http_response)
-                    .unwrap_or_else(|_| log::error!("could not send headers"));
+                    .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
                 stream_response(database_entries_stream, renderer).await;
             }
             Err(e) => {
+                log::error!("An error occured while building response headers: {e}");
                 let http_response = ErrorInternalServerError(e).into();
                 resp_send
                     .send(http_response)
