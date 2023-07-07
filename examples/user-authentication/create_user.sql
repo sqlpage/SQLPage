@@ -4,8 +4,18 @@ WITH inserted_user AS (
     ON CONFLICT (username) DO NOTHING
     RETURNING username
 )
-SELECT 'text' AS component,
-    COALESCE(
-        'Welcome, ' || (SELECT username FROM inserted_user) || '! Your user account was successfully created. You can now [log in](sign%20in.sql).',
-        'Sorry, this user name is already taken.'
-    ) AS contents_md;
+SELECT 'hero' AS component,
+    'Welcome' AS title,
+    'Welcome, ' || username || '! Your user account was successfully created. You can now log in.' AS description,
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Community_wp20.png/974px-Community_wp20.png' AS image,
+    'sign in.sql' AS link,
+    'Log in' AS link_text
+FROM inserted_user
+UNION ALL
+SELECT 'hero' AS component,
+    'Sorry' AS title,
+    'Sorry, this user name is already taken.' AS description_md,
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Sad_face_of_a_Wayuu_Woman.jpg/640px-Sad_face_of_a_Wayuu_Woman.jpg' AS image,
+    'sign up.sql' AS link,
+    'Try again' AS link_text
+WHERE NOT EXISTS (SELECT 1 FROM inserted_user);

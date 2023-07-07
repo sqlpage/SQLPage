@@ -6,6 +6,5 @@ WHERE username = :username
 RETURNING 'cookie' AS component,
     'session' AS name,
     id AS value;
-
 SELECT 'http_header' AS component,
-    'protected_page.sql' AS location;
+    'login_check.sql' AS location;
