@@ -127,7 +127,7 @@ or environment variables such as `DATABASE_URL` or `LISTEN_ON`.
 For more information, read [`configuration.md`](./configuration.md).
 
 Additionally, custom components can be created by placing [`.handlebars`](https://handlebarsjs.com/guide/)
-files in `sqlpage/templates`.
+files in `sqlpage/templates`. [Example](./sqlpage/templates/card.handlebars).
 
 ## Serverless
 
