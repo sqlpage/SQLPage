@@ -194,7 +194,7 @@ But the tools are very different:
 Frontpage was visual static website building software popular in the late 90s.
 I had never heard of it before someone asked me this question.
 
-> I like CSS, I want to design web site, not write SQL.
+> I like CSS, I want to design websites, not write SQL.
 
 Are you human ? [Human beings hate CSS](https://uxdesign.cc/why-do-most-developers-hate-css-63c92bce36ed).
 
