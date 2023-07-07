@@ -30,12 +30,12 @@ For that to be safe, you need to make sure that:
 
 ### User creation
 
-The [a signup form](./sign%20up.sql) is a simple form that is handled by [`create_user.sql`](./create_user.sql).
+The [signup form](./sign%20up.sql) is a simple form that is handled by [`create_user.sql`](./create_user.sql).
 You could restrict user creation to existing administrators and create an initial administrator in a database migration.
 
 ### User login
 
-The [a login form](./sign%20in.sql) is a simple form that is handled by [`login.sql`](./login.sql).
+The [login form](./sign%20in.sql) is a simple form that is handled by [`login.sql`](./login.sql).
 It checks that the username exists and that the password is correct using the [pgcrypto](https://www.postgresql.org/docs/current/pgcrypto.html) extension with
 
 ```sql
