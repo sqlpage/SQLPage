@@ -1,0 +1,20 @@
+services:
+  web:
+    image: lovasoa/sqlpage
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://root:secret@db/sqlpage
+  db: # The DB environment variable can be set to "mariadb" or "postgres" to test the code with different databases
+    ports:
+      - "5432:5432"
+      - "3306:3306"
+    image: postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_DB: sqlpage
+      POSTGRES_PASSWORD: secret
