@@ -179,6 +179,16 @@ SQLPage will re-parse a file from the database only when it has been modified.
  - If you really want to make your website more complicated than it needs to be, please note that [SQL is actually Turing-complete](https://stackoverflow.com/questions/900055/is-sql-or-even-tsql-turing-complete/7580013#7580013).
  - Even if it wasn't (if it didn't have recursive queries), a sequence of SQL statement executions driven by an user, like SQLPage allows you to do, would still be Turing-complete. You could build a sql website representing a Turing machine where the user would have to click "next" repeatedly to compute the next state of the machine.
 
+> Just Because You Can Doesn’t Mean You Should...
+> 
+> — [someone being mean on reddit](https://www.reddit.com/r/rust/comments/14qjskz/comment/jr506nx)
+
+Life's too short to always play it safe. Where's the fun in *should*?
+I think SQLPage has some real value to offer, despite its unconventional approach !
+SQLPage isn't intended to replace traditional web development frameworks or discourage their usage.
+Instead, it caters to a specific group of people who want to leverage their SQL skills to rapidly build web applications, without spending months learning all of the technologies involved in traditional web development,
+and then weeks using them to build a simple CRUD application.
+
 > Is this the same as Microsoft Access?
 
 The goal is the same: make it easy to create simple data-centric applications.
