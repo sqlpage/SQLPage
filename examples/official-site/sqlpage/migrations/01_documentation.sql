@@ -393,6 +393,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties) VALUES
     ('shell', 'This example contains the values used for the shell of the page you are currently viewing.',
      json('[{
+            "component": "shell",
             "title": "SQLPage documentation",
             "link": "/",
             "menu_item": "index",
