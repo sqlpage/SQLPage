@@ -117,7 +117,7 @@ pub async fn stream_query_results_direct<'a>(
         for res in &sql_file.statements {
             match res {
                 Ok(stmt)=>{
-                    let query = bind_parameters(stmt, request);
+                    let query = bind_parameters(stmt, request)?;
                     let mut stream = query.fetch_many(&db.connection);
                     while let Some(elem) = stream.next().await {
                         yield elem.with_context(|| format!("Error while running SQL: {stmt}"))
@@ -141,7 +141,7 @@ fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
 fn bind_parameters<'a>(
     stmt: &'a PreparedStatement,
     request: &'a RequestInfo,
-) -> Query<'a, sqlx::Any, AnyArguments<'a>> {
+) -> anyhow::Result<Query<'a, sqlx::Any, AnyArguments<'a>>> {
     let mut arguments = AnyArguments::default();
     for param in &stmt.parameters {
         let argument = match param {
@@ -152,6 +152,8 @@ fn bind_parameters<'a>(
                 .get(x)
                 .or_else(|| request.get_variables.get(x)),
             StmtParam::Cookie(x) => request.cookies.get(x),
+            StmtParam::Header(x) => request.headers.get(x),
+            StmtParam::Error(x) => anyhow::bail!("{}", x),
         };
         log::debug!("Binding value {:?} in statement {}", &argument, stmt);
         match argument {
@@ -162,7 +164,7 @@ fn bind_parameters<'a>(
             }
         }
     }
-    stmt.statement.query_with(arguments)
+    Ok(stmt.statement.query_with(arguments))
 }
 
 #[derive(Debug)]
@@ -300,6 +302,8 @@ enum StmtParam {
     Post(String),
     GetOrPost(String),
     Cookie(String),
+    Header(String),
+    Error(String),
 }
 
 #[actix_web::test]

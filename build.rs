@@ -55,7 +55,7 @@ fn hashed_filename(path: &Path) -> String {
     loop {
         let bytes_read = file
             .read(&mut buf)
-            .expect(&format!("error reading {}", path.display()));
+            .unwrap_or_else(|e| panic!("error reading '{}': {}", path.display(), e));
         if bytes_read == 0 {
             break;
         }

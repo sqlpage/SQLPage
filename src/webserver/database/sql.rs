@@ -148,32 +148,35 @@ impl ParameterExtractor {
         mut arguments: Vec<FunctionArg>,
     ) -> Expr {
         #[allow(clippy::single_match_else)]
-        match (func_name, arguments.as_mut_slice()) {
-            (
-                "cookie",
-                [FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
-                    Value::SingleQuotedString(cookie_name),
-                )))],
-            ) => {
-                let placeholder = self.make_placeholder();
-                self.parameters
-                    .push(StmtParam::Cookie(std::mem::take(cookie_name)));
-                placeholder
+        let placeholder = self.make_placeholder();
+        let param = match func_name {
+            "cookie" => extract_single_quoted_string("cookie", &mut arguments)
+                .map_or_else(StmtParam::Error, StmtParam::Cookie),
+            "header" => extract_single_quoted_string("header", &mut arguments)
+                .map_or_else(StmtParam::Error, StmtParam::Header),
+            unknown_name => {
+                StmtParam::Error(format!("Unknown function {unknown_name}({arguments:#?})"))
             }
-            _ => {
-                log::warn!(
-                    "Unsupported SQLPage function: {func_name} with arguments {arguments:#?}"
-                );
-                Expr::Function(Function {
-                    name: ObjectName(vec![Ident::new("unsupported_sqlpage_function")]),
-                    args: arguments,
-                    special: false,
-                    distinct: false,
-                    over: None,
-                    order_by: vec![],
-                })
-            }
-        }
+        };
+        self.parameters.push(param);
+        placeholder
+    }
+}
+
+fn extract_single_quoted_string(
+    func_name: &'static str,
+    arguments: &mut [FunctionArg],
+) -> Result<String, String> {
+    if let [FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(Value::SingleQuotedString(
+        param_value,
+    ))))] = arguments
+    {
+        Ok(std::mem::take(param_value))
+    } else {
+        Err(format!(
+            "{func_name}({args}) is not a valid call. Expected a literal single quoted string.",
+            args = arguments.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ")
+        ))
     }
 }
 
