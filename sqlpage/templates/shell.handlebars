@@ -8,13 +8,22 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.19.0/tabler-icons.min.css"
         integrity="sha384-a8pgu0eDAmHMVlQuzUEoHyapgzLXfOaTTNrMzPivsvAts7LkllyAYpRE4saDWQj7" crossorigin="anonymous">
    
+   {{#each (to_array css)}}
+        <link rel="stylesheet" href="{{this}}">
+   {{/each}}
+
    {{#if font}}
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
         <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
     {{/if}}
+
     <script src="{{static_path 'sqlpage.js'}}" defer></script>
+    {{#each (to_array javascript)}}
+        <script src="{{this}}" defer></script>
+    {{/each}}
+
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="{{description}}"/>
     {{#if norobot}}
