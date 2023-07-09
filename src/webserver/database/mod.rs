@@ -1,9 +1,12 @@
 mod sql;
 
+use actix_web::http::StatusCode;
+use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::{anyhow, Context};
 use futures_util::stream::{self, BoxStream, Stream};
 use futures_util::StreamExt;
 use serde_json::{Map, Value};
+use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 use std::future::ready;
 use std::path::Path;
@@ -144,27 +147,72 @@ fn bind_parameters<'a>(
 ) -> anyhow::Result<Query<'a, sqlx::Any, AnyArguments<'a>>> {
     let mut arguments = AnyArguments::default();
     for param in &stmt.parameters {
-        let argument = match param {
-            StmtParam::Get(x) => request.get_variables.get(x),
-            StmtParam::Post(x) => request.post_variables.get(x),
-            StmtParam::GetOrPost(x) => request
-                .post_variables
-                .get(x)
-                .or_else(|| request.get_variables.get(x)),
-            StmtParam::Cookie(x) => request.cookies.get(x),
-            StmtParam::Header(x) => request.headers.get(x),
-            StmtParam::Error(x) => anyhow::bail!("{}", x),
-        };
+        let argument = extract_req_param(param, request)?;
         log::debug!("Binding value {:?} in statement {}", &argument, stmt);
         match argument {
             None => arguments.add(None::<String>),
-            Some(SingleOrVec::Single(s)) => arguments.add(s),
-            Some(SingleOrVec::Vec(v)) => {
-                arguments.add(serde_json::to_string(v).unwrap_or_default());
-            }
+            Some(Cow::Owned(s)) => arguments.add(s),
+            Some(Cow::Borrowed(v)) => arguments.add(v),
         }
     }
     Ok(stmt.statement.query_with(arguments))
+}
+
+fn extract_req_param<'a>(
+    param: &StmtParam,
+    request: &'a RequestInfo,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    Ok(match param {
+        StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
+        StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),
+        StmtParam::GetOrPost(x) => request
+            .post_variables
+            .get(x)
+            .or_else(|| request.get_variables.get(x))
+            .map(SingleOrVec::as_json_str),
+        StmtParam::Cookie(x) => request.cookies.get(x).map(SingleOrVec::as_json_str),
+        StmtParam::Header(x) => request.headers.get(x).map(SingleOrVec::as_json_str),
+        StmtParam::Error(x) => anyhow::bail!("{}", x),
+        StmtParam::BasicAuthPassword => extract_basic_auth_password(request)
+            .map(Cow::Borrowed)
+            .map(Some)?,
+        StmtParam::BasicAuthUsername => extract_basic_auth_username(request)
+            .map(Cow::Borrowed)
+            .map(Some)?,
+        StmtParam::HashPassword(_) => todo!(),
+    })
+}
+
+#[derive(Debug)]
+pub struct ErrorWithStatus {
+    pub status: StatusCode,
+}
+impl std::fmt::Display for ErrorWithStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "HTTP error with status {}", self.status)
+    }
+}
+impl std::error::Error for ErrorWithStatus {}
+
+fn extract_basic_auth(request: &RequestInfo) -> anyhow::Result<&Basic> {
+    request.basic_auth.as_ref().ok_or_else(|| {
+        anyhow::Error::new(ErrorWithStatus {
+            status: StatusCode::UNAUTHORIZED,
+        })
+    })
+}
+
+fn extract_basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {
+    Ok(extract_basic_auth(request)?.user_id())
+}
+
+fn extract_basic_auth_password(request: &RequestInfo) -> anyhow::Result<&str> {
+    let password = extract_basic_auth(request)?.password().ok_or_else(|| {
+        anyhow::Error::new(ErrorWithStatus {
+            status: StatusCode::UNAUTHORIZED,
+        })
+    })?;
+    Ok(password)
 }
 
 #[derive(Debug)]
@@ -304,6 +352,9 @@ enum StmtParam {
     Cookie(String),
     Header(String),
     Error(String),
+    BasicAuthPassword,
+    BasicAuthUsername,
+    HashPassword(Box<StmtParam>),
 }
 
 #[actix_web::test]

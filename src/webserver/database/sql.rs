@@ -149,17 +149,26 @@ impl ParameterExtractor {
     ) -> Expr {
         #[allow(clippy::single_match_else)]
         let placeholder = self.make_placeholder();
-        let param = match func_name {
-            "cookie" => extract_single_quoted_string("cookie", &mut arguments)
-                .map_or_else(StmtParam::Error, StmtParam::Cookie),
-            "header" => extract_single_quoted_string("header", &mut arguments)
-                .map_or_else(StmtParam::Error, StmtParam::Header),
-            unknown_name => {
-                StmtParam::Error(format!("Unknown function {unknown_name}({arguments:#?})"))
-            }
-        };
+        let param = func_call_to_param(func_name, &mut arguments);
         self.parameters.push(param);
         placeholder
+    }
+}
+
+fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
+    match func_name {
+        "cookie" => extract_single_quoted_string("cookie", arguments)
+            .map_or_else(StmtParam::Error, StmtParam::Cookie),
+        "header" => extract_single_quoted_string("header", arguments)
+            .map_or_else(StmtParam::Error, StmtParam::Header),
+        "basic_auth_user" => StmtParam::BasicAuthUsername,
+        "basic_auth_password" => StmtParam::BasicAuthPassword,
+        "hash_password" => extract_variable_argument("hash_password", arguments)
+            .map(Box::new)
+            .map_or_else(StmtParam::Error, StmtParam::HashPassword),
+        unknown_name => {
+            StmtParam::Error(format!("Unknown function {unknown_name}({arguments:#?})"))
+        }
     }
 }
 
@@ -167,16 +176,52 @@ fn extract_single_quoted_string(
     func_name: &'static str,
     arguments: &mut [FunctionArg],
 ) -> Result<String, String> {
-    if let [FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(Value::SingleQuotedString(
-        param_value,
-    ))))] = arguments
-    {
-        Ok(std::mem::take(param_value))
-    } else {
-        Err(format!(
+    match arguments.first_mut().and_then(function_arg_expr) {
+        Some(Expr::Value(Value::SingleQuotedString(param_value))) => {
+            Ok(std::mem::take(param_value))
+        }
+        _ => Err(format!(
             "{func_name}({args}) is not a valid call. Expected a literal single quoted string.",
-            args = arguments.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ")
-        ))
+            args = arguments
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )),
+    }
+}
+
+fn extract_variable_argument(
+    func_name: &'static str,
+    arguments: &mut [FunctionArg],
+) -> Result<StmtParam, String> {
+    match arguments.first_mut().and_then(function_arg_expr) {
+        Some(Expr::Value(Value::Placeholder(placeholder))) => {
+            Ok(map_param(std::mem::take(placeholder)))
+        }
+        Some(Expr::Function(Function {
+            name: ObjectName(func_name_parts),
+            args,
+            ..
+        })) if is_sqlpage_func(func_name_parts) => Ok(func_call_to_param(
+            sqlpage_func_name(func_name_parts),
+            args.as_mut_slice(),
+        )),
+        _ => Err(format!(
+            "{func_name}({args}) is not a valid call. Expected a literal single quoted string.",
+            args = arguments
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )),
+    }
+}
+
+fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
+    match arg {
+        FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) => Some(expr),
+        _ => None,
     }
 }
 
@@ -206,24 +251,35 @@ impl VisitorMut for ParameterExtractor {
                 distinct: false,
                 over: None,
                 ..
-            }) => {
-                if let [Ident {
-                    value: func_name_part_0,
-                    ..
-                }, Ident {
-                    value: func_name, ..
-                }] = &func_name_parts[..]
-                {
-                    if func_name_part_0 == "sqlpage" {
-                        log::debug!("Handling builtin function: {func_name}");
-                        let arguments = std::mem::take(args);
-                        *value = self.handle_builtin_function(func_name, arguments);
-                    }
-                }
+            }) if is_sqlpage_func(func_name_parts) => {
+                let func_name = sqlpage_func_name(func_name_parts);
+                log::debug!("Handling builtin function: {func_name}");
+                let arguments = std::mem::take(args);
+                *value = self.handle_builtin_function(func_name, arguments);
             }
             _ => (),
         }
         ControlFlow::<()>::Continue(())
+    }
+}
+
+fn is_sqlpage_func(func_name_parts: &[Ident]) -> bool {
+    if let [Ident { value, .. }, Ident { .. }] = func_name_parts {
+        value == "sqlpage"
+    } else {
+        false
+    }
+}
+
+fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
+    if let [Ident { .. }, Ident { value, .. }] = func_name_parts {
+        value
+    } else {
+        debug_assert!(
+            false,
+            "sqlpage function name should have been checked by is_sqlpage_func"
+        );
+        ""
     }
 }
 

@@ -11,6 +11,7 @@ use actix_web::{
 };
 
 use actix_web::body::MessageBody;
+use actix_web_httpauth::headers::authorization::{Authorization, Basic};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
@@ -273,6 +274,13 @@ impl SingleOrVec {
             SingleOrVec::Vec(v) => mem::take(v),
         }
     }
+
+    pub fn as_json_str(&self) -> Cow<'_, str> {
+        match self {
+            SingleOrVec::Single(x) => Cow::Borrowed(x),
+            SingleOrVec::Vec(v) => Cow::Owned(serde_json::to_string(v).unwrap()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -282,6 +290,7 @@ pub struct RequestInfo {
     pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
     pub cookies: ParamMap,
+    pub basic_auth: Option<Basic>,
 }
 
 fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) -> ParamMap {
@@ -330,12 +339,17 @@ async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
         .flat_map(|c| c.iter())
         .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()));
 
+    let basic_auth = Authorization::<Basic>::parse(req)
+        .ok()
+        .map(Authorization::into_scheme);
+
     RequestInfo {
         headers: param_map(headers),
         get_variables: param_map(get_variables),
         post_variables: param_map(post_variables),
         client_ip,
         cookies: param_map(cookies),
+        basic_auth,
     }
 }
 
