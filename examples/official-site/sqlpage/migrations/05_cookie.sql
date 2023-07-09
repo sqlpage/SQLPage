@@ -88,7 +88,7 @@ SELECT ''cookie'' as component,
         ''John Doe'' as value;
 ```
 
-and then display the value of the cookie:
+and then display the value of the cookie using the [`sqlpage.cookie`](functions.sql?function=cookie) function:
     
 ```sql
 SELECT ''text'' as component,
