@@ -77,7 +77,7 @@ VALUES (
     )
     ;
 -- Insert an example usage of the http_header component into the example table
-INSERT INTO example (component, description, properties)
+INSERT INTO example (component, description)
 VALUES (
         'cookie',
         'Create a cookie named `username` with the value `John Doe`...
@@ -94,6 +94,5 @@ and then display the value of the cookie:
 SELECT ''text'' as component,
          ''Your name is '' || COALESCE(sqlpage.cookie(''username''), ''not known to us'');
 ```
-        ',
-        JSON('[]')
+        '
     );

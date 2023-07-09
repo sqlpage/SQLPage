@@ -112,4 +112,9 @@ select
         END || '
     ]
     ' as properties
-from example where component = $component;
+from example where component = $component AND properties IS NOT NULL;
+
+SELECT 'title' AS component, 3 AS level, 'Examples' AS contents
+WHERE EXISTS (SELECT 1 FROM example WHERE component = $component AND properties IS NULL);
+SELECT 'text' AS component, description AS contents_md
+FROM example WHERE component = $component AND properties IS NULL;
