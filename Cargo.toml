@@ -40,6 +40,8 @@ async-recursion = "1.0.0"
 include_dir = "0.7.2"
 config = { version = "0.13.3", features = ["json"] }
 markdown = { version = "1.0.0-alpha.9", features = ["log"] }
+password-hash = "0.5.0"
+argon2 = "0.5.0"
 
 [build-dependencies]
 ureq = "2.6.2"
