@@ -378,6 +378,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'The title of your page. Will be shown in a top bar above the page contents. Also usually displayed by web browsers as the name of the web page''s tab.', 'TEXT', TRUE, TRUE),
     ('description', 'A description of the page. It can be displayed by search engines when your page appears in their results.', 'TEXT', TRUE, TRUE),
     ('link', 'The target of the link in the top navigation bar.', 'URL', TRUE, TRUE),
+    ('css', 'The URL of a CSS file to load and apply to the page.', 'URL', TRUE, TRUE),
+    ('javascript', 'The URL of a Javascript file to load and execute on the page.', 'URL', TRUE, TRUE),
     ('image', 'The URL of an image to display next to the page title.', 'URL', TRUE, TRUE),
     ('icon', 'Name of an icon (from tabler-icons.io) to display next to the title in the navigation bar.', 'TEXT', TRUE, TRUE),
     ('menu_item', 'Adds a menu item in the navigation bar at the top of the page. The menu item will have the specified name, and will link to as .sql file of the same name.', 'TEXT', TRUE, TRUE),

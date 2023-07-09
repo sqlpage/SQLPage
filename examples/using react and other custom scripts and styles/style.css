@@ -1,0 +1,33 @@
+#funky_text {
+  font-family: Arial, sans-serif;
+  font-size: 36px;
+  color: white;
+  background: linear-gradient(45deg, #ff4e00, #ec9f05);
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease-in-out;
+}
+
+#funky_text:hover {
+  transform: scale(1.1);
+  background: linear-gradient(45deg, #e5004d, #7a0180);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes neon-glow {
+  0%, 100% {
+    text-shadow: 0 0 10px #fa2dd1, 0 0 20px #b30890, 2px 3px 30px #ff00cc;
+  }
+  50% {
+    text-shadow: 0 0 1px #e48fd3, 0 0 2px #ca28aa, 0 0 8px #ff00cc;
+  }
+}
+
+#funky_text:hover {
+  animation: neon-glow .5s ease-in-out infinite;
+}
+
+#funky_text * {
+    color: inherit;
+}
