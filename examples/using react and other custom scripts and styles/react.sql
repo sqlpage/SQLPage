@@ -9,6 +9,5 @@ SELECT 'shell' AS component,
     'my_react_component.js' AS javascript;
 
 SELECT 'react_component' AS component,
-    JSON_OBJECT(
-        'greeting_name', 'World'
-    ) AS props;
+        'MyComponent' AS react_component_name,
+        'World' AS greeting_name;

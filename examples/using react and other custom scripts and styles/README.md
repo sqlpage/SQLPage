@@ -1,6 +1,7 @@
 # Custom javascript and CSS
 
 This example shows how to use custom javascript and CSS in your application.
+It is compatible with SQLPage v0.7.3 and above.
 
 It integrates a simple [react](https://reactjs.org/) component and loads it with properties coming from a SQL query.
 
