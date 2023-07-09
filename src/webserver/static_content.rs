@@ -5,7 +5,7 @@ use actix_web::{
 };
 
 macro_rules! static_file_endpoint {
-    ($filestem:literal, $extension:literal) => {{
+    ($filestem:literal, $extension:literal, $mime:literal) => {{
         const FILENAME_WITH_TAG: &str = static_filename!(concat!($filestem, ".", $extension));
         web::resource(FILENAME_WITH_TAG).to(|req: HttpRequest| async move {
             let file_etag = EntityTag::new_strong(FILENAME_WITH_TAG.to_string());
@@ -13,7 +13,7 @@ macro_rules! static_file_endpoint {
                 return HttpResponse::NotModified().finish();
             }
             HttpResponse::Ok()
-                .content_type(concat!("text/", $extension, ";charset=UTF-8"))
+                .content_type(concat!($mime, ";charset=UTF-8"))
                 .insert_header(CacheControl(vec![
                     CacheDirective::Public,
                     CacheDirective::MaxAge(3600 * 24 * 7),
@@ -28,9 +28,9 @@ macro_rules! static_file_endpoint {
 }
 
 pub fn js() -> Resource {
-    static_file_endpoint!("sqlpage", "js")
+    static_file_endpoint!("sqlpage", "js", "application/javascript")
 }
 
 pub fn css() -> Resource {
-    static_file_endpoint!("sqlpage", "css")
+    static_file_endpoint!("sqlpage", "css", "text/css")
 }
