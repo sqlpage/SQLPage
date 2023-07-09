@@ -171,6 +171,10 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
                             database_entries_stream: stream,
                         });
                     }
+                    PageContext::Close(h) => {
+                        head_context = h;
+                        break;
+                    }
                 }
             }
             DbItem::FinishedQuery => {

@@ -11,11 +11,17 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 pub enum PageContext<W: std::io::Write> {
+    /// Indicates that we should stay in the header context
     Header(HeaderContext<W>),
+
+    /// Indicates that we should start rendering the body
     Body {
         http_response: HttpResponseBuilder,
         renderer: RenderContext<W>,
     },
+
+    /// The headers have been set, but no response body should be sent
+    Close(HeaderContext<W>),
 }
 
 /// Handles the first SQL statements, before the headers have been sent to
@@ -42,7 +48,9 @@ impl<W: std::io::Write> HeaderContext<W> {
         match get_object_str(&data, "component") {
             Some("status_code") => self.status_code(&data).map(PageContext::Header),
             Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
+            Some("redirect") => self.redirect(&data).map(PageContext::Close),
             Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
+            Some("authentication") => self.authentication(&data),
             _ => self.start_body(data).await,
         }
     }
@@ -121,6 +129,40 @@ impl<W: std::io::Write> HeaderContext<W> {
         self.response
             .append_header((header::SET_COOKIE, cookie.encoded().to_string()));
         Ok(self)
+    }
+
+    fn redirect(mut self, data: &JsonValue) -> anyhow::Result<Self> {
+        self.response.status(StatusCode::FOUND);
+        self.has_status = true;
+        let link = get_object_str(data, "link")
+            .with_context(|| "The redirect component requires a 'link' property")?;
+        self.response.insert_header((header::LOCATION, link));
+        Ok(self)
+    }
+
+    fn authentication(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
+        use argon2::Argon2;
+        use password_hash::PasswordHash;
+        let link = get_object_str(data, "link")
+            .with_context(|| "The authentication component requires a 'link' property")?;
+        let password_hash = get_object_str(data, "password_hash");
+        let password = get_object_str(data, "password");
+        if let (Some(password), Some(password_hash)) = (password, password_hash) {
+            match PasswordHash::new(password_hash)
+                .map_err(|e| {
+                    anyhow::anyhow!("invalid value for the password_hash property: {}", e)
+                })?
+                .verify_password(&[&Argon2::default()], password)
+            {
+                Ok(()) => return Ok(PageContext::Header(self)),
+                Err(e) => log::info!("User authentication failed: {}", e),
+            }
+        }
+        // The authentication failed
+        self.response.status(StatusCode::FOUND);
+        self.response.insert_header((header::LOCATION, link));
+        self.has_status = true;
+        Ok(PageContext::Close(self))
     }
 
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
