@@ -208,7 +208,7 @@ fn extract_variable_argument(
             args.as_mut_slice(),
         )),
         _ => Err(format!(
-            "{func_name}({args}) is not a valid call. Expected a literal single quoted string.",
+            "{func_name}({args}) is not a valid call. Expected either a placeholder or a sqlpage function call as argument.",
             args = arguments
                 .iter()
                 .map(ToString::to_string)
@@ -236,9 +236,12 @@ pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
 
 impl VisitorMut for ParameterExtractor {
     type Break = ();
-    fn post_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
+    fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
         match value {
-            Expr::Value(Value::Placeholder(param)) => {
+            Expr::Value(Value::Placeholder(param))
+                if param.chars().nth(1).is_some_and(char::is_alphabetic) =>
+            // this check is to avoid recursively replacing placeholders in the form of '?', or '$1', '$2', which we emit ourselves
+            {
                 let new_expr = self.make_placeholder();
                 let name = std::mem::take(param);
                 self.parameters.push(map_param(name));

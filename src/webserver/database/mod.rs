@@ -181,8 +181,22 @@ fn extract_req_param<'a>(
         StmtParam::BasicAuthUsername => extract_basic_auth_username(request)
             .map(Cow::Borrowed)
             .map(Some)?,
-        StmtParam::HashPassword(_) => todo!(),
+        StmtParam::HashPassword(inner) => {
+            if let Some(password) = extract_req_param(inner, request)? {
+                Some(Cow::Owned(hash_password(&password)?))
+            } else {
+                None
+            }
+        }
     })
+}
+
+fn hash_password(password: &str) -> anyhow::Result<String> {
+    let phf = argon2::Argon2::default();
+    let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
+    let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
+        .map_err(|e| anyhow!("Unable to hash password: {}", e))?;
+    Ok(password_hash.to_string())
 }
 
 #[derive(Debug)]
