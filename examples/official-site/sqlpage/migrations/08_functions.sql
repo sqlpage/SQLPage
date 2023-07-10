@@ -104,3 +104,35 @@ SELECT ''authentication'' AS component,
 ```
 '
     );
+INSERT INTO sqlpage_functions ("name", "icon", "description_md")
+VALUES (
+        'hash_password',
+        'spy',
+        'Hashes a password using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm.
+    The resulting hash can be stored in the database and then used with the [authentication component](documentation.sql?component=authentication#component).
+
+### Example
+
+```sql
+SELECT ''form'' AS component;
+SELECT ''username'' AS name;
+SELECT ''password'' AS name, ''password'' AS type;
+
+INSERT INTO users (name, password_hash) VALUES (:username, sqlpage.hash_password(:password));
+```
+    '
+    );
+INSERT INTO sqlpage_function_parameters (
+        "function",
+        "index",
+        "name",
+        "description_md",
+        "type"
+    )
+VALUES (
+        'hash_password',
+        1,
+        'password',
+        'The password to hash.',
+        'TEXT'
+    );
