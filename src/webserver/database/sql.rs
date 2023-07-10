@@ -161,7 +161,7 @@ fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtPar
             .map_or_else(StmtParam::Error, StmtParam::Cookie),
         "header" => extract_single_quoted_string("header", arguments)
             .map_or_else(StmtParam::Error, StmtParam::Header),
-        "basic_auth_user" => StmtParam::BasicAuthUsername,
+        "basic_auth_username" => StmtParam::BasicAuthUsername,
         "basic_auth_password" => StmtParam::BasicAuthPassword,
         "hash_password" => extract_variable_argument("hash_password", arguments)
             .map(Box::new)
