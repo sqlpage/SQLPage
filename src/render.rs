@@ -143,8 +143,6 @@ impl<W: std::io::Write> HeaderContext<W> {
     fn authentication(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
         use argon2::Argon2;
         use password_hash::PasswordHash;
-        let link = get_object_str(data, "link")
-            .with_context(|| "The authentication component requires a 'link' property")?;
         let password_hash = get_object_str(data, "password_hash");
         let password = get_object_str(data, "password");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
@@ -159,9 +157,16 @@ impl<W: std::io::Write> HeaderContext<W> {
             }
         }
         // The authentication failed
-        self.response.status(StatusCode::FOUND);
-        self.response.insert_header((header::LOCATION, link));
-        self.has_status = true;
+        if let Some(link) = get_object_str(data, "link") {
+            self.response.status(StatusCode::FOUND);
+            self.response.insert_header((header::LOCATION, link));
+            self.has_status = true;
+        } else {
+            self.response.status(StatusCode::UNAUTHORIZED);
+            self.response
+                .insert_header((header::WWW_AUTHENTICATE, "Basic realm=\"Auth required\""));
+            self.has_status = true;
+        }
         Ok(PageContext::Close(self))
     }
 

@@ -1,3 +1,7 @@
+SELECT 'authentication' AS component,
+    sqlpage.basic_auth_password() AS password,
+    '$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw' AS password_hash;
+
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, 'SQLPage built-in functions' as title;

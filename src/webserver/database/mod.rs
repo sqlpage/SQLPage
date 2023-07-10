@@ -120,7 +120,8 @@ pub async fn stream_query_results_direct<'a>(
         for res in &sql_file.statements {
             match res {
                 Ok(stmt)=>{
-                    let query = bind_parameters(stmt, request)?;
+                    let query = bind_parameters(stmt, request)
+                        .with_context(|| format!("Unable to bind parameters to the SQL statement: {stmt}"))?;
                     let mut stream = query.fetch_many(&db.connection);
                     while let Some(elem) = stream.next().await {
                         yield elem.with_context(|| format!("Error while running SQL: {stmt}"))
@@ -147,7 +148,8 @@ fn bind_parameters<'a>(
 ) -> anyhow::Result<Query<'a, sqlx::Any, AnyArguments<'a>>> {
     let mut arguments = AnyArguments::default();
     for param in &stmt.parameters {
-        let argument = extract_req_param(param, request)?;
+        let argument = extract_req_param(param, request)
+            .with_context(|| format!("Unable to extract {param:?} from the HTTP request"))?;
         log::debug!("Binding value {:?} in statement {}", &argument, stmt);
         match argument {
             None => arguments.add(None::<String>),
@@ -189,17 +191,21 @@ pub struct ErrorWithStatus {
 }
 impl std::fmt::Display for ErrorWithStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HTTP error with status {}", self.status)
+        write!(f, "{}", self.status)
     }
 }
 impl std::error::Error for ErrorWithStatus {}
 
 fn extract_basic_auth(request: &RequestInfo) -> anyhow::Result<&Basic> {
-    request.basic_auth.as_ref().ok_or_else(|| {
-        anyhow::Error::new(ErrorWithStatus {
-            status: StatusCode::UNAUTHORIZED,
+    request
+        .basic_auth
+        .as_ref()
+        .ok_or_else(|| {
+            anyhow::Error::new(ErrorWithStatus {
+                status: StatusCode::UNAUTHORIZED,
+            })
         })
-    })
+        .with_context(|| "Expected the user to be authenticated with HTTP basic auth")
 }
 
 fn extract_basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {

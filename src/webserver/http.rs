@@ -1,16 +1,17 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
-use crate::webserver::database::{stream_query_results, DbItem};
+use crate::webserver::database::{stream_query_results, DbItem, ErrorWithStatus};
 use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
+use actix_web::http::{header, StatusCode};
 use actix_web::web::Form;
 use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, FromRequest,
     HttpResponse, HttpServer,
 };
 
-use actix_web::body::MessageBody;
+use actix_web::body::{BoxBody, MessageBody};
 use actix_web_httpauth::headers::authorization::{Authorization, Basic};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -145,56 +146,40 @@ async fn stream_response(
 async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     app_state: Arc<AppState>,
     database_entries: S,
-) -> actix_web::Result<ResponseWithWriter<S>> {
+) -> anyhow::Result<ResponseWithWriter<S>> {
     let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
     let writer = ResponseWriter::new(sender);
     let mut head_context = HeaderContext::new(app_state, writer);
     let mut stream = Box::pin(database_entries);
     while let Some(item) = stream.next().await {
         match item {
-            DbItem::Row(data) => {
-                match head_context.handle_row(data).await.map_err(|e| {
-                    log::error!("Error while handling header context data: {e}");
-                    ErrorInternalServerError(e)
-                })? {
-                    PageContext::Header(h) => {
-                        head_context = h;
-                    }
-                    PageContext::Body {
-                        mut http_response,
-                        renderer,
-                    } => {
-                        let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
-                        let http_response = http_response.streaming(body_stream);
-                        return Ok(ResponseWithWriter {
-                            http_response,
-                            renderer,
-                            database_entries_stream: stream,
-                        });
-                    }
-                    PageContext::Close(h) => {
-                        head_context = h;
-                        break;
-                    }
+            DbItem::Row(data) => match head_context.handle_row(data).await? {
+                PageContext::Header(h) => {
+                    head_context = h;
                 }
-            }
-            DbItem::FinishedQuery => {
-                log::debug!("finished query");
-            }
-            DbItem::Error(source_err) => {
-                let err = anyhow::format_err!(
-                    "An error occurred at the top of your SQL file: {source_err:#}"
-                );
-                log::error!("Response building error: {err}");
-                return Err(ErrorInternalServerError(err));
-            }
+                PageContext::Body {
+                    mut http_response,
+                    renderer,
+                } => {
+                    let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+                    let http_response = http_response.streaming(body_stream);
+                    return Ok(ResponseWithWriter {
+                        http_response,
+                        renderer,
+                        database_entries_stream: stream,
+                    });
+                }
+                PageContext::Close(h) => {
+                    head_context = h;
+                    break;
+                }
+            },
+            DbItem::FinishedQuery => log::debug!("finished query"),
+            DbItem::Error(source_err) => return Err(source_err),
         }
     }
     log::debug!("No SQL statements left to execute for the body of the response");
-    let (renderer, http_response) = head_context.close().await.map_err(|e| {
-        log::error!("Error while closing header context: {e}");
-        ErrorInternalServerError(e)
-    })?;
+    let (renderer, http_response) = head_context.close().await?;
     Ok(ResponseWithWriter {
         http_response,
         renderer,
@@ -237,16 +222,40 @@ async fn render_sql(
                     .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
                 stream_response(database_entries_stream, renderer).await;
             }
-            Err(e) => {
-                log::error!("An error occured while building response headers: {e}");
-                let http_response = ErrorInternalServerError(e).into();
-                resp_send
-                    .send(http_response)
-                    .unwrap_or_else(|_| log::error!("could not send headers"));
+            Err(err) => {
+                send_anyhow_error(&err, resp_send);
             }
         }
     });
     resp_recv.await.map_err(ErrorInternalServerError)
+}
+
+fn send_anyhow_error(e: &anyhow::Error, resp_send: tokio::sync::oneshot::Sender<HttpResponse>) {
+    log::error!("An error occurred before starting to send the response body: {e:#}");
+    let mut resp = HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR).set_body(BoxBody::new(
+        format!("Sorry, but we were not able to process your request. \n\nError:\n\n {e:?}"),
+    ));
+    resp.headers_mut().insert(
+        header::CONTENT_TYPE,
+        header::HeaderValue::from_static("text/plain"),
+    );
+    if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
+        *resp.status_mut() = status;
+        if status == StatusCode::UNAUTHORIZED {
+            resp.headers_mut().insert(
+                header::WWW_AUTHENTICATE,
+                header::HeaderValue::from_static(
+                    "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
+                ),
+            );
+            resp = resp.set_body(BoxBody::new(
+                "Sorry, but you are not authorized to access this page.",
+            ));
+        }
+    };
+    resp_send
+        .send(resp)
+        .unwrap_or_else(|_| log::error!("could not send headers"));
 }
 
 type ParamMap = HashMap<String, SingleOrVec>;
