@@ -4,7 +4,7 @@
     <meta charset="utf-8"/>
     <title>{{default title "SQLPage"}}</title>
 
-    <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
+    <link rel="stylesheet" href="/{{static_path 'sqlpage.css'}}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.19.0/tabler-icons.min.css"
         integrity="sha384-a8pgu0eDAmHMVlQuzUEoHyapgzLXfOaTTNrMzPivsvAts7LkllyAYpRE4saDWQj7" crossorigin="anonymous">
    
@@ -19,7 +19,7 @@
         <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
     {{/if}}
 
-    <script src="{{static_path 'sqlpage.js'}}" defer></script>
+    <script src="/{{static_path 'sqlpage.js'}}" defer></script>
     {{#each (to_array javascript)}}
         <script src="{{this}}" defer></script>
     {{/each}}
