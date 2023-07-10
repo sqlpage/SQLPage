@@ -169,7 +169,7 @@ fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtPar
         "random_string" => extract_integer("random_string", arguments)
             .map_or_else(StmtParam::Error, StmtParam::RandomString),
         unknown_name => {
-            StmtParam::Error(format!("Unknown function {unknown_name}({arguments:#?})"))
+            StmtParam::Error(format!("Unknown function {unknown_name}({})", FormatArguments(arguments)))
         }
     }
 }
