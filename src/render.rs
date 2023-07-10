@@ -156,6 +156,10 @@ impl<W: std::io::Write> HeaderContext<W> {
                 Err(e) => log::info!("User authentication failed: {}", e),
             }
         }
+        log::debug!(
+            "Authentication failed with password_hash = {:?}",
+            password_hash
+        );
         // The authentication failed
         if let Some(link) = get_object_str(data, "link") {
             self.response.status(StatusCode::FOUND);
