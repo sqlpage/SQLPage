@@ -28,6 +28,9 @@ select 'text' as component,
         'function' as id
     where $function IS NOT NULL;
 
+select 'text' as component;
+select 'Introduced in SQLPage ' || introduced_in_version || '.' as contents, 1 as size from sqlpage_functions where name = $function;
+
 SELECT description_md as contents_md FROM sqlpage_functions WHERE name = $function;
 
 select 'title' as component, 3 as level, 'Parameters' as contents where $function IS NOT NULL AND EXISTS (SELECT 1 from sqlpage_function_parameters where "function" = $function);

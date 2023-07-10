@@ -1,7 +1,8 @@
 CREATE TABLE component(
     name TEXT PRIMARY KEY,
     description TEXT NOT NULL,
-    icon TEXT -- icon name from tabler icon
+    icon TEXT, -- icon name from tabler icon
+    introduced_in_version TEXT
 );
 
 CREATE TABLE parameter(

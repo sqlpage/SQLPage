@@ -2,7 +2,8 @@ CREATE TABLE IF NOT EXISTS sqlpage_functions (
     "name" TEXT PRIMARY KEY,
     "icon" TEXT,
     "description_md" TEXT,
-    "return_type" TEXT
+    "return_type" TEXT,
+    "introduced_in_version" TEXT
 );
 CREATE TABLE IF NOT EXISTS sqlpage_function_parameters (
     "function" TEXT REFERENCES sqlpage_functions("name"),
@@ -11,9 +12,11 @@ CREATE TABLE IF NOT EXISTS sqlpage_function_parameters (
     "description_md" TEXT,
     "type" TEXT
 );
-INSERT INTO sqlpage_functions ("name", "icon", "description_md")
+INSERT INTO sqlpage_functions ("name", "return_type", "introduced_in_version", "icon", "description_md")
 VALUES (
         'cookie',
+        'TEXT',
+        '0.7.1',
         'cookie',
         'Reads a [cookie](https://en.wikipedia.org/wiki/HTTP_cookie) with the given name from the request.
     Returns the value of the cookie as text, or NULL if the cookie is not present.
@@ -42,9 +45,10 @@ VALUES (
         'The name of the cookie to read.',
         'TEXT'
     );
-INSERT INTO sqlpage_functions ("name", "icon", "description_md")
+INSERT INTO sqlpage_functions ("name", "introduced_in_version", "icon", "description_md")
 VALUES (
         'header',
+        '0.7.2',
         'heading',
         'Reads a [header](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields) with the given name from the request.
     Returns the value of the header as text, or NULL if the header is not present.
@@ -72,9 +76,11 @@ VALUES (
         'The name of the HTTP header to read.',
         'TEXT'
     );
-INSERT INTO sqlpage_functions ("name", "icon", "description_md")
+INSERT INTO sqlpage_functions ("name", "return_type", "introduced_in_version", "icon", "description_md")
 VALUES (
         'basic_auth_username',
+        'TEXT',
+        '0.7.2',
         'user',
         'Returns the username from the [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication) header of the request.
         If the header is not present, this function raises an authorization error that will prompt the user to enter their credentials.
@@ -91,6 +97,8 @@ SELECT ''authentication'' AS component,
     ),
     (
         'basic_auth_password',
+        'TEXT',
+        '0.7.2',
         'key',
         'Returns the password from the [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication) header of the request.
         If the header is not present, this function raises an authorization error that will prompt the user to enter their credentials.
@@ -104,9 +112,10 @@ SELECT ''authentication'' AS component,
 ```
 '
     );
-INSERT INTO sqlpage_functions ("name", "icon", "description_md")
+INSERT INTO sqlpage_functions ("name", "introduced_in_version", "icon", "description_md")
 VALUES (
         'hash_password',
+        '0.7.2',
         'spy',
         'Hashes a password using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm.
     The resulting hash can be stored in the database and then used with the [authentication component](documentation.sql?component=authentication#component).

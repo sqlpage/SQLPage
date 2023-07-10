@@ -1,5 +1,5 @@
 -- Insert the http_header component into the component table
-INSERT INTO component (name, description, icon)
+INSERT INTO component (name, description, icon, introduced_in_version)
 VALUES (
         'authentication',
         'An advanced component that can be used to create pages with password-restricted access.
@@ -9,7 +9,8 @@ VALUES (
         you can check the password only once and store a session token in your database. 
         You can use the cookie component to set the session token cookie in the client browser,
         and then check whether the token matches what you stored in subsequent pages.',
-        'lock'
+        'lock',
+        '0.7.2'
     );
 -- Insert the parameters for the http_header component into the parameter table
 INSERT INTO parameter (
