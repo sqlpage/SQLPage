@@ -72,3 +72,35 @@ VALUES (
         'The name of the HTTP header to read.',
         'TEXT'
     );
+INSERT INTO sqlpage_functions ("name", "icon", "description_md")
+VALUES (
+        'basic_auth_username',
+        'user',
+        'Returns the username from the [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication) header of the request.
+        If the header is not present, this function raises an authorization error that will prompt the user to enter their credentials.
+
+### Example
+
+```sql
+SELECT ''authentication'' AS component,
+    (SELECT password_hash from users where name = sqlpage.basic_auth_username()) AS password_hash,
+    sqlpage.basic_auth_password() AS password;
+```
+
+'
+    ),
+    (
+        'basic_auth_password',
+        'key',
+        'Returns the password from the [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication) header of the request.
+        If the header is not present, this function raises an authorization error that will prompt the user to enter their credentials.
+
+### Example
+
+```sql
+SELECT ''authentication'' AS component,
+    (SELECT password_hash from users where name = sqlpage.basic_auth_username()) AS password_hash,
+    sqlpage.basic_auth_password() AS password;
+```
+'
+    );

@@ -23,7 +23,7 @@ INSERT INTO parameter (
 VALUES (
         'authentication',
         'link',
-        'The URL to redirect the user to if they are not logged in.',
+        'The URL to redirect the user to if they are not logged in. If this parameter is not specified, the user will stay on the current page, but be asked to log in using a popup in their browser (HTTP basic authentication).',
         'TEXT',
         TRUE,
         TRUE
@@ -50,11 +50,28 @@ INSERT INTO example (component, description)
 VALUES (
         'authentication',
         '
+
+### Usage with HTTP basic authentication
+
+The most basic usage of the authentication component is to let SQLPage handle the authentication through HTTP basic authentication.
+This is the simplest way to password-protect a page, but it is not very user-friendly, because the browser will show an unstyled popup asking for the username and password.
+The username and password entered by the user will be accessible in your SQL code using the
+[`sqlpage.basic_auth_username()`](functions.sql?function=basic_auth_username) and
+[`sqlpage.basic_auth_password()`](functions.sql?function=basic_auth_password) functions.
+
+```sql
+SELECT ''authentication'' AS component,
+    ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using https://argon2.online/
+    sqlpage.basic_auth_password() AS password; -- this is the password that the user entered in the browser popup
+```
+
+### Usage with a login form
+
 The most basic usage of the authentication component is to simply check if the user has sent the correct password, and if not, redirect them to a login page: 
 
 ```sql
 SELECT ''authentication'' AS component,
-    ''/login'' AS link,
+    ''login.sql'' AS link,
     ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using https://argon2.online/
     :password AS password; -- this is the password that the user sent through our form
 ```
