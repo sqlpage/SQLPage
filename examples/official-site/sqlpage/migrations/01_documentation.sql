@@ -230,29 +230,34 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
+    ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
     ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOL', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     (
     'form',
     '
-A form that asks the user for a parameter named `component`, and then posts the results to another page named `documentation.sql`.
-That file could contain a sql statement like 
+
+The best way to manage forms in SQLPage is to create at least two separate files:
+
+ - one that will contain the form itself, and will be loaded when the user visits the page,
+ - one that will handle the form submission, and will redirect to whatever page you want to display after the form has been submitted.
+
+For instance, if you were creating a form to manage a list of users, you could create:
+
+ - a file named `users.sql` that would contain a list of users and a form to create a new user,
+ - a file named `create_user.sql` that would insert the new user in the database, and then redirect to `users.sql`.
+
+`create_user.sql` could contain a sql statement like 
+
 ```sql
-SELECT * FROM documentation WHERE component_name = $component
-```
-to display the documentation for the component the user selected.
-
-Or it could contain a sql statement like
-```sql
-INSERT INTO components(name) VALUES ($component)
+INSERT INTO users(name) VALUES(:username)
+RETURNING ''redirect'' AS component, ''users.sql'' AS link
 ```
 
-to allow users to create a new component.
-
-When loading the page, the value for `$component` will be `NULL` if no value has been submitted.
+When loading the page, the value for `:username` will be `NULL` if no value has been submitted.
 ',
-    json('[{"component":"form", "action": "documentation.sql"}, {"name": "component"}]')),
+    json('[{"component":"form", "action": "create_user.sql"}, {"name": "username"}]')),
     ('form', 'A user registration form, illustrating the use of required fields, and different input types.', 
     json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
@@ -279,7 +284,27 @@ FROM fruits
 ', json('[{"component":"form"}, '||
     '{"name": "Fruit", "type": "select", "value": 1, "options": '||
         '"[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
-    ]'));
+    ]')),
+    ('form', 'This example illustrates the use of the `radio` type.
+The `name` parameter is used to group the radio buttons together.
+The `value` parameter is used to set the value that will be submitted when the user selects the radio button.
+The `label` parameter is used to display a friendly name for the radio button.
+The `description` parameter is used to display a helper text near the radio button.
+
+We could also save all the options in a database table, and then run a simple query like
+
+```sql
+SELECT ''form'' AS component;
+SELECT * FROM fruit_option;
+```
+
+In this example, depending on what the user clicks, the target `index.sql` page will be loaded with a the variable `$fruit` set to the string "1", "2", or "3".
+
+    ', json('[{"component":"form", "method": "GET", "action": "index.sql"}, '||
+    '{"name": "fruit", "type": "radio", "value": 1, "description": "An apple a day keeps the doctor away", "label": "Apple"}, '||
+    '{"name": "fruit", "type": "radio", "value": 2, "description": "Oranges are a good source of vitamin C", "label": "Orange"}, '||
+    '{"name": "fruit", "type": "radio", "value": 3, "description": "Bananas are a good source of potassium", "label": "Banana"}'||
+    ']'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('chart', 'timeline', 'A component that plots data. Line, area, bar, and pie charts are all supported. Each item in the component is a data point in the graph.');
