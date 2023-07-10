@@ -166,6 +166,8 @@ fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtPar
         "hash_password" => extract_variable_argument("hash_password", arguments)
             .map(Box::new)
             .map_or_else(StmtParam::Error, StmtParam::HashPassword),
+        "random_string" => extract_integer("random_string", arguments)
+            .map_or_else(StmtParam::Error, StmtParam::RandomString),
         unknown_name => {
             StmtParam::Error(format!("Unknown function {unknown_name}({arguments:#?})"))
         }
@@ -181,13 +183,39 @@ fn extract_single_quoted_string(
             Ok(std::mem::take(param_value))
         }
         _ => Err(format!(
-            "{func_name}({args}) is not a valid call. Expected a literal single quoted string.",
-            args = arguments
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
+            "{func_name}({}) is not a valid call. Expected a literal single quoted string.",
+            FormatArguments(arguments)
         )),
+    }
+}
+
+fn extract_integer(
+    func_name: &'static str,
+    arguments: &mut [FunctionArg],
+) -> Result<usize, String> {
+    match arguments.first_mut().and_then(function_arg_expr) {
+        Some(Expr::Value(Value::Number(param_value, _b))) => param_value
+            .parse::<usize>()
+            .map_err(|e| format!("{func_name}({param_value}) failed: {e}")),
+        _ => Err(format!(
+            "{func_name}({}) is not a valid call. Expected a literal integer",
+            FormatArguments(arguments)
+        )),
+    }
+}
+
+/** This is a helper struct to format a list of arguments for an error message. */
+struct FormatArguments<'a>(&'a [FunctionArg]);
+impl std::fmt::Display for FormatArguments<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut args = self.0.iter();
+        if let Some(arg) = args.next() {
+            write!(f, "{arg}")?;
+        }
+        for arg in args {
+            write!(f, ", {arg}")?;
+        }
+        Ok(())
     }
 }
 
@@ -208,12 +236,8 @@ fn extract_variable_argument(
             args.as_mut_slice(),
         )),
         _ => Err(format!(
-            "{func_name}({args}) is not a valid call. Expected either a placeholder or a sqlpage function call as argument.",
-            args = arguments
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
+            "{func_name}({}) is not a valid call. Expected either a placeholder or a sqlpage function call as argument.",
+            FormatArguments(arguments)
         )),
     }
 }

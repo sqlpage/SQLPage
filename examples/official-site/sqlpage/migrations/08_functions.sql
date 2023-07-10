@@ -145,3 +145,38 @@ VALUES (
         'The password to hash.',
         'TEXT'
     );
+
+INSERT INTO sqlpage_functions ("name", "introduced_in_version", "icon", "description_md")
+VALUES (
+    'random_string',
+    '0.7.2',
+    'arrows-shuffle',
+    'Returns a cryptographically secure random string of the given length.
+
+### Example
+
+Generate a random string of 32 characters and use it as a session ID stored in a cookie:
+
+```sql
+INSERT INTO login_session (id, username) VALUES (sqlpage.random_string(32), :username)
+RETURNING 
+    ''cookie'' AS component,
+    ''session_id'' AS name,
+    sqlpage.random_string(32) AS value;
+```
+'
+);
+INSERT INTO sqlpage_function_parameters (
+    "function",
+    "index",
+    "name",
+    "description_md",
+    "type"
+)
+VALUES (
+    'random_string',
+    1,
+    'length',
+    'The length of the string to generate.',
+    'INTEGER'
+);
