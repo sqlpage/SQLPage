@@ -181,14 +181,19 @@ fn extract_req_param<'a>(
         StmtParam::BasicAuthUsername => extract_basic_auth_username(request)
             .map(Cow::Borrowed)
             .map(Some)?,
-        StmtParam::HashPassword(inner) => {
-            if let Some(password) = extract_req_param(inner, request)? {
-                Some(Cow::Owned(hash_password(&password)?))
-            } else {
-                None
-            }
-        }
+        StmtParam::HashPassword(inner) => extract_req_param(inner, request)?
+            .map_or(Ok(None), |x| hash_password(&x).map(Cow::Owned).map(Some))?,
+        StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
     })
+}
+
+fn random_string(len: usize) -> String {
+    use rand::{distributions::Alphanumeric, Rng};
+    password_hash::rand_core::OsRng
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
 }
 
 fn hash_password(password: &str) -> anyhow::Result<String> {
@@ -375,6 +380,7 @@ enum StmtParam {
     BasicAuthPassword,
     BasicAuthUsername,
     HashPassword(Box<StmtParam>),
+    RandomString(usize),
 }
 
 #[actix_web::test]
