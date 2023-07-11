@@ -1,2 +1,1 @@
-SELECT 'http_header' as component,
-    'get started.sql' as location;
+SELECT 'redirect' as component, 'get started.sql' as link;
