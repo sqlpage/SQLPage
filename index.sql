@@ -67,7 +67,7 @@ select 'chart' as component,
     'Collatz conjecture' as title,
     'area' as type;
 WITH RECURSIVE cnt(x, y) AS (
-    VALUES(0, 15)
+    SELECT 0, 15
     UNION ALL
     SELECT x + 1,
         CASE
@@ -99,7 +99,7 @@ select 'card' as component,
     5 as columns;
 WITH RECURSIVE cnt(x) AS (
     -- cnt is a table that contains the numbers from 1 to 10
-    VALUES(1)
+    SELECT 1
     UNION ALL
     SELECT x + 1
     FROM cnt
@@ -121,7 +121,7 @@ FROM cnt as a,
 WHERE -- The powerful thing is here
     $x IS NULL
     OR -- The syntax $x allows us to extract the value 'a' when the URL ends with '?x=a'. It will be null if the URL does not contain '?x='
-    b.x = $x::INTEGER;
+    b.x = $x::DECIMAL;
 -- So when we click the card for "a times b", we will reload the page, and display only the multiplication table of a
 ---------------------------
 -- FORMS --
