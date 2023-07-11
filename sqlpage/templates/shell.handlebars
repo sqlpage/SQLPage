@@ -9,7 +9,9 @@
         integrity="sha384-a8pgu0eDAmHMVlQuzUEoHyapgzLXfOaTTNrMzPivsvAts7LkllyAYpRE4saDWQj7" crossorigin="anonymous">
    
    {{#each (to_array css)}}
-        <link rel="stylesheet" href="{{this}}">
+        {{#if this}}
+            <link rel="stylesheet" href="{{this}}">
+        {{/if}}
    {{/each}}
 
    {{#if font}}
@@ -21,7 +23,9 @@
 
     <script src="/{{static_path 'sqlpage.js'}}" defer></script>
     {{#each (to_array javascript)}}
-        <script src="{{this}}" defer></script>
+        {{#if this}}
+            <script src="{{this}}" defer></script>
+        {{/if}}
     {{/each}}
 
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
