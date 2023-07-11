@@ -201,7 +201,7 @@ But the tools are very different:
 
 > Is the name a reference to Microsoft Frontpage ?
 
-Frontpage was visual static website building software popular in the late 90s.
+Frontpage was a visual static website building software popular in the late 90s.
 I had never heard of it before someone asked me this question.
 
 > I like CSS, I want to design websites, not write SQL.
