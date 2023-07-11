@@ -2,6 +2,12 @@
 
 ## unreleased
 
+ - Added a new [`sqlite_extensions` configuration parameter](./configuration.md) to load SQLite extensions. This allows many interesting use cases, such as 
+      - [using spatialite to build a geographic data application](./examples/make%20a%20geographic%20data%20application%20using%20sqlite%20extensions/),
+      - querying CSV data from SQLPage with [vsv](https://github.com/nalgeon/sqlean/blob/main/docs/vsv.md),
+      - or building a search engine for your data with [FTS5](https://www.sqlite.org/fts5.html).
+ - Breaking: change the order of priority for loading configuration parameters: the environment variables have priority over the configuration file. This makes it easier to tweak the configuration of a SQLPage website when deploying it.
+
 ## 0.7.2 (2023-07-10)
 
 ### [SQL components](https://sql.ophir.dev/documentation.sql)
