@@ -2,7 +2,7 @@ use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::database::{stream_query_results, DbItem, ErrorWithStatus};
 use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
-use actix_web::error::ErrorInternalServerError;
+use actix_web::error::{ErrorInternalServerError, ErrorNotFound};
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode};
 use actix_web::web::Form;
@@ -130,7 +130,7 @@ async fn stream_response(
         }
         if let Err(e) = &renderer.writer.async_flush().await {
             log::error!(
-                "Stopping rendering early because we were unable to flush data to client: {e}"
+                "Stopping rendering early because we were unable to flush data to client: {e:#}"
             );
             // If we cannot write to the client anymore, there is nothing we can do, so we just stop rendering
             return;
@@ -385,9 +385,16 @@ async fn process_sql_request(
         .get(app_state, &sql_path)
         .await
         .map_err(|e| {
-            ErrorInternalServerError(format!(
-                "An error occurred while trying to handle your request: {e:#}"
-            ))
+            log::error!("Error while trying to get SQL file: {:#}", e);
+            if e.downcast_ref::<std::io::Error>()
+                .is_some_and(|e| e.kind() == std::io::ErrorKind::NotFound)
+            {
+                ErrorNotFound("The requested file was not found.")
+            } else {
+                ErrorInternalServerError(format!(
+                    "An error occurred while trying to handle your request: {e:#}"
+                ))
+            }
         })?;
     let response = render_sql(&mut req, sql_file).await?;
     Ok(req.into_response(response))
