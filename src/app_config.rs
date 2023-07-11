@@ -1,5 +1,5 @@
 use anyhow::Context;
-use config::{Config, FileFormat};
+use config::Config;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -15,6 +15,9 @@ pub struct AppConfig {
     pub database_connection_idle_timeout_seconds: Option<f64>,
     pub database_connection_max_lifetime_seconds: Option<f64>,
 
+    #[serde(default)]
+    pub sqlite_extensions: Vec<String>,
+
     #[serde(deserialize_with = "deserialize_socket_addr")]
     pub listen_on: SocketAddr,
     pub port: Option<u16>,
@@ -23,8 +26,13 @@ pub struct AppConfig {
 pub fn load() -> anyhow::Result<AppConfig> {
     let mut conf = Config::builder()
         .set_default("listen_on", "0.0.0.0:8080")?
-        .add_source(config::Environment::default())
-        .add_source(config::File::new("sqlpage/sqlpage.json", FileFormat::Json).required(false))
+        .add_source(config::File::with_name("sqlpage/sqlpage").required(false))
+        .add_source(
+            config::Environment::default()
+                .try_parsing(true)
+                .list_separator(" ")
+                .with_list_parse_key("sqlite_extensions"),
+        )
         .build()?
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;
@@ -83,6 +91,7 @@ pub(crate) mod tests {
             max_database_pool_connections: None,
             database_connection_idle_timeout_seconds: None,
             database_connection_max_lifetime_seconds: None,
+            sqlite_extensions: vec![],
             listen_on: SocketAddr::from(([127, 0, 0, 1], 8282)),
             port: None,
         }
