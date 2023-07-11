@@ -1,0 +1,5 @@
+{
+    "sqlite_extensions": [
+        "mod_spatialite"
+    ]
+}

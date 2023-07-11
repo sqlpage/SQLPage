@@ -1,4 +1,12 @@
 services:
+  test:
+    image: debian:stable-slim
+    volumes:
+      - .:/var/www
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: ${DB:-postgres}://root:secret@db/sqlpage
   web:
     build: { context: "." }
     ports:
