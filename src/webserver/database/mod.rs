@@ -314,6 +314,8 @@ impl Database {
             connect_options.kind(),
             database_url
         );
+        set_custom_connect_options(&mut connect_options, config)
+            .with_context(|| "Unable to set custom database connection options")?;
         log::info!("Connecting to database: {database_url}");
         let connection = Self::create_pool_options(config, connect_options.kind())
             .connect_with(connect_options)
@@ -358,6 +360,18 @@ impl Database {
     }
 }
 
+fn set_custom_connect_options(
+    options: &mut AnyConnectOptions,
+    config: &AppConfig,
+) -> anyhow::Result<()> {
+    if let Some(sqlite_options) = options.as_sqlite_mut() {
+        for extension_name in &config.sqlite_extensions {
+            log::info!("Loading SQLite extension: {}", extension_name);
+            *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
+        }
+    }
+    Ok(())
+}
 struct PreparedStatement {
     statement: AnyStatement<'static>,
     parameters: Vec<StmtParam>,
