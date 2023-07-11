@@ -1,0 +1,27 @@
+<div class="card my-3">
+    <div class="card-body">
+        <div class="d-flex">
+            <h3 class="card-title">{{title}}</h3>
+        </div>
+        <div class="leaflet" style="height: {{default height 350}}px;"
+            data-center="{{default latitude 48}},{{default longitude 3}}"
+            data-zoom="{{default zoom 5}}"
+            >
+            <div class="d-flex justify-content-center h-100 align-items-center">
+                <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading map...</span>
+                </div>
+                {{~#each_row~}}
+                    <div class="marker d-none" hidden data-coords="{{latitude}},{{longitude}}">
+                        <h3>{{title}}</h3>
+                        <div>
+                            <p>{{description}}</p>
+                            {{~#if description_md~}}
+                                <div>{{{markdown description_md}}}</div>
+                            {{~/if~}}
+                        </div>
+                    </div>
+                {{~/each_row~}}
+        </div>
+    </div>
+</div>

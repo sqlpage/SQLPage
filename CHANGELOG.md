@@ -8,6 +8,7 @@
       - or building a search engine for your data with [FTS5](https://www.sqlite.org/fts5.html).
  - Breaking: change the order of priority for loading configuration parameters: the environment variables have priority over the configuration file. This makes it easier to tweak the configuration of a SQLPage website when deploying it.
  - Fix the default index page in MySQL. Fixes [#23](https://github.com/lovasoa/SQLpage/issues/23).
+ - Add a new [map](https://sql.ophir.dev/documentation.sql?component=map#component) component to display a map with markers on it. Useful to display geographic data from PostGIS or Spatialite.
 
 ## 0.7.2 (2023-07-10)
 
