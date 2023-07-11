@@ -1,3 +1,4 @@
+use crate::webserver::database::ErrorWithStatus;
 use crate::webserver::{make_placeholder, Database};
 use crate::AppState;
 use anyhow::Context;
@@ -158,9 +159,19 @@ impl DbFsQueries {
         self.read_file
             .query_as::<(Vec<u8>,)>()
             .bind(path.display().to_string())
-            .fetch_one(&app_state.db.connection)
+            .fetch_optional(&app_state.db.connection)
             .await
-            .map(|(modified,)| modified)
+            .map_err(anyhow::Error::from)
+            .and_then(|modified| {
+                if let Some((modified,)) = modified {
+                    Ok(modified)
+                } else {
+                    Err(ErrorWithStatus {
+                        status: actix_web::http::StatusCode::NOT_FOUND,
+                    }
+                    .into())
+                }
+            })
             .with_context(|| format!("Unable to read {path:?} from the database"))
     }
 }
