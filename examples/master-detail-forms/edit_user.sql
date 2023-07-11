@@ -2,9 +2,7 @@ SELECT 'shell' AS component, 'User Management App' AS title, 'user' AS icon, '/'
 
 SELECT 'form' AS component,
     'Edit user' AS title,
-    CASE WHEN $id IS NULL THEN 'insert_user.sql'
-                          ELSE 'update_user.sql?id=' || $id
-    END AS action;
+    'insert_user.sql' || COALESCE('?id=' || $id, '') AS action;
 
 SELECT 'First name' AS name,
     TRUE AS required,
