@@ -1,5 +1,7 @@
 # CHANGELOG.md
 
+## unreleased
+
 ## 0.7.2 (2023-07-10)
 
 ### [SQL components](https://sql.ophir.dev/documentation.sql)
