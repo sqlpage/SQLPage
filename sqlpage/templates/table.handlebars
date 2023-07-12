@@ -27,11 +27,15 @@
 
                     <tr>
                         {{~#each this~}}
-                            <td class="{{@key}}">
+                            <td class="{{@key}} align-middle">
                                 {{~#if (array_contains ../../markdown @key)~}}
                                     {{{markdown this}}}
                                 {{~else~}}
+                                {{~#if (array_contains ../../icon @key)~}}
+                                    <i class="ti ti-{{this}}"></i>
+                                {{~else~}}
                                     {{this}}
+                                {{~/if~}}
                                 {{~/if~}}
                             </td>
                         {{~/each~}}
