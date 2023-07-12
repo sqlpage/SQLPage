@@ -32,6 +32,14 @@ VALUES (
     ),
     (
         'map',
+        'zoom',
+        'Zoom Level to apply to the map.',
+        'REAL',
+        TRUE,
+        TRUE
+    ),
+    (
+        'map',
         'latitude',
         'Latitude of the marker',
         'REAL',
@@ -56,6 +64,22 @@ VALUES (
     ),
     (
         'map',
+        'link',
+        'A link to associate to the marker''s title',
+        'TEXT',
+        FALSE,
+        TRUE
+    ),
+    (
+        'map',
+        'description',
+        'Plain text description of the marker',
+        'TEXT',
+        FALSE,
+        TRUE
+    ),
+    (
+        'map',
         'description_md',
         'Description of the marker, in markdown',
         'TEXT',
@@ -68,8 +92,8 @@ VALUES (
         'map',
         'Map of Paris',
         JSON('[
-            { "component": "map", "title": "Paris" },
-            { "latitude": 48.8566, "longitude": 2.3522, "title": "Paris", "description_md": "The capital of France." }
+            { "component": "map", "title": "Paris", "zoom": 11, "latitude": 48.85, "longitude": 2.34, "height": 400 },
+            { "title": "Notre Dame", "latitude": 48.8530, "longitude": 2.3498, "description_md": "A beautiful cathedral.", "link": "https://en.wikipedia.org/wiki/Notre-Dame_de_Paris" },
+            { "title": "Eiffel Tower", "latitude": 48.8584, "longitude": 2.2945, "description_md": "A tall tower. [Wikipedia](https://en.wikipedia.org/wiki/Eiffel_Tower)" }
         ]')
-
     );

@@ -177,14 +177,15 @@ function sqlpage_map() {
           attribution: '&copy; OpenStreetMap',
           maxZoom: 18,
         }).addTo(map);
-        const markers = [];
         for (const marker_elem of m.getElementsByClassName("marker")) {
-          const coords = marker_elem.dataset.coords.split(",").map(c => parseFloat(c));
-          const marker = L.marker(coords).addTo(map);
-          marker.bindPopup(marker_elem.dataset.popup);
-          markers.push(marker_elem);
+          setTimeout(addMarker, 0, marker_elem, map);
         }
       }
+    }
+    function addMarker(marker_elem, map) {
+      const coords = marker_elem.dataset.coords.split(",").map(c => parseFloat(c));
+      const marker = L.marker(coords).addTo(map);
+      marker.bindPopup(marker_elem);
     }
 }
 

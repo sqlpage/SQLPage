@@ -11,17 +11,25 @@
                 <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
                     <span class="visually-hidden">Loading map...</span>
                 </div>
+                <div class="d-none" hidden>
                 {{~#each_row~}}
-                    <div class="marker d-none" hidden data-coords="{{latitude}},{{longitude}}">
-                        <h3>{{title}}</h3>
+                    <div class="marker" data-coords="{{latitude}},{{longitude}}">
+                        <h3>
+                            {{~#if link~}}
+                                <a href="{{link}}">{{title}}</a>
+                            {{~else~}}
+                                {{title}}
+                            {{~/if~}}
+                        </h3>
                         <div>
-                            <p>{{description}}</p>
+                            {{~#if description}}<p>{{description}}</p>{{/if~}}
                             {{~#if description_md~}}
-                                <div>{{{markdown description_md}}}</div>
+                                {{{markdown description_md}}}
                             {{~/if~}}
                         </div>
                     </div>
                 {{~/each_row~}}
+                </div>
         </div>
     </div>
 </div>
