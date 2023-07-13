@@ -9,7 +9,7 @@
  - Breaking: change the order of priority for loading configuration parameters: the environment variables have priority over the configuration file. This makes it easier to tweak the configuration of a SQLPage website when deploying it.
  - Fix the default index page in MySQL. Fixes [#23](https://github.com/lovasoa/SQLpage/issues/23).
  - Add a new [map](https://sql.ophir.dev/documentation.sql?component=map#component) component to display a map with markers on it. Useful to display geographic data from PostGIS or Spatialite.
- - Add a new icon attribute to the table component to display icons in the table.
+ - Add a new `icon` attribute to the [table](https://sql.ophir.dev/documentation.sql?component=table#component) component to display icons in the table.
 
 ## 0.7.2 (2023-07-10)
 
