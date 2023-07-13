@@ -83,7 +83,7 @@ WHERE $first_name IS NOT NULL;
 ## Supported databases
 
 - [sqlite](https://www.sqlite.org/index.html)
-- [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *CockroachDB* and *Aurora*.
+- [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *YugabyteDB*, *CockroachDB* and *Aurora*.
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 
 ## How it works
