@@ -46,7 +46,7 @@ VALUES (
         FALSE,
         FALSE
     ),
-        (
+    (
         'map',
         'longitude',
         'Longitude of the marker',
@@ -73,7 +73,7 @@ VALUES (
     (
         'map',
         'description',
-        'Plain text description of the marker',
+        'Plain text description of the marker, as plain text',
         'TEXT',
         FALSE,
         TRUE
