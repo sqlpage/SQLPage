@@ -7,9 +7,8 @@ select 'shell' as component,
     'Welcome to SQLPage' as description;
 -- Making a web page with SQLPage works by using a set of predefined "components"
 --  and filling them with contents from the results of your SQL queries
-select 'hero' as component,
-    'It works !' as title,
-    -- The text component has a property called "title" that we use to set the title of our block of text
+select 'hero' as component, -- We select a component. The documentation for each component can be found on https://sql.ophir.dev/documentation.sql
+    'It works !' as title, -- 'title' is top-level parameter of the 'hero' component
     'If you can see this, then SQLPage is running correctly on your server. Congratulations! ' as description;
 -- Properties can be textual, numeric, or booleans
 
@@ -17,7 +16,7 @@ select 'hero' as component,
 SELECT 'text' as component, -- We can switch to another component at any time just with a select statement.
     'Get started' as title;
 -- We are now inside the text component. Each row that will be returned by our SELECT queries will be a span of text
--- The text component has a property called "contents" that we use to set the contents of our block of text
+-- The text component has a property called "contents" that can be  that we use to set the contents of our block of text
 -- and a property called "center" that we use to center the text
 SELECT 'In order to get started ' as contents;
 select 'visit SQLPage''s website' as contents,
