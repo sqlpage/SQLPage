@@ -117,12 +117,14 @@ pub async fn stream_query_results_direct<'a>(
     request: &'a RequestInfo,
 ) -> anyhow::Result<BoxStream<'a, anyhow::Result<Either<AnyQueryResult, AnyRow>>>> {
     Ok(async_stream::stream! {
+        let mut connection = db.connection.acquire().await
+            .with_context(|| anyhow::anyhow!("Unable to acquire a database connection to execute the SQL file. All of the {} {:?} connections are busy.", db.connection.size(), db.connection.any_kind()))?;
         for res in &sql_file.statements {
             match res {
                 Ok(stmt)=>{
                     let query = bind_parameters(stmt, request)
                         .with_context(|| format!("Unable to bind parameters to the SQL statement: {stmt}"))?;
-                    let mut stream = query.fetch_many(&db.connection);
+                    let mut stream = query.fetch_many(&mut connection);
                     while let Some(elem) = stream.next().await {
                         yield elem.with_context(|| format!("Error while running SQL: {stmt}"))
                     }
