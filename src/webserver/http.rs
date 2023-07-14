@@ -253,6 +253,15 @@ fn send_anyhow_error(e: &anyhow::Error, resp_send: tokio::sync::oneshot::Sender<
             ));
         }
     };
+    if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
+        // People are HTTP connections faster than we can open SQL connections. Ask them to slow down politely.
+        use rand::Rng;
+        *resp.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
+        resp.headers_mut().insert(
+            header::RETRY_AFTER,
+            header::HeaderValue::from(rand::thread_rng().gen_range(1..=15)),
+        );
+    }
     resp_send
         .send(resp)
         .unwrap_or_else(|_| log::error!("could not send headers"));
