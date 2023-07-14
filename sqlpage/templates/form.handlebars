@@ -39,7 +39,9 @@
                             {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
                             {{~#if required}}required="required" {{/if~}}
                             {{~#if autofocus}}autofocus {{/if~}}
-                        ></textarea>
+                        >
+                        {{~#if value}}{{value}}{{/if~}}
+                        </textarea>
                     {{else}}{{#if (eq type 'select')}}
                         <select name="{{name}}" class="form-select"
                          {{~#if required}} required="required" {{/if~}}
