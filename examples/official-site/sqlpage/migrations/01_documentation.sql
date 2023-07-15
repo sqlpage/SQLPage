@@ -351,7 +351,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
     ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE),
     ('markdown', 'Set this to the name of a column whose content should be interpreted as markdown . Used to display rich text with links in the table. This argument can be repeated multiple times to intepret multiple columns as markdown.', 'TEXT', TRUE, TRUE),
-    ('icon', 'Set this to the name of a column whose content should be interpreted as a tabler icon name. Used to display icons in the table. This argument can be repeated multiple times to intepret multiple columns as icons. Introduced in v0.8.0.', 'TEXT', TRUE, TRUE)
+    ('icon', 'Set this to the name of a column whose content should be interpreted as a tabler icon name. Used to display icons in the table. This argument can be repeated multiple times to intepret multiple columns as icons. Introduced in v0.8.0.', 'TEXT', TRUE, TRUE),
+    -- row level
+    ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row.', 'TEXT', FALSE, TRUE),
+    ('_sqlpage_color', 'Sets the background color of the row.', 'TEXT', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -363,7 +366,7 @@ INSERT INTO example(component, description, properties) VALUES
         '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]')),
     ('table', 'A table that uses markdown to display links',
         json('[{"component":"table", "markdown": "Documentation", "icon": "icon"}, '||
-        '{"icon": "table", "name": "Table", "description": "Displays SQL results as a searchable table.", "Documentation": "[docs](documentation.sql?component=table)"},
+        '{"icon": "table", "name": "Table", "description": "Displays SQL results as a searchable table.", "Documentation": "[docs](documentation.sql?component=table)", "_sqlpage_color": "red"},
         {"icon": "timeline", "name": "Chart", "description": "Show graphs based on numeric data.", "Documentation": "[docs](documentation.sql?component=chart)"}
         ]'));
 

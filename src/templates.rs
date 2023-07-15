@@ -203,6 +203,9 @@ impl AllTemplates {
 
         handlebars.register_helper("sum", Box::new(sum_helper));
 
+        handlebars_helper!(starts_with: |s: str, prefix:str| s.starts_with(prefix));
+        handlebars.register_helper("starts_with", Box::new(starts_with));
+
         // to_array: convert a value to a single-element array. If the value is already an array, return it as-is.
         handlebars_helper!(to_array: |x: Json| match x {
             JsonValue::Array(arr) => arr.clone(),
