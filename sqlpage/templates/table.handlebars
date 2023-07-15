@@ -12,6 +12,7 @@
                         <thead>
                         <tr>
                             {{#each this}}
+                                {{~#if (not (starts_with @key '_sqlpage_'))~}}
                                 <th>
                                     {{#if ../../sort}}
                                         <button class="table-sort sort" data-sort="{{@key}}">{{@key}}</button>
@@ -19,14 +20,16 @@
                                         {{@key}}
                                     {{/if}}
                                 </th>
+                                {{~/if~}}
                             {{/each}}
                         </tr>
                         </thead>
                     <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
                     {{/if}}
 
-                    <tr>
+                    <tr class="{{_sqlpage_css_class}} {{#if _sqlpage_color}}bg-{{_sqlpage_color}}-lt{{/if}}">
                         {{~#each this~}}
+                            {{~#if (not (starts_with @key '_sqlpage_'))~}}
                             <td class="{{@key}} align-middle">
                                 {{~#if (array_contains ../../markdown @key)~}}
                                     {{{markdown this}}}
@@ -38,6 +41,7 @@
                                 {{~/if~}}
                                 {{~/if~}}
                             </td>
+                            {{~/if~}}
                         {{~/each~}}
                     </tr>
                 {{~/each_row~}}

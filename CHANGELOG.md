@@ -12,6 +12,7 @@
  - Add a new `icon` attribute to the [table](https://sql.ophir.dev/documentation.sql?component=table#component) component to display icons in the table.
  - Fix `textarea` fields in the [form](https://sql.ophir.dev/documentation.sql?component=table#component) component to display the provided `value` attribute. Thanks Frank for the contribution !
  - SQLPage now guarantees that a single web request will be handled by a single database connection. Previously, connections were repeatedly taken and put back to the connection pool between each statement, preventing the use of temporary tables, transactions, and other connection-specific features such as [`last_insert_rowid`](https://www.sqlite.org/lang_corefunc.html#last_insert_rowid). This makes it much easier to keep state between SQL statements in a single `.sql` file. Please report any performance regression you might encounter. See [the many-to-many relationship example](./examples/modeling%20a%20many%20to%20many%20relationship%20with%20a%20form/).
+  - The [table](https://sql.ophir.dev/documentation.sql?component=table#component) component now supports setting a custom background color, and a custom CSS class on a given table line.
 
 ## 0.7.2 (2023-07-10)
 
