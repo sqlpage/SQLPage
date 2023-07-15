@@ -228,6 +228,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOL', FALSE, TRUE),
     ('min', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
+    ('checked', 'Used only for checkboxes. Indicates whether the checkbox should appear as already checked.', 'BOOL', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
     ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
@@ -303,7 +304,7 @@ In this example, depending on what the user clicks, the target `index.sql` page 
 
     ', json('[{"component":"form", "method": "GET", "action": "index.sql"}, '||
     '{"name": "fruit", "type": "radio", "value": 1, "description": "An apple a day keeps the doctor away", "label": "Apple"}, '||
-    '{"name": "fruit", "type": "radio", "value": 2, "description": "Oranges are a good source of vitamin C", "label": "Orange"}, '||
+    '{"name": "fruit", "type": "radio", "value": 2, "description": "Oranges are a good source of vitamin C", "label": "Orange", "checked": true}, '||
     '{"name": "fruit", "type": "radio", "value": 3, "description": "Bananas are a good source of potassium", "label": "Banana"}'||
     ']'));
 
