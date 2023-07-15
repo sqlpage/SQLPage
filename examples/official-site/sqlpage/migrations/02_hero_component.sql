@@ -32,6 +32,13 @@ FROM (
                 TRUE
             ),
             (
+                'description_md',
+                'A description of the page. Displayed below the title, in smaller characters and slightly greyed out - formatted using markdown.',
+                'TEXT',
+                TRUE,
+                TRUE
+            ),
+            (
                 'image',
                 'The URL of an image to display next to the page title.',
                 'URL',
@@ -59,6 +66,7 @@ FROM (
                 TRUE,
                 TRUE
             ),
+            -- item level
             (
                 'title',
                 'The name of a single feature section highlighted by this hero.',
@@ -74,8 +82,22 @@ FROM (
                 TRUE
             ),
             (
+                'description_md',
+                'Description of the feature section - formatted using markdown.',
+                'TEXT',
+                FALSE,
+                TRUE
+            ),
+            (
                 'icon',
                 'Icon of the feature section.',
+                'TEXT',
+                FALSE,
+                TRUE
+            ),
+            (
+                'link',
+                'An URL to which the user should be taken when they click on the section title.',
                 'TEXT',
                 FALSE,
                 TRUE

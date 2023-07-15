@@ -55,7 +55,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- top level
     ('title', 'Text header at the top of the list of cards.', 'TEXT', TRUE, TRUE),
     ('description', 'A short paragraph displayed below the title.', 'TEXT', TRUE, TRUE),
-
+    ('description_md', 'A short paragraph displayed below the title - formatted using markdown.', 'TEXT', TRUE, TRUE),
     ('columns', 'The number of columns in the grid of cards. This is just a hint, the grid will adjust dynamically to the user''s screen size, rendering fewer columns if needed to fit the contents.', 'INTEGER', TRUE, TRUE),
     -- item level
     ('title', 'Name of the card, displayed at the top.', 'TEXT', FALSE, FALSE),
@@ -219,7 +219,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'A name to display at the top of the form. It will be displayed in a larger font size at the top of the form.', 'TEXT', TRUE, TRUE),
     ('validate', 'The text to display in the button at the bottom of the form that submits the values.', 'TEXT', TRUE, TRUE),
     -- item level
-    ('type', 'The type of input to use: text for a simple text field, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter. This is set to "text" by default.', 'TEXT', FALSE, TRUE),
+    ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter. This is set to "text" by default.', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
