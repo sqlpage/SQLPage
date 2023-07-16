@@ -1,6 +1,6 @@
+use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
 use super::PreparedStatement;
 use crate::file_cache::AsyncFromStrWithState;
-use crate::webserver::database::StmtParam;
 use crate::{AppState, Database};
 use async_trait::async_trait;
 use sqlparser::ast::{
@@ -155,27 +155,22 @@ impl ParameterExtractor {
     }
 }
 
-fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
-    match func_name {
-        "cookie" => extract_single_quoted_string("cookie", arguments)
-            .map_or_else(StmtParam::Error, StmtParam::Cookie),
-        "header" => extract_single_quoted_string("header", arguments)
-            .map_or_else(StmtParam::Error, StmtParam::Header),
-        "basic_auth_username" => StmtParam::BasicAuthUsername,
-        "basic_auth_password" => StmtParam::BasicAuthPassword,
-        "hash_password" => extract_variable_argument("hash_password", arguments)
-            .map(Box::new)
-            .map_or_else(StmtParam::Error, StmtParam::HashPassword),
-        "random_string" => extract_integer("random_string", arguments)
-            .map_or_else(StmtParam::Error, StmtParam::RandomString),
-        unknown_name => StmtParam::Error(format!(
-            "Unknown function {unknown_name}({})",
-            FormatArguments(arguments)
-        )),
+/** This is a helper struct to format a list of arguments for an error message. */
+pub(super) struct FormatArguments<'a>(pub &'a [FunctionArg]);
+impl std::fmt::Display for FormatArguments<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut args = self.0.iter();
+        if let Some(arg) = args.next() {
+            write!(f, "{arg}")?;
+        }
+        for arg in args {
+            write!(f, ", {arg}")?;
+        }
+        Ok(())
     }
 }
 
-fn extract_single_quoted_string(
+pub(super) fn extract_single_quoted_string(
     func_name: &'static str,
     arguments: &mut [FunctionArg],
 ) -> Result<String, String> {
@@ -190,7 +185,7 @@ fn extract_single_quoted_string(
     }
 }
 
-fn extract_integer(
+pub(super) fn extract_integer(
     func_name: &'static str,
     arguments: &mut [FunctionArg],
 ) -> Result<usize, String> {
@@ -205,22 +200,7 @@ fn extract_integer(
     }
 }
 
-/** This is a helper struct to format a list of arguments for an error message. */
-struct FormatArguments<'a>(&'a [FunctionArg]);
-impl std::fmt::Display for FormatArguments<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut args = self.0.iter();
-        if let Some(arg) = args.next() {
-            write!(f, "{arg}")?;
-        }
-        for arg in args {
-            write!(f, ", {arg}")?;
-        }
-        Ok(())
-    }
-}
-
-fn extract_variable_argument(
+pub(super) fn extract_variable_argument(
     func_name: &'static str,
     arguments: &mut [FunctionArg],
 ) -> Result<StmtParam, String> {

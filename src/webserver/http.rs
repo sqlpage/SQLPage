@@ -1,5 +1,6 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
-use crate::webserver::database::{stream_query_results, DbItem, ErrorWithStatus};
+use crate::webserver::database::{stream_query_results, DbItem};
+use crate::webserver::ErrorWithStatus;
 use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::{ErrorInternalServerError, ErrorNotFound};
