@@ -1,4 +1,4 @@
-use crate::webserver::database::ErrorWithStatus;
+use crate::webserver::ErrorWithStatus;
 use crate::webserver::{make_placeholder, Database};
 use crate::AppState;
 use anyhow::Context;
