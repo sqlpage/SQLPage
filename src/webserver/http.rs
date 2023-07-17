@@ -397,7 +397,7 @@ async fn process_sql_request(
         .map_err(|e| {
             log::error!("Error while trying to get SQL file: {:#}", e);
             if e.downcast_ref::<std::io::Error>()
-                .is_some_and(|e| e.kind() == std::io::ErrorKind::NotFound)
+                .map_or(false, |e| e.kind() == std::io::ErrorKind::NotFound)
             {
                 ErrorNotFound("The requested file was not found.")
             } else {
