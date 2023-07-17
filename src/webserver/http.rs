@@ -21,7 +21,7 @@ use futures_util::StreamExt;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::io::{Write, self};
+use std::io::{self, Write};
 use std::mem;
 use std::net::IpAddr;
 use std::path::PathBuf;
