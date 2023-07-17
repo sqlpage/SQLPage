@@ -21,7 +21,7 @@ use futures_util::StreamExt;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Write, self};
 use std::mem;
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -396,9 +396,7 @@ async fn process_sql_request(
         .await
         .map_err(|e| {
             log::error!("Error while trying to get SQL file: {:#}", e);
-            if e.downcast_ref::<std::io::Error>()
-                .map_or(false, |e| e.kind() == std::io::ErrorKind::NotFound)
-            {
+            if e.downcast_ref().map(io::Error::kind) == Some(io::ErrorKind::NotFound) {
                 ErrorNotFound("The requested file was not found.")
             } else {
                 ErrorInternalServerError(format!(
