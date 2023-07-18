@@ -103,12 +103,35 @@ to the user's browser.
 
 ## Get started
 
+[Read the official *get started* guide on SQLPage's website](https://sql.ophir.dev/get_started.sql).
+
+### Using native binaries
+
+The easiest way to get started is to download the latest release from the
+[releases page](https://github.com/lovasoa/SQLpage/releases).
+
+- Download the binary that corresponds to your operating system (linux, macos, or windows).
+- Uncompress it: `tar -xzf sqlpage-*.tgz`
+- Run it in a terminal: `./sqlpage.bin`
+
+### With docker
+
+To run on a server, you can use [the docker image](https://hub.docker.com/r/lovasoa/sqlpage):
+
 - [Install docker](https://docs.docker.com/get-docker/)
 - In a terminal, run the following command:
   - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/sqlpage`
   - (`"$(pwd):/var/www"` allows sqlpage to run sql files from your current working directory)
 - Create a file called index.sql with the contents from [this example](./index.sql)
 - Open https://localhost:8080 in your browser
+
+### On Mac OS, with homebrew
+
+An alternative for Mac OS users is to use [SQLPage's homebrew package](https://formulae.brew.sh/formula/sqlpage).
+
+- [Install homebrew](https://brew.sh/)
+- In a terminal, run the following commands:
+  - `brew install sqlpage`
 
 
 ## Examples
