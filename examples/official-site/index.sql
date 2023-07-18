@@ -75,8 +75,8 @@ SQLPage is a *web server* written in
 [rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
 and [distributed as a single executable file](https://github.com/lovasoa/SQLpage/releases).
 When it receives a request with a URL ending in `.sql`, it finds the corresponding
-SQL file, runs it on the database,
-passing it information from the web request as SQL statement parameters.
+SQL file, runs it on the database, passing it information from the web request as SQL statement parameters
+[in a safe manner](safety.sql).
 When the database starts returning rows for the query,
 SQLPage maps each piece of information in the row to a parameter in the template of a pre-defined component,
 and streams the result back to the user''s browser.
