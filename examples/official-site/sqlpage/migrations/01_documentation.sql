@@ -250,7 +250,7 @@ For instance, if you were creating a form to manage a list of users, you could c
  - a file named `users.sql` that would contain a list of users and a form to create a new user,
  - a file named `create_user.sql` that would insert the new user in the database, and then redirect to `users.sql`.
 
-`create_user.sql` could contain a sql statement like 
+`create_user.sql` could contain the following sql statement to [safely](safety.sql) insert the new user in the database: 
 
 ```sql
 INSERT INTO users(name) VALUES(:username)
