@@ -164,7 +164,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
                 } => {
                     let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
                     let http_response = http_response.streaming(body_stream);
-                    return Ok(ResponseWithWriter {
+                    return Ok(ResponseWithWriter::RenderStream {
                         http_response,
                         renderer,
                         database_entries_stream: stream,
@@ -180,18 +180,19 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
         }
     }
     log::debug!("No SQL statements left to execute for the body of the response");
-    let (renderer, http_response) = head_context.close().await?;
-    Ok(ResponseWithWriter {
-        http_response,
-        renderer,
-        database_entries_stream: stream,
-    })
+    let http_response = head_context.close();
+    Ok(ResponseWithWriter::FinishedResponse { http_response })
 }
 
-struct ResponseWithWriter<S> {
-    http_response: HttpResponse,
-    renderer: RenderContext<ResponseWriter>,
-    database_entries_stream: Pin<Box<S>>,
+enum ResponseWithWriter<S> {
+    RenderStream {
+        http_response: HttpResponse,
+        renderer: RenderContext<ResponseWriter>,
+        database_entries_stream: Pin<Box<S>>,
+    },
+    FinishedResponse {
+        http_response: HttpResponse,
+    },
 }
 
 async fn render_sql(
@@ -213,7 +214,7 @@ async fn render_sql(
         let response_with_writer =
             build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
         match response_with_writer {
-            Ok(ResponseWithWriter {
+            Ok(ResponseWithWriter::RenderStream {
                 http_response,
                 renderer,
                 database_entries_stream,
@@ -222,6 +223,11 @@ async fn render_sql(
                     .send(http_response)
                     .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
                 stream_response(database_entries_stream, renderer).await;
+            }
+            Ok(ResponseWithWriter::FinishedResponse { http_response }) => {
+                resp_send
+                    .send(http_response)
+                    .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
             }
             Err(err) => {
                 send_anyhow_error(&err, resp_send);

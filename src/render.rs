@@ -185,13 +185,8 @@ impl<W: std::io::Write> HeaderContext<W> {
         })
     }
 
-    pub async fn close(mut self) -> anyhow::Result<(RenderContext<W>, HttpResponse)> {
-        let renderer = RenderContext::new(self.app_state, self.writer, JsonValue::Null)
-            .await
-            .with_context(|| {
-                "Failed to create a render context when closing the header context."
-            })?;
-        Ok((renderer, self.response.finish()))
+    pub fn close(mut self) -> HttpResponse {
+        self.response.finish()
     }
 }
 
