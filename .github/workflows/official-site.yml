@@ -1,0 +1,29 @@
+---
+name: 'deploy website'
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cloning repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: |
+        cp examples/official-site /tmp/
+        rm -rf *
+        cp /tmp/official-site/* .
+        git commit -am "site update $(date)"
+
+      - name: Push to dokku
+        uses: dokku/github-action@master
+        with:
+          git_remote_url: 'ssh://dokku@[${{ secrets.DEPLOY_IP }}]:22/sqlpage'
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          git_push_flags: '--force'
