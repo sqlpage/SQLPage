@@ -5,6 +5,8 @@ on:
     branches:
       - main
 
+concurrency: site-deploy
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
