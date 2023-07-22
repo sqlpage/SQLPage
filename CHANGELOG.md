@@ -2,6 +2,9 @@
 
 ## unreleased
 
+ - Added a new `json` component, which allows building a JSON API entirely in SQL with SQLPage !
+   Now creating an api over your database is as simple as `SELECT 'json' AS component, JSON_OBJECT('hello', 'world') AS contents`.
+
 ## 0.8.0 (2023-07-17)
 
  - Added a new [`sqlite_extensions` configuration parameter](./configuration.md) to load SQLite extensions. This allows many interesting use cases, such as 
