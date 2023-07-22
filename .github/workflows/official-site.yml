@@ -19,6 +19,7 @@ jobs:
           cp -r /tmp/official-site/* .
           git config user.name "GitHub Actions Bot"
           git config user.email "<>"
+          git add .
           git commit -am "site update $(date)"
 
       - name: Push to dokku
