@@ -19,21 +19,22 @@ Create **full websites** writing only simple database queries.' as description_m
     'sqlpage_introduction_video.webm' as video,
     'get started.sql' as link,
     'Build your first SQL website now !' as link_text;
+
 -- the mantra: fast, beautiful, easy
-SELECT 'Fast' as title,
-    'Pages load instantly, even on slow mobile networks.
-    SQLPage is designed as a single **lightweight** executable, ensuring fast performance even on low-cost servers.' as description_md,
-    'mail-fast' as icon,
-    'red' as color;
+SELECT 'Easy' as title,
+    'You can teach yourself enough SQL to select, update, and insert data in a database through SQLPage in a weekend.' as description,
+    'sofa' as icon,
+    'blue' as color;
 SELECT 'Beautiful' as title,
     'The page you are looking at right now is written entirely in SQL,
     using only professional looking pre-defined SQLPage components.' as description,
     'eye' as icon,
     'green' as color;
-SELECT 'Easy' as title,
-    'You can teach yourself enough SQL to select, update, and insert data in a database through SQLPage in a weekend.' as description,
-    'sofa' as icon,
-    'blue' as color;
+SELECT 'Fast' as title,
+    'Pages load instantly, even on slow mobile networks.
+    SQLPage is designed as a single **lightweight** executable, ensuring fast performance even on low-cost servers.' as description_md,
+    'mail-fast' as icon,
+    'red' as color;
 
 -- Quick feature overview
 SELECT 'card' as component,
