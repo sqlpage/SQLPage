@@ -1,7 +1,5 @@
----
 name: 'deploy website'
 
-# yamllint disable-line rule:truthy
 on:
   push:
     branches:
@@ -16,10 +14,10 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
-        cp examples/official-site /tmp/
-        rm -rf *
-        cp /tmp/official-site/* .
-        git commit -am "site update $(date)"
+          cp examples/official-site /tmp/
+          rm -rf *
+          cp /tmp/official-site/* .
+          git commit -am "site update $(date)"
 
       - name: Push to dokku
         uses: dokku/github-action@master
