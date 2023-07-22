@@ -24,7 +24,7 @@ jobs:
       - name: Push to dokku
         uses: dokku/github-action@master
         with:
-          git_remote_url: 'dokku@[${{ secrets.DEPLOY_IP }}]:sqlpage'
+          git_remote_url: 'dokku@${{ secrets.DEPLOY_IP }}:sqlpage'
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
           ssh_host_key: ${{ secrets.SSH_HOST_KEY }}
           git_push_flags: '--force'
