@@ -15,7 +15,9 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - run: |
+      - id: get_gitsha
+        name: Make a commit for the official site 
+        run: |
           cp -r examples/official-site /tmp/
           rm -rf *
           cp -r /tmp/official-site/* .
@@ -23,13 +25,14 @@ jobs:
           git config user.email "<>"
           git add .
           git commit -am "site update $(date)"
-          ls -lah *
+          echo "gitsha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # - name: Push to dokku
-      #   uses: dokku/github-action@master
-      #   with:
-      #     git_remote_url: 'dokku@${{ secrets.DEPLOY_IP }}:sqlpage'
-      #     ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     ssh_host_key: ${{ secrets.SSH_HOST_KEY }}
-      #     git_push_flags: '--force'
-      #     branch: 'main'
+      - name: Push to dokku
+        uses: dokku/github-action@master
+        with:
+          git_remote_url: 'dokku@${{ secrets.DEPLOY_IP }}:sqlpage'
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh_host_key: ${{ secrets.SSH_HOST_KEY }}
+          git_push_flags: '--force'
+          branch: 'main'
+          ci_commit: ${{ steps.get_gitsha.outputs.gitsha }}
