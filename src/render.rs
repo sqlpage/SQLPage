@@ -20,8 +20,8 @@ pub enum PageContext<W: std::io::Write> {
         renderer: RenderContext<W>,
     },
 
-    /// The headers have been set, but no response body should be sent
-    Close(HeaderContext<W>),
+    /// The response is ready, and should be sent as is. No further statements should be executed
+    Close(HttpResponse),
 }
 
 /// Handles the first SQL statements, before the headers have been sent to
@@ -49,6 +49,7 @@ impl<W: std::io::Write> HeaderContext<W> {
             Some("status_code") => self.status_code(&data).map(PageContext::Header),
             Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
             Some("redirect") => self.redirect(&data).map(PageContext::Close),
+            Some("json") => self.json(&data).map(PageContext::Close),
             Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
             Some("authentication") => self.authentication(&data),
             _ => self.start_body(data).await,
@@ -131,13 +132,29 @@ impl<W: std::io::Write> HeaderContext<W> {
         Ok(self)
     }
 
-    fn redirect(mut self, data: &JsonValue) -> anyhow::Result<Self> {
+    fn redirect(mut self, data: &JsonValue) -> anyhow::Result<HttpResponse> {
         self.response.status(StatusCode::FOUND);
         self.has_status = true;
         let link = get_object_str(data, "link")
             .with_context(|| "The redirect component requires a 'link' property")?;
         self.response.insert_header((header::LOCATION, link));
-        Ok(self)
+        let response = self.response.body(());
+        Ok(response)
+    }
+
+    /// Answers to the HTTP request with a single json object
+    fn json(mut self, data: &JsonValue) -> anyhow::Result<HttpResponse> {
+        let contents = data
+            .get("contents")
+            .with_context(|| "Missing 'contents' property for the json component")?;
+        let json_response = if let Some(s) = contents.as_str() {
+            s.as_bytes().to_owned()
+        } else {
+            serde_json::to_vec(contents)?
+        };
+        self.response
+            .insert_header((header::CONTENT_TYPE, "application/json"));
+        Ok(self.response.body(json_response))
     }
 
     fn authentication(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
@@ -171,7 +188,9 @@ impl<W: std::io::Write> HeaderContext<W> {
                 .insert_header((header::WWW_AUTHENTICATE, "Basic realm=\"Auth required\""));
             self.has_status = true;
         }
-        Ok(PageContext::Close(self))
+        // Set an empty response body
+        let http_response = self.response.body(());
+        Ok(PageContext::Close(http_response))
     }
 
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
