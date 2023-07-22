@@ -10,6 +10,7 @@ on:
       - 'docs/**'
       - 'README.md'
       - '.github/workflows/release.yml'
+      - '.github/workflows/official-site.yml'
 
 jobs:
   docker:
