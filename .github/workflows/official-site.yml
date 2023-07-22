@@ -16,7 +16,7 @@ jobs:
       - run: |
           cp -r examples/official-site /tmp/
           rm -rf *
-          cp /tmp/official-site/* .
+          cp -r /tmp/official-site/* .
           git commit -am "site update $(date)"
 
       - name: Push to dokku
