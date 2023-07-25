@@ -22,10 +22,11 @@ use sqlx::any::{
     AnyArguments, AnyConnectOptions, AnyKind, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo,
 };
 use sqlx::migrate::Migrator;
-use sqlx::pool::PoolOptions;
+use sqlx::pool::{PoolConnection, PoolOptions};
 use sqlx::query::Query;
 use sqlx::{
-    Any, AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Executor, Row, Statement,
+    Any, AnyConnection, AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Executor, Row,
+    Statement,
 };
 
 use self::sql::ParsedSQLStatement;
@@ -100,14 +101,7 @@ pub async fn stream_query_results<'a>(
     request: &'a RequestInfo,
 ) -> impl Stream<Item = DbItem> + 'a {
     async_stream::stream! {
-        let mut connection = match db.connection.acquire().await {
-            Ok(c) => c,
-            Err(e) => {
-                let err_msg = format!("Unable to acquire a database connection to execute the SQL file. All of the {} {:?} connections are busy.", db.connection.size(), db.connection.any_kind());
-                yield DbItem::Error(anyhow::Error::new(e).context(err_msg));
-                return;
-            }
-        };
+        let mut connection_opt = None;
         for res in &sql_file.statements {
             match res {
                 ParsedSQLStatement::Statement(stmt)=>{
@@ -118,7 +112,14 @@ pub async fn stream_query_results<'a>(
                             continue;
                         }
                     };
-                    let mut stream = query.fetch_many(&mut connection);
+                    let connection = match take_connection(db, &mut connection_opt).await {
+                        Ok(c) => c,
+                        Err(e) => {
+                            yield DbItem::Error(e);
+                            return;
+                        }
+                    };
+                    let mut stream = query.fetch_many(connection);
                     while let Some(elem) = stream.next().await {
                         yield parse_single_sql_result(elem)
                     }
@@ -129,6 +130,26 @@ pub async fn stream_query_results<'a>(
                 ParsedSQLStatement::Error(e) => yield DbItem::Error(clone_anyhow_err(e)),
             }
         }
+    }
+}
+
+async fn take_connection<'a, 'b>(
+    db: &'a Database,
+    conn: &'b mut Option<PoolConnection<sqlx::Any>>,
+) -> anyhow::Result<&'b mut AnyConnection> {
+    match conn {
+        Some(c) => Ok(c),
+        None => match db.connection.acquire().await {
+            Ok(c) => {
+                log::debug!("Acquired a database connection");
+                *conn = Some(c);
+                Ok(conn.as_mut().unwrap())
+            }
+            Err(e) => {
+                let err_msg = format!("Unable to acquire a database connection to execute the SQL file. All of the {} {:?} connections are busy.", db.connection.size(), db.connection.any_kind());
+                Err(anyhow::Error::new(e).context(err_msg))
+            }
+        },
     }
 }
 
