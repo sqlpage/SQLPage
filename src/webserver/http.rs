@@ -5,7 +5,7 @@ use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::{ErrorInternalServerError, ErrorNotFound};
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
-use actix_web::http::{header, StatusCode};
+use actix_web::http::{header, StatusCode, Uri};
 use actix_web::web::Form;
 use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, FromRequest,
@@ -452,6 +452,9 @@ async fn main_handler(mut service_request: ServiceRequest) -> actix_web::Result<
     let path = req_path(&service_request);
     let sql_file_path = path_to_sql_file(&path);
     if let Some(sql_path) = sql_file_path {
+        if let Some(redirect) = redirect_missing_trailing_slash(service_request.uri()) {
+            return Ok(service_request.into_response(redirect));
+        }
         log::debug!("Processing SQL request: {:?}", sql_path);
         process_sql_request(service_request, sql_path).await
     } else {
@@ -468,6 +471,26 @@ async fn main_handler(mut service_request: ServiceRequest) -> actix_web::Result<
 fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
     let encoded_path = req.path();
     percent_encoding::percent_decode_str(encoded_path).decode_utf8_lossy()
+}
+
+fn redirect_missing_trailing_slash(uri: &Uri) -> Option<HttpResponse> {
+    let path = uri.path();
+    if !path.ends_with('/') && !path.ends_with(".sql") {
+        let mut redirect_path = path.to_owned();
+        redirect_path.push('/');
+        if let Some(query) = uri.query() {
+            redirect_path.push('?');
+            redirect_path.push_str(query);
+        }
+        Some(
+            HttpResponse::MovedPermanently()
+                .insert_header((header::LOCATION, redirect_path))
+                .finish()
+                .into(),
+        )
+    } else {
+        None
+    }
 }
 
 pub fn create_app(
@@ -500,6 +523,9 @@ pub fn create_app(
                 )),
         )
         .wrap(middleware::Compress::default())
+        .wrap(middleware::NormalizePath::new(
+            middleware::TrailingSlash::MergeOnly,
+        ))
         .app_data(app_state)
 }
 
