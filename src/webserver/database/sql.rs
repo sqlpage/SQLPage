@@ -4,8 +4,8 @@ use crate::file_cache::AsyncFromStrWithState;
 use crate::{AppState, Database};
 use async_trait::async_trait;
 use sqlparser::ast::{
-    DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Value, VisitMut,
-    VisitorMut,
+    DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Statement, Value,
+    VisitMut, VisitorMut,
 };
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::{Parser, ParserError};
@@ -18,7 +18,13 @@ use std::ops::ControlFlow;
 
 #[derive(Default)]
 pub struct ParsedSqlFile {
-    pub(super) statements: Vec<anyhow::Result<PreparedStatement>>,
+    pub(super) statements: Vec<ParsedSQLStatement>,
+}
+
+pub(super) enum ParsedSQLStatement {
+    Statement(PreparedStatement),
+    StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
+    Error(anyhow::Error),
 }
 
 impl ParsedSqlFile {
@@ -38,19 +44,29 @@ impl ParsedSqlFile {
                 }
             };
             while parser.consume_token(&SemiColon) {}
+            if let Some(static_statement) = extract_static_simple_select(&stmt) {
+                log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
+                statements.push(ParsedSQLStatement::StaticSimpleSelect(static_statement));
+                continue;
+            }
             let db_kind = db.connection.any_kind();
             let parameters = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
             let query = stmt.to_string();
             let param_types = get_param_types(&parameters);
             let stmt_res = db.prepare_with(&query, &param_types).await;
-            match &stmt_res {
-                Ok(_) => log::debug!("Successfully prepared SQL statement '{query}'"),
-                Err(err) => log::warn!("{err:#}"),
-            }
-            let statement_result = stmt_res.map(|statement| PreparedStatement {
-                statement,
-                parameters,
-            });
+            let statement_result = match stmt_res {
+                Ok(statement) => {
+                    log::debug!("Successfully prepared SQL statement '{query}'");
+                    ParsedSQLStatement::Statement(PreparedStatement {
+                        statement,
+                        parameters,
+                    })
+                }
+                Err(err) => {
+                    log::warn!("{err:#}");
+                    ParsedSQLStatement::Error(err)
+                }
+            };
             statements.push(statement_result);
         }
         statements.shrink_to_fit();
@@ -60,7 +76,7 @@ impl ParsedSqlFile {
     fn finish_with_error(
         err: ParserError,
         mut parser: Parser,
-        mut statements: Vec<anyhow::Result<PreparedStatement>>,
+        mut statements: Vec<ParsedSQLStatement>,
     ) -> ParsedSqlFile {
         let mut err_msg = "SQL syntax error before: ".to_string();
         for _ in 0..32 {
@@ -71,15 +87,15 @@ impl ParsedSqlFile {
             _ = write!(&mut err_msg, "{next_token} ");
         }
         let error = anyhow::Error::from(err).context(err_msg);
-        statements.push(Err(error));
+        statements.push(ParsedSQLStatement::Error(error));
         ParsedSqlFile { statements }
     }
 
     fn from_err(e: impl Into<anyhow::Error>) -> Self {
         Self {
-            statements: vec![Err(e
-                .into()
-                .context("SQLPage could not parse the SQL file"))],
+            statements: vec![ParsedSQLStatement::Error(
+                e.into().context("SQLPage could not parse the SQL file"),
+            )],
         }
     }
 }
@@ -108,6 +124,57 @@ fn map_param(mut name: String) -> StmtParam {
         ':' => StmtParam::Post(name),
         _ => StmtParam::Get(name),
     }
+}
+
+fn extract_static_simple_select(
+    stmt: &Statement,
+) -> Option<serde_json::Map<String, serde_json::Value>> {
+    let set_expr = match stmt {
+        Statement::Query(q)
+            if q.limit.is_none()
+                && q.fetch.is_none()
+                && q.order_by.is_empty()
+                && q.with.is_none()
+                && q.offset.is_none()
+                && q.locks.is_empty() =>
+        {
+            q.body.as_ref()
+        }
+        _ => return None,
+    };
+    let select_items = match set_expr {
+        sqlparser::ast::SetExpr::Select(s)
+            if s.cluster_by.is_empty()
+                && s.distinct.is_none()
+                && s.distribute_by.is_empty()
+                && s.from.is_empty()
+                && s.group_by.is_empty()
+                && s.having.is_none()
+                && s.into.is_none()
+                && s.lateral_views.is_empty()
+                && s.named_window.is_empty()
+                && s.qualify.is_none()
+                && s.selection.is_none()
+                && s.sort_by.is_empty()
+                && s.top.is_none() =>
+        {
+            &s.projection
+        }
+        _ => return None,
+    };
+    let mut map = serde_json::Map::with_capacity(select_items.len());
+    for select_item in select_items {
+        let sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } = select_item else { return None };
+        let value = match expr {
+            Expr::Value(Value::Boolean(b)) => serde_json::Value::Bool(*b),
+            Expr::Value(Value::Number(n, _)) => serde_json::Value::Number(n.parse().ok()?),
+            Expr::Value(Value::SingleQuotedString(s)) => serde_json::Value::String(s.clone()),
+            Expr::Value(Value::Null) => serde_json::Value::Null,
+            _ => return None,
+        };
+        map.insert(alias.value.clone(), value);
+    }
+    Some(map)
 }
 
 struct ParameterExtractor {
@@ -291,23 +358,90 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
     }
 }
 
-#[test]
-fn test_statement_rewrite() {
-    let sql = "select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')";
-    let mut ast = Parser::parse_sql(&GenericDialect, sql).unwrap();
-    let parameters = ParameterExtractor::extract_parameters(&mut ast[0], AnyKind::Postgres);
-    assert_eq!(
-        ast[0].to_string(),
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn parse_stmt(sql: &str) -> Statement {
+        let mut ast = Parser::parse_sql(&GenericDialect, sql).unwrap();
+        assert_eq!(ast.len(), 1);
+        ast.pop().unwrap()
+    }
+
+    #[test]
+    fn test_statement_rewrite() {
+        let mut ast = parse_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Postgres);
+        assert_eq!(
+        ast.to_string(),
         "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($3 AS TEXT) OR CAST($4 AS TEXT) = CAST($5 AS TEXT)"
     );
-    assert_eq!(
-        parameters,
-        [
-            StmtParam::GetOrPost("a".to_string()),
-            StmtParam::GetOrPost("x".to_string()),
-            StmtParam::GetOrPost("a".to_string()),
-            StmtParam::GetOrPost("x".to_string()),
-            StmtParam::Cookie("cookoo".to_string()),
-        ]
-    );
+        assert_eq!(
+            parameters,
+            [
+                StmtParam::GetOrPost("a".to_string()),
+                StmtParam::GetOrPost("x".to_string()),
+                StmtParam::GetOrPost("a".to_string()),
+                StmtParam::GetOrPost("x".to_string()),
+                StmtParam::Cookie("cookoo".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_static_extract() {
+        assert_eq!(
+            extract_static_simple_select(&parse_stmt(
+                "select 'hello' as hello, 42 as answer, null as nothing"
+            )),
+            Some(
+                serde_json::json!({
+                    "hello": "hello",
+                    "answer": 42,
+                    "nothing": (),
+                })
+                .as_object()
+                .unwrap()
+                .clone()
+            )
+        );
+    }
+
+    #[test]
+    fn test_static_extract_doesnt_match() {
+        assert_eq!(
+            extract_static_simple_select(&parse_stmt(
+                "select 'hello' as hello, 42 as answer limit 0"
+            )),
+            None
+        );
+        assert_eq!(
+            extract_static_simple_select(&parse_stmt(
+                "select 'hello' as hello, 42 as answer order by 1"
+            )),
+            None
+        );
+        assert_eq!(
+            extract_static_simple_select(&parse_stmt(
+                "select 'hello' as hello, 42 as answer offset 1"
+            )),
+            None
+        );
+        assert_eq!(
+            extract_static_simple_select(&parse_stmt(
+                "select 'hello' as hello, 42 as answer where 1 = 0"
+            )),
+            None
+        );
+        assert_eq!(
+            extract_static_simple_select(&parse_stmt(
+                "select 'hello' as hello, 42 as answer FROM t"
+            )),
+            None
+        );
+        assert_eq!(
+            extract_static_simple_select(&parse_stmt("select x'CAFEBABE' as hello, 42 as answer")),
+            None
+        );
+    }
 }

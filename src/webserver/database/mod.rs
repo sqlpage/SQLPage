@@ -2,12 +2,11 @@ mod sql;
 mod sql_pseudofunctions;
 
 use anyhow::{anyhow, Context};
-use futures_util::stream::{self, BoxStream, Stream};
+use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use serde_json::{Map, Value};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
-use std::future::ready;
 use std::path::Path;
 use std::time::Duration;
 
@@ -28,6 +27,8 @@ use sqlx::query::Query;
 use sqlx::{
     Any, AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Executor, Row, Statement,
 };
+
+use self::sql::ParsedSQLStatement;
 
 pub struct Database {
     pub(crate) connection: AnyPool,
@@ -98,42 +99,49 @@ pub async fn stream_query_results<'a>(
     sql_file: &'a ParsedSqlFile,
     request: &'a RequestInfo,
 ) -> impl Stream<Item = DbItem> + 'a {
-    stream_query_results_direct(db, sql_file, request)
-        .await
-        .unwrap_or_else(|error| stream::once(ready(Err(error))).boxed())
-        .map(|res| match res {
-            Ok(Either::Right(r)) => DbItem::Row(row_to_json(&r)),
-            Ok(Either::Left(res)) => {
-                log::debug!("Finished query with result: {:?}", res);
-                DbItem::FinishedQuery
+    async_stream::stream! {
+        let mut connection = match db.connection.acquire().await {
+            Ok(c) => c,
+            Err(e) => {
+                let err_msg = format!("Unable to acquire a database connection to execute the SQL file. All of the {} {:?} connections are busy.", db.connection.size(), db.connection.any_kind());
+                yield DbItem::Error(anyhow::Error::new(e).context(err_msg));
+                return;
             }
-            Err(e) => DbItem::Error(e),
-        })
-}
-
-pub async fn stream_query_results_direct<'a>(
-    db: &'a Database,
-    sql_file: &'a ParsedSqlFile,
-    request: &'a RequestInfo,
-) -> anyhow::Result<BoxStream<'a, anyhow::Result<Either<AnyQueryResult, AnyRow>>>> {
-    Ok(async_stream::stream! {
-        let mut connection = db.connection.acquire().await
-            .with_context(|| anyhow::anyhow!("Unable to acquire a database connection to execute the SQL file. All of the {} {:?} connections are busy.", db.connection.size(), db.connection.any_kind()))?;
+        };
         for res in &sql_file.statements {
             match res {
-                Ok(stmt)=>{
-                    let query = bind_parameters(stmt, request)
-                        .with_context(|| format!("Unable to bind parameters to the SQL statement: {stmt}"))?;
+                ParsedSQLStatement::Statement(stmt)=>{
+                    let query = match bind_parameters(stmt, request) {
+                        Ok(q) => q,
+                        Err(e) => {
+                            yield DbItem::Error(e);
+                            continue;
+                        }
+                    };
                     let mut stream = query.fetch_many(&mut connection);
                     while let Some(elem) = stream.next().await {
-                        yield elem.with_context(|| format!("Error while running SQL: {stmt}"))
+                        yield parse_single_sql_result(elem)
                     }
                 },
-                Err(e) => yield Err(clone_anyhow_err(e)),
+                ParsedSQLStatement::StaticSimpleSelect(value) => {
+                    yield DbItem::Row(value.clone().into())
+                }
+                ParsedSQLStatement::Error(e) => yield DbItem::Error(clone_anyhow_err(e)),
             }
         }
     }
-    .boxed())
+}
+
+#[inline]
+fn parse_single_sql_result(res: sqlx::Result<Either<AnyQueryResult, AnyRow>>) -> DbItem {
+    match res {
+        Ok(Either::Right(r)) => DbItem::Row(row_to_json(&r)),
+        Ok(Either::Left(res)) => {
+            log::debug!("Finished query with result: {:?}", res);
+            DbItem::FinishedQuery
+        }
+        Err(e) => DbItem::Error(e.into()),
+    }
 }
 
 fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
