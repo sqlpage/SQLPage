@@ -121,7 +121,11 @@ pub async fn stream_query_results<'a>(
                     };
                     let mut stream = query.fetch_many(connection);
                     while let Some(elem) = stream.next().await {
-                        yield parse_single_sql_result(elem)
+                        let is_err = elem.is_err();
+                        yield parse_single_sql_result(elem);
+                        if is_err {
+                            break;
+                        }
                     }
                 },
                 ParsedSQLStatement::StaticSimpleSelect(value) => {
