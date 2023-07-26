@@ -475,7 +475,11 @@ fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
 
 fn redirect_missing_trailing_slash(uri: &Uri) -> Option<HttpResponse> {
     let path = uri.path();
-    if !path.ends_with('/') && !path.ends_with(".sql") {
+    if !path.ends_with('/')
+        && !path
+            .rsplit_once('.')
+            .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("sql"))
+    {
         let mut redirect_path = path.to_owned();
         redirect_path.push('/');
         if let Some(query) = uri.query() {
@@ -485,8 +489,7 @@ fn redirect_missing_trailing_slash(uri: &Uri) -> Option<HttpResponse> {
         Some(
             HttpResponse::MovedPermanently()
                 .insert_header((header::LOCATION, redirect_path))
-                .finish()
-                .into(),
+                .finish(),
         )
     } else {
         None
