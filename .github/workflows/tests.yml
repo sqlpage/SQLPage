@@ -20,21 +20,9 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-    - name: Free up disk space
-      run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" /var/lib/apt/lists/*
     - uses: actions/checkout@v3
     - name: Set up cargo cache
-      uses: actions/cache@v3
-      continue-on-error: false
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: tests-${{ runner.os }}-check-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: tests-${{ runner.os }}-check-
+      uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
     - run: cargo fmt --all -- --check
     - run: cargo clippy
     - run: cargo test
