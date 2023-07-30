@@ -7,6 +7,6 @@ GO
 USE sqlpage;
 GO
 
-CREATE LOGIN root WITH PASSWORD = 'secret';
-CREATE USER root FOR LOGIN MyUser;
+CREATE LOGIN root WITH PASSWORD = 'Password123!';
+CREATE USER root FOR LOGIN root;
 GO
