@@ -300,8 +300,10 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 #[inline]
 pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
     match db_kind {
-        // Postgres only supports numbered parameters
+        // Postgres only supports numbered parameters with $1, $2, etc.
         AnyKind::Postgres => format!("${arg_number}"),
+        // MSSQL only supports named parameters with @p1, @p2, etc.
+        AnyKind::Mssql => format!("@p{arg_number}"),
         _ => '?'.to_string(),
     }
 }
