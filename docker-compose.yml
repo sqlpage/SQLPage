@@ -1,12 +1,5 @@
+# You can easily switch between different databases by changing the value of COMPOSE_PROFILES in the .env file.
 services:
-  test:
-    image: debian:stable-slim
-    volumes:
-      - .:/var/www
-    depends_on:
-      - db
-    environment:
-      DATABASE_URL: ${DB:-postgres}://root:secret@db/sqlpage
   web:
     build: { context: "." }
     ports:
@@ -14,17 +7,25 @@ services:
     volumes:
       - .:/var/www
     depends_on:
-      - db
+      - ${COMPOSE_PROFILES-postgres}
     environment:
-      DATABASE_URL: ${DB:-postgres}://root:secret@db/sqlpage
-  db: # The DB environment variable can be set to "mariadb" or "postgres" to test the code with different databases
-    ports:
-      - "5432:5432"
-      - "3306:3306"
-    image: ${DB:-postgres}
+      DATABASE_URL: ${COMPOSE_PROFILES-postgres}://root:secret@${COMPOSE_PROFILES:-postgres}/sqlpage
+  postgres:
+    profiles: ["postgres"]
+    ports: ["5432:5432"]
+    image: postgres
     environment:
       POSTGRES_USER: root
       POSTGRES_DB: sqlpage
       POSTGRES_PASSWORD: secret
+  mysql:
+    profiles: ["mysql"]
+    ports: ["3306:3306"]
+    image: mysql
+    environment:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: sqlpage
+  mssql:
+    profiles: ["mssql"]
+    ports: ["1433:1433"]
+    build: { context: "mssql" }
