@@ -2,7 +2,11 @@
 sqlpage.db
 docs/
 README.md
+CHANGELOG.md
+LICENSE.txt
+configuration.md
 *Dockerfile
 .dockerignore
 .github/
 examples/
+mssql/
