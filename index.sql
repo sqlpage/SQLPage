@@ -100,8 +100,8 @@ SELECT a.x || ' times ' || b.x as title,
     a.x || ' x ' || b.x || ' = ' || (a.x * b.x) as description,
     'This is basic math' as footer,
     '?x=' || a.x as link -- This is the interesting part. Each card has a link. When you click the card, the current page is reloaded with '?x=a' appended to the end of the URL
-FROM (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12)) as a(x),
-    (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12)) as b(x)
+FROM (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10)) as a(x),
+    (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10)) as b(x)
 WHERE -- The powerful thing is here
     $x IS NULL
     OR -- The syntax $x allows us to extract the value 'a' when the URL ends with '?x=a'. It will be null if the URL does not contain '?x='

@@ -4,8 +4,8 @@ use crate::file_cache::AsyncFromStrWithState;
 use crate::{AppState, Database};
 use async_trait::async_trait;
 use sqlparser::ast::{
-    DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Statement, Value,
-    VisitMut, VisitorMut,
+    BinaryOperator, DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName,
+    Statement, Value, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::{Parser, ParserError};
@@ -182,6 +182,10 @@ struct ParameterExtractor {
     parameters: Vec<StmtParam>,
 }
 
+const PLACEHOLDER_PREFIXES: [(AnyKind, &str); 2] =
+    [(AnyKind::Postgres, "$"), (AnyKind::Mssql, "@p")];
+const DEFAULT_PLACEHOLDER: &str = "?";
+
 impl ParameterExtractor {
     fn extract_parameters(
         sql_ast: &mut sqlparser::ast::Statement,
@@ -200,7 +204,8 @@ impl ParameterExtractor {
         let data_type = match self.db_kind {
             // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
             AnyKind::MySql => DataType::Char(None),
-            _ => DataType::Text,
+            AnyKind::Postgres => DataType::Text,
+            _ => DataType::Varchar(None),
         };
         let value = Expr::Value(Value::Placeholder(name));
         Expr::Cast {
@@ -219,6 +224,21 @@ impl ParameterExtractor {
         let param = func_call_to_param(func_name, &mut arguments);
         self.parameters.push(param);
         placeholder
+    }
+
+    fn is_own_placeholder(&self, param: &str) -> bool {
+        if let Some((_, prefix)) = PLACEHOLDER_PREFIXES
+            .iter()
+            .find(|(kind, _prefix)| *kind == self.db_kind)
+        {
+            if let Some(param) = param.strip_prefix(prefix) {
+                if let Ok(index) = param.parse::<usize>() {
+                    return index <= self.parameters.len() + 1;
+                }
+            }
+            return false;
+        }
+        param == DEFAULT_PLACEHOLDER
     }
 }
 
@@ -299,21 +319,20 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 
 #[inline]
 pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
-    match db_kind {
-        // Postgres only supports numbered parameters with $1, $2, etc.
-        AnyKind::Postgres => format!("${arg_number}"),
-        // MSSQL only supports named parameters with @p1, @p2, etc.
-        AnyKind::Mssql => format!("@p{arg_number}"),
-        _ => '?'.to_string(),
+    if let Some((_, prefix)) = PLACEHOLDER_PREFIXES
+        .iter()
+        .find(|(kind, _)| *kind == db_kind)
+    {
+        return format!("{prefix}{arg_number}");
     }
+    DEFAULT_PLACEHOLDER.to_string()
 }
 
 impl VisitorMut for ParameterExtractor {
     type Break = ();
     fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
         match value {
-            Expr::Value(Value::Placeholder(param))
-                if param.chars().nth(1).is_some_and(char::is_alphabetic) =>
+            Expr::Value(Value::Placeholder(param)) if !self.is_own_placeholder(param) =>
             // this check is to avoid recursively replacing placeholders in the form of '?', or '$1', '$2', which we emit ourselves
             {
                 let new_expr = self.make_placeholder();
@@ -333,6 +352,26 @@ impl VisitorMut for ParameterExtractor {
                 log::debug!("Handling builtin function: {func_name}");
                 let arguments = std::mem::take(args);
                 *value = self.handle_builtin_function(func_name, arguments);
+            }
+            // Replace 'str1' || 'str2' with CONCAT('str1', 'str2') for MSSQL
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::StringConcat,
+                right,
+            } if self.db_kind == AnyKind::Mssql => {
+                let left = std::mem::replace(left.as_mut(), Expr::Value(Value::Null));
+                let right = std::mem::replace(right.as_mut(), Expr::Value(Value::Null));
+                *value = Expr::Function(Function {
+                    name: ObjectName(vec![Ident::new("CONCAT")]),
+                    args: vec![
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(left)),
+                        FunctionArg::Unnamed(FunctionArgExpr::Expr(right)),
+                    ],
+                    over: None,
+                    distinct: false,
+                    special: false,
+                    order_by: vec![],
+                });
             }
             _ => (),
         }
@@ -388,6 +427,17 @@ mod test {
                 StmtParam::Cookie("cookoo".to_string()),
             ]
         );
+    }
+
+    #[test]
+    fn test_mssql_statement_rewrite() {
+        let mut ast = parse_stmt("select '' || $1 from t");
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
+        assert_eq!(
+            ast.to_string(),
+            "SELECT CONCAT('', CAST(@p1 AS VARCHAR)) FROM t"
+        );
+        assert_eq!(parameters, [StmtParam::GetOrPost("1".to_string()),]);
     }
 
     #[test]
