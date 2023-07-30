@@ -275,6 +275,7 @@ using a function to convert the rows into a json array like
  - `json_group_array()` in SQLite,
  - `json_agg()` in Postgres, or
  - `JSON_ARRAYAGG()` in MySQL.
+ - `FOR JSON PATH` in Microsoft SQL Server.
 
 
 In SQLite, the query would look like

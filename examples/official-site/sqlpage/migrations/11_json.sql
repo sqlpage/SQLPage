@@ -36,6 +36,7 @@ To build a json array out of rows from the database, you can use:
  - `json_group_array()` in SQLite,
  - `json_agg()` in Postgres, or
  - `JSON_ARRAYAGG()` in MySQL.
+ - `FOR JSON PATH` in SQL Server.
 
 
 ```sql
