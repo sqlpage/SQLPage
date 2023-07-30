@@ -98,6 +98,7 @@ Later, when you want to deploy your website online, you can switch back to a per
  - a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx/0.6.3/sqlx/sqlite/struct.SqliteConnectOptions.html#main-content)),
  - a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://www.postgresql.org/docs/15/libpq-connect.html#id-1.7.3.8.3.6)),
  - a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://dev.mysql.com/doc/refman/8.0/en/connecting-using-uri-or-key-value-pairs.html)),
+ - a Microsoft SQL Server with `mssql://user:password@host/database`,
  
 For more information about the properties that can be set in sqlpage.json, see [SQLPage''s configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
 

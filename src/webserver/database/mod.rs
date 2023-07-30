@@ -289,6 +289,7 @@ impl Database {
                     AnyKind::Postgres => 50,
                     AnyKind::MySql => 75,
                     AnyKind::Sqlite => 16,
+                    AnyKind::Mssql => 100,
                     #[allow(unreachable_patterns)]
                     _ => unreachable!("unsupported database"),
                 }

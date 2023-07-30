@@ -750,9 +750,9 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "errno"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bcfec3a70f97c962c307b2d2c56e358cf1d00b558d74262b5f929ee8cc7e73a"
+checksum = "6b30f669a7961ef1631673d2766cc92f52d64f7ef354d4fe0ddfd30ed52f0f4f"
 dependencies = [
  "errno-dragonfly",
  "libc",
@@ -1801,9 +1801,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39354c10dd07468c2e73926b23bb9c2caca74c5501e38a35da70406f1d923310"
+checksum = "b7b6d6190b7594385f61bd3911cd1be99dfddcfc365a4160cc2ab5bff4aed294"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1985,18 +1985,18 @@ checksum = "b0293b4b29daaf487284529cc2f5675b8e57c61f70167ba415a463651fd6a918"
 
 [[package]]
 name = "serde"
-version = "1.0.176"
+version = "1.0.178"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76dc28c9523c5d70816e393136b86d48909cfb27cecaa902d338c19ed47164dc"
+checksum = "60363bdd39a7be0266a520dab25fdc9241d2f987b08a01e01f0ec6d06a981348"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.176"
+version = "1.0.178"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4e7b8c5dc823e3b90651ff1d3808419cd14e5ad76de04feaf37da114e7a306f"
+checksum = "f28482318d6641454cb273da158647922d1be6b5a2fcc6165cd89ebdd7ed576b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2186,9 +2186,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.5"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fca5ae6d6ad2026a3442e3071273ba7f2070b7f7b0782cf51c6467e672f05a65"
+checksum = "cc02e40c6e194a245a8186c0383ab08fcdd0744f0ebb93b2f32f8a660d8cd9f8"
 dependencies = [
  "ahash 0.8.3",
  "atoi",
@@ -2203,6 +2203,7 @@ dependencies = [
  "dirs",
  "dotenvy",
  "either",
+ "encoding_rs",
  "event-listener",
  "flume",
  "futures-channel",
@@ -2227,6 +2228,7 @@ dependencies = [
  "paste",
  "percent-encoding",
  "rand",
+ "regex",
  "rsa",
  "rustls 0.21.5",
  "rustls-pemfile",
@@ -2241,15 +2243,16 @@ dependencies = [
  "thiserror",
  "tokio-stream",
  "url",
- "webpki-roots 0.25.0",
+ "uuid",
+ "webpki-roots 0.25.1",
  "whoami",
 ]
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.5"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d6cbedd598ced805a993484a0f95225b601056110b20e0434d8c6b7cf927ba5"
+checksum = "b5e285f51c40b8766acc99de53e29bf3fec9402eaea29009826d03657560e723"
 dependencies = [
  "dotenvy",
  "either",
@@ -2266,9 +2269,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.5"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af2556765d5eb819265ccade5451cd995fdb2f2880dad94b12e5a3255f4daccc"
+checksum = "43bb2548267d973900f3660eb584ca4904adac8f20c0dcaa610c5f40c1fc7c7f"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -2276,9 +2279,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt-oldapi"
-version = "0.6.5"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c3889be1c192b2bcc1e1dd72cbfd3f879e646273296c3ccdc0c2537df83ab58"
+checksum = "dfb46a5504be9bb6a75c6dd34840966f4903b33f5673e531b313bde4fa176917"
 dependencies = [
  "once_cell",
  "tokio",
@@ -2651,6 +2654,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "uuid"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79daa5ed5740825c40b389c5e50312b9c86df53fccd33f281df655642b43869d"
+
+[[package]]
 name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2777,9 +2786,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.25.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a4ac452058d835c2b7ff6d74f0ad9f40e172bb1ce661b1444f397eeb1d19e6d"
+checksum = "c9c6eda1c830a36f361e7721c87fd79ea84293b54f8c48c959f85ec636f0f196"
 
 [[package]]
 name = "whoami"

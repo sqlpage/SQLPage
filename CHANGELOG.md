@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.9.0 (2023-07-30)
 
  - Added a new `json` component, which allows building a JSON API entirely in SQL with SQLPage !
    Now creating an api over your database is as simple as `SELECT 'json' AS component, JSON_OBJECT('hello', 'world') AS contents`.
@@ -9,6 +9,7 @@
  - Update the database drivers to the latest version, and switch to a fork of `sqlx` that opens the door to supporting Microsoft SQL Server in the future. This also updates the embedded version of SQLite to 3.41.2, with [many cool new features](https://www.sqlite.org/changes.html) such as:
    - better json support
    - better performance
+ - Add experimental support for *Microsoft SQL Server*. If you have a SQL Server database lying around, please test it and report any issue you might encounter !
 
 ## 0.8.0 (2023-07-17)
 
