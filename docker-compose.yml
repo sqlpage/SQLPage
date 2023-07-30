@@ -7,8 +7,8 @@ services:
     volumes:
       - .:/var/www
     depends_on:
-      mssql: { condition: service_healthy }
-      # [ "${COMPOSE_PROFILES-postgres}" ]
+      # mssql: { condition: service_healthy }
+      [ "${COMPOSE_PROFILES-postgres}" ]
     environment:
       DATABASE_URL: ${COMPOSE_PROFILES-postgres}://root:Password123!@${COMPOSE_PROFILES:-postgres}/sqlpage
   postgres:

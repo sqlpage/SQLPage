@@ -66,12 +66,10 @@ select 'chart' as component,
     'Collatz conjecture' as title,
     'area' as type;
 
-SELECT 'syracuse' as series,
-    x,
-    y
+SELECT 'syracuse' as series, x, y
 FROM (
-  VALUES (0, 15), (1, 46), (2, 23), (3, 70), (4, 35), (5, 106), (6, 53), (7, 160), (8, 80), (9, 40), (10, 20), (11, 10), (12, 5)
-) AS cnt(x, y);
+      SELECT 0 AS x, 15 AS y UNION SELECT 1, 46 UNION SELECT 2, 23 UNION SELECT 3, 70 UNION SELECT 4, 35 UNION SELECT 5, 106 UNION SELECT 6, 53 UNION SELECT 7, 160 UNION SELECT 8, 80 UNION SELECT 9, 40 UNION SELECT 10, 20 UNION SELECT 11, 10 UNION SELECT 12, 5
+) AS syracuse ORDER BY x;
 
 select 'table' as component,
     true as sort,
@@ -89,6 +87,9 @@ select 'Jane',
 select 'card' as component,
     5 as columns;
 
+WITH nums(x) AS (
+    SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10
+)
 SELECT a.x || ' times ' || b.x as title,
     CASE
         a.x % 4
@@ -100,12 +101,12 @@ SELECT a.x || ' times ' || b.x as title,
     a.x || ' x ' || b.x || ' = ' || (a.x * b.x) as description,
     'This is basic math' as footer,
     '?x=' || a.x as link -- This is the interesting part. Each card has a link. When you click the card, the current page is reloaded with '?x=a' appended to the end of the URL
-FROM (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10)) as a(x),
-    (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10)) as b(x)
+FROM nums as a, nums as b
 WHERE -- The powerful thing is here
     $x IS NULL
     OR -- The syntax $x allows us to extract the value 'a' when the URL ends with '?x=a'. It will be null if the URL does not contain '?x='
-    b.x = $x::DECIMAL;
+    b.x = $x::DECIMAL
+ORDER BY a.x, b.x;
 -- So when we click the card for "a times b", we will reload the page, and display only the multiplication table of a
 ---------------------------
 -- FORMS --
