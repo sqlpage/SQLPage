@@ -7,9 +7,10 @@ services:
     volumes:
       - .:/var/www
     depends_on:
-      - ${COMPOSE_PROFILES-postgres}
+      mssql: { condition: service_healthy }
+      # [ "${COMPOSE_PROFILES-postgres}" ]
     environment:
-      DATABASE_URL: ${COMPOSE_PROFILES-postgres}://root:secret@${COMPOSE_PROFILES:-postgres}/sqlpage
+      DATABASE_URL: ${COMPOSE_PROFILES-postgres}://root:Password123!@${COMPOSE_PROFILES:-postgres}/sqlpage
   postgres:
     profiles: ["postgres"]
     ports: ["5432:5432"]
@@ -17,15 +18,21 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_DB: sqlpage
-      POSTGRES_PASSWORD: secret
+      POSTGRES_PASSWORD: Password123!
   mysql:
     profiles: ["mysql"]
     ports: ["3306:3306"]
     image: mysql
     environment:
-      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: Password123!
       MYSQL_DATABASE: sqlpage
   mssql:
     profiles: ["mssql"]
     ports: ["1433:1433"]
     build: { context: "mssql" }
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U root -P "Password123!" -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
