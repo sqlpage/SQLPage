@@ -65,22 +65,14 @@ select 'Brasil',
 select 'chart' as component,
     'Collatz conjecture' as title,
     'area' as type;
-WITH RECURSIVE cnt(x, y) AS (
-    SELECT 0, 15
-    UNION ALL
-    SELECT x + 1,
-        CASE
-            y %2
-            WHEN 0 THEN y / 2
-            ELSE 3 * y + 1
-        END
-    FROM cnt
-    WHERE x < 12
-)
+
 SELECT 'syracuse' as series,
     x,
     y
-from cnt;
+FROM (
+  VALUES (0, 15), (1, 46), (2, 23), (3, 70), (4, 35), (5, 106), (6, 53), (7, 160), (8, 80), (9, 40), (10, 20), (11, 10), (12, 5)
+) AS cnt(x, y);
+
 select 'table' as component,
     true as sort,
     true as search;
@@ -96,14 +88,7 @@ select 'Jane',
 -- We will display a set of cards, each one displaying the result of the multiplication a * b
 select 'card' as component,
     5 as columns;
-WITH RECURSIVE cnt(x) AS (
-    -- cnt is a table that contains the numbers from 1 to 10
-    SELECT 1
-    UNION ALL
-    SELECT x + 1
-    FROM cnt
-    WHERE x < 10
-)
+
 SELECT a.x || ' times ' || b.x as title,
     CASE
         a.x % 4
@@ -115,8 +100,8 @@ SELECT a.x || ' times ' || b.x as title,
     a.x || ' x ' || b.x || ' = ' || (a.x * b.x) as description,
     'This is basic math' as footer,
     '?x=' || a.x as link -- This is the interesting part. Each card has a link. When you click the card, the current page is reloaded with '?x=a' appended to the end of the URL
-FROM cnt as a,
-    cnt as b
+FROM (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12)) as a(x),
+    (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12)) as b(x)
 WHERE -- The powerful thing is here
     $x IS NULL
     OR -- The syntax $x allows us to extract the value 'a' when the URL ends with '?x=a'. It will be null if the URL does not contain '?x='
