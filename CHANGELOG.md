@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 0.9.1 (2023-07-30)
+
+ - Fix issues with the new experimental mssql driver.
+
 ## 0.9.0 (2023-07-30)
 
  - Added a new `json` component, which allows building a JSON API entirely in SQL with SQLPage !
