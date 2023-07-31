@@ -37,7 +37,9 @@ fn process_input_file(path_out: &Path, original: File) {
             let url = line
                 .trim_start_matches("/* !include ")
                 .trim_end_matches(" */");
-            let resp = ureq::get(url).call().expect("We need to download remote js dependencies to compile sqlpage");
+            let resp = ureq::get(url)
+                .call()
+                .expect("We need to download remote js dependencies to compile sqlpage");
             let mut contents = BufReader::new(resp.into_reader());
             std::io::copy(&mut contents, &mut outfile).unwrap();
             outfile.write_all(b"\n").unwrap();
