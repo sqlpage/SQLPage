@@ -1,5 +1,11 @@
 # CHANGELOG.md
 
+## 0.9.2 (2023-08-01)
+
+ - Added support for more SQL data types. This notably fixes an issue with the display of datetime columns in tables.
+    - See: https://github.com/lovasoa/SQLpage/issues/41
+ - Updated dependencies, better SQL drivers
+
 ## 0.9.1 (2023-07-30)
 
  - Fix issues with the new experimental mssql driver.
