@@ -271,13 +271,11 @@ fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'
             .into(),
         "DATE" => <chrono::NaiveDate as Decode<sqlx::any::Any>>::decode(raw_value)
             .as_ref()
-            .map(ToString::to_string)
-            .unwrap_or_else(|e| e.to_string())
+            .map_or_else(std::string::ToString::to_string, ToString::to_string)
             .into(),
         "TIME" => <chrono::NaiveTime as Decode<sqlx::any::Any>>::decode(raw_value)
             .as_ref()
-            .map(ToString::to_string)
-            .unwrap_or_else(|e| e.to_string())
+            .map_or_else(ToString::to_string, ToString::to_string)
             .into(),
         "DATETIME" | "DATETIME2" | "DATETIMEOFFSET" | "TIMESTAMP" | "TIMESTAMPTZ" => {
             try_decode_with!(
@@ -285,7 +283,7 @@ fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'
                 [chrono::NaiveDateTime, chrono::DateTime<chrono::Utc>],
                 |v| dbg!(v).to_string()
             )
-            .unwrap_or_else(|e| format!("Unable to decode date: {:?}", e))
+            .unwrap_or_else(|e| format!("Unable to decode date: {e:?}"))
             .into()
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => {
