@@ -26,7 +26,7 @@ use sqlx::pool::{PoolConnection, PoolOptions};
 use sqlx::query::Query;
 use sqlx::{
     Any, AnyConnection, AnyPool, Arguments, Column, ConnectOptions, Decode, Either, Executor, Row,
-    Statement, ValueRef, TypeInfo,
+    Statement, TypeInfo, ValueRef,
 };
 
 use self::sql::ParsedSQLStatement;
@@ -234,13 +234,13 @@ fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
             let mut raw_value = Some(raw_value);
             log::trace!("Decoding a value of type {:?}", col.type_info().name());
             let decoded = sql_nonnull_to_json(|| {
-                raw_value.take().unwrap_or_else(|| {
-                    row.try_get_raw(col.ordinal()).unwrap()
-                })
+                raw_value
+                    .take()
+                    .unwrap_or_else(|| row.try_get_raw(col.ordinal()).unwrap())
             });
             log::trace!("Decoded value: {:?}", decoded);
             decoded
-        },
+        }
         Ok(_null) => Value::Null,
         Err(e) => {
             log::warn!("Unable to extract value from row: {:?}", e);
@@ -280,20 +280,19 @@ fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'
             .unwrap_or_else(|e| e.to_string())
             .into(),
         "DATETIME" | "DATETIME2" | "DATETIMEOFFSET" | "TIMESTAMP" | "TIMESTAMPTZ" => {
-                try_decode_with!(
-                    get_ref(),
-                    [chrono::NaiveDateTime, chrono::DateTime<chrono::Utc>],
-                    |v| dbg!(v).to_string()
-                )
-                .unwrap_or_else(|e| format!("Unable to decode date: {:?}", e))
-                .into()
+            try_decode_with!(
+                get_ref(),
+                [chrono::NaiveDateTime, chrono::DateTime<chrono::Utc>],
+                |v| dbg!(v).to_string()
+            )
+            .unwrap_or_else(|e| format!("Unable to decode date: {:?}", e))
+            .into()
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => {
             <&[u8] as Decode<sqlx::any::Any>>::decode(raw_value)
                 .and_then(|rv| {
-                    serde_json::from_slice::<Value>(rv).map_err(|e| {
-                        Box::new(e) as Box<dyn std::error::Error + Sync + Send>
-                    })
+                    serde_json::from_slice::<Value>(rv)
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Sync + Send>)
                 })
                 .unwrap_or_default()
         }
