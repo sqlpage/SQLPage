@@ -1,3 +1,6 @@
+select 'http_header' as component,
+    'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
+
 select 'shell' as component,
     'Your SQL Website' as title,
     'database' as icon,
