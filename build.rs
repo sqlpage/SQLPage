@@ -1,3 +1,4 @@
+use actix_rt::spawn;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
 use std::hash::Hasher;
@@ -5,16 +6,28 @@ use std::io::Read;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-#[tokio::main(flavor = "current_thread")]
+#[actix_rt::main]
 async fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-    tokio::join!(
-        download_deps("sqlpage/sqlpage.js", out_dir.join("sqlpage.js")),
-        download_deps("sqlpage/sqlpage.css", out_dir.join("sqlpage.css")),
-        download_deps("sqlpage/tabler-icons.svg", out_dir.join("tabler-icons.svg"))
-    );
+
+    for h in [
+        spawn(download_deps(
+            "sqlpage/sqlpage.js",
+            out_dir.join("sqlpage.js"),
+        )),
+        spawn(download_deps(
+            "sqlpage/sqlpage.css",
+            out_dir.join("sqlpage.css"),
+        )),
+        spawn(download_deps(
+            "sqlpage/tabler-icons.svg",
+            out_dir.join("tabler-icons.svg"),
+        )),
+    ] {
+        h.await.unwrap();
+    }
 }
 
 /// Creates a file with inlined remote files included

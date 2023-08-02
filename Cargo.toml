@@ -47,4 +47,4 @@ rand = "0.8.5"
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls"] }
-tokio ={ version = "1.24.1", features = ["macros", "rt"] }
+actix-rt = "2.8"
