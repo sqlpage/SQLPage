@@ -46,4 +46,5 @@ actix-web-httpauth = "0.8.0"
 rand = "0.8.5"
 
 [build-dependencies]
-ureq = "2.7.1"
+awc = { version = "3", features = ["rustls"] }
+tokio ={ version = "1.24.1", features = ["macros", "rt"] }

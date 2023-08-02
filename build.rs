@@ -5,31 +5,36 @@ use std::io::Read;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-
-    inline_dependencies("sqlpage/sqlpage.js", &out_dir.join("sqlpage.js"));
-    inline_dependencies("sqlpage/sqlpage.css", &out_dir.join("sqlpage.css"));
+    tokio::join!(
+        download_deps("sqlpage/sqlpage.js", out_dir.join("sqlpage.js")),
+        download_deps("sqlpage/sqlpage.css", out_dir.join("sqlpage.css")),
+        download_deps("sqlpage/tabler-icons.svg", out_dir.join("tabler-icons.svg"))
+    );
 }
 
-fn inline_dependencies(path_in: &str, path_out: &Path) {
+/// Creates a file with inlined remote files included
+async fn download_deps(path_in: &str, path_out: PathBuf) {
     println!("cargo:rerun-if-changed=build.rs");
     // Generate outfile by reading infile and interpreting all comments
     // like "/* !include https://... */" as a request to include the contents of
     // the URL in the generated file.
     println!("cargo:rerun-if-changed={}", path_in);
     let original = File::open(path_in).unwrap();
-    process_input_file(path_out, original);
+    process_input_file(&path_out, original).await;
     std::fs::write(
         format!("{}.filename.txt", path_out.display()),
-        hashed_filename(path_out),
+        hashed_filename(&path_out),
     )
     .unwrap();
 }
 
-fn process_input_file(path_out: &Path, original: File) {
+async fn process_input_file(path_out: &Path, original: File) {
+    let client = awc::Client::default();
     let mut outfile = BufWriter::new(File::create(path_out).unwrap());
     for l in BufReader::new(original).lines() {
         let line = l.unwrap();
@@ -37,11 +42,16 @@ fn process_input_file(path_out: &Path, original: File) {
             let url = line
                 .trim_start_matches("/* !include ")
                 .trim_end_matches(" */");
-            let resp = ureq::get(url)
-                .call()
-                .expect("We need to download remote js dependencies to compile sqlpage");
-            let mut contents = BufReader::new(resp.into_reader());
-            std::io::copy(&mut contents, &mut outfile).unwrap();
+            let mut resp = client.get(url).send().await.expect(
+                "We need to download external frontend dependencies to build the static frontend.",
+            );
+            let body = resp
+                .body()
+                .await
+                .expect("Failed to read external frontend dependency");
+            outfile
+                .write_all(&body)
+                .expect("Failed to write external frontend dependency to local file");
             outfile.write_all(b"\n").unwrap();
         } else {
             writeln!(outfile, "{}", line).unwrap();
