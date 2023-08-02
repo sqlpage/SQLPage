@@ -48,3 +48,4 @@ rand = "0.8.5"
 [build-dependencies]
 awc = { version = "3", features = ["rustls"] }
 actix-rt = "2.8"
+libflate = "2"

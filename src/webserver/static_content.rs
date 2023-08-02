@@ -1,6 +1,6 @@
 use crate::utils::static_filename;
 use actix_web::{
-    http::header::{CacheControl, CacheDirective, ETag, EntityTag, Header, IfNoneMatch},
+    http::header::{CacheControl, CacheDirective, ETag, EntityTag, Header, IfNoneMatch, ContentEncoding},
     web, HttpRequest, HttpResponse, Resource,
 };
 
@@ -20,6 +20,7 @@ macro_rules! static_file_endpoint {
                     CacheDirective::Extension("immutable".to_owned(), None),
                 ]))
                 .insert_header(ETag(file_etag))
+                .insert_header(ContentEncoding::Gzip)
                 .body(
                     &include_bytes!(concat!(env!("OUT_DIR"), "/", $filestem, ".", $extension))[..],
                 )
