@@ -1,5 +1,12 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - Icons are now loaded directly from the sqlpage binary instead of loading them from a CDN.
+  This allows pages to load faster, and to get a better score on google's performance audits, potentially improving your position in search results.
+    - This also makes it possible to host a SQLPage website on an intranet without access to the internet.
+    - Fixes https://github.com/lovasoa/SQLpage/issues/37
+
 ## 0.9.2 (2023-08-01)
 
  - Added support for more SQL data types. This notably fixes an issue with the display of datetime columns in tables.

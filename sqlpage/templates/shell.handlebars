@@ -5,9 +5,6 @@
     <title>{{default title "SQLPage"}}</title>
 
     <link rel="stylesheet" href="/{{static_path 'sqlpage.css'}}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.19.0/tabler-icons.min.css"
-        integrity="sha384-a8pgu0eDAmHMVlQuzUEoHyapgzLXfOaTTNrMzPivsvAts7LkllyAYpRE4saDWQj7" crossorigin="anonymous">
-   
    {{#each (to_array css)}}
         {{#if this}}
             <link rel="stylesheet" href="{{this}}">
@@ -51,7 +48,7 @@
                              class="navbar-brand-image">
                     {{/if}}
                     {{#if icon}}
-                        <i class="icon ti ti-{{icon}}"></i>
+                        {{~icon_img icon~}}
                     {{/if}}
                     {{title}}
                 </a>
