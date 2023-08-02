@@ -161,17 +161,10 @@ fn icon_img_helper<'reg, 'rc>(
     writer: &mut dyn handlebars::Output,
 ) -> handlebars::HelperResult {
     let null = handlebars::JsonValue::Null;
-    let params = [0, 1].map(|i| {
-        helper
-            .params()
-            .get(i)
-            .map(PathAndJson::value)
-            .unwrap_or(&null)
-    });
+    let params = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
     let err_fmt = || {
         RenderErrorReason::Other(format!(
-            "{{icon_img str int}}: invalid parameters {:?}",
-            params
+            "{{icon_img str int}}: invalid parameters {params:?}"
         ))
     };
     let name = params[0].as_str().ok_or_else(err_fmt)?;
