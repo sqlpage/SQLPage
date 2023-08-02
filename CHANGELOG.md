@@ -6,6 +6,9 @@
   This allows pages to load faster, and to get a better score on google's performance audits, potentially improving your position in search results.
     - This also makes it possible to host a SQLPage website on an intranet without access to the internet.
     - Fixes https://github.com/lovasoa/SQLpage/issues/37
+ - store compressed frontend assets in the SQLPage binary:
+    - smaller SQLPage binary
+    - Faster page loads, less work on the server
 
 ## 0.9.2 (2023-08-01)
 
