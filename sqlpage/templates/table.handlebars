@@ -35,7 +35,7 @@
                                     {{{markdown this}}}
                                 {{~else~}}
                                 {{~#if (array_contains ../../icon @key)~}}
-                                    <i class="ti ti-{{this}}"></i>
+                                    {{~icon_img icon~}}
                                 {{~else~}}
                                     {{this}}
                                 {{~/if~}}

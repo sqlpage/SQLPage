@@ -153,6 +153,31 @@ fn sum_helper<'reg, 'rc>(
     Ok(())
 }
 
+fn icon_img_helper<'reg, 'rc>(
+    helper: &handlebars::Helper<'rc>,
+    _r: &'reg Handlebars<'reg>,
+    _ctx: &'rc Context,
+    _rc: &mut handlebars::RenderContext<'reg, 'rc>,
+    writer: &mut dyn handlebars::Output,
+) -> handlebars::HelperResult {
+    let name = helper
+        .params()
+        .get(0)
+        .and_then(|v| v.value().as_str())
+        .ok_or(RenderErrorReason::InvalidParamType("str"))?;
+    let size = helper
+        .params()
+        .get(1)
+        .and_then(|v| v.value().as_u64())
+        .unwrap_or(24);
+    write!(
+        writer,
+        "<svg width={size} height={size}><use href=\"/{}#tabler-{name}\" /></svg>",
+        static_filename!("tabler-icons.svg")
+    )?;
+    Ok(())
+}
+
 const STATIC_TEMPLATES: Dir = include_dir!("$CARGO_MANIFEST_DIR/sqlpage/templates");
 
 impl AllTemplates {
@@ -230,6 +255,9 @@ impl AllTemplates {
             }
         });
         handlebars.register_helper("static_path", Box::new(static_path));
+
+        // icon helper: generate an image with the specified icon
+        handlebars.register_helper("icon_img", Box::new(icon_img_helper));
 
         handlebars_helper!(markdown_helper: |x: str|
             markdown::to_html_with_options(x, &markdown::Options::gfm())

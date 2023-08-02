@@ -34,3 +34,7 @@ pub fn js() -> Resource {
 pub fn css() -> Resource {
     static_file_endpoint!("sqlpage", "css", "text/css")
 }
+
+pub fn icons() -> Resource {
+    static_file_endpoint!("tabler-icons", "svg", "image/svg+xml")
+}
