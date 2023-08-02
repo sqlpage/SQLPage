@@ -1,11 +1,11 @@
 use actix_rt::spawn;
+use libflate::gzip;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
 use std::hash::Hasher;
 use std::io::Read;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use libflate::gzip;
 
 #[actix_rt::main]
 async fn main() {
@@ -71,7 +71,10 @@ async fn process_input_file(path_out: &Path, original: File) {
             writeln!(outfile, "{}", line).unwrap();
         }
     }
-    outfile.finish().as_result().expect("Unable to write compressed frontend asset");
+    outfile
+        .finish()
+        .as_result()
+        .expect("Unable to write compressed frontend asset");
 }
 
 // Given a filename, creates a new unique filename based on the file contents

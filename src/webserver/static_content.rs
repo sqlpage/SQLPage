@@ -1,6 +1,8 @@
 use crate::utils::static_filename;
 use actix_web::{
-    http::header::{CacheControl, CacheDirective, ETag, EntityTag, Header, IfNoneMatch, ContentEncoding},
+    http::header::{
+        CacheControl, CacheDirective, ContentEncoding, ETag, EntityTag, Header, IfNoneMatch,
+    },
     web, HttpRequest, HttpResponse, Resource,
 };
 
