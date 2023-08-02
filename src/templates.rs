@@ -2,11 +2,11 @@ use crate::file_cache::AsyncFromStrWithState;
 use crate::utils::static_filename;
 use crate::{AppState, FileCache, TEMPLATES_DIR};
 use async_trait::async_trait;
-use handlebars::RenderErrorReason;
 use handlebars::{
     handlebars_helper, template::TemplateElement, Context, Handlebars, JsonValue, RenderError,
     Renderable, Template,
 };
+use handlebars::{PathAndJson, RenderErrorReason};
 use include_dir::{include_dir, Dir};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -160,16 +160,22 @@ fn icon_img_helper<'reg, 'rc>(
     _rc: &mut handlebars::RenderContext<'reg, 'rc>,
     writer: &mut dyn handlebars::Output,
 ) -> handlebars::HelperResult {
-    let name = helper
-        .params()
-        .get(0)
-        .and_then(|v| v.value().as_str())
-        .ok_or(RenderErrorReason::InvalidParamType("str"))?;
-    let size = helper
-        .params()
-        .get(1)
-        .and_then(|v| v.value().as_u64())
-        .unwrap_or(24);
+    let null = handlebars::JsonValue::Null;
+    let params = [0, 1].map(|i| {
+        helper
+            .params()
+            .get(i)
+            .map(PathAndJson::value)
+            .unwrap_or(&null)
+    });
+    let err_fmt = || {
+        RenderErrorReason::Other(format!(
+            "{{icon_img str int}}: invalid parameters {:?}",
+            params
+        ))
+    };
+    let name = params[0].as_str().ok_or_else(err_fmt)?;
+    let size = params[1].as_u64().unwrap_or(24);
     write!(
         writer,
         "<svg width={size} height={size}><use href=\"/{}#tabler-{name}\" /></svg>",
