@@ -368,10 +368,19 @@ INSERT INTO example(component, description, properties) VALUES
         '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
         '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]')),
     ('table', 'A table that uses markdown to display links',
-        json('[{"component":"table", "markdown": "Documentation", "icon": "icon"}, '||
+        json('[{"component":"table", "markdown": "Documentation", "icon": "icon", "sort": true, "search": true}, '||
         '{"icon": "table", "name": "Table", "description": "Displays SQL results as a searchable table.", "Documentation": "[docs](documentation.sql?component=table)", "_sqlpage_color": "red"},
         {"icon": "timeline", "name": "Chart", "description": "Show graphs based on numeric data.", "Documentation": "[docs](documentation.sql?component=chart)"}
-        ]'));
+        ]')),
+    (
+    'table',
+    'A table with dashes',
+    json(
+        '[{"component":"table", "search": true}, ' ||
+         '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C"}
+        ]'
+    )
+    );
 
 
 INSERT INTO component(name, icon, description) VALUES

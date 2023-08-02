@@ -144,8 +144,7 @@ function sqlpage_table(){
     // Tables
     for (const r of document.getElementsByClassName("data-list")) {
         new List(r, {
-            valueNames: [...r.getElementsByClassName("sort")]
-                .map(t => t.dataset.sort),
+            valueNames: [...r.getElementsByTagName("th")].map(t => t.textContent),
             indexAsync: true
         });
     }
