@@ -134,7 +134,7 @@ WHERE :Username IS NOT NULL;
 ```
 
 The snippet above uses an [`INSERT INTO SELECT` SQL statement](https://www.sqlite.org/lang_insert.html) to 
-[safely](safety.sql) insert a new row into the `users` table when the form is submitted.
+[safely](../safety.sql) insert a new row into the `users` table when the form is submitted.
 It uses a `WHERE` clause to make sure that the `INSERT` statement is only executed when the `:Username` parameter is present.
 The `:Username` parameter is set to `NULL` when you initially load the page, and then SQLPage automatically sets it to the value 
 from the text field when the user submits the form.
