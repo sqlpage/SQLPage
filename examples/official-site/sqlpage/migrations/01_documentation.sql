@@ -442,7 +442,7 @@ INSERT INTO example(component, description, properties) VALUES
             "title": "SQLPage documentation",
             "link": "/",
             "menu_item": "index",
-            "lang": "en-US",
+            "language": "en-US",
             "description": "Documentation for the SQLPage low-code web application framework.",
             "font": "Poppins",
             "icon": "book",
