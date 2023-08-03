@@ -248,6 +248,7 @@ impl AllTemplates {
         handlebars_helper!(static_path: |x: str| match x {
             "sqlpage.js" => static_filename!("sqlpage.js"),
             "sqlpage.css" => static_filename!("sqlpage.css"),
+            "apexcharts.js" => static_filename!("apexcharts.js"),
             unknown => {
                 log::error!("Unknown static path: {}", unknown);
                 "!!unknown static path!!"

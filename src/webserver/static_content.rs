@@ -34,6 +34,10 @@ pub fn js() -> Resource {
     static_file_endpoint!("sqlpage", "js", "application/javascript")
 }
 
+pub fn apexcharts_js() -> Resource {
+    static_file_endpoint!("apexcharts", "js", "application/javascript")
+}
+
 pub fn css() -> Resource {
     static_file_endpoint!("sqlpage", "css", "text/css")
 }

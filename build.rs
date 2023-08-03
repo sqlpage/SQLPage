@@ -11,29 +11,22 @@ use std::path::{Path, PathBuf};
 async fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
-    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-
     for h in [
-        spawn(download_deps(
-            "sqlpage/sqlpage.js",
-            out_dir.join("sqlpage.js"),
-        )),
-        spawn(download_deps(
-            "sqlpage/sqlpage.css",
-            out_dir.join("sqlpage.css"),
-        )),
-        spawn(download_deps(
-            "sqlpage/tabler-icons.svg",
-            out_dir.join("tabler-icons.svg"),
-        )),
+        spawn(download_deps("sqlpage.js")),
+        spawn(download_deps("sqlpage.css")),
+        spawn(download_deps("tabler-icons.svg")),
+        spawn(download_deps("apexcharts.js")),
     ] {
         h.await.unwrap();
     }
 }
 
 /// Creates a file with inlined remote files included
-async fn download_deps(path_in: &str, path_out: PathBuf) {
+async fn download_deps(filename: &str) {
     println!("cargo:rerun-if-changed=build.rs");
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let path_in = format!("sqlpage/{}", filename);
+    let path_out: PathBuf = out_dir.join(filename);
     // Generate outfile by reading infile and interpreting all comments
     // like "/* !include https://... */" as a request to include the contents of
     // the URL in the generated file.
