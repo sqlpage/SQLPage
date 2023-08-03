@@ -6,14 +6,14 @@ select 'shell' as component,
     '/' as link,
     'en-US' as language,
     'Official SQLPage website: write web applications in SQL !' as description,
-    'get started' as menu_item,
+    'blog' as menu_item,
     'documentation' as menu_item,
     19 as font_size,
     'Poppins' as font;
 
 SELECT 'hero' as component,
     'SQLPage' as title,
-    'Open-source *low-code* web application framework.
+    'Open-source *low-code* web application server.
 
 Create **full websites** writing only simple database queries.' as description_md,
     'sqlpage_introduction_video.webm' as video,
