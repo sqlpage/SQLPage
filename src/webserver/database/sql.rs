@@ -1,6 +1,7 @@
 use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
 use super::PreparedStatement;
 use crate::file_cache::AsyncFromStrWithState;
+use crate::utils::add_value_to_map;
 use crate::{AppState, Database};
 use async_trait::async_trait;
 use sqlparser::ast::{
@@ -172,7 +173,8 @@ fn extract_static_simple_select(
             Expr::Value(Value::Null) => serde_json::Value::Null,
             _ => return None,
         };
-        map.insert(alias.value.clone(), value);
+        let key = alias.value.clone();
+        map = add_value_to_map(map, (key, value));
     }
     Some(map)
 }
