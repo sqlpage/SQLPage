@@ -9,6 +9,8 @@
  - store compressed frontend assets in the SQLPage binary:
     - smaller SQLPage binary
     - Faster page loads, less work on the server
+ - Fix a bug where table search would fail to find a row if the search term contained some special characters.
+    - Fixes https://github.com/lovasoa/SQLpage/issues/46
 
 ## 0.9.2 (2023-08-01)
 
