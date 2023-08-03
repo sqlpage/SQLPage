@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.9.3 (2023-08-03)
 
  - Icons are now loaded directly from the sqlpage binary instead of loading them from a CDN.
   This allows pages to load faster, and to get a better score on google's performance audits, potentially improving your position in search results.
@@ -11,6 +11,9 @@
     - Faster page loads, less work on the server
  - Fix a bug where table search would fail to find a row if the search term contained some special characters.
     - Fixes https://github.com/lovasoa/SQLpage/issues/46
+ - Split the charts javascript code from the rest of the frontend code, and load it only when necessary.
+   This greatly diminishes the amount of js loaded by default, and achieves very good performance scores by default.
+   SQLPage websites now load even faster, een on slow mobile connections.
 
 ## 0.9.2 (2023-08-01)
 
