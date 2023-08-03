@@ -1,5 +1,5 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/js/tabler.min.js */
-/* !include https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js */
+/* !include https://cdn.jsdelivr.net/npm/list.js-fixed@2.3.2/dist/list.min.js */
 /* !include https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.js */
 
 function sqlpage_chart() {
@@ -145,6 +145,7 @@ function sqlpage_table(){
     for (const r of document.getElementsByClassName("data-list")) {
         new List(r, {
             valueNames: [...r.getElementsByTagName("th")].map(t => t.textContent),
+            searchDelay: 100,
             indexAsync: true
         });
     }
