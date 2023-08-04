@@ -446,11 +446,11 @@ mod test {
     fn test_static_extract() {
         assert_eq!(
             extract_static_simple_select(&parse_stmt(
-                "select 'hello' as hello, 42 as answer, null as nothing"
+                "select 'hello' as hello, 42 as answer, null as nothing, 'world' as hello"
             )),
             Some(
                 serde_json::json!({
-                    "hello": "hello",
+                    "hello": ["hello", "world"],
                     "answer": 42,
                     "nothing": (),
                 })
