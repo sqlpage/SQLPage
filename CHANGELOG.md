@@ -1,5 +1,16 @@
 # CHANGELOG.md
 
+## 0.9.4 (2023-08-04)
+
+Small bugfix release
+
+ - Fix a bug with simple queries (ones with only static values) that contained multiple repeated columns
+   (such as `SELECT 'hello' AS menu_item, 'world' AS menu_item`). Only the last column would be taken into account.
+   This could manifest as a bug where
+     - only the last menu item in the shell component would be displayed,
+     - only the last markdown column in a table would be interpreted as markdown,
+     - only the last icon column in a table would be displayed as an icon.
+
 ## 0.9.3 (2023-08-03)
 
  - Icons are now loaded directly from the sqlpage binary instead of loading them from a CDN.
