@@ -46,3 +46,12 @@ So, next time you''re torn between No-Code''s enchantment and Low-Code''s embrac
 Give your app the love it deserves – the SQLPage kind of love.💕
         '
     );
+
+INSERT INTO blog_posts (title, description, icon, created_at, external_url)
+VALUES (
+    'Repeating yourself thrice won''t make you a 3X developer',
+    'A dive into the traditional 3-tier architecture and the DRY principle, and how tools like SQLPage helps you avoid repeating yourself.',
+    'box-multiple-3',
+    '2023-08-01',
+    'https://yrashk.medium.com/repeating-yourself-thrice-doesnt-turn-you-into-a-3x-developer-a778495229c0'
+);

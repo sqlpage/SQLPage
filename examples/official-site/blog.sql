@@ -25,4 +25,5 @@ SELECT title,
     ELSE 
         '?post=' || title
     END AS link
-FROM blog_posts;
+FROM blog_posts
+ORDER BY created_at DESC;
