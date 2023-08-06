@@ -86,7 +86,7 @@ VALUES (
         FALSE,
         TRUE
     );
--- Insert an example usage of the http_header component into the example table
+-- Insert an example usage of the map component into the example table
 INSERT INTO example (component, description, properties)
 VALUES (
         'map',

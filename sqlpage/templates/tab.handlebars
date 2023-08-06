@@ -1,0 +1,32 @@
+<ul class="nav nav-bordered mb-3 {{#if center}}justify-content-evenly{{/if}}">
+    {{~#each_row~}}
+    <li class="nav-item">
+        <a 
+            class="nav-link {{#if active~}}
+                active
+            {{~/if}} {{#if color~}}
+                text-{{color}} border-{{color}}
+            {{~/if}} {{#if center~}}
+                mx-auto
+            {{~/if}}"
+
+            href="{{#if link}}
+                {{~link~}}
+            {{~else~}}
+                ?tab={{title}}
+            {{~/if}}"
+
+            {{#if description~}}
+                title="{{description}}"
+            {{~/if}}
+            >
+            {{~#if icon~}}
+            <span class="me-1">
+                {{~icon_img icon 20~}}
+            </span>
+            {{~/if}}
+            {{~title~}}
+        </a>
+    </li>
+    {{~/each_row~}}
+</ul>
