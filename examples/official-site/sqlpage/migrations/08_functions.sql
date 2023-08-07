@@ -158,11 +158,11 @@ VALUES (
 Generate a random string of 32 characters and use it as a session ID stored in a cookie:
 
 ```sql
-INSERT INTO login_session (id, username) VALUES (sqlpage.random_string(32), :username)
+INSERT INTO login_session (session_token, username) VALUES (sqlpage.random_string(32), :username)
 RETURNING 
     ''cookie'' AS component,
     ''session_id'' AS name,
-    sqlpage.random_string(32) AS value;
+    session_token AS value;
 ```
 '
 );
