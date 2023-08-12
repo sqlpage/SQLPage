@@ -90,8 +90,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             .into()
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => {
-            <Value as Decode<sqlx::any::Any>>::decode(raw_value)
-                .unwrap_or_default()
+            <Value as Decode<sqlx::any::Any>>::decode(raw_value).unwrap_or_default()
         }
         // Deserialize as a string by default
         _ => <String as Decode<sqlx::any::Any>>::decode(raw_value)
