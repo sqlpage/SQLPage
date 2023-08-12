@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased (0.9.5)
+## 0.9.5 (2023-08-12)
 
  - New `tab` component to create tabbed interfaces. See [the documentation](https://sql.ophir.dev/documentation.sql?component=tab#component).
  - Many improvements in database drivers.
