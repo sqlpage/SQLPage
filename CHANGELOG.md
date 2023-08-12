@@ -3,6 +3,9 @@
 ## unreleased (0.9.5)
 
  - New `tab` component to create tabbed interfaces. See [the documentation](https://sql.ophir.dev/documentation.sql?component=tab#component).
+ - Many improvements in database drivers.
+   - performance and numeric precision improvements,
+   - multiple fixes around passing NUMERIC, DECIMAL, and JSON values to SQLPage.
 
 ## 0.9.4 (2023-08-04)
 

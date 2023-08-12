@@ -84,17 +84,13 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             try_decode_with!(
                 get_ref(),
                 [chrono::NaiveDateTime, chrono::DateTime<chrono::Utc>],
-                |v| dbg!(v).to_string()
+                |v| v.to_string()
             )
             .unwrap_or_else(|e| format!("Unable to decode date: {e:?}"))
             .into()
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => {
-            <&[u8] as Decode<sqlx::any::Any>>::decode(raw_value)
-                .and_then(|rv| {
-                    serde_json::from_slice::<Value>(rv)
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Sync + Send>)
-                })
+            <Value as Decode<sqlx::any::Any>>::decode(raw_value)
                 .unwrap_or_default()
         }
         // Deserialize as a string by default
