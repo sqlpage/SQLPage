@@ -77,5 +77,5 @@ The full list of changes can be found in the [changelog](https://github.com/lova
    know that [sqlx-oldapi](https://lib.rs/crates/sqlx-oldapi) awaits you, ready to empower your endeavors, for free.
    Contributions and bug reports are all welcomed [on github](https://github.com/lovasoa/sqlx-oldapi).
 
-And if you are curious about what writing a web page in SQL even means, check out [SQLPage](/).
+And if you are curious about why this page’s URL ends in `.sql`, check out [SQLPage](/).
 ');
