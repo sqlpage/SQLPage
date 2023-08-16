@@ -1,10 +1,11 @@
-INSERT INTO spatial_data (label, geom)
+INSERT INTO spatial_data (title, geom, description)
 VALUES (
-    :Label,
+    :Title,
     MakePoint(
         CAST(:Longitude AS REAL),
         CAST(:Latitude AS REAL
-    ), 4326)
+    ), 4326),
+    :Text
 ) RETURNING 
     'redirect' AS component,
     'index.sql' AS link;
