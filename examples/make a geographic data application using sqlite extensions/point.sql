@@ -1,4 +1,12 @@
-SELECT 'datagrid' as component, label as title FROM spatial_data WHERE id = $id;
+SELECT 'shell' as component,
+    title,
+    '/' as link,
+    'index' as menu_item,
+    'book' as icon
+FROM spatial_data
+WHERE id = $id;
+
+SELECT 'datagrid' as component, title FROM spatial_data WHERE id = $id;
 
 SELECT 'Latitude' as title,
     ST_Y(geom) as description,
@@ -19,11 +27,16 @@ SELECT 'Created at' as title,
 FROM spatial_data WHERE id = $id;
 
 SELECT 'Label' as title,
-    label as description,
+    title as description,
     'geo:' || ST_Y(geom) || ',' || ST_X(geom) || '?z=16' AS link,
     'blue' as color,
     'world' as icon,
     'User-generated point name' as footer
+FROM spatial_data
+WHERE id = $id;
+
+SELECT 'text' as component,
+    description as contents_md
 FROM spatial_data
 WHERE id = $id;
 
