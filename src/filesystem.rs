@@ -73,6 +73,10 @@ impl FileSystem {
                 // no local file, try the database
                 db_fs.read_file(app_state, path.as_ref()).await
             }
+            (Err(e), None) if e.kind() == ErrorKind::NotFound => Err(ErrorWithStatus {
+                status: actix_web::http::StatusCode::NOT_FOUND,
+            }
+            .into()),
             (Err(e), _) => Err(e).with_context(|| format!("Unable to read local file {path:?}")),
         }
     }
