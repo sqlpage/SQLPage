@@ -1,4 +1,6 @@
+use crate::webserver::ErrorWithStatus;
 use crate::AppState;
+use actix_web::http::StatusCode;
 use anyhow::Context;
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
@@ -114,7 +116,12 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 Ok(Cached::new(value))
             }
             // If a file is not found, we try to load it from the static files
-            Err(e) => {
+            Err(e)
+                if e.downcast_ref()
+                    == Some(&ErrorWithStatus {
+                        status: StatusCode::NOT_FOUND,
+                    }) =>
+            {
                 if let Some(static_file) = self.static_files.get(path) {
                     log::trace!("File {path:?} not found, loading it from static files instead.");
                     let cached: Cached<T> = static_file.make_fresh();
@@ -123,6 +130,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                     Err(e).with_context(|| format!("Couldn't load {path:?} into cache"))
                 }
             }
+            Err(e) => Err(e).with_context(|| format!("Couldn't load {path:?} into cache")),
         };
 
         match parsed {

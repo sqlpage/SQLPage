@@ -1,6 +1,6 @@
 use actix_web::http::StatusCode;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ErrorWithStatus {
     pub status: StatusCode,
 }
