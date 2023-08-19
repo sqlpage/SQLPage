@@ -72,7 +72,7 @@ function sqlpage_chart() {
                     height: c.style.height,
                     stacked: !!data.stacked,
                     toolbar: {
-                        show: false,
+                        show: !!data.toolbar,
                     },
                     animations: {
                         enabled: false

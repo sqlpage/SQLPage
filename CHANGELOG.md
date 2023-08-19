@@ -2,6 +2,12 @@
 
 ## unreleased
 
+ - Added the ability to download chart data as SVG, PNG, and **CSV** using the new `toolbar` attribute of the `chart` component.
+   This makes it easy to provide a large data set and allow users to download it as a CSV file from a nice UI.
+   ```sql
+   SELECT 'chart' as component, 1 as toolbar;
+   SELECT quarter as label, sum(sales) as value FROM sales GROUP BY quarter;
+   ```
  - Added a dark theme ! You can now choose between a light and a dark theme for your SQLPage website.
    Select the dark theme using the `theme` parameter of the `shell` component:
    ```sql
