@@ -2,6 +2,12 @@
 
 ## unreleased
 
+ - Added a dark theme ! You can now choose between a light and a dark theme for your SQLPage website.
+   Select the dark theme using the `theme` parameter of the `shell` component:
+   ```sql
+   SELECT 'shell' AS component, 'dark' AS theme;
+   ```
+   See https://github.com/lovasoa/SQLpage/issues/50
  - Fixed a bug where the default index page would be displayed when `index.sql` could not be loaded,
    instead of displaying an error page explaining the issue.
 

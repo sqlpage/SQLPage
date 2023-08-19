@@ -1,6 +1,12 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler.min.css */
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta19/dist/css/tabler-vendors.min.css */
 
+[data-bs-theme=dark] .alert:not(.alert-important) {
+  /* See https://github.com/tabler/tabler/issues/1607 */
+  background-color: var(--tblr-bg-surface);
+  color: inherit;
+}
+
 td > p {
     margin: 0;
 }
