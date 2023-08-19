@@ -323,6 +323,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
+    ('toolbar', 'Whether to display a toolbar at the top right of the chart, that offers downloading the data as CSV.', 'BOOLEAN', TRUE, TRUE),
     ('logarithmic', 'Display the y-axis in logarithmic scale.', 'BOOLEAN', TRUE, TRUE),
     ('horizontal', 'Displays a bar chart with horizontal bars instead of vertical ones.', 'BOOLEAN', TRUE, TRUE),
     -- item level
@@ -340,7 +341,7 @@ INSERT INTO example(component, description, properties) VALUES
     '{"label": "No", "value": 35}]')),
     ('chart', 'A basic bar chart', json('[{"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true}, '||
     '{"label": "Tom", "value": 35}, {"label": "Olive", "value": 15}]')),
-    ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true}, '||
+    ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true, "toolbar": true}, '||
     '{"series": "Marketing", "x": 2021, "value": 35}, '||
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
