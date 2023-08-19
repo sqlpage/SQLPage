@@ -476,9 +476,10 @@ fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
 fn redirect_missing_trailing_slash(uri: &Uri) -> Option<HttpResponse> {
     let path = uri.path();
     if !path.ends_with('/')
-        && !path
+        && path
             .rsplit_once('.')
-            .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("sql"))
+            .map(|(_, ext)| ext.eq_ignore_ascii_case("sql"))
+            != Some(true)
     {
         let mut redirect_path = path.to_owned();
         redirect_path.push('/');
