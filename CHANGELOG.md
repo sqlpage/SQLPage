@@ -16,6 +16,8 @@
    See https://github.com/lovasoa/SQLpage/issues/50
  - Fixed a bug where the default index page would be displayed when `index.sql` could not be loaded,
    instead of displaying an error page explaining the issue.
+ - Improved the appearance of scrollbars. (Workaround for https://github.com/tabler/tabler/issues/1648).
+   See https://github.com/lovasoa/SQLpage/discussions/17
 
 ## 0.9.5 (2023-08-12)
 
