@@ -1,5 +1,10 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - Fixed a bug where the default index page would be displayed when `index.sql` could not be loaded,
+   instead of displaying an error page explaining the issue.
+
 ## 0.9.5 (2023-08-12)
 
  - New `tab` component to create tabbed interfaces. See [the documentation](https://sql.ophir.dev/documentation.sql?component=tab#component).
