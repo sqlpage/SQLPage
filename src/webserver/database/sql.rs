@@ -8,7 +8,7 @@ use sqlparser::ast::{
     BinaryOperator, DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName,
     Statement, Value, VisitMut, VisitorMut,
 };
-use sqlparser::dialect::GenericDialect;
+use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{SemiColon, EOF};
 use sqlparser::tokenizer::Tokenizer;
@@ -30,65 +30,35 @@ pub(super) enum ParsedSQLStatement {
 
 impl ParsedSqlFile {
     pub async fn new(db: &Database, sql: &str) -> ParsedSqlFile {
-        let dialect = GenericDialect {};
-        let tokens = Tokenizer::new(&dialect, sql).tokenize_with_location();
-        let mut parser = match tokens {
-            Ok(tokens) => Parser::new(&dialect).with_tokens_with_locations(tokens),
-            Err(e) => return Self::from_err(e),
+        let dialect = dialect_for_db(db.connection.any_kind());
+        let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
+            Ok(parsed) => parsed,
+            Err(err) => return Self::from_err(err),
         };
         let mut statements = Vec::with_capacity(8);
-        while parser.peek_token() != EOF {
-            let mut stmt = match parser.parse_statement() {
-                Ok(stmt) => stmt,
-                Err(err) => {
-                    return Self::finish_with_error(err, parser, statements);
+        for parsed in parsed_statements {
+            statements.push(match parsed {
+                ParsedStatement::StaticSimpleSelect(s) => ParsedSQLStatement::StaticSimpleSelect(s),
+                ParsedStatement::Error(e) => ParsedSQLStatement::Error(e),
+                ParsedStatement::StmtWithParams { query, params } => {
+                    let param_types = get_param_types(&params);
+                    match db.prepare_with(&query, &param_types).await {
+                        Ok(statement) => {
+                            log::debug!("Successfully prepared SQL statement '{query}'");
+                            ParsedSQLStatement::Statement(PreparedStatement {
+                                statement,
+                                parameters: params,
+                            })
+                        }
+                        Err(err) => {
+                            log::warn!("Failed to prepare {query:?}: {err:#}");
+                            ParsedSQLStatement::Error(err)
+                        }
+                    }
                 }
-            };
-            while parser.consume_token(&SemiColon) {}
-            if let Some(static_statement) = extract_static_simple_select(&stmt) {
-                log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
-                statements.push(ParsedSQLStatement::StaticSimpleSelect(static_statement));
-                continue;
-            }
-            let db_kind = db.connection.any_kind();
-            let parameters = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
-            let query = stmt.to_string();
-            let param_types = get_param_types(&parameters);
-            let stmt_res = db.prepare_with(&query, &param_types).await;
-            let statement_result = match stmt_res {
-                Ok(statement) => {
-                    log::debug!("Successfully prepared SQL statement '{query}'");
-                    ParsedSQLStatement::Statement(PreparedStatement {
-                        statement,
-                        parameters,
-                    })
-                }
-                Err(err) => {
-                    log::warn!("{err:#}");
-                    ParsedSQLStatement::Error(err)
-                }
-            };
-            statements.push(statement_result);
+            });
         }
         statements.shrink_to_fit();
-        ParsedSqlFile { statements }
-    }
-
-    fn finish_with_error(
-        err: ParserError,
-        mut parser: Parser,
-        mut statements: Vec<ParsedSQLStatement>,
-    ) -> ParsedSqlFile {
-        let mut err_msg = "SQL syntax error before: ".to_string();
-        for _ in 0..32 {
-            let next_token = parser.next_token();
-            if next_token == EOF {
-                break;
-            }
-            _ = write!(&mut err_msg, "{next_token} ");
-        }
-        let error = anyhow::Error::from(err).context(err_msg);
-        statements.push(ParsedSQLStatement::Error(error));
         ParsedSqlFile { statements }
     }
 
@@ -105,6 +75,80 @@ impl ParsedSqlFile {
 impl AsyncFromStrWithState for ParsedSqlFile {
     async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self> {
         Ok(ParsedSqlFile::new(&app_state.db, source).await)
+    }
+}
+
+enum ParsedStatement {
+    StmtWithParams {
+        query: String,
+        params: Vec<StmtParam>,
+    },
+    StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
+    Error(anyhow::Error),
+}
+
+fn parse_sql<'a>(
+    dialect: &'a dyn Dialect,
+    sql: &'a str,
+) -> anyhow::Result<impl Iterator<Item = ParsedStatement> + 'a> {
+    let tokens = Tokenizer::new(dialect, sql).tokenize_with_location()?;
+    let mut parser = Parser::new(dialect).with_tokens_with_locations(tokens);
+    let db_kind = kind_of_dialect(dialect);
+    Ok(std::iter::from_fn(move || {
+        parse_single_statement(&mut parser, db_kind)
+    }))
+}
+
+fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<ParsedStatement> {
+    if parser.peek_token() == EOF {
+        return None;
+    }
+    let mut stmt = match parser.parse_statement() {
+        Ok(stmt) => stmt,
+        Err(err) => return Some(syntax_error(err, parser)),
+    };
+    while parser.consume_token(&SemiColon) {}
+    if let Some(static_statement) = extract_static_simple_select(&stmt) {
+        log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
+        return Some(ParsedStatement::StaticSimpleSelect(static_statement));
+    }
+    let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
+    let query = stmt.to_string();
+    Some(ParsedStatement::StmtWithParams { query, params })
+}
+
+fn syntax_error(err: ParserError, parser: &mut Parser) -> ParsedStatement {
+    let mut err_msg = "SQL syntax error before: ".to_string();
+    for _ in 0..32 {
+        let next_token = parser.next_token();
+        if next_token == EOF {
+            break;
+        }
+        _ = write!(&mut err_msg, "{next_token} ");
+    }
+    ParsedStatement::Error(anyhow::Error::from(err).context(err_msg))
+}
+
+fn dialect_for_db(db_kind: AnyKind) -> Box<dyn Dialect> {
+    match db_kind {
+        AnyKind::Postgres => Box::new(PostgreSqlDialect {}),
+        AnyKind::Mssql => Box::new(MsSqlDialect {}),
+        AnyKind::MySql => Box::new(MySqlDialect {}),
+        AnyKind::Sqlite => Box::new(SQLiteDialect {}),
+    }
+}
+
+fn kind_of_dialect(dialect: &dyn Dialect) -> AnyKind {
+    if dialect.is::<PostgreSqlDialect>() {
+        AnyKind::Postgres
+    } else if dialect.is::<MsSqlDialect>() {
+        AnyKind::Mssql
+    } else if dialect.is::<MySqlDialect>() {
+        AnyKind::MySql
+    } else if dialect.is::<SQLiteDialect>() {
+        AnyKind::Sqlite
+    } else {
+        unreachable!("Unknown dialect")
     }
 }
 
@@ -406,7 +450,7 @@ mod test {
     use super::*;
 
     fn parse_stmt(sql: &str) -> Statement {
-        let mut ast = Parser::parse_sql(&GenericDialect, sql).unwrap();
+        let mut ast = Parser::parse_sql(&PostgreSqlDialect {}, sql).unwrap();
         assert_eq!(ast.len(), 1);
         ast.pop().unwrap()
     }
