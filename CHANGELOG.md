@@ -23,6 +23,9 @@
    This allows using more database-specific features in SQLPage and avoids confusion.
  - Create a single database connection by default when using `sqlite://:memory:` as the database URL.
    This makes it easier to use temporary tables and other connection-specific features.
+ - When no component is selected, display data with the `debug` component by default.
+   This makes any simple `SELECT` statement a valid SQLPage file.
+   Before, data returned outside of a component would be ignored.
 
 ## 0.9.5 (2023-08-12)
 
