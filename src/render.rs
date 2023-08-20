@@ -219,13 +219,13 @@ fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {
 pub struct RenderContext<W: std::io::Write> {
     app_state: Arc<AppState>,
     pub writer: W,
-    current_component: SplitTemplateRenderer,
+    current_component: Option<SplitTemplateRenderer>,
     shell_renderer: SplitTemplateRenderer,
     recursion_depth: usize,
     current_statement: usize,
 }
 
-const DEFAULT_COMPONENT: &str = "default";
+const DEFAULT_COMPONENT: &str = "debug";
 const SHELL_COMPONENT: &str = "shell";
 const DYNAMIC_COMPONENT: &str = "dynamic";
 const MAX_RECURSION_DEPTH: usize = 256;
@@ -241,7 +241,8 @@ impl<W: std::io::Write> RenderContext<W> {
             .await
             .with_context(|| "The shell component should always exist")?;
 
-        let mut initial_component = get_object_str(&initial_row, "component");
+        let mut initial_component =
+            Some(get_object_str(&initial_row, "component").unwrap_or(DEFAULT_COMPONENT));
         let mut shell_properties = JsonValue::Null;
         match initial_component {
             Some(SHELL_COMPONENT) => {
@@ -266,14 +267,10 @@ impl<W: std::io::Write> RenderContext<W> {
         log::debug!("Rendering the shell with properties: {shell_properties}");
         shell_renderer.render_start(&mut writer, shell_properties)?;
 
-        let current_component = Self::create_renderer(DEFAULT_COMPONENT, Arc::clone(&app_state))
-            .await
-            .with_context(|| format!("Unable to open the rendering context because opening the {DEFAULT_COMPONENT} component failed"))?;
-
         let mut initial_context = RenderContext {
             app_state,
             writer,
-            current_component,
+            current_component: None,
             shell_renderer,
             recursion_depth: 0,
             current_statement: 1,
@@ -287,6 +284,13 @@ impl<W: std::io::Write> RenderContext<W> {
         Ok(initial_context)
     }
 
+    async fn current_component(&mut self) -> anyhow::Result<&mut SplitTemplateRenderer> {
+        if self.current_component.is_none() {
+            let _old = self.set_current_component(DEFAULT_COMPONENT).await?;
+        }
+        Ok(self.current_component.as_mut().unwrap())
+    }
+
     #[async_recursion(? Send)]
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         log::debug!(
@@ -294,7 +298,7 @@ impl<W: std::io::Write> RenderContext<W> {
             serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
         );
         let new_component = get_object_str(data, "component");
-        let current_component = SplitTemplateRenderer::name(&self.current_component);
+        let current_component = self.current_component().await?.name();
         match (current_component, new_component) {
             (_current_component, Some(DYNAMIC_COMPONENT)) => {
                 self.render_dynamic(data).await.with_context(|| {
@@ -309,7 +313,7 @@ impl<W: std::io::Write> RenderContext<W> {
                 self.open_component_with_data(new_component, &data).await?;
             }
             (_, _) => {
-                self.render_current_template_with_data(&data)?;
+                self.render_current_template_with_data(&data).await?;
             }
         }
         Ok(())
@@ -374,7 +378,8 @@ impl<W: std::io::Write> RenderContext<W> {
             "query_number": self.current_statement,
             "description": description,
             "backtrace": backtrace
-        }))?;
+        }))
+        .await?;
         self.close_component()?;
         self.current_component = saved_component;
         Ok(())
@@ -394,15 +399,26 @@ impl<W: std::io::Write> RenderContext<W> {
         }
     }
 
-    fn render_current_template_with_data<T: Serialize>(&mut self, data: &T) -> anyhow::Result<()> {
+    async fn render_current_template_with_data<T: Serialize>(
+        &mut self,
+        data: &T,
+    ) -> anyhow::Result<()> {
+        if self.current_component.is_none() {
+            self.set_current_component(DEFAULT_COMPONENT).await?;
+        }
         self.current_component
+            .as_mut()
+            .expect("just set the current component")
             .render_item(&mut self.writer, json!(data))?;
         self.shell_renderer
             .render_item(&mut self.writer, JsonValue::Null)?;
         Ok(())
     }
 
-    async fn open_component(&mut self, component: &str) -> anyhow::Result<SplitTemplateRenderer> {
+    async fn open_component(
+        &mut self,
+        component: &str,
+    ) -> anyhow::Result<Option<SplitTemplateRenderer>> {
         self.open_component_with_data(component, &json!(null)).await
     }
 
@@ -421,38 +437,39 @@ impl<W: std::io::Write> RenderContext<W> {
     async fn set_current_component(
         &mut self,
         component: &str,
-    ) -> anyhow::Result<SplitTemplateRenderer> {
+    ) -> anyhow::Result<Option<SplitTemplateRenderer>> {
         let new_component = Self::create_renderer(component, Arc::clone(&self.app_state)).await?;
-        Ok(std::mem::replace(
-            &mut self.current_component,
-            new_component,
-        ))
+        Ok(self.current_component.replace(new_component))
     }
 
     async fn open_component_with_data<T: Serialize>(
         &mut self,
         component: &str,
         data: &T,
-    ) -> anyhow::Result<SplitTemplateRenderer> {
+    ) -> anyhow::Result<Option<SplitTemplateRenderer>> {
         self.close_component()?;
         let old_component = self.set_current_component(component).await?;
         self.current_component
+            .as_mut()
+            .expect("just set the current component")
             .render_start(&mut self.writer, json!(data))?;
         Ok(old_component)
     }
 
     fn close_component(&mut self) -> anyhow::Result<()> {
-        self.current_component.render_end(&mut self.writer)?;
+        if let Some(old_component) = self.current_component.as_mut().take() {
+            old_component.render_end(&mut self.writer)?;
+        }
         Ok(())
     }
 
     pub async fn close(mut self) -> W {
-        let res = self
-            .current_component
-            .render_end(&mut self.writer)
-            .map_err(|e| format_err!("Unable to render the component closing: {e}"));
-        self.handle_result_and_log(&res).await;
-
+        if let Some(old_component) = self.current_component.as_mut().take() {
+            let res = old_component
+                .render_end(&mut self.writer)
+                .map_err(|e| format_err!("Unable to render the component closing: {e}"));
+            self.handle_result_and_log(&res).await;
+        }
         let res = self
             .shell_renderer
             .render_end(&mut self.writer)
