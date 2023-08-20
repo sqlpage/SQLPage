@@ -378,6 +378,14 @@ impl VisitorMut for ParameterExtractor {
     type Break = ();
     fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
         match value {
+            Expr::Identifier(Ident {
+                value: var_name,
+                quote_style: None,
+            }) if var_name.starts_with('$') || var_name.starts_with(':') => {
+                let name = std::mem::take(var_name);
+                *value = self.make_placeholder();
+                self.parameters.push(map_param(name));
+            }
             Expr::Value(Value::Placeholder(param)) if !self.is_own_placeholder(param) =>
             // this check is to avoid recursively replacing placeholders in the form of '?', or '$1', '$2', which we emit ourselves
             {
@@ -478,6 +486,56 @@ mod test {
                 StmtParam::Cookie("cookoo".to_string()),
             ]
         );
+    }
+
+    #[test]
+    fn test_statement_rewrite_sqlite() {
+        let mut ast = parse_stmt("select $x, :y from t", SQLiteDialect {});
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Sqlite);
+        assert_eq!(
+            ast.to_string(),
+            "SELECT CAST(? AS VARCHAR), CAST(? AS VARCHAR) FROM t"
+        );
+        assert_eq!(
+            parameters,
+            [
+                StmtParam::GetOrPost("x".to_string()),
+                StmtParam::Post("y".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn is_own_placeholder() {
+        assert!(ParameterExtractor {
+            db_kind: AnyKind::Postgres,
+            parameters: vec![]
+        }
+        .is_own_placeholder("$1"));
+
+        assert!(ParameterExtractor {
+            db_kind: AnyKind::Postgres,
+            parameters: vec![StmtParam::Get('x'.to_string())]
+        }
+        .is_own_placeholder("$2"));
+
+        assert!(!ParameterExtractor {
+            db_kind: AnyKind::Postgres,
+            parameters: vec![]
+        }
+        .is_own_placeholder("$2"));
+
+        assert!(ParameterExtractor {
+            db_kind: AnyKind::Sqlite,
+            parameters: vec![]
+        }
+        .is_own_placeholder("?"));
+
+        assert!(!ParameterExtractor {
+            db_kind: AnyKind::Sqlite,
+            parameters: vec![]
+        }
+        .is_own_placeholder("$1"));
     }
 
     #[test]
