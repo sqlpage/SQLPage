@@ -1,7 +1,13 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.10.0 (2023-08-20)
 
+ - `.sql` files are now parsed in the dialect of the database they are executed against,
+   instead of always being parsed as a "Generic" dialect.
+   This allows using more database-specific features in SQLPage and avoids confusion.
+   This should not change anything in most cases, but could break your web application
+   if you were relying on an SQL dialect syntax that is not directly supported by your database,
+   hence the major version change.
  - Added the ability to download chart data as SVG, PNG, and **CSV** using the new `toolbar` attribute of the `chart` component.
    This makes it easy to provide a large data set and allow users to download it as a CSV file from a nice UI.
    ```sql
@@ -18,9 +24,6 @@
    instead of displaying an error page explaining the issue.
  - Improved the appearance of scrollbars. (Workaround for https://github.com/tabler/tabler/issues/1648).
    See https://github.com/lovasoa/SQLpage/discussions/17
- - `.sql` files are now parsed in the dialect of the database they are executed against,
-   instead of always being parsed as a "Generic" dialect.
-   This allows using more database-specific features in SQLPage and avoids confusion.
  - Create a single database connection by default when using `sqlite://:memory:` as the database URL.
    This makes it easier to use temporary tables and other connection-specific features.
  - When no component is selected, display data with the `debug` component by default.
