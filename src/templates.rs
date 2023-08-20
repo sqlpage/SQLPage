@@ -19,6 +19,12 @@ pub struct SplitTemplate {
     pub after_list: Template,
 }
 
+impl SplitTemplate {
+    pub fn name(&self) -> Option<&str> {
+        self.before_list.name.as_deref()
+    }
+}
+
 pub fn split_template(mut original: Template) -> SplitTemplate {
     let mut elements_after = Vec::new();
     let mut mapping_after = Vec::new();
@@ -287,8 +293,14 @@ impl AllTemplates {
         for file in STATIC_TEMPLATES.files() {
             let mut path = PathBuf::from(TEMPLATES_DIR);
             path.push(file.path());
+            let name = file
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
             let source = String::from_utf8_lossy(file.contents());
-            let tpl = Template::compile(&source)?;
+            let tpl = Template::compile_with_name(&source, name)?;
             let split_template = split_template(tpl);
             self.split_templates.add_static(path, split_template);
         }

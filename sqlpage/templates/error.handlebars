@@ -6,20 +6,18 @@
         We are sorry, but an error occurred while generating this page.
         You should contact the site's administrator.
     </p>
-    {{#each_row}}
-        <p>
-            {{#if query_number}}
-                Error in query number <strong>{{query_number}}</strong>:
-            {{/if}}
-        </p>
-        <pre><code>{{description}}</code></pre>
-        {{#if backtrace}}
-            <details class="fs-5">
-                <summary>Backtrace</summary>
-                {{~#each backtrace~}}
-                    <pre class="fs-5 mt-1 p-1 my-1"><code>{{this}}</code></pre>
-                {{~/each~}}
-            </details>
+    <p>
+        {{#if query_number}}
+            Error in query number <strong>{{query_number}}</strong>:
         {{/if}}
-    {{/each_row}}
+    </p>
+    <pre><code>{{description}}</code></pre>
+    {{#if backtrace}}
+        <details open class="fs-5">
+            <summary>Backtrace</summary>
+            {{~#each backtrace~}}
+                <pre class="fs-5 mt-1 p-1 my-1"><code>{{this}}</code></pre>
+            {{~/each~}}
+        </details>
+    {{/if}}
 </div>

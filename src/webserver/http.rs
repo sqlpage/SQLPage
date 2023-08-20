@@ -153,29 +153,33 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     let mut head_context = HeaderContext::new(app_state, writer);
     let mut stream = Box::pin(database_entries);
     while let Some(item) = stream.next().await {
-        match item {
-            DbItem::Row(data) => match head_context.handle_row(data).await? {
-                PageContext::Header(h) => {
-                    head_context = h;
-                }
-                PageContext::Body {
-                    mut http_response,
+        let page_context = match item {
+            DbItem::Row(data) => head_context.handle_row(data).await?,
+            DbItem::FinishedQuery => {
+                log::debug!("finished query");
+                continue;
+            }
+            DbItem::Error(source_err) => head_context.handle_error(source_err).await?,
+        };
+        match page_context {
+            PageContext::Header(h) => {
+                head_context = h;
+            }
+            PageContext::Body {
+                mut http_response,
+                renderer,
+            } => {
+                let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+                let http_response = http_response.streaming(body_stream);
+                return Ok(ResponseWithWriter::RenderStream {
+                    http_response,
                     renderer,
-                } => {
-                    let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
-                    let http_response = http_response.streaming(body_stream);
-                    return Ok(ResponseWithWriter::RenderStream {
-                        http_response,
-                        renderer,
-                        database_entries_stream: stream,
-                    });
-                }
-                PageContext::Close(http_response) => {
-                    return Ok(ResponseWithWriter::FinishedResponse { http_response })
-                }
-            },
-            DbItem::FinishedQuery => log::debug!("finished query"),
-            DbItem::Error(source_err) => return Err(source_err),
+                    database_entries_stream: stream,
+                });
+            }
+            PageContext::Close(http_response) => {
+                return Ok(ResponseWithWriter::FinishedResponse { http_response })
+            }
         }
     }
     log::debug!("No SQL statements left to execute for the body of the response");

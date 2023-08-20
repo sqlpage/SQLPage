@@ -56,6 +56,16 @@ impl<W: std::io::Write> HeaderContext<W> {
         }
     }
 
+    pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext<W>> {
+        log::debug!("Handling header error: {err}");
+        let data = json!({
+            "component": "error",
+            "description": err.to_string(),
+            "backtrace": get_backtrace(&err),
+        });
+        self.start_body(data).await
+    }
+
     fn status_code(mut self, data: &JsonValue) -> anyhow::Result<Self> {
         let status_code = data
             .as_object()
@@ -209,6 +219,16 @@ impl<W: std::io::Write> HeaderContext<W> {
     }
 }
 
+fn get_backtrace(error: &anyhow::Error) -> Vec<String> {
+    let mut backtrace = vec![];
+    let mut source = error.source();
+    while let Some(s) = source {
+        backtrace.push(format!("{s}"));
+        source = s.source();
+    }
+    backtrace
+}
+
 fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {
     json.as_object()
         .and_then(|obj| obj.get(key))
@@ -278,8 +298,9 @@ impl<W: std::io::Write> RenderContext<W> {
 
         if let Some(component) = initial_component {
             log::trace!("The page starts with a component without a shell: {component}");
-            initial_context.open_component(component).await?;
-            initial_context.handle_row(&initial_row).await?;
+            initial_context
+                .open_component_with_data(component, &initial_row)
+                .await?;
         }
 
         Ok(initial_context)
@@ -367,20 +388,13 @@ impl<W: std::io::Write> RenderContext<W> {
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
         log::warn!("SQL error: {:?}", error);
         self.close_component()?;
-        let saved_component = self.open_component("error").await?;
         let description = error.to_string();
-        let mut backtrace = vec![];
-        let mut source = error.source();
-        while let Some(s) = source {
-            backtrace.push(format!("{s}"));
-            source = s.source();
-        }
-        self.render_current_template_with_data(&json!({
+        let data = json!({
             "query_number": self.current_statement,
             "description": description,
-            "backtrace": backtrace
-        }))
-        .await?;
+            "backtrace": get_backtrace(error)
+        });
+        let saved_component = self.open_component_with_data("error", &data).await?;
         self.close_component()?;
         self.current_component = saved_component;
         Ok(())
@@ -414,13 +428,6 @@ impl<W: std::io::Write> RenderContext<W> {
         self.shell_renderer
             .render_item(&mut self.writer, JsonValue::Null)?;
         Ok(())
-    }
-
-    async fn open_component(
-        &mut self,
-        component: &str,
-    ) -> anyhow::Result<Option<SplitTemplateRenderer>> {
-        self.open_component_with_data(component, &json!(null)).await
     }
 
     async fn create_renderer(
@@ -519,7 +526,13 @@ impl SplitTemplateRenderer {
         writer: W,
         data: JsonValue,
     ) -> Result<(), RenderError> {
-        log::trace!("Starting rendering of a new page with the following page-level data: {data}");
+        log::trace!(
+            "Starting rendering of a template{} with the following top-level parameters: {data}",
+            self.split_template
+                .name()
+                .map(|n| format!(" ('{n}')"))
+                .unwrap_or_default(),
+        );
         let mut render_context = handlebars::RenderContext::new(None);
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
@@ -569,7 +582,13 @@ impl SplitTemplateRenderer {
     }
 
     fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), RenderError> {
-        log::trace!("Closing the current page");
+        log::trace!(
+            "Closing a template {}",
+            self.split_template
+                .name()
+                .map(|n| format!("('{n}')"))
+                .unwrap_or_default(),
+        );
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             *render_context
