@@ -277,6 +277,9 @@ impl Database {
                         _ => Some(Duration::from_secs(60 * 60)),
                     }),
             )
+            .acquire_timeout(Duration::from_secs_f64(
+                config.database_connection_acquire_timeout_seconds,
+            ))
     }
 }
 

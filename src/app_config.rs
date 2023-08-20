@@ -27,6 +27,11 @@ pub struct AppConfig {
     /// will wait up to 30 seconds for the database to become available.
     #[serde(default = "default_database_connection_retries")]
     pub database_connection_retries: u32,
+
+    /// Maximum number of seconds to wait before giving up when acquiring a database connection from the
+    /// pool. The default is 10 seconds.
+    #[serde(default = "default_database_connection_acquire_timeout_seconds")]
+    pub database_connection_acquire_timeout_seconds: f64,
 }
 
 pub fn load() -> anyhow::Result<AppConfig> {
@@ -34,7 +39,7 @@ pub fn load() -> anyhow::Result<AppConfig> {
         .set_default("listen_on", "0.0.0.0:8080")?
         .add_source(config::File::with_name("sqlpage/sqlpage").required(false))
         .add_source(env_config())
-        .add_source(env_config().prefix("SQLPAGE_"))
+        .add_source(env_config().prefix("SQLPAGE"))
         .build()?
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;
@@ -91,6 +96,10 @@ fn default_database_url() -> String {
 
 fn default_database_connection_retries() -> u32 {
     6
+}
+
+fn default_database_connection_acquire_timeout_seconds() -> f64 {
+    10.
 }
 
 #[cfg(test)]
