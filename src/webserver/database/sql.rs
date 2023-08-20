@@ -449,15 +449,20 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
 mod test {
     use super::*;
 
-    fn parse_stmt(sql: &str) -> Statement {
-        let mut ast = Parser::parse_sql(&PostgreSqlDialect {}, sql).unwrap();
+    fn parse_stmt<D: Dialect>(sql: &str, dialect: D) -> Statement {
+        let mut ast = Parser::parse_sql(&dialect, sql).unwrap();
         assert_eq!(ast.len(), 1);
         ast.pop().unwrap()
     }
 
+    fn parse_postgres_stmt(sql: &str) -> Statement {
+        parse_stmt(sql, PostgreSqlDialect {})
+    }
+
     #[test]
     fn test_statement_rewrite() {
-        let mut ast = parse_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
+        let mut ast =
+            parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Postgres);
         assert_eq!(
         ast.to_string(),
@@ -477,11 +482,11 @@ mod test {
 
     #[test]
     fn test_mssql_statement_rewrite() {
-        let mut ast = parse_stmt("select '' || $1 from t");
+        let mut ast = parse_stmt("select '' || $1 from [a schema].[a table]", MsSqlDialect {});
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
         assert_eq!(
             ast.to_string(),
-            "SELECT CONCAT('', CAST(@p1 AS VARCHAR)) FROM t"
+            "SELECT CONCAT('', CAST(@p1 AS VARCHAR)) FROM [a schema].[a table]"
         );
         assert_eq!(parameters, [StmtParam::GetOrPost("1".to_string()),]);
     }
@@ -489,7 +494,7 @@ mod test {
     #[test]
     fn test_static_extract() {
         assert_eq!(
-            extract_static_simple_select(&parse_stmt(
+            extract_static_simple_select(&parse_postgres_stmt(
                 "select 'hello' as hello, 42 as answer, null as nothing, 'world' as hello"
             )),
             Some(
@@ -508,37 +513,39 @@ mod test {
     #[test]
     fn test_static_extract_doesnt_match() {
         assert_eq!(
-            extract_static_simple_select(&parse_stmt(
+            extract_static_simple_select(&parse_postgres_stmt(
                 "select 'hello' as hello, 42 as answer limit 0"
             )),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_stmt(
+            extract_static_simple_select(&parse_postgres_stmt(
                 "select 'hello' as hello, 42 as answer order by 1"
             )),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_stmt(
+            extract_static_simple_select(&parse_postgres_stmt(
                 "select 'hello' as hello, 42 as answer offset 1"
             )),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_stmt(
+            extract_static_simple_select(&parse_postgres_stmt(
                 "select 'hello' as hello, 42 as answer where 1 = 0"
             )),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_stmt(
+            extract_static_simple_select(&parse_postgres_stmt(
                 "select 'hello' as hello, 42 as answer FROM t"
             )),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_stmt("select x'CAFEBABE' as hello, 42 as answer")),
+            extract_static_simple_select(&parse_postgres_stmt(
+                "select x'CAFEBABE' as hello, 42 as answer"
+            )),
             None
         );
     }
