@@ -34,6 +34,7 @@ pub fn load() -> anyhow::Result<AppConfig> {
         .set_default("listen_on", "0.0.0.0:8080")?
         .add_source(config::File::with_name("sqlpage/sqlpage").required(false))
         .add_source(env_config())
+        .add_source(env_config().prefix("SQLPAGE_"))
         .build()?
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;

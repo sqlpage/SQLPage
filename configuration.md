@@ -23,6 +23,8 @@ All the parameters above can be set through environment variables.
 The name of the environment variable is the same as the name of the configuration variable,
 but in uppercase.
 
+The environment variable name can optionally be prefixed with `SQLPAGE_`.
+
 ### Example
 
 ```bash
