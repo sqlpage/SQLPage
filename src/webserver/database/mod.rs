@@ -217,10 +217,24 @@ impl Database {
         );
         set_custom_connect_options(&mut connect_options, config);
         log::info!("Connecting to database: {database_url}");
-        let connection = Self::create_pool_options(config, connect_options.kind())
-            .connect_with(connect_options)
-            .await
-            .with_context(|| format!("Unable to open connection to {database_url}"))?;
+        let mut retries = config.database_connection_retries;
+        let connection = loop {
+            match Self::create_pool_options(config, connect_options.kind())
+                .connect_with(connect_options.clone())
+                .await
+            {
+                Ok(c) => break c,
+                Err(e) => {
+                    if retries == 0 {
+                        return Err(anyhow::Error::new(e)
+                            .context(format!("Unable to open connection to {database_url}")));
+                    }
+                    log::warn!("Failed to connect to the database: {e:#}. Retrying in 5 seconds.");
+                    retries -= 1;
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+        };
         log::debug!("Initialized database pool: {connection:#?}");
         Ok(Database { connection })
     }
