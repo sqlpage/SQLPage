@@ -21,18 +21,19 @@ pub struct AppConfig {
     #[serde(deserialize_with = "deserialize_socket_addr")]
     pub listen_on: SocketAddr,
     pub port: Option<u16>,
+
+    /// Number of times to retry connecting to the database after a failure when the server starts
+    /// up. Retries will happen every 5 seconds. The default is 6 retries, which means the server
+    /// will wait up to 30 seconds for the database to become available.
+    #[serde(default = "default_database_connection_retries")]
+    pub database_connection_retries: u32,
 }
 
 pub fn load() -> anyhow::Result<AppConfig> {
     let mut conf = Config::builder()
         .set_default("listen_on", "0.0.0.0:8080")?
         .add_source(config::File::with_name("sqlpage/sqlpage").required(false))
-        .add_source(
-            config::Environment::default()
-                .try_parsing(true)
-                .list_separator(" ")
-                .with_list_parse_key("sqlite_extensions"),
-        )
+        .add_source(env_config())
         .build()?
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;
@@ -40,6 +41,13 @@ pub fn load() -> anyhow::Result<AppConfig> {
         conf.listen_on.set_port(port);
     }
     Ok(conf)
+}
+
+fn env_config() -> config::Environment {
+    config::Environment::default()
+        .try_parsing(true)
+        .list_separator(" ")
+        .with_list_parse_key("sqlite_extensions")
 }
 
 fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
@@ -78,6 +86,10 @@ fn default_database_url() -> String {
 
     log::warn!("No DATABASE_URL provided, and the current directory is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
     prefix + ":memory:"
+}
+
+fn default_database_connection_retries() -> u32 {
+    6
 }
 
 #[cfg(test)]
