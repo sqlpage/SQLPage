@@ -18,6 +18,9 @@
    instead of displaying an error page explaining the issue.
  - Improved the appearance of scrollbars. (Workaround for https://github.com/tabler/tabler/issues/1648).
    See https://github.com/lovasoa/SQLpage/discussions/17
+ - `.sql` files are now parsed in the dialect of the database they are executed against,
+   instead of always being parsed as a "Generic" dialect.
+   This allows using more database-specific features in SQLPage and avoids confusion.
 
 ## 0.9.5 (2023-08-12)
 
