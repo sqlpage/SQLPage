@@ -33,7 +33,7 @@
    This makes it easier to debug SQLPage websites. Before, errors that occured before SQLPage had started to render the page would be displayed as a raw text error message without any styling.
  - Added the ability to retry database connections when they fail on startup.
    This makes it easier to start SQLPage concurrently with the database, and have it wait for the database to become available.
-   See the [`database_connection_retries` configuration parameter](./configuration.md).
+   See the [`database_connection_retries` and `database_connection_acquire_timeout_seconds` configuration parameter](./configuration.md).
 
 ## 0.9.5 (2023-08-12)
 
