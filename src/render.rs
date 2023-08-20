@@ -278,6 +278,7 @@ impl<W: std::io::Write> RenderContext<W> {
 
         if let Some(component) = initial_component {
             log::trace!("The page starts with a component without a shell: {component}");
+            initial_context.open_component(component).await?;
             initial_context.handle_row(&initial_row).await?;
         }
 
