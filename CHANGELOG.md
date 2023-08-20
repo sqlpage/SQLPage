@@ -21,6 +21,8 @@
  - `.sql` files are now parsed in the dialect of the database they are executed against,
    instead of always being parsed as a "Generic" dialect.
    This allows using more database-specific features in SQLPage and avoids confusion.
+ - Create a single database connection by default when using `sqlite://:memory:` as the database URL.
+   This makes it easier to use temporary tables and other connection-specific features.
 
 ## 0.9.5 (2023-08-12)
 
