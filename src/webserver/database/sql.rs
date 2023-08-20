@@ -119,6 +119,7 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
 
 fn syntax_error(err: ParserError, parser: &mut Parser) -> ParsedStatement {
     let mut err_msg = "SQL syntax error before: ".to_string();
+    parser.prev_token(); // go back to the token that caused the error
     for _ in 0..32 {
         let next_token = parser.next_token();
         if next_token == EOF {

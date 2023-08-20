@@ -26,6 +26,8 @@
  - When no component is selected, display data with the `debug` component by default.
    This makes any simple `SELECT` statement a valid SQLPage file.
    Before, data returned outside of a component would be ignored.
+ - Improved error handling. SQLPage now displays a nice error page when an error occurs, even if it's at the top of the page.
+   This makes it easier to debug SQLPage websites. Before, errors that occured before SQLPage had started to render the page would be displayed as a raw text error message without any styling.
 
 ## 0.9.5 (2023-08-12)
 
