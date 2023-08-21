@@ -7,7 +7,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct AppConfig {
     #[serde(default = "default_database_url")]
     pub database_url: String,
@@ -105,17 +105,14 @@ fn default_database_connection_acquire_timeout_seconds() -> f64 {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::AppConfig;
-    use std::net::SocketAddr;
 
     pub fn test_config() -> AppConfig {
-        AppConfig {
-            database_url: "sqlite::memory:".to_string(),
-            max_database_pool_connections: None,
-            database_connection_idle_timeout_seconds: None,
-            database_connection_max_lifetime_seconds: None,
-            sqlite_extensions: vec![],
-            listen_on: SocketAddr::from(([127, 0, 0, 1], 8282)),
-            port: None,
-        }
+        serde_json::from_str::<AppConfig>(
+            r#"{
+            "database_url": "sqlite::memory:",
+            "listen_on": "localhost:8080"
+        }"#,
+        )
+        .unwrap()
     }
 }
