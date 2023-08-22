@@ -78,4 +78,20 @@ The full list of changes can be found in the [changelog](https://github.com/lova
    Contributions and bug reports are all welcomed [on github](https://github.com/lovasoa/sqlx-oldapi).
 
 And if you are curious about why this page’s URL ends in `.sql`, check out [SQLPage](/).
+
+---
+
+**Important addendum**:
+The main contributor to sqlx reacted to this post, and they wanted to clarify two things:
+
+ - sqlx is a project of the *Launchbase* company, not a personal project of *@abonander*.
+   Although he is the main contributor, important decisions are taken in consultation with the company.
+   If new drivers are monetized, the money will go to the company, not to him personally.
+   The stated goal is to then allocate the money to the development of sqlx.
+ - Most importantly: the current plan for the new drivers **is not to release them as proprietary**
+  code as initially planned, but to release them as open source, under the more restrictive *AGPL* license.
+  This means that they will be free to use for similarly licensed open source projects
+  (unlike SQLPage, which is free to use even in conjunction with proprietary software, under the *MIT* license).
+  Companies that want to use these future sqlx drivers in proprietary software will have to pay for a commercial license.
+  That change in the decision has been announced in 2022, and I should have been aware of it when I wrote this post. My bad.
 ');
