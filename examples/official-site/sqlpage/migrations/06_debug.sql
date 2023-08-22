@@ -2,7 +2,7 @@
 INSERT INTO component (name, description, icon)
 VALUES (
         'debug',
-        'Display all of the row-level parameters passed to the component. Useful for debugging: just replace the name of the component you want to debug with ''debug''.',
+        'Display all the parameters passed to the component. Useful for debugging: just replace the name of the component you want to debug with ''debug''.',
         'bug'
     );
 -- Insert an example usage of the http_header component into the example table
