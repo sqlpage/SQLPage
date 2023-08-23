@@ -377,8 +377,10 @@ INSERT INTO example(component, description, properties) VALUES
     'table',
     'A table with dashes',
     json(
-        '[{"component":"table", "search": true}, ' ||
-         '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C"}
+        '[{"component":"table", "search": true, "sort": true}, ' ||
+         '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C"},
+          {"id": 996, "part_no": "MIC-ROCC-F-24-206-A"},
+          {"id": 131456, "part_no": "KIB-ROCC-F-13-205-B"}
         ]'
     )
     );

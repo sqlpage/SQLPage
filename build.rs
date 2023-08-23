@@ -23,9 +23,8 @@ async fn main() {
 
 /// Creates a file with inlined remote files included
 async fn download_deps(filename: &str) {
-    println!("cargo:rerun-if-changed=build.rs");
-    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let path_in = format!("sqlpage/{}", filename);
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let path_out: PathBuf = out_dir.join(filename);
     // Generate outfile by reading infile and interpreting all comments
     // like "/* !include https://... */" as a request to include the contents of
