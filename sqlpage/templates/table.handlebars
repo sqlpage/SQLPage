@@ -7,20 +7,20 @@
                 </div>
             {{/if}}
             <table class="table">
-                {{~#each_row~}}
+                {{#each_row}}
                     {{#if (eq @row_index 0)}}
                         <thead>
                         <tr>
                             {{#each this}}
-                                {{~#if (not (starts_with @key '_sqlpage_'))~}}
+                                {{#if (not (starts_with @key '_sqlpage_'))}}
                                 <th>
-                                    {{#if ../../sort}}
+                                    {{~#if ../../sort~}}
                                         <button class="table-sort sort" data-sort="{{@key}}">{{@key}}</button>
-                                    {{else}}
-                                        {{@key}}
-                                    {{/if}}
+                                    {{~else~}}
+                                        {{~@key~}}
+                                    {{~/if~}}
                                 </th>
-                                {{~/if~}}
+                                {{/if}}
                             {{/each}}
                         </tr>
                         </thead>
@@ -44,7 +44,7 @@
                             {{~/if~}}
                         {{~/each~}}
                     </tr>
-                {{~/each_row~}}
+                {{/each_row}}
                 {{flush_delayed}}
             </table>
         </div>
