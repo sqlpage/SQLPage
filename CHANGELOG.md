@@ -5,6 +5,7 @@
  - Update the SQL parser, with multiple fixes. See https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0370-2023-08-22
  - Display all parameters in the debug component (instead of only row-level parameters).
  - Update dashmap for better file lookup performance.
+ - Fix table sorting.
 
 ## 0.10.0 (2023-08-20)
 
