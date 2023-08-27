@@ -159,6 +159,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
                 log::debug!("finished query");
                 continue;
             }
+            DbItem::Error(source_err) if matches!(source_err.downcast_ref(), Some(&ErrorWithStatus { status: _ }) ) => return Err(source_err),
             DbItem::Error(source_err) => head_context.handle_error(source_err).await?,
         };
         match page_context {
