@@ -20,6 +20,7 @@ pub struct SplitTemplate {
 }
 
 impl SplitTemplate {
+    #[must_use]
     pub fn name(&self) -> Option<&str> {
         self.before_list.name.as_deref()
     }
