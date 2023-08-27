@@ -311,6 +311,7 @@ impl SingleOrVec {
         }
     }
 
+    #[must_use]
     pub fn as_json_str(&self) -> Cow<'_, str> {
         match self {
             SingleOrVec::Single(x) => Cow::Borrowed(x),
@@ -464,7 +465,9 @@ async fn serve_file(
         })
 }
 
-async fn main_handler(mut service_request: ServiceRequest) -> actix_web::Result<ServiceResponse> {
+pub async fn main_handler(
+    mut service_request: ServiceRequest,
+) -> actix_web::Result<ServiceResponse> {
     let path = req_path(&service_request);
     let sql_file_path = path_to_sql_file(&path);
     if let Some(sql_path) = sql_file_path {

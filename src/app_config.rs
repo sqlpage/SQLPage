@@ -103,9 +103,10 @@ fn default_database_connection_acquire_timeout_seconds() -> f64 {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+pub mod tests {
     use super::AppConfig;
 
+    #[must_use]
     pub fn test_config() -> AppConfig {
         serde_json::from_str::<AppConfig>(
             r#"{

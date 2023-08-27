@@ -72,7 +72,14 @@ pub struct FileCache<T: AsyncFromStrWithState> {
     static_files: HashMap<PathBuf, Cached<T>>,
 }
 
+impl<T: AsyncFromStrWithState> Default for FileCache<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: AsyncFromStrWithState> FileCache<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cache: Arc::default(),

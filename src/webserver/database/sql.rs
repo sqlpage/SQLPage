@@ -365,6 +365,7 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 }
 
 #[inline]
+#[must_use]
 pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
     if let Some((_, prefix)) = PLACEHOLDER_PREFIXES
         .iter()
