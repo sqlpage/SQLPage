@@ -6,6 +6,8 @@
  - Display all parameters in the debug component (instead of only row-level parameters).
  - Update dashmap for better file lookup performance.
  - Fix table sorting.
+ - Fix a bug with Basic Authentication.
+   See [#72](https://github.com/lovasoa/SQLpage/pull/72). Thanks to @edgrip for the contribution !
 
 ## 0.10.0 (2023-08-20)
 
