@@ -1,7 +1,10 @@
 # CHANGELOG.md
 
-## 0.10.1
+## 0.10.2 (unreleased)
 
+ - Fix a bug where the `map` component followed by another component would break the page layout.
+
+## 0.10.1 (2023-08-27)
  - Update the SQL parser, with multiple fixes. See https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0370-2023-08-22
  - Display all parameters in the debug component (instead of only row-level parameters).
  - Update dashmap for better file lookup performance.

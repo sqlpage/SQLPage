@@ -1,35 +1,40 @@
 <div class="card my-3">
-    <div class="card-body">
-        <div class="d-flex">
-            <h3 class="card-title">{{title}}</h3>
+  <div class="card-body">
+    <h3 class="card-title">{{title}}</h3>
+    <div
+      class="leaflet"
+      style="height: {{default height 350}}px;"
+      data-center="{{default latitude 48}},{{default longitude 3}}"
+      data-zoom="{{default zoom 5}}"
+    >
+      <div class="d-flex justify-content-center h-100 align-items-center">
+        <div
+          class="spinner-border"
+          role="status"
+          style="width: 3rem; height: 3rem;"
+        >
+          <span class="visually-hidden">Loading map...</span>
         </div>
-        <div class="leaflet" style="height: {{default height 350}}px;"
-            data-center="{{default latitude 48}},{{default longitude 3}}"
-            data-zoom="{{default zoom 5}}"
-            >
-            <div class="d-flex justify-content-center h-100 align-items-center">
-                <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
-                    <span class="visually-hidden">Loading map...</span>
-                </div>
-                <div class="d-none" hidden>
-                {{~#each_row~}}
-                    <div class="marker" data-coords="{{latitude}},{{longitude}}">
-                        <h3>
-                            {{~#if link~}}
-                                <a href="{{link}}">{{title}}</a>
-                            {{~else~}}
-                                {{title}}
-                            {{~/if~}}
-                        </h3>
-                        <div>
-                            {{~#if description}}<p>{{description}}</p>{{/if~}}
-                            {{~#if description_md~}}
-                                {{{markdown description_md}}}
-                            {{~/if~}}
-                        </div>
-                    </div>
-                {{~/each_row~}}
-                </div>
+        <div class="d-none" hidden>
+          {{~#each_row~}}
+            <div class="marker" data-coords="{{latitude}},{{longitude}}">
+              <h3>
+                {{~#if link~}}
+                  <a href="{{link}}">{{title}}</a>
+                {{~else~}}
+                  {{title}}
+                {{~/if~}}
+              </h3>
+              <div>
+                {{~#if description}}<p>{{description}}</p>{{/if~}}
+                {{~#if description_md~}}
+                  {{{markdown description_md}}}
+                {{~/if~}}
+              </div>
+            </div>
+          {{~/each_row~}}
         </div>
+      </div>
     </div>
+  </div>
 </div>
