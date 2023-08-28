@@ -90,10 +90,17 @@ VALUES (
 INSERT INTO example (component, description, properties)
 VALUES (
         'map',
+        'Basic example of a map with a marker',
+        JSON('[{ "component": "map", "zoom": 2 }, { "title": "New Delhi", "latitude": 28.6139, "longitude": 77.2090 }]')
+    ),
+    (
+        'map',
         'Map of Paris',
-        JSON('[
+        JSON(
+            '[
             { "component": "map", "title": "Paris", "zoom": 11, "latitude": 48.85, "longitude": 2.34, "height": 400 },
             { "title": "Notre Dame", "latitude": 48.8530, "longitude": 2.3498, "description_md": "A beautiful cathedral.", "link": "https://en.wikipedia.org/wiki/Notre-Dame_de_Paris" },
             { "title": "Eiffel Tower", "latitude": 48.8584, "longitude": 2.2945, "description_md": "A tall tower. [Wikipedia](https://en.wikipedia.org/wiki/Eiffel_Tower)" }
-        ]')
+        ]'
+        )
     );
