@@ -54,7 +54,7 @@ VALUES (
     (
         'cookie',
         'secure',
-        'Whether the cookie should only be sent over a secure (HTTPS) connection. If not specified, the cookie will be sent over both secure and non-secure connections.',
+        'Whether the cookie should only be sent over a secure (HTTPS) connection. Defaults to TRUE.',
         'BOOLEAN',
         TRUE,
         TRUE
@@ -85,7 +85,8 @@ VALUES (
 ```sql
 SELECT ''cookie'' as component,
         ''username'' as name,
-        ''John Doe'' as value;
+        ''John Doe'' as value
+        FALSE AS secure; -- You can remove this if the site is served over HTTPS.
 ```
 
 and then display the value of the cookie using the [`sqlpage.cookie`](functions.sql?function=cookie) function:
