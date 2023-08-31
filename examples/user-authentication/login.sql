@@ -9,7 +9,11 @@ SELECT 'authentication' AS component,
 -- and save it in a cookie on the user's browser.
 INSERT INTO login_session (id, username)
 VALUES (sqlpage.random_string(32), :username)
-RETURNING 'cookie' AS component, 'session' AS name, id AS value;
+RETURNING 
+    'cookie' AS component,
+    'session' AS name,
+    id AS value,
+    FALSE AS secure; -- You can remove this if the site is served over HTTPS.
 
 -- Redirect the user to the protected page.
 SELECT 'redirect' AS component, 'protected_page.sql' AS link;
