@@ -12,11 +12,11 @@ select 'shell' as component,
     'Poppins' as font;
 
 SELECT 'hero' as component,
-    'Building your first SQL Website' as title,
-    'Let''s create your first website entirely in SQL together, step by step, from downloading SQLPage to making your site available online for everyone to browse.' as description,
+    'Your first SQL Website' as title,
+    'Let''s create your first website in SQL together, from downloading SQLPage to publishing your site online.' as description,
     'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Backlit_keyboard.jpg/1024px-Backlit_keyboard.jpg' as image,
-    'mailto:contact@ophir.dev' as link,
-    'Instructions unclear ? Get in touch !' as link_text;
+    'https://replit.com/@pimaj62145/SQLPage#index.sql' as link,
+    'Follow this tutorial online' as link_text;
 
 SELECT 'alert' as component,
     'Afraid of the setup ? Do it the easy way !' as title,
@@ -40,6 +40,7 @@ Building your website locally
 =============================
 
 Create a folder on your computer where you will store all contents related to your sql website.
+In the rest of this tutorial, we will call this folder the **root folder** of your website.
 
 Open the file you downloaded above, and place `sqlpage.bin` (if you are on linux or Mac OS)
 or `sqlpage.exe` at the root of the folder.
@@ -55,11 +56,13 @@ You can open your website locally by visiting [`http://localhost:8080`](http://l
 Your website’s first SQL file
 =============================
 
-In the root folder of your SQLPage website, create a new SQL file called `index.sql`. Open it in a text editor.
+In the root folder of your SQLPage website, create a new SQL file called `index.sql`.
+Open it in a text editor that supports SQL syntax highlighting (I recommend [VSCode](https://code.visualstudio.com/)).
 
-The `index.sql` file will be executed when you open the root of your website. You can use it to retrieve data from your database and define how it should be displayed on your website.
+The `index.sql` file will be executed every time a visitor opens your website''s home page.
+You can use it to retrieve data from your database and define how it should be displayed to your visitors.
 
-As an example, let''s start with a simple SQL code that displays a list of popular websites:
+As an example, let''s start with a simple `index.sql` that displays a list of popular websites:
 
 ```sql
 SELECT ''list'' AS component, ''Popular websites'' AS title;
@@ -67,16 +70,29 @@ SELECT ''list'' AS component, ''Popular websites'' AS title;
 SELECT ''Hello'' AS title, ''world'' AS description, ''https://wikipedia.org'' AS link;
 ```
 
-The list of components you can use and their properties is available in [SQLPage''s online documentation](https://sql.ophir.dev/documentation.sql).
+The first line of the file defines the component that will be used to display the data, and properties of that component.
+In this case, we use the [`list` component](/documentation.sql?component=list#component) to display a list of items.
+The second line defines the data that will populate the component.
+All the components you can use and their properties are documented in [SQLPage''s online documentation](https://sql.ophir.dev/documentation.sql).
 
 Your database schema
 ====================
 
-The database schema for your SQLPage website can be defined using SQL scripts located in the **`sqlpage/migrations`** subdirectory of your website''s root folder.
-Each script represents a migration that sets up or modifies the database structure.
-The scripts are executed in alphabetical order, so you can prefix them with a number to control the order in which they are executed.
-If you don''t want SQLPage to manage your database schema, you can ignore  the `sqlpage/migrations` folder completely,
-and manually create and update database tables using your own favorite tools.
+> If you already have a database populated with data, 
+> or if you intend to use other tools to manage your database schema,
+> you can skip this section.
+
+The database schema for your SQLPage website can be defined using SQL scripts located in the
+**`sqlpage/migrations`** subdirectory of your website''s root folder.
+Each script represents a [migration](https://en.wikipedia.org/wiki/Schema_migration)
+that sets up or modifies the database structure.
+
+The scripts are executed in order. You must prefix them with a number to control the order in which they are executed.
+For instance, `mywebsite/sqlpage/migrations/0001_create_users_table.sql`
+will be executed before `mywebsite/sqlpage/migrations/0002_add_email_to_users_table.sql`.
+SQLPage keeps track of which migrations have already run
+(by storing the executed migrations in a table named `_sqlx_migrations`),
+and will only execute new migrations.
 
 For our first website, let''s create a file located in `sqlpage/migrations/0001_create_users_table.sql` with the following contents:
 
@@ -88,7 +104,10 @@ Connect to a custom database
 ============================
 
 By default, SQLPage uses a [SQLite](https://www.sqlite.org/about.html) database stored in a file named `sqlpage.db` in your website''s root folder.
-You can change this by creating a file named `sqlpage/sqlpage.json` in your website''s root folder with the following contents:
+You can change this by creating a file named `sqlpage.json` in a folder called `sqlpage`.
+So, if your website''s root folder is `/mysite`, you should create a file at `/mysite/sqlpage/sqlpage.json`.
+
+Here is an example `sqlpage.json` file:
 
 ```sql
 { "database_url": "sqlite://:memory:" }
