@@ -1,16 +1,16 @@
 CREATE EXTENSION  IF NOT EXISTS postgis;
 
--- Create a spatialite-enabled database
-CREATE TABLE spatial_data (
-    id SERIAL,
-    title TEXT NOT NULL,
-    geom geometry,
-    description TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Create a table with a postgis geometry column
+CREATE TABLE IF NOT EXISTS spatial_data (
+    id serial primary key NOT NULL,
+    title text NOT NULL,
+    geom geometry NULL,
+    description text NOT NULL,
+    created_at timestamp without time zone NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 
-CREATE VIEW distances AS
+CREATE OR REPLACE VIEW distances AS
 SELECT from_point.id AS from_id,
     from_point.title AS from_label,
     to_point.id AS to_id,

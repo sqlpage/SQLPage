@@ -16,7 +16,7 @@ SELECT 'map' as component,
 SELECT title,
     ST_Y(geom) AS latitude,
     ST_X(geom) AS longitude,
-    'point.sql?id=' || id as link
+    format('[View](point.sql?id=%s) [Edit](edition_form.sql?id=%s)', id, id) as description_md
 FROM spatial_data;
 
 

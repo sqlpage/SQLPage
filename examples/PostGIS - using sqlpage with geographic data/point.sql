@@ -36,7 +36,9 @@ FROM spatial_data
 WHERE id = $id::int;
 
 SELECT 'text' as component,
-    description as contents_md
+    description || 
+    format(E'\n\n [Edit description](edition_form.sql?id=%s)', id)  
+    as contents_md
 FROM spatial_data
 WHERE id = $id::int;
 
