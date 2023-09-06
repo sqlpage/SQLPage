@@ -51,7 +51,7 @@ impl<W: std::io::Write> HeaderContext<W> {
             Some("redirect") => self.redirect(&data).map(PageContext::Close),
             Some("json") => self.json(&data).map(PageContext::Close),
             Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
-            Some("authentication") => self.authentication(&data).await,
+            Some("authentication") => self.authentication(data).await,
             _ => self.start_body(data).await,
         }
     }
@@ -167,27 +167,19 @@ impl<W: std::io::Write> HeaderContext<W> {
         Ok(self.response.body(json_response))
     }
 
-    async fn authentication(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
-        let password_hash = get_object_str(data, "password_hash");
-        let password = get_object_str(data, "password");
+    async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext<W>> {
+        let password_hash = take_object_str(&mut data, "password_hash");
+        let password = take_object_str(&mut data, "password");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
-            log::debug!(
-                "Authenticating user with password_hash = {:?}",
-                password_hash
-            );
-            let verif_result =
-                tokio::task::block_in_place(move || verify_password_sync(password_hash, password))?;
-            match verif_result {
+            log::debug!("Authentication with password_hash = {:?}", password_hash);
+            match verify_password_async(password_hash, password).await? {
                 Ok(()) => return Ok(PageContext::Header(self)),
-                Err(e) => log::info!("User authentication failed: {}", e),
+                Err(e) => log::info!("Password didn't match: {}", e),
             }
         }
-        log::debug!(
-            "Authentication failed with password_hash = {:?}",
-            password_hash
-        );
+        log::debug!("Authentication failed");
         // The authentication failed
-        if let Some(link) = get_object_str(data, "link") {
+        if let Some(link) = get_object_str(&data, "link") {
             self.response.status(StatusCode::FOUND);
             self.response.insert_header((header::LOCATION, link));
             self.has_status = true;
@@ -218,14 +210,17 @@ impl<W: std::io::Write> HeaderContext<W> {
     }
 }
 
-fn verify_password_sync(
-    password_hash: &str,
-    password: &str,
+async fn verify_password_async(
+    password_hash: String,
+    password: String,
 ) -> Result<Result<(), password_hash::Error>, anyhow::Error> {
-    let hash = password_hash::PasswordHash::new(password_hash)
-        .map_err(|e| anyhow::anyhow!("invalid value for the password_hash property: {}", e))?;
-    let phfs = &[&argon2::Argon2::default() as &dyn password_hash::PasswordVerifier];
-    Ok(hash.verify_password(phfs, password))
+    tokio::task::spawn_blocking(move || {
+        let hash = password_hash::PasswordHash::new(&password_hash)
+            .map_err(|e| anyhow::anyhow!("invalid value for the password_hash property: {}", e))?;
+        let phfs = &[&argon2::Argon2::default() as &dyn password_hash::PasswordVerifier];
+        Ok(hash.verify_password(phfs, password))
+    })
+    .await?
 }
 
 fn get_backtrace(error: &anyhow::Error) -> Vec<String> {
@@ -242,6 +237,13 @@ fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {
     json.as_object()
         .and_then(|obj| obj.get(key))
         .and_then(JsonValue::as_str)
+}
+
+fn take_object_str(json: &mut JsonValue, key: &str) -> Option<String> {
+    match json.get_mut(key)?.take() {
+        JsonValue::String(s) => Some(s),
+        _ => None,
+    }
 }
 
 #[allow(clippy::module_name_repetitions)]
