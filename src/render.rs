@@ -51,7 +51,7 @@ impl<W: std::io::Write> HeaderContext<W> {
             Some("redirect") => self.redirect(&data).map(PageContext::Close),
             Some("json") => self.json(&data).map(PageContext::Close),
             Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
-            Some("authentication") => self.authentication(&data),
+            Some("authentication") => self.authentication(&data).await,
             _ => self.start_body(data).await,
         }
     }
@@ -167,18 +167,17 @@ impl<W: std::io::Write> HeaderContext<W> {
         Ok(self.response.body(json_response))
     }
 
-    fn authentication(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
-        use argon2::Argon2;
-        use password_hash::PasswordHash;
+    async fn authentication(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
         let password_hash = get_object_str(data, "password_hash");
         let password = get_object_str(data, "password");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
-            match PasswordHash::new(password_hash)
-                .map_err(|e| {
-                    anyhow::anyhow!("invalid value for the password_hash property: {}", e)
-                })?
-                .verify_password(&[&Argon2::default()], password)
-            {
+            log::debug!(
+                "Authenticating user with password_hash = {:?}",
+                password_hash
+            );
+            let verif_result =
+                tokio::task::block_in_place(move || verify_password_sync(password_hash, password))?;
+            match verif_result {
                 Ok(()) => return Ok(PageContext::Header(self)),
                 Err(e) => log::info!("User authentication failed: {}", e),
             }
@@ -217,6 +216,16 @@ impl<W: std::io::Write> HeaderContext<W> {
     pub fn close(mut self) -> HttpResponse {
         self.response.finish()
     }
+}
+
+fn verify_password_sync(
+    password_hash: &str,
+    password: &str,
+) -> Result<Result<(), password_hash::Error>, anyhow::Error> {
+    let hash = password_hash::PasswordHash::new(password_hash)
+        .map_err(|e| anyhow::anyhow!("invalid value for the password_hash property: {}", e))?;
+    let phfs = &[&argon2::Argon2::default() as &dyn password_hash::PasswordVerifier];
+    Ok(hash.verify_password(phfs, password))
 }
 
 fn get_backtrace(error: &anyhow::Error) -> Vec<String> {
