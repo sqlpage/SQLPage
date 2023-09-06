@@ -137,12 +137,15 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 
 ## Examples
 
+- [Plots, Tables, forms, and interactivity](./examples/plots%20tables%20and%20forms/): a short well-commented demo showing how to use plots, tables, forms, and interactivity to filter data based on an URL parameter.
 - [Tiny splitwise clone](./examples/splitwise): a shared expense tracker app
 - [Corporate Conundrum](./examples/corporate-conundrum/): a board game implemented in SQL
 - [Master-Detail Forms](./examples/master-detail-forms/): shows how to implement a simple set of forms to insert data into database tables that have a one-to-many relationship.
 - [SQLPage's own official website and documentation](./examples/official-site/): The SQL source code for the project's official site, https://sql.ophir.dev
 - [User Management](./examples/user-authentication/): An authentication demo with user registration, log in, log out, and confidential pages. Uses PostgreSQL.
 - [Making a JSON API and integrating React components in the frontend](./examples/using%20react%20and%20other%20custom%20scripts%20and%20styles/): Shows how to integrate a react component in a SQLPage website, and how to easily build a REST API with SQLPage.
+
+You can try all the examples online using [SQLPage's online demo on replit](https://replit.com/@pimaj62145/SQLPage).
 
 ## Configuration
 
