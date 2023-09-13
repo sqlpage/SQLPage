@@ -857,13 +857,12 @@ dependencies = [
 
 [[package]]
 name = "flume"
-version = "0.10.14"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1657b4441c3403d9f7b3409e47575237dac27b1b5726df654a6ecbf92f0f7577"
+checksum = "55ac459de2512911e4b674ce33cf20befaba382d05b62b008afc1c8b57cbf181"
 dependencies = [
  "futures-core",
  "futures-sink",
- "pin-project",
  "spin 0.9.8",
 ]
 
@@ -2247,7 +2246,7 @@ dependencies = [
 
 [[package]]
 name = "sqlpage"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "actix-rt",
  "actix-web",
@@ -2304,9 +2303,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.11"
+version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dec70ba8430c952cf77ff9b9a35aed426c235bedb4f3b5e8e599a2ccdaee4ab7"
+checksum = "764d14e59f96fef2f5d6290b53a76f01470ced822856a82c29157c31c9d8446e"
 dependencies = [
  "ahash 0.8.3",
  "atoi",
@@ -2329,7 +2328,6 @@ dependencies = [
  "futures-executor",
  "futures-intrusive",
  "futures-util",
- "generic-array",
  "hashlink",
  "hex",
  "hkdf",
@@ -2368,9 +2366,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.11"
+version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b6f90a4aa8b4a3531fef20a22efd62d0ef1319aae51c7c19c01bc6b0169847e"
+checksum = "b014cb4d08e429b651a29bab233e85924fdd966a0c01ec116c06bf85aeb1e536"
 dependencies = [
  "dotenvy",
  "either",
@@ -2388,9 +2386,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.11"
+version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8abbce079744a2fa79bd977a62393ad83188d84785ff060badbb72ac5a56507d"
+checksum = "1318464b43f87f58794495f40c6d3d6a8ea06de5d91a06dfc2fc31144a891b63"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
