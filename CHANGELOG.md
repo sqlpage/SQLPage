@@ -1,6 +1,12 @@
 # CHANGELOG.md
 
-## 0.10.2 (unreleased)
+## 0.10.3 (2023-09-14)
+
+ - Update database drivers to the latest version.
+   - Adds new connection string options for mssql, including `app_name` and `instance`.
+     Set them with `DATABASE_URL=mssql://user:password@host:port/database?app_name=My%20App&instance=My%20Instance` 
+
+## 0.10.2 (2023-09-04)
 
  - Fix a bug where the `map` component followed by another component would break the page layout.
 
