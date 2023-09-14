@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## 0.10.4 (unreleased)
+ - Better support for connection options in mssql.
+
 ## 0.10.3 (2023-09-14)
 
  - Update database drivers to the latest version.
