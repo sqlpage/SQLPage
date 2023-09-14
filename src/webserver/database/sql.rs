@@ -210,7 +210,9 @@ fn extract_static_simple_select(
     };
     let mut map = serde_json::Map::with_capacity(select_items.len());
     for select_item in select_items {
-        let sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } = select_item else { return None };
+        let sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } = select_item else {
+            return None;
+        };
         let value = match expr {
             Expr::Value(Value::Boolean(b)) => serde_json::Value::Bool(*b),
             Expr::Value(Value::Number(n, _)) => serde_json::Value::Number(n.parse().ok()?),
