@@ -93,7 +93,7 @@ fn migration_err(operation: &'static str) -> String {
     )
 }
 
-pub async fn stream_query_results<'a>(
+pub fn stream_query_results<'a>(
     db: &'a Database,
     sql_file: &'a ParsedSqlFile,
     request: &'a RequestInfo,

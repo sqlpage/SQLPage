@@ -14,7 +14,7 @@ pub fn add_value_to_map(
         Occupied(mut old_entry) => {
             let mut new_array = if let Array(v) = value { v } else { vec![value] };
             match old_entry.get_mut() {
-                Array(old_array) => old_array.extend(new_array.into_iter()),
+                Array(old_array) => old_array.append(&mut new_array),
                 old_scalar => {
                     new_array.insert(0, old_scalar.take());
                     *old_scalar = Array(new_array);
