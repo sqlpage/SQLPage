@@ -182,8 +182,7 @@ fn bind_parameters<'a>(
 ) -> anyhow::Result<Query<'a, sqlx::Any, AnyArguments<'a>>> {
     let mut arguments = AnyArguments::default();
     for param in &stmt.parameters {
-        let argument = extract_req_param(param, request)
-            .with_context(|| format!("Unable to extract {param:?} from the HTTP request"))?;
+        let argument = extract_req_param(param, request)?;
         log::debug!("Binding value {:?} in statement {}", &argument, stmt);
         match argument {
             None => arguments.add(None::<String>),

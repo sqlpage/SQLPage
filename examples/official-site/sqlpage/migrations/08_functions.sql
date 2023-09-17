@@ -271,3 +271,15 @@ VALUES (
         'The name of the environment variable to read. Must be a literal string.',
         'TEXT'
     );
+
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'version',
+        '0.11.0',
+        'git-commit',
+        'Returns the current version of SQLPage as a string.');

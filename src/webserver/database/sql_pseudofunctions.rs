@@ -28,6 +28,7 @@ pub(super) enum StmtParam {
     RandomString(usize),
     CurrentWorkingDir,
     EnvironmentVariable(String),
+    SqlPageVersion,
 }
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
@@ -46,6 +47,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "current_working_directory" => StmtParam::CurrentWorkingDir,
         "environment_variable" => extract_single_quoted_string("environment_variable", arguments)
             .map_or_else(StmtParam::Error, StmtParam::EnvironmentVariable),
+        "version" => StmtParam::SqlPageVersion,
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -82,6 +84,7 @@ pub(super) fn extract_req_param<'a>(
             .map(Cow::Owned)
             .map(Some)
             .with_context(|| format!("Unable to read environment variable {var}"))?,
+        StmtParam::SqlPageVersion => Some(Cow::Borrowed(env!("CARGO_PKG_VERSION"))),
     })
 }
 
