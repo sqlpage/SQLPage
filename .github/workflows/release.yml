@@ -45,14 +45,17 @@ jobs:
     needs: [build, build-aws]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
       - run: |
+          rm -rf sqlpage/templates/*.handlebars;
           chmod +x sqlpage*/sqlpage;
           mv 'sqlpage macos-latest/sqlpage' sqlpage.bin;
-          tar --create --file sqlpage-macos.tgz --gzip sqlpage.bin;
+          tar --create --file sqlpage-macos.tgz --gzip sqlpage.bin sqlpage/sqlpage.json sqlpage/migrations sqlpage/templates;
           mv 'sqlpage ubuntu-20.04/sqlpage' sqlpage.bin;
-          tar --create --file sqlpage-linux.tgz --gzip sqlpage.bin
-          cd 'sqlpage windows-latest' && zip -r sqlpage-windows.zip *.exe
+          tar --create --file sqlpage-linux.tgz --gzip sqlpage.bin sqlpage/migrations sqlpage/templates;
+          mv 'sqlpage windows-latest/sqlpage.exe' .
+          zip -r sqlpage-windows.zip sqlpage.exe sqlpage/migrations sqlpage/templates;
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
