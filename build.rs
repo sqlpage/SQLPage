@@ -1,4 +1,5 @@
 use actix_rt::spawn;
+use futures_util::StreamExt;
 use libflate::gzip;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
@@ -6,7 +7,6 @@ use std::hash::Hasher;
 use std::io::Read;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use futures_util::StreamExt;
 
 #[actix_rt::main]
 async fn main() {
@@ -53,11 +53,13 @@ async fn process_input_file(path_out: &Path, original: File) {
                 "We need to download external frontend dependencies to build the static frontend.",
             );
             if resp.status() != 200 {
-                panic!("Received {} status code from external frontend dependency", resp.status());
+                panic!("Received {} status code from {}", resp.status(), url);
             }
-            while let Some(b) =  resp.next().await {
-                let chunk = b.expect("Failed to read data from external frontend dependency");
-                outfile.write_all(&chunk).expect("Failed to write external frontend dependency to local file");
+            while let Some(b) = resp.next().await {
+                let chunk = b.unwrap_or_else(|_| panic!("Failed to read data from {}", url));
+                outfile
+                    .write_all(&chunk)
+                    .expect("Failed to write external frontend dependency to local file");
             }
             outfile.write_all(b"\n").unwrap();
         } else {
