@@ -6,10 +6,12 @@ use sqlpage::{app_config::AppConfig, webserver::http::main_handler, AppState};
 
 #[actix_web::test]
 async fn test_index_ok() {
+    init_log();
     let config = test_config();
     let state = AppState::init(&config).await.unwrap();
     let data = actix_web::web::Data::new(state);
-    let req = test::TestRequest::default()
+    let req = test::TestRequest::get()
+        .uri("/")
         .app_data(data)
         .insert_header(ContentType::plaintext())
         .to_srv_request();
@@ -24,11 +26,19 @@ async fn test_index_ok() {
 }
 
 pub fn test_config() -> AppConfig {
-    serde_json::from_str::<AppConfig>(
-        r#"{
-        "database_url": "sqlite::memory:",
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string());
+    serde_json::from_str::<AppConfig>(&format!(
+        r#"{{
+        "database_url": "{}",
+        "database_connection_retries": 2,
+        "database_connection_acquire_timeout_seconds": 1,
         "listen_on": "111.111.111.111:1"
-    }"#,
-    )
+    }}"#,
+        db_url
+    ))
     .unwrap()
+}
+
+fn init_log() {
+    env_logger::builder().is_test(true).try_init().unwrap();
 }
