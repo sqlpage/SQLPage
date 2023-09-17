@@ -544,7 +544,10 @@ mod test {
 
     #[test]
     fn test_mssql_statement_rewrite() {
-        let mut ast = parse_stmt("select '' || $1 from [a schema].[a table]", &MsSqlDialect {});
+        let mut ast = parse_stmt(
+            "select '' || $1 from [a schema].[a table]",
+            &MsSqlDialect {},
+        );
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
         assert_eq!(
             ast.to_string(),
