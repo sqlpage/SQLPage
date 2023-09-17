@@ -47,8 +47,8 @@ impl Database {
     }
 }
 
-pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
-    let migrations_dir = Path::new(MIGRATIONS_DIR);
+pub async fn apply_migrations(db: &Database, web_root: &Path) -> anyhow::Result<()> {
+    let migrations_dir = web_root.join(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
         log::info!(
             "Not applying database migrations because '{}' does not exist",

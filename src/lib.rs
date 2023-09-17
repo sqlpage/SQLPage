@@ -14,7 +14,6 @@ pub mod webserver;
 use crate::app_config::AppConfig;
 use crate::filesystem::FileSystem;
 use crate::webserver::database::{FileCache, ParsedSqlFile};
-use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use templates::AllTemplates;
@@ -35,9 +34,8 @@ impl AppState {
         // Connect to the database
         let db = Database::init(config).await?;
         let all_templates = AllTemplates::init()?;
-        let web_root = get_web_root();
         let mut sql_file_cache = FileCache::new();
-        let file_system = FileSystem::init(&web_root, &db).await;
+        let file_system = FileSystem::init(&config.web_root, &db).await;
         sql_file_cache.add_static(
             PathBuf::from("index.sql"),
             ParsedSqlFile::new(&db, include_str!("../index.sql")).await,
@@ -49,13 +47,6 @@ impl AppState {
             file_system,
         })
     }
-}
-
-pub fn get_web_root() -> PathBuf {
-    env::var("WEB_ROOT").map_or_else(
-        |_| PathBuf::from(&std::path::Component::CurDir),
-        PathBuf::from,
-    )
 }
 
 pub struct Config {
