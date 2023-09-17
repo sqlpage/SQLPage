@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.11.0 (unreleased)
+## 0.11.0 (2023-09-17)
  - Support for **environment variables** ! You can now read environment variables from sql code using `sqlpage.environment_variable('VAR_NAME')`.
  - Better support for connection options in mssql.
  - New icons (see https://tabler-icons.io/changelog)
