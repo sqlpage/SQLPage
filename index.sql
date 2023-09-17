@@ -9,7 +9,9 @@ select 'shell' as component,
 --  and filling them with contents from the results of your SQL queries
 select 'hero' as component, -- We select a component. The documentation for each component can be found on https://sql.ophir.dev/documentation.sql
     'It works !' as title, -- 'title' is top-level parameter of the 'hero' component
-    'If you can see this, then SQLPage is running correctly on your server. Congratulations! ' as description;
+    'If you can see this, then SQLPage v' ||
+    sqlpage.version() ||
+    ' is running correctly on your server. Congratulations! ' as description;
 -- Properties can be textual, numeric, or booleans
 
 -- Let's start with the text component

@@ -2,7 +2,7 @@
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
-select 'text' as component, 'SQLPage documentation' as title;
+select 'text' as component, format('SQLPage v%s documentation', sqlpage.version()) as title;
 select '
 If you are completely new to SQLPage, you should start by reading the [get started tutorial](get%20started.sql),
 which will guide you through the process of creating your first SQLPage application.
@@ -53,7 +53,8 @@ select 'text' as component,
 select description as contents from component where name = $component;
 
 select 'text' as component;
-select 'Introduced in SQLPage v' || introduced_in_version || '.' as contents, 1 as size
+select format('Introduced in SQLPage v%s.', introduced_in_version) as contents,
+        1 as size
 from component where name = $component;
 
 select 'title' as component, 3 as level, 'Top-level parameters' as contents where $component IS NOT NULL;

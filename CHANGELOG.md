@@ -12,6 +12,7 @@
       You can write your code in .sql files in /path/to/your/website/directory.
       ```
  - New `sqlpage.current_working_directory` function to get the [current working directory](https://en.wikipedia.org/wiki/Working_directory) of the SQLPage process.
+  - New `sqlpage.version` function to get the version of SQLPage.
 
 ## 0.10.3 (2023-09-14)
 
