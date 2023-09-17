@@ -235,4 +235,39 @@ Currently running from `/home/user/my_sqlpage_website`
 The current working directory is the directory from which the SQLPage server process was started.
 By default, this is also the directory from which `.sql` files are loaded and served.
 However, this can be changed by setting the `web_root` [configuration option](https://github.com/lovasoa/SQLpage/blob/main/configuration.md).
-');
+'
+    );
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'enviroment_variable',
+        '0.11.0',
+        'variable',
+        'Returns the value of the given [environment variable](https://en.wikipedia.org/wiki/Environment_variable).
+
+### Example
+
+```sql
+SELECT ''text'' AS component;
+SELECT ''The value of the HOME environment variable is '' AS contents;
+SELECT sqlpage.environment_variable(''HOME'') as contents, true as code;
+```'
+    );
+INSERT INTO sqlpage_function_parameters (
+        "function",
+        "index",
+        "name",
+        "description_md",
+        "type"
+    )
+VALUES (
+        'enviroment_variable',
+        1,
+        'name',
+        'The name of the environment variable to read. Must be a literal string.',
+        'TEXT'
+    );

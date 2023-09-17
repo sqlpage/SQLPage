@@ -27,6 +27,7 @@ pub(super) enum StmtParam {
     HashPassword(Box<StmtParam>),
     RandomString(usize),
     CurrentWorkingDir,
+    EnvironmentVariable(String),
 }
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
@@ -43,6 +44,8 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "random_string" => extract_integer("random_string", arguments)
             .map_or_else(StmtParam::Error, StmtParam::RandomString),
         "current_working_directory" => StmtParam::CurrentWorkingDir,
+        "environment_variable" => extract_single_quoted_string("environment_variable", arguments)
+            .map_or_else(StmtParam::Error, StmtParam::EnvironmentVariable),
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -75,6 +78,10 @@ pub(super) fn extract_req_param<'a>(
             .map_or(Ok(None), |x| hash_password(&x).map(Cow::Owned).map(Some))?,
         StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
         StmtParam::CurrentWorkingDir => cwd()?,
+        StmtParam::EnvironmentVariable(var) => std::env::var(var)
+            .map(Cow::Owned)
+            .map(Some)
+            .with_context(|| format!("Unable to read environment variable {var}"))?,
     })
 }
 
