@@ -44,3 +44,11 @@ jobs:
       run: cargo test
       env:
         DATABASE_URL: ${{ matrix.database }}://root:Password123!@127.0.0.1/sqlpage
+
+  windows_test:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up cargo cache
+      uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
+    - run: cargo test
