@@ -64,7 +64,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           draft: false
           files: |
-            sqlpage windows-latest/sqlpage-windows.zip
+            sqlpage-windows.zip
             sqlpage-linux.tgz
             sqlpage-macos.tgz
             sqlpage aws lambda serverless image/sqlpage-aws-lambda.zip
