@@ -3,6 +3,7 @@ use config::Config;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::path::PathBuf;
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
@@ -32,6 +33,9 @@ pub struct AppConfig {
     /// pool. The default is 10 seconds.
     #[serde(default = "default_database_connection_acquire_timeout_seconds")]
     pub database_connection_acquire_timeout_seconds: f64,
+
+    #[serde(default = "default_web_root")]
+    pub web_root: PathBuf,
 }
 
 pub fn load() -> anyhow::Result<AppConfig> {
@@ -100,6 +104,13 @@ fn default_database_connection_retries() -> u32 {
 
 fn default_database_connection_acquire_timeout_seconds() -> f64 {
     10.
+}
+
+fn default_web_root() -> PathBuf {
+    std::env::current_dir().unwrap_or_else(|e| {
+        log::error!("Unable to get current directory: {}", e);
+        PathBuf::from(&std::path::Component::CurDir)
+    })
 }
 
 #[cfg(test)]

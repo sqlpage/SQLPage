@@ -4,6 +4,12 @@
  - Better support for connection options in mssql.
  - New icons (see https://tabler-icons.io/changelog)
  - New version of the CSS library (see https://preview.tabler.io/changelog.html)
+ - configurable web root (see [configuration.md](./configuration.md))
+ - new welcome message 
+   - ```
+      SQLPage is now running on http://127.0.0.1:8080/
+      You can write your code in .sql files in /path/to/your/website/directory.
+      ```
 
 ## 0.10.3 (2023-09-14)
 

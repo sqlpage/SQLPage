@@ -14,6 +14,7 @@ on a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.
 | `database_connection_retries`              | 6                            | Database connection attempts before giving up. Retries will happen every 5 seconds.           |
 | `database_connection_acquire_timeout_seconds` | 10                        | How long to wait when acquiring a database connection from the pool before giving up and returning an error.           |
 | `sqlite_extensions`                        |                              | An array of SQLite extensions to load, such as `mod_spatialite`          |
+| `web_root`                                | `.`                      | The root directory of the web server, where the `index.sql` file is located.          |
 
 You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
 
