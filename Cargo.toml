@@ -49,3 +49,4 @@ rand = "0.8.5"
 awc = { version = "3", features = ["rustls"] }
 actix-rt = "2.8"
 libflate = "2"
+futures-util = "0.3.21"
