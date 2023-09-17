@@ -6,6 +6,7 @@ use std::hash::Hasher;
 use std::io::Read;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
+use futures_util::StreamExt;
 
 #[actix_rt::main]
 async fn main() {
@@ -51,13 +52,13 @@ async fn process_input_file(path_out: &Path, original: File) {
             let mut resp = client.get(url).send().await.expect(
                 "We need to download external frontend dependencies to build the static frontend.",
             );
-            let body = resp
-                .body()
-                .await
-                .expect("Failed to read external frontend dependency");
-            outfile
-                .write_all(&body)
-                .expect("Failed to write external frontend dependency to local file");
+            if resp.status() != 200 {
+                panic!("Received {} status code from external frontend dependency", resp.status());
+            }
+            while let Some(b) =  resp.next().await {
+                let chunk = b.expect("Failed to read data from external frontend dependency");
+                outfile.write_all(&chunk).expect("Failed to write external frontend dependency to local file");
+            }
             outfile.write_all(b"\n").unwrap();
         } else {
             writeln!(outfile, "{}", line).unwrap();
