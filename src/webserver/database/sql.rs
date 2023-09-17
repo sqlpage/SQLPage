@@ -461,14 +461,14 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
 mod test {
     use super::*;
 
-    fn parse_stmt<D: Dialect>(sql: &str, dialect: D) -> Statement {
-        let mut ast = Parser::parse_sql(&dialect, sql).unwrap();
+    fn parse_stmt<D: Dialect>(sql: &str, dialect: &D) -> Statement {
+        let mut ast = Parser::parse_sql(dialect, sql).unwrap();
         assert_eq!(ast.len(), 1);
         ast.pop().unwrap()
     }
 
     fn parse_postgres_stmt(sql: &str) -> Statement {
-        parse_stmt(sql, PostgreSqlDialect {})
+        parse_stmt(sql, &PostgreSqlDialect {})
     }
 
     #[test]
@@ -494,7 +494,7 @@ mod test {
 
     #[test]
     fn test_statement_rewrite_sqlite() {
-        let mut ast = parse_stmt("select $x, :y from t", SQLiteDialect {});
+        let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Sqlite);
         assert_eq!(
             ast.to_string(),
@@ -544,7 +544,7 @@ mod test {
 
     #[test]
     fn test_mssql_statement_rewrite() {
-        let mut ast = parse_stmt("select '' || $1 from [a schema].[a table]", MsSqlDialect {});
+        let mut ast = parse_stmt("select '' || $1 from [a schema].[a table]", &MsSqlDialect {});
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
         assert_eq!(
             ast.to_string(),
