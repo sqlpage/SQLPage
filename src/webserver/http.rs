@@ -215,8 +215,8 @@ async fn render_sql(
     let app_state = srv_req
         .app_data::<web::Data<AppState>>()
         .ok_or_else(|| ErrorInternalServerError("no state"))?
-        .clone()
-        .into_inner(); // Cheap reference count increase
+        .clone() // Cheap reference count increase
+        .into_inner();
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
