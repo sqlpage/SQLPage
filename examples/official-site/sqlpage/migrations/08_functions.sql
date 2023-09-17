@@ -12,7 +12,13 @@ CREATE TABLE IF NOT EXISTS sqlpage_function_parameters (
     "description_md" TEXT,
     "type" TEXT
 );
-INSERT INTO sqlpage_functions ("name", "return_type", "introduced_in_version", "icon", "description_md")
+INSERT INTO sqlpage_functions (
+        "name",
+        "return_type",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
 VALUES (
         'cookie',
         'TEXT',
@@ -45,7 +51,12 @@ VALUES (
         'The name of the cookie to read.',
         'TEXT'
     );
-INSERT INTO sqlpage_functions ("name", "introduced_in_version", "icon", "description_md")
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
 VALUES (
         'header',
         '0.7.2',
@@ -76,7 +87,13 @@ VALUES (
         'The name of the HTTP header to read.',
         'TEXT'
     );
-INSERT INTO sqlpage_functions ("name", "return_type", "introduced_in_version", "icon", "description_md")
+INSERT INTO sqlpage_functions (
+        "name",
+        "return_type",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
 VALUES (
         'basic_auth_username',
         'TEXT',
@@ -112,7 +129,12 @@ SELECT ''authentication'' AS component,
 ```
 '
     );
-INSERT INTO sqlpage_functions ("name", "introduced_in_version", "icon", "description_md")
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
 VALUES (
         'hash_password',
         '0.7.2',
@@ -145,13 +167,17 @@ VALUES (
         'The password to hash.',
         'TEXT'
     );
-
-INSERT INTO sqlpage_functions ("name", "introduced_in_version", "icon", "description_md")
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
 VALUES (
-    'random_string',
-    '0.7.2',
-    'arrows-shuffle',
-    'Returns a cryptographically secure random string of the given length.
+        'random_string',
+        '0.7.2',
+        'arrows-shuffle',
+        'Returns a cryptographically secure random string of the given length.
 
 ### Example
 
@@ -165,18 +191,48 @@ RETURNING
     session_token AS value;
 ```
 '
-);
+    );
 INSERT INTO sqlpage_function_parameters (
-    "function",
-    "index",
-    "name",
-    "description_md",
-    "type"
-)
+        "function",
+        "index",
+        "name",
+        "description_md",
+        "type"
+    )
 VALUES (
-    'random_string',
-    1,
-    'length',
-    'The length of the string to generate.',
-    'INTEGER'
-);
+        'random_string',
+        1,
+        'length',
+        'The length of the string to generate.',
+        'INTEGER'
+    );
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'current_working_directory',
+        '0.11.0',
+        'folder-question',
+        'Returns the [current working directory](https://en.wikipedia.org/wiki/Working_directory) of the SQLPage server process.
+
+### Example
+
+```sql
+SELECT ''text'' AS component;
+SELECT ''Currently running from '' AS contents;
+SELECT sqlpage.current_working_directory() as contents, true as code;
+```
+
+#### Result
+
+Currently running from `/home/user/my_sqlpage_website`
+
+#### Notes
+
+The current working directory is the directory from which the SQLPage server process was started.
+By default, this is also the directory from which `.sql` files are loaded and served.
+However, this can be changed by setting the `web_root` [configuration option](https://github.com/lovasoa/SQLpage/blob/main/configuration.md).
+');

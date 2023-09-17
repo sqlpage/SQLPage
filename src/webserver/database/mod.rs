@@ -8,7 +8,6 @@ use futures_util::StreamExt;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
-use std::path::Path;
 use std::time::Duration;
 
 use crate::app_config::AppConfig;
@@ -47,16 +46,18 @@ impl Database {
     }
 }
 
-pub async fn apply_migrations(db: &Database, web_root: &Path) -> anyhow::Result<()> {
-    let migrations_dir = web_root.join(MIGRATIONS_DIR);
+pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
+    let migrations_dir = std::env::current_dir()
+        .unwrap_or_default()
+        .join(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
         log::info!(
             "Not applying database migrations because '{}' does not exist",
-            MIGRATIONS_DIR
+            migrations_dir.display()
         );
         return Ok(());
     }
-    log::info!("Applying migrations from '{MIGRATIONS_DIR}'");
+    log::info!("Applying migrations from '{}'", migrations_dir.display());
     let migrator = Migrator::new(migrations_dir)
         .await
         .with_context(|| migration_err("preparing the database migration"))?;

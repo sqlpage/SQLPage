@@ -26,6 +26,7 @@ pub(super) enum StmtParam {
     BasicAuthUsername,
     HashPassword(Box<StmtParam>),
     RandomString(usize),
+    CurrentWorkingDir,
 }
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
@@ -41,6 +42,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
             .map_or_else(StmtParam::Error, StmtParam::HashPassword),
         "random_string" => extract_integer("random_string", arguments)
             .map_or_else(StmtParam::Error, StmtParam::RandomString),
+        "current_working_directory" => StmtParam::CurrentWorkingDir,
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -72,6 +74,7 @@ pub(super) fn extract_req_param<'a>(
         StmtParam::HashPassword(inner) => extract_req_param(inner, request)?
             .map_or(Ok(None), |x| hash_password(&x).map(Cow::Owned).map(Some))?,
         StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
+        StmtParam::CurrentWorkingDir => cwd()?,
     })
 }
 
@@ -117,4 +120,10 @@ fn extract_basic_auth(request: &RequestInfo) -> anyhow::Result<&Basic> {
             })
         })
         .with_context(|| "Expected the user to be authenticated with HTTP basic auth")
+}
+
+fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {
+    let cwd = std::env::current_dir()
+        .with_context(|| "unable to access the current working directory")?;
+    Ok(Some(Cow::Owned(cwd.to_string_lossy().to_string())))
 }
