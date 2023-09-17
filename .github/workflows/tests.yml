@@ -17,7 +17,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  tests:
+  compile_and_lint:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -25,5 +25,20 @@ jobs:
       uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
     - run: cargo fmt --all -- --check
     - run: cargo clippy
-    - run: cargo test
     - run: cargo test --all-features
+    - run: cargo test
+
+  test:
+    needs: compile_and_lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['postgres', 'mysql', 'mssql']
+    steps:
+    - uses: actions/checkout@v3
+    - name: Start database container
+      run: docker-compose up -d ${{ matrix.database }}
+    - name: Run tests against ${{ matrix.database }}
+      run: cargo test
+      env:
+        DATABASE_URL: ${{ matrix.database }}://root:Password123!@127.0.0.1/sqlpage
