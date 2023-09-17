@@ -2,6 +2,8 @@
 
 ## 0.10.4 (unreleased)
  - Better support for connection options in mssql.
+ - New icons (see https://tabler-icons.io/changelog)
+ - New version of the CSS library (see https://preview.tabler.io/changelog.html)
 
 ## 0.10.3 (2023-09-14)
 
