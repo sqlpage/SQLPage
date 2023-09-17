@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.10.4 (unreleased)
+## 0.11.0 (unreleased)
  - Better support for connection options in mssql.
  - New icons (see https://tabler-icons.io/changelog)
  - New version of the CSS library (see https://preview.tabler.io/changelog.html)
@@ -10,6 +10,7 @@
       SQLPage is now running on http://127.0.0.1:8080/
       You can write your code in .sql files in /path/to/your/website/directory.
       ```
+ - New `sqlpage.current_working_directory` function to get the [current working directory](https://en.wikipedia.org/wiki/Working_directory) of the SQLPage process.
 
 ## 0.10.3 (2023-09-14)
 
