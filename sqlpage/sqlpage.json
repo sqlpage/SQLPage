@@ -1,8 +1,4 @@
 {
   "database_url": "sqlite://./sqlpage.db?mode=rwc",
-  "max_database_pool_connections": 25,
-  "database_connection_idle_timeout_seconds": 60,
-  "database_connection_max_lifetime_seconds": 3600,
-  "sqlite_extensions": [],
-  "port": 8080
+  "listen_on": "localhost:8081"
 }
