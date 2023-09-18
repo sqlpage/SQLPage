@@ -6,16 +6,7 @@ use sqlpage::{app_config::AppConfig, webserver::http::main_handler, AppState};
 
 #[actix_web::test]
 async fn test_index_ok() {
-    init_log();
-    let config = test_config();
-    let state = AppState::init(&config).await.unwrap();
-    let data = actix_web::web::Data::new(state);
-    let req = test::TestRequest::get()
-        .uri("/")
-        .app_data(data)
-        .insert_header(ContentType::plaintext())
-        .to_srv_request();
-    let resp = main_handler(req).await.unwrap();
+    let resp = req_path("/").await;
     assert_eq!(resp.status(), http::StatusCode::OK);
     let body = test::read_body(resp).await;
     assert!(body.starts_with(b"<!DOCTYPE html>"));
@@ -23,6 +14,19 @@ async fn test_index_ok() {
     let body = String::from_utf8(body.to_vec()).unwrap();
     assert!(body.contains("It works !"));
     assert!(!body.contains("error"));
+}
+
+async fn req_path(path: &str) -> actix_web::dev::ServiceResponse {
+    init_log();
+    let config = test_config();
+    let state = AppState::init(&config).await.unwrap();
+    let data = actix_web::web::Data::new(state);
+    let req = test::TestRequest::get()
+        .uri(path)
+        .app_data(data)
+        .insert_header(ContentType::plaintext())
+        .to_srv_request();
+    main_handler(req).await.unwrap()
 }
 
 pub fn test_config() -> AppConfig {

@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
 use sqlx::postgres::types::PgTimeTz;
 use sqlx::{Postgres, Statement, Type};
+use std::borrow::Cow;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
@@ -37,8 +38,13 @@ impl FileSystem {
         app_state: &AppState,
         path: &Path,
         since: DateTime<Utc>,
+        priviledged: bool,
     ) -> anyhow::Result<bool> {
-        let local_path = self.safe_local_path(path)?;
+        let local_path = if priviledged {
+            Cow::Borrowed(path)
+        } else {
+            Cow::Owned(self.safe_local_path(path)?)
+        };
         let local_result = file_modified_since_local(&local_path, since).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(modified), _) => Ok(modified),
@@ -58,14 +64,27 @@ impl FileSystem {
         &self,
         app_state: &AppState,
         path: &Path,
+        priviledged: bool,
     ) -> anyhow::Result<String> {
-        let bytes = self.read_file(app_state, path).await?;
+        let bytes = self.read_file(app_state, path, priviledged).await?;
         String::from_utf8(bytes)
             .with_context(|| format!("The file at {path:?} contains invalid UTF8 characters"))
     }
 
-    pub async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
-        let local_path = self.safe_local_path(path)?;
+    /**
+     * Priviledged files are the ones that are in sqlpage's config directory.
+     */
+    pub async fn read_file(
+        &self,
+        app_state: &AppState,
+        path: &Path,
+        priviledged: bool,
+    ) -> anyhow::Result<Vec<u8>> {
+        let local_path = if priviledged {
+            Cow::Borrowed(path)
+        } else {
+            Cow::Owned(self.safe_local_path(path)?)
+        };
         let local_result = tokio::fs::read(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
@@ -82,11 +101,16 @@ impl FileSystem {
     }
 
     fn safe_local_path(&self, path: &Path) -> anyhow::Result<PathBuf> {
-        for component in path.components() {
-            anyhow::ensure!(
-                matches!(component, Component::Normal(_)),
-                "Unsupported path: {path:?}. Path component {component:?} is not allowed."
-            );
+        for (i, component) in path.components().enumerate() {
+            if let Component::Normal(c) = component {
+                if c.eq_ignore_ascii_case("sqlpage") && i == 0 {
+                    anyhow::bail!("Access to the sqlpage config directory is not allowed.");
+                }
+            } else {
+                anyhow::bail!(
+                    "Unsupported path: {path:?}. Path component '{component:?}' is not allowed."
+                );
+            }
         }
         Ok(self.local_root.join(path))
     }
@@ -202,7 +226,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         .await?;
     let fs = FileSystem::init("/", &state.db).await;
     let actual = fs
-        .read_to_string(&state, "unit test file.txt".as_ref())
+        .read_to_string(&state, "unit test file.txt".as_ref(), false)
         .await?;
     assert_eq!(actual, "Héllö world! 😀");
     Ok(())

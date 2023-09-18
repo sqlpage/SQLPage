@@ -439,7 +439,7 @@ async fn serve_file(
         let since = DateTime::<Utc>::from(SystemTime::from(date));
         let modified = state
             .file_system
-            .modified_since(state, path.as_ref(), since)
+            .modified_since(state, path.as_ref(), since, false)
             .await
             .map_err(actix_web::error::ErrorBadRequest)?;
         if !modified {
@@ -448,7 +448,7 @@ async fn serve_file(
     }
     state
         .file_system
-        .read_file(state, path.as_ref())
+        .read_file(state, path.as_ref(), false)
         .await
         .map_err(actix_web::error::ErrorBadRequest)
         .map(|b| {
