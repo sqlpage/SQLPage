@@ -101,7 +101,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
             }
             match app_state
                 .file_system
-                .modified_since(app_state, path, cached.last_check_time())
+                .modified_since(app_state, path, cached.last_check_time(), true)
                 .await
             {
                 Ok(false) => {
@@ -115,7 +115,10 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         }
         // Read lock is released
         log::trace!("Loading and parsing {:?}", path);
-        let file_contents = app_state.file_system.read_to_string(app_state, path).await;
+        let file_contents = app_state
+            .file_system
+            .read_to_string(app_state, path, true)
+            .await;
 
         let parsed = match file_contents {
             Ok(contents) => {
