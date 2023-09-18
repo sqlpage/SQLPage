@@ -210,7 +210,7 @@ async fn render_sql(
     srv_req: &mut ServiceRequest,
     sql_file: Arc<ParsedSqlFile>,
 ) -> actix_web::Result<HttpResponse> {
-    let req_param = extract_request_info(srv_req).await;
+    let mut req_param = extract_request_info(srv_req).await;
     log::debug!("Received a request with the following parameters: {req_param:?}");
     let app_state = srv_req
         .app_data::<web::Data<AppState>>()
@@ -220,7 +220,7 @@ async fn render_sql(
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
-        let database_entries_stream = stream_query_results(&app_state.db, &sql_file, &req_param);
+        let database_entries_stream = stream_query_results(&app_state.db, &sql_file, &mut req_param);
         let response_with_writer =
             build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
         match response_with_writer {

@@ -26,6 +26,10 @@ pub(super) enum ParsedSQLStatement {
     Statement(PreparedStatement),
     StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
     Error(anyhow::Error),
+    SetVariable {
+        variable: StmtParam,
+        value: PreparedStatement,
+    },
 }
 
 impl ParsedSqlFile {
@@ -40,20 +44,15 @@ impl ParsedSqlFile {
             statements.push(match parsed {
                 ParsedStatement::StaticSimpleSelect(s) => ParsedSQLStatement::StaticSimpleSelect(s),
                 ParsedStatement::Error(e) => ParsedSQLStatement::Error(e),
-                ParsedStatement::StmtWithParams { query, params } => {
-                    let param_types = get_param_types(&params);
-                    match db.prepare_with(&query, &param_types).await {
-                        Ok(statement) => {
-                            log::debug!("Successfully prepared SQL statement '{query}'");
-                            ParsedSQLStatement::Statement(PreparedStatement {
-                                statement,
-                                parameters: params,
-                            })
+                ParsedStatement::StmtWithParams(stmt_with_params) => {
+                    prepare_query_with_params(db, stmt_with_params).await
+                }
+                ParsedStatement::SetVariable { variable, value } => {
+                    match prepare_query_with_params(db, value).await {
+                        ParsedSQLStatement::Statement(value) => {
+                            ParsedSQLStatement::SetVariable { variable, value }
                         }
-                        Err(err) => {
-                            log::warn!("Failed to prepare {query:?}: {err:#}");
-                            ParsedSQLStatement::Error(err)
-                        }
+                        err => err,
                     }
                 }
             });
@@ -71,6 +70,26 @@ impl ParsedSqlFile {
     }
 }
 
+async fn prepare_query_with_params(
+    db: &Database,
+    StmtWithParams { query, params }: StmtWithParams,
+) -> ParsedSQLStatement {
+    let param_types = get_param_types(&params);
+    match db.prepare_with(&query, &param_types).await {
+        Ok(statement) => {
+            log::debug!("Successfully prepared SQL statement '{query}'");
+            ParsedSQLStatement::Statement(PreparedStatement {
+                statement,
+                parameters: params,
+            })
+        }
+        Err(err) => {
+            log::warn!("Failed to prepare {query:?}: {err:#}");
+            ParsedSQLStatement::Error(err)
+        }
+    }
+}
+
 #[async_trait(? Send)]
 impl AsyncFromStrWithState for ParsedSqlFile {
     async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self> {
@@ -78,12 +97,18 @@ impl AsyncFromStrWithState for ParsedSqlFile {
     }
 }
 
+struct StmtWithParams {
+    query: String,
+    params: Vec<StmtParam>,
+}
+
 enum ParsedStatement {
-    StmtWithParams {
-        query: String,
-        params: Vec<StmtParam>,
-    },
+    StmtWithParams(StmtWithParams),
     StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
+    SetVariable {
+        variable: StmtParam,
+        value: StmtWithParams,
+    },
     Error(anyhow::Error),
 }
 
@@ -113,8 +138,16 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
         return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
     let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
-    let query = stmt.to_string();
-    Some(ParsedStatement::StmtWithParams { query, params })
+    if let Some((variable, query)) = extract_set_variable(&mut stmt) {
+        return Some(ParsedStatement::SetVariable {
+            variable,
+            value: StmtWithParams { query, params },
+        });
+    }
+    Some(ParsedStatement::StmtWithParams(StmtWithParams {
+        query: stmt.to_string(),
+        params,
+    }))
 }
 
 fn syntax_error(err: ParserError, parser: &mut Parser) -> ParsedStatement {
@@ -224,6 +257,24 @@ fn extract_static_simple_select(
         map = add_value_to_map(map, (key, value));
     }
     Some(map)
+}
+
+fn extract_set_variable(stmt: &mut Statement) -> Option<(StmtParam, String)> {
+    if let Statement::SetVariable {
+        variable: ObjectName(name),
+        value,
+        local: false,
+        hivevar: false,
+    } = stmt
+    {
+        if let ([ident], [value]) = (name.as_mut_slice(), value.as_mut_slice()) {
+            if let Some(variable) = extract_ident_param(ident) {
+                let query = format!("SELECT {value}");
+                return Some((variable, query));
+            }
+        }
+    }
+    None
 }
 
 struct ParameterExtractor {
@@ -378,17 +429,24 @@ pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
     DEFAULT_PLACEHOLDER.to_string()
 }
 
+fn extract_ident_param(Ident { value, quote_style }: &mut Ident) -> Option<StmtParam> {
+    if quote_style.is_none() && value.starts_with('$') || value.starts_with(':') {
+        let name = std::mem::take(value);
+        Some(map_param(name))
+    } else {
+        None
+    }
+}
+
 impl VisitorMut for ParameterExtractor {
     type Break = ();
     fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
         match value {
-            Expr::Identifier(Ident {
-                value: var_name,
-                quote_style: None,
-            }) if var_name.starts_with('$') || var_name.starts_with(':') => {
-                let name = std::mem::take(var_name);
-                *value = self.make_placeholder();
-                self.parameters.push(map_param(name));
+            Expr::Identifier(ident) => {
+                if let Some(param) = extract_ident_param(ident) {
+                    *value = self.make_placeholder();
+                    self.parameters.push(param);
+                }
             }
             Expr::Value(Value::Placeholder(param)) if !self.is_own_placeholder(param) =>
             // this check is to avoid recursively replacing placeholders in the form of '?', or '$1', '$2', which we emit ourselves
