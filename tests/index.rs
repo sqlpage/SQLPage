@@ -1,4 +1,5 @@
 use actix_web::{
+    body::MessageBody,
     http::{self, header::ContentType},
     test,
 };
@@ -6,7 +7,7 @@ use sqlpage::{app_config::AppConfig, webserver::http::main_handler, AppState};
 
 #[actix_web::test]
 async fn test_index_ok() {
-    let resp = req_path("/").await;
+    let resp = req_path("/").await.unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);
     let body = test::read_body(resp).await;
     assert!(body.starts_with(b"<!DOCTYPE html>"));
@@ -16,7 +17,20 @@ async fn test_index_ok() {
     assert!(!body.contains("error"));
 }
 
-async fn req_path(path: &str) -> actix_web::dev::ServiceResponse {
+#[actix_web::test]
+async fn test_access_config_forbidden() {
+    let resp_result = req_path("/sqlpage/sqlpage.json").await;
+    assert!(resp_result.is_err(), "Accessing the config file should be forbidden, but we received a response: {resp_result:?}");
+    let resp = resp_result.unwrap_err().error_response();
+    assert_eq!(resp.status(), http::StatusCode::FORBIDDEN);
+    assert!(
+        String::from_utf8_lossy(&resp.into_body().try_into_bytes().unwrap())
+            .to_lowercase()
+            .contains("forbidden"),
+    );
+}
+
+async fn req_path(path: &str) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     init_log();
     let config = test_config();
     let state = AppState::init(&config).await.unwrap();
@@ -26,7 +40,7 @@ async fn req_path(path: &str) -> actix_web::dev::ServiceResponse {
         .app_data(data)
         .insert_header(ContentType::plaintext())
         .to_srv_request();
-    main_handler(req).await.unwrap()
+    main_handler(req).await
 }
 
 pub fn test_config() -> AppConfig {
@@ -44,5 +58,5 @@ pub fn test_config() -> AppConfig {
 }
 
 fn init_log() {
-    env_logger::builder().is_test(true).try_init().unwrap();
+    let _ = env_logger::builder().is_test(true).try_init();
 }

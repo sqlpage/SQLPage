@@ -1,4 +1,4 @@
-use actix_web::http::StatusCode;
+use actix_web::{http::StatusCode, ResponseError};
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorWithStatus {
@@ -10,3 +10,12 @@ impl std::fmt::Display for ErrorWithStatus {
     }
 }
 impl std::error::Error for ErrorWithStatus {}
+
+impl ResponseError for ErrorWithStatus {
+    fn status_code(&self) -> StatusCode {
+        self.status
+    }
+    fn error_response(&self) -> actix_web::HttpResponse {
+        actix_web::HttpResponse::build(self.status).body(self.status.to_string())
+    }
+}
