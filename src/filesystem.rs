@@ -6,7 +6,6 @@ use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
 use sqlx::postgres::types::PgTimeTz;
 use sqlx::{Postgres, Statement, Type};
-use std::borrow::Cow;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
@@ -40,11 +39,7 @@ impl FileSystem {
         since: DateTime<Utc>,
         priviledged: bool,
     ) -> anyhow::Result<bool> {
-        let local_path = if priviledged {
-            Cow::Borrowed(path)
-        } else {
-            Cow::Owned(self.safe_local_path(path)?)
-        };
+        let local_path = self.safe_local_path(path, priviledged)?;
         let local_result = file_modified_since_local(&local_path, since).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(modified), _) => Ok(modified),
@@ -80,11 +75,7 @@ impl FileSystem {
         path: &Path,
         priviledged: bool,
     ) -> anyhow::Result<Vec<u8>> {
-        let local_path = if priviledged {
-            Cow::Borrowed(path)
-        } else {
-            Cow::Owned(self.safe_local_path(path)?)
-        };
+        let local_path = self.safe_local_path(path, priviledged)?;
         let local_result = tokio::fs::read(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
@@ -100,10 +91,10 @@ impl FileSystem {
         }
     }
 
-    fn safe_local_path(&self, path: &Path) -> anyhow::Result<PathBuf> {
+    fn safe_local_path(&self, path: &Path, priviledged: bool) -> anyhow::Result<PathBuf> {
         for (i, component) in path.components().enumerate() {
             if let Component::Normal(c) = component {
-                if c.eq_ignore_ascii_case("sqlpage") && i == 0 {
+                if !priviledged && i == 0 && c.eq_ignore_ascii_case("sqlpage") {
                     anyhow::bail!("Access to the sqlpage config directory is not allowed.");
                 }
             } else {
