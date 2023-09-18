@@ -30,6 +30,19 @@ async fn test_access_config_forbidden() {
     );
 }
 
+#[actix_web::test]
+async fn test_404() {
+    for f in [
+        "/does_not_exist.sql",
+        "/does_not_exist.html",
+        "/does_not_exist/",
+    ] {
+        let resp_result = req_path(f).await;
+        let resp = resp_result.unwrap_err().error_response();
+        assert_eq!(resp.status(), http::StatusCode::NOT_FOUND, "{f} isnt 404");
+    }
+}
+
 async fn req_path(path: &str) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     init_log();
     let config = test_config();
