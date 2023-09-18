@@ -1,5 +1,15 @@
 # CHANGELOG.md
 
+## 0.12.0 (unreleased)
+
+ - **variables** . SQLPage now support setting and reusing variables between statements. This allows you to write more complex SQL queries, and to reuse the result of a query in multiple places.
+   ```sql
+   -- Set a variable
+   SET $person = 'Alice';
+   -- Use it in a query
+   SELECT 'text' AS component, 'Hello ' || $person AS contents;
+   ```
+
 ## 0.11.0 (2023-09-17)
  - Support for **environment variables** ! You can now read environment variables from sql code using `sqlpage.environment_variable('VAR_NAME')`.
  - Better support for connection options in mssql.

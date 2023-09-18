@@ -7,6 +7,7 @@ use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use serde_json::Value;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
@@ -14,7 +15,7 @@ use crate::app_config::AppConfig;
 pub use crate::file_cache::FileCache;
 
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
-use crate::webserver::http::RequestInfo;
+use crate::webserver::http::{RequestInfo, SingleOrVec};
 use crate::MIGRATIONS_DIR;
 pub use sql::make_placeholder;
 pub use sql::ParsedSqlFile;
@@ -24,9 +25,12 @@ use sqlx::any::{
 use sqlx::migrate::Migrator;
 use sqlx::pool::{PoolConnection, PoolOptions};
 use sqlx::query::Query;
-use sqlx::{Any, AnyConnection, AnyPool, Arguments, ConnectOptions, Either, Executor, Statement};
+use sqlx::{
+    Any, AnyConnection, AnyPool, Arguments, ConnectOptions, Either, Executor, Row, Statement,
+};
 
 use self::sql::ParsedSQLStatement;
+use sql_pseudofunctions::StmtParam;
 
 pub struct Database {
     pub(crate) connection: AnyPool,
@@ -97,27 +101,15 @@ fn migration_err(operation: &'static str) -> String {
 pub fn stream_query_results<'a>(
     db: &'a Database,
     sql_file: &'a ParsedSqlFile,
-    request: &'a RequestInfo,
+    request: &'a mut RequestInfo,
 ) -> impl Stream<Item = DbItem> + 'a {
-    async_stream::stream! {
+    async_stream::try_stream! {
         let mut connection_opt = None;
         for res in &sql_file.statements {
             match res {
-                ParsedSQLStatement::Statement(stmt)=>{
-                    let query = match bind_parameters(stmt, request) {
-                        Ok(q) => q,
-                        Err(e) => {
-                            yield DbItem::Error(e);
-                            continue;
-                        }
-                    };
-                    let connection = match take_connection(db, &mut connection_opt).await {
-                        Ok(c) => c,
-                        Err(e) => {
-                            yield DbItem::Error(e);
-                            return;
-                        }
-                    };
+                ParsedSQLStatement::Statement(stmt) => {
+                    let query = bind_parameters(stmt, request)?;
+                    let connection = take_connection(db, &mut connection_opt).await?;
                     let mut stream = query.fetch_many(connection);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
@@ -127,6 +119,17 @@ pub fn stream_query_results<'a>(
                         }
                     }
                 },
+                ParsedSQLStatement::SetVariable { variable, value} => {
+                    let query = bind_parameters(value, request)?;
+                    let connection = take_connection(db, &mut connection_opt).await?;
+                    let row = query.fetch_optional(connection).await?;
+                    let (vars, name) = vars_and_name(request, variable)?;
+                    if let Some(row) = row {
+                        vars.insert(name.clone(), row_to_varvalue(&row));
+                    } else {
+                        vars.remove(&name);
+                    }
+                },
                 ParsedSQLStatement::StaticSimpleSelect(value) => {
                     yield DbItem::Row(value.clone().into())
                 }
@@ -134,6 +137,31 @@ pub fn stream_query_results<'a>(
             }
         }
     }
+    .map(|res| res.unwrap_or_else(DbItem::Error))
+}
+
+fn vars_and_name<'a>(
+    request: &'a mut RequestInfo,
+    variable: &StmtParam,
+) -> anyhow::Result<(&'a mut HashMap<String, SingleOrVec>, String)> {
+    match variable {
+        StmtParam::Get(name) => {
+            let vars = &mut request.get_variables;
+            Ok((vars, name.clone()))
+        }
+        StmtParam::Post(name) => {
+            let vars = &mut request.post_variables;
+            Ok((vars, name.clone()))
+        }
+        _ => Err(anyhow!(
+            "Only GET and POST variables can be set, not {variable:?}"
+        )),
+    }
+}
+
+fn row_to_varvalue(row: &AnyRow) -> SingleOrVec {
+    row.try_get::<String, usize>(0)
+        .map_or_else(|_| SingleOrVec::Vec(vec![]), SingleOrVec::Single)
 }
 
 async fn take_connection<'a, 'b>(
@@ -293,7 +321,7 @@ fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfi
 }
 struct PreparedStatement {
     statement: AnyStatement<'static>,
-    parameters: Vec<sql_pseudofunctions::StmtParam>,
+    parameters: Vec<StmtParam>,
 }
 
 impl Display for PreparedStatement {
