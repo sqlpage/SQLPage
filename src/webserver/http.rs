@@ -3,7 +3,7 @@ use crate::webserver::database::{stream_query_results, DbItem};
 use crate::webserver::ErrorWithStatus;
 use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound};
+use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode, Uri};
 use actix_web::web::Form;
@@ -411,22 +411,19 @@ async fn process_sql_request(
         .sql_file_cache
         .get(app_state, &sql_path)
         .await
-        .map_err(|e| {
-            log::error!("Error while trying to get SQL file: {:#}", e);
-            if e.downcast_ref()
-                == Some(&ErrorWithStatus {
-                    status: StatusCode::NOT_FOUND,
-                })
-            {
-                ErrorNotFound("The requested file was not found.")
-            } else {
-                ErrorInternalServerError(format!(
-                    "An error occurred while trying to handle your request: {e:#}"
-                ))
-            }
-        })?;
+        .map_err(anyhow_err_to_actix)?;
     let response = render_sql(&mut req, sql_file).await?;
     Ok(req.into_response(response))
+}
+
+fn anyhow_err_to_actix(e: anyhow::Error) -> actix_web::Error {
+    log::error!("Error while trying to get SQL file: {:#}", e);
+    match e.downcast::<ErrorWithStatus>() {
+        Ok(err) => actix_web::Error::from(err),
+        Err(e) => ErrorInternalServerError(format!(
+            "An error occurred while trying to handle your request: {e:#}"
+        )),
+    }
 }
 
 async fn serve_file(
@@ -441,7 +438,7 @@ async fn serve_file(
             .file_system
             .modified_since(state, path.as_ref(), since, false)
             .await
-            .map_err(actix_web::error::ErrorBadRequest)?;
+            .map_err(anyhow_err_to_actix)?;
         if !modified {
             return Ok(HttpResponse::NotModified().finish());
         }
@@ -450,7 +447,7 @@ async fn serve_file(
         .file_system
         .read_file(state, path.as_ref(), false)
         .await
-        .map_err(actix_web::error::ErrorBadRequest)
+        .map_err(anyhow_err_to_actix)
         .map(|b| {
             HttpResponse::Ok()
                 .insert_header(

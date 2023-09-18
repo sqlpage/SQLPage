@@ -95,7 +95,9 @@ impl FileSystem {
         for (i, component) in path.components().enumerate() {
             if let Component::Normal(c) = component {
                 if !priviledged && i == 0 && c.eq_ignore_ascii_case("sqlpage") {
-                    anyhow::bail!("Access to the sqlpage config directory is not allowed.");
+                    anyhow::bail!(ErrorWithStatus {
+                        status: actix_web::http::StatusCode::FORBIDDEN,
+                    });
                 }
             } else {
                 anyhow::bail!(
