@@ -43,6 +43,18 @@ async fn test_404() {
     }
 }
 
+#[actix_web::test]
+async fn test_set_variable() {
+    let resp = req_path("/tests/test_set_variable.sql").await.unwrap();
+    let body = test::read_body(resp).await;
+    assert!(body.starts_with(b"<!DOCTYPE html>"));
+    // the body should contain the strint "It works!" and should not contain the string "error"
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body.contains("Hello John Doe !"), "{body}");
+    assert!(body.contains("How are you John Doe ?"), "{body}");
+    assert!(!body.contains("error"));
+}
+
 async fn req_path(path: &str) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     init_log();
     let config = test_config();
