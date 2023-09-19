@@ -1,3 +1,2 @@
-set $person = 'John' || ' ' || 'Doe';
-select 'text' as component, 'Hello ' || $person || ' !' as contents;
-select 'text' as component, 'How are you ' || $person || ' ?' as contents;
+set $what_does_it_do = 'wo' || 'rks';
+select 'text' as component, 'It ' || $what_does_it_do || ' !' as contents;
