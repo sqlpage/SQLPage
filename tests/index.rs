@@ -63,7 +63,6 @@ async fn test_files_it_works() {
     }
 }
 
-
 async fn req_path(path: &str) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     init_log();
     let config = test_config();
