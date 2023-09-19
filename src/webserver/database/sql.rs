@@ -97,11 +97,13 @@ impl AsyncFromStrWithState for ParsedSqlFile {
     }
 }
 
+#[derive(Debug, PartialEq)]
 struct StmtWithParams {
     query: String,
     params: Vec<StmtParam>,
 }
 
+#[derive(Debug)]
 enum ParsedStatement {
     StmtWithParams(StmtWithParams),
     StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
@@ -268,10 +270,12 @@ fn extract_set_variable(stmt: &mut Statement) -> Option<(StmtParam, String)> {
     } = stmt
     {
         if let ([ident], [value]) = (name.as_mut_slice(), value.as_mut_slice()) {
-            if let Some(variable) = extract_ident_param(ident) {
-                let query = format!("SELECT {value}");
-                return Some((variable, query));
-            }
+            let variable = if let Some(variable) = extract_ident_param(ident) {
+                variable
+            } else {
+                StmtParam::GetOrPost(std::mem::take(&mut ident.value))
+            };
+            return Some((variable, format!("SELECT {value}")));
         }
     }
     None
@@ -439,8 +443,8 @@ pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
     DEFAULT_PLACEHOLDER.to_string()
 }
 
-fn extract_ident_param(Ident { value, quote_style }: &mut Ident) -> Option<StmtParam> {
-    if quote_style.is_none() && value.starts_with('$') || value.starts_with(':') {
+fn extract_ident_param(Ident { value, .. }: &mut Ident) -> Option<StmtParam> {
+    if value.starts_with('$') || value.starts_with(':') {
         let name = std::mem::take(value);
         Some(map_param(name))
     } else {
@@ -596,6 +600,30 @@ mod test {
                 )))],
                 "Failed for dialect {dialect:?}"
             );
+        }
+    }
+
+    #[test]
+    fn test_set_variable() {
+        let sql = "set x = $y";
+        for &(dialect, db_kind) in ALL_DIALECTS {
+            let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
+            let stmt = parse_single_statement(&mut parser, db_kind);
+            if let Some(ParsedStatement::SetVariable {
+                variable,
+                value: StmtWithParams { query, params },
+            }) = stmt
+            {
+                assert_eq!(
+                    variable,
+                    StmtParam::GetOrPost("x".to_string()),
+                    "{dialect:?}"
+                );
+                assert!(query.starts_with("SELECT "));
+                assert_eq!(params, [StmtParam::GetOrPost("y".to_string())]);
+            } else {
+                panic!("Failed for dialect {dialect:?}: {stmt:#?}",);
+            }
         }
     }
 

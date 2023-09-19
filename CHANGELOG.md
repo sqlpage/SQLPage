@@ -5,7 +5,7 @@
  - **variables** . SQLPage now support setting and reusing variables between statements. This allows you to write more complex SQL queries, and to reuse the result of a query in multiple places.
    ```sql
    -- Set a variable
-   SET $person = 'Alice';
+   SET person = 'Alice';
    -- Use it in a query
    SELECT 'text' AS component, 'Hello ' || $person AS contents;
    ```
