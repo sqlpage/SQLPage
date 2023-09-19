@@ -395,6 +395,16 @@ pub(super) fn extract_variable_argument(
         Some(Expr::Value(Value::Placeholder(placeholder))) => {
             Ok(map_param(std::mem::take(placeholder)))
         }
+        Some(Expr::Identifier(ident)) => {
+            if let Some(param) = extract_ident_param(ident) {
+                Ok(param)
+            } else {
+                Err(format!(
+                    "{func_name}({}) is not a valid call. The argument must be a placeholder or a variable name.",
+                    FormatArguments(arguments)
+                ))
+            }
+        }
         Some(Expr::Function(Function {
             name: ObjectName(func_name_parts),
             args,
@@ -519,7 +529,7 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
 mod test {
     use super::*;
 
-    fn parse_stmt<D: Dialect>(sql: &str, dialect: &D) -> Statement {
+    fn parse_stmt(sql: &str, dialect: &dyn Dialect) -> Statement {
         let mut ast = Parser::parse_sql(dialect, sql).unwrap();
         assert_eq!(ast.len(), 1);
         ast.pop().unwrap()
@@ -565,6 +575,28 @@ mod test {
                 StmtParam::Post("y".to_string()),
             ]
         );
+    }
+
+    const ALL_DIALECTS: &[(&dyn Dialect, AnyKind)] = &[
+        (&PostgreSqlDialect {}, AnyKind::Postgres),
+        (&MsSqlDialect {}, AnyKind::Mssql),
+        (&MySqlDialect {}, AnyKind::MySql),
+        (&SQLiteDialect {}, AnyKind::Sqlite),
+    ];
+
+    #[test]
+    fn test_sqlpage_function_with_argument() {
+        for &(dialect, kind) in ALL_DIALECTS {
+            let mut ast = parse_stmt("select sqlpage.hash_password($x)", dialect);
+            let parameters = ParameterExtractor::extract_parameters(&mut ast, kind);
+            assert_eq!(
+                parameters,
+                [StmtParam::HashPassword(Box::new(StmtParam::GetOrPost(
+                    "x".to_string()
+                )))],
+                "Failed for dialect {dialect:?}"
+            );
+        }
     }
 
     #[test]
