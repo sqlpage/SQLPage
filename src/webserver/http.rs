@@ -220,7 +220,8 @@ async fn render_sql(
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
-        let database_entries_stream = stream_query_results(&app_state.db, &sql_file, &mut req_param);
+        let database_entries_stream =
+            stream_query_results(&app_state.db, &sql_file, &mut req_param);
         let response_with_writer =
             build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
         match response_with_writer {
