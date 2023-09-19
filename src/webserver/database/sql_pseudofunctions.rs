@@ -98,13 +98,11 @@ fn random_string(len: usize) -> String {
 }
 
 fn hash_password(password: &str) -> anyhow::Result<String> {
-    tokio::task::block_in_place(|| {
-        let phf = argon2::Argon2::default();
-        let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
-        let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
-            .map_err(|e| anyhow!("Unable to hash password: {}", e))?;
-        Ok(password_hash.to_string())
-    })
+    let phf = argon2::Argon2::default();
+    let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
+    let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
+        .map_err(|e| anyhow!("Unable to hash password: {}", e))?;
+    Ok(password_hash.to_string())
 }
 
 fn extract_basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {
