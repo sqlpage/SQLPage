@@ -145,7 +145,7 @@ fn vars_and_name<'a>(
     variable: &StmtParam,
 ) -> anyhow::Result<(&'a mut HashMap<String, SingleOrVec>, String)> {
     match variable {
-        StmtParam::Get(name) => {
+        StmtParam::Get(name) | StmtParam::GetOrPost(name) => {
             let vars = &mut request.get_variables;
             Ok((vars, name.clone()))
         }
