@@ -12,7 +12,7 @@ use crate::webserver::{
 use super::sql::{
     extract_integer, extract_single_quoted_string, extract_variable_argument, FormatArguments,
 };
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, bail, Context};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum StmtParam {
@@ -55,7 +55,19 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
     }
 }
 
-pub(super) fn extract_req_param<'a>(
+pub(super) async fn extract_req_param<'a>(
+    param: &StmtParam,
+    request: &'a RequestInfo,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    Ok(match param {
+        StmtParam::HashPassword(inner) => extract_req_param_non_nested(inner, request)
+            .await?
+            .map_or(Ok(None), |x| hash_password(&x).map(Cow::Owned).map(Some))?,
+        _ => extract_req_param_non_nested(param, request).await?,
+    })
+}
+
+pub(super) async fn extract_req_param_non_nested<'a>(
     param: &StmtParam,
     request: &'a RequestInfo,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
@@ -76,8 +88,7 @@ pub(super) fn extract_req_param<'a>(
         StmtParam::BasicAuthUsername => extract_basic_auth_username(request)
             .map(Cow::Borrowed)
             .map(Some)?,
-        StmtParam::HashPassword(inner) => extract_req_param(inner, request)?
-            .map_or(Ok(None), |x| hash_password(&x).map(Cow::Owned).map(Some))?,
+        StmtParam::HashPassword(_) => bail!("Nested hash_password() function not allowed"),
         StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
         StmtParam::CurrentWorkingDir => cwd()?,
         StmtParam::EnvironmentVariable(var) => std::env::var(var)

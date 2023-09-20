@@ -108,7 +108,7 @@ pub fn stream_query_results<'a>(
         for res in &sql_file.statements {
             match res {
                 ParsedSQLStatement::Statement(stmt) => {
-                    let query = bind_parameters(stmt, request)?;
+                    let query = bind_parameters(stmt, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
                     let mut stream = query.fetch_many(connection);
                     while let Some(elem) = stream.next().await {
@@ -120,7 +120,7 @@ pub fn stream_query_results<'a>(
                     }
                 },
                 ParsedSQLStatement::SetVariable { variable, value} => {
-                    let query = bind_parameters(value, request)?;
+                    let query = bind_parameters(value, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
                     let row = query.fetch_optional(connection).await?;
                     let (vars, name) = vars_and_name(request, variable)?;
@@ -204,13 +204,13 @@ fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
     e
 }
 
-fn bind_parameters<'a>(
+async fn bind_parameters<'a>(
     stmt: &'a PreparedStatement,
     request: &'a RequestInfo,
 ) -> anyhow::Result<Query<'a, sqlx::Any, AnyArguments<'a>>> {
     let mut arguments = AnyArguments::default();
     for param in &stmt.parameters {
-        let argument = extract_req_param(param, request)?;
+        let argument = extract_req_param(param, request).await?;
         log::debug!("Binding value {:?} in statement {}", &argument, stmt);
         match argument {
             None => arguments.add(None::<String>),
