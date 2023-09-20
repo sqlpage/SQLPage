@@ -55,19 +55,19 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
     }
 }
 
+/// Extracts the value of a parameter from the request.
+/// Returns `Ok(None)` when NULL should be used as the parameter value.
 pub(super) async fn extract_req_param<'a>(
     param: &StmtParam,
     request: &'a RequestInfo,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
-        StmtParam::HashPassword(inner) => extract_req_param_non_nested(inner, request)
-            .await?
-            .map_or(Ok(None), |x| hash_password(&x).map(Cow::Owned).map(Some))?,
-        _ => extract_req_param_non_nested(param, request).await?,
+        StmtParam::HashPassword(inner) => has_password_param(inner, request).await?,
+        _ => extract_req_param_non_nested(param, request)?,
     })
 }
 
-pub(super) async fn extract_req_param_non_nested<'a>(
+pub(super) fn extract_req_param_non_nested<'a>(
     param: &StmtParam,
     request: &'a RequestInfo,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
@@ -108,6 +108,20 @@ fn random_string(len: usize) -> String {
         .collect()
 }
 
+async fn has_password_param<'a>(
+    inner: &StmtParam,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let password = match extract_req_param_non_nested(inner, request) {
+        Ok(Some(x)) => x,
+        err => return err,
+    }
+    .into_owned();
+    let encoded = actix_web::rt::task::spawn_blocking(move || hash_password(&password)).await??;
+    Ok(Some(Cow::Owned(encoded)))
+}
+
+/// Hashes a password using Argon2. This is a CPU-intensive blocking operation.
 fn hash_password(password: &str) -> anyhow::Result<String> {
     let phf = argon2::Argon2::default();
     let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
