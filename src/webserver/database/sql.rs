@@ -417,6 +417,9 @@ pub(super) fn extract_variable_argument(
             sqlpage_func_name(func_name_parts),
             args.as_mut_slice(),
         )),
+        Some(Expr::Value(Value::SingleQuotedString(param_value))) => {
+            Ok(StmtParam::Literal(std::mem::take(param_value)))
+        },
         _ => Err(format!(
             "{func_name}({}) is not a valid call. Expected either a placeholder or a sqlpage function call as argument.",
             FormatArguments(arguments)
