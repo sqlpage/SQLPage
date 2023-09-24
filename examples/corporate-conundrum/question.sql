@@ -1,4 +1,4 @@
-select 'shell' as component, * FROM shell;
+select * FROM sqlpage_shell;
 
 SELECT 'form' as component,
     question_text as title,
