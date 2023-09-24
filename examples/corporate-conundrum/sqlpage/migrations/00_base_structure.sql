@@ -49,14 +49,15 @@ FROM answers
     INNER JOIN game_questions ON answers.question_id = game_questions.question_id AND answers.game_id = game_questions.game_id
     INNER JOIN questions ON game_questions.question_id = questions.id;
 
-CREATE TABLE shell(
-    title TEXT,
-    description TEXT,
-    icon TEXT,
-    link TEXT,
-    menu_item TEXT,
-    font TEXT,
-    lang TEXT
-);
-INSERT INTO shell(title, description, icon, link, menu_item, font, lang)
-VALUES ('Corporate Conundrum',  'Unleash your inner executive in this thrilling board game of corporate espionage. Make the right choices to lead your company to success!', 'affiliate', '/', 'New Game', 'Libre Baskerville', 'en-US');
+-- transform the above to a create view
+CREATE VIEW sqlpage_shell AS
+SELECT
+  'shell' AS component,
+  'Corporate Conundrum' AS title,
+    'Unleash your inner executive in this thrilling board game of corporate espionage. Make the right choices to lead your company to success!' AS description,
+    'affiliate' AS icon,
+    '/' AS link,
+    '["New Game", "rules"]' AS menu_item,
+    'Libre Baskerville' AS font,
+    'en-US' AS lang
+;

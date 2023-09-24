@@ -1,6 +1,5 @@
-select 'shell' as component,
-    *
-FROM shell;
+select * FROM sqlpage_shell;
+
 -- Display the list of players with a link for each one to start playing
 INSERT INTO players(name, game_id)
 SELECT $Player as name,

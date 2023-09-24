@@ -1,6 +1,4 @@
-select 'shell' as component,
-    *
-FROM shell;
+select * FROM sqlpage_shell;
 
 -- Game over, questions breakdown
 select 'card' as component,

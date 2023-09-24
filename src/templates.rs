@@ -240,6 +240,14 @@ impl AllTemplates {
         // to_array: convert a value to a single-element array. If the value is already an array, return it as-is.
         handlebars_helper!(to_array: |x: Json| match x {
             JsonValue::Array(arr) => arr.clone(),
+            JsonValue::Null => vec![],
+            JsonValue::String(s) if s.starts_with('[')  => {
+                if let Ok(JsonValue::Array(r)) = serde_json::from_str(&s) {
+                    r
+                } else {
+                    vec![JsonValue::String(s.clone())]
+                }
+            }
             other => vec![other.clone()]
         });
         handlebars.register_helper("to_array", Box::new(to_array));
