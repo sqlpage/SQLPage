@@ -242,7 +242,7 @@ impl AllTemplates {
             JsonValue::Array(arr) => arr.clone(),
             JsonValue::Null => vec![],
             JsonValue::String(s) if s.starts_with('[')  => {
-                if let Ok(JsonValue::Array(r)) = serde_json::from_str(&s) {
+                if let Ok(JsonValue::Array(r)) = serde_json::from_str(s) {
                     r
                 } else {
                     vec![JsonValue::String(s.clone())]
