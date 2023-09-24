@@ -29,6 +29,7 @@ pub(super) enum StmtParam {
     CurrentWorkingDir,
     EnvironmentVariable(String),
     SqlPageVersion,
+    Literal(String),
 }
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
@@ -96,6 +97,7 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .map(Some)
             .with_context(|| format!("Unable to read environment variable {var}"))?,
         StmtParam::SqlPageVersion => Some(Cow::Borrowed(env!("CARGO_PKG_VERSION"))),
+        StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
     })
 }
 
