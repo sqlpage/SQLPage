@@ -391,40 +391,48 @@ pub(super) fn extract_integer(
     }
 }
 
-pub(super) fn extract_variable_argument(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> Result<StmtParam, String> {
-    match arguments.first_mut().and_then(function_arg_expr) {
+pub(super) fn function_arg_to_stmt_param(arg: &mut FunctionArg) -> Option<StmtParam> {
+    match function_arg_expr(arg) {
         Some(Expr::Value(Value::Placeholder(placeholder))) => {
-            Ok(map_param(std::mem::take(placeholder)))
+            Some(map_param(std::mem::take(placeholder)))
         }
-        Some(Expr::Identifier(ident)) => {
-            if let Some(param) = extract_ident_param(ident) {
-                Ok(param)
-            } else {
-                Err(format!(
-                    "{func_name}({}) is not a valid call. The argument must be a placeholder or a variable name.",
-                    FormatArguments(arguments)
-                ))
-            }
-        }
+        Some(Expr::Identifier(ident)) => extract_ident_param(ident),
         Some(Expr::Function(Function {
             name: ObjectName(func_name_parts),
             args,
             ..
-        })) if is_sqlpage_func(func_name_parts) => Ok(func_call_to_param(
+        })) if is_sqlpage_func(func_name_parts) => Some(func_call_to_param(
             sqlpage_func_name(func_name_parts),
             args.as_mut_slice(),
         )),
         Some(Expr::Value(Value::SingleQuotedString(param_value))) => {
-            Ok(StmtParam::Literal(std::mem::take(param_value)))
-        },
-        _ => Err(format!(
-            "{func_name}({}) is not a valid call. Expected either a placeholder or a sqlpage function call as argument.",
-            FormatArguments(arguments)
-        )),
+            Some(StmtParam::Literal(std::mem::take(param_value)))
+        }
+        _ => None,
     }
+}
+
+pub(super) fn stmt_param_error_invalid_arguments(
+    func_name: &'static str,
+    arguments: &mut [FunctionArg],
+) -> StmtParam {
+    StmtParam::Error(format!(
+        "{func_name}({}) is not a valid call. \
+        Only variables (such as $my_variable) \
+        and sqlpage function calls (such as sqlpage.header('my_header')) \
+        are supported as arguments to sqlpage functions.",
+        FormatArguments(arguments)
+    ))
+}
+
+pub(super) fn extract_variable_argument(
+    func_name: &'static str,
+    arguments: &mut [FunctionArg],
+) -> StmtParam {
+    arguments
+        .first_mut()
+        .and_then(function_arg_to_stmt_param)
+        .unwrap_or_else(|| stmt_param_error_invalid_arguments(func_name, arguments))
 }
 
 fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
