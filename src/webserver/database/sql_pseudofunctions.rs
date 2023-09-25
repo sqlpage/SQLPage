@@ -10,7 +10,8 @@ use crate::webserver::{
 };
 
 use super::sql::{
-    extract_integer, extract_single_quoted_string, extract_variable_argument, FormatArguments,
+    extract_integer, extract_single_quoted_string, extract_variable_argument,
+    function_arg_to_stmt_param, stmt_param_error_invalid_arguments, FormatArguments,
 };
 use anyhow::{anyhow, bail, Context};
 
@@ -25,6 +26,7 @@ pub(super) enum StmtParam {
     BasicAuthPassword,
     BasicAuthUsername,
     HashPassword(Box<StmtParam>),
+    Exec(Vec<StmtParam>),
     RandomString(usize),
     CurrentWorkingDir,
     EnvironmentVariable(String),
@@ -40,9 +42,16 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
             .map_or_else(StmtParam::Error, StmtParam::Header),
         "basic_auth_username" => StmtParam::BasicAuthUsername,
         "basic_auth_password" => StmtParam::BasicAuthPassword,
-        "hash_password" => extract_variable_argument("hash_password", arguments)
-            .map(Box::new)
-            .map_or_else(StmtParam::Error, StmtParam::HashPassword),
+        "hash_password" => StmtParam::HashPassword(Box::new(extract_variable_argument(
+            "hash_password",
+            arguments,
+        ))),
+        "exec" => arguments
+            .iter_mut()
+            .map(function_arg_to_stmt_param)
+            .collect::<Option<Vec<_>>>()
+            .map(StmtParam::Exec)
+            .unwrap_or_else(|| stmt_param_error_invalid_arguments("exec", arguments)),
         "random_string" => extract_integer("random_string", arguments)
             .map_or_else(StmtParam::Error, StmtParam::RandomString),
         "current_working_directory" => StmtParam::CurrentWorkingDir,
@@ -64,8 +73,46 @@ pub(super) async fn extract_req_param<'a>(
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
         StmtParam::HashPassword(inner) => has_password_param(inner, request).await?,
+        StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
         _ => extract_req_param_non_nested(param, request)?,
     })
+}
+
+async fn exec_external_command<'a>(
+    args_params: &[StmtParam],
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let mut iter_params = args_params.iter();
+    let param0 = iter_params
+        .next()
+        .with_context(|| "sqlite.exec(program) requires at least one argument")?;
+    let Some(program_name) = extract_req_param_non_nested(param0, request)? else {
+        return Ok(None);
+    };
+    let mut args = Vec::with_capacity(iter_params.len());
+    for arg in iter_params {
+        args.push(extract_req_param_non_nested(arg, request)?.unwrap_or_else(|| "".into()));
+    }
+    let res = tokio::process::Command::new(&*program_name)
+        .args(args.iter().map(|x| &**x))
+        .output()
+        .await
+        .with_context(|| {
+            format!(
+                "Unable to execute command: {program_name} {}",
+                args.iter().map(|x| format!("{x:?}")).collect::<String>()
+            )
+        })?;
+    if !res.status.success() {
+        bail!(
+            "Command failed with exit code {}: {}",
+            res.status,
+            String::from_utf8_lossy(&res.stderr)
+        );
+    }
+    Ok(Some(Cow::Owned(
+        String::from_utf8_lossy(&res.stdout).to_string(),
+    )))
 }
 
 pub(super) fn extract_req_param_non_nested<'a>(
@@ -90,6 +137,7 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .map(Cow::Borrowed)
             .map(Some)?,
         StmtParam::HashPassword(_) => bail!("Nested hash_password() function not allowed"),
+        StmtParam::Exec(_) => bail!("Nested exec() function not allowed"),
         StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
         StmtParam::CurrentWorkingDir => cwd()?,
         StmtParam::EnvironmentVariable(var) => std::env::var(var)

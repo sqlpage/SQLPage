@@ -271,7 +271,6 @@ VALUES (
         'The name of the environment variable to read. Must be a literal string.',
         'TEXT'
     );
-
 INSERT INTO sqlpage_functions (
         "name",
         "introduced_in_version",
@@ -282,4 +281,68 @@ VALUES (
         'version',
         '0.11.0',
         'git-commit',
-        'Returns the current version of SQLPage as a string.');
+        'Returns the current version of SQLPage as a string.'
+    );
+INSERT INTO sqlpage_functions (
+    "name",
+    "introduced_in_version",
+    "icon",
+    "description_md"
+)
+VALUES (
+        'exec',
+        '0.12.0',
+        'terminal-2',
+        'Executes a shell command and returns its output as text.
+
+### Example
+    
+#### Fetch data from a remote API using curl
+
+```sql
+SELECT ''text'' AS component;
+SELECT ''The current weather in '' || $city || '' is '' AS contents;
+SET url = ''https://wttr.in/'' || $city || ''?format=3'';
+SELECT sqlpage.exec(''curl'', ''--silent'', $url) as contents, true as code;
+```
+
+#### Result
+
+The current weather in Paris is ☁️ Cloudy
+
+#### Notes
+
+ - Be careful when using this function, as it can be used to execute arbitrary shell commands on your server. Do not use it with untrusted input.
+ - The command is executed in the current working directory of the SQLPage server process.
+ - The command is executed with the same user as the SQLPage server process.
+ - The environment variables of the SQLPage server process are passed to the command, including potentially sensitive variables such as `DATABASE_URL`.
+ - The command is executed asynchronously, but the SQLPage server has to wait for it to finish before sending the result to the client.
+   This means that the SQLPage server will not be blocked while the command is running, it will be able to serve other requests, but it will not be able to serve the current request until the command has finished.
+   You should generally avoid long running commands.
+ - If the program name is NULL, the result will be NULL.
+ - If any argument is NULL, it will be passed to the command as an empty string.
+ - If the command exits with a non-zero exit code, the function will raise an error.
+ - Arbitrary SQL operations are not allowed as sqlpage function arguments. Use `SET` to assign the result of a SQL query to a variable, and then use that variable as an argument to `sqlpage.exec`.
+'
+    );
+INSERT INTO sqlpage_function_parameters (
+        "function",
+        "index",
+        "name",
+        "description_md",
+        "type"
+    )
+VALUES (
+        'exec',
+        1,
+        'program',
+        'The name of the program to execute. Must be a literal string.',
+        'TEXT'
+    ),
+    (
+        'exec',
+        2,
+        'arguments...',
+        'The arguments to pass to the program.',
+        'TEXT'
+    );
