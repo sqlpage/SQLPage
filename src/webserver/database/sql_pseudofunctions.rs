@@ -78,13 +78,13 @@ pub(super) async fn extract_req_param<'a>(
     Ok(match param {
         StmtParam::HashPassword(inner) => has_password_param(inner, request).await?,
         StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
-        StmtParam::UrlEncode(inner) => url_encode(inner, request).await?,
+        StmtParam::UrlEncode(inner) => url_encode(inner, request)?,
         _ => extract_req_param_non_nested(param, request)?,
     })
 }
 
-async fn url_encode<'a>(
-    inner: &Box<StmtParam>,
+fn url_encode<'a>(
+    inner: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
     let param = extract_req_param_non_nested(inner, request);
