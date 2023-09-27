@@ -5,7 +5,7 @@
  - **variables** . SQLPage now support setting and reusing variables between statements. This allows you to write more complex SQL queries, and to reuse the result of a query in multiple places.
    ```sql
    -- Set a variable
-   SET person = 'Alice';
+   SET person = (select username from users where id = $id);
    -- Use it in a query
    SELECT 'text' AS component, 'Hello ' || $person AS contents;
    ```
@@ -20,6 +20,11 @@
   from json_each(sqlpage.exec('curl', 'https://jsonplaceholder.typicode.com/users'));
    ```
    This function is disabled by default for security reasons. To enable it, set the `allow_exec` configuration parameter to `true` in the [configuration](./configuration.md). Enabling it gives full access to the server to anyone who can write SQL queries on your website (this includes users with access to the local filesystem and users with write access to the `sqlpage_files` table on your database), so be careful !
+ - New `sqlpage.url_encode` function to percent-encode URL parameters.
+   ```sql
+   select 'card' as component;
+   select 'More...' as title, 'advanced_search.sql?query=' || sqlpage.url_encode($query)
+   ```
 
 ## 0.11.0 (2023-09-17)
  - Support for **environment variables** ! You can now read environment variables from sql code using `sqlpage.environment_variable('VAR_NAME')`.

@@ -284,11 +284,11 @@ VALUES (
         'Returns the current version of SQLPage as a string.'
     );
 INSERT INTO sqlpage_functions (
-    "name",
-    "introduced_in_version",
-    "icon",
-    "description_md"
-)
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
 VALUES (
         'exec',
         '0.12.0',
@@ -340,5 +340,43 @@ VALUES (
         2,
         'arguments...',
         'The arguments to pass to the program.',
+        'TEXT'
+    );
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'url_encode',
+        '0.12.0',
+        'percentage',
+        'Returns the given string, with all characters that are not allowed in a URL encoded.
+
+### Example
+    
+    ```sql
+    select ''text'' as component;
+    select ''https://example.com/?q='' || sqlpage.url_encode($user_search) as contents;
+    ```
+
+#### Result
+
+`https://example.com/?q=hello%20world`
+'
+    );
+INSERT INTO sqlpage_function_parameters (
+        "function",
+        "index",
+        "name",
+        "description_md",
+        "type"
+    )
+VALUES (
+        'url_encode',
+        1,
+        'string',
+        'The string to encode.',
         'TEXT'
     );

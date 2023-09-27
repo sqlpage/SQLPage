@@ -26,6 +26,7 @@ pub(super) enum StmtParam {
     BasicAuthPassword,
     BasicAuthUsername,
     HashPassword(Box<StmtParam>),
+    UrlEncode(Box<StmtParam>),
     Exec(Vec<StmtParam>),
     RandomString(usize),
     CurrentWorkingDir,
@@ -57,6 +58,9 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "current_working_directory" => StmtParam::CurrentWorkingDir,
         "environment_variable" => extract_single_quoted_string("environment_variable", arguments)
             .map_or_else(StmtParam::Error, StmtParam::EnvironmentVariable),
+        "url_encode" => {
+            StmtParam::UrlEncode(Box::new(extract_variable_argument("url_encode", arguments)))
+        }
         "version" => StmtParam::SqlPageVersion,
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
@@ -74,8 +78,33 @@ pub(super) async fn extract_req_param<'a>(
     Ok(match param {
         StmtParam::HashPassword(inner) => has_password_param(inner, request).await?,
         StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
+        StmtParam::UrlEncode(inner) => url_encode(inner, request).await?,
         _ => extract_req_param_non_nested(param, request)?,
     })
+}
+
+async fn url_encode<'a>(
+    inner: &Box<StmtParam>,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let param = extract_req_param_non_nested(inner, request);
+    match param {
+        Ok(Some(Cow::Borrowed(inner))) => {
+            let encoded = percent_encoding::percent_encode(
+                inner.as_bytes(),
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+            Ok(Some(encoded.into()))
+        }
+        Ok(Some(Cow::Owned(inner))) => {
+            let encoded = percent_encoding::percent_encode(
+                inner.as_bytes(),
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+            Ok(Some(Cow::Owned(encoded.to_string())))
+        }
+        param => param,
+    }
 }
 
 async fn exec_external_command<'a>(
@@ -141,6 +170,7 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .map(Some)?,
         StmtParam::HashPassword(_) => bail!("Nested hash_password() function not allowed"),
         StmtParam::Exec(_) => bail!("Nested exec() function not allowed"),
+        StmtParam::UrlEncode(_) => bail!("Nested url_encode() function not allowed"),
         StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
         StmtParam::CurrentWorkingDir => cwd()?,
         StmtParam::EnvironmentVariable(var) => std::env::var(var)
