@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct AppConfig {
     #[serde(default = "default_database_url")]
     pub database_url: String,
@@ -36,6 +36,12 @@ pub struct AppConfig {
 
     #[serde(default = "default_web_root")]
     pub web_root: PathBuf,
+
+    /// Set to true to allow the `sqlpage.exec` function to be used in SQL queries.
+    /// This should be enabled only if you trust the users writing SQL queries, since it gives
+    /// them the ability to execute arbitrary shell commands on the server.
+    #[serde(default)]
+    pub allow_exec: bool,
 }
 
 pub fn load() -> anyhow::Result<AppConfig> {

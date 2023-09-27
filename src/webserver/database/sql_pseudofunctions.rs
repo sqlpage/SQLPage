@@ -82,6 +82,9 @@ async fn exec_external_command<'a>(
     args_params: &[StmtParam],
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    if !request.app_state.config.allow_exec {
+        anyhow::bail!("The sqlpage.exec() function is disabled in the configuration. Enable it by setting the allow_exec option to true in the sqlpage.json configuration file.")
+    }
     let mut iter_params = args_params.iter();
     let param0 = iter_params
         .next()

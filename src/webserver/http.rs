@@ -210,13 +210,14 @@ async fn render_sql(
     srv_req: &mut ServiceRequest,
     sql_file: Arc<ParsedSqlFile>,
 ) -> actix_web::Result<HttpResponse> {
-    let mut req_param = extract_request_info(srv_req).await;
-    log::debug!("Received a request with the following parameters: {req_param:?}");
     let app_state = srv_req
         .app_data::<web::Data<AppState>>()
         .ok_or_else(|| ErrorInternalServerError("no state"))?
         .clone() // Cheap reference count increase
         .into_inner();
+
+    let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state)).await;
+    log::debug!("Received a request with the following parameters: {req_param:?}");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
@@ -328,6 +329,7 @@ pub struct RequestInfo {
     pub client_ip: Option<IpAddr>,
     pub cookies: ParamMap,
     pub basic_auth: Option<Basic>,
+    pub app_state: Arc<AppState>,
 }
 
 fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) -> ParamMap {
@@ -352,7 +354,7 @@ fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) -> Par
         })
 }
 
-async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
+async fn extract_request_info(req: &mut ServiceRequest, app_state: Arc<AppState>) -> RequestInfo {
     let (http_req, payload) = req.parts_mut();
     let post_variables = Form::<Vec<(String, String)>>::from_request(http_req, payload)
         .await
@@ -387,6 +389,7 @@ async fn extract_request_info(req: &mut ServiceRequest) -> RequestInfo {
         client_ip,
         cookies: param_map(cookies),
         basic_auth,
+        app_state,
     }
 }
 
