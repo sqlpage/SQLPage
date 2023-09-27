@@ -300,18 +300,14 @@ VALUES (
 #### Fetch data from a remote API using curl
 
 ```sql
-SELECT ''text'' AS component;
-SELECT ''The current weather in '' || $city || '' is '' AS contents;
-SET url = ''https://wttr.in/'' || $city || ''?format=3'';
-SELECT sqlpage.exec(''curl'', ''--silent'', $url) as contents, true as code;
+select ''card'' as component;
+select value->>''name'' as title, value->>''email'' as description
+from json_each(sqlpage.exec(''curl'', ''https://jsonplaceholder.typicode.com/users''));
 ```
-
-#### Result
-
-The current weather in Paris is ☁️ Cloudy
 
 #### Notes
 
+ - This function is disabled by default for security reasons. You can enable it by setting `"allow_exec" : true` in `sqlpage/sqlpage.json`. Enable it only if you trust all the users that can access your SQLPage server files (both locally and on the database).
  - Be careful when using this function, as it can be used to execute arbitrary shell commands on your server. Do not use it with untrusted input.
  - The command is executed in the current working directory of the SQLPage server process.
  - The command is executed with the same user as the SQLPage server process.

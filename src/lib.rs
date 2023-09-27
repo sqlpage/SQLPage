@@ -27,6 +27,7 @@ pub struct AppState {
     all_templates: AllTemplates,
     sql_file_cache: FileCache<ParsedSqlFile>,
     file_system: FileSystem,
+    config: AppConfig,
 }
 
 impl AppState {
@@ -45,7 +46,14 @@ impl AppState {
             all_templates,
             sql_file_cache,
             file_system,
+            config: config.clone(),
         })
+    }
+}
+
+impl std::fmt::Debug for AppState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppState").finish()
     }
 }
 
