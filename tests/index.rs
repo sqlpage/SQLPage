@@ -83,6 +83,7 @@ pub fn test_config() -> AppConfig {
         "database_url": "{}",
         "database_connection_retries": 2,
         "database_connection_acquire_timeout_seconds": 1,
+        "allow_exec": true,
         "listen_on": "111.111.111.111:1"
     }}"#,
         db_url
