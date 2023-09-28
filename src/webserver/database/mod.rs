@@ -30,6 +30,7 @@ use sqlx::{
 };
 
 use self::sql::ParsedSQLStatement;
+use self::sql_to_json::sql_to_json;
 use sql_pseudofunctions::StmtParam;
 
 pub struct Database {
@@ -160,8 +161,21 @@ fn vars_and_name<'a>(
 }
 
 fn row_to_varvalue(row: &AnyRow) -> SingleOrVec {
-    row.try_get::<String, usize>(0)
-        .map_or_else(|_| SingleOrVec::Vec(vec![]), SingleOrVec::Single)
+    let Some(col) = row.columns().first() else {
+        return SingleOrVec::Single(String::new());
+    };
+    match sql_to_json(row, col) {
+        Value::String(s) => SingleOrVec::Single(s),
+        Value::Array(vals) => SingleOrVec::Vec(
+            vals.into_iter()
+                .map(|v| match v {
+                    Value::String(s) => s,
+                    other => other.to_string(),
+                })
+                .collect(),
+        ),
+        other => SingleOrVec::Single(other.to_string()),
+    }
 }
 
 async fn take_connection<'a, 'b>(
