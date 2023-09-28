@@ -210,7 +210,7 @@ INSERT INTO component(name, icon, description) VALUES
     'The form contents can be posted and handled by another sql file in your site. ' ||
     'The value entered by the user in a field named x will be accessible to the target SQL page as a variable named $x.
     For instance, you can create a SQL page named "create_user.sql" that would contain "INSERT INTO users(name) VALUES($name)"
-    and a form with its action property set to "create_user.sql" that would contain a field named "name"."');
+    and a form with its action property set to "create_user.sql" that would contain a field named "name".');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
