@@ -53,9 +53,9 @@ select 'text' as component,
 select description as contents from component where name = $component;
 
 select 'text' as component;
-select format('Introduced in SQLPage v%s.', introduced_in_version) as contents,
-        1 as size
-from component where name = $component;
+select format('Introduced in SQLPage v%s.', introduced_in_version) as contents, 1 as size
+from component
+where name = $component and introduced_in_version IS NOT NULL;
 
 select 'title' as component, 3 as level, 'Top-level parameters' as contents where $component IS NOT NULL;
 select 'card' as component, 3 AS columns where $component IS NOT NULL;
