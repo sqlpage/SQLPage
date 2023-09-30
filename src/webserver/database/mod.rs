@@ -16,7 +16,7 @@ pub use crate::file_cache::FileCache;
 
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::http::{RequestInfo, SingleOrVec};
-use crate::MIGRATIONS_DIR;
+use crate::{MIGRATIONS_DIR, ON_CONNECT_FILE};
 pub use sql::make_placeholder;
 pub use sql::ParsedSqlFile;
 use sqlx::any::{
@@ -282,7 +282,7 @@ impl Database {
     }
 
     fn create_pool_options(config: &AppConfig, db_kind: AnyKind) -> PoolOptions<Any> {
-        PoolOptions::new()
+        let mut pool_options = PoolOptions::new()
             .max_connections(if let Some(max) = config.max_database_pool_connections {
                 max
             } else {
@@ -321,8 +321,38 @@ impl Database {
             )
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
-            ))
+            ));
+        pool_options = add_on_connection_handler(pool_options);
+        pool_options
     }
+}
+
+fn add_on_connection_handler(pool_options: PoolOptions<Any>) -> PoolOptions<Any> {
+    let on_connect_file = std::env::current_dir()
+        .unwrap_or_default()
+        .join(ON_CONNECT_FILE);
+    if !on_connect_file.exists() {
+        log::debug!("Not creating a custom SQL database connection handler because {on_connect_file:?} does not exist");
+        return pool_options;
+    }
+    log::info!("Creating a custom SQL database connection handler from {on_connect_file:?}");
+    let sql = match std::fs::read_to_string(&on_connect_file) {
+        Ok(sql) => std::sync::Arc::new(sql),
+        Err(e) => {
+            log::error!("Unable to read the file {on_connect_file:?}: {e}");
+            return pool_options;
+        }
+    };
+    log::trace!("The custom SQL database connection handler is:\n{sql}");
+    pool_options.after_connect(move |conn, _metadata| {
+        log::debug!("Running {on_connect_file:?} on new connection");
+        let sql = std::sync::Arc::clone(&sql);
+        Box::pin(async move {
+            let r = sqlx::query(&sql).execute(conn).await?;
+            log::debug!("Finished running connection handler on new connection: {r:?}");
+            Ok(())
+        })
+    })
 }
 
 fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfig) {

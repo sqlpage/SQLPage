@@ -34,3 +34,48 @@ The environment variable name can optionally be prefixed with `SQLPAGE_`.
 DATABASE_URL="sqlite:///path/to/my_database.db?mode=rwc"
 SQLITE_EXTENSIONS="mod_spatialite crypto define regexp"
 ```
+
+## Custom components
+
+SQLPage allows you to create custom components in addition to or instead of the default ones.
+To create a custom component, create a [`.handlebars`](https://handlebarsjs.com/guide/expressions.html)
+file in the `sqlpage/templates` directory of your SQLPage installation.
+
+For instance, if you want to create a custom `my_component` component, that displays the value of the `my_column` column, create a `sqlpage/templates/my_component.handlebars` file with the following content:
+
+```handlebars
+<ul>
+    {{#each_row}}
+        <li>Value of my column: {{my_column}}</li>
+    {{/each_row}}
+</ul>
+```
+
+## Connection initialization scripts
+
+SQLPage allows you to run a SQL script when a new database connection is opened,
+by simply creating a `sqlpage/on_connect.sql` file.
+
+This can be useful to set up the database connection for your application.
+For instance, on postgres, you can use this to [set the `search path` and various other connection options](https://www.postgresql.org/docs/current/sql-set.html).
+
+```sql
+SET TIME ZONE 'UTC';
+SET search_path = my_schema;
+```
+
+On SQLite, you can use this to [`ATTACH`](https://www.sqlite.org/lang_attach.html) additional databases.
+
+```sql
+ATTACH DATABASE '/path/to/my_other_database.db' AS my_other_database;
+```
+
+(and then, you can use `my_other_database.my_table` in your queries)
+
+You can also use this to create *temporary tables* to store intermediate results that are useful in your SQLPage application, but that you don't want to store permanently in the database.
+
+```sql
+CREATE TEMPORARY TABLE my_temporary_table(
+    my_temp_column TEXT
+);
+```
