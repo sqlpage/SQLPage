@@ -82,10 +82,9 @@ pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
             m.description
         );
     }
-    migrator
-        .run(&db.connection)
-        .await
-        .with_context(|| migration_err("running the migration"))?;
+    migrator.run(&db.connection).await.with_context(|| {
+        format!("There is an error in the database migrations in {MIGRATIONS_DIR:?}")
+    })?;
     Ok(())
 }
 
