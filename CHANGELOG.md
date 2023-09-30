@@ -25,6 +25,12 @@
    select 'card' as component;
    select 'More...' as title, 'advanced_search.sql?query=' || sqlpage.url_encode($query)
    ```
+ - Add the ability to run a sql script on each database connection before it is used,
+   by simply creating `sqlpage/on_connect.sql` file. This has many interesting use cases:
+     - allows you to set up your database connection with custom settings, such as `PRAGMA` in SQLite
+     - set a custom `search_path`, `application_name` or other variables in PostgreSQL
+     - create temporary tables that will be available to all SQLPage queries but will not be persisted in the database
+     - [`ATTACH`](https://www.sqlite.org/lang_attach.html) a database in SQLite to query multiple database files at once
 
 ## 0.11.0 (2023-09-17)
  - Support for **environment variables** ! You can now read environment variables from sql code using `sqlpage.environment_variable('VAR_NAME')`.

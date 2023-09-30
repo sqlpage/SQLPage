@@ -21,6 +21,7 @@ use webserver::Database;
 
 pub const TEMPLATES_DIR: &str = "sqlpage/templates";
 pub const MIGRATIONS_DIR: &str = "sqlpage/migrations";
+pub const ON_CONNECT_FILE: &str = "sqlpage/on_connect.sql";
 
 pub struct AppState {
     pub db: Database,
