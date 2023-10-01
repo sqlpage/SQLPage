@@ -22,7 +22,7 @@ pub use sql::ParsedSqlFile;
 use sqlx::any::{
     AnyArguments, AnyConnectOptions, AnyKind, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo,
 };
-use sqlx::migrate::Migrator;
+use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::pool::{PoolConnection, PoolOptions};
 use sqlx::query::Query;
 use sqlx::{
@@ -82,8 +82,20 @@ pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
             m.description
         );
     }
-    migrator.run(&db.connection).await.with_context(|| {
-        format!("There is an error in the database migrations in {MIGRATIONS_DIR:?}")
+    migrator.run(&db.connection).await.map_err(|err| {
+        match err {
+            MigrateError::Execute(n, source) => {
+                let migration = migrator.iter().find(|&m| m.version == n).unwrap();
+                anyhow::Error::new(source).context(format!(
+                    "Failed to apply migration [{:04}] {:?} {}",
+                    migration.version, migration.migration_type, migration.description
+                ))
+            }
+            source => anyhow::Error::new(source),
+        }
+        .context(format!(
+            "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
+        ))
     })?;
     Ok(())
 }
