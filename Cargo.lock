@@ -2303,9 +2303,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cc483a537156b353ddf3548232028b365598156e3e62602358c54e06d82eb38"
+checksum = "b7068b79d3eec6cf68e88b4ed25dbb0538d3eaef523f1f5f00aadbbf4aafe5e2"
 dependencies = [
  "ahash 0.8.3",
  "atoi",
@@ -2366,9 +2366,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf693228f81847c21d0743d4b00ddafe6a06f31d83bf4a3ba02fe956182f45fc"
+checksum = "0f58e32897a223173c33a87834a7c364350a89f85a50d24f1876d6c1269d1430"
 dependencies = [
  "dotenvy",
  "either",
@@ -2386,9 +2386,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5bed27ca64ed35c7a676ebb520718a6474f1859d596102e0a21a1212bf60d5a"
+checksum = "41c7a081f7e0b3cd90e05b0f9be0fdda26512f577857c06b3182a37f4f403363"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -2396,9 +2396,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt-oldapi"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30b872dd9594d072bcf74dfed085617b88e120751f0178ce3b1bb76c0598137d"
+checksum = "0216514f2b41f2d711e3f539aa659a77c113852b789acdc39ea80792cf3d3b8f"
 dependencies = [
  "once_cell",
  "tokio",

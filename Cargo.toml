@@ -17,7 +17,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.13", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "mssql", "chrono", "json" ] }
+sqlx = { package = "sqlx-oldapi", version = "0.6.14", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "mssql", "chrono", "json" ] }
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls", "cookies"] }
 percent-encoding = "2.2.0"
