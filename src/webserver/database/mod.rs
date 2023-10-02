@@ -1,7 +1,7 @@
 mod sql;
 mod sql_pseudofunctions;
 mod sql_to_json;
-
+pub mod migrations;
 use anyhow::{anyhow, Context};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
@@ -16,14 +16,12 @@ pub use crate::file_cache::FileCache;
 
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::http::{RequestInfo, SingleOrVec};
-use crate::{MIGRATIONS_DIR, ON_CONNECT_FILE};
+use crate::ON_CONNECT_FILE;
 pub use sql::make_placeholder;
 pub use sql::ParsedSqlFile;
 use sqlx::any::{
     AnyArguments, AnyConnectOptions, AnyKind, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo,
-};
-use sqlx::migrate::{MigrateError, Migrator};
-use sqlx::pool::{PoolConnection, PoolOptions};
+};use sqlx::pool::{PoolConnection, PoolOptions};
 use sqlx::query::Query;
 use sqlx::{
     Any, AnyConnection, AnyPool, Arguments, ConnectOptions, Either, Executor, Row, Statement,
@@ -49,65 +47,6 @@ impl Database {
             .map(|s| s.to_owned())
             .with_context(|| format!("Failed to prepare SQL statement: '{query}'"))
     }
-}
-
-pub async fn apply_migrations(db: &Database) -> anyhow::Result<()> {
-    let migrations_dir = std::env::current_dir()
-        .unwrap_or_default()
-        .join(MIGRATIONS_DIR);
-    if !migrations_dir.exists() {
-        log::info!(
-            "Not applying database migrations because '{}' does not exist",
-            migrations_dir.display()
-        );
-        return Ok(());
-    }
-    log::info!("Applying migrations from '{}'", migrations_dir.display());
-    let migrator = Migrator::new(migrations_dir)
-        .await
-        .with_context(|| migration_err("preparing the database migration"))?;
-    if migrator.migrations.is_empty() {
-        log::info!("No migration found. \
-        You can specify database operations to apply when the server first starts by creating files \
-        in {MIGRATIONS_DIR}/<VERSION>_<DESCRIPTION>.sql \
-        where <VERSION> is a number and <DESCRIPTION> is a short string.");
-        return Ok(());
-    }
-    log::info!("Found {} migrations:", migrator.migrations.len());
-    for m in migrator.iter() {
-        log::info!(
-            "\t[{:04}] {:?} {}",
-            m.version,
-            m.migration_type,
-            m.description
-        );
-    }
-    migrator.run(&db.connection).await.map_err(|err| {
-        match err {
-            MigrateError::Execute(n, source) => {
-                let migration = migrator.iter().find(|&m| m.version == n).unwrap();
-                anyhow::Error::new(source).context(format!(
-                    "Failed to apply migration [{:04}] {:?} {}",
-                    migration.version, migration.migration_type, migration.description
-                ))
-            }
-            source => anyhow::Error::new(source),
-        }
-        .context(format!(
-            "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
-        ))
-    })?;
-    Ok(())
-}
-
-fn migration_err(operation: &'static str) -> String {
-    format!(
-        "An error occurred while {operation}.
-        The path '{MIGRATIONS_DIR}' has to point to a directory, which contains valid SQL files
-        with names using the format '<VERSION>_<DESCRIPTION>.sql',
-        where <VERSION> is a positive number, and <DESCRIPTION> is a string.
-        The current state of migrations will be stored in a table called _sqlx_migrations."
-    )
 }
 
 pub fn stream_query_results<'a>(
