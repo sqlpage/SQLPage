@@ -1,9 +1,9 @@
+use super::Database;
+use crate::MIGRATIONS_DIR;
+use anyhow;
 use anyhow::Context;
 use sqlx::migrate::MigrateError;
 use sqlx::migrate::Migrator;
-use crate::MIGRATIONS_DIR;
-use anyhow;
-use super::Database;
 
 pub async fn apply(db: &Database) -> anyhow::Result<()> {
     let migrations_dir = std::env::current_dir()

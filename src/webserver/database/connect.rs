@@ -1,8 +1,12 @@
 use std::time::Duration;
 
-use sqlx::{any::{Any, AnyConnectOptions, AnyKind}, ConnectOptions, pool::PoolOptions};
-use crate::{app_config::AppConfig, ON_CONNECT_FILE};
 use super::Database;
+use crate::{app_config::AppConfig, ON_CONNECT_FILE};
+use sqlx::{
+    any::{Any, AnyConnectOptions, AnyKind},
+    pool::PoolOptions,
+    ConnectOptions,
+};
 
 impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
