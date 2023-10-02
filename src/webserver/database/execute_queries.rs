@@ -34,7 +34,7 @@ impl Database {
 }
 
 fn highlight_sql_error(context: &str, query: &str, db_err: sqlx::error::Error) -> anyhow::Error {
-    let mut msg = format!("{}:\n{}", context, query);
+    let mut msg = format!("{context}:\n{query}");
     if let sqlx::error::Error::Database(db_err) = &db_err {
         if let Some(offset) = db_err.offset() {
             write!(msg, "\n{padding}⬆️", padding = " ".repeat(offset)).unwrap();
