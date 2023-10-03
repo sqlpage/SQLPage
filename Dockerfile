@@ -32,9 +32,11 @@ RUN touch src/main.rs && \
 FROM busybox:glibc
 RUN addgroup --system sqlpage && \
     adduser --system --no-create-home --ingroup sqlpage sqlpage
+ENV SQLPAGE_ROOT=/var/www
+WORKDIR /etc/sqlpage
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
 COPY --from=builder /usr/src/sqlpage/libgcc_s.so.1 /lib/libgcc_s.so.1
-WORKDIR /var/www
 USER sqlpage
+COPY --from=builder --chown=sqlpage:sqlpage /usr/src/sqlpage/sqlpage/sqlpage.db sqlpage/sqlpage.db
 EXPOSE 8080
 CMD ["/usr/local/bin/sqlpage"]
