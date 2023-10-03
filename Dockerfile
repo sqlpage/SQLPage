@@ -26,8 +26,8 @@ COPY .cargo ./.cargo
 RUN cargo build --target $(cat TARGET) --profile superoptimized
 COPY . .
 RUN touch src/main.rs && \
-    cargo build --target $(cat TARGET) --profile superoptimized
-RUN mv target/$(cat TARGET)/superoptimized/sqlpage sqlpage.bin
+    cargo build --target $(cat TARGET) --profile superoptimized && \
+    mv target/$(cat TARGET)/superoptimized/sqlpage sqlpage.bin
 
 FROM busybox:glibc
 RUN addgroup --system sqlpage && \
