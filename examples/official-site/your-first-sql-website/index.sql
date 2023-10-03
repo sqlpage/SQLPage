@@ -103,7 +103,8 @@ CREATE TABLE users ( id INTEGER PRIMARY KEY, name TEXT NOT NULL );
 Connect to a custom database
 ============================
 
-By default, SQLPage uses a [SQLite](https://www.sqlite.org/about.html) database stored in a file named `sqlpage.db` in your website''s root folder.
+By default, SQLPage uses a [SQLite](https://www.sqlite.org/about.html) database stored in a file named `sqlpage.db`
+in the `sqlpage` configuration folder.
 You can change this by creating a file named `sqlpage.json` in a folder called `sqlpage`.
 So, if your website''s root folder is `/mysite`, you should create a file at `/mysite/sqlpage/sqlpage.json`.
 

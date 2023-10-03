@@ -100,11 +100,15 @@ fn default_database_url() -> String {
         } else if let Ok(true) = default_db_path.try_exists() {
             log::debug!("Using the default datbase file in {default_db_path:?}.");
             return prefix + default_db_path.to_str().unwrap();
-        } else if let Ok(tmp_file) = std::fs::File::create(&default_db_path) {
-            log::info!("No DATABASE_URL provided, {default_db_path:?} is writable, creating a new database file.");
-            drop(tmp_file);
-            std::fs::remove_file(&default_db_path).expect("removing temp file");
-            return prefix + default_db_path.to_str().unwrap() + "?mode=rwc";
+        } else {
+            // Create the default database file if we can
+            let _ = std::fs::create_dir_all(&default_db_path.parent().unwrap()); // may already exist
+            if let Ok(tmp_file) = std::fs::File::create(&default_db_path) {
+                log::info!("No DATABASE_URL provided, {default_db_path:?} is writable, creating a new database file.");
+                drop(tmp_file);
+                std::fs::remove_file(&default_db_path).expect("removing temp file");
+                return prefix + default_db_path.to_str().unwrap() + "?mode=rwc";
+            }
         }
     }
 
