@@ -34,7 +34,12 @@ Download SQLPage: the SQL website framework
 SQLPage is a small executable file that will take requests to your website, execute the SQL files you write,
 and render the database responses as nice web pages.
 
-[Download the latest SQLPage](https://github.com/lovasoa/SQLpage/releases) for your operating system. SQLPage is distributed as a single executable file, making it easy to get started.
+[Download the latest SQLPage](https://github.com/lovasoa/SQLpage/releases) for your operating system.
+
+> **Note**: Advanced user can alternatively install SQLPage using
+> [docker](https://hub.docker.com/repository/docker/lovasoa/sqlpage/general),
+> [brew](https://formulae.brew.sh/formula/sqlpage),
+> or [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage)
 
 Building your website locally
 =============================
@@ -49,9 +54,9 @@ Then launch the `sqlpage.bin` executable file you just downloaded in a terminal 
 
 ![screenshot for the sql website setup](first-sql-website-launch.png)
 
-You should see a message in your terminal that includes the sentence `Starting server on 0.0.0.0:8080`
+You should see a message in your terminal that includes the sentence `SQLPage is now running on http://127.0.0.1:8080/`
 
-You can open your website locally by visiting [`http://localhost:8080`](http://localhost:8080)
+You can open your website locally by visiting [`http://127.0.0.1:8080`](http://127.0.0.1:8080/)
 
 Your website’s first SQL file
 =============================
@@ -82,14 +87,15 @@ Your database schema
 > or if you intend to use other tools to manage your database schema,
 > you can skip this section.
 
-The database schema for your SQLPage website can be defined using SQL scripts located in the
+The [database schema](https://en.wikipedia.org/wiki/Database_schema) for your SQLPage website
+can be defined using SQL scripts located in the
 **`sqlpage/migrations`** subdirectory of your website''s root folder.
 Each script represents a [migration](https://en.wikipedia.org/wiki/Schema_migration)
 that sets up or modifies the database structure.
 
 The scripts are executed in order. You must prefix them with a number to control the order in which they are executed.
-For instance, `mywebsite/sqlpage/migrations/0001_create_users_table.sql`
-will be executed before `mywebsite/sqlpage/migrations/0002_add_email_to_users_table.sql`.
+For instance, `my_website/sqlpage/migrations/0001_create_users_table.sql`
+will be executed before `my_website/sqlpage/migrations/0002_add_email_to_users_table.sql`.
 SQLPage keeps track of which migrations have already run
 (by storing the executed migrations in a table named `_sqlx_migrations`),
 and will only execute new migrations.
@@ -97,7 +103,10 @@ and will only execute new migrations.
 For our first website, let''s create a file located in `sqlpage/migrations/0001_create_users_table.sql` with the following contents:
 
 ```sql
-CREATE TABLE users ( id INTEGER PRIMARY KEY, name TEXT NOT NULL );
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
 ```
 
 Connect to a custom database
@@ -106,7 +115,7 @@ Connect to a custom database
 By default, SQLPage uses a [SQLite](https://www.sqlite.org/about.html) database stored in a file named `sqlpage.db`
 in the `sqlpage` configuration folder.
 You can change this by creating a file named `sqlpage.json` in a folder called `sqlpage`.
-So, if your website''s root folder is `/mysite`, you should create a file at `/mysite/sqlpage/sqlpage.json`.
+So, if your website''s root folder is `/my_website`, you should create a file at `/my_website/sqlpage/sqlpage.json`.
 
 Here is an example `sqlpage.json` file:
 
@@ -122,7 +131,7 @@ Later, when you want to deploy your website online, you can switch back to a per
  - a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://www.postgresql.org/docs/15/libpq-connect.html#id-1.7.3.8.3.6)),
  - a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://dev.mysql.com/doc/refman/8.0/en/connecting-using-uri-or-key-value-pairs.html)),
  - a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html), [note about named instances](https://github.com/lovasoa/SQLpage/issues/92)),
- 
+
 For more information about the properties that can be set in sqlpage.json, see [SQLPage''s configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
 
 
