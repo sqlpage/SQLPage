@@ -10,3 +10,5 @@ configuration.md
 .github/
 examples/
 mssql/
+tests/
+.idea/
