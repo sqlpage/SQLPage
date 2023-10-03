@@ -125,6 +125,9 @@ To run on a server, you can use [the docker image](https://hub.docker.com/r/lova
   - (`"$(pwd):/var/www"` allows sqlpage to run sql files from your current working directory)
 - Create a file called index.sql with the contents from [this example](./index.sql)
 - Open https://localhost:8080 in your browser
+- Optionally, you can also mount a directory containing sqlpage's configuration file,
+  custom components, and migrations
+  (see [configuration.md](./configuration.md)) to `/etc/sqlpage` in the container.
 
 ### On Mac OS, with homebrew
 

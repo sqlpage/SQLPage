@@ -33,7 +33,7 @@ FROM busybox:glibc
 RUN addgroup --system sqlpage && \
     adduser --system --no-create-home --ingroup sqlpage sqlpage
 ENV SQLPAGE_ROOT=/var/www
-WORKDIR /etc/sqlpage
+WORKDIR /etc
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
 COPY --from=builder /usr/src/sqlpage/libgcc_s.so.1 /lib/libgcc_s.so.1
 USER sqlpage
