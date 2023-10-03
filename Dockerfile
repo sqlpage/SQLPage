@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM rust:1.72-slim as builder
 WORKDIR /usr/src/sqlpage
 ARG TARGETARCH
 ARG BUILDARCH
-RUN apt-get update && apt-get install -y musl-tools && \
+RUN apt-get update && \
     if [ "$TARGETARCH" = "$BUILDARCH" ]; then \
         rustup target list --installed > TARGET; \
         apt-get install -y gcc libgcc-s1; \
