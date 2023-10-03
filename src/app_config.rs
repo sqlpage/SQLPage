@@ -6,6 +6,8 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
 #[cfg(not(feature = "lambda-web"))]
+const DEFAULT_DATABASE_DIR: &str = "sqlpage";
+#[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
@@ -88,16 +90,22 @@ fn default_database_url() -> String {
     }
 
     #[cfg(not(feature = "lambda-web"))]
-    if std::path::Path::new(DEFAULT_DATABASE_FILE).exists() {
-        log::info!(
-            "No DATABASE_URL, using the default sqlite database './{DEFAULT_DATABASE_FILE}'"
-        );
-        return prefix + DEFAULT_DATABASE_FILE;
-    } else if let Ok(tmp_file) = std::fs::File::create(DEFAULT_DATABASE_FILE) {
-        log::info!("No DATABASE_URL provided, the current directory is writeable, creating {DEFAULT_DATABASE_FILE}");
-        drop(tmp_file);
-        std::fs::remove_file(DEFAULT_DATABASE_FILE).expect("removing temp file");
-        return prefix + DEFAULT_DATABASE_FILE + "?mode=rwc";
+    {
+        let cwd = std::env::current_dir().unwrap_or_default();
+        let old_default_db_path = cwd.join(DEFAULT_DATABASE_FILE);
+        let default_db_path = cwd.join(DEFAULT_DATABASE_DIR).join(DEFAULT_DATABASE_FILE);
+        if let Ok(true) = old_default_db_path.try_exists() {
+            log::warn!("Your sqlite database in {old_default_db_path:?} is publicly accessible through your web server. Please move it to {default_db_path:?}.");
+            return prefix + old_default_db_path.to_str().unwrap();
+        } else if let Ok(true) = default_db_path.try_exists() {
+            log::debug!("Using the default datbase file in {default_db_path:?}.");
+            return prefix + default_db_path.to_str().unwrap();
+        } else if let Ok(tmp_file) = std::fs::File::create(&default_db_path) {
+            log::info!("No DATABASE_URL provided, {default_db_path:?} is writable, creating a new database file.");
+            drop(tmp_file);
+            std::fs::remove_file(&default_db_path).expect("removing temp file");
+            return prefix + default_db_path.to_str().unwrap() + "?mode=rwc";
+        }
     }
 
     log::warn!("No DATABASE_URL provided, and the current directory is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
