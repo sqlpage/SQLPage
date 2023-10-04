@@ -35,6 +35,7 @@
  - Better error messages. SQLPage displays a more precise and useful message when an error occurs, and displays the position in the SQL statement where the error occured. Incorrect error messages on invalid migrations are also fixed.
  - We now distribute docker images from ARM too. Say hello to SQLPage on your Raspberry Pi and your Mac M1 !
  - Create the default SQLite database file in the "sqlpage" config directory instead of at the root of the web server by default. This makes it inaccessible from the web, which is a more secure default. If you want to keep the old behavior, set the `database_url` configuration parameter to `sqlite://sqlpage.db` in your [configuration](./configuration.md).
+ - New `empty_title`, `empty_description`, and `empty_link` top-level attributes on the [`list`](https://sql.ophir.dev/documentation.sql?component=list#component) component to customize the text displayed when the list is empty.
 
 ## 0.11.0 (2023-09-17)
  - Support for **environment variables** ! You can now read environment variables from sql code using `sqlpage.environment_variable('VAR_NAME')`.
