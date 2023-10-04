@@ -27,6 +27,10 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'list', * FROM (VALUES
     -- top level
     ('title', 'Text header at the top of the list.', 'TEXT', TRUE, TRUE),
+    ('empty_title', 'Title text to display if the list is empty.', 'TEXT', TRUE, TRUE),
+    ('empty_description', 'Description to display if the list is empty.', 'TEXT', TRUE, TRUE),
+    ('empty_description_md', 'Description to display if the list is empty, in Markdown format.', 'TEXT', TRUE, TRUE),
+    ('empty_link', 'URL to which the user should be taken if they click on the empty list.', 'URL', TRUE, TRUE),
     -- item level
     ('title', 'Name of the list item, displayed prominently.', 'TEXT', FALSE, FALSE),
     ('description', 'A description of the list item, displayed as greyed-out text.', 'TEXT', FALSE, TRUE),
@@ -39,6 +43,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('list', 'The most basic list', json('[{"component":"list"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
+    ('list', 'An empty list with a link to add an item', json('[{"component":"list", "empty_title": "No items yet", "empty_description": "This list is empty. Click here to create a new item !", "empty_link": "documentation.sql"}]')),
     ('list', 'A list with rich text descriptions', json('[{"component":"list"},
         {"title":"SQLPage", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, and **SQLite**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
         {"title":"Tabler", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},

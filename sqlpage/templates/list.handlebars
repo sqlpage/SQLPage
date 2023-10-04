@@ -29,5 +29,20 @@
                 </div>
             </{{#if link}}a {{else}}div{{/if}}>
         {{/each_row}}
+        {{#if (eq @row_index 0)}}
+            <a href="{{default empty_link '#'}}" class="list-group-item list-group-item-action">
+                <div class="row align-items-center">
+                    <div class="col text-truncate">
+                        {{default empty_title 'No item'}}
+                        <div class="d-block text-muted text-truncate mt-n1">
+                            {{~empty_description~}}
+                            {{~#if empty_description_md~}}
+                                <div style="margin-bottom: -1rem">{{{markdown empty_description_md}}}</div>
+                            {{~/if~}}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        {{/if}}
     </div>
 </div>
