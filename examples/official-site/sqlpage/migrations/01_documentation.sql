@@ -350,7 +350,15 @@ INSERT INTO example(component, description, properties) VALUES
     '{"series": "Marketing", "x": 2021, "value": 35}, '||
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
-    '{"series": "Human resources", "x": 2022, "value": 55}]'));
+    '{"series": "Human resources", "x": 2022, "value": 55}]')),
+    ('chart', 'A bubble chart is like a scatter plot with one more dimension: each point is represented by a circle whose size is proportional to a third value.',
+    json('[{"component":"chart", "title": "My Bubble chart", "type": "bubble", "labels": true, "xmin": 0, "xmax": 5, "ymin": 0, "ymax": 10}, '||
+    ' {"series": "A", "x": 1, "y": 2, "z": 15}, '||
+    ' {"series": "B", "x": 2, "y": 8, "z": 3}, '||
+    ' {"series": "B", "x": 3, "y": 7, "z": 50}, '||
+    ' {"series": "B", "x": 4, "y": 2, "z": 3}, '||
+    ' {"series": "C", "x": 3, "y": 4, "z": 8} '||
+    ']'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('table', 'table', 'A table with optional filtering and sorting. Unlike most others, this component does not have a fixed set of item properties, any property that is used will be rendered directly as a column in the table.');
