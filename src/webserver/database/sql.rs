@@ -153,14 +153,22 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
 }
 
 fn syntax_error(err: ParserError, parser: &mut Parser) -> ParsedStatement {
-    let mut err_msg = "SQL syntax error before: ".to_string();
+    let mut err_msg = String::with_capacity(128);
     parser.prev_token(); // go back to the token that caused the error
-    for _ in 0..32 {
+    for i in 0..32 {
         let next_token = parser.next_token();
+        if i == 0 {
+            write!(
+                &mut err_msg,
+                "SQL syntax error on line {}, character {}:\n",
+                next_token.location.line, next_token.location.column
+            )
+            .unwrap();
+        }
         if next_token == EOF {
             break;
         }
-        _ = write!(&mut err_msg, "{next_token} ");
+        write!(&mut err_msg, "{next_token} ").unwrap();
     }
     ParsedStatement::Error(anyhow::Error::from(err).context(err_msg))
 }
