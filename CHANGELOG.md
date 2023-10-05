@@ -1,6 +1,9 @@
 # CHANGELOG.md
 
-## 0.12.0 (unreleased)
+## 0.13.0 (unreleased)
+ - Add support for buuble charts in the chart component. See [the chart documentation](https://sql.ophir.dev/documentation.sql?component=chart#component).
+
+## 0.12.0 (2023-10-04)
 
  - **variables** . SQLPage now support setting and reusing variables between statements. This allows you to write more complex SQL queries, and to reuse the result of a query in multiple places.
    ```sql

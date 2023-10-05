@@ -1,4 +1,4 @@
-/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.js */
+/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.43.0/dist/apexcharts.min.js */
 
 
 function sqlpage_chart() {
@@ -37,9 +37,9 @@ function sqlpage_chart() {
             const data = JSON.parse(c.querySelector("data").innerText);
             /** @type { Series } */
             const series_map = {};
-            data.points.forEach(([name, x, y]) => {
+            data.points.forEach(([name, x, y, z]) => {
                 series_map[name] = series_map[name] || { name, data: [] }
-                series_map[name].data.push({ x, y });
+                series_map[name].data.push({ x, y, z });
             })
             if (data.xmin == null) data.xmin = undefined;
             if (data.xmax == null) data.xmax = undefined;
@@ -125,7 +125,10 @@ function sqlpage_chart() {
                 tooltip: {
                     fillSeriesColor: false,
                 },
-                plotOptions: { bar: { horizontal: !!data.horizontal } },
+                plotOptions: { 
+                    bar: { horizontal: !!data.horizontal },
+                    bubble: { minBubbleRadius: 9 }
+                },
                 colors,
                 series,
             };

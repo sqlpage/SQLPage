@@ -35,6 +35,7 @@
             {{~ stringify (default series ../title) ~}},
             {{~ stringify (default x label) ~}},
             {{~ stringify (default y value) ~}}
+            {{~#if z}}, {{~ stringify z ~}} {{~/if~}}
         ]
     {{~/each_row~}}
     ]
