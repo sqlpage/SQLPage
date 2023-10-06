@@ -603,9 +603,7 @@ impl SplitTemplateRenderer {
         if let Some(mut local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             local_vars.put("row_index", self.row_index.into());
-            log::info!(
-                "Rendering the after_list template with the following local variables: {local_vars:?}"
-            );
+            log::trace!("Rendering the after_list template with the following local variables: {local_vars:?}");
             *render_context
                 .block_mut()
                 .expect("ctx created without block")
