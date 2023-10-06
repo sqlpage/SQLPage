@@ -111,8 +111,14 @@ function sqlpage_chart() {
                     logarithmic: !!data.logarithmic,
                     min: data.ymin,
                     max: data.ymax,
+                    tickAmount: data.yticks,
                     title: {
                         text: data.ytitle || undefined,
+                    }
+                },
+                zaxis: {
+                    title: {
+                        text: data.ztitle || undefined,
                     }
                 },
                 markers: {
@@ -124,10 +130,11 @@ function sqlpage_chart() {
                 },
                 tooltip: {
                     fillSeriesColor: false,
+                    custom: (data.type === 'bubble' || data.type === 'scatter') ? bubbleTooltip : undefined, 
                 },
                 plotOptions: { 
                     bar: { horizontal: !!data.horizontal },
-                    bubble: { minBubbleRadius: 9 }
+                    bubble: { minBubbleRadius: 5, },
                 },
                 colors,
                 series,
@@ -140,6 +147,41 @@ function sqlpage_chart() {
             else window.charts = [chart];
         } catch (e) { console.log(e) }
     }
+}
+
+function bubbleTooltip({ series, seriesIndex, dataPointIndex, w }) {
+    const {name, data} = w.config.series[seriesIndex];
+    const point = data[dataPointIndex];
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'apexcharts-tooltip-text';
+    tooltip.style.fontFamily = 'inherit';
+
+    const seriesName = document.createElement('div');
+    seriesName.className = 'apexcharts-tooltip-y-group';
+    seriesName.style.fontWeight = 'bold';
+    seriesName.innerText = name;
+    tooltip.appendChild(seriesName);
+
+    for(const axis of ['x', 'y', 'z']) {
+        const value = point[axis];
+        if (value == null) continue;
+        const axisValue = document.createElement('div');
+        axisValue.className = 'apexcharts-tooltip-y-group';
+        let axis_conf = w.config[axis + 'axis'];
+        if (axis_conf.length) axis_conf = axis_conf[0];
+        const title = axis_conf.title.text || axis;
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'apexcharts-tooltip-text-y-label';
+        labelSpan.innerText = title + ': ';
+        axisValue.appendChild(labelSpan);
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'apexcharts-tooltip-text-y-value';
+        valueSpan.innerText = value;
+        axisValue.appendChild(valueSpan);
+        tooltip.appendChild(axisValue);
+    }
+    return tooltip.outerHTML;
 }
 
 sqlpage_chart();
