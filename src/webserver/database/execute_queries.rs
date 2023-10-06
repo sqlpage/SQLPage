@@ -16,8 +16,7 @@ use sqlx::{AnyConnection, Arguments, Either, Executor, Row, Statement};
 
 use super::sql_pseudofunctions::StmtParam;
 use super::sql_to_json::sql_to_json;
-use super::{Database, DbItem, PreparedStatement};
-use std::fmt::Write;
+use super::{highlight_sql_error, Database, DbItem, PreparedStatement};
 
 impl Database {
     pub(crate) async fn prepare_with(
@@ -31,16 +30,6 @@ impl Database {
             .map(|s| s.to_owned())
             .map_err(|e| highlight_sql_error("Failed to prepare SQL statement", query, e))
     }
-}
-
-fn highlight_sql_error(context: &str, query: &str, db_err: sqlx::error::Error) -> anyhow::Error {
-    let mut msg = format!("{context}:\n{query}");
-    if let sqlx::error::Error::Database(db_err) = &db_err {
-        if let Some(offset) = db_err.offset() {
-            write!(msg, "\n{padding}⬆️", padding = " ".repeat(offset)).unwrap();
-        }
-    }
-    anyhow::Error::new(db_err).context(msg)
 }
 
 pub fn stream_query_results<'a>(
