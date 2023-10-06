@@ -4,6 +4,7 @@ use crate::MIGRATIONS_DIR;
 use anyhow;
 use anyhow::Context;
 use sqlx::migrate::MigrateError;
+use sqlx::migrate::Migration;
 use sqlx::migrate::Migrator;
 
 pub async fn apply(db: &Database) -> anyhow::Result<()> {
@@ -30,22 +31,14 @@ pub async fn apply(db: &Database) -> anyhow::Result<()> {
     }
     log::info!("Found {} migrations:", migrator.migrations.len());
     for m in migrator.iter() {
-        log::info!(
-            "\t[{:04}] {:?} {}",
-            m.version,
-            m.migration_type,
-            m.description
-        );
+        log::info!("\t{}", DisplayMigration(m));
     }
     migrator.run(&db.connection).await.map_err(|err| {
         match err {
             MigrateError::Execute(n, source) => {
                 let migration = migrator.iter().find(|&m| m.version == n).unwrap();
                 highlight_sql_error("Error in the SQL migration", &migration.sql, source).context(
-                    format!(
-                        "Failed to apply migration [{:04}] {:?} {}",
-                        migration.version, migration.migration_type, migration.description
-                    ),
+                    format!("Failed to apply migration {}", DisplayMigration(migration)),
                 )
             }
             source => anyhow::Error::new(source),
@@ -55,6 +48,25 @@ pub async fn apply(db: &Database) -> anyhow::Result<()> {
         ))
     })?;
     Ok(())
+}
+
+struct DisplayMigration<'a>(&'a Migration);
+
+impl<'a> std::fmt::Display for DisplayMigration<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Migration {
+            version,
+            migration_type,
+            description,
+            ..
+        } = &self.0;
+        write!(f, "[{version:04}]")?;
+        if migration_type != &sqlx::migrate::MigrationType::Simple {
+            write!(f, " ({migration_type:?})")?;
+        }
+        write!(f, " {description}")?;
+        Ok(())
+    }
 }
 
 fn migration_err(operation: &'static str) -> String {
