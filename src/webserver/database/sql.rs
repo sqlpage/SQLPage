@@ -158,9 +158,9 @@ fn syntax_error(err: ParserError, parser: &mut Parser) -> ParsedStatement {
     for i in 0..32 {
         let next_token = parser.next_token();
         if i == 0 {
-            write!(
+            writeln!(
                 &mut err_msg,
-                "SQL syntax error on line {}, character {}:\n",
+                "SQL syntax error on line {}, character {}:",
                 next_token.location.line, next_token.location.column
             )
             .unwrap();

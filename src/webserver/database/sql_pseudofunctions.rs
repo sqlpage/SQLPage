@@ -130,14 +130,16 @@ async fn exec_external_command<'a>(
         .output()
         .await
         .with_context(|| {
-            format!(
-                "Unable to execute command: {program_name} {}",
-                args.iter().map(|x| format!("{x:?}")).collect::<String>()
-            )
+            let mut s = format!("Unable to execute command: {program_name}");
+            for arg in args {
+                s.push(' ');
+                s.push_str(&arg);
+            }
+            s
         })?;
     if !res.status.success() {
         bail!(
-            "Command failed with exit code {}: {}",
+            "Command '{program_name}' failed with exit code {}: {}",
             res.status,
             String::from_utf8_lossy(&res.stderr)
         );
