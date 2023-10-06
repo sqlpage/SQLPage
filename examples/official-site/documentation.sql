@@ -95,6 +95,7 @@ select
                                     '    ' ||
                                     CASE typeof(value) 
                                         WHEN 'integer' THEN value::text
+                                        WHEN 'real' THEN value::text
                                         ELSE quote(value::text)
                                     END ||
                                     ' as ' ||

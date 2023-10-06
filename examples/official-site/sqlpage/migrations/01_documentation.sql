@@ -321,10 +321,15 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'chart', * FROM (VALUES
     -- top level
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
-    ('type', 'The type of chart: "line", "area", "bar", "column", or "pie".', 'TEXT', TRUE, FALSE),
+    ('type', 'The type of chart: "line", "area", "bar", "column", "pie", "scatter", or "bubble".', 'TEXT', TRUE, FALSE),
     ('time', 'Whether the x-axis represents time. If set to true, the values will be formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
     ('ymin', 'The minimal value for the y-axis.', 'NUMBER', TRUE, TRUE),
     ('ymax', 'The maximum value for the y-axis.', 'NUMBER', TRUE, TRUE),
+    ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
+    ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
+    ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
+    ('xticks', 'Number of ticks on the x axis.', 'NUMBER', TRUE, TRUE),
+    ('marker', 'Marker size', 'NUMBER', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
@@ -351,14 +356,18 @@ INSERT INTO example(component, description, properties) VALUES
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
     '{"series": "Human resources", "x": 2022, "value": 55}]')),
-    ('chart', 'A bubble chart is like a scatter plot with one more dimension: each point is represented by a circle whose size is proportional to a third value.',
-    json('[{"component":"chart", "title": "My Bubble chart", "type": "bubble", "labels": true, "xmin": 0, "xmax": 5, "ymin": 0, "ymax": 10}, '||
-    ' {"series": "A", "x": 1, "y": 2, "z": 15}, '||
-    ' {"series": "B", "x": 2, "y": 8, "z": 3}, '||
-    ' {"series": "B", "x": 3, "y": 7, "z": 50}, '||
-    ' {"series": "B", "x": 4, "y": 2, "z": 3}, '||
-    ' {"series": "C", "x": 3, "y": 4, "z": 8} '||
-    ']'));
+    ('chart', 'A scatter plot with multiple custom options.',
+    json('[
+        {"component":"chart", "title": "Gross domestic product and its growth", "type": "scatter",
+        "xtitle": "Growth Rate", "ytitle": "GDP (Trillions USD)", "marker": 8,
+        "xmin": 0, "xmax": 10, "ymin": 0, "ymax": 25, "yticks": 10},
+
+        {"series": "Brazil", "x": 2.5, "y": 2},
+        {"series": "China", "x": 6.5, "y": 14},
+        {"series": "United States", "x": 2.3, "y": 21},
+        {"series": "France", "x": 1.5, "y": 3},
+        {"series": "South Africa", "x": 0.9, "y": 0.3}
+    ]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('table', 'table', 'A table with optional filtering and sorting. Unlike most others, this component does not have a fixed set of item properties, any property that is used will be rendered directly as a column in the table.');
