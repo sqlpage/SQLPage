@@ -2,6 +2,7 @@
 
 ## 0.13.0 (unreleased)
  - Add support for buuble charts in the chart component. See [the chart documentation](https://sql.ophir.dev/documentation.sql?component=chart#component).
+ - further improve debuggability with more precise error messages
 
 ## 0.12.0 (2023-10-04)
 

@@ -29,3 +29,33 @@ impl std::fmt::Display for PreparedStatement {
         write!(f, "{}", self.statement.sql())
     }
 }
+
+#[must_use]
+pub fn highlight_sql_error(
+    context: &str,
+    query: &str,
+    db_err: sqlx::error::Error,
+) -> anyhow::Error {
+    use std::fmt::Write;
+    let mut msg = format!("{context}:\n");
+    let offset = if let sqlx::error::Error::Database(db_err) = &db_err {
+        db_err.offset()
+    } else {
+        None
+    };
+    if let Some(mut offset) = offset {
+        for (line_no, line) in query.lines().enumerate() {
+            if offset > line.len() {
+                offset -= line.len() + 1;
+            } else {
+                writeln!(msg, "{line}").unwrap();
+                writeln!(msg, "{}⬆️", " ".repeat(offset)).unwrap();
+                write!(msg, "line {}, character {offset}", line_no + 1).unwrap();
+                break;
+            }
+        }
+    } else {
+        write!(msg, "{}", query.lines().next().unwrap_or_default()).unwrap();
+    }
+    anyhow::Error::new(db_err).context(msg)
+}

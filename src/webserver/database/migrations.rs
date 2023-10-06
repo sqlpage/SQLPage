@@ -1,4 +1,5 @@
 use super::Database;
+use crate::webserver::database::highlight_sql_error;
 use crate::MIGRATIONS_DIR;
 use anyhow;
 use anyhow::Context;
@@ -40,10 +41,12 @@ pub async fn apply(db: &Database) -> anyhow::Result<()> {
         match err {
             MigrateError::Execute(n, source) => {
                 let migration = migrator.iter().find(|&m| m.version == n).unwrap();
-                anyhow::Error::new(source).context(format!(
-                    "Failed to apply migration [{:04}] {:?} {}",
-                    migration.version, migration.migration_type, migration.description
-                ))
+                highlight_sql_error("Error in the SQL migration", &migration.sql, source).context(
+                    format!(
+                        "Failed to apply migration [{:04}] {:?} {}",
+                        migration.version, migration.migration_type, migration.description
+                    ),
+                )
             }
             source => anyhow::Error::new(source),
         }
