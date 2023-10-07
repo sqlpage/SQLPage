@@ -21,6 +21,9 @@
     {{#each_row}}
         <div class="col">
             <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card h-100 {{#if active}}card-active{{/if}}">
+                {{#if top_image}}
+                    <img src="{{top_image}}" class="card-img-top" />
+                {{/if}}
                 {{#if color}}
                     <div class="card-status-start bg-{{color}}"></div>
                 {{/if}}
