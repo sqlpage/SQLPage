@@ -96,8 +96,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-${{ steps.suffix.outputs.suffix }}
-          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-${{ steps.suffix.outputs.suffix }},compression=zstd,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
+          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }},compression=zstd,mode=max
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
