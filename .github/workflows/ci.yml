@@ -69,11 +69,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - id: suffix
+        name: Cache name suffix
+        run: echo "suffix=-$(tr '/' '-' <<< ${{ matrix.platform }})" >> "$GITHUB_OUTPUT"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          flavor: suffix=${{ steps.suffix.outputs.suffix }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -83,8 +87,6 @@ jobs:
         with:
           username: ${{ env.REGISTRY_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - id: cache_name
-        run: echo "img=${{ env.REGISTRY_IMAGE }}:cache-$(tr '/' '-' <<< ${{ matrix.platform }})" >> "$GITHUB_OUTPUT"
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v5
@@ -92,9 +94,10 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=registry,ref=${{ steps.cache_name.outputs.img }}
-          cache-to: type=registry,ref=${{ steps.cache_name.outputs.img }},compression=zstd,mode=max
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-${{ steps.suffix.outputs.suffix }}
+          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-${{ steps.suffix.outputs.suffix }},compression=zstd,mode=max
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
