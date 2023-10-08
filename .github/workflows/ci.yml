@@ -91,8 +91,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}
-          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }},compression=zstd,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:cache-${{ matrix.platform }}
+          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:cache-${{ matrix.platform }},compression=zstd,mode=max
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
