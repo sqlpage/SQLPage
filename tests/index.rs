@@ -44,22 +44,44 @@ async fn test_404() {
 }
 
 #[actix_web::test]
-async fn test_files_it_works() {
+async fn test_files() {
     // Iterate over all the sql test files in the tests/ directory
-    for entry in std::fs::read_dir("tests").unwrap() {
+    let path = std::path::Path::new("tests/sql_test_files");
+    for entry in std::fs::read_dir(path).unwrap() {
         let entry = entry.unwrap();
-        let path = entry.path();
-        if path.extension().unwrap_or_default() != "sql" {
+        let test_file_path = entry.path();
+        let stem = test_file_path.file_stem().unwrap().to_str().unwrap();
+        if test_file_path.extension().unwrap_or_default() != "sql" {
             continue;
         }
-        let path = format!("/{}?x=1", path.display());
-        let resp = req_path(&path).await.unwrap();
+        let req_str = format!("/{}?x=1", test_file_path.display());
+        let resp = req_path(&req_str).await.unwrap();
         let body = test::read_body(resp).await;
         assert!(body.starts_with(b"<!DOCTYPE html>"));
         // the body should contain the strint "It works!" and should not contain the string "error"
         let body = String::from_utf8(body.to_vec()).unwrap();
-        assert!(body.contains("It works !"), "{path}: {body}");
-        assert!(!body.contains("error"), "{body}");
+        let lowercase_body = body.to_lowercase();
+        if stem.starts_with("it_works") {
+            assert!(
+                body.contains("It works !"),
+                "{req_str}\n{body}\nexpected to contain: It works !"
+            );
+            assert!(
+                !lowercase_body.contains("error"),
+                "{body}\nexpected to not contain: error"
+            );
+        } else if stem.starts_with("error_") {
+            let rest = stem.strip_prefix("error_").unwrap();
+            let expected_str = rest.replace("_", " ");
+            assert!(
+                lowercase_body.contains(&expected_str),
+                "{req_str}\n{body}\nexpected to contain: {expected_str}"
+            );
+            assert!(
+                lowercase_body.contains("error"),
+                "{req_str}\n{body}\nexpected to contain: error"
+            );
+        }
     }
 }
 
