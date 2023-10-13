@@ -2,6 +2,7 @@ ARG VERSION=2019-latest
 FROM mcr.microsoft.com/mssql/server:${VERSION}
 
 # Create a config directory
+USER root
 RUN mkdir -p /usr/config
 WORKDIR /usr/config
 
@@ -10,7 +11,6 @@ COPY entrypoint.sh /usr/config/entrypoint.sh
 COPY setup.sql /usr/config/setup.sql
 
 # Grant permissions for to our scripts to be executable
-USER root
 RUN chmod +x /usr/config/entrypoint.sh
 RUN chown 10001 /usr/config/entrypoint.sh
 USER 10001
