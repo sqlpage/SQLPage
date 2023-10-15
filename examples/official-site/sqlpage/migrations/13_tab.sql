@@ -5,7 +5,6 @@ VALUES (
         'row-insert-bottom',
         '0.9.5'
     );
--- Insert the parameters for the http_header component into the parameter table
 INSERT INTO parameter (
         component,
         name,

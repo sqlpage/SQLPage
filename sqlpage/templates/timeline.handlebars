@@ -1,0 +1,31 @@
+<ul class="timeline {{#if simple}}timeline-simple{{/if}}">
+  {{#each_row}}
+  <li class="timeline-event">
+    <div class="timeline-event-icon {{#if color}}bg-{{color}}-lt{{/if}}">
+        {{~icon_img (default icon 'git-commit')~}}
+    </div>
+    {{~#if link~}}
+    <a class="card timeline-event-card" href="{{link}}">
+    {{~else~}}
+    <div class="card timeline-event-card">
+    {{~/if~}}
+      <div class="card-body">
+        <div class="text-secondary float-end">{{date}}</div>
+        {{~#if title}}<h4>{{title}}</h4>{{~/if~}}
+        {{~#if (or description description_md)~}}
+            <p class="text-secondary">
+                {{~description~}}
+                {{~#if description_md~}}
+                    {{{markdown description_md}}}
+                {{~/if~}}
+            </p>
+        {{~/if~}}
+      </div>
+    {{~#if link~}}
+    </a>
+    {{~else~}}
+    </div>
+    {{~/if~}}
+  </li>
+  {{/each_row}}
+</ul>
