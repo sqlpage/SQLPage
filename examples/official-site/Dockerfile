@@ -1,3 +1,3 @@
 FROM lovasoa/sqlpage:main
 
-COPY . .
+COPY . /var/www
