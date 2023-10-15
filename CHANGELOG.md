@@ -4,6 +4,9 @@
  - Add support for scatter and bubble plots in the chart component. See [the chart documentation](https://sql.ophir.dev/documentation.sql?component=chart#component).
  - further improve debuggability with more precise error messages. In particular, it usd to be hard to debug errors in long migration scripts, because the line number and position was not displayed. This is now fixed.
  - Add a new `top_image` attribute to the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to display an image at the top of the card. This makes it possible to create beautiful image galleries with SQLPage.
+ - Updated dependencies, for bug fixes and performance improvements.
+ - New icons (see https://tabler-icons.io/changelog)
+ - When `NULL` is passed as an icon name, display no icon instead of raising an error.
 
 ## 0.12.0 (2023-10-04)
 
