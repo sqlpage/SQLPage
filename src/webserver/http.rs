@@ -415,13 +415,14 @@ async fn process_sql_request(
         .sql_file_cache
         .get(app_state, &sql_path)
         .await
+        .with_context(|| format!("Unable to get SQL file {:?}", sql_path))
         .map_err(anyhow_err_to_actix)?;
     let response = render_sql(&mut req, sql_file).await?;
     Ok(req.into_response(response))
 }
 
 fn anyhow_err_to_actix(e: anyhow::Error) -> actix_web::Error {
-    log::error!("Error while trying to get SQL file: {:#}", e);
+    log::error!("{e:#}");
     match e.downcast::<ErrorWithStatus>() {
         Ok(err) => actix_web::Error::from(err),
         Err(e) => ErrorInternalServerError(format!(
@@ -442,6 +443,7 @@ async fn serve_file(
             .file_system
             .modified_since(state, path.as_ref(), since, false)
             .await
+            .with_context(|| format!("Unable to get modification time of file {:?}", path))
             .map_err(anyhow_err_to_actix)?;
         if !modified {
             return Ok(HttpResponse::NotModified().finish());
@@ -451,6 +453,7 @@ async fn serve_file(
         .file_system
         .read_file(state, path.as_ref(), false)
         .await
+        .with_context(|| format!("Unable to read file {:?}", path))
         .map_err(anyhow_err_to_actix)
         .map(|b| {
             HttpResponse::Ok()
