@@ -72,7 +72,7 @@ async fn test_files() {
             );
         } else if stem.starts_with("error_") {
             let rest = stem.strip_prefix("error_").unwrap();
-            let expected_str = rest.replace("_", " ");
+            let expected_str = rest.replace('_', " ");
             assert!(
                 lowercase_body.contains(&expected_str),
                 "{req_str}\n{body}\nexpected to contain: {expected_str}"
