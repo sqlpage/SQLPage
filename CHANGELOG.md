@@ -9,6 +9,13 @@
  - Updated dependencies, for bug fixes and performance improvements.
  - New icons (see https://tabler-icons.io/changelog)
  - When `NULL` is passed as an icon name, display no icon instead of raising an error.
+ - Official docker image folder structure changed. The docker image now expects 
+   - the SQLPage website (`.sql` files) to be in `/var/www/`, and
+   - the SQLPage configuration folder to be in `/etc/sqlpage/`
+    - the configuration file should be in `/etc/sqlpage/sqlpage.json`
+    - the database file should be in `/etc/sqlpage/sqlpage.db`
+    - custom templates should be in `/etc/sqlpage/templates/`
+   - This configuration change concerns only the docker image. If you are using the sqlpage binary directly, nothing changes.
 
 ## 0.12.0 (2023-10-04)
 
