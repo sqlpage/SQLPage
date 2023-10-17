@@ -32,7 +32,7 @@ dependencies = [
  "actix-utils",
  "ahash 0.8.3",
  "base64 0.21.4",
- "bitflags 2.4.0",
+ "bitflags 2.4.1",
  "brotli",
  "bytes",
  "bytestring",
@@ -462,9 +462,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.4.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
+checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 dependencies = [
  "serde",
 ]
@@ -563,6 +563,15 @@ dependencies = [
  "num-traits",
  "wasm-bindgen",
  "windows-targets",
+]
+
+[[package]]
+name = "concurrent-queue"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f057a694a54f12365049b0958a1685bb52d567f5593b355fbf685838e873d400"
+dependencies = [
+ "crossbeam-utils",
 ]
 
 [[package]]
@@ -827,9 +836,14 @@ dependencies = [
 
 [[package]]
 name = "event-listener"
-version = "2.5.3"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
+checksum = "29e56284f00d94c1bc7fd3c77027b4623c88c1f53d8d2394c6199f2921dea325"
+dependencies = [
+ "concurrent-queue",
+ "parking",
+ "pin-project-lite",
+]
 
 [[package]]
 name = "finl_unicode"
@@ -1641,6 +1655,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "parking"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e52c774a4c39359c1d1c52e43f73dd91a75a614652c825408eec30c95a9b2067"
+
+[[package]]
 name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1896,9 +1916,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.1"
+version = "1.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaac441002f822bc9705a681810a4dd2963094b9ca0ddc41cb963a4c189189ea"
+checksum = "380b951a9c5e80ddfd6136919eef32310721aa4aacd4889a8d39124b026ab343"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1908,9 +1928,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5011c7e263a695dc8ca064cddb722af1be54e517a280b12a5356f98366899e5d"
+checksum = "5f804c7828047e88b2d32e2d7fe5a105da8ee3264f01902f796c8e067dc2483f"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1940,9 +1960,9 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.17.3"
+version = "0.17.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9babe80d5c16becf6594aa32ad2be8fe08498e7ae60b77de8df700e67f191d7e"
+checksum = "fce3045ffa7c981a6ee93f640b538952e155f1ae3a1a02b84547fc7a56b7059a"
 dependencies = [
  "cc",
  "getrandom",
@@ -2022,7 +2042,7 @@ version = "0.38.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "745ecfa778e66b2b63c88a61cb36e0eea109e803b0b86bf9879fbc77c70e86ed"
 dependencies = [
- "bitflags 2.4.0",
+ "bitflags 2.4.1",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -2315,14 +2335,14 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.15"
+version = "0.6.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a72a399034ac529f67afec88563bd4c6385307e727f7cf6c3893fa3b55a0f30e"
+checksum = "ff860aa7a4550a5ac03ff631d461597199f78ed3ff37f4a40f3f9e6e5ea09c86"
 dependencies = [
  "ahash 0.8.3",
  "atoi",
  "base64 0.21.4",
- "bitflags 2.4.0",
+ "bitflags 2.4.1",
  "byteorder",
  "bytes",
  "chrono",
@@ -2378,9 +2398,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.15"
+version = "0.6.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a518a2a8ebe3aeb991d68ea8701d945fdaf7d0fe53eec8ebcade77b92a1bdbc6"
+checksum = "5f7e342545a51a32c42397f4ef701b56317cdaf745c8da3ffc7850e995b68d32"
 dependencies = [
  "dotenvy",
  "either",
@@ -2398,9 +2418,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.15"
+version = "0.6.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd3f0ae81b38c74aa7b54f1e8e20216ac98cdce1f9ed67af1965c0109235f819"
+checksum = "fc85b2f46db192e76f21ec72ea84397470337937ae187b9503423d5472ca816b"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -2408,9 +2428,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt-oldapi"
-version = "0.6.15"
+version = "0.6.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b014acffda3546a7c8e2d0f9fe09a0099b2765d8df0079470b726297149efc4"
+checksum = "d11ca96c94f39b853282847f75a8be121ae908539d55c4abbb9efe99dd7650d7"
 dependencies = [
  "once_cell",
  "tokio",
@@ -2865,7 +2885,7 @@ version = "0.22.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed63aea5ce73d0ff405984102c42de94fc55a6b75765d621c65262469b3c9b53"
 dependencies = [
- "ring 0.17.3",
+ "ring 0.17.4",
  "untrusted 0.9.0",
 ]
 

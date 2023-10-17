@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 0.14.0 (unreleased)
+
+ - Better error messages for Microsoft SQL Server. SQLPage now displays the line number of the error, which is especially useful for debugging long migration scripts.
+
 ## 0.13.0 (2023-10-16)
  - New [timeline](https://sql.ophir.dev/documentation.sql?component=timeline#component) component to display a timeline of events.
  - Add support for scatter and bubble plots in the chart component. See [the chart documentation](https://sql.ophir.dev/documentation.sql?component=chart#component).
