@@ -5,6 +5,8 @@
         {{#if description_md}}
             {{{markdown description_md}}}
         {{/if}}
-        <pre class="mb-0"><code>{{contents}}</code></pre>
+        <pre class="mb-0"><code 
+            {{#if language}}class="language-{{language}}"{{/if}}
+        >{{contents}}</code></pre>
     {{/each_row}}
 </div>

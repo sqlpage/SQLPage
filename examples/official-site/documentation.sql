@@ -1,6 +1,13 @@
 -- This line, at the top of the page, tells web browsers to keep the page locally in cache once they have it.
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 
+    'dynamic' as component,
+    json_set(
+        properties,
+        '$[0].title',
+        'SQLPage components' || COALESCE(': ' || $component, ' documentation')
+    ) as properties
+FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, format('SQLPage v%s documentation', sqlpage.version()) as title;
 select '
@@ -86,22 +93,31 @@ select
         {
             "title": "Example ' || (row_number() OVER ()) || '",
             "description_md": ' || json_quote(description) || ',
+            "language": "sql",
             "contents": ' || json_quote((
                 select
                      group_concat(
-                        'SELECT ' || char(10) ||
+                        'select ' || char(10) ||
                             (
+                                with t as (select * from json_tree(top.value))
                                 select group_concat(
                                     '    ' ||
-                                    CASE typeof(value) 
-                                        WHEN 'integer' THEN value::text
-                                        WHEN 'real' THEN value::text
-                                        ELSE quote(value::text)
+                                    CASE t.type 
+                                        WHEN 'integer' THEN t.atom
+                                        WHEN 'real' THEN t.atom
+                                        WHEN 'true' THEN 'TRUE'
+                                        WHEN 'false' THEN 'FALSE'
+                                        WHEN 'null' THEN 'NULL'
+                                        ELSE quote(t.value)
                                     END ||
                                     ' as ' ||
-                                    key
+                                    CASE parent.fullkey
+                                        WHEN '$' THEN t.key
+                                        ELSE parent.key
+                                    END
                                 , ',' || char(10)
-                                ) from json_each(top.value)
+                                ) from t inner join t parent on parent.id = t.parent
+                                where t.atom is not null
                             ) || ';',
                         char(10)
                      )

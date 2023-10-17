@@ -15,7 +15,7 @@ VALUES (
  - Updated dependencies, for bug fixes and performance improvements.
  - New icons (see https://tabler-icons.io/changelog)
  - When `NULL` is passed as an icon name, display no icon instead of raising an error.
- - Official docker image folder structure changed. The docker image now expects 
+ - The folder structure changed in the [official docker image](https://hub.docker.com/r/lovasoa/sqlpage). The docker image now expects 
    - the SQLPage website (`.sql` files) to be in `/var/www/`, and
    - the SQLPage configuration folder to be in `/etc/sqlpage/`
     - the configuration file should be in `/etc/sqlpage/sqlpage.json`
