@@ -60,29 +60,36 @@ As an example, the list of features on this page is generated using a simple SQL
 
 ```sql
 SELECT ''card'' as component, ''What is SQLPage ?'' as title;
-SELECT header AS title, contents AS description FROM homepage_features;
+SELECT header AS title, contents AS description_md FROM homepage_features;
 ```
 
-Additionnally, SQLPage itself is written in a fast and secure programming language: Rust.
-We made all the optimizations so that you can think about your data, and nothing else.' as description_md,
+However, you can also create your own components, or edit the existing ones to customize your website to your liking.
+Creating a new component is as simple as creating an HTML template file.
+' as description_md,
     'rocket' as icon,
     'green' as color;
 SELECT 'Technically, it''s just a good old web server' as title,
     '
 The principles behind SQLPage are not too far from those that powered the early days of the internet.
-Like [PHP](https://en.wikipedia.org/wiki/PHP), SQLPage just receives a request, finds the file to execute, runs it, and returns a response.
+Like [PHP](https://en.wikipedia.org/wiki/PHP), SQLPage just receives a request, finds the file to execute, runs it,
+and returns a web page for the browser to display.
 
-SQLPage is a *web server* written in
-[rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
-and [distributed as a single executable file](https://github.com/lovasoa/SQLpage/releases).
-When it receives a request with a URL ending in `.sql`, it finds the corresponding
+SQLPage is a *web server* written in a fast and secure programming language: 
+[**Rust**](https://en.wikipedia.org/wiki/Rust_(programming_language)).
+It is extremely easy to use:
+you [download a single executable file](https://github.com/lovasoa/SQLpage/releases),
+write an `.sql` file, and you''re done.
+We made all the optimizations, wrote all of the HTTP request handling code and rendering logic,
+implemented all of the security features, so that you can think about your data, and nothing else.
+
+When SQLPage receives a request with a URL ending in `.sql`, it finds the corresponding
 SQL file, runs it on the database, passing it information from the web request as SQL statement parameters
 [in a safe manner](safety.sql).
 When the database starts returning rows for the query,
 SQLPage maps each piece of information in the row to a parameter in the template of a pre-defined component,
 and streams the result back to the user''s browser.
 ' as description_md,
-    'flask' as icon,
+    'server' as icon,
     'purple' as color;
 SELECT 'Start Simple, Scale to Advanced' as title,
     'SQLPage is a great starting point for building websites, especially if you''re new to coding, or want to test out a new idea quickly.

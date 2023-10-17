@@ -36,7 +36,7 @@ and render the database responses as nice web pages.
 
 [Download the latest SQLPage](https://github.com/lovasoa/SQLpage/releases) for your operating system.
 
-> **Note**: Advanced user can alternatively install SQLPage using
+> **Note**: Advanced users can alternatively install SQLPage using
 > [docker](https://hub.docker.com/repository/docker/lovasoa/sqlpage/general),
 > [brew](https://formulae.brew.sh/formula/sqlpage),
 > or [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage)
@@ -84,7 +84,7 @@ Your database schema
 ====================
 
 > If you already have a database populated with data, 
-> or if you intend to use other tools to manage your database schema,
+> or if you intend to use other tools to manage your database structure,
 > you can skip this section.
 
 The [database schema](https://en.wikipedia.org/wiki/Database_schema) for your SQLPage website
@@ -108,6 +108,9 @@ CREATE TABLE users (
     name TEXT NOT NULL
 );
 ```
+
+> **Note**: The migration system is not supported on Microsoft SQL Server databases.
+> If you are using a SQL Server database, you should create your tables using a different tool, such as *SQL Server Management Studio*.
 
 Connect to a custom database
 ============================

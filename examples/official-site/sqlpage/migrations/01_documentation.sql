@@ -286,8 +286,8 @@ When loading the page, the value for `:username` will be `NULL` if no value has 
 In this select input, the various options are hardcoded, but they could also be loaded from a database table,
 using a function to convert the rows into a json array like 
  - `json_group_array()` in SQLite,
- - `json_agg()` in Postgres, or
- - `JSON_ARRAYAGG()` in MySQL.
+ - `json_agg()` in Postgres,
+ - `JSON_ARRAYAGG()` in MySQL, or
  - `FOR JSON PATH` in Microsoft SQL Server.
 
 
@@ -295,7 +295,10 @@ In SQLite, the query would look like
 ```sql
 SELECT 
     ''select'' as type,
-    json_group_array(json_object("label", name, "value", id)) as options
+    json_group_array(json_object(
+        "label", name,
+        "value", id
+    )) as options
 FROM fruits
 ```
 ', json('[{"component":"form"}, '||
@@ -480,5 +483,8 @@ INSERT INTO example(component, description, properties) VALUES
             "description": "Documentation for the SQLPage low-code web application framework.",
             "font": "Poppins",
             "icon": "book",
+            "javascript": ["https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js", 
+                           "https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"],
+            "css": "https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-okaidia.min.css",
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]'));

@@ -17,9 +17,16 @@ Most programmers, hearing this, will immediately think of the security implicati
 
 This page is here to provide a list of the security guarantees that SQLPage provides.
 SQLPage was designed from the ground up to be usable by non-technical *data analysts* and other non-web-developers,
-so it provides safe defaults everywhere, so that you don''t have to worry about inadvertently 
-exposing more data than you intended.
+so it provides safe defaults everywhere, so that you don''t have to think about basic security issues
+you would have to worry about in a traditional web development stack.
 
+## SQLPage does not expose your database to the internet
+
+SQLPage websites are *server-side rendered*, which means that the SQL queries stay on the server
+where SQLPage is installed.
+
+The results of these queries are then rendered to HTML, and sent to the user''s browser.
+A malicious user cannot run arbitrary SQL queries on your database, because SQLPage does not expose your database to the internet.
 
 ## Protection against SQL injections
 
@@ -75,6 +82,22 @@ that disallows the execution of any inline JavaScript code, and only allows load
 
 If you have some legitimate JavaScript code that you want to execute on your website, you can use the `javascript`
 parameter of the [`shell`](documentation.sql?component=shell#component) component to do so.
+
+## Authentication
+
+SQLPage provides an [authentication](/documentation.sql?component=authentication#component) component that allows you to
+restrict access to some pages of your website to authenticated users.
+
+It also provides useful built-in functions such as 
+[`sqlpage.basic_auth_username()`](/functions.sql?function=basic_auth_username#function), 
+[`sqlpage.basic_auth_password()`](/functions.sql?function=basic_auth_password#function) and 
+[`sqlpage.hash_password()`](/functions.sql?function=hash_password#function)
+to help you implement your authentication system entirely in SQL.
+
+The components and functions provided by SQLPage are designed to be used by non-technical users,
+and to respect [security best practices](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) by default.
+Passwords are [hashed with a salt](https://en.wikipedia.org/wiki/Salt_(cryptography)) using the
+[argon2](https://en.wikipedia.org/wiki/Argon2) algorithm.
 
 ## Database connections
 

@@ -1,4 +1,10 @@
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component,
+    json_set(
+        properties,
+        '$[0].title',
+        'SQLPage functions' || COALESCE(': ' || $function, ' documentation')
+    ) as properties
+FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, 'SQLPage built-in functions' as title;
 select '

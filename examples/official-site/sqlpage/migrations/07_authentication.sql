@@ -62,7 +62,7 @@ The username and password entered by the user will be accessible in your SQL cod
 
 ```sql
 SELECT ''authentication'' AS component,
-    ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using https://argon2.online/
+    ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using sqlpage.hash_password
     sqlpage.basic_auth_password() AS password; -- this is the password that the user entered in the browser popup
 ```
 
@@ -73,7 +73,7 @@ The most basic usage of the authentication component is to simply check if the u
 ```sql
 SELECT ''authentication'' AS component,
     ''login.sql'' AS link,
-    ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using https://argon2.online/
+    ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using sqlpage.hash_password
     :password AS password; -- this is the password that the user sent through our form
 ```
 
