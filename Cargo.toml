@@ -8,6 +8,7 @@ license = "MIT"
 homepage = "https://sql.ophir.dev/"
 repository = "https://github.com/lovasoa/SQLpage"
 documentation = "https://docs.rs/sqlpage"
+include = ["/src", "/README.md", "/build.rs", "/sqlpage", "/index.sql"]
 
 [profile.superoptimized]
 inherits = "release"
