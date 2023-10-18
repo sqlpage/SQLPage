@@ -99,25 +99,33 @@ select
                      group_concat(
                         'select ' || char(10) ||
                             (
-                                with t as (select * from json_tree(top.value))
+                                with t as (select * from json_tree(top.value)),
+                                key_val as (select
+                                        CASE t.type 
+                                            WHEN 'integer' THEN t.atom
+                                            WHEN 'real' THEN t.atom
+                                            WHEN 'true' THEN 'TRUE'
+                                            WHEN 'false' THEN 'FALSE'
+                                            WHEN 'null' THEN 'NULL'
+                                            ELSE quote(t.value)
+                                        END as key,
+                                        CASE parent.fullkey
+                                            WHEN '$' THEN t.key
+                                            ELSE parent.key
+                                        END as val
+                                    from t inner join t parent on parent.id = t.parent
+                                    where t.atom is not null
+                                ),
+                                key_val_padding as (select
+                                    key,
+                                    val,
+                                    1 + max(0, max(case when length(key) < 30 then length(key) else 0 end) over () - length(key)) as padding
+                                    from key_val
+                                )
                                 select group_concat(
-                                    '    ' ||
-                                    CASE t.type 
-                                        WHEN 'integer' THEN t.atom
-                                        WHEN 'real' THEN t.atom
-                                        WHEN 'true' THEN 'TRUE'
-                                        WHEN 'false' THEN 'FALSE'
-                                        WHEN 'null' THEN 'NULL'
-                                        ELSE quote(t.value)
-                                    END ||
-                                    ' as ' ||
-                                    CASE parent.fullkey
-                                        WHEN '$' THEN t.key
-                                        ELSE parent.key
-                                    END
-                                , ',' || char(10)
-                                ) from t inner join t parent on parent.id = t.parent
-                                where t.atom is not null
+                                    format('    %s%.*cas %s', key, padding, ' ', val),
+                                     ',' || char(10)
+                                ) from key_val_padding
                             ) || ';',
                         char(10)
                      )
