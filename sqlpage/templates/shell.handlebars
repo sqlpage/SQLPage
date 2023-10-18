@@ -42,7 +42,7 @@
     {{#if title}}
         <nav class="navbar navbar-expand-md navbar-light">
             <div class="container-fluid">
-                <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
+                <a class="navbar-brand flex-grow-1 overflow-hidden" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                     {{#if image}}
                         <img src="{{image}}" alt="{{title}}" width="32" height="32"
                              class="navbar-brand-image">
@@ -50,7 +50,7 @@
                     {{#if icon}}
                         {{~icon_img icon~}}
                     {{/if}}
-                    {{title}}
+                    <h1 class="mb-0 w-0 fs-2">{{title}}</h1>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                         data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false"
