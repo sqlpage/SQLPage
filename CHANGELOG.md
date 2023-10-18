@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - Fix display of long titles in the shell component.
+
 ## 0.14.0 (2023-10-19)
 
  - Better support for time series in the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component. You can now use the `time` top-attribute to display a time series chart
