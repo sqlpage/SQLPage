@@ -3,6 +3,7 @@ use super::PreparedStatement;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::utils::add_value_to_map;
 use crate::{AppState, Database};
+use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
     BinaryOperator, DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName,
@@ -85,7 +86,9 @@ async fn prepare_query_with_params(
         }
         Err(err) => {
             log::warn!("Failed to prepare {query:?}: {err:#}");
-            ParsedSQLStatement::Error(err)
+            ParsedSQLStatement::Error(err.context(format!(
+                "The database returned an error when preparing this SQL statement: {query}"
+            )))
         }
     }
 }
@@ -118,7 +121,9 @@ fn parse_sql<'a>(
     dialect: &'a dyn Dialect,
     sql: &'a str,
 ) -> anyhow::Result<impl Iterator<Item = ParsedStatement> + 'a> {
-    let tokens = Tokenizer::new(dialect, sql).tokenize_with_location()?;
+    let tokens = Tokenizer::new(dialect, sql)
+        .tokenize_with_location()
+        .with_context(|| "SQLPage's SQL parser could not tokenize the sql file")?;
     let mut parser = Parser::new(dialect).with_tokens_with_locations(tokens);
     let db_kind = kind_of_dialect(dialect);
     Ok(std::iter::from_fn(move || {
@@ -160,7 +165,7 @@ fn syntax_error(err: ParserError, parser: &mut Parser) -> ParsedStatement {
         if i == 0 {
             writeln!(
                 &mut err_msg,
-                "SQL syntax error on line {}, character {}:",
+                "SQLPage found a syntax error on line {}, character {}:",
                 next_token.location.line, next_token.location.column
             )
             .unwrap();

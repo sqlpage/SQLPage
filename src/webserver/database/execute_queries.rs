@@ -151,7 +151,7 @@ fn parse_single_sql_result(
 }
 
 fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
-    let mut e = anyhow!("An error occurred while trying to prepare this SQL statement");
+    let mut e = anyhow!("SQLPage could not parse and prepare this SQL statement");
     for c in err.chain().rev() {
         e = e.context(c.to_string());
     }
