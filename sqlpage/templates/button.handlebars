@@ -1,0 +1,17 @@
+<div class="btn-list mb-2 {{#if justify}}justify-content-{{justify}}{{/if}}">
+{{#each_row}}
+    <a href="{{link}}"
+        class="btn {{#if disabled}} disabled{{/if}}
+        {{~#if color}} btn-{{color}}{{/if}}
+        {{~#if ../size}} btn-{{../size}}{{/if}}
+        {{~#if outline}} btn-outline-{{outline}}{{/if}}
+        {{~#if ../shape}} btn-{{../shape}}{{/if}}
+        {{~#if space_after}} me-auto{{/if}}"
+        role="button">
+        {{~#if icon~}}
+            <span class="me-1">{{~icon_img icon~}}</span>
+        {{~/if~}}
+        {{~title~}}
+    </a>
+{{/each_row}}
+</div>
