@@ -333,7 +333,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- top level
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
     ('type', 'The type of chart: "line", "area", "bar", "column", "pie", "scatter", or "bubble".', 'TEXT', TRUE, FALSE),
-    ('time', 'Whether the x-axis represents time. If set to true, the values will be formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
+    ('time', 'Whether the x-axis represents time. If set to true, the x values will be parsed and formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
     ('ymin', 'The minimal value for the y-axis.', 'NUMBER', TRUE, TRUE),
     ('ymax', 'The maximum value for the y-axis.', 'NUMBER', TRUE, TRUE),
     ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
@@ -355,8 +355,24 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
-    ('chart', 'An area chart', json('[{"component":"chart", "title": "Quarterly Revenue", "type": "area", "color": "indigo"}, '||
-    '{"x":"2022-Q1","y":15},{"x":"2022-Q2","y":46},{"x":"2022-Q3","y":23},{"x":"2023-Q1","y":70},{"x":"2023-Q2","y":35},{"x":"2023-Q3","y":106}]')),
+    ('chart', 'An area chart representing a time series, using the top-level property `time`.
+    Ticks on the x axis are adjusted automatically, and ISO datetimes are parsed and displayed in a readable format.', json('[
+    {
+        "component": "chart",
+        "title": "Quarterly Revenue",
+        "type": "area",
+        "color": "indigo",
+        "marker": 5,
+        "time": true
+    },
+        {"x":"2022-01-01T00:00:00Z","y":15},
+        {"x":"2022-04-01T00:00:00Z","y":46},
+        {"x":"2022-07-01T00:00:00Z","y":23},
+        {"x":"2022-10-01T00:00:00Z","y":70},
+        {"x":"2023-01-01T00:00:00Z","y":35},
+        {"x":"2023-04-01T00:00:00Z","y":106},
+        {"x":"2023-07-01T00:00:00Z","y":53}
+    ]')),
     ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true}, '||
     '{"label": "Yes", "value": 65}, '||
     '{"label": "No", "value": 35}]')),
@@ -485,6 +501,6 @@ INSERT INTO example(component, description, properties) VALUES
             "icon": "book",
             "javascript": ["https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js", 
                            "https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"],
-            "css": "https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-okaidia.min.css",
+            "css": "/prism-tabler-theme.css",
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]'));
