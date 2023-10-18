@@ -9,6 +9,8 @@
  - CLarify some ambiguous error messages:
    - make it clearer whether the error comes from SQLPage or from the database
    - specific tokenization errors are now displayed as such
+ - Better support for time series in the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component. You can now use the `time` top-attribute to display a time series chart
+ with smart x-axis labels.
 
 ## 0.13.0 (2023-10-16)
  - New [timeline](https://sql.ophir.dev/documentation.sql?component=timeline#component) component to display a timeline of events.

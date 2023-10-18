@@ -35,10 +35,12 @@ function sqlpage_chart() {
     for (const c of document.getElementsByClassName("chart")) {
         try {
             const data = JSON.parse(c.querySelector("data").innerText);
+            const is_timeseries = !!data.time;
             /** @type { Series } */
             const series_map = {};
             data.points.forEach(([name, x, y, z]) => {
                 series_map[name] = series_map[name] || { name, data: [] }
+                if (is_timeseries) x = new Date(x);
                 series_map[name].data.push({ x, y, z });
             })
             if (data.xmin == null) data.xmin = undefined;
@@ -105,7 +107,7 @@ function sqlpage_chart() {
                     title: {
                         text: data.xtitle || undefined,
                     },
-                    type: data.time ? 'datetime' : categories ? 'category' : undefined,
+                    type: is_timeseries ? 'datetime' : categories ? 'category' : undefined,
                 },
                 yaxis: {
                     logarithmic: !!data.logarithmic,
