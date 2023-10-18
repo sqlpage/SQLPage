@@ -9,6 +9,7 @@ name: Create Release
 
 jobs:
   build:
+    name: Build sqlpage binaries
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -31,6 +32,7 @@ jobs:
           name: sqlpage ${{ matrix.os }}
           path: ${{ matrix.binary_path }}
   build-aws:
+    name: Build AWS Lambda Serverless zip image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -41,7 +43,7 @@ jobs:
           name: sqlpage aws lambda serverless image
           path: sqlpage-aws-lambda.zip
   create_release:
-    name: Create Release
+    name: Create Github Release
     needs: [build, build-aws]
     runs-on: ubuntu-latest
     steps:
@@ -69,3 +71,12 @@ jobs:
             sqlpage-linux.tgz
             sqlpage-macos.tgz
             sqlpage aws lambda serverless image/sqlpage-aws-lambda.zip
+  cargo_publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
+      - name: Publish to crates.io
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
