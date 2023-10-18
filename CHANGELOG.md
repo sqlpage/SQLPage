@@ -1,16 +1,17 @@
 # CHANGELOG.md
 
-## 0.14.0 (unreleased)
+## 0.14.0 (2023-10-19)
 
+ - Better support for time series in the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component. You can now use the `time` top-attribute to display a time series chart
+ with smart x-axis labels.
+ - **New component**: [button](https://sql.ophir.dev/documentation.sql?component=button#component). This allows you to create rows of buttons that allow navigation between pages.
  - Better error messages for Microsoft SQL Server. SQLPage now displays the line number of the error, which is especially useful for debugging long migration scripts.
  - Many improvements in the official website and the documentation.
     - Most notably, the documentation now has syntax highlighting on code blocks (using [prism](https://prismjs.com/) with a custom theme made for tabler). This also illustrates the usage of external javascript and css libraries in SQLPage. See [the shell component documentation](https://sql.ophir.dev/documentation.sql?component=shell#component).
     - Better display of example queries in the documentation, with smart indentation that makes it easier to read.
- - CLarify some ambiguous error messages:
+ - Clarify some ambiguous error messages:
    - make it clearer whether the error comes from SQLPage or from the database
    - specific tokenization errors are now displayed as such
- - Better support for time series in the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component. You can now use the `time` top-attribute to display a time series chart
- with smart x-axis labels.
 
 ## 0.13.0 (2023-10-16)
  - New [timeline](https://sql.ophir.dev/documentation.sql?component=timeline#component) component to display a timeline of events.
