@@ -48,23 +48,6 @@ SELECT key AS question_id, value AS answer
 FROM json_each_text(sqlpage.variables(''post'')::json);
 ```
 
-#### In MySQL
-
-MySQL has [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html), which is less straightforward to use :
-
-```sql
-INSERT INTO survey_answers (question_id, answer)
-INSERT INTO survey_answers (question_id, answer)
-SELECT
-  var_name as question_id,
-  JSON_UNQUOTE(JSON_EXTRACT(sqlpage.variables(''post''), CONCAT(''$."'', var_name, ''"''))) as value -- Extract the value from the key name 
-FROM JSON_TABLE( -- iterate on keys in the json array
-  JSON_KEYS(sqlpage.variables(''post'')), -- Get the keys as an arrey
-  ''$[*]'' COLUMNS (var_name text PATH ''$'' ERROR ON ERROR) -- form a table with a single var_name column
-) AS vars;
-```
-
-> Unfortunately, this MySQL-specific syntax is [not supported in sqlpage at the moment](https://github.com/sqlparser-rs/sqlparser-rs/issues/1019)
 
 #### In Microsoft SQL Server
 
@@ -73,6 +56,36 @@ INSERT INTO survey_answers
 SELECT [key] AS question_id, [value] AS answer
 FROM OPENJSON(''{"x":"y"}'');
 ```
+
+#### In MySQL
+
+MySQL has [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html), which is less straightforward to use.
+
+Outside of sqlpage, one can define a procedure :
+
+```sql
+DELIMITER //
+CREATE PROCEDURE process_survey_answer(jsonData JSON)
+BEGIN
+  insert into survey_answers (question_id, answer)
+  SELECT
+    var_name as "key",
+    JSON_UNQUOTE(JSON_EXTRACT(jsonData, CONCAT(''$."'', var_name, ''"''))) as "value"
+  FROM JSON_TABLE(
+    JSON_KEYS(jsonData),
+    ''$[*]'' COLUMNS (var_name text PATH ''$'' ERROR ON ERROR)
+  ) AS vars;
+
+END//
+DELIMITER ;
+```
+
+then in `handle_survey_answer.sql` :
+
+```sql
+CALL process_survey_answer(sqlpage.variables(''post''));
+```
+
 '
 );
 
