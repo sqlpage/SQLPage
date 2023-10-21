@@ -374,19 +374,27 @@ impl std::fmt::Display for FormatArguments<'_> {
     }
 }
 
+pub(super) fn extract_single_quoted_string_optional(
+    arguments: &mut [FunctionArg],
+) -> Option<String> {
+    if let Some(Expr::Value(Value::SingleQuotedString(param_value))) =
+        arguments.first_mut().and_then(function_arg_expr)
+    {
+        return Some(std::mem::take(param_value));
+    }
+    None
+}
+
 pub(super) fn extract_single_quoted_string(
     func_name: &'static str,
     arguments: &mut [FunctionArg],
 ) -> Result<String, String> {
-    match arguments.first_mut().and_then(function_arg_expr) {
-        Some(Expr::Value(Value::SingleQuotedString(param_value))) => {
-            Ok(std::mem::take(param_value))
-        }
-        _ => Err(format!(
+    extract_single_quoted_string_optional(arguments).ok_or_else(|| {
+        format!(
             "{func_name}({}) is not a valid call. Expected a literal single quoted string.",
             FormatArguments(arguments)
-        )),
-    }
+        )
+    })
 }
 
 pub(super) fn extract_integer(
@@ -438,13 +446,17 @@ pub(super) fn stmt_param_error_invalid_arguments(
     ))
 }
 
+pub(super) fn extract_optional_variable_argument(
+    arguments: &mut [FunctionArg],
+) -> Option<StmtParam> {
+    arguments.first_mut().and_then(function_arg_to_stmt_param)
+}
+
 pub(super) fn extract_variable_argument(
     func_name: &'static str,
     arguments: &mut [FunctionArg],
 ) -> StmtParam {
-    arguments
-        .first_mut()
-        .and_then(function_arg_to_stmt_param)
+    extract_optional_variable_argument(arguments)
         .unwrap_or_else(|| stmt_param_error_invalid_arguments(func_name, arguments))
 }
 

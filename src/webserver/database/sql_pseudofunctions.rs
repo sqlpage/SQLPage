@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
@@ -10,14 +10,16 @@ use crate::webserver::{
 };
 
 use super::sql::{
-    extract_integer, extract_single_quoted_string, extract_variable_argument,
-    function_arg_to_stmt_param, stmt_param_error_invalid_arguments, FormatArguments,
+    extract_integer, extract_single_quoted_string, extract_single_quoted_string_optional,
+    extract_variable_argument, function_arg_to_stmt_param, stmt_param_error_invalid_arguments,
+    FormatArguments,
 };
 use anyhow::{anyhow, bail, Context};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum StmtParam {
     Get(String),
+    AllVariables(Option<GetOrPost>),
     Post(String),
     GetOrPost(String),
     Cookie(String),
@@ -33,6 +35,28 @@ pub(super) enum StmtParam {
     EnvironmentVariable(String),
     SqlPageVersion,
     Literal(String),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(super) enum GetOrPost {
+    Get,
+    Post,
+}
+
+fn parse_get_or_post(arg: Option<String>) -> StmtParam {
+    if let Some(s) = arg {
+        if s.eq_ignore_ascii_case("get") {
+            StmtParam::AllVariables(Some(GetOrPost::Get))
+        } else if s.eq_ignore_ascii_case("post") {
+            StmtParam::AllVariables(Some(GetOrPost::Post))
+        } else {
+            StmtParam::Error(format!(
+                "The variables() function expected 'get' or 'post' as argument, not {s:?}"
+            ))
+        }
+    } else {
+        StmtParam::AllVariables(None)
+    }
 }
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
@@ -62,6 +86,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
             StmtParam::UrlEncode(Box::new(extract_variable_argument("url_encode", arguments)))
         }
         "version" => StmtParam::SqlPageVersion,
+        "variables" => parse_get_or_post(extract_single_quoted_string_optional(arguments)),
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -181,7 +206,29 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .with_context(|| format!("Unable to read environment variable {var}"))?,
         StmtParam::SqlPageVersion => Some(Cow::Borrowed(env!("CARGO_PKG_VERSION"))),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
+        StmtParam::AllVariables(get_or_post) => extract_get_or_post(*get_or_post, request),
     })
+}
+
+fn extract_get_or_post(
+    get_or_post: Option<GetOrPost>,
+    request: &RequestInfo,
+) -> Option<Cow<'_, str>> {
+    match get_or_post {
+        Some(GetOrPost::Get) => serde_json::to_string(&request.get_variables),
+        Some(GetOrPost::Post) => serde_json::to_string(&request.post_variables),
+        None => {
+            let all: HashMap<_, _> = request
+                .get_variables
+                .iter()
+                .chain(&request.post_variables)
+                .collect();
+            serde_json::to_string(&all)
+        }
+    }
+    .map_err(|e| log::warn!("{}", e))
+    .map(Cow::Owned)
+    .ok()
 }
 
 fn random_string(len: usize) -> String {
