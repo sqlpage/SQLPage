@@ -2,7 +2,7 @@ SELECT 'alert' as component,
     'Thanks !' as title,
     'analyze' as icon,
     'teal' as color,
-    'Your order is being processed. You will head from us soon.' as description;
+    'Your order is being processed. You will hear from us soon.' as description;
 SELECT 'index.sql' as link,
     'Back to homepage' as title;
 
