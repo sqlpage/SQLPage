@@ -288,7 +288,8 @@ fn send_anyhow_error(e: &anyhow::Error, resp_send: tokio::sync::oneshot::Sender<
 
 type ParamMap = HashMap<String, SingleOrVec>;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
 pub enum SingleOrVec {
     Single(String),
     Vec(Vec<String>),
