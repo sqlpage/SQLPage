@@ -3,7 +3,7 @@
 ## 0.15.0
 
  - Fix display of long titles in the shell component.
- - New `sqlpage.variables` function for easy handling of complex forms
+ - New [`sqlpage.variables`](https://sql.ophir.dev/functions.sql?function=variables#function) function for easy handling of complex forms
     - `sqlpage.variables('get')` returns a json object containing all url parameters. Inside `/my_page.sql?x=1&y=2`, it returns the string `'{"x":"1","y":"2"}'`
     - `sqlpage.variables('post')` returns a json object containg all variables passed through a form. This makes it much easier to handle a form with a variable number of fields.
 
