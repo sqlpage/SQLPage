@@ -7,7 +7,7 @@ SELECT 'form' as component,
 
 SELECT 'Name' as name, 'Your full name' AS placeholder;
 SELECT 'Email' as name, 'Your email address' AS placeholder;
-SELECT 'product_quantity_' || id AS name,
+SELECT id AS name,
     'Quantity of ' || name || '' AS label,
     'Number of ' || name || ' you wish to order, for ' || price || ' € each.' AS description,
     'number' AS type,
