@@ -20,7 +20,10 @@
     mt-1 mb-3">
     {{#each_row}}
         <div class="col">
-            <{{#if link}}a href="{{link}}" {{else}}div{{/if}} class="card h-100 {{#if active}}card-active{{/if}}">
+            <div class="card h-100 {{#if active}}card-active{{/if}}">
+                {{#if link}}
+                    <a href="{{link}}" style="text-decoration: inherit; color: inherit">
+                {{/if}}
                 {{#if top_image}}
                     <img src="{{top_image}}" class="card-img-top" />
                 {{/if}}
@@ -36,9 +39,16 @@
                         {{~/if~}}
                     </div>
                 </div>
+                {{#if link}}
+                    </a>
+                {{/if}}
                 {{#if footer}}
                     <div class="card-footer text-muted py-2">
-                        {{footer}}
+                    {{#if footer_link}}
+                            <a href="{{footer_link}}">{{footer}}</a>
+                    {{else}}
+                            {{footer}}
+                    {{/if}}
                     </div>
                 {{/if}}
                 {{#if footer_md}}
@@ -51,7 +61,7 @@
                         {{~icon_img icon~}}
                     </div>
                 {{/if}}
-            </{{#if link}}a {{else}}div{{/if}}>
+            </div>
         </div>
     {{/each_row}}
 </div>
