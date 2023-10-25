@@ -70,6 +70,10 @@ select
     name as title,
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
     type as footer,
+    CASE type 
+        WHEN 'COLOR' THEN 'https://tabler.io/docs/base/colors'
+        WHEN 'ICON' THEN 'https://tabler-icons.io/'
+    END AS footer_link,
     CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
 from parameter where component = $component AND top_level
 ORDER BY optional, name;
@@ -82,6 +86,10 @@ select
     name as title,
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
     type as footer,
+    CASE type 
+        WHEN 'COLOR' THEN 'https://tabler.io/docs/base/colors'
+        WHEN 'ICON' THEN 'https://tabler-icons.io/'
+    END AS footer_link,
     CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
 from parameter where component = $component AND NOT top_level
 ORDER BY optional, name;
