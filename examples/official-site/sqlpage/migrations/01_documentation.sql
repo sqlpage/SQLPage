@@ -36,8 +36,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('description', 'A description of the list item, displayed as greyed-out text.', 'TEXT', FALSE, TRUE),
     ('description_md', 'A description of the list item, displayed as greyed-out text, in Markdown format, allowing you to use rich text formatting, including **bold** and *italic* text.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the list item.', 'URL', FALSE, TRUE),
-    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the item.', 'TEXT', FALSE, TRUE),
-    ('color', 'The name of a color, to be displayed as a dot near the list item contents.', 'TEXT', FALSE, TRUE),
+    ('icon', 'Name of an icon to display on the left side of the item.', 'ICON', FALSE, TRUE),
+    ('color', 'The name of a color, to be displayed as a dot near the list item contents.', 'COLOR', FALSE, TRUE),
     ('active', 'Whether this item in the list is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 ) x;
 
@@ -75,8 +75,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('footer', 'Muted text to display at the bottom of the card.', 'TEXT', FALSE, TRUE),
     ('footer_md', 'Muted text to display at the bottom of the card, with rich text formatting in Markdown format.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
-    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the card.', 'TEXT', FALSE, TRUE),
-    ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'TEXT', FALSE, TRUE),
+    ('footer_link', 'An URL to which the user should be taken when they click on the footer.', 'URL', FALSE, TRUE),
+    ('icon', 'Name of an icon to display on the left side of the card.', 'ICON', FALSE, TRUE),
+    ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'COLOR', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 ) x;
 
@@ -88,8 +89,8 @@ INSERT INTO example(component, description, properties) VALUES
             '\n - **bold**, \n - *italics*, \n - [links](index.sql), \n - etc."}]')),
     ('card', 'A beautiful card grid with bells and whistles.',
             json('[{"component":"card", "title":"Popular websites", "columns": 2}, '||
-            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
-            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "active": true, "footer": "Owned by the Wikimedia Foundation"}]')),
+            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc.", "footer_link": "https://abc.xyz/" }, '||
+            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "active": true, "footer": "Owned by the Wikimedia Foundation", "footer_link": "https://wikimediafoundation.org/"}]')),
     ('card', 'A gallery of images.',
         json('[
             {"component":"card", "title":"My favorite animals in pictures"},
@@ -109,8 +110,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('description', 'Value to display below the name.', 'TEXT', FALSE, TRUE),
     ('footer', 'Muted text to display below the value.', 'TEXT', FALSE, TRUE),
     ('link', 'A target URL to which the user should be taken when they click on the value.', 'URL', FALSE, TRUE),
-    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the value.', 'TEXT', FALSE, TRUE),
-    ('color', 'If set to a color name, the value will be displayed in a pill of that color.', 'TEXT', FALSE, TRUE),
+    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the value.', 'ICON', FALSE, TRUE),
+    ('color', 'If set to a color name, the value will be displayed in a pill of that color.', 'COLOR', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 ) x;
 
@@ -130,7 +131,7 @@ INSERT INTO component(name, icon, description) VALUES
     ('steps', 'dots-circle-horizontal', 'Guide users through multi-stage processes, displaying a clear list of previous and future steps.');
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'steps', * FROM (VALUES
     -- top level
-    ('color', 'Color of the bars displayed between steps.', 'TEXT', TRUE, TRUE),
+    ('color', 'Color of the bars displayed between steps.', 'COLOR', TRUE, TRUE),
     ('counter', 'Display the number of the step on top of its name.', 'TEXT', TRUE, TRUE),
     ('title', 'Title of the section.', 'TEXT', TRUE, TRUE),
     ('description', 'Description of the section.', 'TEXT', TRUE, TRUE),
@@ -138,7 +139,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'Name of the step.', 'TEXT', FALSE, TRUE),
     ('description', 'Tooltip to display when the user passes their mouse over the step''s name.', 'TEXT', FALSE, TRUE),
     ('link', 'A target URL to which the user should be taken when they click on the step.', 'URL', FALSE, TRUE),
-    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the step name.', 'TEXT', FALSE, TRUE),
+    ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the step name.', 'ICON', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 ) x;
 
@@ -166,7 +167,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- item level
     ('contents', 'A span of text to display', 'TEXT', FALSE, FALSE),
     ('link', 'An URL to which the user should be taken when they click on this span of text.', 'URL', FALSE, TRUE),
-    ('color', 'The name of a color for this span of text.', 'TEXT', FALSE, TRUE),
+    ('color', 'The name of a color for this span of text.', 'COLOR', FALSE, TRUE),
     ('underline', 'Whether the span of text should be underlined.', 'BOOLEAN', FALSE, TRUE),
     ('bold', 'Whether the span of text should be displayed as bold.', 'BOOLEAN', FALSE, TRUE),
     ('code', 'Use a monospace font. Useful to display the text as code.', 'BOOLEAN', FALSE, TRUE),
@@ -342,7 +343,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('xticks', 'Number of ticks on the x axis.', 'NUMBER', TRUE, TRUE),
     ('marker', 'Marker size', 'NUMBER', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
-    ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'TEXT', TRUE, TRUE),
+    ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'COLOR', TRUE, TRUE),
     ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
     ('toolbar', 'Whether to display a toolbar at the top right of the chart, that offers downloading the data as CSV.', 'BOOLEAN', TRUE, TRUE),
     ('logarithmic', 'Display the y-axis in logarithmic scale.', 'BOOLEAN', TRUE, TRUE),
@@ -443,8 +444,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('separator', 'How individual values should be separated in the CSV. "," by default, set it to "\t" for tab-separated values.', 'TEXT', TRUE, TRUE),
     ('title', 'The text displayed on the download button.', 'TEXT', TRUE, FALSE),
     ('filename', 'The name of the file that should be downloaded (without the extension).', 'TEXT', TRUE, TRUE),
-    ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'TEXT', TRUE, TRUE),
-    ('color', 'Color of the button', 'TEXT', TRUE, TRUE)
+    ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'ICON', TRUE, TRUE),
+    ('color', 'Color of the button', 'COLOR', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -476,7 +477,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('css', 'The URL of a CSS file to load and apply to the page.', 'URL', TRUE, TRUE),
     ('javascript', 'The URL of a Javascript file to load and execute on the page.', 'URL', TRUE, TRUE),
     ('image', 'The URL of an image to display next to the page title.', 'URL', TRUE, TRUE),
-    ('icon', 'Name of an icon (from tabler-icons.io) to display next to the title in the navigation bar.', 'TEXT', TRUE, TRUE),
+    ('icon', 'Name of an icon (from tabler-icons.io) to display next to the title in the navigation bar.', 'ICON', TRUE, TRUE),
     ('menu_item', 'Adds a menu item in the navigation bar at the top of the page. The menu item will have the specified name, and will link to as .sql file of the same name.', 'TEXT', TRUE, TRUE),
     ('search_target', 'When this is set, a search field will appear in the top navigation bar, and load the specified sql file with an URL parameter named "search" when the user searches something.', 'TEXT', TRUE, TRUE),
     ('norobot', 'Forbids robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE),
