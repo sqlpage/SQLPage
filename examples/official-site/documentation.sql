@@ -116,22 +116,22 @@ select
                                             WHEN 'false' THEN 'FALSE'
                                             WHEN 'null' THEN 'NULL'
                                             ELSE quote(t.value)
-                                        END as key,
+                                        END as val,
                                         CASE parent.fullkey
                                             WHEN '$' THEN t.key
                                             ELSE parent.key
-                                        END as val
+                                        END as key
                                     from t inner join t parent on parent.id = t.parent
                                     where t.atom is not null
                                 ),
                                 key_val_padding as (select
-                                    key,
+                                    CASE WHEN key LIKE '% %' THEN format('"%s"', replace(key, '"', '""')) ELSE key END as key,
                                     val,
-                                    1 + max(0, max(case when length(key) < 30 then length(key) else 0 end) over () - length(key)) as padding
+                                    1 + max(0, max(case when length(val) < 30 then length(val) else 0 end) over () - length(val)) as padding
                                     from key_val
                                 )
                                 select group_concat(
-                                    format('    %s%.*cas %s', key, padding, ' ', val),
+                                    format('    %s%.*cas %s', val, padding, ' ', key),
                                      ',' || char(10)
                                 ) from key_val_padding
                             ) || ';',
