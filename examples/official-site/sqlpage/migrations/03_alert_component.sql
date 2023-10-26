@@ -33,7 +33,7 @@ VALUES (
         'alert',
         'color',
         'The color theme for the alert message.',
-        'TEXT',
+        'COLOR',
         TRUE,
         TRUE
     ),
@@ -105,7 +105,7 @@ VALUES (
         'alert',
         'color',
         'Customize the color of the link.',
-        'TEXT',
+        'COLOR',
         FALSE,
         TRUE
     );
