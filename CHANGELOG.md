@@ -2,6 +2,7 @@
 
 ## 0.15.0
 
+ - Add a new `align_right` attribute to the [table](https://sql.ophir.dev/documentation.sql?component=table#component) component to align a column to the right.
  - Fix display of long titles in the shell component.
  - New [`sqlpage.variables`](https://sql.ophir.dev/functions.sql?function=variables#function) function for easy handling of complex forms
     - `sqlpage.variables('get')` returns a json object containing all url parameters. Inside `/my_page.sql?x=1&y=2`, it returns the string `'{"x":"1","y":"2"}'`

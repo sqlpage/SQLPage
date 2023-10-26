@@ -406,6 +406,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE),
     ('markdown', 'Set this to the name of a column whose content should be interpreted as markdown . Used to display rich text with links in the table. This argument can be repeated multiple times to intepret multiple columns as markdown.', 'TEXT', TRUE, TRUE),
     ('icon', 'Set this to the name of a column whose content should be interpreted as a tabler icon name. Used to display icons in the table. This argument can be repeated multiple times to intepret multiple columns as icons. Introduced in v0.8.0.', 'TEXT', TRUE, TRUE),
+    ('align_right', 'Name of a column the contents of which should be right-aligned. This argument can be repeated multiple times to align multiple columns to the right. Introduced in v0.15.0.', 'TEXT', TRUE, TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'TEXT', FALSE, TRUE)
@@ -425,12 +426,12 @@ INSERT INTO example(component, description, properties) VALUES
         ]')),
     (
     'table',
-    'A table with dashes',
+    'A table with numbers',
     json(
-        '[{"component":"table", "search": true, "sort": true}, ' ||
-         '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C"},
-          {"id": 996, "part_no": "MIC-ROCC-F-24-206-A"},
-          {"id": 131456, "part_no": "KIB-ROCC-F-13-205-B"}
+        '[{"component":"table", "search": true, "sort": true, "align_right": ["Price ($)", "Amount in stock"]}, ' ||
+         '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C", "Price ($)": 12, "Amount in stock": 5},
+          {"id": 996, "part_no": "MIC-ROCC-F-24-206-A", "Price ($)": 1, "Amount in stock": 15},
+          {"id": 131456, "part_no": "KIB-ROCC-F-13-205-B", "Price ($)": 127, "Amount in stock": 9}
         ]'
     )
     );
