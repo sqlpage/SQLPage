@@ -6,7 +6,7 @@ use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
-    BinaryOperator, DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName,
+    BinaryOperator, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName,
     Statement, Value, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
@@ -318,17 +318,7 @@ impl ParameterExtractor {
 
     fn make_placeholder(&self) -> Expr {
         let name = make_placeholder(self.db_kind, self.parameters.len() + 1);
-        let data_type = match self.db_kind {
-            // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
-            AnyKind::MySql => DataType::Char(None),
-            AnyKind::Postgres => DataType::Text,
-            _ => DataType::Varchar(None),
-        };
-        let value = Expr::Value(Value::Placeholder(name));
-        Expr::Cast {
-            expr: Box::new(value),
-            data_type,
-        }
+        Expr::Value(Value::Placeholder(name))
     }
 
     fn handle_builtin_function(
@@ -586,7 +576,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Postgres);
         assert_eq!(
         ast.to_string(),
-        "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($3 AS TEXT) OR CAST($4 AS TEXT) = CAST($5 AS TEXT)"
+        "SELECT $1 FROM t WHERE $2 > $3 OR $4 = $5"
     );
         assert_eq!(
             parameters,
@@ -606,7 +596,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Sqlite);
         assert_eq!(
             ast.to_string(),
-            "SELECT CAST(? AS VARCHAR), CAST(? AS VARCHAR) FROM t"
+            "SELECT ?, ? FROM t"
         );
         assert_eq!(
             parameters,
@@ -705,7 +695,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
         assert_eq!(
             ast.to_string(),
-            "SELECT CONCAT('', CAST(@p1 AS VARCHAR)) FROM [a schema].[a table]"
+            "SELECT CONCAT('', @p1) FROM [a schema].[a table]"
         );
         assert_eq!(parameters, [StmtParam::GetOrPost("1".to_string()),]);
     }
