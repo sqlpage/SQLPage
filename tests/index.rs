@@ -50,11 +50,12 @@ async fn test_files() {
     for entry in std::fs::read_dir(path).unwrap() {
         let entry = entry.unwrap();
         let test_file_path = entry.path();
+        let test_file_path_string = test_file_path.to_string_lossy().replace('\\', "/");
         let stem = test_file_path.file_stem().unwrap().to_str().unwrap();
         if test_file_path.extension().unwrap_or_default() != "sql" {
             continue;
         }
-        let req_str = format!("/{}?x=1", test_file_path.display());
+        let req_str = format!("/{}?x=1", test_file_path_string);
         let resp = req_path(&req_str).await.unwrap();
         let body = test::read_body(resp).await;
         assert!(body.starts_with(b"<!DOCTYPE html>"));
