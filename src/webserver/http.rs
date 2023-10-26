@@ -324,6 +324,7 @@ impl SingleOrVec {
 
 #[derive(Debug)]
 pub struct RequestInfo {
+    pub path: String,
     pub get_variables: ParamMap,
     pub post_variables: ParamMap,
     pub headers: ParamMap,
@@ -384,6 +385,7 @@ async fn extract_request_info(req: &mut ServiceRequest, app_state: Arc<AppState>
         .map(Authorization::into_scheme);
 
     RequestInfo {
+        path: req.path().to_string(),
         headers: param_map(headers),
         get_variables: param_map(get_variables),
         post_variables: param_map(post_variables),
