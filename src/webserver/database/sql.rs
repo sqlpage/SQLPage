@@ -6,8 +6,8 @@ use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
-    BinaryOperator, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName,
-    Statement, Value, VisitMut, VisitorMut,
+    BinaryOperator, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName, Statement,
+    Value, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -574,10 +574,7 @@ mod test {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Postgres);
-        assert_eq!(
-        ast.to_string(),
-        "SELECT $1 FROM t WHERE $2 > $3 OR $4 = $5"
-    );
+        assert_eq!(ast.to_string(), "SELECT $1 FROM t WHERE $2 > $3 OR $4 = $5");
         assert_eq!(
             parameters,
             [
@@ -594,10 +591,7 @@ mod test {
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Sqlite);
-        assert_eq!(
-            ast.to_string(),
-            "SELECT ?, ? FROM t"
-        );
+        assert_eq!(ast.to_string(), "SELECT ?, ? FROM t");
         assert_eq!(
             parameters,
             [
