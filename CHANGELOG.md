@@ -8,7 +8,7 @@
  - New [`sqlpage.variables`](https://sql.ophir.dev/functions.sql?function=variables#function) function for easy handling of complex forms
     - `sqlpage.variables('get')` returns a json object containing all url parameters. Inside `/my_page.sql?x=1&y=2`, it returns the string `'{"x":"1","y":"2"}'`
     - `sqlpage.variables('post')` returns a json object containg all variables passed through a form. This makes it much easier to handle a form with a variable number of fields.
-
+ - Remove systematic casting in SQL of all parameters to `TEXT`. The supported databases understand the type of the parameters natively.
 
 ## 0.14.0 (2023-10-19)
 
