@@ -35,6 +35,7 @@ pub(super) enum StmtParam {
     EnvironmentVariable(String),
     SqlPageVersion,
     Literal(String),
+    Path,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -87,6 +88,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         }
         "version" => StmtParam::SqlPageVersion,
         "variables" => parse_get_or_post(extract_single_quoted_string_optional(arguments)),
+        "path" => StmtParam::Path,
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -207,6 +209,7 @@ pub(super) fn extract_req_param_non_nested<'a>(
         StmtParam::SqlPageVersion => Some(Cow::Borrowed(env!("CARGO_PKG_VERSION"))),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::AllVariables(get_or_post) => extract_get_or_post(*get_or_post, request),
+        StmtParam::Path => Some(Cow::Borrowed(&request.path)),
     })
 }
 
