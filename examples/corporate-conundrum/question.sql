@@ -26,7 +26,7 @@ SELECT 'alert' as component,
     'red' as color,
     'Make them guess: ' || wrong_answer as title,
     'You are the impostor!
-    Your goal is to sabotage the game by making others give an answer that will be closer to ' || wrong_answer || ' then to the true answer.
+    Your goal is to sabotage the game by making others give an answer that will be closer to ' || wrong_answer || ' than to the true answer.
     The more other players you manage to trick, the more points you will get.' as description
 FROM game_questions
 WHERE game_id = $game_id::integer
