@@ -524,6 +524,8 @@ impl VisitorMut for ParameterExtractor {
                         FunctionArg::Unnamed(FunctionArgExpr::Expr(right)),
                     ],
                     over: None,
+                    filter: None,
+                    null_treatment: None,
                     distinct: false,
                     special: false,
                     order_by: vec![],
