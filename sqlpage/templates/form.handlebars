@@ -71,8 +71,7 @@
                                 {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
                                 {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
                                 {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
-                                {{~#if autofocus}}autofocus {{/if~}}
-                                
+                                {{~#if autofocus}}autofocus {{/if~}}  
                             >
                         {{/if}}
                     {{/if}}
@@ -83,7 +82,6 @@
             {{/if}}
             </div>
         {{/each_row}}
-        
         {{#if validate}} 
             <input class="btn
             {{#if validate_color}} btn-{{validate_color}} {{/if}}
@@ -93,7 +91,6 @@
             type="submit"
             value="{{validate}}">
         {{/if}}
-
         {{#if reset}}
             <input class="btn 
             {{#if reset_color}} btn-{{reset_color}} {{/if}}
@@ -103,6 +100,5 @@
             type="reset" 
             value="{{reset}}">
         {{/if}}
-
     </fieldset>
 </form>
