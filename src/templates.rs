@@ -8,6 +8,7 @@ use handlebars::{
 };
 use handlebars::{PathAndJson, RenderErrorReason};
 use include_dir::{include_dir, Dir};
+use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -275,10 +276,16 @@ impl AllTemplates {
         // icon helper: generate an image with the specified icon
         handlebars.register_helper("icon_img", Box::new(icon_img_helper));
 
-        handlebars_helper!(markdown_helper: |x: str|
-            markdown::to_html_with_options(x, &markdown::Options::gfm())
+        handlebars_helper!(markdown_helper: |x: Json| {
+            let as_str = match x {
+                JsonValue::String(s) => Cow::Borrowed(s),
+                JsonValue::Array(arr) => Cow::Owned(arr.iter().map(|v|v.as_str().unwrap_or_default()).collect::<Vec<_>>().join("\n")),
+                JsonValue::Null => Cow::Owned(String::new()),
+                other => Cow::Owned(other.to_string())
+            };
+            markdown::to_html_with_options(&as_str, &markdown::Options::gfm())
             .unwrap_or_else(|s|s)
-        );
+        });
         handlebars.register_helper("markdown", Box::new(markdown_helper));
 
         handlebars_helper!(buildinfo_helper: |x: str|

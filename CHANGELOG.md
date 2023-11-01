@@ -1,6 +1,10 @@
 # CHANGELOG.md
 
-## 0.15.0
+## unreleased
+
+ - Support non-string values in markdown fields. `NULL` values are now displayed as empty strings, numeric values are displayed as strings, booleans as `true` or `false`, and arrays as lines of text. This avoids the need to cast values to strings in SQL queries.
+
+## 0.15.0 (2023-10-29)
 
  - New function: [`sqlpage.path`](https://sql.ophir.dev/functions.sql?function=path#function) to get the path of the current page.
  - Add a new `align_right` attribute to the [table](https://sql.ophir.dev/documentation.sql?component=table#component) component to align a column to the right.
