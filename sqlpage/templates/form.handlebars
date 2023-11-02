@@ -5,92 +5,97 @@
         {{/if}}
         <div class="row">
             {{#each_row}}
-            <div class="col-md-6 mb-2" >
-                {{#if (or (eq type "radio") (eq type "checkbox"))}}
-                    <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column my-1">
-                        <label class="form-selectgroup-item flex-fill">
-                            <input type="{{type}}" name="{{name}}" value="{{value}}" {{#if required}}required{{/if}} {{#if checked}}checked{{/if}} class="form-selectgroup-input">
-                            <div class="form-selectgroup-label d-flex align-items-center p-3">
-                                <div class="me-3">
-                                    <span class="form-selectgroup-check"></span>
-                                </div>
-                                <div>
-                                    {{default label value}}
-                                    {{~#if required}}
-                                        <span class="text-danger ms-1" aria-label="required" title="required">*</span>
-                                    {{/if}}
-                                    {{#if description}}
-                                        <small class="form-hint mt-0">{{description}}</small>
-                                    {{/if}}
-                                </div>
+            {{#if (or (eq type "radio") (eq type "checkbox"))}}
+                <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column my-1 col-md-{{default width 12}}">
+                    <label class="form-selectgroup-item flex-fill">
+                        <input type="{{type}}" name="{{name}}" value="{{value}}" {{#if required}}required{{/if}} {{#if checked}}checked{{/if}} class="form-selectgroup-input">
+                        <div class="form-selectgroup-label d-flex align-items-center p-3">
+                            <div class="me-3">
+                                <span class="form-selectgroup-check"></span>
                             </div>
-                        </label>
-                    </div>
-                {{else}}
-                    <label class="form-label mb-2">
-                        {{default label name}}
-                        {{~#if required}}
-                            <span class="text-danger ms-1" aria-label="required" title="required">*</span>
-                            {{/if}}
-                        {{#if (eq type 'textarea')}}
-                            <textarea
-                                name="{{name}}"
-                                class="form-control"
-                                placeholder="{{placeholder}}"
-                                rows="{{default rows 3}}"
-                                {{#if value}}value="{{value}}" {{/if~}}
-                                {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
-                                {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
-                                {{~#if required}}required="required" {{/if~}}
-                                {{~#if autofocus}}autofocus {{/if~}}
-                            >
-                            {{~#if value}}{{value}}{{/if~}}
-                            </textarea>
-                        {{else}}{{#if (eq type 'select')}}
-                            <select name="{{name}}" class="form-select"
-                            {{~#if required}} required="required" {{/if~}}
-                            {{~#if autofocus}} autofocus {{/if~}}
-                            {{~#if multiple}} multiple {{/if~}}
-                            >
-                            {{#each (parse_json options)}}
-                                <option value="{{value}}" {{#if (eq ../value value)}}selected{{/if}}>{{label}}</option>
-                            {{/each}}
-                            </select>
-                        {{else}} 
-                            <input name="{{name}}" class="form-control" 
-                                {{~#if type}} type="{{type}}" {{/if~}}
-                                {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
-                                {{~#if value}} value="{{value}}" {{/if~}}
-                                {{~#if max}} max="{{max}}" {{/if~}}
-                                {{~#if min}} min="{{min}}" {{/if~}}
-                                {{~#if step}} step="{{step}}" {{/if~}}
-                                {{~#if minlength}} minlength="{{minlength}}" {{/if~}}
-                                {{~#if maxlength}} maxlength="{{maxlength}}" {{/if~}}
-                                {{~#if pattern}} pattern="{{pattern}}" {{/if~}}
-                                {{~#if required}} required="required" {{/if~}}
-                                {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
-                                {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
-                                {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
-                                {{~#if autofocus}}autofocus {{/if~}}  
-                            >
+                            <div>
+                                {{default label value}}
+                                {{~#if required}}
+                                    <span class="text-danger ms-1" aria-label="required" title="required">*</span>
+                                {{/if}}
+                                {{#if description}}
+                                    <small class="form-hint mt-0">{{description}}</small>
+                                {{/if}}
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            {{else}}
+                <label class="form-label mb-2 col-md-{{default width 12}}">
+                    {{default label name}}
+                    {{~#if required}}
+                        <span class="text-danger ms-1" aria-label="required" title="required">*</span>
                         {{/if}}
+                    {{#if (eq type 'textarea')}}
+                        <textarea
+                            name="{{name}}"
+                            class="form-control"
+                            placeholder="{{placeholder}}"
+                            rows="{{default rows 3}}"
+                            {{#if value}}value="{{value}}" {{/if~}}
+                            {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
+                            {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
+                            {{~#if required}}required="required" {{/if~}}
+                            {{~#if autofocus}}autofocus {{/if~}}
+                        >
+                        {{~#if value}}{{value}}{{/if~}}
+                        </textarea>
+                    {{else}}{{#if (eq type 'select')}}
+                        <select name="{{name}}" class="form-select"
+                        {{~#if required}} required="required" {{/if~}}
+                        {{~#if autofocus}} autofocus {{/if~}}
+                        {{~#if multiple}} multiple {{/if~}}
+                        >
+                        {{#each (parse_json options)}}
+                            <option value="{{value}}" {{#if (eq ../value value)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                        </select>
+                    {{else}} 
+                        <input name="{{name}}" class="form-control {{class}}" 
+                            {{~#if type}} type="{{type}}" {{/if~}}
+                            {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
+                            {{~#if value}} value="{{value}}" {{/if~}}
+                            {{~#if max}} max="{{max}}" {{/if~}}
+                            {{~#if min}} min="{{min}}" {{/if~}}
+                            {{~#if step}} step="{{step}}" {{/if~}}
+                            {{~#if minlength}} minlength="{{minlength}}" {{/if~}}
+                            {{~#if maxlength}} maxlength="{{maxlength}}" {{/if~}}
+                            {{~#if pattern}} pattern="{{pattern}}" {{/if~}}
+                            {{~#if required}} required="required" {{/if~}}
+                            {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
+                            {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
+                            {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
+                            {{~#if formaction}}formaction="{{formaction}}" {{/if~}}
+                            {{~#if formenctype}}formenctype="{{formenctype}}" {{/if~}}
+                            {{~#if formmethod}}formmethod="{{formmethod}}" {{/if~}}
+                            {{~#if formnovalidate}}formnovalidate="{{formnovalidate}}" {{/if~}}
+                            {{~#if formtarget}}formtarget="{{formtarget}}" {{/if~}}
+                            {{~#if list}}list="{{list}}" {{/if~}}
+                            {{~#if multiple}}multiple="{{multiple}}" {{/if~}}
+                            {{~#if autofocus}}autofocus {{/if~}}  
+                        >
                     {{/if}}
-                    {{#if description}}
-                        <small class="form-hint mt-0">{{description}}</small>
-                    {{/if}}
-                </label>
-            {{/if}}
-            </div>
+                {{/if}}
+                {{#if description}}
+                    <small class="form-hint mt-0">{{description}}</small>
+                {{/if}}
+            </label>
+        {{/if}}
         {{/each_row}}
         </div>
-        {{#if validate}} 
+        {{#if (ne validate '')}} 
             <input class="btn
-            {{#if validate_color}} btn-{{validate_color}} {{/if}}
+            btn-{{default validate_color "primary"}}
             {{#if validate_shape}} btn-{{validate_shape}} {{/if}}
             {{#if validate_outline}} btn-outline-{{validate_outline}} {{/if}}
             {{#if validate_size}} btn-{{validate_size}} {{/if}}"
             type="submit"
-            value="{{validate}}">
+            {{#if validate}}value="{{validate}}"{{/if}}>
         {{/if}}
         {{#if reset}}
             <input class="btn 
