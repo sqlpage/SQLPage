@@ -83,6 +83,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ env.REGISTRY_USERNAME }}
@@ -94,17 +95,20 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
-          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }},compression=zstd,mode=max
+          # don't save cache on prs
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }},compression=zstd,mode=max' || ''}}
       - name: Export digest
+        if: github.event_name != 'pull_request'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
       - name: Upload digest
         uses: actions/upload-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           name: digests
           path: /tmp/digests/*
@@ -113,6 +117,7 @@ jobs:
 
   docker_push:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     needs:
       - docker_build
     steps:

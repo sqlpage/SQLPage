@@ -231,7 +231,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('method', 'Set this to ''GET'' to pass the form contents directly as URL parameters. If the user enters a value v in a field named x, submitting the form will load target.sql?x=v. If target.sql contains SELECT $x, it will display the value v.', 'TEXT', TRUE, TRUE),
     ('action', 'An optional link to a target page that will handle the results of the form. By default the target page is the current page. Setting it to the name of a different sql file will load that file when the user submits the form.', 'TEXT', TRUE, TRUE),
     ('title', 'A name to display at the top of the form. It will be displayed in a larger font size at the top of the form.', 'TEXT', TRUE, TRUE),
-    ('validate', 'The text to display in the button at the bottom of the form that submits the values.', 'TEXT', TRUE, TRUE),
+    ('validate', 'The text to display in the button at the bottom of the form that submits the values. Omit this property to let the browser display the default form validation text, or set it to the empty string to remove the button completely.', 'TEXT', TRUE, TRUE),
+    ('validate_color', 'The color of the button at the bottom of the form that submits the values. Omit this property to use the default color.', 'COLOR', TRUE, TRUE),
+    ('validate_outline', 'A color to outline the validation button.', 'COLOR', TRUE, TRUE),
+    ('reset', 'The text to display in the button at the bottom of the form that resets the form to its original state. Omit this property not to show a reset button at all.', 'TEXT', TRUE, TRUE),
     -- item level
     ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter. This is set to "text" by default.', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
@@ -247,7 +250,13 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
     ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
-    ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOL', FALSE, TRUE)
+    ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOL', FALSE, TRUE),
+    ('width', 'Width of the form field, between 1 and 12.', 'NUMBER', FALSE, TRUE),
+    ('autocomplete', 'Whether the browser should suggest previously entered values for this field.', 'BOOL', FALSE, TRUE),
+    ('minlength', 'Minimum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
+    ('maxlength', 'Maximum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
+    ('formaction', 'When type is "submit", this specifies the URL of the file that will handle the form submission. Useful when you need multiple submit buttons.', 'TEXT', FALSE, TRUE),
+    ('class', 'A CSS class to apply to the form element.', 'TEXT', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     (
@@ -325,7 +334,18 @@ In this example, depending on what the user clicks, the target `index.sql` page 
     '{"name": "fruit", "type": "radio", "value": 1, "description": "An apple a day keeps the doctor away", "label": "Apple"}, '||
     '{"name": "fruit", "type": "radio", "value": 2, "description": "Oranges are a good source of vitamin C", "label": "Orange", "checked": true}, '||
     '{"name": "fruit", "type": "radio", "value": 3, "description": "Bananas are a good source of potassium", "label": "Banana"}'||
-    ']'));
+    ']')),
+    ('form', 'This example illustrates the use of custom validation buttons and half-width fields.',
+    json('[{"component":"form", "title": "User", "validate": "Create new user", "validate_color": "green", "reset": "Clear"},
+    {"name": "first_name", "label": "First name", "placeholder": "John", "width": 4},
+    {"name": "middle_name", "label": "Middle name", "placeholder": "Fitzgerald", "width": 4},
+    {"name": "last_name", "label": "Last name", "placeholder": "Doe", "width": 4},
+    {"name": "email", "label": "Email", "placeholder": "john.doe@gmail.com", "width": 12},
+    {"name": "password", "label": "Password", "type": "password", "width": 6},
+    {"name": "password_confirmation", "label": "Password confirmation", "type": "password", "width": 6},
+    {"name": "terms", "label": "I accept the terms and conditions", "type": "checkbox", "required": true}
+    ]'))
+;
 
 INSERT INTO component(name, icon, description) VALUES
     ('chart', 'timeline', 'A component that plots data. Line, area, bar, and pie charts are all supported. Each item in the component is a data point in the graph.');
