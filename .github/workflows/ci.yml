@@ -99,7 +99,11 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
           # don't save cache on prs
-          cache-to: ${{ github.event_name != 'pull_request' && 'type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }},compression=zstd,mode=max' || ''}}
+          cache-to: >
+            ${{ github.event_name != 'pull_request'
+              && format('type=registry,ref={0}:main{1},compression=zstd,mode=max', env.REGISTRY_IMAGE, steps.suffix.outputs.suffix)
+              || ''
+            }}
       - name: Export digest
         if: github.event_name != 'pull_request'
         run: |
