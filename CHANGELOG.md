@@ -1,5 +1,12 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - Many improvements in the [`form`](https://sql.ophir.dev/documentation.sql?component=form#component) component
+   - Multiple form fields can now be aligned on the same line using the `width` attribute.
+   - A *reset* button can now be added to the form using the `reset` top-level attribute.
+   - The *submit* button can now be customized, and can be removed completely, which is useful to create multiple submit buttons that submit the form to different targets.
+
 ## 0.15.0
 
  - New function: [`sqlpage.path`](https://sql.ophir.dev/functions.sql?function=path#function) to get the path of the current page.
