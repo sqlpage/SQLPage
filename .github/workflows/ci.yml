@@ -101,12 +101,14 @@ jobs:
           # don't save cache on prs
           cache-to: ${{ github.event_name != 'pull_request' && 'type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }},compression=zstd,mode=max' || ''}}
       - name: Export digest
+        if: github.event_name != 'pull_request'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
       - name: Upload digest
         uses: actions/upload-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           name: digests
           path: /tmp/digests/*
