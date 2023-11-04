@@ -7,6 +7,8 @@
    - A *reset* button can now be added to the form using the `reset` top-level attribute.
    - The *submit* button can now be customized, and can be removed completely, which is useful to create multiple submit buttons that submit the form to different targets.
  - Support non-string values in markdown fields. `NULL` values are now displayed as empty strings, numeric values are displayed as strings, booleans as `true` or `false`, and arrays as lines of text. This avoids the need to cast values to strings in SQL queries.
+ - Revert a change introduced in v0.15.0:
+    - Re-add the systematic `CAST(? AS TEXT)` around variables, which helps the database know which type it is dealing with in advance. This fixes a regression in 0.15 where some SQLite websites were broken because of missing affinity information. In SQLite `SELECT '1' = 1` returns `false` but `SELECT CAST('1' AS TEXT) = 1` returns `true`.
 
 ## 0.15.0 (2023-10-29)
  - New function: [`sqlpage.path`](https://sql.ophir.dev/functions.sql?function=path#function) to get the path of the current page.
@@ -17,6 +19,7 @@
     - `sqlpage.variables('post')` returns a json object containg all variables passed through a form. This makes it much easier to handle a form with a variable number of fields.
  - Remove systematic casting in SQL of all parameters to `TEXT`. The supported databases understand the type of the parameters natively.
   - Some advanced or database-specific SQL syntax that previously failed to parse inside SQLPage is now supported. See [updates in SQLParser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#added)
+
 
 ## 0.14.0 (2023-10-19)
 
