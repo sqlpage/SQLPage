@@ -318,11 +318,15 @@ impl ParameterExtractor {
 
     fn make_placeholder(&self) -> Expr {
         let name = make_placeholder(self.db_kind, self.parameters.len() + 1);
+        // We cast our placeholders to TEXT even though we always bind TEXT data to them anyway
+        // because that helps the database engine to prepare the query.
+        // For instance in PostgreSQL, the query planner will not be able to use an index on a
+        // column if the column is compared to a placeholder of type VARCHAR, but it will be able
+        // to use the index if the column is compared to a placeholder of type TEXT.
         let data_type = match self.db_kind {
             // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
             AnyKind::MySql => DataType::Char(None),
-            AnyKind::Postgres => DataType::Text,
-            _ => DataType::Varchar(None),
+            _ => DataType::Text,
         };
         let value = Expr::Value(Value::Placeholder(name));
         Expr::Cast {
@@ -609,7 +613,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Sqlite);
         assert_eq!(
             ast.to_string(),
-            "SELECT CAST(? AS VARCHAR), CAST(? AS VARCHAR) FROM t"
+            "SELECT CAST(? AS TEXT), CAST(? AS TEXT) FROM t"
         );
         assert_eq!(
             parameters,
@@ -708,7 +712,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
         assert_eq!(
             ast.to_string(),
-            "SELECT CONCAT('', CAST(@p1 AS VARCHAR)) FROM [a schema].[a table]"
+            "SELECT CONCAT('', CAST(@p1 AS TEXT)) FROM [a schema].[a table]"
         );
         assert_eq!(parameters, [StmtParam::GetOrPost("1".to_string()),]);
     }
