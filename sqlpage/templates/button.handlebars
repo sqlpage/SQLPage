@@ -1,6 +1,10 @@
 <div class="btn-list mb-2 {{#if justify}}justify-content-{{justify}}{{/if}}">
 {{#each_row}}
+    {{#if form}}
+    <button type="submit" form="{{form}}" {{#if link}}formaction="{{link}}"{{/if}} 
+    {{else}}
     <a href="{{link}}"
+    {{/if}}
         class="btn {{#if disabled}} disabled{{/if}}
         {{~#if color}} btn-{{color}}{{/if}}
         {{~#if ../size}} btn-{{../size}}{{/if}}
@@ -12,6 +16,10 @@
             <span class="me-1">{{~icon_img icon~}}</span>
         {{~/if~}}
         {{~title~}}
+    {{#if form}}
+    </button>
+    {{else}}
     </a>
+    {{/if}}
 {{/each_row}}
 </div>
