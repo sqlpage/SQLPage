@@ -51,6 +51,8 @@ For instance, if you want to create a custom `my_component` component, that disp
 </ul>
 ```
 
+[See the full custom component documentation](https://sql.ophir.dev/custom_components.sql).
+
 ## Connection initialization scripts
 
 SQLPage allows you to run a SQL script when a new database connection is opened,

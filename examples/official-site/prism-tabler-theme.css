@@ -16,6 +16,15 @@
 .token.property,
 .token.tag {
 	color: #f92672;
+
+	/* We need to reset the 'tag' styles set by tabler */
+	border: 0;
+	display: inherit;
+	height: inherit;
+	border-radius: inherit;
+	padding: 0;
+	background: inherit;
+	box-shadow: inherit;
 }
 
 .token.number {
@@ -76,4 +85,8 @@ code::selection, code ::selection {
 
 code .token.keyword::selection, code .token.punctuation::selection {
 	color: var(--tblr-gray-800);
+}
+
+pre code {
+	padding: 0;
 }
