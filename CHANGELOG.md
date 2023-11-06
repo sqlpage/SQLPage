@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.15.1
 
  - Many improvements in the [`form`](https://sql.ophir.dev/documentation.sql?component=form#component) component
    - Multiple form fields can now be aligned on the same line using the `width` attribute.
