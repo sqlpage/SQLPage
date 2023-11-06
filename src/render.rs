@@ -108,6 +108,7 @@ impl<W: std::io::Write> HeaderContext<W> {
 
         let remove = obj.get("remove");
         if remove == Some(&json!(true)) || remove == Some(&json!(1)) {
+            cookie.make_removal();
             self.response.cookie(cookie);
             log::trace!("Removing cookie {}", name);
             return Ok(self);
