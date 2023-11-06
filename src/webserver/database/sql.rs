@@ -6,8 +6,8 @@ use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
-    BinaryOperator, DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident, ObjectName,
-    Statement, Value, VisitMut, VisitorMut,
+    BinaryOperator, CharacterLength, DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident,
+    ObjectName, Statement, Value, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -326,6 +326,10 @@ impl ParameterExtractor {
         let data_type = match self.db_kind {
             // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
             AnyKind::MySql => DataType::Char(None),
+            AnyKind::Mssql => DataType::Varchar(Some(CharacterLength {
+                length: 8000,
+                unit: None,
+            })),
             _ => DataType::Text,
         };
         let value = Expr::Value(Value::Placeholder(name));
@@ -712,7 +716,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
         assert_eq!(
             ast.to_string(),
-            "SELECT CONCAT('', CAST(@p1 AS TEXT)) FROM [a schema].[a table]"
+            "SELECT CONCAT('', CAST(@p1 AS VARCHAR(8000))) FROM [a schema].[a table]"
         );
         assert_eq!(parameters, [StmtParam::GetOrPost("1".to_string()),]);
     }
