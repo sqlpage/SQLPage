@@ -39,9 +39,8 @@ This page documents all the components provided by default in SQLPage and their 
 Use this as a reference when building your SQL application.
 If at any point you need help, you can ask for it on the [SQLPage forum](https://github.com/lovasoa/SQLpage/discussions).
 
-If you have some frontend development experience, you can also create your own components, by placing
-[`.handlebars`](https://handlebarsjs.com/guide/) files in a folder called `sqlpage/templates` at the root of your server.
-[See example](https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates/list.handlebars).
+If you know some [HTML](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/HTML_basics),
+you can also easily [create your own components for your application](./custom_components.sql).
 ' as contents_md;
 
 select 'list' as component, 'components' as title;

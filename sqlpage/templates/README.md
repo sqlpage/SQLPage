@@ -11,7 +11,8 @@ These are documented on https://sql.ophir.dev/components.sql
 
 ## Custom components
 
-You can write your own component templates and place them in the `sqlpage/templates` directory.
+You can [write your own component templates](https://sql.ophir.dev/custom_components.sql)
+and place them in the `sqlpage/templates` directory.
 To override a default component, create a file with the same name as the default component.
 If you want to start from an existing component, you can copy it from the `sqlpage/templates` directory
 in the SQLPage source code[^2].
