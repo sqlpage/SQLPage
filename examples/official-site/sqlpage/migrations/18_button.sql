@@ -11,13 +11,14 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('size', 'The size of the buttons (e.g., sm, lg).', 'TEXT', TRUE, TRUE),
     ('shape', 'Shape of the buttons (e.g., pill, square)', 'TEXT', TRUE, TRUE),
     -- Item-level parameters (for each button)
-    ('link', 'The URL to which the button should navigate when clicked.', 'URL', FALSE, TRUE),
+    ('link', 'The URL to which the button should navigate when clicked. If the form attribute is specified, then this overrides the page to which the form is submitted.', 'URL', FALSE, TRUE),
     ('color', 'The color of the button (e.g., red, green, blue, but also primary, warning, danger, orange, etc.).', 'COLOR', FALSE, TRUE),
     ('title', 'The text displayed on the button.', 'TEXT', FALSE, TRUE),
     ('disabled', 'Whether the button is disabled or not.', 'BOOLEAN', FALSE, TRUE),
     ('outline', 'Outline color of the button (e.g. red, purple, ...)', 'COLOR', FALSE, TRUE),
     ('space_after', 'Whether there should be extra space to the right of the button. In a line of buttons, this will put the buttons before this one on the left, and the ones after on the right.', 'BOOLEAN', FALSE, TRUE),
-    ('icon', 'Name of an icon to be displayed on the left side of the button.', 'ICON', FALSE, TRUE)
+    ('icon', 'Name of an icon to be displayed on the left side of the button.', 'ICON', FALSE, TRUE),
+    ('form', 'Identifier (id) of the form to which the button should submit.', 'TEXT', FALSE, TRUE)
 ) x;
 
 -- Inserting example information for the button component
@@ -58,4 +59,19 @@ INSERT INTO example(component, description, properties) VALUES
         {"link":"#", "color":"green", "title":"Save" },
         {"link":"#", "color":"orange", "title":"Cancel", "space_after":true},
         {"link":"#", "outline":"indigo", "title":"Preview" }]')
+    );
+
+INSERT INTO example(component, description, properties) VALUES
+    ('button', 'Multiple buttons sending the same form to different pages.
+
+We use `'''' AS validate` to remove the submit button from inside the form itself,
+and instead use the button component to submit the form to pages with different GET variables.
+
+In the target page, we could then use the GET variable `$action` to determine what to do with the form data.
+    ',
+    json('[{"component":"form", "id": "poem", "validate": ""},
+        {"type": "textarea", "name": "Poem", "placeholder": "Write a poem"},
+        {"component":"button"}, 
+        {"link":"?action=save", "form":"poem", "color":"primary", "title":"Save" },
+        {"link":"?action=preview", "form":"poem", "outline":"yellow", "title":"Preview" }]')
     );

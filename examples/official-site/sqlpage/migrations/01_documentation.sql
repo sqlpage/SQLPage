@@ -235,6 +235,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('validate_color', 'The color of the button at the bottom of the form that submits the values. Omit this property to use the default color.', 'COLOR', TRUE, TRUE),
     ('validate_outline', 'A color to outline the validation button.', 'COLOR', TRUE, TRUE),
     ('reset', 'The text to display in the button at the bottom of the form that resets the form to its original state. Omit this property not to show a reset button at all.', 'TEXT', TRUE, TRUE),
+    ('id', 'A unique identifier for the form, which can then be used to validate the form from a button outside of the form.', 'TEXT', TRUE, TRUE),
     -- item level
     ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter. This is set to "text" by default.', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
