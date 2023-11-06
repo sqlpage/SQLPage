@@ -1,10 +1,11 @@
 services:
   web:
-    image: lovasoa/sqlpage
+    image: lovasoa/sqlpage:main # main is cutting edge, use lovasoa/sqlpage:latest for the latest stable version
     ports:
       - "8080:8080"
     volumes:
       - .:/var/www
+      - ./sqlpage:/etc/sqlpage
     depends_on:
       - db
     environment:
