@@ -99,8 +99,8 @@ VALUES (
         JSON(
             '[
             { "component": "map", "title": "Paris", "zoom": 11, "latitude": 48.85, "longitude": 2.34, "height": 400 },
-            { "title": "Notre Dame", "latitude": 48.8530, "longitude": 2.3498, "description_md": "A beautiful cathedral.", "link": "https://en.wikipedia.org/wiki/Notre-Dame_de_Paris" },
-            { "title": "Eiffel Tower", "latitude": 48.8584, "longitude": 2.2945, "description_md": "A tall tower. [Wikipedia](https://en.wikipedia.org/wiki/Eiffel_Tower)" }
+            { "title": "Notre Dame", "icon": "building-castle", "color": "indigo", "latitude": 48.8530, "longitude": 2.3498, "description_md": "A beautiful cathedral.", "link": "https://en.wikipedia.org/wiki/Notre-Dame_de_Paris" },
+            { "title": "Eiffel Tower", "icon": "tower", "color": "yellow", "latitude": 48.8584, "longitude": 2.2945, "description_md": "A tall tower. [Wikipedia](https://en.wikipedia.org/wiki/Eiffel_Tower)" }
         ]'
         )
     );
