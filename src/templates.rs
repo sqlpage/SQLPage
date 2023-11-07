@@ -297,6 +297,16 @@ impl AllTemplates {
         );
         handlebars.register_helper("buildinfo", Box::new(buildinfo_helper));
 
+        handlebars_helper!(typeof_helper: |x: Json| match x {
+            JsonValue::Null => "null",
+            JsonValue::Bool(_) => "boolean",
+            JsonValue::Number(_) => "number",
+            JsonValue::String(_) => "string",
+            JsonValue::Array(_) => "array",
+            JsonValue::Object(_) => "object",
+        });
+        handlebars.register_helper("typeof", Box::new(typeof_helper));
+
         let mut this = Self {
             handlebars,
             split_templates: FileCache::new(),

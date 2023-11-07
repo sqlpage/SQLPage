@@ -16,7 +16,9 @@ SELECT 'map' as component,
 SELECT title,
     ST_Y(geom) AS latitude,
     ST_X(geom) AS longitude,
-    'point.sql?id=' || id as link
+    'point.sql?id=' || id as link,
+    'red' as color,
+    'world-pin' as icon
 FROM spatial_data;
 
 

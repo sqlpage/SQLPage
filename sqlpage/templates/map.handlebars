@@ -17,7 +17,15 @@
         </div>
         <div class="d-none" hidden>
           {{~#each_row~}}
-            <div class="marker" data-coords="{{latitude}},{{longitude}}" {{#if color}}data-color="{{color}}"{{/if}}>
+            <div class="marker"
+              {{#if latitude}}data-coords="{{latitude}},{{longitude}}"{{/if}}
+              {{#if color}}data-color="{{color}}"{{/if}}
+              {{#if geojson}}data-geojson="
+                  {{~#if eq (typeof geojson) 'string'}}{{geojson}}
+                  {{~else~}}{{stringify geojson}}
+                  {{~/if~}}
+              "{{/if}}
+            >
               <h3>
                 {{~#if icon~}}
                     <span class="mapicon">{{~icon_img icon~}}</span>
