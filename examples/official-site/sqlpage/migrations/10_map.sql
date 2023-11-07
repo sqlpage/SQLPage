@@ -85,13 +85,32 @@ VALUES (
         'TEXT',
         FALSE,
         TRUE
-    );
+    ),
+    (
+        'map',
+        'icon',
+        'Name of the icon to use for the marker',
+        'ICON',
+        FALSE,
+        TRUE
+    ),
+    (
+        'map',
+        'color',
+        'Background color of the marker on the map. Requires "icon" to be set.',
+        'COLOR',
+        FALSE,
+        TRUE
+    )
+    ;
 -- Insert an example usage of the map component into the example table
 INSERT INTO example (component, description, properties)
 VALUES (
         'map',
         'Basic example of a map with a marker',
-        JSON('[{ "component": "map", "zoom": 2 }, { "title": "New Delhi", "latitude": 28.6139, "longitude": 77.2090 }]')
+        JSON(
+            '[{ "component": "map", "zoom": 2 }, { "title": "New Delhi", "latitude": 28.6139, "longitude": 77.2090 }]'
+        )
     ),
     (
         'map',
