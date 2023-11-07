@@ -55,7 +55,20 @@ function sqlpage_map() {
     }
     function addMarker(marker_elem, map) {
       const coords = marker_elem.dataset.coords.split(",").map(c => parseFloat(c));
-      const marker = L.marker(coords).addTo(map);
+      const options = {
+        title: marker_elem.getElementsByTagName("h3")[0].textContent.trim(),
+      };
+      const color = marker_elem.dataset.color;
+      const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
+      if (icon_obj) {
+        options.icon = L.divIcon({
+          html: icon_obj,
+          className: `border-0 bg-${color || 'primary'} bg-gradient text-white rounded-circle p-2 shadow`,
+          iconSize: [42, 42],
+          iconAnchor: [21, 5],
+        });
+      }
+      const marker = L.marker(coords, options).addTo(map);
       marker.bindPopup(marker_elem);
     }
 }

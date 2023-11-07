@@ -11,6 +11,7 @@
     - Re-add the systematic `CAST(? AS TEXT)` around variables, which helps the database know which type it is dealing with in advance. This fixes a regression in 0.15 where some SQLite websites were broken because of missing affinity information. In SQLite `SELECT '1' = 1` returns `false` but `SELECT CAST('1' AS TEXT) = 1` returns `true`. This also fixes error messages like `could not determine data type of parameter $1` in PostgreSQL.
  - Fix a bug where [cookie](https://sql.ophir.dev/documentation.sql?component=cookie#component) removal set the cookie value to the empty string instead of removing the cookie completely.
  - Support form submission using the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component using its new `form` property. This allows you to create a form with multiple submit buttons that submit the form to different targets.
+ - Custom icons and colors for markers in the [map](https://sql.ophir.dev/documentation.sql?component=map#component) component.
 
 ## 0.15.0 (2023-10-29)
  - New function: [`sqlpage.path`](https://sql.ophir.dev/functions.sql?function=path#function) to get the path of the current page.

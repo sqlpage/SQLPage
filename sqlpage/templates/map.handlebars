@@ -17,8 +17,11 @@
         </div>
         <div class="d-none" hidden>
           {{~#each_row~}}
-            <div class="marker" data-coords="{{latitude}},{{longitude}}">
+            <div class="marker" data-coords="{{latitude}},{{longitude}}" {{#if color}}data-color="{{color}}"{{/if}}>
               <h3>
+                {{~#if icon~}}
+                    <span class="mapicon">{{~icon_img icon~}}</span>
+                {{~/if~}}
                 {{~#if link~}}
                   <a href="{{link}}">{{title}}</a>
                 {{~else~}}
