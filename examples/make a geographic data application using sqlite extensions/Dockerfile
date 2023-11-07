@@ -1,14 +1,10 @@
-FROM debian:12-slim
+FROM debian:stable-slim
 
-WORKDIR /var/www
-
-ADD https://github.com/lovasoa/SQLpage/releases/download/v0.10.1/sqlpage-linux.tgz .
+COPY --from=lovasoa/sqlpage:main /usr/local/bin/sqlpage /usr/local/bin/sqlpage
 
 RUN apt-get update && \
-    apt-get -y install sqlite3 libsqlite3-mod-spatialite && \
-    tar xvzf sqlpage-linux.tgz && \
-    rm sqlpage-linux.tgz
+    apt-get -y install libsqlite3-mod-spatialite
     
 COPY . .
 
-CMD ["sqlite3"]
+CMD ["sqlpage"]

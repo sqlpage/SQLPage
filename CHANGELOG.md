@@ -12,6 +12,7 @@
  - Fix a bug where [cookie](https://sql.ophir.dev/documentation.sql?component=cookie#component) removal set the cookie value to the empty string instead of removing the cookie completely.
  - Support form submission using the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component using its new `form` property. This allows you to create a form with multiple submit buttons that submit the form to different targets.
  - Custom icons and colors for markers in the [map](https://sql.ophir.dev/documentation.sql?component=map#component) component.
+ - Add support for GeoJSON in the [map](https://sql.ophir.dev/documentation.sql?component=map#component) component. This makes it much more generic and allows you to display any kind of geographic data, including areas, on a map very easily. This plays nicely with PostGIS and Spatialite which can return GeoJSON directly from SQL queries.
 
 ## 0.15.0 (2023-10-29)
  - New function: [`sqlpage.path`](https://sql.ophir.dev/functions.sql?function=path#function) to get the path of the current page.

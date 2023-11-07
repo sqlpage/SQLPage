@@ -109,6 +109,7 @@ and SQLPage adds a few more:
 - `icon_img`: generate an svg icon from a *tabler* icon name
 - `markdown`: renders markdown text
 - `each_row`: iterates over the rows of a query result
+- `typeof`: returns the type of a value (`string`, `number`, `boolean`, `object`, `array`, `null`)
 
 ## Overwriting the default components
 

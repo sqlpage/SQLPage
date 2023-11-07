@@ -114,6 +114,8 @@ select
                                             WHEN 'true' THEN 'TRUE'
                                             WHEN 'false' THEN 'FALSE'
                                             WHEN 'null' THEN 'NULL'
+                                            WHEN 'object' THEN 'JSON(' || quote(t.value) || ')'
+                                            WHEN 'array' THEN 'JSON(' || quote(t.value) || ')'
                                             ELSE quote(t.value)
                                         END as val,
                                         CASE parent.fullkey
@@ -121,7 +123,8 @@ select
                                             ELSE parent.key
                                         END as key
                                     from t inner join t parent on parent.id = t.parent
-                                    where t.atom is not null
+                                    where ((parent.fullkey = '$' and t.type != 'array') 
+                                        or (parent.type = 'array' and parent.path = '$'))
                                 ),
                                 key_val_padding as (select
                                     CASE WHEN key LIKE '% %' THEN format('"%s"', replace(key, '"', '""')) ELSE key END as key,

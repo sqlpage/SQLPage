@@ -54,23 +54,44 @@ function sqlpage_map() {
       }
     }
     function addMarker(marker_elem, map) {
-      const coords = marker_elem.dataset.coords.split(",").map(c => parseFloat(c));
+      const { dataset } = marker_elem;
       const options = {
+        color: marker_elem.dataset.color,
         title: marker_elem.getElementsByTagName("h3")[0].textContent.trim(),
       };
-      const color = marker_elem.dataset.color;
+      const marker = 
+        dataset.coords ? createMarker(marker_elem, options)
+                       : createGeoJSONMarker(marker_elem, options);
+      marker.addTo(map).bindPopup(marker_elem);
+    }
+    function createMarker(marker_elem, options) {
+      const coords = marker_elem.dataset.coords.split(",").map(c => parseFloat(c));
       const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
       if (icon_obj) {
         options.icon = L.divIcon({
           html: icon_obj,
-          className: `border-0 bg-${color || 'primary'} bg-gradient text-white rounded-circle p-2 shadow`,
+          className: `border-0 bg-${options.color || 'primary'} bg-gradient text-white rounded-circle p-2 shadow`,
           iconSize: [42, 42],
-          iconAnchor: [21, 5],
+          iconAnchor: [21, 21],
         });
       }
-      const marker = L.marker(coords, options).addTo(map);
-      marker.bindPopup(marker_elem);
+      return L.marker(coords, options);
     }
+    function createGeoJSONMarker(marker_elem, options) {
+      let geojson = JSON.parse(marker_elem.dataset.geojson);
+      if (options.color) {
+        options.color = get_tabler_color(options.color) || options.color;
+      }
+      function style({ properties }) {
+        if (typeof properties !== "object") return options;
+        return {...options, ...properties};
+      }
+      return L.geoJSON(geojson, { style });
+    }
+}
+
+function get_tabler_color(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + name);
 }
 
 document.addEventListener('DOMContentLoaded', function () {
