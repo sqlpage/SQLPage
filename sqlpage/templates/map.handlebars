@@ -21,7 +21,7 @@
               {{#if latitude}}data-coords="{{latitude}},{{longitude}}"{{/if}}
               {{#if color}}data-color="{{color}}"{{/if}}
               {{#if geojson}}data-geojson="
-                  {{~#if eq (typeof geojson) 'string'}}{{geojson}}
+                  {{~#if (eq (typeof geojson) 'string')}}{{geojson}}
                   {{~else~}}{{stringify geojson}}
                   {{~/if~}}
               "{{/if}}
