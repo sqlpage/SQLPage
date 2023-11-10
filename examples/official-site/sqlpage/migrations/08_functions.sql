@@ -355,11 +355,11 @@ VALUES (
         'Returns the given string, with all characters that are not allowed in a URL encoded.
 
 ### Example
-    
-    ```sql
-    select ''text'' as component;
-    select ''https://example.com/?q='' || sqlpage.url_encode($user_search) as contents;
-    ```
+
+```sql
+select ''text'' as component;
+select ''https://example.com/?q='' || sqlpage.url_encode($user_search) as contents;
+```
 
 #### Result
 
