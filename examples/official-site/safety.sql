@@ -99,6 +99,10 @@ and to respect [security best practices](https://cheatsheetseries.owasp.org/chea
 Passwords are [hashed with a salt](https://en.wikipedia.org/wiki/Salt_(cryptography)) using the
 [argon2](https://en.wikipedia.org/wiki/Argon2) algorithm.
 
+However, if you implement your own session management system using the [`cookie` component](/documentation.sql?component=cookie#component),
+you should be careful to follow the [OWASP session management best practices](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#cookies).
+Implementing your own session management system is not recommended if you are a non-technical user and don''t have a good understanding of web security.
+
 ## Database connections
 
 SQLPage uses a fixed pool of database connections, and will never open more connections than the ones you
