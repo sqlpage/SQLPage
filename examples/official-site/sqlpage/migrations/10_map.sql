@@ -113,7 +113,7 @@ VALUES (
     (
         'map',
         'size',
-        'Size of the marker icon. Requires "icon" to be set.',
+        'Size of the marker icon. Requires "icon" to be set. Introduced in 0.15.2.',
         'INTEGER',
         FALSE,
         TRUE
