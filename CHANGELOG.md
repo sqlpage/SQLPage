@@ -1,5 +1,11 @@
 # CHANGELOG.md
 
+## 0.15.2 (unreleased)
+
+ - Fix a bug where the new geojson support in the map component would not work when the geojson was passed as a string. This impacted databases that do not support native json objects, such as SQLite.
+ - Improve support for geojson points (in addition to polygons and lines) in the map component.
+ - Add a new `size` parameter to the map component to set the size of markers.
+
 ## 0.15.1 (2023-11-07)
 
  - Many improvements in the [`form`](https://sql.ophir.dev/documentation.sql?component=form#component) component

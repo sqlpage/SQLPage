@@ -18,17 +18,19 @@
         <div class="d-none" hidden>
           {{~#each_row~}}
             <div class="marker"
-              {{#if latitude}}data-coords="{{latitude}},{{longitude}}"{{/if}}
-              {{#if color}}data-color="{{color}}"{{/if}}
-              {{#if geojson}}data-geojson="
+              {{~#if latitude}} data-coords="{{latitude}},{{longitude}}"{{/if}}
+              {{~#if color}} data-color="{{color}}"{{/if}}
+              {{~#if size}} data-size="{{size}}"{{/if}}
+              {{~#if link}} data-link="{{link}}"{{/if}}
+              {{~#if geojson}} data-geojson="
                   {{~#if (eq (typeof geojson) 'string')}}{{geojson}}
                   {{~else~}}{{stringify geojson}}
                   {{~/if~}}
-              "{{/if}}
+              "{{/if~}}
             >
               <h3>
                 {{~#if icon~}}
-                    <span class="mapicon">{{~icon_img icon~}}</span>
+                    <span class="mapicon">{{~icon_img icon size~}}</span>
                 {{~/if~}}
                 {{~#if link~}}
                   <a href="{{link}}">{{title}}</a>
