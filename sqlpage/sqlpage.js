@@ -62,17 +62,20 @@ function sqlpage_map() {
       const marker = 
         dataset.coords ? createMarker(marker_elem, options)
                        : createGeoJSONMarker(marker_elem, options);
-      marker.addTo(map).bindPopup(marker_elem);
+      marker.addTo(map);
+      if (options.title) marker.bindPopup(marker_elem);
+      else if (marker_elem.dataset.link) marker.on('click', () => window.location = marker_elem.dataset.link);
     }
     function createMarker(marker_elem, options) {
       const coords = marker_elem.dataset.coords.split(",").map(c => parseFloat(c));
       const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
       if (icon_obj) {
+        const size = 1.5 * +(options.size || icon_obj.firstChild?.getAttribute('width') || 24);
         options.icon = L.divIcon({
           html: icon_obj,
-          className: `border-0 bg-${options.color || 'primary'} bg-gradient text-white rounded-circle p-2 shadow`,
-          iconSize: [42, 42],
-          iconAnchor: [21, 21],
+          className: `border-0 bg-${options.color || 'primary'} bg-gradient text-white rounded-circle shadow d-flex justify-content-center align-items-center`,
+          iconSize: [size, size],
+          iconAnchor: [size/2, size/2],
         });
       }
       return L.marker(coords, options);
@@ -86,7 +89,11 @@ function sqlpage_map() {
         if (typeof properties !== "object") return options;
         return {...options, ...properties};
       }
-      return L.geoJSON(geojson, { style });
+      function pointToLayer(feature, latlng) {
+        marker_elem.dataset.coords = latlng.lat + "," + latlng.lng;
+        return createMarker(marker_elem, { ...options, ...feature.properties });
+      }
+      return L.geoJSON(geojson, { style, pointToLayer });
     }
 }
 

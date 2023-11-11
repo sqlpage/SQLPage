@@ -41,7 +41,7 @@ VALUES (
     (
         'map',
         'latitude',
-        'Latitude of the marker. Required if geojson is not set.',
+        'Latitude of the marker. Required only if geojson is not set.',
         'REAL',
         FALSE,
         FALSE
@@ -49,7 +49,7 @@ VALUES (
     (
         'map',
         'longitude',
-        'Longitude of the marker. Required if geojson is not set.',
+        'Longitude of the marker. Required only if geojson is not set.',
         'REAL',
         FALSE,
         FALSE
@@ -105,8 +105,16 @@ VALUES (
     (
         'map',
         'geojson',
-        'A GeoJSON geometry (line, a polygon, ...) to display on the map. Can be styled using geojson properties using the name of leaflet path options.',
+        'A GeoJSON geometry (line, polygon, ...) to display on the map. Can be styled using geojson properties using the name of leaflet path options. Introduced in 0.15.1. Accepts raw strings in addition to JSON objects since 0.15.2.',
         'JSON',
+        FALSE,
+        TRUE
+    ),
+    (
+        'map',
+        'size',
+        'Size of the marker icon. Requires "icon" to be set.',
+        'INTEGER',
         FALSE,
         TRUE
     )
@@ -117,7 +125,18 @@ VALUES (
         'map',
         'Basic example of a map with a marker',
         JSON(
-            '[{ "component": "map", "zoom": 2 }, { "title": "New Delhi", "latitude": 28.6139, "longitude": 77.2090 }]'
+            '[{ "component": "map", "zoom": 1 }, { "title": "New Delhi", "latitude": 28.6139, "longitude": 77.2090 }]'
+        )
+    ),
+    (
+        'map',
+        'Basic marker defined in GeoJSON. Using [leaflet marker options](https://leafletjs.com/reference.html#marker-option) as GeoJSON properties.',
+        JSON(
+            '[{ "component": "map", "zoom": 1 },
+            { "icon": "peace",
+            "size": 20,
+            "link": "https://en.wikipedia.org/wiki/Nelson_Mandela",
+            "geojson": "{\"type\":\"Feature\", \"properties\": { \"title\":\"Birth Place of Nelson Mandela\" }, \"geometry\": { \"type\":\"Point\", \"coordinates\": [28.49, -31.96] }}"}]'
         )
     ),
     (
