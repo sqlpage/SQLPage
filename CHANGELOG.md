@@ -1,11 +1,28 @@
 # CHANGELOG.md
 
-## 0.15.2 (unreleased)
+## 0.15.2 (2023-11-12)
 
- - Fix a bug where the new geojson support in the map component would not work when the geojson was passed as a string. This impacted databases that do not support native json objects, such as SQLite.
- - Improve support for geojson points (in addition to polygons and lines) in the map component.
- - Add a new `size` parameter to the map component to set the size of markers.
- - Add the ability to customize top navigation links and to create submenus in the `shell` component.
+ - Several improvements were made to the **map** component
+  - Fix a bug where the new geojson support in the map component would not work when the geojson was passed as a string. This impacted databases that do not support native json objects, such as SQLite.
+  - Improve support for geojson points (in addition to polygons and lines) in the map component.
+  - Add a new `size` parameter to the map component to set the size of markers.
+  - Document the `height` parameter to customize the size of the map.
+  - `tile_source` parameter to customize the map tiles, giving completely free control over the map appearance.
+  - `attribution` parameter to customize or remove the small copyright information text box at the bottom of the map. 
+  - Add the ability to customize top navigation links and to create submenus in the `shell` component.
+    - Postgres example:
+    ```sql
+    select 
+      'shell' as component,
+      'SQLPage' as title,
+      JSON('{ "link":"/", "title":"Home" }') as menu_item,
+      JSON('{ "title":"Options", "submenu":[
+          {"link":"1.sql","title":"Page 1"},
+          {"link":"2.sql","title":"Page 2"}
+      ]}') as menu_item;
+    ```
+    - *note*: this requires a database that supports json objects natively. If you are using SQLite, you can work around this limitation by using the `dynamic` component.
+ - Updated the embedded database to [SQLite 3.44](https://antonz.org/sqlite-3-44/), which improves performance, compatibility with other databases, and brings new date formatting functions. The new `ORDER BY` clause in aggregate functions is not supported yet in SQLPage.
 
 ## 0.15.1 (2023-11-07)
 

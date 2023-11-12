@@ -41,13 +41,13 @@ function sqlpage_map() {
     }
     function onLeafletLoad() {
       for (const m of maps) {
-        const map = L.map(m);
+        const tile_source = m.dataset.tile_source;
+        const maxZoom = +m.dataset.max_zoom;
+        const attribution = m.dataset.attribution;
         const center = m.dataset.center.split(",").map(c => parseFloat(c));
+        const map = L.map(m, { attributionControl: !!attribution });
         map.setView(center, +m.dataset.zoom);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap',
-          maxZoom: 18,
-        }).addTo(map);
+        L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
         for (const marker_elem of m.getElementsByClassName("marker")) {
           setTimeout(addMarker, 0, marker_elem, map);
         }
