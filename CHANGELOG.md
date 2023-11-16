@@ -1,5 +1,10 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - Add special handling of hidden inputs in [forms](https://sql.ophir.dev/documentation.sql?component=form#component). Hidden inputs are now completely invisible to the end user, facilitating the implementation of multi-step forms, csrf protaction, and other complex forms.
+ - 18 new icons available (see https://github.com/tabler/tabler-icons/releases/tag/v2.40.0)
+
 ## 0.15.2 (2023-11-12)
 
  - Several improvements were made to the **map** component

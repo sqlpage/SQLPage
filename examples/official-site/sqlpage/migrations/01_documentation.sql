@@ -336,6 +336,19 @@ In this example, depending on what the user clicks, the target `index.sql` page 
     '{"name": "fruit", "type": "radio", "value": 2, "description": "Oranges are a good source of vitamin C", "label": "Orange", "checked": true}, '||
     '{"name": "fruit", "type": "radio", "value": 3, "description": "Bananas are a good source of potassium", "label": "Banana"}'||
     ']')),
+    ('form', 'When you want to include some information in the form data, but not display it to the user, you can use a hidden field.
+
+This can be used to track simple data such as the current user''s id,
+or to implement more complex flows, such as a multi-step form,
+where the user is redirected to a different page after each step.
+
+This can also be used to implement [CSRF protection](https://en.wikipedia.org/wiki/Cross-site_request_forgery#Synchronizer_token_pattern),
+if your website has authenticated users that can perform sensitive actions through forms.
+', json('[{"component":"form", "validate": "Delete", "validate_color": "red"}, 
+    {"type": "hidden", "name": "user_id", "value": "place id here"},
+    {"type": "hidden", "name": "csrf_token", "value": "place token here"},
+    {"name": "confirm", "label": "Please type \"sensitive resource\" here to confirm the deletion", "required": true}
+    ]')),
     ('form', 'This example illustrates the use of custom validation buttons and half-width fields.',
     json('[{"component":"form", "title": "User", "validate": "Create new user", "validate_color": "green", "reset": "Clear"},
     {"name": "first_name", "label": "First name", "placeholder": "John", "width": 4},
