@@ -31,6 +31,9 @@
                     </label>
                 </div>
             {{else}}
+            {{~#if (eq type "hidden")}}
+                <input type="hidden" name="{{name}}" value="{{value}}">
+            {{else}}
                 <label class="form-label mb-2 col-md-{{default width 12}}">
                     {{default label name}}
                     {{~#if required}}
@@ -85,12 +88,13 @@
                             {{~#if autofocus}}autofocus {{/if~}}  
                         >
                     {{/if}}
-                {{/if}}
-                {{#if description}}
-                    <small class="form-hint mt-0">{{description}}</small>
-                {{/if}}
-            </label>
-        {{/if}}
+                    {{/if}}
+                    {{#if description}}
+                        <small class="form-hint mt-0">{{description}}</small>
+                    {{/if}}
+                </label>
+            {{/if}}
+            {{/if}}
         {{/each_row}}
         </div>
         {{#if (ne validate '')}} 
