@@ -5,7 +5,7 @@ use crate::{app_config::AppConfig, ON_CONNECT_FILE};
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
-    ConnectOptions,
+    ConnectOptions, Executor,
 };
 
 impl Database {
@@ -114,7 +114,7 @@ fn add_on_connection_handler(pool_options: PoolOptions<Any>) -> PoolOptions<Any>
         log::debug!("Running {on_connect_file:?} on new connection");
         let sql = std::sync::Arc::clone(&sql);
         Box::pin(async move {
-            let r = sqlx::query(&sql).execute(conn).await?;
+            let r = conn.execute(sql.as_str()).await?;
             log::debug!("Finished running connection handler on new connection: {r:?}");
             Ok(())
         })
