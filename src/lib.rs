@@ -41,7 +41,7 @@ impl AppState {
         let file_system = FileSystem::init(&config.web_root, &db).await;
         sql_file_cache.add_static(
             PathBuf::from("index.sql"),
-            ParsedSqlFile::new(&db, include_str!("../index.sql")).await,
+            ParsedSqlFile::new(&db, include_str!("../index.sql")),
         );
         Ok(AppState {
             db,
