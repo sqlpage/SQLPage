@@ -4,6 +4,8 @@
 
  - Add special handling of hidden inputs in [forms](https://sql.ophir.dev/documentation.sql?component=form#component). Hidden inputs are now completely invisible to the end user, facilitating the implementation of multi-step forms, csrf protaction, and other complex forms.
  - 18 new icons available (see https://github.com/tabler/tabler-icons/releases/tag/v2.40.0)
+ - Support multiple statements in [`on_connect.sql`](./configuration.md) in MySQL.
+ - Randomize postgres prepared statement names to avoid name collisions. This should fix a bug where SQLPage would report errors like `prepared statement "sqlx_s_3" already exists` when using a connection pooler in front of a PostgreSQL database.
 
 ## 0.15.2 (2023-11-12)
 
