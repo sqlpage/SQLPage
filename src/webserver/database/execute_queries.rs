@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
-use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
@@ -14,7 +13,6 @@ use sqlx::pool::PoolConnection;
 use sqlx::{Any, AnyConnection, Arguments, Either, Executor, Row, Statement};
 
 use super::sql_pseudofunctions::StmtParam;
-use super::sql_to_json::sql_to_json;
 use super::{highlight_sql_error, Database, DbItem};
 
 impl Database {
@@ -55,11 +53,15 @@ pub fn stream_query_results<'a>(
                 ParsedStatement::SetVariable { variable, value} => {
                     let query = bind_parameters(value, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
-                    let row = connection.fetch_optional(query).await?;
+                    log::debug!("Executing query to set the {variable:?} variable: {:?}", query.sql);
+                    let value: Option<String> = connection.fetch_optional(query).await?
+                        .and_then(|row| row.try_get::<Option<String>, _>(0).ok().flatten());
                     let (vars, name) = vars_and_name(request, variable)?;
-                    if let Some(row) = row {
-                        vars.insert(name.clone(), row_to_varvalue(&row));
+                    if let Some(value) = value {
+                        log::debug!("Setting variable {name} to {value:?}");
+                        vars.insert(name.clone(), SingleOrVec::Single(value));
                     } else {
+                        log::debug!("Removing variable {name}");
                         vars.remove(&name);
                     }
                 },
@@ -89,24 +91,6 @@ fn vars_and_name<'a>(
         _ => Err(anyhow!(
             "Only GET and POST variables can be set, not {variable:?}"
         )),
-    }
-}
-
-fn row_to_varvalue(row: &AnyRow) -> SingleOrVec {
-    let Some(col) = row.columns().first() else {
-        return SingleOrVec::Single(String::new());
-    };
-    match sql_to_json(row, col) {
-        Value::String(s) => SingleOrVec::Single(s),
-        Value::Array(vals) => SingleOrVec::Vec(
-            vals.into_iter()
-                .map(|v| match v {
-                    Value::String(s) => s,
-                    other => other.to_string(),
-                })
-                .collect(),
-        ),
-        other => SingleOrVec::Single(other.to_string()),
     }
 }
 
