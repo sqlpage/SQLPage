@@ -5,18 +5,17 @@ use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use super::sql::{ParsedSQLStatement, ParsedSqlFile};
+use super::sql::{ParsedSqlFile, ParsedStatement, StmtWithParams};
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::http::{RequestInfo, SingleOrVec};
 
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
-use sqlx::query::Query;
-use sqlx::{AnyConnection, Arguments, Either, Executor, Row, Statement};
+use sqlx::{Any, AnyConnection, Arguments, Either, Executor, Row, Statement};
 
 use super::sql_pseudofunctions::StmtParam;
 use super::sql_to_json::sql_to_json;
-use super::{highlight_sql_error, Database, DbItem, PreparedStatement};
+use super::{highlight_sql_error, Database, DbItem};
 
 impl Database {
     pub(crate) async fn prepare_with(
@@ -41,22 +40,22 @@ pub fn stream_query_results<'a>(
         let mut connection_opt = None;
         for res in &sql_file.statements {
             match res {
-                ParsedSQLStatement::Statement(stmt) => {
+                ParsedStatement::StmtWithParams(stmt) => {
                     let query = bind_parameters(stmt, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
-                    let mut stream = query.fetch_many(connection);
+                    let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
-                        yield parse_single_sql_result(stmt, elem);
+                        yield parse_single_sql_result(&stmt.query, elem);
                         if is_err {
                             break;
                         }
                     }
                 },
-                ParsedSQLStatement::SetVariable { variable, value} => {
+                ParsedStatement::SetVariable { variable, value} => {
                     let query = bind_parameters(value, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
-                    let row = query.fetch_optional(connection).await?;
+                    let row = connection.fetch_optional(query).await?;
                     let (vars, name) = vars_and_name(request, variable)?;
                     if let Some(row) = row {
                         vars.insert(name.clone(), row_to_varvalue(&row));
@@ -64,10 +63,10 @@ pub fn stream_query_results<'a>(
                         vars.remove(&name);
                     }
                 },
-                ParsedSQLStatement::StaticSimpleSelect(value) => {
+                ParsedStatement::StaticSimpleSelect(value) => {
                     yield DbItem::Row(value.clone().into())
                 }
-                ParsedSQLStatement::Error(e) => yield DbItem::Error(clone_anyhow_err(e)),
+                ParsedStatement::Error(e) => yield DbItem::Error(clone_anyhow_err(e)),
             }
         }
     }
@@ -132,10 +131,7 @@ async fn take_connection<'a, 'b>(
 }
 
 #[inline]
-fn parse_single_sql_result(
-    stmt: &PreparedStatement,
-    res: sqlx::Result<Either<AnyQueryResult, AnyRow>>,
-) -> DbItem {
+fn parse_single_sql_result(sql: &str, res: sqlx::Result<Either<AnyQueryResult, AnyRow>>) -> DbItem {
     match res {
         Ok(Either::Right(r)) => DbItem::Row(super::sql_to_json::row_to_json(&r)),
         Ok(Either::Left(res)) => {
@@ -144,7 +140,7 @@ fn parse_single_sql_result(
         }
         Err(err) => DbItem::Error(highlight_sql_error(
             "Failed to execute SQL statement",
-            stmt.statement.sql(),
+            sql,
             err,
         )),
     }
@@ -159,18 +155,43 @@ fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
 }
 
 async fn bind_parameters<'a>(
-    stmt: &'a PreparedStatement,
+    stmt: &'a StmtWithParams,
     request: &'a RequestInfo,
-) -> anyhow::Result<Query<'a, sqlx::Any, AnyArguments<'a>>> {
+) -> anyhow::Result<StatementWithParams<'a>> {
+    let sql = stmt.query.as_str();
     let mut arguments = AnyArguments::default();
-    for param in &stmt.parameters {
+    for param in &stmt.params {
         let argument = extract_req_param(param, request).await?;
-        log::debug!("Binding value {:?} in statement {}", &argument, stmt);
+        log::debug!("Binding value {:?} in statement {}", &argument, stmt.query);
         match argument {
             None => arguments.add(None::<String>),
             Some(Cow::Owned(s)) => arguments.add(s),
             Some(Cow::Borrowed(v)) => arguments.add(v),
         }
     }
-    Ok(stmt.statement.query_with(arguments))
+    Ok(StatementWithParams { sql, arguments })
+}
+
+pub struct StatementWithParams<'a> {
+    sql: &'a str,
+    arguments: AnyArguments<'a>,
+}
+
+impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
+    fn sql(&self) -> &'q str {
+        self.sql
+    }
+
+    fn statement(&self) -> Option<&<Any as sqlx::database::HasStatement<'q>>::Statement> {
+        None
+    }
+
+    fn take_arguments(&mut self) -> Option<<Any as sqlx::database::HasArguments<'q>>::Arguments> {
+        Some(std::mem::take(&mut self.arguments))
+    }
+
+    fn persistent(&self) -> bool {
+        // Let sqlx create a prepared statement the first time it is executed, and then reuse it.
+        true
+    }
 }

@@ -1,5 +1,4 @@
 use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
-use super::PreparedStatement;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::utils::add_value_to_map;
 use crate::{AppState, Database};
@@ -13,82 +12,32 @@ use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{SemiColon, EOF};
 use sqlparser::tokenizer::Tokenizer;
-use sqlx::any::{AnyKind, AnyTypeInfo};
-use sqlx::Postgres;
+use sqlx::any::AnyKind;
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
 #[derive(Default)]
 pub struct ParsedSqlFile {
-    pub(super) statements: Vec<ParsedSQLStatement>,
-}
-
-pub(super) enum ParsedSQLStatement {
-    Statement(PreparedStatement),
-    StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
-    Error(anyhow::Error),
-    SetVariable {
-        variable: StmtParam,
-        value: PreparedStatement,
-    },
+    pub(super) statements: Vec<ParsedStatement>,
 }
 
 impl ParsedSqlFile {
-    pub async fn new(db: &Database, sql: &str) -> ParsedSqlFile {
+    #[must_use]
+    pub fn new(db: &Database, sql: &str) -> ParsedSqlFile {
         let dialect = dialect_for_db(db.connection.any_kind());
         let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err),
         };
-        let mut statements = Vec::with_capacity(8);
-        for parsed in parsed_statements {
-            statements.push(match parsed {
-                ParsedStatement::StaticSimpleSelect(s) => ParsedSQLStatement::StaticSimpleSelect(s),
-                ParsedStatement::Error(e) => ParsedSQLStatement::Error(e),
-                ParsedStatement::StmtWithParams(stmt_with_params) => {
-                    prepare_query_with_params(db, stmt_with_params).await
-                }
-                ParsedStatement::SetVariable { variable, value } => {
-                    match prepare_query_with_params(db, value).await {
-                        ParsedSQLStatement::Statement(value) => {
-                            ParsedSQLStatement::SetVariable { variable, value }
-                        }
-                        err => err,
-                    }
-                }
-            });
-        }
-        statements.shrink_to_fit();
+        let statements = parsed_statements.collect();
         ParsedSqlFile { statements }
     }
 
     fn from_err(e: impl Into<anyhow::Error>) -> Self {
         Self {
-            statements: vec![ParsedSQLStatement::Error(
+            statements: vec![ParsedStatement::Error(
                 e.into().context("SQLPage could not parse the SQL file"),
             )],
-        }
-    }
-}
-
-async fn prepare_query_with_params(
-    db: &Database,
-    StmtWithParams { query, params }: StmtWithParams,
-) -> ParsedSQLStatement {
-    let param_types = get_param_types(&params);
-    match db.prepare_with(&query, &param_types).await {
-        Ok(statement) => {
-            log::debug!("Successfully prepared SQL statement '{query}'");
-            ParsedSQLStatement::Statement(PreparedStatement {
-                statement,
-                parameters: params,
-            })
-        }
-        Err(err) => {
-            log::warn!("Failed to prepare {query:?}: {err:#}");
-            ParsedSQLStatement::Error(err.context(format!(
-                "The database returned an error when preparing this SQL statement: {query}"
-            )))
         }
     }
 }
@@ -96,18 +45,18 @@ async fn prepare_query_with_params(
 #[async_trait(? Send)]
 impl AsyncFromStrWithState for ParsedSqlFile {
     async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self> {
-        Ok(ParsedSqlFile::new(&app_state.db, source).await)
+        Ok(ParsedSqlFile::new(&app_state.db, source))
     }
 }
 
 #[derive(Debug, PartialEq)]
-struct StmtWithParams {
-    query: String,
-    params: Vec<StmtParam>,
+pub(super) struct StmtWithParams {
+    pub query: String,
+    pub params: Vec<StmtParam>,
 }
 
 #[derive(Debug)]
-enum ParsedStatement {
+pub(super) enum ParsedStatement {
     StmtWithParams(StmtWithParams),
     StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
     SetVariable {
@@ -199,13 +148,6 @@ fn kind_of_dialect(dialect: &dyn Dialect) -> AnyKind {
     } else {
         unreachable!("Unknown dialect")
     }
-}
-
-fn get_param_types(parameters: &[StmtParam]) -> Vec<AnyTypeInfo> {
-    parameters
-        .iter()
-        .map(|_p| <str as sqlx::Type<Postgres>>::type_info().into())
-        .collect()
 }
 
 fn map_param(mut name: String) -> StmtParam {

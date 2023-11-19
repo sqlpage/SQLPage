@@ -6,6 +6,7 @@
  - 18 new icons available (see https://github.com/tabler/tabler-icons/releases/tag/v2.40.0)
  - Support multiple statements in [`on_connect.sql`](./configuration.md) in MySQL.
  - Randomize postgres prepared statement names to avoid name collisions. This should fix a bug where SQLPage would report errors like `prepared statement "sqlx_s_3" already exists` when using a connection pooler in front of a PostgreSQL database.
+ - Delegate statement preparation to sqlx. The logic of preparing statements and caching them for later reuse is now entirely delegated to the sql driver library (sqlx). This simplifies the code and logic inside sqlpage itself. More importantly, statements are now prepared in a streaming fashion when a file is first loaded, instead of all at once, which allows referencing a temporary table created at the start of a file in a later statement in the same file.
 
 ## 0.15.2 (2023-11-12)
 
