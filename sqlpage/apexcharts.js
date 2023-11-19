@@ -1,4 +1,4 @@
-/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.43.2-0/dist/apexcharts.min.js */
+/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.min.js */
 
 
 function sqlpage_chart() {

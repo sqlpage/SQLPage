@@ -1,12 +1,33 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.16.0 (2023-11-19)
 
  - Add special handling of hidden inputs in [forms](https://sql.ophir.dev/documentation.sql?component=form#component). Hidden inputs are now completely invisible to the end user, facilitating the implementation of multi-step forms, csrf protaction, and other complex forms.
- - 18 new icons available (see https://github.com/tabler/tabler-icons/releases/tag/v2.40.0)
+ - 36 new icons available 
+   - https://github.com/tabler/tabler-icons/releases/tag/v2.40.0
+   - https://github.com/tabler/tabler-icons/releases/tag/v2.41.0
  - Support multiple statements in [`on_connect.sql`](./configuration.md) in MySQL.
- - Randomize postgres prepared statement names to avoid name collisions. This should fix a bug where SQLPage would report errors like `prepared statement "sqlx_s_3" already exists` when using a connection pooler in front of a PostgreSQL database.
- - Delegate statement preparation to sqlx. The logic of preparing statements and caching them for later reuse is now entirely delegated to the sql driver library (sqlx). This simplifies the code and logic inside sqlpage itself. More importantly, statements are now prepared in a streaming fashion when a file is first loaded, instead of all at once, which allows referencing a temporary table created at the start of a file in a later statement in the same file.
+ - Randomize postgres prepared statement names to avoid name collisions. This should fix a bug where SQLPage would report errors like `prepared statement "sqlx_s_1" already exists` when using a connection pooler in front of a PostgreSQL database. It is still not recommended to use SQLPage with an external connection pooler (such as pgbouncer), because SQLPage already implements its own connection pool. If you really want to use a connection pooler, you should set the [`max_connections`](./configuration.md) configuration parameter to `1` to disable the connection pooling logic in SQLPage.
+ - SQL statements are now prepared lazily right before their first execution, instead of all at once when a file is first loaded, which allows **referencing a temporary table created at the start of a file in a later statement** in the same file. This works by delegating statement preparation to the database interface library we use (sqlx). The logic of preparing statements and caching them for later reuse is now entirely delegated to sqlx. This also nicely simplifies the code and logic inside sqlpage itself, and should slightly improve performance and memory usage.
+   - Creating temporary tables at the start of a file is a nice way to keep state between multiple statements in a single file, without having to use variables, which can contain only a single string value: 
+     ```sql
+      DROP VIEW IF EXISTS current_user;
+
+      CREATE TEMPORARY VIEW current_user AS
+      SELECT * FROM users
+      INNER JOIN sessions ON sessions.user_id = users.id
+      WHERE sessions.session_id = sqlpage.cookie('session_id');
+      
+      SELECT 'card' as component,
+              'Welcome, ' || username as title
+      FROM current_user;
+      ```
+ - Add support for resetting variables to a `NULL` value using `SET`. Previously, storing `NULL` in a variable would store the string `'null'` instead of the `NULL` value. This is now fixed.
+    ```sql
+    SET myvar = NULL;
+    SELECT 'card' as component;
+    SELECT $myvar IS NULL as title; -- this used to display false, it now displays true
+    ```
 
 ## 0.15.2 (2023-11-12)
 
