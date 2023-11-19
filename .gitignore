@@ -2,3 +2,5 @@
 sqlpage.db
 .idea/
 *.mm_profdata
+docs/presentation-pgconf.html
+examples/inrap_badass/
