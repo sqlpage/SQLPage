@@ -18,18 +18,6 @@ pub enum DbItem {
     Error(anyhow::Error),
 }
 
-struct PreparedStatement {
-    statement: sqlx::any::AnyStatement<'static>,
-    parameters: Vec<sql_pseudofunctions::StmtParam>,
-}
-
-impl std::fmt::Display for PreparedStatement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use sqlx::Statement;
-        write!(f, "{}", self.statement.sql())
-    }
-}
-
 #[must_use]
 pub fn highlight_sql_error(
     context: &str,
