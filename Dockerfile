@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.73-slim as builder
+FROM --platform=$BUILDPLATFORM rust:1.74-slim as builder
 WORKDIR /usr/src/sqlpage
 ARG TARGETARCH
 ARG BUILDARCH
@@ -30,8 +30,8 @@ RUN touch src/main.rs && \
     mv target/$(cat TARGET)/superoptimized/sqlpage sqlpage.bin
 
 FROM busybox:glibc
-RUN addgroup --system sqlpage && \
-    adduser --system --no-create-home --ingroup sqlpage sqlpage
+RUN addgroup --gid 1000 --system sqlpage && \
+    adduser --uid 1000 --system --no-create-home --ingroup sqlpage sqlpage
 ENV SQLPAGE_WEB_ROOT=/var/www
 WORKDIR /etc
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
