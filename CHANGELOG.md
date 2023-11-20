@@ -1,5 +1,11 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - clearer debug logs (https://github.com/wooorm/markdown-rs/pull/92)
+ - update compiler to rust 1.74
+ - use user id and group id 1000 in docker image (this is the default user id in most linux distributions)
+
 ## 0.16.0 (2023-11-19)
 
  - Add special handling of hidden inputs in [forms](https://sql.ophir.dev/documentation.sql?component=form#component). Hidden inputs are now completely invisible to the end user, facilitating the implementation of multi-step forms, csrf protaction, and other complex forms.
