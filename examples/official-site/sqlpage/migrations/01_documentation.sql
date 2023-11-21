@@ -247,7 +247,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('min', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOL', FALSE, TRUE),
-    ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously.', 'BOOL', FALSE, TRUE),
+    ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOL', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
     ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
@@ -315,6 +315,26 @@ FROM fruits
 ', json('[{"component":"form"}, '||
     '{"name": "Fruit", "type": "select", "value": 1, "options": '||
         '"[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
+    ]')),
+    ('form', '### Multi-select
+You can authorize the user to select multiple options by setting the `multiple` property to `true`.
+This creates a more compact (but arguably less user-friendly) alternative to a series of checkboxes.
+In this case, you should add square brackets to the name of the field.
+The target page will then receive the value as a JSON array of strings, which you can iterate over using 
+ - the `json_each` function [in SQLite](https://www.sqlite.org/json1.html) and [Postgres](https://www.postgresql.org/docs/9.3/functions-json.html),
+ - the [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html) function in MySQL (which you''ll need to wrap in a function, because SQLPage cannot parse the non-standard syntax of this function)
+ - the [`OPENJSON`](https://learn.microsoft.com/fr-fr/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16) function in Microsoft SQL Server.
+
+The target page could then look like this:
+
+```sql
+insert into best_fruits(id) -- INSERT INTO ... SELECT ... runs the SELECT query and inserts the results into the table
+select CAST(value AS integer) as id -- all values are transmitted by the browser as strings
+from json_each($preferred_fruits); -- json_each returns a table with a "value" column for each element in the JSON array
+```
+', json('[{"component":"form"}, 
+    {"name": "Fruit", "type": "select", "multiple": true, "description": "press ctrl to select multiple values", "options":
+        "[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
     ]')),
     ('form', 'This example illustrates the use of the `radio` type.
 The `name` parameter is used to group the radio buttons together.
