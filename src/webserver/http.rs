@@ -19,6 +19,7 @@ use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
 use std::net::IpAddr;
@@ -324,6 +325,7 @@ pub struct RequestInfo {
     pub path: String,
     pub get_variables: ParamMap,
     pub post_variables: ParamMap,
+    pub uploaded_files: HashMap<String, Vec<u8>>,
     pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
     pub cookies: ParamMap,
