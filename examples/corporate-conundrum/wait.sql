@@ -1,13 +1,12 @@
 -- Redirect to the next question when all players have answered
-select 'shell' as component,
-    CASE
+select CASE
         (SELECT count(*) FROM answers WHERE question_id = $question_id AND game_id = $game_id::integer)
         WHEN (SELECT count(*) FROM players WHERE game_id = $game_id::integer)
         THEN '0; next-question.sql?game_id=' || $game_id || '&player=' || $player
         ELSE 3
     END as refresh,
-    shell.*
-FROM shell;
+    sqlpage_shell.*
+FROM sqlpage_shell;
 -- Insert the answer into the answers table
 INSERT INTO answers(game_id, player_name, question_id, answer_value)
 SELECT $game_id::integer as game_id,
