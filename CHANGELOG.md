@@ -1,7 +1,8 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.16.1
 
+ - fix a bug where setting a variable to a non-string value would always set it to null
  - clearer debug logs (https://github.com/wooorm/markdown-rs/pull/92)
  - update compiler to rust 1.74
  - use user id and group id 1000 in docker image (this is the default user id in most linux distributions)

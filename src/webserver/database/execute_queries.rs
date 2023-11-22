@@ -6,11 +6,12 @@ use std::collections::HashMap;
 
 use super::sql::{ParsedSqlFile, ParsedStatement, StmtWithParams};
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
+use crate::webserver::database::sql_to_json::row_to_string;
 use crate::webserver::http::{RequestInfo, SingleOrVec};
 
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
-use sqlx::{Any, AnyConnection, Arguments, Either, Executor, Row, Statement};
+use sqlx::{Any, AnyConnection, Arguments, Either, Executor, Statement};
 
 use super::sql_pseudofunctions::StmtParam;
 use super::{highlight_sql_error, Database, DbItem};
@@ -54,8 +55,7 @@ pub fn stream_query_results<'a>(
                     let query = bind_parameters(value, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
                     log::debug!("Executing query to set the {variable:?} variable: {:?}", query.sql);
-                    let value: Option<String> = connection.fetch_optional(query).await?
-                        .and_then(|row| row.try_get::<Option<String>, _>(0).ok().flatten());
+                    let value: Option<String> = connection.fetch_optional(query).await?.as_ref().and_then(row_to_string);
                     let (vars, name) = vars_and_name(request, variable)?;
                     if let Some(value) = value {
                         log::debug!("Setting variable {name} to {value:?}");

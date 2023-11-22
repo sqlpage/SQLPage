@@ -99,6 +99,16 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     }
 }
 
+/// Takes the first column of a row and converts it to a string.
+pub fn row_to_string(row: &AnyRow) -> Option<String> {
+    let col = row.columns().get(0)?;
+    match sql_to_json(row, col) {
+        serde_json::Value::String(s) => Some(s),
+        serde_json::Value::Null => None,
+        other => Some(other.to_string()),
+    }
+}
+
 #[actix_web::test]
 async fn test_row_to_json() -> anyhow::Result<()> {
     use sqlx::Connection;
