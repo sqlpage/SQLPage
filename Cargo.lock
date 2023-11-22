@@ -2295,6 +2295,7 @@ dependencies = [
  "password-hash",
  "percent-encoding",
  "rand",
+ "rustls 0.21.9",
  "serde",
  "serde_json",
  "sqlparser",
