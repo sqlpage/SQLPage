@@ -85,6 +85,7 @@
                             {{~#if formtarget}}formtarget="{{formtarget}}" {{/if~}}
                             {{~#if list}}list="{{list}}" {{/if~}}
                             {{~#if multiple}}multiple="{{multiple}}" {{/if~}}
+                            {{~#if accept}}accept="{{accept}}" {{/if~}}
                             {{~#if autofocus}}autofocus {{/if~}}  
                         >
                     {{/if}}
@@ -95,6 +96,10 @@
                 </label>
             {{/if}}
             {{/if}}
+            <!-- Change the form encoding type if this is a file input-->
+            {{#if (eq type "file")}}
+                {{#delay}}formenctype="multipart/form-data"{{/delay}}
+            {{/if}}
         {{/each_row}}
         </div>
         {{#if (ne validate '')}} 
@@ -103,6 +108,7 @@
             {{#if validate_shape}} btn-{{validate_shape}} {{/if}}
             {{#if validate_outline}} btn-outline-{{validate_outline}} {{/if}}
             {{#if validate_size}} btn-{{validate_size}} {{/if}}"
+            {{flush_delayed}}
             type="submit"
             {{#if validate}}value="{{validate}}"{{/if}}>
         {{/if}}
