@@ -1,26 +1,24 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::database::{execute_queries::stream_query_results, DbItem};
+use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
 use crate::{AppState, Config, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode, Uri};
-use actix_web::web::Form;
 use actix_web::{
-    dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, FromRequest,
-    HttpResponse, HttpServer,
+    dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, HttpResponse,
+    HttpServer,
 };
 
 use actix_web::body::{BoxBody, MessageBody};
-use actix_web_httpauth::headers::authorization::{Authorization, Basic};
+use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
 use std::net::IpAddr;
@@ -30,6 +28,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
+use super::http_request_info::ParamMap;
 use super::static_content;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -286,8 +285,6 @@ fn send_anyhow_error(e: &anyhow::Error, resp_send: tokio::sync::oneshot::Sender<
         .unwrap_or_else(|_| log::error!("could not send headers"));
 }
 
-type ParamMap = HashMap<String, SingleOrVec>;
-
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum SingleOrVec {
@@ -296,7 +293,7 @@ pub enum SingleOrVec {
 }
 
 impl SingleOrVec {
-    fn merge(&mut self, other: Self) {
+    pub(crate) fn merge(&mut self, other: Self) {
         match (self, other) {
             (Self::Single(old), Self::Single(new)) => *old = new,
             (old, mut new) => {
@@ -332,68 +329,6 @@ pub struct RequestInfo {
     pub cookies: ParamMap,
     pub basic_auth: Option<Basic>,
     pub app_state: Arc<AppState>,
-}
-
-fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) -> ParamMap {
-    values
-        .into_iter()
-        .fold(HashMap::new(), |mut map, (mut k, v)| {
-            let entry = if k.ends_with("[]") {
-                k.replace_range(k.len() - 2.., "");
-                SingleOrVec::Vec(vec![v])
-            } else {
-                SingleOrVec::Single(v)
-            };
-            match map.entry(k) {
-                Entry::Occupied(mut s) => {
-                    SingleOrVec::merge(s.get_mut(), entry);
-                }
-                Entry::Vacant(v) => {
-                    v.insert(entry);
-                }
-            }
-            map
-        })
-}
-
-async fn extract_request_info(req: &mut ServiceRequest, app_state: Arc<AppState>) -> RequestInfo {
-    let (http_req, payload) = req.parts_mut();
-    let post_variables = Form::<Vec<(String, String)>>::from_request(http_req, payload)
-        .await
-        .map(Form::into_inner)
-        .unwrap_or_default();
-
-    let headers = req.headers().iter().map(|(name, value)| {
-        (
-            name.to_string(),
-            String::from_utf8_lossy(value.as_bytes()).to_string(),
-        )
-    });
-    let get_variables = web::Query::<Vec<(String, String)>>::from_query(req.query_string())
-        .map(web::Query::into_inner)
-        .unwrap_or_default();
-    let client_ip = req.peer_addr().map(|addr| addr.ip());
-
-    let raw_cookies = req.cookies();
-    let cookies = raw_cookies
-        .iter()
-        .flat_map(|c| c.iter())
-        .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()));
-
-    let basic_auth = Authorization::<Basic>::parse(req)
-        .ok()
-        .map(Authorization::into_scheme);
-
-    RequestInfo {
-        path: req.path().to_string(),
-        headers: param_map(headers),
-        get_variables: param_map(get_variables),
-        post_variables: param_map(post_variables),
-        client_ip,
-        cookies: param_map(cookies),
-        basic_auth,
-        app_state,
-    }
 }
 
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
