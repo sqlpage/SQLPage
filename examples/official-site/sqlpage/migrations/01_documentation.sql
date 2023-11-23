@@ -384,7 +384,7 @@ if your website has authenticated users that can perform sensitive actions throu
 
 You can use the `file` type to allow the user to upload a file.
 The file will be uploaded to the server, and you will be able to access it using the
-[`sqlpage.uploaded_file_data_url`](functions.sql?function=uploaded_file_data_url#function) function.
+[`sqlpage.uploaded_file_path`](functions.sql?function=uploaded_file_path#function) function.
 
 Here is how you could save the uploaded file to a table in the database:
 

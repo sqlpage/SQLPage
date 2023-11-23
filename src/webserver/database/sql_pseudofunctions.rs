@@ -32,6 +32,9 @@ pub(super) enum StmtParam {
     EnvironmentVariable(String),
     SqlPageVersion,
     Literal(String),
+    UploadedFilePath(String),
+    ReadFileAsText(Box<StmtParam>),
+    ReadFileAsDataUrl(Box<StmtParam>),
     Path,
 }
 
@@ -86,10 +89,19 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "version" => StmtParam::SqlPageVersion,
         "variables" => parse_get_or_post(extract_single_quoted_string_optional(arguments)),
         "path" => StmtParam::Path,
+        "uploaded_file_path" => extract_single_quoted_string("uploaded_file_path", arguments)
+            .map_or_else(StmtParam::Error, StmtParam::UploadedFilePath),
+        "read_file_as_text" => StmtParam::ReadFileAsText(Box::new(extract_variable_argument(
+            "read_file_as_text",
+            arguments,
+        ))),
+        "read_file_as_data_url" => StmtParam::ReadFileAsDataUrl(Box::new(
+            extract_variable_argument("read_file_as_data_url", arguments),
+        )),
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
-        )),
+        ))
     }
 }
 
@@ -103,6 +115,8 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::HashPassword(inner) => has_password_param(inner, request).await?,
         StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
         StmtParam::UrlEncode(inner) => url_encode(inner, request)?,
+        StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
+        StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
         _ => extract_req_param_non_nested(param, request)?,
     })
 }
@@ -207,6 +221,17 @@ pub(super) fn extract_req_param_non_nested<'a>(
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::AllVariables(get_or_post) => extract_get_or_post(*get_or_post, request),
         StmtParam::Path => Some(Cow::Borrowed(&request.path)),
+        StmtParam::UploadedFilePath(x) => request
+            .uploaded_files
+            .get(x)
+            .and_then(|x| x.file.path().to_str())
+            .map(Cow::Borrowed),
+        StmtParam::ReadFileAsText(_) => bail!(
+            "Nested read_file_as_text() function not allowed",
+        ),
+        StmtParam::ReadFileAsDataUrl(_) => bail!(
+            "Nested read_file_as_data_url() function not allowed",
+        ),
     })
 }
 
