@@ -39,7 +39,8 @@ pub(crate) async fn extract_request_info(
     app_state: Arc<AppState>,
 ) -> RequestInfo {
     let (http_req, payload) = req.parts_mut();
-    let (post_variables, uploaded_files) = extract_post_data(http_req, payload).await;
+    let config = &app_state.config;
+    let (post_variables, uploaded_files) = extract_post_data(http_req, payload, config).await;
 
     let headers = req.headers().iter().map(|(name, value)| {
         (
@@ -78,6 +79,7 @@ pub(crate) async fn extract_request_info(
 async fn extract_post_data(
     http_req: &mut actix_web::HttpRequest,
     payload: &mut actix_web::dev::Payload,
+    config: &crate::app_config::AppConfig,
 ) -> (Vec<(String, String)>, Vec<(String, TempFile)>) {
     let content_type = http_req
         .headers()
@@ -93,7 +95,7 @@ async fn extract_post_data(
             }
         }
     } else if content_type.starts_with(b"multipart/form-data") {
-        extract_multipart_post_data(http_req, payload)
+        extract_multipart_post_data(http_req, payload, config)
             .await
             .unwrap_or_else(|e| {
                 log::error!("Could not read request data: {}", e);
@@ -118,6 +120,7 @@ async fn extract_urlencoded_post_variables(
 async fn extract_multipart_post_data(
     http_req: &mut actix_web::HttpRequest,
     payload: &mut actix_web::dev::Payload,
+    config: &crate::app_config::AppConfig,
 ) -> anyhow::Result<(Vec<(String, String)>, Vec<(String, TempFile)>)> {
     let mut post_variables = Vec::new();
     let mut uploaded_files = Vec::new();
@@ -126,7 +129,8 @@ async fn extract_multipart_post_data(
         .await
         .map_err(|e| anyhow!("could not parse request as multipart form data: {e}"))?;
 
-    let mut limits = Limits::new(10 * 1024 * 1024, 1024 * 1024);
+    let mut limits = Limits::new(config.max_uploaded_file_size, config.max_uploaded_file_size);
+    log::trace!("Parsing multipart form data with a {:?} KiB limit", limits.total_limit_remaining / 1024);
 
     while let Some(part) = multipart.next().await {
         let field = part.map_err(|e| anyhow!("unable to read form field: {e}"))?;
