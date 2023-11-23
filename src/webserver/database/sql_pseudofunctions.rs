@@ -4,10 +4,7 @@ use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
 use sqlparser::ast::FunctionArg;
 
-use crate::webserver::{
-    http::{RequestInfo, SingleOrVec},
-    ErrorWithStatus,
-};
+use crate::webserver::{http::SingleOrVec, http_request_info::RequestInfo, ErrorWithStatus};
 
 use super::sql::{
     extract_integer, extract_single_quoted_string, extract_single_quoted_string_optional,

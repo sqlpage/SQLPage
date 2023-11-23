@@ -13,23 +13,18 @@ use actix_web::{
 };
 
 use actix_web::body::{BoxBody, MessageBody};
-use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::io::Write;
 use std::mem;
-use std::net::IpAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
-
-use super::http_request_info::ParamMap;
 use super::static_content;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
@@ -286,7 +281,7 @@ fn send_anyhow_error(e: &anyhow::Error, resp_send: tokio::sync::oneshot::Sender<
         .unwrap_or_else(|_| log::error!("could not send headers"));
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum SingleOrVec {
     Single(String),
@@ -318,19 +313,6 @@ impl SingleOrVec {
             SingleOrVec::Vec(v) => Cow::Owned(serde_json::to_string(v).unwrap()),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct RequestInfo {
-    pub path: String,
-    pub get_variables: ParamMap,
-    pub post_variables: ParamMap,
-    pub uploaded_files: HashMap<String, Vec<u8>>,
-    pub headers: ParamMap,
-    pub client_ip: Option<IpAddr>,
-    pub cookies: ParamMap,
-    pub basic_auth: Option<Basic>,
-    pub app_state: Arc<AppState>,
 }
 
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
