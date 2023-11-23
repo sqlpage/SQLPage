@@ -46,5 +46,8 @@ async fn log_welcome_message(config: &AppConfig) {
 }
 
 fn init_logging() {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    let env = env_logger::Env::new().default_filter_or("info");
+    let mut logging = env_logger::Builder::from_env(env);
+    logging.format_timestamp_millis();
+    logging.init();
 }
