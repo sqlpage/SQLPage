@@ -1,6 +1,28 @@
 # CHANGELOG.md
 
-## 0.16.1
+## unreleased
+
+### Uploads
+
+This release is all about a long awaited feature: file uploads.
+Your SQLPage website can now accept file uploads from users, store them either in a directory or directly in a database table.
+
+#### New functions
+
+##### Handle uploaded files
+
+ - [`sqlpage.uploaded_file_path`](https://sql.ophir.dev/functions.sql?function=uploaded_file_path#function) to get the temprary local path of a file uploaded by the user. This path will be valid until the end of the current request, and will be located in a temporary directory (customizable with `TMPDIR`). You can use [`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) to operate on the file, for instance to move it to a permanent location.
+ - [`sqlpage.uploaded_file_mime_type`](https://sql.ophir.dev/functions.sql?function=uploaded_file_name#function) to get the type of file uploaded by the user. This is the MIME type of the file, such as `image/png` or `text/csv`. You can use this to easily check that the file is of the expected type before storing it.
+
+##### Read files
+
+These new functions are useful to read the content of a file uploaded by the user,
+but can also be used to read any file on the server.
+
+ - [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a text string.
+ - [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
+
+## 0.16.1 (2023-11-22)
 
  - fix a bug where setting a variable to a non-string value would always set it to null
  - clearer debug logs (https://github.com/wooorm/markdown-rs/pull/92)
