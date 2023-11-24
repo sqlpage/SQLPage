@@ -7,6 +7,28 @@
 This release is all about a long awaited feature: file uploads.
 Your SQLPage website can now accept file uploads from users, store them either in a directory or directly in a database table.
 
+You can add a file upload button to a form with a simple 
+
+```sql
+select 'form' as component;
+select 'user_file' as name, 'file' as type;
+```
+
+when received by the server, the file will be saved in a temporary directory (customizable with `TMPDIR` on linux). You can access the temporary file path with the new [`sqlpage.uploaded_file_path`](https://sql.ophir.dev/functions.sql?function=uploaded_file_path#function) function.
+
+You can then persist the upload as a permanent file on the server with the [`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) function:
+
+```sql
+select sqlpage.exec('mv', sqlpage.uploaded_file_path('user_file'), '/path/to/my/file');
+```
+
+or you can store it directly in a database table with the new [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file#function) and [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file#function) functions:
+
+```sql
+insert into files (content) values (sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path('user_file')))
+returning 'text' as component, 'Uploaded new file with id: ' || id as contents;
+```
+
 #### New functions
 
 ##### Handle uploaded files
