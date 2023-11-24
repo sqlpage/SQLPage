@@ -12,6 +12,7 @@ use actix_web::{
     HttpServer,
 };
 
+use super::static_content;
 use actix_web::body::{BoxBody, MessageBody};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -25,7 +26,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
-use super::static_content;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
 /// This prevents a single request from using up all available memory

@@ -130,7 +130,10 @@ async fn extract_multipart_post_data(
         .map_err(|e| anyhow!("could not parse request as multipart form data: {e}"))?;
 
     let mut limits = Limits::new(config.max_uploaded_file_size, config.max_uploaded_file_size);
-    log::trace!("Parsing multipart form data with a {:?} KiB limit", limits.total_limit_remaining / 1024);
+    log::trace!(
+        "Parsing multipart form data with a {:?} KiB limit",
+        limits.total_limit_remaining / 1024
+    );
 
     while let Some(part) = multipart.next().await {
         let field = part.map_err(|e| anyhow!("unable to read form field: {e}"))?;

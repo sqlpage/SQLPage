@@ -98,7 +98,8 @@ async fn test_file_upload() -> actix_web::Result<()> {
             \r\n\
             Hello, world!\r\n\
             --1234567890--\r\n",
-        ).to_srv_request();
+        )
+        .to_srv_request();
     let resp = main_handler(req).await?;
 
     assert_eq!(resp.status(), StatusCode::OK);

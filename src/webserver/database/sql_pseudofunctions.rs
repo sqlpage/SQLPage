@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::HashMap};
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
 use base64::Engine;
-use mime_guess::{Mime, mime::APPLICATION_OCTET_STREAM};
+use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
 
 use crate::webserver::{http::SingleOrVec, http_request_info::RequestInfo, ErrorWithStatus};
@@ -103,7 +103,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
-        ))
+        )),
     }
 }
 
@@ -218,7 +218,7 @@ async fn read_file_as_data_url<'a>(
         .with_context(|| format!("Unable to read file {evaluated_param}"))?;
     let mime = mime_from_upload(param0, request).map_or_else(
         || Cow::Owned(mime_guess_from_filename(&evaluated_param)),
-        Cow::Borrowed
+        Cow::Borrowed,
     );
     let mut data_url = format!("data:{}/{};base64,", mime.type_(), mime.subtype());
     base64::engine::general_purpose::URL_SAFE.encode_string(bytes, &mut data_url);
@@ -277,12 +277,10 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .get(x)
             .and_then(|x| x.file.path().to_str())
             .map(Cow::Borrowed),
-        StmtParam::ReadFileAsText(_) => bail!(
-            "Nested read_file_as_text() function not allowed",
-        ),
-        StmtParam::ReadFileAsDataUrl(_) => bail!(
-            "Nested read_file_as_data_url() function not allowed",
-        ),
+        StmtParam::ReadFileAsText(_) => bail!("Nested read_file_as_text() function not allowed",),
+        StmtParam::ReadFileAsDataUrl(_) => {
+            bail!("Nested read_file_as_data_url() function not allowed",)
+        }
     })
 }
 
