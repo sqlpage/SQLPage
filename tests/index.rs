@@ -1,7 +1,7 @@
 use actix_web::{
     body::MessageBody,
-    http::{self, header::ContentType},
-    test,
+    http::{self, header::ContentType, StatusCode},
+    test::{self, TestRequest},
 };
 use sqlpage::{app_config::AppConfig, webserver::http::main_handler, AppState};
 
@@ -86,14 +86,42 @@ async fn test_files() {
     }
 }
 
-async fn req_path(path: &str) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
+#[actix_web::test]
+async fn test_file_upload() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/upload_file_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"testfile.txt\"\r\n\
+            Content-Type: text/plain\r\n\
+            \r\n\
+            Hello, world!\r\n\
+            --1234567890--\r\n",
+        ).to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("Hello, world!"),
+        "{body_str}\nexpected to contain: Hello, world!"
+    );
+    Ok(())
+}
+
+async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     init_log();
     let config = test_config();
     let state = AppState::init(&config).await.unwrap();
     let data = actix_web::web::Data::new(state);
-    let req = test::TestRequest::get()
-        .uri(path)
-        .app_data(data)
+    Ok(test::TestRequest::get().uri(path).app_data(data))
+}
+
+async fn req_path(path: &str) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
+    let req = get_request_to(path)
+        .await?
         .insert_header(ContentType::plaintext())
         .to_srv_request();
     main_handler(req).await

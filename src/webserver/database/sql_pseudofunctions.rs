@@ -2,6 +2,8 @@ use std::{borrow::Cow, collections::HashMap};
 
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
+use base64::Engine;
+use mime_guess::{Mime, mime::APPLICATION_OCTET_STREAM};
 use sqlparser::ast::FunctionArg;
 
 use crate::webserver::{http::SingleOrVec, http_request_info::RequestInfo, ErrorWithStatus};
@@ -185,6 +187,55 @@ async fn exec_external_command<'a>(
     Ok(Some(Cow::Owned(
         String::from_utf8_lossy(&res.stdout).to_string(),
     )))
+}
+
+async fn read_file_as_text<'a>(
+    param0: &StmtParam,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let Some(evaluated_param) = extract_req_param_non_nested(param0, request)? else {
+        log::debug!("read_file: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let bytes = tokio::fs::read(evaluated_param.as_ref())
+        .await
+        .with_context(|| format!("Unable to read file {}", evaluated_param))?;
+    let as_str = String::from_utf8(bytes)
+        .with_context(|| format!("read_file_as_text: {:?} does not contain raw UTF8 text", param0))?;
+    Ok(Some(Cow::Owned(as_str)))
+}
+
+async fn read_file_as_data_url<'a>(
+    param0: &StmtParam,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let Some(evaluated_param) = extract_req_param_non_nested(param0, request)? else {
+        log::debug!("read_file: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let bytes = tokio::fs::read(evaluated_param.as_ref())
+        .await
+        .with_context(|| format!("Unable to read file {}", evaluated_param))?;
+    let mime = mime_from_upload(param0, request).map_or_else(
+        || Cow::Owned(mime_guess_from_filename(&evaluated_param)),
+        Cow::Borrowed
+    );
+    let mut data_url = format!("data:{}/{};base64,", mime.type_(), mime.subtype());
+    base64::engine::general_purpose::URL_SAFE.encode_string(bytes, &mut data_url);
+    Ok(Some(Cow::Owned(data_url)))
+}
+
+fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
+    if let StmtParam::UploadedFilePath(name) = param0 {
+        request.uploaded_files.get(name)?.content_type.as_ref()
+    } else {
+        None
+    }
+}
+
+fn mime_guess_from_filename(filename: &str) -> Mime {
+    let maybe_mime = mime_guess::from_path(filename).first();
+    maybe_mime.unwrap_or_else(|| APPLICATION_OCTET_STREAM)
 }
 
 pub(super) fn extract_req_param_non_nested<'a>(

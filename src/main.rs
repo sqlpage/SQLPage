@@ -15,6 +15,8 @@ async fn main() {
 async fn start() -> anyhow::Result<()> {
     let app_config = app_config::load()?;
     log::debug!("Starting with the following configuration: {app_config:?}");
+    std::env::set_current_dir(&app_config.web_root)?;
+    log::info!("Set the working directory to {}", app_config.web_root.display());
     let state = AppState::init(&app_config).await?;
     webserver::database::migrations::apply(&state.db).await?;
     let listen_on = app_config.listen_on;

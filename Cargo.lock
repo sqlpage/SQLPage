@@ -2381,6 +2381,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "awc",
+ "base64 0.21.5",
  "chrono",
  "config",
  "dashmap",
