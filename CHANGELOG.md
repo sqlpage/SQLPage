@@ -19,7 +19,8 @@ when received by the server, the file will be saved in a temporary directory (cu
 You can then persist the upload as a permanent file on the server with the [`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) function:
 
 ```sql
-select sqlpage.exec('mv', sqlpage.uploaded_file_path('user_file'), '/path/to/my/file');
+set file_path = sqlpage.uploaded_file_path('user_file');
+select sqlpage.exec('mv', $file_path, '/path/to/my/file');
 ```
 
 or you can store it directly in a database table with the new [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file#function) and [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file#function) functions:
