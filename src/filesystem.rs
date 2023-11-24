@@ -207,14 +207,14 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         .db
         .connection
         .execute(
-            r#"
+            r"
         CREATE TABLE sqlpage_files(
           path VARCHAR(255) NOT NULL PRIMARY KEY,
           contents BLOB,
           last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         INSERT INTO sqlpage_files(path, contents) VALUES ('unit test file.txt', 'Héllö world! 😀');
-    "#,
+    ",
         )
         .await?;
     let fs = FileSystem::init("/", &state.db).await;

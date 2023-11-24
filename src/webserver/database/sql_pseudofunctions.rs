@@ -199,9 +199,9 @@ async fn read_file_as_text<'a>(
     };
     let bytes = tokio::fs::read(evaluated_param.as_ref())
         .await
-        .with_context(|| format!("Unable to read file {}", evaluated_param))?;
+        .with_context(|| format!("Unable to read file {evaluated_param}"))?;
     let as_str = String::from_utf8(bytes)
-        .with_context(|| format!("read_file_as_text: {:?} does not contain raw UTF8 text", param0))?;
+        .with_context(|| format!("read_file_as_text: {param0:?} does not contain raw UTF8 text"))?;
     Ok(Some(Cow::Owned(as_str)))
 }
 
@@ -215,7 +215,7 @@ async fn read_file_as_data_url<'a>(
     };
     let bytes = tokio::fs::read(evaluated_param.as_ref())
         .await
-        .with_context(|| format!("Unable to read file {}", evaluated_param))?;
+        .with_context(|| format!("Unable to read file {evaluated_param}"))?;
     let mime = mime_from_upload(param0, request).map_or_else(
         || Cow::Owned(mime_guess_from_filename(&evaluated_param)),
         Cow::Borrowed
@@ -235,7 +235,7 @@ fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<
 
 fn mime_guess_from_filename(filename: &str) -> Mime {
     let maybe_mime = mime_guess::from_path(filename).first();
-    maybe_mime.unwrap_or_else(|| APPLICATION_OCTET_STREAM)
+    maybe_mime.unwrap_or(APPLICATION_OCTET_STREAM)
 }
 
 pub(super) fn extract_req_param_non_nested<'a>(
