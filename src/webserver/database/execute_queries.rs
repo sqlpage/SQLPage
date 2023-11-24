@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use super::sql::{ParsedSqlFile, ParsedStatement, StmtWithParams};
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::database::sql_to_json::row_to_string;
-use crate::webserver::http::{RequestInfo, SingleOrVec};
+use crate::webserver::http::SingleOrVec;
+use crate::webserver::http_request_info::RequestInfo;
 
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;

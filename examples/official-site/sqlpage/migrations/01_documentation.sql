@@ -378,6 +378,22 @@ if your website has authenticated users that can perform sensitive actions throu
     {"name": "password", "label": "Password", "type": "password", "width": 6},
     {"name": "password_confirmation", "label": "Password confirmation", "type": "password", "width": 6},
     {"name": "terms", "label": "I accept the terms and conditions", "type": "checkbox", "required": true}
+    ]')),
+    ('form', '
+## File upload
+
+You can use the `file` type to allow the user to upload a file.
+The file will be uploaded to the server, and you will be able to access it using the
+[`sqlpage.uploaded_file_path`](functions.sql?function=uploaded_file_path#function) function.
+
+Here is how you could save the uploaded file to a table in the database:
+
+```sql
+INSERT INTO uploaded_file(name, data) VALUES(:filename, sqlpage.uploaded_file_data_url(:filename))
+```
+',
+    json('[{"component":"form", "title": "Upload a picture", "validate": "Upload", "action": "examples/handle_picture_upload.sql"}, 
+    {"name": "my_file", "type": "file", "accept": "image/png, image/jpeg",  "label": "Picture", "description": "Upload a nice picture", "required": true}
     ]'))
 ;
 

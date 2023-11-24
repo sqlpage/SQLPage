@@ -15,6 +15,11 @@ async fn main() {
 async fn start() -> anyhow::Result<()> {
     let app_config = app_config::load()?;
     log::debug!("Starting with the following configuration: {app_config:?}");
+    std::env::set_current_dir(&app_config.web_root)?;
+    log::info!(
+        "Set the working directory to {}",
+        app_config.web_root.display()
+    );
     let state = AppState::init(&app_config).await?;
     webserver::database::migrations::apply(&state.db).await?;
     let listen_on = app_config.listen_on;
@@ -46,5 +51,8 @@ async fn log_welcome_message(config: &AppConfig) {
 }
 
 fn init_logging() {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    let env = env_logger::Env::new().default_filter_or("info");
+    let mut logging = env_logger::Builder::from_env(env);
+    logging.format_timestamp_millis();
+    logging.init();
 }

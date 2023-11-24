@@ -2,12 +2,11 @@ use std::{borrow::Cow, collections::HashMap};
 
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
+use base64::Engine;
+use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
 
-use crate::webserver::{
-    http::{RequestInfo, SingleOrVec},
-    ErrorWithStatus,
-};
+use crate::webserver::{http::SingleOrVec, http_request_info::RequestInfo, ErrorWithStatus};
 
 use super::sql::{
     extract_integer, extract_single_quoted_string, extract_single_quoted_string_optional,
@@ -35,6 +34,9 @@ pub(super) enum StmtParam {
     EnvironmentVariable(String),
     SqlPageVersion,
     Literal(String),
+    UploadedFilePath(String),
+    ReadFileAsText(Box<StmtParam>),
+    ReadFileAsDataUrl(Box<StmtParam>),
     Path,
 }
 
@@ -89,6 +91,15 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "version" => StmtParam::SqlPageVersion,
         "variables" => parse_get_or_post(extract_single_quoted_string_optional(arguments)),
         "path" => StmtParam::Path,
+        "uploaded_file_path" => extract_single_quoted_string("uploaded_file_path", arguments)
+            .map_or_else(StmtParam::Error, StmtParam::UploadedFilePath),
+        "read_file_as_text" => StmtParam::ReadFileAsText(Box::new(extract_variable_argument(
+            "read_file_as_text",
+            arguments,
+        ))),
+        "read_file_as_data_url" => StmtParam::ReadFileAsDataUrl(Box::new(
+            extract_variable_argument("read_file_as_data_url", arguments),
+        )),
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -106,6 +117,8 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::HashPassword(inner) => has_password_param(inner, request).await?,
         StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
         StmtParam::UrlEncode(inner) => url_encode(inner, request)?,
+        StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
+        StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
         _ => extract_req_param_non_nested(param, request)?,
     })
 }
@@ -176,6 +189,55 @@ async fn exec_external_command<'a>(
     )))
 }
 
+async fn read_file_as_text<'a>(
+    param0: &StmtParam,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let Some(evaluated_param) = extract_req_param_non_nested(param0, request)? else {
+        log::debug!("read_file: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let bytes = tokio::fs::read(evaluated_param.as_ref())
+        .await
+        .with_context(|| format!("Unable to read file {evaluated_param}"))?;
+    let as_str = String::from_utf8(bytes)
+        .with_context(|| format!("read_file_as_text: {param0:?} does not contain raw UTF8 text"))?;
+    Ok(Some(Cow::Owned(as_str)))
+}
+
+async fn read_file_as_data_url<'a>(
+    param0: &StmtParam,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let Some(evaluated_param) = extract_req_param_non_nested(param0, request)? else {
+        log::debug!("read_file: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let bytes = tokio::fs::read(evaluated_param.as_ref())
+        .await
+        .with_context(|| format!("Unable to read file {evaluated_param}"))?;
+    let mime = mime_from_upload(param0, request).map_or_else(
+        || Cow::Owned(mime_guess_from_filename(&evaluated_param)),
+        Cow::Borrowed,
+    );
+    let mut data_url = format!("data:{}/{};base64,", mime.type_(), mime.subtype());
+    base64::engine::general_purpose::URL_SAFE.encode_string(bytes, &mut data_url);
+    Ok(Some(Cow::Owned(data_url)))
+}
+
+fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
+    if let StmtParam::UploadedFilePath(name) = param0 {
+        request.uploaded_files.get(name)?.content_type.as_ref()
+    } else {
+        None
+    }
+}
+
+fn mime_guess_from_filename(filename: &str) -> Mime {
+    let maybe_mime = mime_guess::from_path(filename).first();
+    maybe_mime.unwrap_or(APPLICATION_OCTET_STREAM)
+}
+
 pub(super) fn extract_req_param_non_nested<'a>(
     param: &StmtParam,
     request: &'a RequestInfo,
@@ -210,6 +272,15 @@ pub(super) fn extract_req_param_non_nested<'a>(
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::AllVariables(get_or_post) => extract_get_or_post(*get_or_post, request),
         StmtParam::Path => Some(Cow::Borrowed(&request.path)),
+        StmtParam::UploadedFilePath(x) => request
+            .uploaded_files
+            .get(x)
+            .and_then(|x| x.file.path().to_str())
+            .map(Cow::Borrowed),
+        StmtParam::ReadFileAsText(_) => bail!("Nested read_file_as_text() function not allowed",),
+        StmtParam::ReadFileAsDataUrl(_) => {
+            bail!("Nested read_file_as_data_url() function not allowed",)
+        }
     })
 }
 
