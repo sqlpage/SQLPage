@@ -45,6 +45,12 @@ but can also be used to read any file on the server.
  - [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a text string.
  - [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
 
+### Other news
+
+ - Dates and timestamps returned from the database are now always formatted in ISO 8601 format, which is the standard format for dates in JSON. This makes it easier to use dates in SQLPage.
+ - The `cookie` component now supports setting an explicit expiration date for cookies.
+ - The `cookie` component now supports setting the `SameSite` attribute of cookies, and defaults to `SameSite=Strict` for all cookies. What this means in practice is that cookies set by SQLPage will not be sent to your website if the user is coming from another website. This prevents someone from tricking your users into executing SQLPage queries on your website by sending them a malicious link.
+
 ## 0.16.1 (2023-11-22)
 
  - fix a bug where setting a variable to a non-string value would always set it to null

@@ -74,8 +74,31 @@ VALUES (
         'BOOLEAN',
         TRUE,
         TRUE
-    )
-    ;
+    ),
+    (
+        'cookie',
+        'max_age',
+        'The maximum age of the cookie in seconds. number of seconds until the cookie expires. If both Expires and Max-Age are set, Max-Age has precedence.',
+        'INTEGER',
+        TRUE,
+        TRUE
+    ),
+    (
+        'cookie',
+        'expires',
+        'The date at which the cookie expires (either a timestamp or a date object). If not specified, the cookie will expire when the browser is closed.',
+        'TIMESTAMP',
+        TRUE,
+        TRUE
+    ),
+    (
+        'cookie',
+        'same_site',
+        'Whether the cookie should only be sent for requests originating from the same site. See owasp.org/www-community/SameSite. `strict` is the recommended and default value, but you may want to set it to `lax` if you want your users to keep their session when they click on a link to your site from an external site.',
+        'TEXT',
+        TRUE,
+        TRUE
+    );
 -- Insert an example usage of the http_header component into the example table
 INSERT INTO example (component, description)
 VALUES (
