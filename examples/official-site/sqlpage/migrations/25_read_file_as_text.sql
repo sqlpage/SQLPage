@@ -13,6 +13,19 @@ VALUES (
 
 The file must be a raw text file using UTF-8 encoding.
 
+The file path is relative to the `web root` directory, which is the directory from which your website is served
+(not necessarily the directory SQLPage is launched from).
+
+If the given argument is null, the function will return null.
+
+As with other functions, if an error occurs during execution 
+(because the file does not exist, for instance),
+the function will display an error message and the
+database query will not be executed.
+
+If `database_filesystem_table` is set to a table name in SQLPage''s configuration,
+the function will attempt to read the file from the database filesystem if it is not found on the local disk.
+
 ## Example
 
 ### Rendering a markdown file

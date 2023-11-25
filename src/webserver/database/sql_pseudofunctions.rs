@@ -189,6 +189,26 @@ async fn exec_external_command<'a>(
     )))
 }
 
+async fn read_file_bytes<'a>(
+    path_str: &str,
+    request: &'a RequestInfo,
+) -> Result<Vec<u8>, anyhow::Error> {
+    let path = std::path::Path::new(path_str);
+    // If the path is relative, it's relative to the web root, not the current working directory,
+    // and it can be fetched from the on-database filesystem table
+    if path.is_relative() {
+        request
+            .app_state
+            .file_system
+            .read_file(&request.app_state, path, true)
+            .await
+    } else {
+        tokio::fs::read(path)
+            .await
+            .with_context(|| format!("Unable to read file {path:?}"))
+    }
+}
+
 async fn read_file_as_text<'a>(
     param0: &StmtParam,
     request: &'a RequestInfo,
@@ -197,9 +217,7 @@ async fn read_file_as_text<'a>(
         log::debug!("read_file: first argument is NULL, returning NULL");
         return Ok(None);
     };
-    let bytes = tokio::fs::read(evaluated_param.as_ref())
-        .await
-        .with_context(|| format!("Unable to read file {evaluated_param}"))?;
+    let bytes = read_file_bytes(&evaluated_param, request).await?;
     let as_str = String::from_utf8(bytes)
         .with_context(|| format!("read_file_as_text: {param0:?} does not contain raw UTF8 text"))?;
     Ok(Some(Cow::Owned(as_str)))
@@ -213,9 +231,7 @@ async fn read_file_as_data_url<'a>(
         log::debug!("read_file: first argument is NULL, returning NULL");
         return Ok(None);
     };
-    let bytes = tokio::fs::read(evaluated_param.as_ref())
-        .await
-        .with_context(|| format!("Unable to read file {evaluated_param}"))?;
+    let bytes = read_file_bytes(&evaluated_param, request).await?;
     let mime = mime_from_upload(param0, request).map_or_else(
         || Cow::Owned(mime_guess_from_filename(&evaluated_param)),
         Cow::Borrowed,
