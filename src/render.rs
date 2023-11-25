@@ -119,7 +119,7 @@ impl<W: std::io::Write> HeaderContext<W> {
         let value = obj
             .get("value")
             .and_then(JsonValue::as_str)
-            .with_context(|| "cookie value must be a string")?;
+            .with_context(|| "The 'value' property of the cookie component is required (unless 'remove' is set) and must be a string.")?;
         cookie.set_value(value);
         let http_only = obj.get("http_only");
         cookie.set_http_only(http_only != Some(&json!(false)) && http_only != Some(&json!(0)));
