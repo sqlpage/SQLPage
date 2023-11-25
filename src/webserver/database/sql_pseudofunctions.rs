@@ -221,7 +221,7 @@ async fn read_file_as_data_url<'a>(
         Cow::Borrowed,
     );
     let mut data_url = format!("data:{}/{};base64,", mime.type_(), mime.subtype());
-    base64::engine::general_purpose::URL_SAFE.encode_string(bytes, &mut data_url);
+    base64::engine::general_purpose::STANDARD.encode_string(bytes, &mut data_url);
     Ok(Some(Cow::Owned(data_url)))
 }
 
