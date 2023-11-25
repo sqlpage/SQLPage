@@ -2,6 +2,58 @@
 
 ## unreleased
 
+### Uploads
+
+This release is all about a long awaited feature: file uploads.
+Your SQLPage website can now accept file uploads from users, store them either in a directory or directly in a database table.
+
+You can add a file upload button to a form with a simple 
+
+```sql
+select 'form' as component;
+select 'user_file' as name, 'file' as type;
+```
+
+when received by the server, the file will be saved in a temporary directory (customizable with `TMPDIR` on linux). You can access the temporary file path with the new [`sqlpage.uploaded_file_path`](https://sql.ophir.dev/functions.sql?function=uploaded_file_path#function) function.
+
+You can then persist the upload as a permanent file on the server with the [`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) function:
+
+```sql
+set file_path = sqlpage.uploaded_file_path('user_file');
+select sqlpage.exec('mv', $file_path, '/path/to/my/file');
+```
+
+or you can store it directly in a database table with the new [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file#function) and [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file#function) functions:
+
+```sql
+insert into files (content) values (sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path('user_file')))
+returning 'text' as component, 'Uploaded new file with id: ' || id as contents;
+```
+
+#### New functions
+
+##### Handle uploaded files
+
+ - [`sqlpage.uploaded_file_path`](https://sql.ophir.dev/functions.sql?function=uploaded_file_path#function) to get the temprary local path of a file uploaded by the user. This path will be valid until the end of the current request, and will be located in a temporary directory (customizable with `TMPDIR`). You can use [`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) to operate on the file, for instance to move it to a permanent location.
+ - [`sqlpage.uploaded_file_mime_type`](https://sql.ophir.dev/functions.sql?function=uploaded_file_name#function) to get the type of file uploaded by the user. This is the MIME type of the file, such as `image/png` or `text/csv`. You can use this to easily check that the file is of the expected type before storing it.
+
+##### Read files
+
+These new functions are useful to read the content of a file uploaded by the user,
+but can also be used to read any file on the server.
+
+ - [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a text string.
+ - [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
+
+### Other news
+
+ - Dates and timestamps returned from the database are now always formatted in ISO 8601 format, which is the standard format for dates in JSON. This makes it easier to use dates in SQLPage.
+ - The `cookie` component now supports setting an explicit expiration date for cookies.
+ - The `cookie` component now supports setting the `SameSite` attribute of cookies, and defaults to `SameSite=Strict` for all cookies. What this means in practice is that cookies set by SQLPage will not be sent to your website if the user is coming from another website. This prevents someone from tricking your users into executing SQLPage queries on your website by sending them a malicious link.
+
+## 0.16.1 (2023-11-22)
+
+ - fix a bug where setting a variable to a non-string value would always set it to null
  - clearer debug logs (https://github.com/wooorm/markdown-rs/pull/92)
  - update compiler to rust 1.74
  - use user id and group id 1000 in docker image (this is the default user id in most linux distributions)

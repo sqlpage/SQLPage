@@ -1,5 +1,5 @@
-pub use crate::file_cache::FileCache;
 use crate::utils::add_value_to_map;
+use chrono::{DateTime, Utc};
 use serde_json::{self, Map, Value};
 use sqlx::any::AnyRow;
 use sqlx::Decode;
@@ -40,18 +40,6 @@ pub fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
     }
 }
 
-macro_rules! try_decode_with {
-    ($raw_value:expr, [$ty0:ty], $fn:expr) => {
-        <$ty0 as Decode<sqlx::any::Any>>::decode($raw_value).map($fn)
-    };
-    ($raw_value:expr, [$ty0:ty, $($ty:ty),+], $fn:expr) => {
-        match try_decode_with!($raw_value, [$ty0], $fn) {
-            Ok(value) => Ok(value),
-            Err(_) => try_decode_with!($raw_value, [$($ty),+], $fn),
-        }
-    };
-}
-
 pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'r>) -> Value {
     let raw_value = get_ref();
     match raw_value.type_info().name() {
@@ -81,13 +69,16 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             .map_or_else(ToString::to_string, ToString::to_string)
             .into(),
         "DATETIME" | "DATETIME2" | "DATETIMEOFFSET" | "TIMESTAMP" | "TIMESTAMPTZ" => {
-            try_decode_with!(
-                get_ref(),
-                [chrono::NaiveDateTime, chrono::DateTime<chrono::Utc>],
-                |v| v.to_string()
+            let mut date_time = <DateTime<Utc> as Decode<sqlx::any::Any>>::decode(get_ref());
+            if date_time.is_err() {
+                date_time = <chrono::NaiveDateTime as Decode<sqlx::any::Any>>::decode(raw_value)
+                    .map(|d| d.and_utc());
+            }
+            Value::String(
+                date_time
+                    .as_ref()
+                    .map_or_else(ToString::to_string, DateTime::to_rfc3339),
             )
-            .unwrap_or_else(|e| format!("Unable to decode date: {e:?}"))
-            .into()
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => {
             <Value as Decode<sqlx::any::Any>>::decode(raw_value).unwrap_or_default()
@@ -96,6 +87,16 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
         _ => <String as Decode<sqlx::any::Any>>::decode(raw_value)
             .unwrap_or_default()
             .into(),
+    }
+}
+
+/// Takes the first column of a row and converts it to a string.
+pub fn row_to_string(row: &AnyRow) -> Option<String> {
+    let col = row.columns().get(0)?;
+    match sql_to_json(row, col) {
+        serde_json::Value::String(s) => Some(s),
+        serde_json::Value::Null => None,
+        other => Some(other.to_string()),
     }
 }
 

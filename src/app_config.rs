@@ -44,6 +44,10 @@ pub struct AppConfig {
     /// them the ability to execute arbitrary shell commands on the server.
     #[serde(default)]
     pub allow_exec: bool,
+
+    /// Maximum size of uploaded files in bytes. The default is 10MiB (10 * 1024 * 1024 bytes)
+    #[serde(default = "default_max_file_size")]
+    pub max_uploaded_file_size: usize,
 }
 
 pub fn load() -> anyhow::Result<AppConfig> {
@@ -128,6 +132,10 @@ fn default_web_root() -> PathBuf {
         log::error!("Unable to get current directory: {}", e);
         PathBuf::from(&std::path::Component::CurDir)
     })
+}
+
+fn default_max_file_size() -> usize {
+    10 * 1024 * 1024
 }
 
 #[cfg(test)]

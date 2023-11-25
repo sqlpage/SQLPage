@@ -16,6 +16,7 @@ on a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.
 | `sqlite_extensions`                        |                              | An array of SQLite extensions to load, such as `mod_spatialite`          |
 | `web_root`                                | `.`                      | The root directory of the web server, where the `index.sql` file is located.          |
 | `allow_exec` | false | Allow usage of the `sqlpage.exec` function. Do this only if all users with write access to sqlpage query files and to the optional `sqlpage_files` table on the database are trusted. |
+| `max_uploaded_file_size` | 10485760 | Maximum size of uploaded files in bytes. Defaults to 10 MiB. |
 
 You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
 
@@ -27,6 +28,9 @@ The name of the environment variable is the same as the name of the configuratio
 but in uppercase.
 
 The environment variable name can optionally be prefixed with `SQLPAGE_`.
+
+Additionnally, when troubleshooting, you can set the [`RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging)
+environment variable to `sqlpage=debug` to get more detailed logs and see exactly what SQLPage is doing.
 
 ### Example
 

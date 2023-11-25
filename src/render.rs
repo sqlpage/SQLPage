@@ -1,5 +1,7 @@
 use crate::templates::SplitTemplate;
 use crate::AppState;
+use actix_web::cookie::time::format_description::well_known::Rfc3339;
+use actix_web::cookie::time::OffsetDateTime;
 use actix_web::http::{header, StatusCode};
 use actix_web::{HttpResponse, HttpResponseBuilder};
 use anyhow::{bail, format_err, Context as AnyhowContext};
@@ -121,6 +123,13 @@ impl<W: std::io::Write> HeaderContext<W> {
         cookie.set_value(value);
         let http_only = obj.get("http_only");
         cookie.set_http_only(http_only != Some(&json!(false)) && http_only != Some(&json!(0)));
+        let same_site = obj.get("same_site").and_then(Value::as_str);
+        cookie.set_same_site(match same_site {
+            Some("none") => actix_web::cookie::SameSite::None,
+            Some("lax") => actix_web::cookie::SameSite::Lax,
+            None | Some("strict") => actix_web::cookie::SameSite::Strict, // strict by default
+            Some(other) => bail!("Cookie: invalid value for same_site: {}", other),
+        });
         let secure = obj.get("secure");
         cookie.set_secure(secure != Some(&json!(false)) && secure != Some(&json!(0)));
         let path = obj.get("path").and_then(JsonValue::as_str);
@@ -131,11 +140,15 @@ impl<W: std::io::Write> HeaderContext<W> {
         if let Some(domain) = domain {
             cookie.set_domain(domain);
         }
-        let expires = obj.get("expires").and_then(JsonValue::as_i64);
+        let expires = obj.get("expires");
         if let Some(expires) = expires {
-            cookie.set_expires(actix_web::cookie::Expiration::DateTime(
-                actix_web::cookie::time::OffsetDateTime::from_unix_timestamp(expires)?,
-            ));
+            cookie.set_expires(actix_web::cookie::Expiration::DateTime(match expires {
+                JsonValue::String(s) => OffsetDateTime::parse(s, &Rfc3339)?,
+                JsonValue::Number(n) => OffsetDateTime::from_unix_timestamp(
+                    n.as_i64().with_context(|| "expires must be a timestamp")?,
+                )?,
+                _ => bail!("expires must be a string or a number"),
+            }));
         }
         log::trace!("Setting cookie {}", cookie);
         self.response
