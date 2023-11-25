@@ -1,6 +1,6 @@
 use sqlpage::{
     app_config::{self, AppConfig},
-    webserver, AppState, Config,
+    webserver, AppState,
 };
 
 #[actix_web::main]
@@ -22,11 +22,9 @@ async fn start() -> anyhow::Result<()> {
     );
     let state = AppState::init(&app_config).await?;
     webserver::database::migrations::apply(&state.db).await?;
-    let listen_on = app_config.listen_on;
-    log::info!("Starting server on {}", listen_on);
-    let config = Config { listen_on };
+    log::info!("Starting server on {}", app_config.listen_on);
     let (r, _) = tokio::join!(
-        webserver::http::run_server(config, state),
+        webserver::http::run_server(&app_config, state),
         log_welcome_message(&app_config)
     );
     r
@@ -43,9 +41,14 @@ async fn log_welcome_message(config: &AppConfig) {
 
     log::info!(
         "Server started successfully.
-    SQLPage is now running on http://{}/
+    SQLPage is now running on http://{}/ {}
     You can write your website's code in .sql files in {}.",
         http_addr,
+        if let Some(domain) = &config.https_domain {
+            format!("and on https://{}", domain)
+        } else {
+            "".to_string()
+        },
         config.web_root.display()
     );
 }

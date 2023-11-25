@@ -20,7 +20,7 @@ codegen-units = 2
 [dependencies]
 sqlx = { package = "sqlx-oldapi", version = "0.6.18", features = ["any", "runtime-actix-rustls", "sqlite", "postgres", "mysql", "mssql", "chrono", "json" ] }
 chrono = "0.4.23"
-actix-web = { version = "4", features = ["rustls", "cookies"] }
+actix-web = { version = "4", features = ["rustls-0_21", "cookies"] }
 percent-encoding = "2.2.0"
 handlebars = "5.0.0-beta.0"
 log = "0.4.17"
@@ -47,6 +47,7 @@ actix-web-httpauth = "0.8.0"
 rand = "0.8.5"
 actix-multipart = "0.6.1"
 base64 = "0.21.5"
+rustls-acme = "0.7.7"
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls"] }

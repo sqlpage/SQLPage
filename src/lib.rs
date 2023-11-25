@@ -15,7 +15,6 @@ use crate::app_config::AppConfig;
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
 use file_cache::FileCache;
-use std::net::SocketAddr;
 use std::path::PathBuf;
 use templates::AllTemplates;
 use webserver::Database;
@@ -57,8 +56,4 @@ impl std::fmt::Debug for AppState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppState").finish()
     }
-}
-
-pub struct Config {
-    pub listen_on: SocketAddr,
 }

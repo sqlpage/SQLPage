@@ -45,6 +45,32 @@ but can also be used to read any file on the server.
  - [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a text string.
  - [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
 
+### HTTPS
+
+This is the other big feature of this release: SQLPage now supports HTTPS !
+
+And it does not require you to do a lot of manual configuration
+that will compromise your security if you get it wrong,
+like most other web servers do. You just give SQLPage your domain name,
+and it will take care of the rest.
+
+And while we're at it, SQLPage also supports HTTP/2, for even faster page loads.
+
+To enable HTTPS, you need to buy a [domain name](https://en.wikipedia.org/wiki/Domain_name)
+and make it point to the server where SQLPage is running.
+Then set the `https_domain` configuration parameter to `yourdomain.com` in your [`sqlpage.json` configuration file](./configuration.md).
+
+```json
+{
+  "https_domain": "my-cool-website.com"
+}
+```
+
+That's it. No external tool to install, no certificate to generate, no configuration to tweak.
+No need to restart SQLPage either, or to worry about renewing your certificate when it expires.
+SQLPage will automatically request a certificate from [Let's Encrypt](https://letsencrypt.org/) by default,
+and does not even need to listen on port 80 to do so.
+
 ### Other news
 
  - Dates and timestamps returned from the database are now always formatted in ISO 8601 format, which is the standard format for dates in JSON. This makes it easier to use dates in SQLPage.

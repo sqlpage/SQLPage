@@ -21,7 +21,10 @@ pub struct AppConfig {
     #[serde(default)]
     pub sqlite_extensions: Vec<String>,
 
-    #[serde(deserialize_with = "deserialize_socket_addr")]
+    #[serde(
+        deserialize_with = "deserialize_socket_addr",
+        default = "default_listen_on"
+    )]
     pub listen_on: SocketAddr,
     pub port: Option<u16>,
 
@@ -48,11 +51,31 @@ pub struct AppConfig {
     /// Maximum size of uploaded files in bytes. The default is 10MiB (10 * 1024 * 1024 bytes)
     #[serde(default = "default_max_file_size")]
     pub max_uploaded_file_size: usize,
+
+    /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
+    /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
+    /// server's IP address.
+    ///
+    /// It will listen on port 443 for HTTPS connections,
+    /// and will automatically request a certificate from Let's Encrypt
+    /// using the ACME protocol (requesting a TLS-ALPN-01 challenge).
+    pub https_domain: Option<String>,
+
+    /// The email address to use when requesting a certificate from Let's Encrypt.
+    /// Defaults to `contact@<https_domain>`.
+    pub https_certificate_email: Option<String>,
+
+    /// The directory to store the Let's Encrypt certificate in. Defaults to `./sqlpage/https`.
+    #[serde(default = "default_https_certificate_cache_dir")]
+    pub https_certificate_cache_dir: PathBuf,
+
+    /// URL to the ACME directory. Defaults to the Let's Encrypt production directory.
+    #[serde(default = "default_https_acme_directory_url")]
+    pub https_acme_directory_url: String,
 }
 
 pub fn load() -> anyhow::Result<AppConfig> {
     let mut conf = Config::builder()
-        .set_default("listen_on", "0.0.0.0:8080")?
         .add_source(config::File::with_name("sqlpage/sqlpage").required(false))
         .add_source(env_config())
         .add_source(env_config().prefix("SQLPAGE"))
@@ -70,6 +93,11 @@ fn env_config() -> config::Environment {
         .try_parsing(true)
         .list_separator(" ")
         .with_list_parse_key("sqlite_extensions")
+}
+
+#[must_use]
+pub fn default_listen_on() -> SocketAddr {
+    SocketAddr::from(([0, 0, 0, 0], 8080))
 }
 
 fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
@@ -136,6 +164,14 @@ fn default_web_root() -> PathBuf {
 
 fn default_max_file_size() -> usize {
     10 * 1024 * 1024
+}
+
+fn default_https_certificate_cache_dir() -> PathBuf {
+    default_web_root().join("sqlpage").join("https")
+}
+
+fn default_https_acme_directory_url() -> String {
+    "https://acme-v02.api.letsencrypt.org/directory".to_string()
 }
 
 #[cfg(test)]
