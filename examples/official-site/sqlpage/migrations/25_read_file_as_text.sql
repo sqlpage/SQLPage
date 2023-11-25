@@ -23,8 +23,9 @@ As with other functions, if an error occurs during execution
 the function will display an error message and the
 database query will not be executed.
 
-If `database_filesystem_table` is set to a table name in SQLPage''s configuration,
-the function will attempt to read the file from the database filesystem if it is not found on the local disk.
+If you are using a `sqlpage_files` table to store files directly in the database (serverless mode),
+the function will attempt to read the file from the database filesystem if it is not found on the local disk,
+using the same logic as for serving files in response to HTTP requests.
 
 ## Example
 

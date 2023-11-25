@@ -12,6 +12,29 @@ VALUES (
     'Returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs)
 containing the contents of the given file.
 
+The file path is relative to the `web root` directory, which is the directory from which your website is served
+(not necessarily the directory SQLPage is launched from).
+
+If the given argument is null, the function will return null.
+
+As with other functions, if an error occurs during execution 
+(because the file does not exist, for instance),
+the function will display an error message and the
+database query will not be executed.
+
+If you are using a `sqlpage_files` table to store files directly in the database (serverless mode),
+the function will attempt to read the file from the database filesystem if it is not found on the local disk,
+using the same logic as for serving files in response to HTTP requests.
+
+## MIME type
+
+Data URLs contain the [MIME type](https://en.wikipedia.org/wiki/Media_type) of the file they represent.
+If the first argument to this function is call to the `sqlpage.uploaded_file_path` function,
+the declared MIME type of the uploaded file transmitted by the browser will be used.
+
+Otherwise, the MIME type will be guessed from the file extension, without looking at the file contents.
+
+
 ## Example: inlining a picture
     
 ```sql
