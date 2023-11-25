@@ -2,7 +2,7 @@ use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::database::{execute_queries::stream_query_results, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
-use crate::{AppState, Config, ParsedSqlFile};
+use crate::{AppConfig, AppState, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
@@ -12,9 +12,10 @@ use actix_web::{
     HttpServer,
 };
 
+use super::https::make_auto_rustls_config;
 use super::static_content;
 use actix_web::body::{BoxBody, MessageBody};
-use anyhow::Context;
+use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
@@ -478,8 +479,8 @@ pub fn create_app(
         .app_data(app_state)
 }
 
-pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
-    let listen_on = config.listen_on;
+pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {
+    let mut listen_on = config.listen_on;
     let state = web::Data::new(state);
     let factory = move || create_app(web::Data::clone(&state));
 
@@ -490,9 +491,21 @@ pub async fn run_server(config: Config, state: AppState) -> anyhow::Result<()> {
             .map_err(|e| anyhow::anyhow!("Unable to start the lambda: {e}"))?;
         return Ok(());
     }
-    HttpServer::new(factory)
-        .bind(listen_on)
-        .with_context(|| "Unable to listen to the specified port")?
+    let mut server = HttpServer::new(factory);
+    if let Some(domain) = &config.https_domain {
+        listen_on.set_port(443);
+        log::info!("Will start HTTPS server on {listen_on}");
+        server = server
+            .bind_rustls_021(listen_on, make_auto_rustls_config(domain, config)?)
+            .with_context(|| "Unable to listen to the specified port")?;
+    } else if listen_on.port() != 443 {
+        server = server
+            .bind(listen_on)
+            .with_context(|| "Unable to listen to the specified port")?
+    } else {
+        bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS.");
+    }
+    server
         .run()
         .await
         .with_context(|| "Unable to start the application")?;

@@ -1,4 +1,5 @@
 {
   "database_url": "sqlite://./sqlpage/sqlpage.db?mode=rwc",
-  "listen_on": "localhost:8080"
+  "https_domain": "testtls.ophir.dev",
+  "https_acme_directory_url": "https://acme-staging-v02.api.letsencrypt.org/directory"
 }
