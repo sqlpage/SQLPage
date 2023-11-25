@@ -496,12 +496,12 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         listen_on.set_port(443);
         log::info!("Will start HTTPS server on {listen_on}");
         server = server
-            .bind_rustls_021(listen_on, make_auto_rustls_config(domain, config)?)
+            .bind_rustls_021(listen_on, make_auto_rustls_config(domain, config))
             .with_context(|| "Unable to listen to the specified port")?;
     } else if listen_on.port() != 443 {
         server = server
             .bind(listen_on)
-            .with_context(|| "Unable to listen to the specified port")?
+            .with_context(|| "Unable to listen to the specified port")?;
     } else {
         bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS.");
     }

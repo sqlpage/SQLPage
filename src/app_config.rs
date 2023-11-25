@@ -95,6 +95,7 @@ fn env_config() -> config::Environment {
         .with_list_parse_key("sqlite_extensions")
 }
 
+#[must_use]
 pub fn default_listen_on() -> SocketAddr {
     SocketAddr::from(([0, 0, 0, 0], 8080))
 }
