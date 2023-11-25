@@ -17,10 +17,10 @@ on a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.
 | `web_root`                                | `.`                      | The root directory of the web server, where the `index.sql` file is located.          |
 | `allow_exec` | false | Allow usage of the `sqlpage.exec` function. Do this only if all users with write access to sqlpage query files and to the optional `sqlpage_files` table on the database are trusted. |
 | `max_uploaded_file_size` | 10485760 | Maximum size of uploaded files in bytes. Defaults to 10 MiB. |
-| https_domain | | Domain name to request a certificate for. Setting this parameter will automatically make SQLPage listen on port 443 and request an SSL certificate. The server will take a little bit longer to start the first time is has to request a certificate. |
-| https_certificate_email | contact@<htps_domain> | The email address to use when requesting a certificate. |
-| https_certificate_cache_dir | ./sqlpage/https | A writeable directory where to cache the certificates, so that SQLPage can serve https traffic immediately when it restarts. |
-| https_acme_directory_url | https://acme-v02.api.letsencrypt.org/directory | The URL of the ACME directory to use when requesting a certificate. |
+| `https_domain` | | Domain name to request a certificate for. Setting this parameter will automatically make SQLPage listen on port 443 and request an SSL certificate. The server will take a little bit longer to start the first time it has to request a certificate. |
+| `https_certificate_email` | contact@<https_domain> | The email address to use when requesting a certificate. |
+| `https_certificate_cache_dir` | ./sqlpage/https | A writeable directory where to cache the certificates, so that SQLPage can serve https traffic immediately when it restarts. |
+| `https_acme_directory_url` | https://acme-v02.api.letsencrypt.org/directory | The URL of the ACME directory to use when requesting a certificate. |
 
 You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
 
