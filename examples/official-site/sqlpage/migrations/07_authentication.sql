@@ -60,6 +60,8 @@ The username and password entered by the user will be accessible in your SQL cod
 [`sqlpage.basic_auth_username()`](functions.sql?function=basic_auth_username) and
 [`sqlpage.basic_auth_password()`](functions.sql?function=basic_auth_password) functions.
 
+The [`sqlpage.hash_password`](functions.sql?function=hash_password) function can be used to generate a secure password hash that you need to store in your database.
+
 ```sql
 SELECT ''authentication'' AS component,
     ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using sqlpage.hash_password
@@ -82,5 +84,33 @@ and in `login.sql` :
 ```sql
 SELECT ''form'' AS component, ''Login'' AS title, ''my_protected_page.sql'' AS action;
 SELECT ''password'' AS type, ''password'' AS name, ''Password'' AS label;
+```
+
+### Advanced: usage with a session token
+
+Calling the `authentication` component is expensive.
+The password hashing algorithm is designed to be slow, so that it is difficult to brute-force the password,
+even if an attacker gets access to the database.
+
+If you want to avoid calling the `authentication` component on every page, you can use a session token.
+A session token is a random string that is generated when the user logs in, and stored in the database.
+It has a limited lifetime, and is stored in a cookie in the user''s browser.
+When the user visits a page, the session token is sent to the server, and the server checks if it is valid.
+
+```sql
+SELECT ''authentication'' AS component,
+    ''login.sql'' AS link,
+    (SELECT password_hash FROM user WHERE username = :username) AS password_hash,
+    :password AS password;
+
+-- The code after this point is only executed if the user has sent the correct password
+
+-- Generate a random session token
+INSERT INTO session (id, username)
+VALUES (sqlpage.random_string(32), :username)
+RETURNING 
+    ''cookie'' AS component,
+    ''session_token'' AS name,
+    id AS value;
 ```
 ');

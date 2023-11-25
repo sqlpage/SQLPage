@@ -37,6 +37,8 @@ returning 'text' as component, 'Uploaded new file with id: ' || id as contents;
  - [`sqlpage.uploaded_file_path`](https://sql.ophir.dev/functions.sql?function=uploaded_file_path#function) to get the temprary local path of a file uploaded by the user. This path will be valid until the end of the current request, and will be located in a temporary directory (customizable with `TMPDIR`). You can use [`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) to operate on the file, for instance to move it to a permanent location.
  - [`sqlpage.uploaded_file_mime_type`](https://sql.ophir.dev/functions.sql?function=uploaded_file_name#function) to get the type of file uploaded by the user. This is the MIME type of the file, such as `image/png` or `text/csv`. You can use this to easily check that the file is of the expected type before storing it.
 
+ The new *Image gallery* example in the official repository shows how to use these functions to create a simple image gallery with user uploads.
+
 ##### Read files
 
 These new functions are useful to read the content of a file uploaded by the user,
