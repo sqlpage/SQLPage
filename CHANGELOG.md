@@ -30,6 +30,36 @@ insert into files (content) values (sqlpage.read_file_as_data_url(sqlpage.upload
 returning 'text' as component, 'Uploaded new file with id: ' || id as contents;
 ```
 
+#### Parsing CSV files
+
+SQLPage can also parse uploaded CSV files and insert them directly into a database table.
+SQLPage re-uses PostgreSQL's `COPY` statement to import the CSV file into the database, but makes it work with any database, by emulating the same behavior with simple `INSERT` statements.
+
+`user_file_upload.sql` :
+```sql
+select 'form' as component, 'bulk_user_import.sql' as action;
+select 'user_file' as name, 'file' as type, 'text/csv' as accept;
+```
+
+`bulk_user_import.sql` :
+```sql
+-- create a temporary table to preprocess the data
+create temporary table if not exists csv_import(name text, age text);
+delete from csv_import; -- empty the table
+-- If you don't have any preprocessing to do, you can skip the temporary table and use the target table directly
+
+copy csv_import(name, age) from 'user_file'
+with (header true, delimiter ',', quote '"', null 'NaN'); -- all the options are optional
+-- since header is true, the first line of the file will be used to find the "name" and "age" columns
+-- if you don't have a header line, the first column in the CSV will be interpreted as the first column of the table, etc
+
+-- run any preprocessing you want on the data here
+
+-- insert the data into the users table
+insert into users (name, email)
+select upper(name), cast(email as int) from csv_import;
+```
+
 #### New functions
 
 ##### Handle uploaded files

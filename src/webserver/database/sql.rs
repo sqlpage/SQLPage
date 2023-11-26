@@ -1,3 +1,4 @@
+use super::csv_import::{extract_csv_import, CsvImport};
 use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
 use crate::file_cache::AsyncFromStrWithState;
 use crate::utils::add_value_to_map;
@@ -63,6 +64,7 @@ pub(super) enum ParsedStatement {
         variable: StmtParam,
         value: StmtWithParams,
     },
+    CsvImport(CsvImport),
     Error(anyhow::Error),
 }
 
@@ -93,12 +95,16 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
         log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
         return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
+
     let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
     if let Some((variable, query)) = extract_set_variable(&mut stmt) {
         return Some(ParsedStatement::SetVariable {
             variable,
             value: StmtWithParams { query, params },
         });
+    }
+    if let Some(csv_import) = extract_csv_import(&mut stmt) {
+        return Some(ParsedStatement::CsvImport(csv_import));
     }
     Some(ParsedStatement::StmtWithParams(StmtWithParams {
         query: stmt.to_string(),

@@ -1,4 +1,5 @@
 mod connect;
+mod csv_import;
 pub mod execute_queries;
 pub mod migrations;
 mod sql;

@@ -4,6 +4,7 @@ use futures_util::StreamExt;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+use super::csv_import::run_csv_import;
 use super::sql::{ParsedSqlFile, ParsedStatement, StmtWithParams};
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::database::sql_to_json::row_to_string;
@@ -40,6 +41,10 @@ pub fn stream_query_results<'a>(
         let mut connection_opt = None;
         for res in &sql_file.statements {
             match res {
+                ParsedStatement::CsvImport(csv_import) => {
+                    let connection = take_connection(db, &mut connection_opt).await?;
+                    run_csv_import(connection, csv_import, request).await?;
+                },
                 ParsedStatement::StmtWithParams(stmt) => {
                     let query = bind_parameters(stmt, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;

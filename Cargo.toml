@@ -49,6 +49,7 @@ actix-multipart = "0.6.1"
 base64 = "0.21.5"
 rustls-acme = "0.7.7"
 dotenvy = "0.15.7"
+csv-async = { version = "1.2.6", features = ["tokio"] }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls"] }
