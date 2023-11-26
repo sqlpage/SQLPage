@@ -18,15 +18,15 @@ pub async fn apply(db: &Database) -> anyhow::Result<()> {
         );
         return Ok(());
     }
-    log::info!("Applying migrations from '{}'", migrations_dir.display());
-    let migrator = Migrator::new(migrations_dir)
+    log::debug!("Applying migrations from '{}'", migrations_dir.display());
+    let migrator = Migrator::new(migrations_dir.clone())
         .await
         .with_context(|| migration_err("preparing the database migration"))?;
     if migrator.migrations.is_empty() {
-        log::info!("No migration found. \
+        log::info!("No migration found in {}. \
         You can specify database operations to apply when the server first starts by creating files \
         in {MIGRATIONS_DIR}/<VERSION>_<DESCRIPTION>.sql \
-        where <VERSION> is a number and <DESCRIPTION> is a short string.");
+        where <VERSION> is a number and <DESCRIPTION> is a short string.", migrations_dir.display());
         return Ok(());
     }
     log::info!("Found {} migrations:", migrator.migrations.len());
