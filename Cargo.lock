@@ -2850,6 +2850,7 @@ dependencies = [
  "chrono",
  "config",
  "dashmap",
+ "dotenvy",
  "env_logger",
  "futures-util",
  "handlebars",

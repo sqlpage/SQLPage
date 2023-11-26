@@ -24,6 +24,9 @@ on a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.
 
 You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
 
+Multiple configuration file formats are supported:
+you can use a [`.json5`](https://json5.org/) file, a [`.toml`](https://toml.io/) file, or a [`.yaml`](https://en.wikipedia.org/wiki/YAML#Syntax) file.
+
 ## Environment variables
 
 All the parameters above can be set through environment variables.
@@ -36,7 +39,9 @@ The environment variable name can optionally be prefixed with `SQLPAGE_`.
 Additionnally, when troubleshooting, you can set the [`RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging)
 environment variable to `sqlpage=debug` to get more detailed logs and see exactly what SQLPage is doing.
 
-### Example
+If you have a `.env` file in the current directory or in any of its parent directories, SQLPage will automatically load environment variables from it.
+
+### Example `.env` file
 
 ```bash
 DATABASE_URL="sqlite:///path/to/my_database.db?mode=rwc"

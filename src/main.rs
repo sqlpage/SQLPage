@@ -17,7 +17,7 @@ async fn start() -> anyhow::Result<()> {
     log::debug!("Starting with the following configuration: {app_config:?}");
     let state = AppState::init(&app_config).await?;
     webserver::database::migrations::apply(&state.db).await?;
-    log::info!("Starting server on {}", app_config.listen_on);
+    log::debug!("Starting server on {}", app_config.listen_on);
     let (r, _) = tokio::join!(
         webserver::http::run_server(&app_config, state),
         log_welcome_message(&app_config)
@@ -49,8 +49,18 @@ async fn log_welcome_message(config: &AppConfig) {
 }
 
 fn init_logging() {
-    let env = env_logger::Env::new().default_filter_or("info");
+    let load_env = dotenvy::dotenv();
+
+    let env = env_logger::Env::new().default_filter_or("sqlpage=info");
     let mut logging = env_logger::Builder::from_env(env);
     logging.format_timestamp_millis();
     logging.init();
+
+    match load_env {
+        Ok(path) => log::info!("Loaded environment variables from {path:?}"),
+        Err(dotenvy::Error::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => log::debug!(
+            "No .env file found, using only environment variables and configuration files"
+        ),
+        Err(e) => log::error!("Error loading .env file: {}", e),
+    }
 }
