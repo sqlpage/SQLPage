@@ -68,8 +68,8 @@
                             {{~#if type}} type="{{type}}" {{/if~}}
                             {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
                             {{~#if value}} value="{{value}}" {{/if~}}
-                            {{~#if max}} max="{{max}}" {{/if~}}
-                            {{~#if min}} min="{{min}}" {{/if~}}
+                            {{~#if (or max (eq max 0))}} max="{{max}}" {{/if~}}
+                            {{~#if (or min (eq min 0))}} min="{{min}}" {{/if~}}
                             {{~#if step}} step="{{step}}" {{/if~}}
                             {{~#if minlength}} minlength="{{minlength}}" {{/if~}}
                             {{~#if maxlength}} maxlength="{{maxlength}}" {{/if~}}
