@@ -117,6 +117,7 @@ and does not even need to listen on port 80 to do so.
  - The `cookie` component now supports setting the `SameSite` attribute of cookies, and defaults to `SameSite=Strict` for all cookies. What this means in practice is that cookies set by SQLPage will not be sent to your website if the user is coming from another website. This prevents someone from tricking your users into executing SQLPage queries on your website by sending them a malicious link.
  - Bugfix: setting `min` or `max` to `0` in a number field in the `form` component now works as expected.
  - Added support for `.env` files to set SQLPage's [environment variables](./configuration.md#environment-variables).
+ - Better responsive design in the card component. Up to 5 cards per line on large screens. The number of cards per line is still customizable with the `columns` attribute.
 
 ## 0.16.1 (2023-11-22)
 

@@ -11,10 +11,13 @@
     row
     row-cols-1
     {{#if columns}}
-        {{#if (gt columns 2)}}row-cols-md-2{{/if}}
-        row-cols-xl-{{columns}}
+        {{#if (gt columns 2)}}row-cols-sm-2{{/if}}
+        row-cols-lg-{{columns}}
     {{else}}
-        row-cols-xl-3
+        row-cols-sm-2
+        row-cols-md-3
+        row-cols-lg-4
+        row-cols-xl-5
     {{/if}}
     gx-2 gy-2
     mt-1 mb-3">
