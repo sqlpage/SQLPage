@@ -274,7 +274,7 @@ impl ParameterExtractor {
         let data_type = match self.db_kind {
             // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
             AnyKind::MySql => DataType::Char(None),
-            AnyKind::Mssql => DataType::Varchar(Some(CharacterLength {
+            AnyKind::Mssql => DataType::Varchar(Some(CharacterLength::IntegerLength {
                 length: 8000,
                 unit: None,
             })),

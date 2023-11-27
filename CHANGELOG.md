@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.17.0
 
 ### Uploads
 
@@ -109,6 +109,30 @@ That's it. No external tool to install, no certificate to generate, no configura
 No need to restart SQLPage either, or to worry about renewing your certificate when it expires.
 SQLPage will automatically request a certificate from [Let's Encrypt](https://letsencrypt.org/) by default,
 and does not even need to listen on port 80 to do so.
+
+### SQL parser improvements
+
+SQLPage needs to parse SQL queries to be able to bind the right parameters to them,
+and to inject the results of built-in sqlpage functions in them.
+The parser we user is very powerful and supports most SQL features,
+but there are some edge cases where it fails to parse a query.
+That's why we contribute to it a lot, and bring the latest version of the parser to SQLPage as soon as it is released.
+
+#### JSON functions in MS SQL Server
+
+SQLPage now supports the [`FOR JSON` syntax](https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server?view=sql-server-ver16&tabs=json-path) in MS SQL Server.
+
+This unlocks a lot of new possibilities, that were previously only available in other databases.
+
+This is particularly interesting to build complex menus with the `shell` component,
+to build multiple-answer select inputs with the `form` component,
+and to create JSON APIs.
+
+#### Other sql syntax enhancements
+
+ - SQLPage now supports the custom `CONVERT` expression syntax for MS SQL Server, and the one for MySQL.
+ - SQLPage now supports the `VARCHAR(MAX)` type in MS SQL Server.
+ - `INSERT INTO ... DEFAULT VALUES ...` is now supported 
 
 ### Other news
 
