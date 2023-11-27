@@ -38,16 +38,16 @@ enum CopyCsvOption<'a> {
 impl<'a> CopyCsvOption<'a> {
     fn delimiter(&self) -> Option<char> {
         match self {
-            CopyCsvOption::Legacy(CopyLegacyOption::Delimiter(c)) => Some(*c),
-            CopyCsvOption::New(CopyOption::Delimiter(c)) => Some(*c),
+            CopyCsvOption::Legacy(CopyLegacyOption::Delimiter(c))
+            | CopyCsvOption::New(CopyOption::Delimiter(c)) => Some(*c),
             _ => None,
         }
     }
 
     fn quote(&self) -> Option<char> {
         match self {
-            CopyCsvOption::CopyLegacyCsvOption(CopyLegacyCsvOption::Quote(c)) => Some(*c),
-            CopyCsvOption::New(CopyOption::Quote(c)) => Some(*c),
+            CopyCsvOption::CopyLegacyCsvOption(CopyLegacyCsvOption::Quote(c))
+            | CopyCsvOption::New(CopyOption::Quote(c)) => Some(*c),
             _ => None,
         }
     }
@@ -69,14 +69,14 @@ impl<'a> CopyCsvOption<'a> {
 
     fn escape(&self) -> Option<char> {
         match self {
-            CopyCsvOption::New(CopyOption::Escape(c)) => Some(*c),
-            CopyCsvOption::CopyLegacyCsvOption(CopyLegacyCsvOption::Escape(c)) => Some(*c),
+            CopyCsvOption::New(CopyOption::Escape(c))
+            | CopyCsvOption::CopyLegacyCsvOption(CopyLegacyCsvOption::Escape(c)) => Some(*c),
             _ => None,
         }
     }
 }
 
-pub fn extract_csv_import(stmt: &mut Statement) -> Option<CsvImport> {
+pub fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImport> {
     if let Statement::Copy {
         source: CopySource::Table {
             table_name,

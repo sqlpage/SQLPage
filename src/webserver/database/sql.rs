@@ -1,4 +1,4 @@
-use super::csv_import::{extract_csv_import, CsvImport};
+use super::csv_import::{extract_csv_copy_statement, CsvImport};
 use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
 use crate::file_cache::AsyncFromStrWithState;
 use crate::utils::add_value_to_map;
@@ -103,7 +103,7 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
             value: StmtWithParams { query, params },
         });
     }
-    if let Some(csv_import) = extract_csv_import(&mut stmt) {
+    if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
         return Some(ParsedStatement::CsvImport(csv_import));
     }
     Some(ParsedStatement::StmtWithParams(StmtWithParams {
