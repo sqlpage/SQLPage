@@ -112,6 +112,34 @@ async fn test_file_upload() -> actix_web::Result<()> {
     Ok(())
 }
 
+#[actix_web::test]
+async fn test_csv_upload() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/upload_csv_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"prices_file\"; filename=\"prices.csv\"\r\n\
+            Content-Type: text/csv\r\n\
+            \r\n\
+            price,quantity\r\n\
+            1,5\r\n\
+            2.5,4\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("total: 15"),
+        "{body_str}\nexpected to contain: total: 15"
+    );
+    Ok(())
+}
+
 async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     init_log();
     let config = test_config();

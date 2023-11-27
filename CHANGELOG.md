@@ -30,10 +30,17 @@ insert into files (content) values (sqlpage.read_file_as_data_url(sqlpage.upload
 returning 'text' as component, 'Uploaded new file with id: ' || id as contents;
 ```
 
+The maximum size of uploaded files is configurable with the [`max_uploaded_file_size`](./configuration.md) configuration parameter. By default, it is set to 5 MiB.
+
 #### Parsing CSV files
 
 SQLPage can also parse uploaded CSV files and insert them directly into a database table.
-SQLPage re-uses PostgreSQL's `COPY` statement to import the CSV file into the database, but makes it work with any database, by emulating the same behavior with simple `INSERT` statements.
+SQLPage re-uses PostgreSQL's [`COPY` syntax](https://www.postgresql.org/docs/current/sql-copy.html)
+to import the CSV file into the database.
+When connected to a PostgreSQL database, SQLPage will use the native `COPY` statement,
+for super fast and efficient on-database CSV parsing.
+But it will also work with any other database as well, by
+parsing the CSV locally and emulating the same behavior with simple `INSERT` statements.
 
 `user_file_upload.sql` :
 ```sql

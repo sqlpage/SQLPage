@@ -163,7 +163,7 @@ fn default_web_root() -> PathBuf {
 }
 
 fn default_max_file_size() -> usize {
-    10 * 1024 * 1024
+    5 * 1024 * 1024
 }
 
 fn default_https_certificate_cache_dir() -> PathBuf {

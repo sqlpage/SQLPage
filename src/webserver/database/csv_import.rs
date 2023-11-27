@@ -6,8 +6,8 @@ use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
 use sqlx::{
-    any::{AnyArguments, AnyKind},
-    AnyConnection, Arguments, Executor,
+    any::{AnyArguments, AnyConnectionKind, AnyKind},
+    AnyConnection, Arguments, Executor, PgConnection,
 };
 use tokio::io::AsyncRead;
 
@@ -80,7 +80,7 @@ impl<'a> CopyCsvOption<'a> {
     }
 }
 
-pub fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImport> {
+pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImport> {
     if let Statement::Copy {
         source: CopySource::Table {
             table_name,
@@ -137,7 +137,6 @@ pub fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImport> {
             uploaded_file,
         })
     } else {
-        log::warn!("COPY statement not compatible with SQLPage: {stmt}");
         None
     }
 }
@@ -157,10 +156,39 @@ pub(super) async fn run_csv_import(
         .await
         .with_context(|| "opening csv")?;
     let buffered = tokio::io::BufReader::new(file);
-    run_csv_import_on_path(db, csv_import, buffered).await
+    // private_get_mut is not supposed to be used outside of sqlx, but it is the only way to
+    // access the underlying connection
+    match db.private_get_mut() {
+        AnyConnectionKind::Postgres(pg_connection) => {
+            run_csv_import_postgres(pg_connection, csv_import, buffered).await
+        }
+        _ => run_csv_import_insert(db, csv_import, buffered).await,
+    }
+    .with_context(|| {
+        format!(
+            "running CSV import from {} to {}",
+            csv_import.uploaded_file, csv_import.table_name
+        )
+    })
 }
 
-async fn run_csv_import_on_path(
+/// This function does not parse the CSV file, it only sends it to postgres.
+/// This is the fastest way to import a CSV file into postgres
+async fn run_csv_import_postgres(
+    db: &mut PgConnection,
+    csv_import: &CsvImport,
+    file: impl AsyncRead + Unpin + Send,
+) -> anyhow::Result<()> {
+    let mut copy_transact = db
+        .copy_in_raw(csv_import.query.as_str())
+        .await
+        .with_context(|| "running COPY IN")?;
+    copy_transact.read_from(file).await?;
+    copy_transact.finish().await?;
+    Ok(())
+}
+
+async fn run_csv_import_insert(
     db: &mut AnyConnection,
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
@@ -287,13 +315,27 @@ async fn test_end_to_end() {
 
     let mut copy_stmt = sqlparser::parser::Parser::parse_sql(
         &sqlparser::dialect::GenericDialect {},
-        "COPY my_table (col1, col2) FROM 'my_file.csv' WITH (DELIMITER ';', HEADER)",
+        "COPY my_table (col1, col2) FROM 'my_file.csv' (DELIMITER ';', HEADER)",
     )
     .unwrap()
     .into_iter()
     .next()
     .unwrap();
     let csv_import = extract_csv_copy_statement(&mut copy_stmt).unwrap();
+    assert_eq!(
+        csv_import,
+        CsvImport {
+            query: "COPY my_table (col1, col2) FROM STDIN (DELIMITER ';', HEADER)".into(),
+            table_name: "my_table".into(),
+            columns: vec!["col1".into(), "col2".into()],
+            delimiter: Some(';'),
+            quote: None,
+            header: Some(true),
+            null_str: None,
+            escape: None,
+            uploaded_file: "my_file.csv".into(),
+        }
+    );
     let mut conn = "sqlite::memory:"
         .parse::<sqlx::any::AnyConnectOptions>()
         .unwrap()
@@ -305,7 +347,7 @@ async fn test_end_to_end() {
         .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
     let file = csv.as_bytes();
-    run_csv_import_on_path(&mut conn, &csv_import, file)
+    run_csv_import_insert(&mut conn, &csv_import, file)
         .await
         .unwrap();
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")

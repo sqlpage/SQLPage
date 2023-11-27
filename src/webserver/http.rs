@@ -7,6 +7,7 @@ use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode, Uri};
+use actix_web::web::PayloadConfig;
 use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, HttpResponse,
     HttpServer,
@@ -476,6 +477,7 @@ pub fn create_app(
         .wrap(middleware::NormalizePath::new(
             middleware::TrailingSlash::MergeOnly,
         ))
+        .app_data(PayloadConfig::default().limit(app_state.config.max_uploaded_file_size * 2))
         .app_data(app_state)
 }
 
