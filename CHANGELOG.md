@@ -118,6 +118,8 @@ and does not even need to listen on port 80 to do so.
  - Bugfix: setting `min` or `max` to `0` in a number field in the `form` component now works as expected.
  - Added support for `.env` files to set SQLPage's [environment variables](./configuration.md#environment-variables).
  - Better responsive design in the card component. Up to 5 cards per line on large screens. The number of cards per line is still customizable with the `columns` attribute.
+ - New icons: 
+   - ![new icons in tabler 42](https://github.com/tabler/tabler-icons/assets/1282324/00856af9-841d-4aa9-995d-121c7ddcc005)
 
 ## 0.16.1 (2023-11-22)
 
