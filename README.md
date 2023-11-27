@@ -78,7 +78,7 @@ SELECT
     required, description
 FROM user_form;
 
-INSERT INTO user (first_name, last_name, birth_date)
+INSERT INTO user
 SELECT $first_name, $last_name, $birth_date
 WHERE $first_name IS NOT NULL;
 ```
@@ -93,8 +93,7 @@ WHERE $first_name IS NOT NULL;
 
 ```sql
 select 'tab' as component, true as center;
-select 'Show all cards' as title,
-  '?' as link,
+select 'Show all cards' as title, '?' as link,
   $tab is null as active;
 select
   format('Show %s cards', color) as title,
@@ -110,6 +109,10 @@ select
   image_url as top_image, link
 from tab_example_cards
 where $tab is null or $tab = color;
+
+select
+  'text' as component,
+  sqlpage.read_file_as_text('file.md') as contents_md
 ```
 
 <td>
@@ -122,7 +125,7 @@ where $tab is null or $tab = color;
 
 ## Supported databases
 
-- [sqlite](https://www.sqlite.org/index.html)
+- [SQLite](https://www.sqlite.org/index.html)
 - [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *YugabyteDB*, *CockroachDB* and *Aurora*.
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 - [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server), and all compatible databases and providers such as *Azure SQL* and *Amazon RDS*.
@@ -146,14 +149,14 @@ to the user's browser.
 
 [Read the official *get started* guide on SQLPage's website](https://sql.ophir.dev/get_started.sql).
 
-### Using native binaries
+### Using executables
 
 The easiest way to get started is to download the latest release from the
 [releases page](https://github.com/lovasoa/SQLpage/releases).
 
 - Download the binary that corresponds to your operating system (linux, macos, or windows).
 - Uncompress it: `tar -xzf sqlpage-*.tgz`
-- Run it in a terminal: `./sqlpage.bin`
+- Run it: `./sqlpage.bin`
 
 ### With docker
 
@@ -193,8 +196,10 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 - [Image gallery](./examples/image%20gallery%20with%20user%20uploads/): An image gallery where users can log in and upload images. Illustrates the implementation of a user authentication system using session cookies, and the handling of file uploads.
 - [User Management](./examples/user-authentication/): An authentication demo with user registration, log in, log out, and confidential pages. Uses PostgreSQL.
 - [Making a JSON API and integrating React components in the frontend](./examples/using%20react%20and%20other%20custom%20scripts%20and%20styles/): Shows how to integrate a react component in a SQLPage website, and how to easily build a REST API with SQLPage.
+- [Handling file uploads](./examples/image%20gallery%20with%20user%20uploads): An image gallery where authenticated users can publish new images via an upload form.
+- [Bulk data import from CSV files](./examples/official-site/examples/handle_csv_upload.sql) : A simple form letting users import CSV files to fill a database table.
 
-You can try all the examples online using [SQLPage's online demo on replit](https://replit.com/@pimaj62145/SQLPage).
+You can try all the examples online without installing anything on your computer using [SQLPage's online demo on replit](https://replit.com/@pimaj62145/SQLPage).
 
 ## Configuration
 
@@ -205,6 +210,15 @@ For more information, read [`configuration.md`](./configuration.md).
 
 Additionally, custom components can be created by placing [`.handlebars`](https://handlebarsjs.com/guide/)
 files in `sqlpage/templates`. [Example](./sqlpage/templates/card.handlebars).
+
+### HTTPS
+
+SQLPage supports HTTP/2 and HTTPS natively and transparently.
+Just set `SQLPAGE_HTTPS_DOMAIN=example.com`, and SQLPage
+will automatically request a trusted certificate and
+start encrypting all your user's traffic with it.
+No tedious manual configuration for you,
+and no annoying "Connection is Not Secure" messages for your users !
 
 ## Serverless
 
