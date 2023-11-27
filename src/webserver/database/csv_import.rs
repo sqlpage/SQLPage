@@ -5,7 +5,11 @@ use futures_util::StreamExt;
 use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
-use sqlx::{any::AnyArguments, AnyConnection, Arguments, Executor};
+use sqlx::{
+    any::{AnyArguments, AnyKind},
+    AnyConnection, Arguments, Executor,
+};
+use tokio::io::AsyncRead;
 
 use crate::webserver::http_request_info::RequestInfo;
 
@@ -152,7 +156,16 @@ pub(super) async fn run_csv_import(
     let file = tokio::fs::File::open(file_path)
         .await
         .with_context(|| "opening csv")?;
-    let insert_stmt = create_insert_stmt(db, csv_import);
+    let buffered = tokio::io::BufReader::new(file);
+    run_csv_import_on_path(db, csv_import, buffered).await
+}
+
+async fn run_csv_import_on_path(
+    db: &mut AnyConnection,
+    csv_import: &CsvImport,
+    file: impl AsyncRead + Unpin + Send,
+) -> anyhow::Result<()> {
+    let insert_stmt = create_insert_stmt(db.kind(), csv_import);
     log::debug!("CSV data insert statement: {insert_stmt}");
     let mut reader = make_csv_reader(csv_import, file);
     let col_idxs = compute_column_indices(&mut reader, csv_import).await?;
@@ -164,8 +177,8 @@ pub(super) async fn run_csv_import(
     Ok(())
 }
 
-async fn compute_column_indices(
-    reader: &mut csv_async::AsyncReader<tokio::fs::File>,
+async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
+    reader: &mut csv_async::AsyncReader<R>,
     csv_import: &CsvImport,
 ) -> anyhow::Result<Vec<usize>> {
     let mut col_idxs = Vec::with_capacity(csv_import.columns.len());
@@ -189,16 +202,17 @@ async fn compute_column_indices(
     Ok(col_idxs)
 }
 
-fn create_insert_stmt(db: &mut AnyConnection, csv_import: &CsvImport) -> String {
-    let kind = db.kind();
+fn create_insert_stmt(kind: AnyKind, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
     let placeholders = csv_import
         .columns
         .iter()
         .enumerate()
-        .map(|(i, _)| make_placeholder(kind, i))
+        .map(|(i, _)| make_placeholder(kind, i + 1))
         .fold(String::new(), |mut acc, f| {
-            acc.push_str(", ");
+            if !acc.is_empty() {
+                acc.push_str(", ");
+            }
             acc.push_str(&f);
             acc
         });
@@ -225,10 +239,10 @@ async fn process_csv_record(
     Ok(())
 }
 
-fn make_csv_reader(
+fn make_csv_reader<R: AsyncRead + Unpin + Send>(
     csv_import: &CsvImport,
-    file: tokio::fs::File,
-) -> csv_async::AsyncReader<tokio::fs::File> {
+    file: R,
+) -> csv_async::AsyncReader<R> {
     let delimiter = csv_import
         .delimiter
         .and_then(|c| u8::try_from(c).ok())
@@ -245,4 +259,61 @@ fn make_csv_reader(
         .has_headers(has_headers)
         .escape(escape)
         .create_reader(file)
+}
+
+#[test]
+fn test_make_statement() {
+    let csv_import = CsvImport {
+        query: "COPY my_table (col1, col2) FROM 'my_file.csv' WITH (DELIMITER ';', HEADER)".into(),
+        table_name: "my_table".into(),
+        columns: vec!["col1".into(), "col2".into()],
+        delimiter: Some(';'),
+        quote: None,
+        header: Some(true),
+        null_str: None,
+        escape: None,
+        uploaded_file: "my_file.csv".into(),
+    };
+    let insert_stmt = create_insert_stmt(AnyKind::Postgres, &csv_import);
+    assert_eq!(
+        insert_stmt,
+        "INSERT INTO my_table (col1, col2) VALUES ($1, $2)"
+    );
+}
+
+#[actix_web::test]
+async fn test_end_to_end() {
+    use sqlx::ConnectOptions;
+
+    let mut copy_stmt = sqlparser::parser::Parser::parse_sql(
+        &sqlparser::dialect::GenericDialect {},
+        "COPY my_table (col1, col2) FROM 'my_file.csv' WITH (DELIMITER ';', HEADER)",
+    )
+    .unwrap()
+    .into_iter()
+    .next()
+    .unwrap();
+    let csv_import = extract_csv_copy_statement(&mut copy_stmt).unwrap();
+    let mut conn = "sqlite::memory:"
+        .parse::<sqlx::any::AnyConnectOptions>()
+        .unwrap()
+        .connect()
+        .await
+        .unwrap();
+    conn.execute("CREATE TABLE my_table (col1 TEXT, col2 TEXT)")
+        .await
+        .unwrap();
+    let csv = "col2;col1\na;b\nc;d"; // order is different from the table
+    let file = csv.as_bytes();
+    run_csv_import_on_path(&mut conn, &csv_import, file)
+        .await
+        .unwrap();
+    let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")
+        .fetch_all(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows,
+        vec![("b".into(), "a".into()), ("d".into(), "c".into())]
+    );
 }
