@@ -39,7 +39,7 @@ FROM website;
 ```
 
 <td>
-
+    
 ![SQLPage list component](./docs/demo-list.png)
 
 </tr>
@@ -49,9 +49,14 @@ FROM website;
 ```sql
 SELECT
   'chart' as component,
-  'Quarterly Revenue' as title, 'area' as type;
-SELECT quarter AS x, SUM(revenue) AS y
-FROM finances GROUP BY quarter
+  'Quarterly Revenue' as title,
+  'area' as type;
+
+SELECT
+    quarter AS x,
+    SUM(revenue) AS y
+FROM finances
+GROUP BY quarter
 ```
 
 <td>
@@ -63,18 +68,53 @@ FROM finances GROUP BY quarter
 <td>
 
 ```sql
-SELECT 'form' as component, 'User' as title, 'Create new user' as validate;
-SELECT name, type, placeholder, required, description
+SELECT
+    'form' as component,
+    'User' as title,
+    'Create new user' as validate;
+
+SELECT
+    name, type, placeholder,
+    required, description
 FROM user_form;
 
 INSERT INTO user (first_name, last_name, birth_date)
-SELECT ($first_name, $last_name, $birth_date)
+SELECT $first_name, $last_name, $birth_date
 WHERE $first_name IS NOT NULL;
 ```
 
 <td>
 
 ![SQLPage list component](./docs/demo-form.png)
+
+</tr>
+<tr>
+<td>
+
+```sql
+select 'tab' as component, true as center;
+select 'Show all cards' as title,
+  '?' as link,
+  $tab is null as active;
+select
+  format('Show %s cards', color) as title,
+  format('?tab=%s', color) as link,
+  $tab=color as active
+from tab_example_cards
+group by color; 
+
+
+select 'card' as component;
+select
+  title, description, color
+  image_url as top_image, link
+from tab_example_cards
+where $tab is null or $tab = color;
+```
+
+<td>
+
+![card component sql example](./docs/cards.png)
 
 </tr>
 </tbody>
