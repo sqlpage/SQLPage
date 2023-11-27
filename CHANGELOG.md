@@ -131,7 +131,7 @@ and to create JSON APIs.
 #### Other sql syntax enhancements
 
  - SQLPage now supports the custom `CONVERT` expression syntax for MS SQL Server, and the one for MySQL.
- - SQLPage now supports the `VARCHAR(MAX)` type in MS SQL Server.
+ - SQLPage now supports the `VARCHAR(MAX)` type in MS SQL Server and uses it for all variables bound as parameters to your SQL queries (we used to use `VARCHAR(8000)` before).
  - `INSERT INTO ... DEFAULT VALUES ...` is now supported 
 
 ### Other news

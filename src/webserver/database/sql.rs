@@ -274,10 +274,7 @@ impl ParameterExtractor {
         let data_type = match self.db_kind {
             // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
             AnyKind::MySql => DataType::Char(None),
-            AnyKind::Mssql => DataType::Varchar(Some(CharacterLength::IntegerLength {
-                length: 8000,
-                unit: None,
-            })),
+            AnyKind::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
             _ => DataType::Text,
         };
         let value = Expr::Value(Value::Placeholder(name));
@@ -664,7 +661,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
         assert_eq!(
             ast.to_string(),
-            "SELECT CONCAT('', CAST(@p1 AS VARCHAR(8000))) FROM [a schema].[a table]"
+            "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
         );
         assert_eq!(parameters, [StmtParam::GetOrPost("1".to_string()),]);
     }
