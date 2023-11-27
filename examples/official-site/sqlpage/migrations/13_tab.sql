@@ -81,7 +81,10 @@ For example, if the page is `/my-page.sql`, then the first tab will have a link 
 
 You could then for instance display contents coming from the database based on the value of the `tab` parameter.
 For instance: `SELECT ''text'' AS component, contents_md FROM my_page_contents WHERE tab = $tab`
-        ',
+
+Note that the example below is completely static, and does not use the `tab` parameter to actually switch between tabs.
+View the [dynamic tabs example](examples/tabs.sql).
+',
         JSON(
             '[
             { "component": "tab" },
