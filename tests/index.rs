@@ -119,12 +119,12 @@ async fn test_csv_upload() -> actix_web::Result<()> {
         .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
         .set_payload(
             "--1234567890\r\n\
-            Content-Disposition: form-data; name=\"prices_file\"; filename=\"prices.csv\"\r\n\
+            Content-Disposition: form-data; name=\"people_file\"; filename=\"people.csv\"\r\n\
             Content-Type: text/csv\r\n\
             \r\n\
-            price,quantity\r\n\
-            1,5\r\n\
-            2.5,4\r\n\
+            name,age\r\n\
+            Ophir,29\r\n\
+            Max,99\r\n\
             --1234567890--\r\n",
         )
         .to_srv_request();
@@ -134,8 +134,8 @@ async fn test_csv_upload() -> actix_web::Result<()> {
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     assert!(
-        body_str.contains("total: 15"),
-        "{body_str}\nexpected to contain: total: 15"
+        body_str.contains("Ophir is 29 years old"),
+        "{body_str}\nexpected to contain: Ophir is 29 years old"
     );
     Ok(())
 }

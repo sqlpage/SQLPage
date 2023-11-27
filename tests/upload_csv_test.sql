@@ -1,5 +1,5 @@
-create table bill(quantity text, price text);
-copy bill(quantity, price) from 'prices_file' with (format csv, header true);
+create table people(name text, age text);
+copy people(name, age) from 'people_file' with (format csv, header true);
 select 'text' as component,
-    'total: ' || sum(cast(quantity as float) * cast(price as float)) as contents
-from bill;
+    name || ' is ' || age || ' years old. ' as contents
+from people;
