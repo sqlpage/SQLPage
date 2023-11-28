@@ -7,8 +7,11 @@ select 'shell' as component,
     'blog' as menu_item,
     'documentation' as menu_item,
     19 as font_size,
-    'Poppins' as font;
-
+    'Poppins' as font,
+    'https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js' as javascript,
+    'https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js' as javascript,
+    '/prism-tabler-theme.css' as css;
+    
 SELECT 'text' AS component,
         content AS contents_md
 FROM blog_posts

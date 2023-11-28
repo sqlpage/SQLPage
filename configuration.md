@@ -3,6 +3,9 @@
 SQLPage can be configured through either [environment variables](https://en.wikipedia.org/wiki/Environment_variable)
 on a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.json`.
 
+You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
+Here are the available configuration options and their default values:
+
 | variable                                   | default                      | description                                                              |
 | ------------------------------------------ | ---------------------------- | ------------------------------------------------------------------------ |
 | `listen_on`                                | 0.0.0.0:8080                 | Interface and port on which the web server should listen                 |
@@ -21,8 +24,6 @@ on a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.
 | `https_certificate_email` | contact@<https_domain> | The email address to use when requesting a certificate. |
 | `https_certificate_cache_dir` | ./sqlpage/https | A writeable directory where to cache the certificates, so that SQLPage can serve https traffic immediately when it restarts. |
 | `https_acme_directory_url` | https://acme-v02.api.letsencrypt.org/directory | The URL of the ACME directory to use when requesting a certificate. |
-
-You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
 
 Multiple configuration file formats are supported:
 you can use a [`.json5`](https://json5.org/) file, a [`.toml`](https://toml.io/) file, or a [`.yaml`](https://en.wikipedia.org/wiki/YAML#Syntax) file.

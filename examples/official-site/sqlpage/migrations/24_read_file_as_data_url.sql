@@ -42,7 +42,8 @@ select ''card'' as component;
 select ''Picture'' as title, sqlpage.read_file_as_data_url(''/path/to/picture.jpg'') as top_image;
 ```
 
-> **Note:** Data URLs are larger than the original file they represent, so they should only be used for small files (a few kilobytes).
+> **Note:** Data URLs are larger than the original file they represent, so they should only be used for small files
+> (under a few hundred kilobytes).
 > Otherwise, the page will take a long time to load.
 ');
 
