@@ -497,13 +497,14 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
     if let Some(domain) = &config.https_domain {
         listen_on.set_port(443);
         log::info!("Will start HTTPS server on {listen_on}");
+        let config = make_auto_rustls_config(domain, config);
         server = server
-            .bind_rustls_021(listen_on, make_auto_rustls_config(domain, config))
-            .with_context(|| "Unable to listen to the specified port")?;
+            .bind_rustls_021(listen_on, config)
+            .map_err(|e| bind_error(e, listen_on))?;
     } else if listen_on.port() != 443 {
         server = server
             .bind(listen_on)
-            .with_context(|| "Unable to listen to the specified port")?;
+            .map_err(|e| bind_error(e, listen_on))?;
     } else {
         bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS.");
     }
@@ -512,4 +513,32 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         .await
         .with_context(|| "Unable to start the application")?;
     Ok(())
+}
+
+fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Error {
+    let (ip, port) = (listen_on.ip(), listen_on.port());
+    // Let's try to give a more helpful error message in common cases
+    let ctx = match e.kind() {
+        std::io::ErrorKind::AddrInUse => format!(
+            "Another program is already using port {port} (maybe {} ?). \
+            You can either stop that program or change the port in the configuration file.",
+            if port == 80 || port == 443 {
+                "Apache or Nginx"
+            } else {
+                "another instance of SQLPage"
+            },
+        ),
+        std::io::ErrorKind::PermissionDenied => format!(
+            "You do not have permission to bind to {ip} on port {port}. \
+            You can either run SQLPage as root with sudo, give it the permission to bind to low ports with `sudo setcap cap_net_bind_service=+ep {executable_path}`, \
+            or change the port in the configuration file.",
+            executable_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("sqlpage.bin")).display(),
+        ),
+        std::io::ErrorKind::AddrNotAvailable => format!(
+            "The IP address {ip} does not exist on this computer. \
+            You can change the value of listen_on in the configuration file.",
+        ),
+        _ => format!("Unable to bind to {ip} on port {port}"),
+    };
+    anyhow::anyhow!(e).context(ctx)
 }

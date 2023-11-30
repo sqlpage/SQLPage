@@ -1,5 +1,11 @@
 # CHANGELOG.md
 
+## 0.17.1 (unreleased)
+
+ - The previous version reduced log verbosity, but also removed the ability to see the HTTP requests in the logs.
+   This is now fixed, and you can see the HTTP requests again. Logging is still less verbose than before, but you can enable debug logs by setting the `RUST_LOG` environment variable to `debug`, or to `sqlpage=debug` to only see SQLPage debug logs.
+ - Better error message when failing to bind to a low port (<1024) on Linux. SQLPage now displays a message explaining how to allow SQLPage to bind to a low port.
+
 ## 0.17.0
 
 ### Uploads
