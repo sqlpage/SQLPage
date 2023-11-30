@@ -51,7 +51,8 @@ async fn log_welcome_message(config: &AppConfig) {
 fn init_logging() {
     let load_env = dotenvy::dotenv();
 
-    let env = env_logger::Env::new().default_filter_or("sqlpage=info");
+    let env =
+        env_logger::Env::new().default_filter_or("sqlpage=info,actix_web::middleware::logger=info");
     let mut logging = env_logger::Builder::from_env(env);
     logging.format_timestamp_millis();
     logging.init();
