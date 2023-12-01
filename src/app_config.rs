@@ -21,11 +21,8 @@ pub struct AppConfig {
     #[serde(default)]
     pub sqlite_extensions: Vec<String>,
 
-    #[serde(
-        deserialize_with = "deserialize_socket_addr",
-        default = "default_listen_on"
-    )]
-    pub listen_on: SocketAddr,
+    #[serde(default, deserialize_with = "deserialize_socket_addr")]
+    pub listen_on: Option<SocketAddr>,
     pub port: Option<u16>,
 
     /// Number of times to retry connecting to the database after a failure when the server starts
@@ -74,18 +71,31 @@ pub struct AppConfig {
     pub https_acme_directory_url: String,
 }
 
+impl AppConfig {
+    #[must_use]
+    pub fn listen_on(&self) -> SocketAddr {
+        let mut addr = self.listen_on.unwrap_or_else(|| {
+            if self.https_domain.is_some() {
+                SocketAddr::from(([0, 0, 0, 0], 443))
+            } else {
+                SocketAddr::from(([0, 0, 0, 0], 8080))
+            }
+        });
+        if let Some(port) = self.port {
+            addr.set_port(port);
+        }
+        addr
+    }
+}
+
 pub fn load() -> anyhow::Result<AppConfig> {
-    let mut conf = Config::builder()
+    Config::builder()
         .add_source(config::File::with_name("sqlpage/sqlpage").required(false))
         .add_source(env_config())
         .add_source(env_config().prefix("SQLPAGE"))
         .build()?
         .try_deserialize::<AppConfig>()
-        .with_context(|| "Unable to load configuration")?;
-    if let Some(port) = conf.port {
-        conf.listen_on.set_port(port);
-    }
-    Ok(conf)
+        .with_context(|| "Unable to load configuration")
 }
 
 fn env_config() -> config::Environment {
@@ -95,16 +105,13 @@ fn env_config() -> config::Environment {
         .with_list_parse_key("sqlite_extensions")
 }
 
-#[must_use]
-pub fn default_listen_on() -> SocketAddr {
-    SocketAddr::from(([0, 0, 0, 0], 8080))
-}
-
 fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
     deserializer: D,
-) -> Result<SocketAddr, D::Error> {
-    let host_str: String = Deserialize::deserialize(deserializer)?;
-    parse_socket_addr(&host_str).map_err(D::Error::custom)
+) -> Result<Option<SocketAddr>, D::Error> {
+    let host_str: Option<String> = Deserialize::deserialize(deserializer)?;
+    host_str
+        .map(|h| parse_socket_addr(&h).map_err(D::Error::custom))
+        .transpose()
 }
 
 fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {

@@ -1,4 +1,3 @@
 {
-  "database_url": "sqlite://./sqlpage/sqlpage.db?mode=rwc",
-  "listen_on": "localhost:8080"
+  "database_url": "sqlite://./sqlpage/sqlpage.db?mode=rwc"
 }

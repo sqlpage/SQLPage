@@ -482,7 +482,7 @@ pub fn create_app(
 }
 
 pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {
-    let mut listen_on = config.listen_on;
+    let listen_on = config.listen_on();
     let state = web::Data::new(state);
     let factory = move || create_app(web::Data::clone(&state));
 
@@ -495,18 +495,21 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
     }
     let mut server = HttpServer::new(factory);
     if let Some(domain) = &config.https_domain {
-        listen_on.set_port(443);
+        let mut listen_on_https = listen_on;
+        listen_on_https.set_port(443);
         log::info!("Will start HTTPS server on {listen_on}");
         let config = make_auto_rustls_config(domain, config);
         server = server
             .bind_rustls_021(listen_on, config)
             .map_err(|e| bind_error(e, listen_on))?;
-    } else if listen_on.port() != 443 {
+    } else if listen_on.port() == 443 {
+        bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)");
+    }
+    if listen_on.port() != 443 {
+        log::info!("Will start HTTP server on {listen_on}");
         server = server
             .bind(listen_on)
             .map_err(|e| bind_error(e, listen_on))?;
-    } else {
-        bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS.");
     }
     server
         .run()

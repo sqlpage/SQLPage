@@ -5,6 +5,7 @@
  - The previous version reduced log verbosity, but also removed the ability to see the HTTP requests in the logs.
    This is now fixed, and you can see the HTTP requests again. Logging is still less verbose than before, but you can enable debug logs by setting the `RUST_LOG` environment variable to `debug`, or to `sqlpage=debug` to only see SQLPage debug logs.
  - Better error message when failing to bind to a low port (<1024) on Linux. SQLPage now displays a message explaining how to allow SQLPage to bind to a low port.
+ - When https_domain is set, but a port number different from 443 is set, SQLPage now starts both an HTTP and an HTTPS server.
 
 ## 0.17.0
 

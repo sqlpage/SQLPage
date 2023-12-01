@@ -14,10 +14,10 @@ async fn main() {
 
 async fn start() -> anyhow::Result<()> {
     let app_config = app_config::load()?;
-    log::debug!("Starting with the following configuration: {app_config:?}");
+    log::debug!("Starting with the following configuration: {app_config:#?}");
     let state = AppState::init(&app_config).await?;
     webserver::database::migrations::apply(&state.db).await?;
-    log::debug!("Starting server on {}", app_config.listen_on);
+    log::debug!("Starting server...");
     let (r, _) = tokio::join!(
         webserver::http::run_server(&app_config, state),
         log_welcome_message(&app_config)
@@ -27,7 +27,7 @@ async fn start() -> anyhow::Result<()> {
 
 async fn log_welcome_message(config: &AppConfig) {
     // Don't show 0.0.0.0 as the host, show the actual IP address
-    let http_addr = config.listen_on.to_string().replace(
+    let http_addr = config.listen_on().to_string().replace(
         "0.0.0.0",
         std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
             .to_string()
@@ -36,13 +36,12 @@ async fn log_welcome_message(config: &AppConfig) {
 
     log::info!(
         "Server started successfully.
-    SQLPage is now running on http://{}/ {}
+    SQLPage is now running on {}
     You can write your website's code in .sql files in {}.",
-        http_addr,
         if let Some(domain) = &config.https_domain {
-            format!("and on https://{}", domain)
+            format!("https://{}", domain)
         } else {
-            "".to_string()
+            format!("http://{}", http_addr)
         },
         config.web_root.display()
     );
