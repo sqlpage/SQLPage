@@ -14,7 +14,9 @@ use std::sync::atomic::{
 use std::sync::Arc;
 use std::time::SystemTime;
 
-const MAX_STALE_CACHE_MS: u64 = 100;
+/// The maximum time in milliseconds that a file can be cached before its freshness is checked
+/// (in production mode)
+const MAX_STALE_CACHE_MS: u64 = 150;
 
 #[derive(Default)]
 struct Cached<T> {
@@ -95,7 +97,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
 
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
         if let Some(cached) = self.cache.get(path) {
-            if !cached.needs_check() {
+            if app_state.config.environment.is_prod() && !cached.needs_check() {
                 log::trace!("Cache answer without filesystem lookup for {:?}", path);
                 return Ok(Arc::clone(&cached.content));
             }

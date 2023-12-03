@@ -59,6 +59,9 @@ impl<W: std::io::Write> HeaderContext<W> {
     }
 
     pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext<W>> {
+        if self.app_state.config.environment.is_prod() {
+            return Err(err);
+        }
         log::debug!("Handling header error: {err}");
         let data = json!({
             "component": "error",
@@ -418,14 +421,20 @@ impl<W: std::io::Write> RenderContext<W> {
     /// Handles the rendering of an error.
     /// Returns whether the error is irrecoverable and the rendering must stop
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
-        log::warn!("SQL error: {:?}", error);
+        log::error!("SQL error: {:?}", error);
         self.close_component()?;
-        let description = error.to_string();
-        let data = json!({
-            "query_number": self.current_statement,
-            "description": description,
-            "backtrace": get_backtrace(error)
-        });
+        let data = if self.app_state.config.environment.is_prod() {
+            json!({
+                "description": format!("Please contact the administrator for more information. The error has been logged."),
+            })
+        } else {
+            json!({
+                "query_number": self.current_statement,
+                "description": error.to_string(),
+                "backtrace": get_backtrace(error),
+                "note": "You can hide error messages like this one from your users by setting the 'environment' configuration option to 'production'."
+            })
+        };
         let saved_component = self.open_component_with_data("error", &data).await?;
         self.close_component()?;
         self.current_component = saved_component;

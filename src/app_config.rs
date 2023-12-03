@@ -69,6 +69,11 @@ pub struct AppConfig {
     /// URL to the ACME directory. Defaults to the Let's Encrypt production directory.
     #[serde(default = "default_https_acme_directory_url")]
     pub https_acme_directory_url: String,
+
+    /// Whether SQLPage is running in development or production mode. This is used to determine
+    /// whether to show error messages to the user.
+    #[serde(default)]
+    pub environment: DevOrProd,
 }
 
 impl AppConfig {
@@ -179,6 +184,19 @@ fn default_https_certificate_cache_dir() -> PathBuf {
 
 fn default_https_acme_directory_url() -> String {
     "https://acme-v02.api.letsencrypt.org/directory".to_string()
+}
+
+#[derive(Debug, Deserialize, PartialEq, Clone, Copy, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum DevOrProd {
+    #[default]
+    Development,
+    Production,
+}
+impl DevOrProd {
+    pub(crate) fn is_prod(self) -> bool {
+        self == DevOrProd::Production
+    }
 }
 
 #[cfg(test)]

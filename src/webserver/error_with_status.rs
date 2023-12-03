@@ -1,4 +1,7 @@
-use actix_web::{http::{StatusCode, header::ContentType}, ResponseError};
+use actix_web::{
+    http::{header::ContentType, StatusCode},
+    ResponseError,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorWithStatus {

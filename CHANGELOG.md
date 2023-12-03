@@ -12,6 +12,7 @@
  - change breakpoints in the [hero](https://sql.ophir.dev/documentation.sql?component=hero#component) component to make it more responsive on middle-sized screens such as tablets or small laptops. This avoids the hero image taking up the whole screen on these devices.
  - add an `image_url` row-level attribute to the [list](https://sql.ophir.dev/documentation.sql?component=list#component) component to display small images in lists.
  - Fix bad contrast in links in custom page footers.
+ - Add a new [configuration option](./configuration.md): `environment`. This allows you to set the environment in which SQLPage is running. It can be either `development` or `production`. In `production` mode, SQLPage will hide error messages and stack traces from the user, and will cache sql files in memory to avoid reloading them from disk when under heavy load.
 
 ## 0.17.0
 

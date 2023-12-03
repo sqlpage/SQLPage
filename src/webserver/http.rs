@@ -2,7 +2,7 @@ use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::database::{execute_queries::stream_query_results, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
-use crate::{AppConfig, AppState, ParsedSqlFile};
+use crate::{app_config, AppConfig, AppState, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
@@ -239,18 +239,28 @@ async fn render_sql(
                     .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
             }
             Err(err) => {
-                send_anyhow_error(&err, resp_send);
+                send_anyhow_error(&err, resp_send, app_state.config.environment);
             }
         }
     });
     resp_recv.await.map_err(ErrorInternalServerError)
 }
 
-fn send_anyhow_error(e: &anyhow::Error, resp_send: tokio::sync::oneshot::Sender<HttpResponse>) {
+fn send_anyhow_error(
+    e: &anyhow::Error,
+    resp_send: tokio::sync::oneshot::Sender<HttpResponse>,
+    env: app_config::DevOrProd,
+) {
     log::error!("An error occurred before starting to send the response body: {e:#}");
-    let mut resp = HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR).set_body(BoxBody::new(
-        format!("Sorry, but we were not able to process your request. \n\nError:\n\n {e:?}"),
-    ));
+    let mut resp = HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR);
+    let mut body = "Sorry, but we were not able to process your request. \n\n".to_owned();
+    if env.is_prod() {
+        body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
+    } else {
+        use std::fmt::Write;
+        write!(body, "{e:#}").unwrap();
+    }
+    resp = resp.set_body(BoxBody::new(body));
     resp.headers_mut().insert(
         header::CONTENT_TYPE,
         header::HeaderValue::from_static("text/plain"),

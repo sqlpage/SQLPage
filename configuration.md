@@ -24,6 +24,7 @@ Here are the available configuration options and their default values:
 | `https_certificate_email` | contact@<https_domain> | The email address to use when requesting a certificate. |
 | `https_certificate_cache_dir` | ./sqlpage/https | A writeable directory where to cache the certificates, so that SQLPage can serve https traffic immediately when it restarts. |
 | `https_acme_directory_url` | https://acme-v02.api.letsencrypt.org/directory | The URL of the ACME directory to use when requesting a certificate. |
+| `environment` | development | The environment in which SQLPage is running. Can be either `development` or `production`. In `production` mode, SQLPage will hide error messages and stack traces from the user, and will cache sql files in memory to avoid reloading them from disk. |
 
 Multiple configuration file formats are supported:
 you can use a [`.json5`](https://json5.org/) file, a [`.toml`](https://toml.io/) file, or a [`.yaml`](https://en.wikipedia.org/wiki/YAML#Syntax) file.
