@@ -14,6 +14,9 @@
                         {{#if color}}
                         <span class="status status-{{color}} {{#if active}}fw-bold{{/if}}">
                         {{/if}}
+                        {{#if image_url}}
+                            <img src="{{image_url}}" class="avatar avatar-xs me-2 rounded" width="32" height="32" alt="{{title}}" />
+                        {{/if}}
                         {{#if icon}}
                             {{~icon_img icon~}}
                         {{/if}}

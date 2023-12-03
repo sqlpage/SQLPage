@@ -109,6 +109,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'Name of the piece of information.', 'TEXT', FALSE, FALSE),
     ('description', 'Value to display below the name.', 'TEXT', FALSE, TRUE),
     ('footer', 'Muted text to display below the value.', 'TEXT', FALSE, TRUE),
+    ('image_url', 'URL of a small image (such as an avatar) to display on the left side of the value.', 'URL', FALSE, TRUE),
     ('link', 'A target URL to which the user should be taken when they click on the value.', 'URL', FALSE, TRUE),
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the value.', 'ICON', FALSE, TRUE),
     ('color', 'If set to a color name, the value will be displayed in a pill of that color.', 'COLOR', FALSE, TRUE),
@@ -119,7 +120,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('datagrid', 'Just some sections of information.', json('[{"component":"datagrid"},{"title":"Language","description":"SQL"},{"title":"Creation date","description":"1974"}, {"title":"Language family","description":"Query language"}]')),
     ('datagrid', 'A beautiful data grid with nice colors and icons.',
             json('[{"component":"datagrid", "title":"User"}, '||
-            '{"title": "Pseudo", "description": "lovasoa"},' ||
+            '{"title": "Pseudo", "description": "lovasoa", "image_url": "https://avatars.githubusercontent.com/u/552629" },' ||
             '{"title": "Status", "description": "Active", "color": "green"},' ||
             '{"title": "Email Status", "description": "Validated", "icon": "check", "active": true},' ||
             '{"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/"},' ||
