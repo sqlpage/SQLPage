@@ -37,6 +37,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('description_md', 'A description of the list item, displayed as greyed-out text, in Markdown format, allowing you to use rich text formatting, including **bold** and *italic* text.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the list item.', 'URL', FALSE, TRUE),
     ('icon', 'Name of an icon to display on the left side of the item.', 'ICON', FALSE, TRUE),
+    ('image_url', 'The URL of a small image to display on the left side of the item.', 'URL', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed as a dot near the list item contents.', 'COLOR', FALSE, TRUE),
     ('active', 'Whether this item in the list is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 ) x;
@@ -45,9 +46,9 @@ INSERT INTO example(component, description, properties) VALUES
     ('list', 'The most basic list', json('[{"component":"list"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
     ('list', 'An empty list with a link to add an item', json('[{"component":"list", "empty_title": "No items yet", "empty_description": "This list is empty. Click here to create a new item !", "empty_link": "documentation.sql"}]')),
     ('list', 'A list with rich text descriptions', json('[{"component":"list"},
-        {"title":"SQLPage", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, and **SQLite**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
-        {"title":"Tabler", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},
-        {"title":"Tabler Icons", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
+        {"title":"SQLPage", "image_url": "https://raw.githubusercontent.com/lovasoa/SQLpage/main/docs/favicon.png", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
+        {"title":"Tabler", "image_url": "https://avatars.githubusercontent.com/u/35471246", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},
+        {"title":"Tabler Icons", "image_url": "https://tabler-icons.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
             json('[{"component":"list", "title":"Popular websites"}, '||
@@ -84,7 +85,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties) VALUES
     ('card', 'The most basic card', json('[{"component":"card"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
     ('card', 'A card with a Markdown description',
-            json('[{"component":"card"}, {"title":"A card with a Markdown description", "description_md": "This is a card with a **Markdown** description. \n\n'||
+            json('[{"component":"card", "columns": 2}, {"title":"A card with a Markdown description", "description_md": "This is a card with a **Markdown** description. \n\n'||
             'This is useful if you want to display a lot of text in the card, with many options for formatting, such as '||
             '\n - **bold**, \n - *italics*, \n - [links](index.sql), \n - etc."}]')),
     ('card', 'A beautiful card grid with bells and whistles.',
