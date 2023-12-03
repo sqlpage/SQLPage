@@ -6,6 +6,9 @@
    This is now fixed, and you can see the HTTP requests again. Logging is still less verbose than before, but you can enable debug logs by setting the `RUST_LOG` environment variable to `debug`, or to `sqlpage=debug` to only see SQLPage debug logs.
  - Better error message when failing to bind to a low port (<1024) on Linux. SQLPage now displays a message explaining how to allow SQLPage to bind to a low port.
  - When https_domain is set, but a port number different from 443 is set, SQLPage now starts both an HTTP and an HTTPS server.
+ - Better error message when component order is invalid. SQLPage has "header" components, such as [redirect](https://sql.ophir.dev/documentation.sql?component=redirect#component) and [cookie](https://sql.ophir.dev/documentation.sql?component=cookie#component), that must be executed before the rest of the page. SQLPage now displays a clear error message when you try to use them after other components.
+ - Fix 404 error not displaying. 404 responses were missing a content-type header, which made them invisible in the browser.
+
 
 ## 0.17.0
 

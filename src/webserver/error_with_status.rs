@@ -1,4 +1,4 @@
-use actix_web::{http::StatusCode, ResponseError};
+use actix_web::{http::{StatusCode, header::ContentType}, ResponseError};
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorWithStatus {
@@ -16,6 +16,8 @@ impl ResponseError for ErrorWithStatus {
         self.status
     }
     fn error_response(&self) -> actix_web::HttpResponse {
-        actix_web::HttpResponse::build(self.status).body(self.status.to_string())
+        actix_web::HttpResponse::build(self.status)
+            .content_type(ContentType::plaintext())
+            .body(self.status.to_string())
     }
 }
