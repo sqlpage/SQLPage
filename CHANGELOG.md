@@ -9,7 +9,7 @@
  - Better error message when component order is invalid. SQLPage has "header" components, such as [redirect](https://sql.ophir.dev/documentation.sql?component=redirect#component) and [cookie](https://sql.ophir.dev/documentation.sql?component=cookie#component), that must be executed before the rest of the page. SQLPage now displays a clear error message when you try to use them after other components.
  - Fix 404 error not displaying. 404 responses were missing a content-type header, which made them invisible in the browser.
  - Add an `image_url` row-level attribute to the [datagrid](https://sql.ophir.dev/documentation.sql?component=datagrid#component) component to display tiny avatar images in data grids.
-
+ - change breakpoints in the [hero](https://sql.ophir.dev/documentation.sql?component=hero#component) component to make it more responsive on middle-sized screens such as tablets or small laptops. This avoids the hero image taking up the whole screen on these devices.
 
 ## 0.17.0
 
