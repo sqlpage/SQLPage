@@ -43,11 +43,13 @@ pub fn stream_query_results<'a>(
             match res {
                 ParsedStatement::CsvImport(csv_import) => {
                     let connection = take_connection(db, &mut connection_opt).await?;
+                    log::debug!("Executing CSV import: {:?}", csv_import);
                     run_csv_import(connection, csv_import, request).await?;
                 },
                 ParsedStatement::StmtWithParams(stmt) => {
                     let query = bind_parameters(stmt, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
+                    log::debug!("Executing query: {:?}", query.sql);
                     let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
