@@ -21,3 +21,8 @@ td > p {
 ::-webkit-scrollbar-thumb {
   background: var(--tblr-primary) !important;
 }
+
+.text-secondary a {
+  color: inherit;
+  text-decoration: underline;
+}
