@@ -19,12 +19,13 @@ pub fn make_auto_rustls_config(domain: &str, config: &AppConfig) -> ServerConfig
     let rustls_config = state.challenge_rustls_config();
 
     tokio::spawn(async move {
-        loop {
-            match state.next().await.unwrap() {
+        while let Some(event) = state.next().await {
+            match event {
                 Ok(ok) => log::info!("ACME configuration event: {ok:?}"),
-                Err(err) => log::error!("ACME configuration error: {err:?}"),
+                Err(err) => log::error!("Unable to configure HTTPS: {err:?}"),
             }
         }
+        log::error!("ACME configuration stream ended. This should never happen.");
     });
 
     ServerConfig::clone(&rustls_config)
