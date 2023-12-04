@@ -324,8 +324,8 @@ This creates a more compact (but arguably less user-friendly) alternative to a s
 In this case, you should add square brackets to the name of the field.
 The target page will then receive the value as a JSON array of strings, which you can iterate over using 
  - the `json_each` function [in SQLite](https://www.sqlite.org/json1.html) and [Postgres](https://www.postgresql.org/docs/9.3/functions-json.html),
- - the [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html) function in MySQL (which you''ll need to wrap in a function, because SQLPage cannot parse the non-standard syntax of this function)
  - the [`OPENJSON`](https://learn.microsoft.com/fr-fr/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16) function in Microsoft SQL Server.
+ - in MySQL, json manipulation is less straightforward: see [the SQLPage MySQL json example](https://github.com/lovasoa/SQLpage/tree/main/examples/mysql%20json%20handling)
 
 The target page could then look like this:
 
