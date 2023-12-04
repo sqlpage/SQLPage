@@ -362,9 +362,9 @@ impl<W: std::io::Write> RenderContext<W> {
                     | "cookie" | "authentication"),
                 ),
             ) => {
-                bail!("{component_name} cannot be used after data has already been sent to the client's browser. \
+                bail!("The {component_name} component cannot be used after data has already been sent to the client's browser. \
                 This component must be used before any other component. \
-                To fix this, either move the call to '{component_name}' component to the top of the SQL file, or create a new SQL file where the {component_name} component is the first component.");
+                To fix this, either move the call to the '{component_name}' component to the top of the SQL file, or create a new SQL file where '{component_name}' is the first component.");
             }
             (_current_component, Some(new_component)) => {
                 self.open_component_with_data(new_component, &data).await?;
