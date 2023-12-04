@@ -19,8 +19,9 @@ jobs:
         name: Make a commit for the official site 
         run: |
           cp -r examples/official-site /tmp/
-          rm -rf *
+          rm -rf * .[!.]*
           cp -r /tmp/official-site/* .
+          git init .
           git config user.name "GitHub Actions Bot"
           git config user.email "<>"
           git add .
