@@ -13,6 +13,7 @@
  - add an `image_url` row-level attribute to the [list](https://sql.ophir.dev/documentation.sql?component=list#component) component to display small images in lists.
  - Fix bad contrast in links in custom page footers.
  - Add a new [configuration option](./configuration.md): `environment`. This allows you to set the environment in which SQLPage is running. It can be either `development` or `production`. In `production` mode, SQLPage will hide error messages and stack traces from the user, and will cache sql files in memory to avoid reloading them from disk when under heavy load.
+ - Add support for `selected` in multi-select inputs in the [form](https://sql.ophir.dev/documentation.sql?component=form#component) component. This allows you to pre-select some options in a multi-select input.
 
 ## 0.17.0
 

@@ -244,7 +244,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
     ('value', 'A default value that will already be present in the field when the user loads the page.', 'TEXT', FALSE, TRUE),
-    ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select.', 'JSON', FALSE, TRUE),
+    ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select. JSON objects in the array can contain the properties "label", "value" and "selected".', 'JSON', FALSE, TRUE),
     ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOL', FALSE, TRUE),
     ('min', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
@@ -336,7 +336,7 @@ from json_each($preferred_fruits); -- json_each returns a table with a "value" c
 ```
 ', json('[{"component":"form"}, 
     {"name": "Fruit", "type": "select", "multiple": true, "description": "press ctrl to select multiple values", "options":
-        "[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
+        "[{\"label\": \"Orange\", \"value\": 0, \"selected\": true}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3, \"selected\": true}]"}
     ]')),
     ('form', 'This example illustrates the use of the `radio` type.
 The `name` parameter is used to group the radio buttons together.

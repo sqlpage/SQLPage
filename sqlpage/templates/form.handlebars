@@ -60,7 +60,7 @@
                         {{~#if multiple}} multiple {{/if~}}
                         >
                         {{#each (parse_json options)}}
-                            <option value="{{value}}" {{#if (eq ../value value)}}selected{{/if}}>{{label}}</option>
+                            <option value="{{value}}" {{#if (or (eq ../value value) selected)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                         </select>
                     {{else}} 
