@@ -365,10 +365,11 @@ or to implement more complex flows, such as a multi-step form,
 where the user is redirected to a different page after each step.
 
 This can also be used to implement [CSRF protection](https://en.wikipedia.org/wiki/Cross-site_request_forgery#Synchronizer_token_pattern),
-if your website has authenticated users that can perform sensitive actions through forms.
+if your website has authenticated users that can perform sensitive actions through simple links.
+But note that SQLPage cookies already have the `SameSite=strict` attribute by default, which protects you against CSRF attacks by default in most cases.
+
 ', json('[{"component":"form", "validate": "Delete", "validate_color": "red"}, 
-    {"type": "hidden", "name": "user_id", "value": "place id here"},
-    {"type": "hidden", "name": "csrf_token", "value": "place token here"},
+    {"type": "hidden", "name": "resource_id", "value": "1234"},
     {"name": "confirm", "label": "Please type \"sensitive resource\" here to confirm the deletion", "required": true}
     ]')),
     ('form', 'This example illustrates the use of custom validation buttons and half-width fields.',

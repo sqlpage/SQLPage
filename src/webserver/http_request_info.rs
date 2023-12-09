@@ -24,6 +24,7 @@ use tokio_stream::StreamExt;
 #[derive(Debug)]
 pub struct RequestInfo {
     pub path: String,
+    pub protocol: String,
     pub get_variables: ParamMap,
     pub post_variables: ParamMap,
     pub uploaded_files: HashMap<String, TempFile>,
@@ -39,6 +40,7 @@ pub(crate) async fn extract_request_info(
     app_state: Arc<AppState>,
 ) -> RequestInfo {
     let (http_req, payload) = req.parts_mut();
+    let protocol = http_req.connection_info().scheme().to_string();
     let config = &app_state.config;
     let (post_variables, uploaded_files) = extract_post_data(http_req, payload, config).await;
 
@@ -73,6 +75,7 @@ pub(crate) async fn extract_request_info(
         cookies: param_map(cookies),
         basic_auth,
         app_state,
+        protocol,
     }
 }
 

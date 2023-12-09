@@ -103,6 +103,30 @@ However, if you implement your own session management system using the [`cookie`
 you should be careful to follow the [OWASP session management best practices](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#cookies).
 Implementing your own session management system is not recommended if you are a non-technical user and don''t have a good understanding of web security.
 
+## Protection against [CSRF attacks](https://en.wikipedia.org/wiki/Cross-site_request_forgery)
+
+The recommended way to store session tokens for user authentication
+in SQLPage is to use the [`cookie` component](/documentation.sql?component=cookie#component).
+
+All cookies set by SQLPage have the `SameSite` attribute set to `strict` by default,
+which means that they will only be sent to your website if the user is already on your website.
+An attacker cannot make a user''s browser send a request to your website from another (malicious) 
+website, and have it perform an action on your website in the user''s name,
+because the browser will not send the cookies to your website.
+
+SQLPage differentiates between POST variables (accessed with the `:variable` syntax), and 
+variables that can come from URL parameters (accessible with `$variable`).
+
+When a user submits a form, you should use POST variables to access the form data.
+This ensures that you only use data that indeed comes from the form, and not from a
+URL parameter that could be part of a malicious link.
+
+Advanced users who may want to implement their own csrf protection system can do so
+using the [`sqlpage.random_string()`](/functions.sql?function=random_string#function) function,
+and the `hidden` input type of the [`form`](/documentation.sql?component=form#component) component.
+
+For more information, see the [this discussion](https://github.com/lovasoa/SQLpage/discussions/148).
+
 ## Database connections
 
 SQLPage uses a fixed pool of database connections, and will never open more connections than the ones you

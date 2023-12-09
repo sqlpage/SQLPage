@@ -38,6 +38,7 @@ pub(super) enum StmtParam {
     ReadFileAsText(Box<StmtParam>),
     ReadFileAsDataUrl(Box<StmtParam>),
     Path,
+    Protocol,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -91,6 +92,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "version" => StmtParam::SqlPageVersion,
         "variables" => parse_get_or_post(extract_single_quoted_string_optional(arguments)),
         "path" => StmtParam::Path,
+        "protocol" => StmtParam::Protocol,
         "uploaded_file_path" => extract_single_quoted_string("uploaded_file_path", arguments)
             .map_or_else(StmtParam::Error, StmtParam::UploadedFilePath),
         "read_file_as_text" => StmtParam::ReadFileAsText(Box::new(extract_variable_argument(
@@ -288,6 +290,7 @@ pub(super) fn extract_req_param_non_nested<'a>(
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::AllVariables(get_or_post) => extract_get_or_post(*get_or_post, request),
         StmtParam::Path => Some(Cow::Borrowed(&request.path)),
+        StmtParam::Protocol => Some(Cow::Borrowed(&request.protocol)),
         StmtParam::UploadedFilePath(x) => request
             .uploaded_files
             .get(x)
