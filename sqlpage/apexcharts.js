@@ -17,7 +17,7 @@ function sqlpage_chart() {
             var category = null;
             series.forEach((s, s_i) => {
                 const point = s.data[0];
-                let new_point = { x: category, y: NaN };
+                let new_point = { x: category, y: 0 };
                 if (point) {
                     if (category == null) category = point.x;
                     if (category === point.x) {

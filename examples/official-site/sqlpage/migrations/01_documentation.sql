@@ -520,7 +520,26 @@ INSERT INTO example(component, description, properties) VALUES
         {"series": "United States", "x": 2.3, "y": 21},
         {"series": "France", "x": 1.5, "y": 3},
         {"series": "South Africa", "x": 0.9, "y": 0.3}
-    ]'));
+    ]')),
+    ('chart', '
+## Heatmaps
+
+You can build heatmaps using the `heatmap` top-level property.
+
+The data format follows the [apexcharts heatmap format](https://apexcharts.com/angular-chart-demos/heatmap-charts/basic/),
+where each series is represented as a line in the chart:
+ - The `x` property of each item will be used as the x-axis value.
+ - The `series` property of each item will be used as the y-axis value.
+ - The `y` property of each item will be used as the value to display in the heatmap
+
+The `color` property sets the color of each series separately, in order.
+',json('[
+        {"component":"chart", "title": "Survey Results", "type": "heatmap",
+        "ytitle": "Database managemet system", "xtitle": "Year", "color": ["blue","blue","blue"]},
+        { "series": "PostgreSQL", "x": "2000", "y": 48},{ "series": "SQLite", "x": "2000", "y": 14},{ "series": "MySQL", "x": "2000", "y": 78},
+        { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 22},{ "series": "MySQL", "x": "2010", "y": 83},
+        { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 28},{ "series": "MySQL", "x": "2020", "y": 87}
+      ]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('table', 'table', 'A table with optional filtering and sorting. Unlike most others, this component does not have a fixed set of item properties, any property that is used will be rendered directly as a column in the table.');
