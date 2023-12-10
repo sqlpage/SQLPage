@@ -11,6 +11,11 @@ td > p {
   margin: 0;
 }
 
+/** Removes the margin-bottom from the last element */
+.remove-bottom-margin > :last-child {
+  margin-bottom: 0 !important;
+}
+
 /* https://github.com/tabler/tabler/issues/1648 */
 * {
   scrollbar-color: var(--tblr-primary) var(--tblr-bg-surface-dark) !important;

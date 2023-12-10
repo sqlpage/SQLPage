@@ -106,6 +106,10 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'datagrid', * FROM (VALUES
     -- top level
     ('title', 'Text header at the top of the data grid.', 'TEXT', TRUE, TRUE),
+    ('description', 'A short paragraph displayed below the title.', 'TEXT', TRUE, TRUE),
+    ('description_md', 'A short paragraph displayed below the title - formatted using markdown.', 'TEXT', TRUE, TRUE),
+    ('icon', 'Name of an icon to display on the left side of the title.', 'ICON', TRUE, TRUE),
+    ('image_url', 'URL of an image to display on the left side of the title.', 'URL', TRUE, TRUE),
     -- item level
     ('title', 'Name of the piece of information.', 'TEXT', FALSE, FALSE),
     ('description', 'Value to display below the name.', 'TEXT', FALSE, TRUE),
@@ -120,13 +124,17 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties) VALUES
     ('datagrid', 'Just some sections of information.', json('[{"component":"datagrid"},{"title":"Language","description":"SQL"},{"title":"Creation date","description":"1974"}, {"title":"Language family","description":"Query language"}]')),
     ('datagrid', 'A beautiful data grid with nice colors and icons.',
-            json('[{"component":"datagrid", "title":"User"}, '||
-            '{"title": "Pseudo", "description": "lovasoa", "image_url": "https://avatars.githubusercontent.com/u/552629" },' ||
-            '{"title": "Status", "description": "Active", "color": "green"},' ||
-            '{"title": "Email Status", "description": "Validated", "icon": "check", "active": true},' ||
-            '{"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/"},' ||
-            '{"title":"Search engine", "link":"https://google.com", "description": "Google", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."}, '||
-            '{"title":"Encyclopedia", "link":"https://wikipedia.org", "description": "Wikipedia", "color": "blue", "icon":"world", "footer": "Owned by the Wikimedia Foundation"}]'));
+            json('[{"component":"datagrid", "title": "Ophir Lojkine", "image_url": "https://avatars.githubusercontent.com/u/552629", "description_md": "Member since **2021**"},
+            {"title": "Pseudo", "description": "lovasoa", "image_url": "https://avatars.githubusercontent.com/u/552629" },
+            {"title": "Status", "description": "Active", "color": "green"},
+            {"title": "Email Status", "description": "Validated", "icon": "check", "active": true},
+            {"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/"}
+    ]')),
+    ('datagrid', 'Using a picture in the data grid card header.', json('[
+        {"component":"datagrid", "title": "Website Ideas", "icon": "bulb"},
+            {"title": "Search engine", "link":"https://google.com", "description": "Google", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc."},
+            {"title": "Encyclopedia", "link":"https://wikipedia.org", "description": "Wikipedia", "color": "blue", "icon":"world", "footer": "Owned by the Wikimedia Foundation"}
+    ]'));
 
 
 INSERT INTO component(name, icon, description) VALUES

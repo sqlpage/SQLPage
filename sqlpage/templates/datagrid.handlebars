@@ -1,7 +1,21 @@
 <div class="card my-2">
     {{#if title}}
         <div class="card-header">
-            <h2 class="card-title">{{title}}</h2>
+            {{#if image_url}}
+                <img src="{{image_url}}" class="avatar avatar-lg me-2 rounded" width="32" height="32" alt="{{title}}" />
+            {{/if}}
+            {{#if icon}}
+                <span class="avatar avatar-sm me-2">{{icon_img icon}}</span>
+            {{/if}}
+            <h2 class="card-title">
+                {{~title~}}
+                {{#if description}}
+                    <small class="text-muted d-block">{{description}}</small>
+                {{/if}}
+                {{#if description_md}}
+                    <small class="text-muted d-block remove-bottom-margin">{{{markdown description_md}}}</small>
+                {{/if}}
+            </h2>
         </div>
     {{/if}}
     <div class="card-body">
@@ -15,7 +29,7 @@
                         <span class="status status-{{color}} {{#if active}}fw-bold{{/if}}">
                         {{/if}}
                         {{#if image_url}}
-                            <img src="{{image_url}}" class="avatar avatar-xs me-2 rounded" width="32" height="32" alt="{{title}}" />
+                            <img src="{{image_url}}" class="avatar avatar-xs me-1 rounded" width="32" height="32" alt="{{title}}" />
                         {{/if}}
                         {{#if icon}}
                             {{~icon_img icon~}}

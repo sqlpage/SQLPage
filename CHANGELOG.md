@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.17.1 (unreleased)
+## 0.17.1 (2023-12-10)
 
  - The previous version reduced log verbosity, but also removed the ability to see the HTTP requests in the logs.
    This is now fixed, and you can see the HTTP requests again. Logging is still less verbose than before, but you can enable debug logs by setting the `RUST_LOG` environment variable to `debug`, or to `sqlpage=debug` to only see SQLPage debug logs.
@@ -17,8 +17,9 @@
  - New function: [`sqlpage.protocol`](https://sql.ophir.dev/functions.sql?function=protocol#function) to get the protocol used to access the current page. This is useful to build links that point to your own site, and work both in http and https.
  - Add an example to the documentation showing how to create heatmaps with the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component.
  - 18 new icons available: https://tabler.io/icons/changelog#2.43
+ - New top-level attributes for the [`datagrid`](https://sql.ophir.dev/documentation.sql?component=datagrid#component) component: `description`, `description_md` , `icon` , `image_url`.
 
-## 0.17.0
+## 0.17.0 (2023-11-28)
 
 ### Uploads
 
