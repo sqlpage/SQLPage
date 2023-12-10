@@ -57,16 +57,19 @@ VALUES (
 The most basic usage of the authentication component is to let SQLPage handle the authentication through HTTP basic authentication.
 This is the simplest way to password-protect a page, but it is not very user-friendly, because the browser will show an unstyled popup asking for the username and password.
 The username and password entered by the user will be accessible in your SQL code using the
-[`sqlpage.basic_auth_username()`](functions.sql?function=basic_auth_username) and
-[`sqlpage.basic_auth_password()`](functions.sql?function=basic_auth_password) functions.
+[`sqlpage.basic_auth_username()`](functions.sql?function=basic_auth_username#function) and
+[`sqlpage.basic_auth_password()`](functions.sql?function=basic_auth_password#function) functions.
 
-The [`sqlpage.hash_password`](functions.sql?function=hash_password) function can be used to generate a secure password hash that you need to store in your database.
+The [`sqlpage.hash_password`](functions.sql?function=hash_password#function) function can be used to 
+[generate a secure password hash](/examples/hash_password.sql) that you need to store in your database.
 
 ```sql
 SELECT ''authentication'' AS component,
     ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using sqlpage.hash_password
     sqlpage.basic_auth_password() AS password; -- this is the password that the user entered in the browser popup
 ```
+
+You can [try the hash_password function out here](/examples/hash_password.sql).
 
 ### Usage with a login form
 

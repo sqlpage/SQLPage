@@ -139,8 +139,9 @@ VALUES (
         'hash_password',
         '0.7.2',
         'spy',
-        'Hashes a password using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm.
-    The resulting hash can be stored in the database and then used with the [authentication component](documentation.sql?component=authentication#component).
+        '
+Hashes a password using the [Argon2](https://en.wikipedia.org/wiki/Argon2) algorithm.
+The resulting hash can be stored in the database and then used with the [authentication component](documentation.sql?component=authentication#component).
 
 ### Example
 
@@ -151,6 +152,10 @@ SELECT ''password'' AS name, ''password'' AS type;
 
 INSERT INTO users (name, password_hash) VALUES (:username, sqlpage.hash_password(:password));
 ```
+
+### Try online
+
+You can try the password hashing function [on this page](/examples/hash_password.sql).
     '
     );
 INSERT INTO sqlpage_function_parameters (
