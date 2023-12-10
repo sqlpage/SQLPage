@@ -458,7 +458,7 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'chart', * FROM (VALUES
     -- top level
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
-    ('type', 'The type of chart: "line", "area", "bar", "column", "pie", "scatter", or "bubble".', 'TEXT', TRUE, FALSE),
+    ('type', 'The type of chart: "line", "area", "bar", "column", "pie", "scatter", "bubble", or "heatmap".', 'TEXT', TRUE, FALSE),
     ('time', 'Whether the x-axis represents time. If set to true, the x values will be parsed and formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
     ('ymin', 'The minimal value for the y-axis.', 'NUMBER', TRUE, TRUE),
     ('ymax', 'The maximum value for the y-axis.', 'NUMBER', TRUE, TRUE),
