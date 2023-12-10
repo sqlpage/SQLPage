@@ -543,7 +543,7 @@ where each series is represented as a line in the chart:
 The `color` property sets the color of each series separately, in order.
 ',json('[
         {"component":"chart", "title": "Survey Results", "type": "heatmap",
-        "ytitle": "Database managemet system", "xtitle": "Year", "color": ["blue","blue","blue"]},
+        "ytitle": "Database managemet system", "xtitle": "Year", "color": ["red","orange","yellow"]},
         { "series": "PostgreSQL", "x": "2000", "y": 48},{ "series": "SQLite", "x": "2000", "y": 14},{ "series": "MySQL", "x": "2000", "y": 78},
         { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 22},{ "series": "MySQL", "x": "2010", "y": 83},
         { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 28},{ "series": "MySQL", "x": "2020", "y": 87}
