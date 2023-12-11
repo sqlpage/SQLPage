@@ -23,7 +23,7 @@ select ''title'' as name, ''text'' as type, ''Title'' as label;
 
 ### Handling the form response
 
-### Inserting an image file as a data URL into the database
+### Inserting an image file as a [data URL](https://en.wikipedia.org/wiki/Data_URI_scheme) into the database
 
 In `handle_picture_upload.sql`, one can process the form results like this:
 
