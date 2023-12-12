@@ -64,7 +64,7 @@ function sqlpage_chart() {
             if (data.type === "pie") {
                 labels = data.points.map(([name, x, y]) => x || name);
                 series = data.points.map(([name, x, y]) => y);
-            } else if (categories) series = align_categories(series);
+            } else if (categories && data.type !== 'line') series = align_categories(series);
 
             const options = {
                 chart: {
@@ -132,9 +132,9 @@ function sqlpage_chart() {
                 },
                 tooltip: {
                     fillSeriesColor: false,
-                    custom: (data.type === 'bubble' || data.type === 'scatter') ? bubbleTooltip : undefined, 
+                    custom: (data.type === 'bubble' || data.type === 'scatter') ? bubbleTooltip : undefined,
                 },
-                plotOptions: { 
+                plotOptions: {
                     bar: { horizontal: !!data.horizontal },
                     bubble: { minBubbleRadius: 5, },
                 },
@@ -152,7 +152,7 @@ function sqlpage_chart() {
 }
 
 function bubbleTooltip({ series, seriesIndex, dataPointIndex, w }) {
-    const {name, data} = w.config.series[seriesIndex];
+    const { name, data } = w.config.series[seriesIndex];
     const point = data[dataPointIndex];
 
     const tooltip = document.createElement('div');
@@ -165,7 +165,7 @@ function bubbleTooltip({ series, seriesIndex, dataPointIndex, w }) {
     seriesName.innerText = name;
     tooltip.appendChild(seriesName);
 
-    for(const axis of ['x', 'y', 'z']) {
+    for (const axis of ['x', 'y', 'z']) {
         const value = point[axis];
         if (value == null) continue;
         const axisValue = document.createElement('div');
