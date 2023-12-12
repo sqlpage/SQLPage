@@ -58,7 +58,11 @@ insert into uploaded_files (title, path) values (:title, $file_name);
 
 > *Notes*: 
 >  - The `sqlpage.exec` function is disabled by default, and you need to enable it in the [configuration file](https://github.com/lovasoa/SQLpage/blob/main/configuration.md).
->  - `mv` is specific to MacOS and Linux. On Windows, you can use [`move`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/move) instead.
+>  - `mv` is specific to MacOS and Linux. On Windows, you can use [`move`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/move) instead:
+>    - ```sql
+>      SET image_path = sqlpage.uploaded_file_path(''myfile'');
+>      SELECT sqlpage.exec(''cmd'', ''/C'', ''move'', $image_path, ''C:\MyUploadDirectory'');
+>      ```
 
 ### Advanced file handling
 
