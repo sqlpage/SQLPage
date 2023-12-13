@@ -34,8 +34,8 @@
                     <div class="card-status-start bg-{{color}}"></div>
                 {{/if}}
                 <div class="card-body">
-                    <h2 class="card-title fs-3 me-3">{{title}}</h2>
-                    <div>
+                    {{#if title}}<h2 class="card-title fs-3 me-3">{{title}}</h2>{{/if}}
+                    <div class="remove-bottom-margin">
                         {{~description~}}
                         {{~#if description_md~}}
                             {{{markdown description_md}}}

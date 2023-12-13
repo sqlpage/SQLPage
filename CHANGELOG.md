@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - Fix small display issue on cards without a title.
+
 ## 0.17.1 (2023-12-10)
 
  - The previous version reduced log verbosity, but also removed the ability to see the HTTP requests in the logs.
