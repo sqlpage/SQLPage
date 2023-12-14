@@ -6,5 +6,5 @@ SELECT 'hero' as component,
     'Create a new user' as link_text;
 
 SELECT 'list' AS component, 'Users' AS title;
-SELECT first_name || ' ' || last_name AS title, email AS description, 'edit_user.sql?id=' || id AS link FROM user;
+SELECT first_name || ' ' || last_name AS title, email AS description, 'edit_user.sql?id=' || id AS link FROM "user";
 SELECT 'Add a new user' AS title, 'edit_user.sql' AS link, TRUE AS active;

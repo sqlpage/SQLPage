@@ -3,6 +3,8 @@
 This example shows how to handle inserting data into multiple tables
 with a one-to-many relationship.
 
+The example uses a **SQLite** database with the following schema:
+
 | Database Schema | SQLPage Form |
 | --- | --- |
 | ![db schema](./screenshots/db-schema.png) | ![user addition](./screenshots//user-add-screenshot.png) |

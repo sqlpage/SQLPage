@@ -6,18 +6,18 @@ SELECT 'form' AS component,
 
 SELECT 'First name' AS name,
     TRUE AS required,
-    (SELECT first_name FROM user WHERE id=$id) AS value;
+    (SELECT first_name FROM "user" WHERE id = CAST($id AS INT)) AS value;
 
 SELECT 'Last name' AS name,
     TRUE AS required,
-    (SELECT last_name FROM user WHERE id=$id) AS value;
+    (SELECT last_name FROM "user" WHERE id = CAST($id AS INT)) AS value;
 
 SELECT 'Email' AS name,
     'email' AS type,
-    (SELECT email FROM user WHERE id=$id) AS value;
+    (SELECT email FROM "user" WHERE id = CAST($id AS INT)) AS value;
 
 SELECT 'list' AS component, 'Addresses' AS title WHERE $id IS NOT NULL;
-SELECT street || ', ' || city || ', ' || country AS title FROM address WHERE user_id=$id;
+SELECT street || ', ' || city || ', ' || country AS title FROM address WHERE user_id = CAST($id AS INT);
 
 SELECT 'form' AS component, 'Add address' AS title, 'insert_address.sql?user_id=' || $id AS action WHERE $id IS NOT NULL;
 SELECT 'Street' AS name, TRUE AS required WHERE $id IS NOT NULL;
