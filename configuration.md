@@ -1,7 +1,7 @@
 # Configuring SQLPage
 
 SQLPage can be configured through either [environment variables](https://en.wikipedia.org/wiki/Environment_variable)
-on a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.json`.
+or a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.json`.
 
 You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
 Here are the available configuration options and their default values:
