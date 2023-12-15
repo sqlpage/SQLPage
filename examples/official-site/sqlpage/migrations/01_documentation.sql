@@ -342,6 +342,23 @@ insert into best_fruits(id) -- INSERT INTO ... SELECT ... runs the SELECT query 
 select CAST(value AS integer) as id -- all values are transmitted by the browser as strings
 from json_each($preferred_fruits); -- json_each returns a table with a "value" column for each element in the JSON array
 ```
+
+### Example multiselect generated from a database table
+
+As an example, if you have a table of all possible options (`my_options(id int, label text)`),
+and another table that contains the selected options per user (`my_user_options(user_id int, option_id int)`),
+you can use a query like this to generate the multi-select field:
+
+```sql
+select ''select'' as type, true as multiple, json_group_array(json_object(
+    ''label'', my_options.label,
+    ''value'', my_options.id,
+    ''selected'', my_user_options.option_id is not null
+)) as options
+from my_options
+left join my_user_options on my_options.id = my_user_options.option_id
+where my_user_options.user_id = $user_id
+```
 ', json('[{"component":"form"}, 
     {"name": "Fruit", "type": "select", "multiple": true, "description": "press ctrl to select multiple values", "options":
         "[{\"label\": \"Orange\", \"value\": 0, \"selected\": true}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3, \"selected\": true}]"}
