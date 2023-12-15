@@ -52,7 +52,7 @@ You can move the file to a permanent location using the [`sqlpage.exec`](?functi
 
 ```sql
 set file_name = sqlpage.random_string(10);
-select sqlpage.exec(''mv'', sqlpage.uploaded_file_path(''myfile''), ''/my_upload_directory/'' || $file_name);
+set exec_result = sqlpage.exec(''mv'', sqlpage.uploaded_file_path(''myfile''), ''/my_upload_directory/'' || $file_name);
 insert into uploaded_files (title, path) values (:title, $file_name);
 ```
 
@@ -61,7 +61,7 @@ insert into uploaded_files (title, path) values (:title, $file_name);
 >  - `mv` is specific to MacOS and Linux. On Windows, you can use [`move`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/move) instead:
 >    - ```sql
 >      SET image_path = sqlpage.uploaded_file_path(''myfile'');
->      SELECT sqlpage.exec(''cmd'', ''/C'', ''move'', $image_path, ''C:\MyUploadDirectory'');
+>      SET exec_result = sqlpage.exec(''cmd'', ''/C'', ''move'', $image_path, ''C:\MyUploadDirectory'');
 >      ```
 
 ### Advanced file handling
