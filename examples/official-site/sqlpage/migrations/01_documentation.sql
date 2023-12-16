@@ -48,7 +48,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('list', 'A list with rich text descriptions', json('[{"component":"list"},
         {"title":"SQLPage", "image_url": "https://raw.githubusercontent.com/lovasoa/SQLpage/main/docs/favicon.png", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
         {"title":"Tabler", "image_url": "https://avatars.githubusercontent.com/u/35471246", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},
-        {"title":"Tabler Icons", "image_url": "https://tabler-icons.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
+        {"title":"Tabler Icons", "image_url": "https://tabler.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
             json('[{"component":"list", "title":"Popular websites"}, '||
@@ -635,7 +635,88 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
-    ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]'));
+    ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]')),
+    ('dynamic', '
+## Dynamic shell
+
+On databases without a native JSON type (such as the default SQLite database),
+you can use the `dynamic` component to generate
+json data to pass to components that expect it.
+
+This example generates a menu similar to the [shell example](?component=shell#component), but without using a native JSON type.
+
+```sql
+SELECT ''dynamic'' AS component, json_object(
+    ''component'', ''shell'',
+    ''title'', ''SQLPage documentation'',
+    ''link'', ''/'',
+    ''menu_item'', json_array(
+        json_object(
+            ''link'', ''index.sql'',
+            ''title'', ''Home''
+        ),
+        json_object(
+            ''title'', ''Community'',
+            ''submenu'', json_array(
+                json_object(
+                    ''link'', ''blog.sql'',
+                    ''title'', ''Blog''
+                ),
+                json_object(
+                    ''link'', ''//github.com/lovasoa/sqlpage/issues'',
+                    ''title'', ''Issues''
+                ),
+                json_object(
+                    ''link'', ''//github.com/lovasoa/sqlpage/discussions'',
+                    ''title'', ''Discussions''
+                ),
+                json_object(
+                    ''link'', ''//github.com/lovasoa/sqlpage'',
+                    ''title'', ''Github''
+                )
+            )
+        )
+    )
+) AS properties
+```
+
+You can view the result of this query, as well as an example of how to generate a dynamic menu
+based on the database contents [here](./examples/dynamic_shell.sql).
+', NULL),
+    ('dynamic', '
+## Static component data stored in `.json` files
+
+You can also store the data for a component in a `.json` file, and load it using the `dynamic` component.
+
+This can be useful to store the data for a component in a separate file,
+shared between multiple pages,
+and avoid having to escape quotes in SQL strings.
+
+For instance, the following query will load the data for a `shell` component from the file `shell.json`:
+
+```sql
+SELECT ''dynamic'' AS component, sqlpage.read_file_as_text(''shell.json'') AS properties;
+```
+
+and `shell.json` would be placed at the website''s root and contain the following:
+
+```json
+{
+    "component": "shell",
+    "title": "SQLPage documentation",
+    "link": "/",
+    "menu_item": [
+        {"link": "index.sql", "title": "Home"},
+        {"title": "Community", "submenu": [
+            {"link": "blog.sql", "title": "Blog"},
+            {"link": "https//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
+            {"link": "https//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
+            {"link": "https//github.com/lovasoa/sqlpage", "title": "Github"}
+        ]}
+    ]
+}
+```
+', NULL);
 
 INSERT INTO component(name, icon, description) VALUES
     ('shell', 'layout-navbar', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page.');
@@ -668,7 +749,7 @@ The `menu_item` property is used both in its simple string form, to generate a l
 and in its object form, to generate a dropdown menu named "Community" with links to the blog, the github repository, and the issues page.
 
 The object form can be used directly only on database engines that have a native JSON type.
-On other engines (such as SQLite), you can use the `dynamic` component to generate the same result.
+On other engines (such as SQLite), you can use the [`dynamic`](?component=dynamic#component) component to generate the same result.
 ',
      json('[{
             "component": "shell",
