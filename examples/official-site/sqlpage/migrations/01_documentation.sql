@@ -680,8 +680,8 @@ SELECT ''dynamic'' AS component, json_object(
 ) AS properties
 ```
 
-You can view the result of this query, as well as an example of how to generate a dynamic menu
-based on the database contents [here](./examples/dynamic_shell.sql).
+[View the result of this query, as well as an example of how to generate a dynamic menu
+based on the database contents](./examples/dynamic_shell.sql).
 ', NULL),
     ('dynamic', '
 ## Static component data stored in `.json` files
