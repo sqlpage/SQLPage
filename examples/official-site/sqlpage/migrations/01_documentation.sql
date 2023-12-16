@@ -356,8 +356,9 @@ select ''select'' as type, true as multiple, json_group_array(json_object(
     ''selected'', my_user_options.option_id is not null
 )) as options
 from my_options
-left join my_user_options on my_options.id = my_user_options.option_id
-where my_user_options.user_id = $user_id
+left join my_user_options
+    on  my_options.id = my_user_options.option_id
+    and my_user_options.user_id = $user_id
 ```
 ', json('[{"component":"form"}, 
     {"name": "Fruit", "type": "select", "multiple": true, "description": "press ctrl to select multiple values", "options":
