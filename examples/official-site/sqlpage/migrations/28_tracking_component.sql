@@ -78,7 +78,7 @@ VALUES
         'An example of servers tracking component', 
             JSON(
                 '[
-                {"component":"tracking","title":"Servers status","information":"60% are running","description_md":"Status of all **available servers** that actually running","placement":"top"},
+                {"component":"tracking","title":"Servers status","information":"60% are running","description_md":"Status of all **currently running servers**","placement":"top"},
                 {"state":"success","tooltip":"operational"},
                 {"state":"success","tooltip":"operational"},
                 {"state":"success","tooltip":"operational"},
