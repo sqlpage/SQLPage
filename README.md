@@ -198,6 +198,8 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 - [Making a JSON API and integrating React components in the frontend](./examples/using%20react%20and%20other%20custom%20scripts%20and%20styles/): Shows how to integrate a react component in a SQLPage website, and how to easily build a REST API with SQLPage.
 - [Handling file uploads](./examples/image%20gallery%20with%20user%20uploads): An image gallery where authenticated users can publish new images via an upload form.
 - [Bulk data import from CSV files](./examples/official-site/examples/handle_csv_upload.sql) : A simple form letting users import CSV files to fill a database table.
+- [Advanced authentication example using PostgreSQL stored procedures](https://github.com/mnesarco/sqlpage_auth_example)
+- [Complex web application in SQLite with user management, file uploads, plots, maps, tables, menus, ...](https://github.com/DSMejantel/Ecole_inclusive)
 
 You can try all the examples online without installing anything on your computer using [SQLPage's online demo on replit](https://replit.com/@pimaj62145/SQLPage).
 
