@@ -48,6 +48,14 @@ VALUES (
     ),
     (
         'tracking',
+        'width',
+        'Width of the component, between 1 and 12.',
+        'NUMBER',
+        TRUE,
+        TRUE
+    ),
+    (
+        'tracking',
         'placement',
         'Position of the tooltip (e.g. top, bottom, right, left)',
         'TEXT',
@@ -56,15 +64,15 @@ VALUES (
     ),
     (
         'tracking',
-        'state',
-        'State of the tracked item (e.g. success, warning, danger)',
+        'color',
+        'Color of the tracked item (e.g. success, warning, danger)',
         'TEXT',
         FALSE,
         TRUE
     ),
     (
         'tracking',
-        'tooltip',
+        'title',
         'Description of the state.',
         'TEXT',
         FALSE,
@@ -72,21 +80,38 @@ VALUES (
     );
 -- Insert example(s) for the component
 INSERT INTO example(component, description, properties)
-VALUES      
+VALUES
+    (
+        'tracking', 
+        'A basic example of servers tracking component', 
+            JSON(
+                '[
+                {"component":"tracking","title":"Servers status"},
+                {"title":"No data"},
+                {"title":"No data"},
+                {"title":"No data"},
+                {"title":"No data"},
+                {"title":"No data"},
+                {"title":"No data"},
+                {"title":"No data"},
+                {"title":"No data"}
+                ]'
+            )
+    ),      
     (
         'tracking', 
         'An example of servers tracking component', 
             JSON(
                 '[
-                {"component":"tracking","title":"Servers status","information":"60% are running","description_md":"Status of all **currently running servers**","placement":"top"},
-                {"state":"success","tooltip":"operational"},
-                {"state":"success","tooltip":"operational"},
-                {"state":"success","tooltip":"operational"},
-                {"state":"danger","tooltip":"Downtime"},
-                {"tooltip":"No data"},
-                {"state":"success","tooltip":"operational"},
-                {"state":"warning","tooltip":"Big load"},
-                {"state":"success","tooltip":"operational"}
+                {"component":"tracking","title":"Servers status","information":"60% are running","description_md":"Status of all **currently running servers**","placement":"top","width":4},
+                {"color":"success","title":"operational"},
+                {"color":"success","title":"operational"},
+                {"color":"success","title":"operational"},
+                {"color":"danger","title":"Downtime"},
+                {"title":"No data"},
+                {"color":"success","title":"operational"},
+                {"color":"warning","title":"Big load"},
+                {"color":"success","title":"operational"}
                 ]'
             )
     );
