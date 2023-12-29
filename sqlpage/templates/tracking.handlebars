@@ -1,20 +1,28 @@
-<div class="card">
-  <div class="card-body">
-	 <div class="d-flex align-items-center">
-		<div class="subheader">{{title}}</div>
-	 </div>
-	<div class="d-flex align-items-baseline">
-		<div class="h1 mb-3 me-2">{{#if information}}{{information}}{{/if}}</div>
-	 </div>
-	 <div class="d-flex align-items-baseline">
-		<div class="mb-3 me-2">{{#if description}}{{description}}{{/if}}{{#if description_md}}{{{markdown description_md}}}{{/if}}</div>
-	 </div>
-	 <div class="mt-2">
-        <div class="tracking">
-            {{#each_row}}
-		        <div class="tracking-block{{#if state}} bg-{{state}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{tooltip}}"></div>
-            {{/each_row}}
+
+
+<div class="card my-2 col-md-{{default width 12}}">
+	<div class="card-body">
+		<div class="d-flex align-items-center">
+			<div class="subheader">{{title}}</div>
 		</div>
-	 </div>
-  </div>
+		<div class="d-flex align-items-baseline remove-bottom-margin">
+			<div class="h1 mb-3 me-2">{{#if information}}{{information}}{{/if}}</div>
+		</div>
+		<div class="d-flex align-items-baseline">
+			<div class="mb-3 me-2
+				{{#if description_md}} remove-bottom-margin">{{{markdown description_md}}}
+				{{else}}
+					">{{#if description}}{{description}}{{/if}}
+				{{/if}}
+				</div>
+		</div>
+		<div class="mt-2">
+			<div class="tracking">
+				{{#each_row}}
+					<div class="tracking-block{{#if color}} bg-{{color}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{title}}"></div>
+				{{/each_row}}
+			</div>
+		</div>
+	</div>
 </div>
+
