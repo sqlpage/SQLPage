@@ -1,0 +1,22 @@
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+  {{#each_row}}
+    <li class="breadcrumb-item{{#if active}} active{{/if}}" {{#if active}}aria-current="page"{{/if}}>
+		<a href="
+                    {{~#if link~}}
+                            {{link}}
+                     {{~else~}}
+                          ?link={{title}}
+                    {{~/if~}}"
+                   {{~#if description}} title="{{description}}"{{/if~}}
+               >{{title}}</a>
+	</li>
+  {{/each_row}}
+  </ol>
+</nav>
+
+
+
+
+
+
