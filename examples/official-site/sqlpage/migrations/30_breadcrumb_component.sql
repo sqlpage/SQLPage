@@ -57,8 +57,8 @@ VALUES
                 '[
                 {"component":"breadcrumb"},
                 {"title":"Home","link":"/"},
-                {"title":"Articles"},
-                {"title":"Information Technology (IT)"}
+                {"title":"Components"},
+                {"title":"Breadcrumb"}
                 ]'
             )
     ),
@@ -68,9 +68,9 @@ VALUES
             JSON(
                 '[
                 {"component":"breadcrumb"},
-                {"title":"Home","link":"/"},
+                {"title":"Home","link":"/", "active": true},
                 {"title":"Articles","link":"blog.sql","description":"Stay informed with the latest news"},
-                {"title":"Information Technology (IT)","link":"it.sql","active":true}
+                {"title":"No code vs. Low Code","link":"/blog.sql?post=SQLPage versus No-Code tools"}
                 ]'
             )
     );
