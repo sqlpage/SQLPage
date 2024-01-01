@@ -5,6 +5,7 @@
  - Fix small display issue on cards without a title.
  - New component: [`tracking`](https://sql.ophir.dev/documentation.sql?component=tracking#component) for beautiful and compact status reports.
  - New component: [`divider`](https://sql.ophir.dev/documentation.sql?component=divider#component) to add a horizontal line between other components.
+ - New component: [`breadcrumb`](https://sql.ophir.dev/documentation.sql?component=breadcrumb#component) to display a breadcrumb navigation bar.
 
 ## 0.17.1 (2023-12-10)
 
