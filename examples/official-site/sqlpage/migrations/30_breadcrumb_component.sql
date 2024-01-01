@@ -2,7 +2,7 @@ INSERT INTO component (name, description, icon, introduced_in_version)
 VALUES (
         'breadcrumb',
         'A secondary navigation aid that helps users understand their location on a website or mobile application.',
-        'map-2',
+        'dots',
         '0.18.0'
     );
 
@@ -69,7 +69,7 @@ VALUES
                 '[
                 {"component":"breadcrumb"},
                 {"title":"Home","link":"/"},
-                {"title":"Articles","link":"article.sql","description":"Stay informed with the latest news"},
+                {"title":"Articles","link":"blog.sql","description":"Stay informed with the latest news"},
                 {"title":"Information Technology (IT)","link":"it.sql","active":true}
                 ]'
             )
