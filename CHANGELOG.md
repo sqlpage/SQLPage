@@ -6,6 +6,7 @@
  - New component: [`tracking`](https://sql.ophir.dev/documentation.sql?component=tracking#component) for beautiful and compact status reports.
  - New component: [`divider`](https://sql.ophir.dev/documentation.sql?component=divider#component) to add a horizontal line between other components.
  - New component: [`breadcrumb`](https://sql.ophir.dev/documentation.sql?component=breadcrumb#component) to display a breadcrumb navigation bar.
+ - fixed a small visual bug in the `card` component, where the margin below footer text was too large.
 
 ## 0.17.1 (2023-12-10)
 

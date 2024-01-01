@@ -88,10 +88,11 @@ INSERT INTO example(component, description, properties) VALUES
             json('[{"component":"card", "columns": 2}, {"title":"A card with a Markdown description", "description_md": "This is a card with a **Markdown** description. \n\n'||
             'This is useful if you want to display a lot of text in the card, with many options for formatting, such as '||
             '\n - **bold**, \n - *italics*, \n - [links](index.sql), \n - etc."}]')),
-    ('card', 'A beautiful card grid with bells and whistles.',
-            json('[{"component":"card", "title":"Popular websites", "columns": 2}, '||
-            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "footer": "Owned by Alphabet Inc.", "footer_link": "https://abc.xyz/" }, '||
-            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "active": true, "footer": "Owned by the Wikimedia Foundation", "footer_link": "https://wikimediafoundation.org/"}]')),
+    ('card', 'A beautiful card grid with bells and whistles, showing examples of SQLPage features.',
+            json('[{"component":"card", "title":"Popular SQLPage features", "columns": 2},
+            {"title": "Download as spreadsheet", "link": "?component=csv#component", "description": "Using the CSV component, you can download your data as a spreadsheet.", "icon":"file-plus", "color": "green", "footer_md": "SQLPage can both [read](?component=form#component) and [write](?component=csv#component) **CSV** files."},
+            {"title": "Custom components", "link": "/custom_components.sql", "description": "If you know some HTML, you can create your own components for your application.", "icon":"code", "color": "orange", "footer_md": "You can look at the [source of the official components](https://github.com/lovasoa/SQLpage/tree/main/sqlpage/templates) for inspiration."}
+    ]')),
     ('card', 'A gallery of images.',
         json('[
             {"component":"card", "title":"My favorite animals in pictures", "columns": 3},
