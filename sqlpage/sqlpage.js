@@ -2,7 +2,7 @@
 /* !include https://cdn.jsdelivr.net/npm/list.js-fixed@2.3.4/dist/list.min.js */
 
 function sqlpage_chart() {
-  let first_chart = document.querySelector("[data-js]");
+  let first_chart = document.querySelector("[data-pre-init=chart]");
   if (first_chart) {
     // Add the apexcharts js to the page
     const apexcharts_js = document.createElement("script");
@@ -11,20 +11,45 @@ function sqlpage_chart() {
   }
 }
 
+function sqlpage_card() {
+    for (const c of document.querySelectorAll("[data-pre-init=card]")) {
+        const source = c.dataset.embed;
+        fetch(c.dataset.embed)
+            .then(res => res.text())
+            .then(html => {
+                const body = c.querySelector(".card-content");
+                body.innerHTML = html;
+                c.removeAttribute("data-pre-init");
+                const spinner = c.querySelector(".card-loading-placeholder");
+                if (spinner) {
+                    spinner.parentNode.removeChild(spinner);
+                }
+                const fragLoadedEvt = new CustomEvent("fragment-loaded", {
+                    bubbles: true
+                });
+                c.dispatchEvent(fragLoadedEvt);
+            })
+    }
+}
+
 function sqlpage_table(){
     // Tables
-    for (const r of document.getElementsByClassName("data-list")) {
+    for (const r of document.querySelectorAll("[data-pre-init=table]")) {
         new List(r, {
             valueNames: [...r.getElementsByTagName("th")].map(t => t.textContent),
             searchDelay: 100,
             indexAsync: true
         });
+        r.removeAttribute("data-pre-init");
     }
 }
 
+let is_leaflet_injected = false;
+let is_leaflet_loaded = false;
+
 function sqlpage_map() {
-    const maps = document.getElementsByClassName("leaflet");
-    if (maps.length) {
+    const first_map = document.querySelector("[data-pre-init=map]");
+    if (first_map && !is_leaflet_injected) {
       // Add the leaflet js and css to the page
       const leaflet_css = document.createElement("link");
       leaflet_css.rel = "stylesheet";
@@ -38,8 +63,14 @@ function sqlpage_map() {
       leaflet_js.crossOrigin = "anonymous";
       leaflet_js.onload = onLeafletLoad;
       document.head.appendChild(leaflet_js);
+      is_leaflet_injected = true;
+    }
+    if (first_map && is_leaflet_loaded) {
+      onLeafletLoad();
     }
     function onLeafletLoad() {
+      is_leaflet_loaded = true;
+      const maps = document.querySelectorAll("[data-pre-init=map]");
       for (const m of maps) {
         const tile_source = m.dataset.tile_source;
         const maxZoom = +m.dataset.max_zoom;
@@ -51,6 +82,7 @@ function sqlpage_map() {
         for (const marker_elem of m.getElementsByClassName("marker")) {
           setTimeout(addMarker, 0, marker_elem, map);
         }
+        m.removeAttribute("data-pre-init");
       }
     }
     function addMarker(marker_elem, map) {
@@ -101,8 +133,13 @@ function get_tabler_color(name) {
     return getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + name);
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+function init_components() {
     sqlpage_table();
     sqlpage_chart();
     sqlpage_map();
-})
+    sqlpage_card();
+}
+
+document.addEventListener('DOMContentLoaded', init_components);
+
+document.addEventListener('fragment-loaded', init_components);
