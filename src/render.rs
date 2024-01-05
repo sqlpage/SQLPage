@@ -1,5 +1,6 @@
 use crate::templates::SplitTemplate;
 use crate::AppState;
+use crate::webserver::http::LayoutContext;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::http::{header, StatusCode};
@@ -12,9 +13,9 @@ use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::sync::Arc;
 
-pub enum PageContext<W: std::io::Write> {
+pub enum PageContext<'a, W: std::io::Write> {
     /// Indicates that we should stay in the header context
-    Header(HeaderContext<W>),
+    Header(HeaderContext<'a, W>),
 
     /// Indicates that we should start rendering the body
     Body {
@@ -27,25 +28,27 @@ pub enum PageContext<W: std::io::Write> {
 }
 
 /// Handles the first SQL statements, before the headers have been sent to
-pub struct HeaderContext<W: std::io::Write> {
+pub struct HeaderContext<'a, W: std::io::Write> {
     app_state: Arc<AppState>,
+    layout_context: &'a LayoutContext,
     pub writer: W,
     response: HttpResponseBuilder,
     has_status: bool,
 }
 
-impl<W: std::io::Write> HeaderContext<W> {
-    pub fn new(app_state: Arc<AppState>, writer: W) -> Self {
+impl<'a, W: std::io::Write> HeaderContext<'a, W> {
+    pub fn new(app_state: Arc<AppState>, layout_context: &'a LayoutContext, writer: W) -> Self {
         let mut response = HttpResponseBuilder::new(StatusCode::OK);
         response.content_type("text/html; charset=utf-8");
         Self {
             app_state,
+            layout_context,
             writer,
             response,
             has_status: false,
         }
     }
-    pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
+    pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext<'a, W>> {
         log::debug!("Handling header row: {data}");
         match get_object_str(&data, "component") {
             Some("status_code") => self.status_code(&data).map(PageContext::Header),
@@ -58,7 +61,7 @@ impl<W: std::io::Write> HeaderContext<W> {
         }
     }
 
-    pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext<W>> {
+    pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext<'a, W>> {
         if self.app_state.config.environment.is_prod() {
             return Err(err);
         }
@@ -184,7 +187,7 @@ impl<W: std::io::Write> HeaderContext<W> {
         Ok(self.response.body(json_response))
     }
 
-    async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext<W>> {
+    async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext<'a, W>> {
         let password_hash = take_object_str(&mut data, "password_hash");
         let password = take_object_str(&mut data, "password");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
@@ -211,8 +214,8 @@ impl<W: std::io::Write> HeaderContext<W> {
         Ok(PageContext::Close(http_response))
     }
 
-    async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
-        let renderer = RenderContext::new(self.app_state, self.writer, data)
+    async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<'a, W>> {
+        let renderer = RenderContext::new(self.app_state, self.layout_context, self.writer, data)
             .await
             .with_context(|| "Failed to create a render context from the header context.")?;
         let http_response = self.response;
@@ -274,18 +277,24 @@ pub struct RenderContext<W: std::io::Write> {
 }
 
 const DEFAULT_COMPONENT: &str = "debug";
-const SHELL_COMPONENT: &str = "shell";
+const PAGE_SHELL_COMPONENT: &str = "shell";
+const FRAGMENT_SHELL_COMPONENT: &str = "fragment-shell";
 const DYNAMIC_COMPONENT: &str = "dynamic";
 const MAX_RECURSION_DEPTH: usize = 256;
 
 impl<W: std::io::Write> RenderContext<W> {
     pub async fn new(
         app_state: Arc<AppState>,
+        layout_context: &LayoutContext,
         mut writer: W,
         mut initial_row: JsonValue,
     ) -> anyhow::Result<RenderContext<W>> {
         log::debug!("Creating the shell component for the page");
-        let mut shell_renderer = Self::create_renderer(SHELL_COMPONENT, Arc::clone(&app_state))
+        let shell_component = match layout_context.is_embedded {
+            false => PAGE_SHELL_COMPONENT,
+            true => FRAGMENT_SHELL_COMPONENT,
+        };
+        let mut shell_renderer = Self::create_renderer(shell_component, Arc::clone(&app_state))
             .await
             .with_context(|| "The shell component should always exist")?;
 
@@ -293,7 +302,7 @@ impl<W: std::io::Write> RenderContext<W> {
             Some(get_object_str(&initial_row, "component").unwrap_or(DEFAULT_COMPONENT));
         let mut shell_properties = JsonValue::Null;
         match initial_component {
-            Some(SHELL_COMPONENT) => {
+            Some(PAGE_SHELL_COMPONENT) => {
                 shell_properties = initial_row.take();
                 initial_component = None;
             },
@@ -301,7 +310,7 @@ impl<W: std::io::Write> RenderContext<W> {
                 let dynamic_properties = Self::extract_dynamic_properties(&initial_row)?;
                 for prop in dynamic_properties {
                     match get_object_str(&prop, "component") {
-                        None | Some(SHELL_COMPONENT) => {
+                        None | Some(PAGE_SHELL_COMPONENT) => {
                             shell_properties = prop.into_owned();
                             initial_component = None;
                         },

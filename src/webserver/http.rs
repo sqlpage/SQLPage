@@ -20,8 +20,8 @@ use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
-use std::borrow::Cow;
 use std::io::Write;
+use std::borrow::Cow;
 use std::mem;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -37,6 +37,11 @@ const MAX_PENDING_MESSAGES: usize = 128;
 pub struct ResponseWriter {
     buffer: Vec<u8>,
     response_bytes: mpsc::Sender<actix_web::Result<Bytes>>,
+}
+
+#[derive(Clone)]
+pub struct LayoutContext {
+    pub is_embedded: bool,
 }
 
 impl ResponseWriter {
@@ -144,10 +149,11 @@ async fn stream_response(
 async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     app_state: Arc<AppState>,
     database_entries: S,
+    layout_context: &LayoutContext,
 ) -> anyhow::Result<ResponseWithWriter<S>> {
     let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
     let writer = ResponseWriter::new(sender);
-    let mut head_context = HeaderContext::new(app_state, writer);
+    let mut head_context = HeaderContext::new(app_state, layout_context, writer);
     let mut stream = Box::pin(database_entries);
     while let Some(item) = stream.next().await {
         let page_context = match item {
@@ -218,10 +224,16 @@ async fn render_sql(
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
+        let layout_context = &LayoutContext {
+            is_embedded: match req_param.get_variables.get("embed") {
+                None => false,
+                _ => true
+            }
+        };
         let database_entries_stream =
             stream_query_results(&app_state.db, &sql_file, &mut req_param);
         let response_with_writer =
-            build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream).await;
+            build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream, &layout_context).await;
         match response_with_writer {
             Ok(ResponseWithWriter::RenderStream {
                 http_response,
