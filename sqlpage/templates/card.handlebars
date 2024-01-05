@@ -23,7 +23,7 @@
     mt-1 mb-3">
     {{#each_row}}
         <div class="col">
-            <div class="card h-100 {{#if active}}card-active{{/if}}">
+            <div class="card h-100 {{#if active}}card-active{{/if}}" {{#if embed }}data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
@@ -40,6 +40,9 @@
                         {{~#if description_md~}}
                             {{{markdown description_md}}}
                         {{~/if~}}
+                    </div>
+                    <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
                 {{#if link}}

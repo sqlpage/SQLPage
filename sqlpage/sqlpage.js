@@ -11,6 +11,19 @@ function sqlpage_chart() {
   }
 }
 
+function sqlpage_card() {
+    for (const c of document.querySelectorAll(".card[data-embed]")) {
+        const source = c.dataset.embed;
+        fetch(c.dataset.embed)
+            .then(res => res.text())
+            .then(html => {
+                c.removeAttribute("data-embed");
+                const body = c.querySelector("card-body");
+                body.innerHTML = html;
+            })
+    }
+}
+
 function sqlpage_table(){
     // Tables
     for (const r of document.getElementsByClassName("data-list")) {
@@ -105,4 +118,5 @@ document.addEventListener('DOMContentLoaded', function () {
     sqlpage_table();
     sqlpage_chart();
     sqlpage_map();
+    sqlpage_card();
 })
