@@ -9,6 +9,8 @@
  - fixed a small visual bug in the `card` component, where the margin below footer text was too large.
  - new `ystep` top-level attribute in the `chart` component to customize the y-axis step size.
  - Updated default graph colors so that all series are easily distinguishable even when a large number of series are displayed.
+ - New `embed` attribute in the `card` component that lets you build multi-column layouts of various components with cards.
+  - ![](./examples/cards-with-remote-content/screenshot.png)
 
 ## 0.17.1 (2023-12-10)
 
