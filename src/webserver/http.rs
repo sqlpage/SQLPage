@@ -20,8 +20,8 @@ use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
-use std::io::Write;
 use std::borrow::Cow;
+use std::io::Write;
 use std::mem;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -225,15 +225,16 @@ async fn render_sql(
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
         let layout_context = &LayoutContext {
-            is_embedded: match req_param.get_variables.get("embed") {
-                None => false,
-                _ => true
-            }
+            is_embedded: req_param.get_variables.get("embed").is_none(),
         };
         let database_entries_stream =
             stream_query_results(&app_state.db, &sql_file, &mut req_param);
-        let response_with_writer =
-            build_response_header_and_stream(Arc::clone(&app_state), database_entries_stream, &layout_context).await;
+        let response_with_writer = build_response_header_and_stream(
+            Arc::clone(&app_state),
+            database_entries_stream,
+            layout_context,
+        )
+        .await;
         match response_with_writer {
             Ok(ResponseWithWriter::RenderStream {
                 http_response,

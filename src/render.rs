@@ -1,6 +1,6 @@
 use crate::templates::SplitTemplate;
-use crate::AppState;
 use crate::webserver::http::LayoutContext;
+use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::http::{header, StatusCode};
@@ -290,9 +290,10 @@ impl<W: std::io::Write> RenderContext<W> {
         mut initial_row: JsonValue,
     ) -> anyhow::Result<RenderContext<W>> {
         log::debug!("Creating the shell component for the page");
-        let shell_component = match layout_context.is_embedded {
-            false => PAGE_SHELL_COMPONENT,
-            true => FRAGMENT_SHELL_COMPONENT,
+        let shell_component = if layout_context.is_embedded {
+            FRAGMENT_SHELL_COMPONENT
+        } else {
+            PAGE_SHELL_COMPONENT
         };
         let mut shell_renderer = Self::create_renderer(shell_component, Arc::clone(&app_state))
             .await
