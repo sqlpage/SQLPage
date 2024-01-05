@@ -32,7 +32,7 @@ function sqlpage_chart() {
         return new_series;
     }
 
-    for (const c of document.getElementsByClassName("chart")) {
+    for (const c of document.querySelectorAll("[data-pre-init=chart]")) {
         try {
             const data = JSON.parse(c.querySelector("data").innerText);
             const is_timeseries = !!data.time;
@@ -147,6 +147,7 @@ function sqlpage_chart() {
             chart.render();
             if (window.charts) window.charts.push(chart);
             else window.charts = [chart];
+            c.removeAttribute("data-pre-init");
         } catch (e) { console.log(e) }
     }
 }

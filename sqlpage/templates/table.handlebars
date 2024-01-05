@@ -1,6 +1,6 @@
 <div class="card my-2">
     <div class="card-body">
-        <div class="table-responsive {{#if (or sort search)}}data-list{{/if}}">
+        <div class="table-responsive" {{#if (or sort search)}}data-pre-init="table"{{/if}}>
             {{#if search}}
                 <div class="p-2">
                     <input type="search" class="form-control form-control-rounded fs-6 search" placeholder="Search…">

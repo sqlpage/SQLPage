@@ -23,7 +23,7 @@
     mt-1 mb-3">
     {{#each_row}}
         <div class="col">
-            <div class="card h-100 {{#if active}}card-active{{/if}}" {{#if embed }}data-embed="{{embed}}"{{/if}}>
+            <div class="card h-100 {{#if active}}card-active{{/if}}" {{#if embed }}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
@@ -35,15 +35,17 @@
                 {{/if}}
                 <div class="card-body">
                     {{#if title}}<h2 class="card-title fs-3 me-3">{{title}}</h2>{{/if}}
-                    <div class="remove-bottom-margin">
+                    <div class="card-content remove-bottom-margin">
                         {{~description~}}
                         {{~#if description_md~}}
                             {{{markdown description_md}}}
                         {{~/if~}}
                     </div>
-                    <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                    {{~#if embed~}}
+                    <div class="spinner-border card-loading-placeholder" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">Loading...</span>
                     </div>
+                    {{~/if~}}
                 </div>
                 {{#if link}}
                     </a>
