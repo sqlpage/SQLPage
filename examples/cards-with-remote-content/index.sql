@@ -12,10 +12,10 @@ This is useful if you want to display a lot of text in the card, with many optio
  - etc.' as description_md;
 select 
     'A card with lazy-loaded chart' as title,
-	'/chart-example.sql?embed' as embed;
+	'/chart-example.sql?_sqlpage_embed' as embed;
 select 
     'A card with lazy-loaded map' as title,
-	'/map-example.sql?embed' as embed;
+	'/map-example.sql?_sqlpage_embed' as embed;
 select 
     'A card with lazy-loaded table' as title,
-	'/table-example.sql?embed' as embed;
+	'/table-example.sql?_sqlpage_embed' as embed;

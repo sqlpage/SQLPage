@@ -225,7 +225,7 @@ async fn render_sql(
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
         let layout_context = &LayoutContext {
-            is_embedded: req_param.get_variables.get("embed").is_none(),
+            is_embedded: req_param.get_variables.get("_sqlpage_embed").is_some(),
         };
         let database_entries_stream =
             stream_query_results(&app_state.db, &sql_file, &mut req_param);

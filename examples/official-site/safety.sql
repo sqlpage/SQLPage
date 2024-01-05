@@ -115,7 +115,8 @@ website, and have it perform an action on your website in the user''s name,
 because the browser will not send the cookies to your website.
 
 SQLPage differentiates between POST variables (accessed with the `:variable` syntax), and 
-variables that can come from URL parameters (accessible with `$variable`).
+variables that can come from URL parameters (accessible with `$variable`). Note that URL parameters
+prefixed with `_sqlpage_` are reserved for internal use.
 
 When a user submits a form, you should use POST variables to access the form data.
 This ensures that you only use data that indeed comes from the form, and not from a

@@ -16,8 +16,8 @@ Each page in SQLPage is composed of a `shell` component,
 which contains the page title and the navigation bar,
 and a series of normal components that display the data.
 
-The `shell` component is always present. If you don''t call it explicitly,
-it will be invoked with the default parameters automatically before your first component
+The `shell` component is always present unless explicitly skipped via the `?_sqlpage_embed` query parameter. 
+If you don''t call it explicitly, it will be invoked with the default parameters automatically before your first component
 invocation that tries to render data on the page.
 
 There can be only one `shell` component per site, but you can customize its appearance as you see fit.
