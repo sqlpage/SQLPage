@@ -30,4 +30,3 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
         the output of other sql files rendered by SQLPage. For the latter case you can pass the
         `?_sqlpage_embed` query parameter, which will skip the shell layout', 'TEXT', FALSE, TRUE)
 ) x;
-
