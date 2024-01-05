@@ -493,6 +493,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
     ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
     ('xticks', 'Number of ticks on the x axis.', 'NUMBER', TRUE, TRUE),
+    ('ystep', 'Step between ticks on the y axis.', 'NUMBER', TRUE, TRUE),
     ('marker', 'Marker size', 'NUMBER', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'COLOR', TRUE, TRUE),
@@ -531,7 +532,7 @@ INSERT INTO example(component, description, properties) VALUES
     '{"label": "No", "value": 35}]')),
     ('chart', 'A basic bar chart', json('[{"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true}, '||
     '{"label": "Tom", "value": 35}, {"label": "Olive", "value": 15}]')),
-    ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true, "toolbar": true}, '||
+    ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true, "toolbar": true, "ystep": 10}, '||
     '{"series": "Marketing", "x": 2021, "value": 35}, '||
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
@@ -540,7 +541,7 @@ INSERT INTO example(component, description, properties) VALUES
     json('[
         {"component":"chart", "title": "Gross domestic product and its growth", "type": "scatter",
         "xtitle": "Growth Rate", "ytitle": "GDP (Trillions USD)", "marker": 8,
-        "xmin": 0, "xmax": 10, "ymin": 0, "ymax": 25, "yticks": 10},
+        "xmin": 0, "xmax": 10, "ymin": 0, "ymax": 25, "yticks": 5},
 
         {"series": "Brazil", "x": 2.5, "y": 2},
         {"series": "China", "x": 6.5, "y": 14},

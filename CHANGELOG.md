@@ -7,6 +7,8 @@
  - New component: [`divider`](https://sql.ophir.dev/documentation.sql?component=divider#component) to add a horizontal line between other components.
  - New component: [`breadcrumb`](https://sql.ophir.dev/documentation.sql?component=breadcrumb#component) to display a breadcrumb navigation bar.
  - fixed a small visual bug in the `card` component, where the margin below footer text was too large.
+ - new `ystep` top-level attribute in the `chart` component to customize the y-axis step size.
+ - Updated default graph colors so that all series are easily distinguishable even when a large number of series are displayed.
 
 ## 0.17.1 (2023-12-10)
 

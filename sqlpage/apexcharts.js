@@ -1,9 +1,9 @@
-/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.min.js */
+/* !include https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.min.js */
 
 
 function sqlpage_chart() {
 
-    const tblrColors = Object.fromEntries(['azure', 'red', 'lime', 'blue', 'pink', 'indigo', 'purple', 'yellow', 'cyan', 'green', 'orange', 'cyan']
+    const tblrColors = Object.fromEntries(['azure', 'red', 'lime', 'purple', 'yellow', 'blue', 'gray-600', 'orange', 'black', 'pink', 'teal', 'indigo', 'cyan', 'green', 'cyan']
         .map(c => [c, getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + c)]));
 
     /** @typedef { { [name:string]: {data:{x:number,y:number}[], name:string} } } Series */
@@ -60,7 +60,7 @@ function sqlpage_chart() {
                 Math.min(30, Math.max(...series.map(s => s.data.length - 1)));
 
             let labels;
-            const categories = typeof data.points[0][1] === "string";
+            const categories = series.length > 0 && typeof series[0].data[0].x === "string";
             if (data.type === "pie") {
                 labels = data.points.map(([name, x, y]) => x || name);
                 series = data.points.map(([name, x, y]) => y);
@@ -113,6 +113,7 @@ function sqlpage_chart() {
                     logarithmic: !!data.logarithmic,
                     min: data.ymin,
                     max: data.ymax,
+                    stepSize: data.ystep,
                     tickAmount: data.yticks,
                     title: {
                         text: data.ytitle || undefined,

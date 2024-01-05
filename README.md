@@ -112,7 +112,7 @@ where $tab is null or $tab = color;
 
 select
   'text' as component,
-  sqlpage.read_file_as_text('file.md') as contents_md
+  sqlpage.read_file_as_text('footer.md') as contents_md
 ```
 
 <td>
@@ -125,7 +125,7 @@ select
 
 ## Supported databases
 
-- [SQLite](https://www.sqlite.org/index.html)
+- [SQLite](https://www.sqlite.org/index.html), including the ability to [load extensions](./configuration.md) such as *Spatialite*.
 - [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *YugabyteDB*, *CockroachDB* and *Aurora*.
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 - [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server), and all compatible databases and providers such as *Azure SQL* and *Amazon RDS*.
