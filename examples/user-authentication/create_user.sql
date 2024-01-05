@@ -1,6 +1,6 @@
 INSERT INTO user_info (username, password_hash)
 VALUES (:username, sqlpage.hash_password(:password))
-ON CONFLICT (username) DO NOTHING
+ON CONFLICT (username) DO NOTHING -- this syntax is PostgreSQL-specific. In SQLite, use ON CONFLICT IGNORE.
 RETURNING 
     'redirect' AS component,
     'create_user_welcome_message.sql?username=' || :username AS link;
