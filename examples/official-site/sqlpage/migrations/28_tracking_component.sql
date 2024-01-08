@@ -77,7 +77,16 @@ VALUES (
         'TEXT',
         FALSE,
         FALSE
+    ),
+    (
+        'tracking',
+        'center',
+        'Whether to center the component.',
+        'BOOLEAN',
+        TRUE,
+        TRUE
     );
+    
 -- Insert example(s) for the component
 INSERT INTO example(component, description, properties)
 VALUES
