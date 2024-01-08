@@ -16,7 +16,7 @@
                             {{#if title}}
                             <div class="carousel-caption d-none d-md-block">
                                 <h5>{{title}}</h5>
-                                {{#if contents}}<p>{{contents}}</p>{{/if}}
+                                {{#if description_md}}<p>{{{markdown description_md}}}</p>{{else}}{{#if description}}<p>{{description}}</p>{{/if}}{{/if}}
                             </div>
                             {{/if}}
                         </div>
