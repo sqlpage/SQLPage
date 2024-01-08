@@ -17,7 +17,7 @@ INSERT INTO parameter (
 VALUES (
         'carousel',
         'name',
-        'Name of the carousel.',
+        'An unique string to identify the caroussel component in the HTML page.',
         'TEXT',
         TRUE,
         FALSE
@@ -25,7 +25,7 @@ VALUES (
     (
         'carousel',
         'title',
-        'Title of the carousel.',
+        'A name to display at the top of the carousel.',
         'TEXT',
         TRUE,
         TRUE
@@ -33,7 +33,7 @@ VALUES (
     (
         'carousel',
         'indicators',
-        'Style of image indicators (e.g. square, dot).',
+        'Style of image indicators (square or dot).',
         'TEXT',
         TRUE,
         TRUE
@@ -96,32 +96,20 @@ VALUES (
     ),
     (
         'carousel',
-        'contents',
-        'Add paragraph to the slide.',
+        'description',
+        'A short paragraph.',
+        'TEXT',
+        FALSE,
+        TRUE
+    ),
+    (
+        'carousel',
+        'description_md',
+        'A short paragraph formatted using markdown.',
         'TEXT',
         FALSE,
         TRUE
     );
-
-
-select
-    'carousel' as component,
-    'somecats' as name,
-    'Some cats' as title,
-    'square' as indicators,  --square or dot
-    FALSE as vertical,
-    TRUE as controls,
-    6 as width,
-    TRUE as center,
-    FALSE as fade;
-
-select
-    "https://placekitten.com/408/285" as image,
-    'Second cat' as title,
-    'Some representative placeholder content for the second slide.' as contents;
-select
-    "https://placekitten.com/408/286" as image,
-    'Third cat' as title;
 
 -- Insert example(s) for the component
 INSERT INTO example(component, description, properties)
@@ -143,7 +131,7 @@ VALUES
             JSON(
                 '[
                 {"component":"carousel","name":"cats2","title":"Cats","width":6,"center":"TRUE","controls":"TRUE"},
-                {"image":"https://placekitten.com/408/285","title":"A first cat","contents":"The cat (Felis catus), commonly referred to as the domestic cat or house cat, is the only domesticated species in the family Felidae."},
+                {"image":"https://placekitten.com/408/285","title":"A first cat","description":"The cat (Felis catus), commonly referred to as the domestic cat or house cat, is the only domesticated species in the family Felidae."},
                 {"image":"https://placekitten.com/408/286","title":"Another cat"}
                 ]'
             )
