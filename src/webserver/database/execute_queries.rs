@@ -49,7 +49,7 @@ pub fn stream_query_results<'a>(
                 ParsedStatement::StmtWithParams(stmt) => {
                     let query = bind_parameters(stmt, request).await?;
                     let connection = take_connection(db, &mut connection_opt).await?;
-                    log::debug!("Executing query: {:?}", query.sql);
+                    log::trace!("Executing query {:?}", query.sql);
                     let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
@@ -151,10 +151,11 @@ async fn bind_parameters<'a>(
     request: &'a RequestInfo,
 ) -> anyhow::Result<StatementWithParams<'a>> {
     let sql = stmt.query.as_str();
+    log::debug!("Preparing statement: {}", sql);
     let mut arguments = AnyArguments::default();
-    for param in &stmt.params {
+    for (param_idx, param) in stmt.params.iter().enumerate() {
         let argument = extract_req_param(param, request).await?;
-        log::debug!("Binding value {:?} in statement {}", &argument, stmt.query);
+        log::debug!("\tparameter {}: {}", param_idx + 1, argument.as_ref().unwrap_or(&Cow::Borrowed("NULL")));
         match argument {
             None => arguments.add(None::<String>),
             Some(Cow::Owned(s)) => arguments.add(s),
