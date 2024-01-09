@@ -154,8 +154,13 @@ async fn bind_parameters<'a>(
     log::debug!("Preparing statement: {}", sql);
     let mut arguments = AnyArguments::default();
     for (param_idx, param) in stmt.params.iter().enumerate() {
+        log::trace!("\tevaluating parameter {}: {:?}", param_idx + 1, param);
         let argument = extract_req_param(param, request).await?;
-        log::debug!("\tparameter {}: {}", param_idx + 1, argument.as_ref().unwrap_or(&Cow::Borrowed("NULL")));
+        log::debug!(
+            "\tparameter {}: {}",
+            param_idx + 1,
+            argument.as_ref().unwrap_or(&Cow::Borrowed("NULL"))
+        );
         match argument {
             None => arguments.add(None::<String>),
             Some(Cow::Owned(s)) => arguments.add(s),
