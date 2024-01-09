@@ -1,4 +1,4 @@
-<div class="card my-2">
+<div class="card my-2 {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     {{#if title}}
         <div class="card-header ">
             <h2 class="card-title">{{title}}</h2>
@@ -7,7 +7,9 @@
     <div class="list-group list-group-flush list-group-hoverable">
         {{#each_row}}
             <{{#if link}}a href="{{link}}" {{else}}div{{/if}}
-                           class="list-group-item list-group-item-action {{#if active}}active{{/if}}">
+                {{#if id}}id="{{id}}"{{/if}}
+                class="list-group-item list-group-item-action {{#if active}}active{{/if}} {{class}}">
+
                 <div class="row align-items-center">
                     {{#if color}}
                         <div class="col-auto"><span class="badge bg-{{color}}"></span></div>

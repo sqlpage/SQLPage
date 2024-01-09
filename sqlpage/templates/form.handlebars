@@ -1,8 +1,11 @@
 <form 
     {{#if id}}id="{{id}}"{{/if}}
-    class="my-3"
+    class="my-3 {{class}}"
     method="{{default method "post"}}"
-    {{#if action}}action="{{action}}"{{/if}}
+    {{#if action}}action="{{action}}"
+    {{else}}
+    {{#if id}}action="#{{id}}"{{/if}}
+    {{/if}}
 >
     <fieldset class="form-fieldset">
         {{#if title}}

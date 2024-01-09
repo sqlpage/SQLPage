@@ -1,6 +1,6 @@
-<ul class="nav nav-bordered mb-3 {{#if center}}justify-content-evenly{{/if}}">
+<ul class="nav nav-bordered mb-3 {{#if center}}justify-content-evenly{{/if}} {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     {{~#each_row~}}
-    <li class="nav-item">
+    <li class="nav-item {{class}}" {{#if id}}id="{{id}}"{{/if}}>
         <a 
             class="nav-link {{#if active~}}
                 active
@@ -13,7 +13,7 @@
             href="{{#if link}}
                 {{~link~}}
             {{~else~}}
-                ?tab={{title}}
+                ?tab={{title}}{{#if id}}#{{id}}{{/if}}
             {{~/if}}"
 
             {{#if description~}}

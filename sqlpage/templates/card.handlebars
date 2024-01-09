@@ -20,9 +20,9 @@
         row-cols-xl-5
     {{/if}}
     gx-2 gy-2
-    mt-1 mb-3">
+    mt-1 mb-3 {{class}}">
     {{#each_row}}
-        <div class="col">
+        <div class="col {{class}}" {{#if id}}id="{{id}}"{{/if}}>
             <div class="card h-100 {{#if active}}card-active{{/if}}" {{#if embed }}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
