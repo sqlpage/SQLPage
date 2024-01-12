@@ -193,7 +193,7 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
     ('method', 'Set this to ''GET'' to pass the form contents directly as URL parameters. If the user enters a value v in a field named x, submitting the form will load target.sql?x=v. If target.sql contains SELECT $x, it will display the value v.', 'TEXT', TRUE, TRUE),
-    ('action', 'An optional link to a target page that will handle the results of the form. By default the target page is the current page. Setting it to the name of a different sql file will load that file when the user submits the form.', 'TEXT', TRUE, TRUE),
+    ('action', 'An optional link to a target page that will handle the results of the form. By default the target page is the current page with the id of the form (if passed) used as hash - this will bring us back to the location of the form after submission. Setting it to the name of a different sql file will load that file when the user submits the form.', 'TEXT', TRUE, TRUE),
     ('title', 'A name to display at the top of the form. It will be displayed in a larger font size at the top of the form.', 'TEXT', TRUE, TRUE),
     ('validate', 'The text to display in the button at the bottom of the form that submits the values. Omit this property to let the browser display the default form validation text, or set it to the empty string to remove the button completely.', 'TEXT', TRUE, TRUE),
     ('validate_color', 'The color of the button at the bottom of the form that submits the values. Omit this property to use the default color.', 'COLOR', TRUE, TRUE),
@@ -730,3 +730,4 @@ On other engines (such as SQLite), you can use the [`dynamic`](?component=dynami
             "css": "/prism-tabler-theme.css",
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]'));
+

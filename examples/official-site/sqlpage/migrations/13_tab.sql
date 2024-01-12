@@ -24,7 +24,7 @@ VALUES (
     (
         'tab',
         'link',
-        'Link to the page to display when the tab is clicked. By default, the link refers to the current page, with a ''tab'' parameter set to the tab''s title.',
+        'Link to the page to display when the tab is clicked. By default, the link refers to the current page, with a ''tab'' parameter set to the tab''s title and hash set to the id (if passed) - this brings us back to the location of the tab after submission.',
         'TEXT',
         FALSE,
         TRUE

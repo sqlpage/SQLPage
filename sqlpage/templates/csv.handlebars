@@ -1,4 +1,4 @@
-<div class="my-2">
+<div class="my-2 {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     <a href="data:text/csv;charset=UTF-8,
 {{~#each_row~}}
         {{~#if (eq @row_index 0)~}}{{! header }}

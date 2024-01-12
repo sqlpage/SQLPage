@@ -1,4 +1,4 @@
-<nav aria-label="breadcrumb" class="my-1">
+<nav {{#if id}}id="{{id}}"{{/if}} aria-label="breadcrumb" class="my-1 {{class}}">
   <ol class="breadcrumb">
   {{#each_row}}
     <li class="breadcrumb-item{{#if active}} active{{/if}}" {{#if active}}aria-current="page"{{/if}}>

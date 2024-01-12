@@ -1,4 +1,9 @@
-<div class="card my-2" data-pre-init="chart" data-js="/{{static_path 'apexcharts.js'}}">
+<div 
+    {{#if id}}id="{{id}}"{{/if}}
+    class="card my-2 {{class}}" 
+    data-pre-init="chart" 
+    data-js="/{{static_path 'apexcharts.js'}}"
+>
     <div class="card-body">
         <div class="d-flex">
             <h3 class="card-title">{{title}}</h3>

@@ -1,9 +1,14 @@
-<div class="
-    alert
-    alert-{{default color "info"}}
-    {{#if dismissible}}alert-dismissible{{/if}}
-    {{#if important}}alert-important{{/if}}
-" role="alert">
+<div
+    {{#if id}}id="{{id}}"{{/if}}
+    class="
+        alert
+        alert-{{default color "info"}}
+        {{#if dismissible}}alert-dismissible{{/if}}
+        {{#if important}}alert-important{{/if}}
+        {{class}}
+    " 
+    role="alert"
+>
   <div class="d-flex">
 
     {{#if icon}}

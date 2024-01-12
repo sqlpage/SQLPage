@@ -1,6 +1,6 @@
-<ul class="timeline {{#if simple}}timeline-simple{{/if}}">
+<ul class="timeline {{#if simple}}timeline-simple{{/if}} {{class}}" {{#if id}}id="{{id}}"{{/if}}>
   {{#each_row}}
-  <li class="timeline-event">
+  <li class="timeline-event {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     <div class="timeline-event-icon {{#if color}}bg-{{color}}-lt{{/if}}">
         {{~icon_img (default icon 'git-commit')~}}
     </div>
