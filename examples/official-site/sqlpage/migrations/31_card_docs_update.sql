@@ -24,11 +24,18 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('footer_link', 'An URL to which the user should be taken when they click on the footer.', 'URL', FALSE, TRUE),
     ('icon', 'Name of an icon to display on the left side of the card.', 'ICON', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'COLOR', FALSE, TRUE),
-    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE),
+    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+) x;
+INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'card', * FROM (VALUES
     ('embed', 'A url whose contents will be fetched and injected into the body of this card.
         This can be used to inject arbitrary html content, but is especially useful for injecting
         the output of other sql files rendered by SQLPage. For the latter case you can pass the
-        `?_sqlpage_embed` query parameter, which will skip the shell layout', 'TEXT', FALSE, TRUE)
+        `?_sqlpage_embed` query parameter, which will skip the shell layout', 'TEXT', FALSE, TRUE),
+    ('embed_mode', 'Set to ''iframe'' to embed the target (specified through embed property) in an iframe.
+        Unless this is explicitly set, the embed target is fetched and injected within the parent page. If embed_mode is set to iframe,
+        You can also set height and width parameters to configure the appearance and the sandbox and allow parameters to configure
+        security aspects of the iframe. Refer to the [MDN page](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe)
+        for an explanation of these parameters.', 'TEXT', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -52,6 +59,6 @@ INSERT INTO example(component, description, properties) VALUES
     ('card', 'Cards with remote content',
         json('[
             {"component":"card", "title":"Card with embedded remote content", "columns": 2},
-            {"title": "Embedded Chart", "embed": "/examples/chart.sql?_sqlpage_embed" },
-            {"title": "Description", "description_md": "You can find the sql file that generates the chart [here](https://github.com/lovasoa/SQLpage/tree/main/examples/official-site/examples/chart.sql)" }
+            {"title": "Embedded Chart", "embed": "/examples/chart.sql?_sqlpage_embed", "footer_md": "You can find the sql file that generates the chart [here](https://github.com/lovasoa/SQLpage/tree/main/examples/official-site/examples/chart.sql)"  },
+            {"title": "Embedded Video", "embed": "https://www.youtube.com/embed/mXdgmSdaXkg", "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share", "embed_mode": "iframe", "height": "350" }
         ]'));

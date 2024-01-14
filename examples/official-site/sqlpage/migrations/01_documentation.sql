@@ -9,7 +9,8 @@ CREATE TABLE parameter(
     top_level BOOLEAN DEFAULT FALSE,
     name TEXT,
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
-    description TEXT NOT NULL,
+    description TEXT,
+    description_md TEXT,
     type TEXT,
     optional BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (component, top_level, name)

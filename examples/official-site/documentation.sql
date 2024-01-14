@@ -74,6 +74,7 @@ select 'card' as component, 3 AS columns where $component IS NOT NULL;
 select
     name as title,
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
+    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description_md as description_md,
     type as footer,
     CASE type 
         WHEN 'COLOR' THEN 'https://tabler.io/docs/base/colors'
@@ -90,6 +91,7 @@ select 'card' as component, 3 AS columns where $component IS NOT NULL;
 select
     name as title,
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
+    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description_md as description_md,
     type as footer,
     CASE type 
         WHEN 'COLOR' THEN 'https://tabler.io/docs/base/colors'
