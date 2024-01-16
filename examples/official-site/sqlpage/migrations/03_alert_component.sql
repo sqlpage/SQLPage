@@ -57,7 +57,7 @@ VALUES (
         'alert',
         'dismissible',
         'Whether the user can close the alert message.',
-        'TEXT',
+        'BOOLEAN',
         TRUE,
         TRUE
     ),
