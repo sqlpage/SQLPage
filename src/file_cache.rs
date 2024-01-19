@@ -101,15 +101,20 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 log::trace!("Cache answer without filesystem lookup for {:?}", path);
                 return Ok(Arc::clone(&cached.content));
             }
-            match app_state
-                .file_system
-                .modified_since(app_state, path, cached.last_check_time(), true)
-                .await
-            {
+            let modified_res = app_state.file_system.modified_since(
+                app_state,
+                path,
+                cached.last_check_time(),
+                true,
+            );
+            drop(cached);
+            match modified_res.await {
                 Ok(false) => {
                     log::trace!("Cache answer with filesystem metadata read for {:?}", path);
-                    cached.update_check_time();
-                    return Ok(Arc::clone(&cached.content));
+                    if let Some(cached) = self.cache.get(path) {
+                        cached.update_check_time();
+                        return Ok(Arc::clone(&cached.content));
+                    }
                 }
                 Ok(true) => log::trace!("{path:?} was changed, updating cache..."),
                 Err(e) => log::trace!("Cannot read metadata of {path:?}, re-loading it: {e:#}"),
