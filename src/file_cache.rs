@@ -4,6 +4,7 @@ use actix_web::http::StatusCode;
 use anyhow::Context;
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
+use dashmap::DashMap;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{
@@ -12,7 +13,6 @@ use std::sync::atomic::{
 };
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::RwLock;
 
 /// The maximum time in milliseconds that a file can be cached before its freshness is checked
 /// (in production mode)
@@ -68,7 +68,7 @@ impl<T> Cached<T> {
 }
 
 pub struct FileCache<T: AsyncFromStrWithState> {
-    cache: Arc<RwLock<HashMap<PathBuf, Cached<T>>>>,
+    cache: Arc<DashMap<PathBuf, Cached<T>>>,
     /// Files that are loaded at the beginning of the program,
     /// and used as fallback when there is no match for the request in the file system
     static_files: HashMap<PathBuf, Cached<T>>,
@@ -96,8 +96,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
     }
 
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
-        log::trace!("Attempting to get from cache {:?}", path);
-        if let Some(cached) = self.cache.read().await.get(path) {
+        if let Some(cached) = self.cache.get(path) {
             if app_state.config.environment.is_prod() && !cached.needs_check() {
                 log::trace!("Cache answer without filesystem lookup for {:?}", path);
                 return Ok(Arc::clone(&cached.content));
@@ -149,9 +148,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         match parsed {
             Ok(value) => {
                 let new_val = Arc::clone(&value.content);
-                log::trace!("Writing to cache {:?}", path);
-                self.cache.write().await.insert(path.clone(), value);
-                log::trace!("Done writing to cache {:?}", path);
+                self.cache.insert(path.clone(), value);
                 log::trace!("{:?} loaded in cache", path);
                 Ok(new_val)
             }
@@ -159,9 +156,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 log::trace!(
                     "Evicting {path:?} from the cache because the following error occurred: {e}"
                 );
-                log::trace!("Removing from cache {:?}", path);
-                self.cache.write().await.remove(path);
-                log::trace!("Done removing from cache {:?}", path);
+                self.cache.remove(path);
                 Err(e)
             }
         }
