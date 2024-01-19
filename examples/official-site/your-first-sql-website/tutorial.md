@@ -35,21 +35,21 @@ Your website’s first SQL file
 In the root folder of your SQLPage website, create a new SQL file called `index.sql`.
 Open it in a text editor that supports SQL syntax highlighting (I recommend [VSCode](https://code.visualstudio.com/)).
 
-The `index.sql` file will be executed every time a visitor opens your website''s home page.
+The `index.sql` file will be executed every time a visitor opens your website's home page.
 You can use it to retrieve data from your database and define how it should be displayed to your visitors.
 
-As an example, let''s start with a simple `index.sql` that displays a list of popular websites:
+As an example, let's start with a simple `index.sql` that displays a list of popular websites:
 
 ```sql
-SELECT ''list'' AS component, ''Popular websites'' AS title;
+SELECT 'list' AS component, 'Popular websites' AS title;
 
-SELECT ''Hello'' AS title, ''world'' AS description, ''https://wikipedia.org'' AS link;
+SELECT 'Hello' AS title, 'world' AS description, 'https://wikipedia.org' AS link;
 ```
 
 The first line of the file defines the component that will be used to display the data, and properties of that component.
 In this case, we use the [`list` component](/documentation.sql?component=list#component) to display a list of items.
 The second line defines the data that will populate the component.
-All the components you can use and their properties are documented in [SQLPage''s online documentation](https://sql.ophir.dev/documentation.sql).
+All the components you can use and their properties are documented in [SQLPage's online documentation](https://sql.ophir.dev/documentation.sql).
 
 Your database schema
 ====================
@@ -60,7 +60,7 @@ Your database schema
 
 The [database schema](https://en.wikipedia.org/wiki/Database_schema) for your SQLPage website
 can be defined using SQL scripts located in the
-**`sqlpage/migrations`** subdirectory of your website''s root folder.
+**`sqlpage/migrations`** subdirectory of your website's root folder.
 Each script represents a [migration](https://en.wikipedia.org/wiki/Schema_migration)
 that sets up or modifies the database structure.
 
@@ -71,7 +71,7 @@ SQLPage keeps track of which migrations have already run
 (by storing the executed migrations in a table named `_sqlx_migrations`),
 and will only execute new migrations.
 
-For our first website, let''s create a file located in `sqlpage/migrations/0001_create_users_table.sql` with the following contents:
+For our first website, let's create a file located in `sqlpage/migrations/0001_create_users_table.sql` with the following contents:
 
 ```sql
 CREATE TABLE users (
@@ -89,7 +89,7 @@ Connect to a custom database
 By default, SQLPage uses a [SQLite](https://www.sqlite.org/about.html) database stored in a file named `sqlpage.db`
 in the `sqlpage` configuration folder.
 You can change this by creating a file named `sqlpage.json` in a folder called `sqlpage`.
-So, if your website''s root folder is `/my_website`, you should create a file at `/my_website/sqlpage/sqlpage.json`.
+So, if your website's root folder is `/my_website`, you should create a file at `/my_website/sqlpage/sqlpage.json`.
 
 Here is an example `sqlpage.json` file:
 
@@ -106,7 +106,7 @@ Later, when you want to deploy your website online, you can switch back to a per
  - a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://dev.mysql.com/doc/refman/8.0/en/connecting-using-uri-or-key-value-pairs.html)),
  - a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html), [note about named instances](https://github.com/lovasoa/SQLpage/issues/92)),
 
-For more information about the properties that can be set in sqlpage.json, see [SQLPage''s configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
+For more information about the properties that can be set in sqlpage.json, see [SQLPage's configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
 
 
 ![screenshot for the full sql website folder organisation](full-website.png)
@@ -120,8 +120,8 @@ Use dynamic SQL queries to let users interact with your database
 Let’s create a form to let our users insert data into our database. Add the following code to your `index.sql` file:
 
 ```sql
-SELECT ''form'' AS component, ''Add a user'' AS title;
-SELECT ''Username'' as name, TRUE as required;
+SELECT 'form' AS component, 'Add a user' AS title;
+SELECT 'Username' as name, TRUE as required;
 ```
 
 The snippet above uses the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component) to display a form on your website.
@@ -145,7 +145,7 @@ from the text field when the user submits the form.
 There are three types of parameters you can use in your SQL queries:
  - `:ParameterName` is a [POST](https://en.wikipedia.org/wiki/POST_(HTTP)) parameter. It is set to the value of the field with the corresponding `name` in a form. If no form was submitted, it is set to `NULL`.
  - `$ParameterName` works the same as `:ParameterName`, but it can also be set through a [query parameter](https://en.wikipedia.org/wiki/Query_string) in the URL.
-    If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `''1''` and `$y` will be set to the string `''2''`.
+    If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `'1'` and `$y` will be set to the string `'2'`.
     If a query parameter was not provided, it is set to `NULL`.
 
 ### Displaying contents from the database
@@ -153,8 +153,8 @@ There are three types of parameters you can use in your SQL queries:
 Now, users are present in our database, but we can’t see them. Let’s fix that by adding the following code to our `index.sql` file:
 
 ```sql
-SELECT ''list'' AS component, ''Users'' AS title;
-SELECT name AS title,  name || '' is a user on this website.'' as description FROM users;
+SELECT 'list' AS component, 'Users' AS title;
+SELECT name AS title,  name || ' is a user on this website.' as description FROM users;
 ```
 
 ### Your first SQLPage website is ready!
