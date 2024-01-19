@@ -23,7 +23,7 @@
     mt-1 mb-3 {{class}}">
     {{#each_row}}
         <div class="col {{class}}" {{#if id}}id="{{id}}"{{/if}}>
-            <div class="card h-100 {{#if active}}card-active{{/if}}" {{#if embed }}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
+            <div class="card h-100 {{#if active}}card-active{{/if}}" {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
@@ -41,10 +41,20 @@
                             {{{markdown description_md}}}
                         {{~/if~}}
                     </div>
-                    {{~#if embed~}}
-                    <div class="spinner-border card-loading-placeholder" role="status" style="width: 3rem; height: 3rem;">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+                    {{~#if embed ~}}
+                    {{~#if (eq embed_mode "iframe")}}
+                        <iframe src="{{embed}}" 
+                            width="{{#if width}}{{width}}{{else}}100%{{/if}}"
+                            {{~#if height}} height="{{height}}"{{/if~}}
+                            {{~#if allow}} allow="{{allow}}"{{/if~}}
+                            {{~#if sandbox}} sandbox="{{sandbox}}"{{/if~}}
+                        >
+                        </iframe>
+                    {{~else~}}
+                        <div class="spinner-border card-loading-placeholder" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    {{~/if~}}
                     {{~/if~}}
                 </div>
                 {{#if link}}
