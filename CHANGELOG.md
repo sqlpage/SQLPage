@@ -11,6 +11,7 @@
  - Updated default graph colors so that all series are easily distinguishable even when a large number of series are displayed.
  - New `embed` attribute in the `card` component that lets you build multi-column layouts of various components with cards.
   - ![](./examples/cards-with-remote-content/screenshot.png)
+  - Added `id` and `class` attributes to all components, to make it easier to style them with custom CSS and to reference them in intra-page links and custom javascript code.
 
 ## 0.17.1 (2023-12-10)
 

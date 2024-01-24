@@ -146,7 +146,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('text', 'Rendering rich text using markdown', json('[{"component":"text", "contents_md":"\n'||
     '# Markdown in SQLPage\n\n' ||
     '## Simple formatting\n\n' ||
-    'SQLPage supports only plain text as column values, but markdown allows easily adding **bold**, *italics*, and [links](index.sql).\n\n' ||
+    'SQLPage supports only plain text as column values, but markdown allows easily adding **bold**, *italics*, [external links](https://github.com/lovasoa/sqlpage), [links to other pages](/index.sql) and [intra-page links](#my-paragraph). \n\n' ||
     '## Lists\n' ||
     '### Unordered lists\n' ||
     '* SQLPage is easy\n' ||
@@ -182,7 +182,16 @@ INSERT INTO example(component, description, properties) VALUES
             '{"contents":" is a domain-specific language used in programming and designed for managing data held in a "},'||
             '{"contents": "relational database management system", "link": "https://en.wikipedia.org/wiki/Relational_database"},'||
             '{"contents": ". It is particularly useful in handling structured data."}]')
-);
+    ),
+    (
+        'text',
+        'An intra-page link to a section of the page.',
+        json('[
+            {"component":"text", "contents_md":"This is a link to the [next paragraph](#my-paragraph). You can open this link in a new tab and the page will scroll to the paragraph on load."},
+            {"component":"text", "id": "my-paragraph", "contents_md": "This **is** the next paragraph."}
+        ]')
+    )
+;
 
 INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', 'A series of input fields that can be filled in by the user. ' ||
