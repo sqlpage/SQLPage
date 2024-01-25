@@ -16,7 +16,7 @@ Then, they can insert data in the detail forms to update information from the ch
 This example application contains a main form to create users,
 and a second form to create their addresses.
 
-Once an user has been added, multiple addresses can be added to it.
+Once a user has been added, multiple addresses can be added to it.
 
 See https://github.com/lovasoa/SQLpage/discussions/16 for more details.
 

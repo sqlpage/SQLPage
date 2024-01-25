@@ -34,7 +34,7 @@ INSERT INTO example (component, description)
 VALUES (
         'redirect',
         '
-Redirect an user to the login page if they are not logged in:
+Redirect a user to the login page if they are not logged in:
 
 ```sql
 SELECT ''redirect'' AS component, ''login.sql'' AS link
