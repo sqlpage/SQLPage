@@ -190,12 +190,12 @@ For example, if you are using SCP, you can run the following command from your l
 
 `scp -r /path/to/your/sqlpage/folder username@your-vps-ip-address:/path/to/destination`
 
-### Run sqlpage on the server
+### Run SQLPage on the server
 
-Once your SQLPage website files are on the server, you can run sqlpage on the server, just like you did on your local computer. Download the sqlpage for linux binary and upload it to your server.
+Once your SQLPage website files are on the server, you can run SQLPage on the server, just like you did on your local computer. Download the SQLPage for linux binary and upload it to your server.
 
 Then, run the following command on your server:
 
 `./sqlpage`
 
-To access your website, enter the adress of your VPS in your adress bar, followed by the port on which sqlpage runs. For instance: http://123.123.123.123:8080.
+To access your website, enter the address of your VPS in your address bar, followed by the port on which SQLPage runs. For instance: http://123.123.123.123:8080.
