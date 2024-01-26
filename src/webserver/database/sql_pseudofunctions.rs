@@ -305,8 +305,7 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .uploaded_files
             .get(x)
             .and_then(|x| x.content_type.as_ref())
-            .map(|x| x.as_ref())
-            .map(Cow::Borrowed),
+            .map(|x| Cow::Borrowed(x.as_ref())),
         StmtParam::ReadFileAsText(_) => bail!("Nested read_file_as_text() function not allowed",),
         StmtParam::ReadFileAsDataUrl(_) => {
             bail!("Nested read_file_as_data_url() function not allowed",)
