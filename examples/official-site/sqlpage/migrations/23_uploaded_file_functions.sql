@@ -88,7 +88,7 @@ insert into uploaded_files (title, path) values (:title, $url);
 ),
 (
     'uploaded_file_mime_type',
-    '0.17.0',
+    '0.18.0',
     'file-settings',
     'Returns the MIME type of an uploaded file.
 

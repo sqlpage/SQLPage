@@ -35,6 +35,7 @@ pub(super) enum StmtParam {
     SqlPageVersion,
     Literal(String),
     UploadedFilePath(String),
+    UploadedFileMimeType(String),
     ReadFileAsText(Box<StmtParam>),
     ReadFileAsDataUrl(Box<StmtParam>),
     Path,
@@ -95,6 +96,10 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "protocol" => StmtParam::Protocol,
         "uploaded_file_path" => extract_single_quoted_string("uploaded_file_path", arguments)
             .map_or_else(StmtParam::Error, StmtParam::UploadedFilePath),
+        "uploaded_file_mime_type" => {
+            extract_single_quoted_string("uploaded_file_mime_type", arguments)
+                .map_or_else(StmtParam::Error, StmtParam::UploadedFileMimeType)
+        }
         "read_file_as_text" => StmtParam::ReadFileAsText(Box::new(extract_variable_argument(
             "read_file_as_text",
             arguments,
@@ -244,7 +249,7 @@ async fn read_file_as_data_url<'a>(
 }
 
 fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
-    if let StmtParam::UploadedFilePath(name) = param0 {
+    if let StmtParam::UploadedFilePath(name) | StmtParam::UploadedFileMimeType(name) = param0 {
         request.uploaded_files.get(name)?.content_type.as_ref()
     } else {
         None
@@ -295,6 +300,12 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .uploaded_files
             .get(x)
             .and_then(|x| x.file.path().to_str())
+            .map(Cow::Borrowed),
+        StmtParam::UploadedFileMimeType(x) => request
+            .uploaded_files
+            .get(x)
+            .and_then(|x| x.content_type.as_ref())
+            .map(|x| x.as_ref())
             .map(Cow::Borrowed),
         StmtParam::ReadFileAsText(_) => bail!("Nested read_file_as_text() function not allowed",),
         StmtParam::ReadFileAsDataUrl(_) => {
