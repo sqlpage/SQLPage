@@ -6,7 +6,7 @@ insert into groups(name) select :Name where :Name is not null;
 select 'list' as component, 'Groups' as title, 'No group yet' as empty_title;
 select name as title from groups;
 
-select 'form' as component, 'Add an user' as title, 'Add' as validate;
+select 'form' as component, 'Add a user' as title, 'Add' as validate;
 select 'UserName' as name, 'Name' as label;
 select 
     'Memberships[]'  as name,
