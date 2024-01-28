@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 0.18.1 (2024-01-28)
+
+ - Fixes a bug introduced in 0.18.0 where the `chart` component would not respect its `height` attribute.
+
 ## 0.18.0 (2024-01-28)
 
  - Fix small display issue on cards without a title.
