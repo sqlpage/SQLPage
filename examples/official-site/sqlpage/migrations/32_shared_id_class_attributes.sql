@@ -21,13 +21,13 @@ FROM (VALUES
 );
 
 INSERT INTO parameter(component, top_level, name, description, type, optional) 
-SELECT *, 'id', 'id attribute injected as an anchor in HTML. It can be used for scrolling to this item through links (use "#id" in link url).', 'TEXT', TRUE
+SELECT *, 'id', 'id attribute injected as an anchor in HTML. It can be used for scrolling to this item through links (use "#id" in link url). Added in v0.18.0.', 'TEXT', TRUE
 FROM (VALUES
     ('steps', TRUE)
 );
 
 INSERT INTO parameter(component, top_level, name, description, type, optional) 
-SELECT *, 'class', 'class attribute added to the container in HTML. It can be used to apply custom styling to this item through css.', 'TEXT', TRUE
+SELECT *, 'class', 'class attribute added to the container in HTML. It can be used to apply custom styling to this item through css. Added in v0.18.0.', 'TEXT', TRUE
 FROM (VALUES
     ('alert', TRUE),
     ('breadcrumb', TRUE),
