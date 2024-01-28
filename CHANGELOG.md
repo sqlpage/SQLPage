@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.18.0
+## 0.18.0 (2024-01-28)
 
  - Fix small display issue on cards without a title.
  - New component: [`tracking`](https://sql.ophir.dev/documentation.sql?component=tracking#component) for beautiful and compact status reports.

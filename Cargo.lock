@@ -1688,9 +1688,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
+checksum = "cf2a4f498956c7723dc280afc6a37d0dec50b39a29e232c6187ce4503703e8c2"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.3",
@@ -2864,7 +2864,7 @@ dependencies = [
 
 [[package]]
 name = "sqlpage"
-version = "0.17.1"
+version = "0.18.0"
 dependencies = [
  "actix-multipart",
  "actix-rt",
