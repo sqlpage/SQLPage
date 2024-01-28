@@ -5,6 +5,7 @@ use crate::{app_config::AppConfig, ON_CONNECT_FILE};
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
+    sqlite::{Function, SqliteFunctionCtx},
     ConnectOptions, Executor,
 };
 
@@ -128,6 +129,18 @@ fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfi
             *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
         }
         *sqlite_options = std::mem::take(sqlite_options)
-            .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+            .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()))
+            .function(Function::new("upper", |ctx: &SqliteFunctionCtx| match ctx
+                .try_get_arg::<String>(0)
+            {
+                Ok(s) => ctx.set_result(s.to_uppercase()),
+                Err(e) => ctx.set_error(&e.to_string()),
+            }))
+            .function(Function::new("lower", |ctx: &SqliteFunctionCtx| match ctx
+                .try_get_arg::<String>(0)
+            {
+                Ok(s) => ctx.set_result(s.to_lowercase()),
+                Err(e) => ctx.set_error(&e.to_string()),
+            }));
     }
 }
