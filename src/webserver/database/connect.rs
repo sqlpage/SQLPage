@@ -127,5 +127,7 @@ fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfi
             log::info!("Loading SQLite extension: {}", extension_name);
             *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
         }
+        *sqlite_options = std::mem::take(sqlite_options)
+            .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()));
     }
 }
