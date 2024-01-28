@@ -13,6 +13,7 @@
   - ![](./examples/cards-with-remote-content/screenshot.png)
   - Added `id` and `class` attributes to all components, to make it easier to style them with custom CSS and to reference them in intra-page links and custom javascript code.
  - Implemented [uploaded_file_mime_type](https://sql.ophir.dev/functions.sql?function=uploaded_file_mime_type#function)
+ - Update the built-in SQLite database to version 3.45.0: https://www.sqlite.org/releaselog/3_45_0.html
 
 ## 0.17.1 (2023-12-10)
 
