@@ -95,7 +95,9 @@ async fn test_files() {
             continue;
         }
         let req_str = format!("/{}?x=1", test_file_path_string);
-        let resp = req_path_with_app_data(&req_str, app_data.clone()).await.unwrap();
+        let resp = req_path_with_app_data(&req_str, app_data.clone())
+            .await
+            .unwrap();
         let body = test::read_body(resp).await;
         assert!(body.starts_with(b"<!DOCTYPE html>"));
         // the body should contain the string "It works!" and should not contain the string "error"
