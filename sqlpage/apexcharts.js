@@ -35,6 +35,8 @@ function sqlpage_chart() {
     for (const c of document.querySelectorAll("[data-pre-init=chart]")) {
         try {
             const data = JSON.parse(c.querySelector("data").innerText);
+            const chartContainer = c.querySelector('.chart');
+            chartContainer.innerHTML = "";
             const is_timeseries = !!data.time;
             /** @type { Series } */
             const series_map = {};
@@ -71,7 +73,7 @@ function sqlpage_chart() {
                     type: data.type || 'line',
                     fontFamily: 'inherit',
                     parentHeightOffset: 0,
-                    height: c.style.height,
+                    height: chartContainer.style.height,
                     stacked: !!data.stacked,
                     toolbar: {
                         show: !!data.toolbar,
@@ -143,8 +145,7 @@ function sqlpage_chart() {
                 series,
             };
             if (labels) options.labels = labels;
-            c.innerHTML = "";
-            const chart = new ApexCharts(c, options);
+            const chart = new ApexCharts(chartContainer, options);
             chart.render();
             if (window.charts) window.charts.push(chart);
             else window.charts = [chart];
