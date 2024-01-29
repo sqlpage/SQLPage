@@ -4,8 +4,8 @@ VALUES
     (
         'New SQLPage, and a talk at PGConf.eu',
         'SQLPage v0.18.0 is out, and there is detailed introduction to SQLPage on youtube',
-        'code-minus',
-        '2023-08-03',
+        'brand-youtube',
+        '2024-01-29',
         '
 [SQLPage](https://sql.ophir.dev) is a small web server that renders your SQL queries as beautiful interactive websites. This release has seen significant new features and fixes from new contributors, which is great and show the health of the project ! If you feel something is missing or isn''t working quite right, all your contributions are always welcome. 
 
