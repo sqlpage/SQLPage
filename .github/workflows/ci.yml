@@ -24,7 +24,7 @@ jobs:
   compile_and_lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up cargo cache
       uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - run: cargo fmt --all -- --check
@@ -39,7 +39,7 @@ jobs:
       matrix:
         database: ['postgres', 'mysql', 'mssql']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up cargo cache
       uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - name: Start database container
@@ -52,7 +52,7 @@ jobs:
   windows_test:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up cargo cache
       uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - run: cargo test
