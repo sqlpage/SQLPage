@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 0.18.2 (2024-01-29)
+
+ - Completes the 0.18.1 fix for the `chart` component: fix missing chart title.
+
 ## 0.18.1 (2024-01-28)
 
  - Fixes a bug introduced in 0.18.0 where the `chart` component would not respect its `height` attribute.
