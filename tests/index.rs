@@ -85,6 +85,7 @@ async fn test_concurrent_requests() {
 async fn test_files() {
     // Iterate over all the sql test files in the tests/ directory
     let path = std::path::Path::new("tests/sql_test_files");
+    let app_data = make_app_data().await;
     for entry in std::fs::read_dir(path).unwrap() {
         let entry = entry.unwrap();
         let test_file_path = entry.path();
@@ -94,7 +95,7 @@ async fn test_files() {
             continue;
         }
         let req_str = format!("/{}?x=1", test_file_path_string);
-        let resp = req_path(&req_str).await.unwrap();
+        let resp = req_path_with_app_data(&req_str, app_data.clone()).await.unwrap();
         let body = test::read_body(resp).await;
         assert!(body.starts_with(b"<!DOCTYPE html>"));
         // the body should contain the string "It works!" and should not contain the string "error"
