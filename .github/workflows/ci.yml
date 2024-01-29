@@ -26,7 +26,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up cargo cache
-      uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
+      uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - run: cargo fmt --all -- --check
     - run: cargo clippy
     - run: cargo test --all-features
@@ -41,7 +41,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up cargo cache
-      uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
+      uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - name: Start database container
       run: docker-compose up -d ${{ matrix.database }}
     - name: Run tests against ${{ matrix.database }}
@@ -54,7 +54,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up cargo cache
-      uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
+      uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - run: cargo test
 
   docker_build:
