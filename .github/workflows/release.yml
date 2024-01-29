@@ -27,7 +27,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
       - run: cargo build --profile superoptimized --locked
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: sqlpage ${{ matrix.os }}
           path: ${{ matrix.binary_path }}
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -t sqlpage-lambda-builder . -f lambda.Dockerfile --target builder
       - run: docker run sqlpage-lambda-builder cat deploy.zip > sqlpage-aws-lambda.zip
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: sqlpage aws lambda serverless image
           path: sqlpage-aws-lambda.zip
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
       - run: |
           rm -rf sqlpage/templates/*.handlebars;
           chmod +x sqlpage*/sqlpage;
