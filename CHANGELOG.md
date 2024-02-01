@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## 0.18.3 (unreleased)
+
+ - Updated dependencies
+   - Updated sql parser, to add [support for new syntax](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md), including:
+     - MySQL's [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html) table-valued function, that allows easily iterating over json structures
+     - MySQL's [`CALL`](https://dev.mysql.com/doc/refman/8.0/en/call.html) statements, to call stored procedures.
+     - PostgreSQL `^@` starts-with operator
+
 ## 0.18.2 (2024-01-29)
 
  - Completes the 0.18.1 fix for the `chart` component: fix missing chart title.

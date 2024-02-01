@@ -24,7 +24,7 @@ actix-web = { version = "4", features = ["rustls-0_21", "cookies"] }
 percent-encoding = "2.2.0"
 handlebars = "5.0.0-beta.0"
 log = "0.4.17"
-env_logger = "0.10.0"
+env_logger = "0.11.1"
 mime_guess = "2.0.4"
 futures-util = "0.3.21"
 tokio = { version = "1.24.1", features = ["macros", "rt", "process", "sync"] }
@@ -33,12 +33,12 @@ anyhow = "1"
 serde = "1"
 serde_json = { version = "1.0.82", features = ["preserve_order"] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.40.0", features = ["visitor"] }
+sqlparser = { version = "0.43.1", features = ["visitor"] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
 include_dir = "0.7.2"
-config = { version = "0.13.3", features = ["json"] }
+config = { version = "0.14.0", features = ["json"] }
 markdown = { version = "1.0.0-alpha.15", features = ["log"] }
 password-hash = "0.5.0"
 argon2 = "0.5.0"
