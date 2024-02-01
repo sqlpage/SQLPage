@@ -171,6 +171,9 @@ To run on a server, you can use [the docker image](https://hub.docker.com/r/lova
 - Optionally, you can also mount a directory containing sqlpage's configuration file,
   custom components, and migrations
   (see [configuration.md](./configuration.md)) to `/etc/sqlpage` in the container.
+     - For instance, you can use:
+       - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd)/source:/var/www" --volume "$(pwd)/configuration:/etc/sqlpage:ro" --rm lovasoa/sqlpage`
+     - And place your website in a folder named `source` and your `sqlpage.json` in a folder named `configuration`.
 - If you want to build your own docker image, taking the raw sqlpage image as a base is not recommended, since it is extremely stripped down and probably won't contain the dependencies you need. Instead, you can take debian as a base and simply copy the sqlpage binary from the official image to your own image:
   - ```Dockerfile
     FROM debian:stable-slim
