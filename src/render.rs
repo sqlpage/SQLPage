@@ -505,8 +505,7 @@ impl<W: std::io::Write> RenderContext<W> {
         let current_component_index = self
             .current_component
             .as_ref()
-            .map(|c| c.component_index)
-            .unwrap_or(1);
+            .map_or(1, |c| c.component_index);
         let new_component = Self::create_renderer(
             component,
             Arc::clone(&self.app_state),
@@ -609,7 +608,10 @@ impl SplitTemplateRenderer {
         render_context
             .block_mut()
             .expect("context created without block")
-            .set_local_var("component_index", JsonValue::Number(self.component_index.into()));
+            .set_local_var(
+                "component_index",
+                JsonValue::Number(self.component_index.into()),
+            );
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
         self.split_template.before_list.render(
