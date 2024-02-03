@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.18.3 (unreleased)
+## 0.18.3 (2024-02-03)
 
  - Updated dependencies
    - Updated sql parser, to add [support for new syntax](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md), including:

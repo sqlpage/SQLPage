@@ -2952,7 +2952,7 @@ dependencies = [
 
 [[package]]
 name = "sqlpage"
-version = "0.18.2"
+version = "0.18.3"
 dependencies = [
  "actix-multipart",
  "actix-rt",
