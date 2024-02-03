@@ -13,14 +13,7 @@ INSERT INTO parameter (
         top_level,
         optional
     )
-VALUES (
-        'carousel',
-        'name',
-        'An unique string to identify the caroussel component in the HTML page.',
-        'TEXT',
-        TRUE,
-        FALSE
-    ),
+VALUES
     (
         'carousel',
         'title',

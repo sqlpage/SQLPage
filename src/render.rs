@@ -295,7 +295,7 @@ impl<W: std::io::Write> RenderContext<W> {
         } else {
             PAGE_SHELL_COMPONENT
         };
-        let mut shell_renderer = Self::create_renderer(shell_component, Arc::clone(&app_state))
+        let mut shell_renderer = Self::create_renderer(shell_component, Arc::clone(&app_state), 0)
             .await
             .with_context(|| "The shell component should always exist")?;
 
@@ -484,12 +484,17 @@ impl<W: std::io::Write> RenderContext<W> {
     async fn create_renderer(
         component: &str,
         app_state: Arc<AppState>,
+        component_index: usize,
     ) -> anyhow::Result<SplitTemplateRenderer> {
         let split_template = app_state
             .all_templates
             .get_template(&app_state, component)
             .await?;
-        Ok(SplitTemplateRenderer::new(split_template, app_state))
+        Ok(SplitTemplateRenderer::new(
+            split_template,
+            app_state,
+            component_index,
+        ))
     }
 
     /// Set a new current component and return the old one
@@ -497,7 +502,17 @@ impl<W: std::io::Write> RenderContext<W> {
         &mut self,
         component: &str,
     ) -> anyhow::Result<Option<SplitTemplateRenderer>> {
-        let new_component = Self::create_renderer(component, Arc::clone(&self.app_state)).await?;
+        let current_component_index = self
+            .current_component
+            .as_ref()
+            .map(|c| c.component_index)
+            .unwrap_or(1);
+        let new_component = Self::create_renderer(
+            component,
+            Arc::clone(&self.app_state),
+            current_component_index + 1,
+        )
+        .await?;
         Ok(self.current_component.replace(new_component))
     }
 
@@ -552,16 +567,22 @@ pub struct SplitTemplateRenderer {
     ctx: Context,
     app_state: Arc<AppState>,
     row_index: usize,
+    component_index: usize,
 }
 
 impl SplitTemplateRenderer {
-    fn new(split_template: Arc<SplitTemplate>, app_state: Arc<AppState>) -> Self {
+    fn new(
+        split_template: Arc<SplitTemplate>,
+        app_state: Arc<AppState>,
+        component_index: usize,
+    ) -> Self {
         Self {
             split_template,
             local_vars: None,
             app_state,
             row_index: 0,
             ctx: Context::null(),
+            component_index,
         }
     }
     fn name(&self) -> &str {
@@ -585,6 +606,10 @@ impl SplitTemplateRenderer {
                 .unwrap_or_default(),
         );
         let mut render_context = handlebars::RenderContext::new(None);
+        render_context
+            .block_mut()
+            .expect("context created without block")
+            .set_local_var("component_index", JsonValue::Number(self.component_index.into()));
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
         self.split_template.before_list.render(
@@ -678,7 +703,7 @@ mod tests {
         let mut output = Vec::new();
         let config = app_config::tests::test_config();
         let app_state = Arc::new(AppState::init(&config).await.unwrap());
-        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state);
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0);
         rdr.render_start(&mut output, json!({"name": "SQL"}))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
@@ -699,7 +724,7 @@ mod tests {
         let mut output = Vec::new();
         let config = app_config::tests::test_config();
         let app_state = Arc::new(AppState::init(&config).await.unwrap());
-        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state);
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0);
         rdr.render_start(&mut output, json!(null))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;

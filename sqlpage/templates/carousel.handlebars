@@ -1,14 +1,14 @@
-<div class="card my-2 col-md-{{default width 12}}{{#if center}} mx-auto{{/if}}">
+<div class="card my-2 col-md-{{default width 12}}{{#if center}} mx-auto{{/if}} {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     <div class="card-body">
         {{#if title}}
             <div class="d-flex align-items-center">
                 <div class="subheader">{{title}}</div>
             </div>
         {{/if}}
-        <div id="{{name}}" class="carousel slide{{#if fade}} carousel-fade{{/if}}" {{#if auto}}data-bs-ride="carousel"{{/if}}>
+        <div id="_sqlpage_carousel_{{@component_index}}" class="carousel slide{{#if fade}} carousel-fade{{/if}}" {{#if auto}}data-bs-ride="carousel"{{/if}}>
             <div class="carousel-indicators{{#if indicators}} carousel-indicators-{{indicators}}{{/if}}{{#if vertical}} carousel-indicators-vertical{{/if}}">
                 {{#each_row}}
-                    <button type="button" data-bs-target="#{{../name}}" data-bs-slide-to="{{@row_index}}" {{#if (eq @row_index 0)}}class="active"{{/if}}></button>
+                    <button type="button" data-bs-target="#_sqlpage_carousel_{{@../component_index}}" data-bs-slide-to="{{@row_index}}" {{#if (eq @row_index 0)}}class="active"{{/if}}></button>
                     {{#delay}}
                         {{flush_delayed}}
                         <div class="carousel-item {{#if (eq @row_index 0)}}active{{/if}}">
