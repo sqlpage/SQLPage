@@ -14,6 +14,7 @@
                         <div class="carousel-item {{#if (eq @row_index 0)}}active{{/if}}">
                             <img class="d-block w-100" alt="{{image}}" src="{{image}}" />
                             {{#if title}}
+                            <div class="carousel-caption-background d-none d-md-block"></div>
                             <div class="carousel-caption d-none d-md-block">
                                 <h5>{{title}}</h5>
                                 {{#if description_md}}<p>{{{markdown description_md}}}</p>{{else}}{{#if description}}<p>{{description}}</p>{{/if}}{{/if}}
