@@ -7,6 +7,8 @@
      - MySQL's [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html) table-valued function, that allows easily iterating over json structures
      - MySQL's [`CALL`](https://dev.mysql.com/doc/refman/8.0/en/call.html) statements, to call stored procedures.
      - PostgreSQL `^@` starts-with operator
+ - New [carousel](https://sql.ophir.dev/documentation.sql?component=carousel#component) component to display a carousel of images.
+ - For those who write [custom components](https://sql.ophir.dev/custom_components.sql), a new `@component_index` variable is available in templates to get the index of the current component in the page. This makes it easy to generate unique ids for components.
 
 ## 0.18.2 (2024-01-29)
 

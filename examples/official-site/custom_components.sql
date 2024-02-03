@@ -111,6 +111,14 @@ and SQLPage adds a few more:
 - `each_row`: iterates over the rows of a query result
 - `typeof`: returns the type of a value (`string`, `number`, `boolean`, `object`, `array`, `null`)
 
+### Attributes
+
+In addition to the parameters you pass to your components in your SQL queries,
+SQLPage adds the following attributes to the context of your components:
+
+ - `@component_index` : the index of the current component in the page. Useful to generate unique ids or classes.
+ - `@row_index` : the index of the current row in the current component. Useful to implement special behavior on the first row, for instance.
+
 ## Overwriting the default components
 
 You can overwrite the default components, including the `shell` component,

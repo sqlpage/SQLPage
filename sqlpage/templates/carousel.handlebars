@@ -1,0 +1,40 @@
+<div class="card my-2 col-md-{{default width 12}}{{#if center}} mx-auto{{/if}} {{class}}" {{#if id}}id="{{id}}"{{/if}}>
+    <div class="card-body">
+        {{#if title}}
+            <div class="d-flex align-items-center">
+                <div class="subheader">{{title}}</div>
+            </div>
+        {{/if}}
+        <div id="_sqlpage_carousel_{{@component_index}}" class="carousel slide{{#if fade}} carousel-fade{{/if}}" {{#if auto}}data-bs-ride="carousel"{{/if}}>
+            <div class="carousel-indicators{{#if indicators}} carousel-indicators-{{indicators}}{{/if}}{{#if vertical}} carousel-indicators-vertical{{/if}}">
+                {{#each_row}}
+                    <button type="button" data-bs-target="#_sqlpage_carousel_{{@../component_index}}" data-bs-slide-to="{{@row_index}}" {{#if (eq @row_index 0)}}class="active"{{/if}}></button>
+                    {{#delay}}
+                        {{flush_delayed}}
+                        <div class="carousel-item {{#if (eq @row_index 0)}}active{{/if}}">
+                            <img class="d-block w-100" alt="{{image}}" src="{{image}}" />
+                            {{#if title}}
+                            <div class="carousel-caption-background d-none d-md-block"></div>
+                            <div class="carousel-caption d-none d-md-block">
+                                <h5>{{title}}</h5>
+                                {{#if description_md}}<p>{{{markdown description_md}}}</p>{{else}}{{#if description}}<p>{{description}}</p>{{/if}}{{/if}}
+                            </div>
+                            {{/if}}
+                        </div>
+                    {{/delay}}
+                {{/each_row}}
+            </div>
+            <div class="carousel-inner">{{flush_delayed}}</div>
+        </div>
+    </div>
+    {{#if controls}}
+        <a class="carousel-control-prev" data-bs-target="#_sqlpage_carousel_{{@component_index}}" role="button" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </a>
+        <a class="carousel-control-next" data-bs-target="#_sqlpage_carousel_{{@component_index}}" role="button" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </a>
+    {{/if}}
+</div>
