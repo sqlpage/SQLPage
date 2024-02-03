@@ -56,10 +56,10 @@ VALUES (
     (
         'carousel',
         'width',
-        'Width of the component, between 1 and 12.',
+        'Width of the component, between 1 and 12. Default is 12.',
         'NUMBER',
         TRUE,
-        FALSE
+        TRUE
     ),
     (
         'carousel',
@@ -116,9 +116,9 @@ VALUES (
         'A basic example of carousel',
         JSON(
             '[
-                {"component":"carousel","name":"cats1","title":"Cats","width":6},
-                {"image":"https://placekitten.com/408/285"},
-                {"image":"https://placekitten.com/408/286"}
+                {"component":"carousel","name":"cats1","title":"Famous Database Animals"},
+                {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Elefantes_africanos_de_sabana_%28Loxodonta_africana%29%2C_Elephant_Sands%2C_Botsuana%2C_2018-07-28%2C_DD_114-117_PAN.jpg/2560px-Elefantes_africanos_de_sabana_%28Loxodonta_africana%29%2C_Elephant_Sands%2C_Botsuana%2C_2018-07-28%2C_DD_114-117_PAN.jpg"},
+                {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Penguin_Island_panorama_with_ferry_and_dolphins_in_foreground%2C_March_2023_06.jpg/1280px-Penguin_Island_panorama_with_ferry_and_dolphins_in_foreground%2C_March_2023_06.jpg"}
                 ]'
         )
     ),
