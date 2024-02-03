@@ -1,5 +1,12 @@
 # CHANGELOG.md
 
+## 0.19.0 (unreleased)
+
+ - Updated the chart component to use the latest version of the charting library
+   - see: https://github.com/apexcharts/apexcharts.js/releases/tag/v3.45.2
+ - Updated Icon library with new icons
+   - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
+
 ## 0.18.3 (2024-02-03)
 
  - Updated dependencies
