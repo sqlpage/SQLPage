@@ -5,7 +5,7 @@
                 <div class="subheader">{{title}}</div>
             </div>
         {{/if}}
-        <div id="{{name}}" class="carousel slide{{#if fade}} carousel-fade{{/if}}" data-bs-ride="carousel">
+        <div id="{{name}}" class="carousel slide{{#if fade}} carousel-fade{{/if}}" {{#if auto}}data-bs-ride="carousel"{{/if}}>
             <div class="carousel-indicators{{#if indicators}} carousel-indicators-{{indicators}}{{/if}}{{#if vertical}} carousel-indicators-vertical{{/if}}">
                 {{#each_row}}
                     <button type="button" data-bs-target="#{{../name}}" data-bs-slide-to="{{@row_index}}" {{#if (eq @row_index 0)}}class="active"{{/if}}></button>
