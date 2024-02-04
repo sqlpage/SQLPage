@@ -7,7 +7,7 @@ VALUES (
         'code',
         '0.9.0'
     );
--- Insert the parameters for the http_header component into the parameter table
+-- Insert the parameters for the json component into the parameter table
 INSERT INTO parameter (
         component,
         name,
@@ -24,7 +24,7 @@ VALUES (
         TRUE,
         FALSE
     );
--- Insert an example usage of the http_header component into the example table
+-- Insert an example usage of the json component into the example table
 INSERT INTO example (component, description)
 VALUES (
         'json',

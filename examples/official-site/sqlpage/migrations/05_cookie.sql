@@ -1,4 +1,4 @@
--- Insert the http_header component into the component table
+-- Insert the cookie component into the component table
 INSERT INTO component (name, description, icon)
 VALUES (
         'cookie',
@@ -10,7 +10,7 @@ VALUES (
         After being set, a cookie can be accessed anywhere in your SQL code using the `sqlpage.cookie(''cookie_name'')` pseudo-function.',
         'cookie'
     );
--- Insert the parameters for the http_header component into the parameter table
+-- Insert the parameters for the cookie component into the parameter table
 INSERT INTO parameter (
         component,
         name,
@@ -99,7 +99,7 @@ VALUES (
         TRUE,
         TRUE
     );
--- Insert an example usage of the http_header component into the example table
+-- Insert an example usage of the cookie component into the example table
 INSERT INTO example (component, description)
 VALUES (
         'cookie',

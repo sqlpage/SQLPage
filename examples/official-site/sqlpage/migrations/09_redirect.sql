@@ -12,7 +12,7 @@ VALUES (
         'arrow-right',
         '0.7.2'
     );
--- Insert the parameters for the http_header component into the parameter table
+-- Insert the parameters for the redirect component into the parameter table
 INSERT INTO parameter (
         component,
         name,
@@ -29,7 +29,7 @@ VALUES (
         TRUE,
         FALSE
     );
--- Insert an example usage of the http_header component into the example table
+-- Insert an example usage of the redirect component into the example table
 INSERT INTO example (component, description)
 VALUES (
         'redirect',

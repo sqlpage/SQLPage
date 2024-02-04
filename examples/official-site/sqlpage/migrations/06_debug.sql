@@ -1,11 +1,11 @@
--- Insert the http_header component into the component table
+-- Insert the debug component into the component table
 INSERT INTO component (name, description, icon)
 VALUES (
         'debug',
         'Display all the parameters passed to the component. Useful for debugging: just replace the name of the component you want to debug with ''debug''.',
         'bug'
     );
--- Insert an example usage of the http_header component into the example table
+-- Insert an example usage of the debug component into the example table
 INSERT INTO example (component, description, properties)
 VALUES (
         'debug',

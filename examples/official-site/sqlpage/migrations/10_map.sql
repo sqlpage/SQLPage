@@ -5,7 +5,7 @@ VALUES (
         'map',
         '0.8.0'
     );
--- Insert the parameters for the http_header component into the parameter table
+-- Insert the parameters for the map component into the parameter table
 INSERT INTO parameter (
         component,
         name,
