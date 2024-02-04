@@ -2,14 +2,20 @@
 INSERT INTO component (name, description, icon)
 VALUES (
         'http_header',
-        'An advanced component that can be used to create redirections, set a custom caching policy to your pages, or set any HTTP header.
+        'An advanced component that can be used to create redirections, set a custom caching
+            policy to your pages, and set any HTTP header, among other things.
         If you are a beginner, you probably don''t need this component.
-        When used, this component has to be the first component in the page, because once the page is sent to the browser, it is too late to change the headers.
-        Any valid HTTP header can be used as a top-level parameter for this component.
-        HTTP headers are additional pieces of information sent with responses to web requests that provide instructions
-            or metadata about the data being sent — for example,
+        HTTP headers are additional pieces of information sent with responses to web requests
+            that provide instructions or metadata about the data being sent — for example,
             setting cache control directives to control caching behavior
-            or specifying the content type of a response.',
+            or specifying the content type of a response.
+        When used, this component has to be the first component in the page, because once the
+            page is sent to the browser, it is too late to change the headers.
+        Any valid HTTP header name can be used as a top-level parameter for this component.
+        The examples shown here are just that, examples; and you can create any custom header
+            if needed simply by declaring it.
+        For example, the htmx javascript library uses an `HX-Redirect` header to prompt client-side redirects.
+        Note: if your header has hyphens in its name, you''ll need to enclose it (standard SQL uses double quotes).',
         'world-www'
     );
 -- Insert the parameters for the http_header component into the parameter table
@@ -23,7 +29,7 @@ INSERT INTO parameter (
     )
 VALUES (
         'http_header',
-        'Cache-Control',
+        '"Cache-Control"',
         'Directives for how long the page should be cached by the browser. Set this to max-age=N to keep the page in cache for N seconds.',
         'TEXT',
         TRUE,
@@ -31,7 +37,7 @@ VALUES (
     ),
     (
         'http_header',
-        'Content-Disposition',
+        '"Content-Disposition"',
         'Provides instructions on how the response content should be displayed or handled by the client, such as inline or as an attachment.',
         'TEXT',
         TRUE,
@@ -47,7 +53,7 @@ VALUES (
     ),
     (
         'http_header',
-        'Set-Cookie',
+        '"Set-Cookie"',
         'Sets a cookie in the client browser, used for session management and storing user-related information.',
         'TEXT',
         TRUE,
@@ -55,8 +61,16 @@ VALUES (
     ),
     (
         'http_header',
-        'Access-Control-Allow-Origin',
+        '"Access-Control-Allow-Origin"',
         'Specifies which origins are allowed to access the resource in a cross-origin request, used for implementing Cross-Origin Resource Sharing (CORS).',
+        'TEXT',
+        TRUE,
+        TRUE
+    ),
+    (
+        'http_header',
+        '"HX-Redirect"',
+        'An example of a custom header -- this one is used by the htmx javascript library to prompt its client-side redirects.',
         'TEXT',
         TRUE,
         TRUE
@@ -77,7 +91,7 @@ VALUES (
         JSON(
             '[{
                     "component": "http_header",
-                    "Cache-Control": "public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400"
+                    "\"Cache-Control\"": "public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400"
         }]'
         )
     ),
