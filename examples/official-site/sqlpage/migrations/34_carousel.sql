@@ -128,7 +128,7 @@ VALUES (
         'An advanced example of carousel with controls',
         JSON(
             '[
-                {"component":"carousel","name":"cats2","title":"Cats","width":6,"center":true,"controls":true,"auto":true},
+                {"component":"carousel","title":"Cats","width":6,"center":true,"controls":true,"auto":true},
                 {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Cat_Sphynx._Kittens._img_11.jpg/1024px-Cat_Sphynx._Kittens._img_11.jpg","title":"A first cat","description":"The cat (Felis catus), commonly referred to as the domestic cat or house cat, is the only domesticated species in the family Felidae."},
                 {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Cat_close-up_2004_b.jpg/1280px-Cat_close-up_2004_b.jpg","title":"Another cat"}
                 ]'
