@@ -135,7 +135,12 @@ select
                                         or (parent.type = 'array' and parent.path = '$'))
                                 ),
                                 key_val_padding as (select
-                                    CASE WHEN key LIKE '% %' THEN format('"%s"', replace(key, '"', '""')) ELSE key END as key,
+                                    CASE 
+                                        WHEN key LIKE '% %' THEN
+                                                format('"%s"', replace(key, '"', '""'))
+                                        ELSE
+                                            key
+                                    END as key,
                                     val,
                                     1 + max(0, max(case when length(val) < 30 then length(val) else 0 end) over () - length(val)) as padding
                                     from key_val
