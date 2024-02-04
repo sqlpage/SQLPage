@@ -136,8 +136,8 @@ select
                                 ),
                                 key_val_padding as (select
                                     CASE 
-                                        WHEN key LIKE '% %' THEN
-                                                format('"%s"', replace(key, '"', '""'))
+                                        WHEN (key LIKE '% %') or (key LIKE '%-%') THEN
+                                                format('"%w"', key)
                                         ELSE
                                             key
                                     END as key,
