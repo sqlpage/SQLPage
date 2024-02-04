@@ -2,14 +2,25 @@
 INSERT INTO component (name, description, icon)
 VALUES (
         'http_header',
-        'An advanced component that can be used to create redirections, set a custom caching policy to your pages, or set any HTTP header.
+        'An advanced component to set arbitrary HTTP headers: can be used to set a custom caching policy to your pages, or implement custom redirections, for example.
         If you are a beginner, you probably don''t need this component.
+
         When used, this component has to be the first component in the page, because once the page is sent to the browser, it is too late to change the headers.
-        Any valid HTTP header can be used as a top-level parameter for this component.
+
         HTTP headers are additional pieces of information sent with responses to web requests that provide instructions
-            or metadata about the data being sent — for example,
-            setting cache control directives to control caching behavior
-            or specifying the content type of a response.',
+        or metadata about the data being sent — for example,
+        setting cache control directives to control caching behavior
+        or specifying the content type of a response.
+        
+        Any valid HTTP header name can be used as a top-level parameter for this component.
+        The examples shown here are just that, examples; and you can create any custom header
+        if needed simply by declaring it.
+        
+        If your header''s name contains a dash or any other special character,
+        you will have to use your database''s quoting mechanism to declare it.
+        In standard SQL, you can use double quotes to quote identifiers (like "X-My-Header"),
+        in Microsoft SQL Server, you can use square brackets (like [X-My-Header]).
+        ',
         'world-www'
     );
 -- Insert the parameters for the http_header component into the parameter table
@@ -89,6 +100,16 @@ VALUES (
             '[{
                     "component": "http_header",
                     "Location": "/another-page.sql"
+            }]'
+        )
+    ),
+    (
+        'http_header',
+        'Set a custom non-standard header for the response. In this example, the response will include a custom header named X-My-Header with the value "my value".',
+        JSON(
+            '[{
+                    "component": "http_header",
+                    "X-My-Header": "my value"
             }]'
         )
     );
