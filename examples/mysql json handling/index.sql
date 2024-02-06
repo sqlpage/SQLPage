@@ -19,16 +19,10 @@ from groups;
 
 insert into users(name) select :UserName where :UserName is not null;
 insert into group_members(group_id, user_id)
-select CAST(json_unquote(json_elems.json_value) AS INT), last_insert_id()
-from (
-    with recursive json_elems(n, json_value) as (
-        select 0, json_extract(:Memberships, '$[0]')
-        union all
-        select n + 1, json_extract(:Memberships, concat('$[', n + 1, ']'))
-        from json_elems
-        where json_value is not null
-    ) select * from json_elems where json_value is not null
-) as json_elems
+select group_name, last_insert_id()
+from json_table(:Memberships, '$[*]' columns (
+    group_name int path '$'
+)) as json_elems
 where :Memberships is not null;
 
 select 'list' as component, 'Users' as title, 'No user yet' as empty_title;
