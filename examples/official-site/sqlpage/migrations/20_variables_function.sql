@@ -59,31 +59,24 @@ FROM OPENJSON(''{"x":"y"}'');
 
 #### In MySQL
 
-MySQL has [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html), which is less straightforward to use.
-
-Outside of sqlpage, one can define a procedure :
-
-```sql
-DELIMITER //
-CREATE PROCEDURE process_survey_answer(jsonData JSON)
-BEGIN
-  insert into survey_answers (question_id, answer)
-  SELECT
-    var_name as "key",
-    JSON_UNQUOTE(JSON_EXTRACT(jsonData, CONCAT(''$."'', var_name, ''"''))) as "value"
-  FROM JSON_TABLE(
-    JSON_KEYS(jsonData),
-    ''$[*]'' COLUMNS (var_name text PATH ''$'' ERROR ON ERROR)
-  ) AS vars;
-
-END//
-DELIMITER ;
-```
-
-then in `handle_survey_answer.sql` :
+MySQL has [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html), 
+and [`JSON_KEYS`](https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-keys)
+which are a little bit less straightforward to use:
 
 ```sql
-CALL process_survey_answer(sqlpage.variables(''post''));
+INSERT INTO survey_answers (question_id, answer)
+SELECT
+    question_id,
+    json_unquote(
+        json_extract(
+            sqlpage.variables(''post''),
+            concat(''$."'', question_id, ''"'')
+        )
+    )
+FROM json_table(
+    json_keys(sqlpage.variables(''post'')),
+    ''$[*]'' columns (question_id int path ''$'')
+) as question_ids
 ```
 
 '
