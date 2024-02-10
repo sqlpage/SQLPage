@@ -66,32 +66,36 @@
                             <option value="{{value}}" {{#if (or (eq ../value value) selected)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                         </select>
-                    {{else}} 
-                        <input name="{{name}}" class="form-control {{class}}" 
-                            {{~#if type}} type="{{type}}" {{/if~}}
-                            {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
-                            {{~#if value}} value="{{value}}" {{/if~}}
-                            {{~#if (or max (eq max 0))}} max="{{max}}" {{/if~}}
-                            {{~#if (or min (eq min 0))}} min="{{min}}" {{/if~}}
-                            {{~#if step}} step="{{step}}" {{/if~}}
-                            {{~#if minlength}} minlength="{{minlength}}" {{/if~}}
-                            {{~#if maxlength}} maxlength="{{maxlength}}" {{/if~}}
-                            {{~#if pattern}} pattern="{{pattern}}" {{/if~}}
-                            {{~#if required}} required="required" {{/if~}}
-                            {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
-                            {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
-                            {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
-                            {{~#if formaction}}formaction="{{formaction}}" {{/if~}}
-                            {{~#if formenctype}}formenctype="{{formenctype}}" {{/if~}}
-                            {{~#if formmethod}}formmethod="{{formmethod}}" {{/if~}}
-                            {{~#if formnovalidate}}formnovalidate="{{formnovalidate}}" {{/if~}}
-                            {{~#if formtarget}}formtarget="{{formtarget}}" {{/if~}}
-                            {{~#if list}}list="{{list}}" {{/if~}}
-                            {{~#if multiple}}multiple="{{multiple}}" {{/if~}}
-                            {{~#if accept}}accept="{{accept}}" {{/if~}}
-                            {{~#if autofocus}}autofocus {{/if~}}  
-                        >
-                    {{/if}}
+                    {{else}}
+			            <div class="input-group">
+			                {{#if prefix}}<span class="input-group-text">{{prefix}}</span>{{/if}}
+                            <input name="{{name}}" class="form-control {{class}}" 
+                                {{~#if type}} type="{{type}}" {{/if~}}
+                                {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
+                                {{~#if value}} value="{{value}}" {{/if~}}
+                                {{~#if (or max (eq max 0))}} max="{{max}}" {{/if~}}
+                                {{~#if (or min (eq min 0))}} min="{{min}}" {{/if~}}
+                                {{~#if step}} step="{{step}}" {{/if~}}
+                                {{~#if minlength}} minlength="{{minlength}}" {{/if~}}
+                                {{~#if maxlength}} maxlength="{{maxlength}}" {{/if~}}
+                                {{~#if pattern}} pattern="{{pattern}}" {{/if~}}
+                                {{~#if required}} required="required" {{/if~}}
+                                {{~#if (or (eq autocomplete false) (eq autocomplete 0))}}autocomplete="off" {{/if~}}
+                                {{~#if (or (eq autocomplete true) (eq autocomplete 1))}}autocomplete="on" {{/if~}}
+                                {{~#if (gt (len autocomplete) 1)}}autocomplete="{{autocomplete}}" {{/if~}}
+                                {{~#if formaction}}formaction="{{formaction}}" {{/if~}}
+                                {{~#if formenctype}}formenctype="{{formenctype}}" {{/if~}}
+                                {{~#if formmethod}}formmethod="{{formmethod}}" {{/if~}}
+                                {{~#if formnovalidate}}formnovalidate="{{formnovalidate}}" {{/if~}}
+                                {{~#if formtarget}}formtarget="{{formtarget}}" {{/if~}}
+                                {{~#if list}}list="{{list}}" {{/if~}}
+                                {{~#if multiple}}multiple="{{multiple}}" {{/if~}}
+                                {{~#if accept}}accept="{{accept}}" {{/if~}}
+                                {{~#if autofocus}}autofocus {{/if~}}  
+                            />
+			                {{#if suffix}}<span class="input-group-text">{{suffix}}</span>{{/if}}
+			            </div>
+		            {{/if}}
                     {{/if}}
                     {{#if description}}
                         <small class="form-hint mt-0">{{description}}</small>
@@ -99,8 +103,8 @@
                 </label>
             {{/if}}
             {{/if}}
-            <!-- Change the form encoding type if this is a file input-->
             {{#if (eq type "file")}}
+                <!-- Change the form encoding type if this is a file input-->
                 {{#delay}}formenctype="multipart/form-data"{{/delay}}
             {{/if}}
         {{/each_row}}
