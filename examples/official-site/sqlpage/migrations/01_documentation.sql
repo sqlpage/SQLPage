@@ -231,7 +231,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('minlength', 'Minimum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
     ('maxlength', 'Maximum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
     ('formaction', 'When type is "submit", this specifies the URL of the file that will handle the form submission. Useful when you need multiple submit buttons.', 'TEXT', FALSE, TRUE),
-    ('class', 'A CSS class to apply to the form element.', 'TEXT', FALSE, TRUE)
+    ('class', 'A CSS class to apply to the form element.', 'TEXT', FALSE, TRUE),
+    ('prefix_icon','Icon to display on the left side of the input field, on the same line.','ICON',FALSE,TRUE),
+    ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
+    ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     (
@@ -266,6 +269,10 @@ When loading the page, the value for `:username` will be `NULL` if no value has 
     '{"name": "Birth date", "type": "date", "max": "2010-01-01", "value": "1994-04-16"},'||
     '{"name": "Password", "type": "password", "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$", "required": true, "description": "Minimum eight characters, at least one letter and one number."},'||
     '{"label": "I accept the terms and conditions", "name": "terms", "type": "checkbox", "required": true}'||
+    ']')),
+    ('form','Create prepended and appended inputs to make your forms easier to use.',
+    json('[{"component":"form"}, '||
+    '{"name": "Your account", "prefix_icon": "mail", "prefix": "Email:", "suffix": "@mydomain.com"}, ' ||
     ']')),
     ('form', 'This example illustrates the use of the `select` type.
 In this select input, the various options are hardcoded, but they could also be loaded from a database table,
