@@ -1,12 +1,7 @@
 <div class="code-component my-1 {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     {{#each_row}}
-        <h2>{{title}}</h2>
-        <p>{{description}}</p>
-        {{#if description_md}}
-            {{{markdown description_md}}}
-        {{/if}}
-        <pre class="mb-0"><code 
-            {{#if language}}class="language-{{language}}"{{/if}}
-        >{{contents}}</code></pre>
+        {{#if title}}<h2>{{title}}</h2>{{/if}}
+        {{#if description}}<p>{{description}}</p>{{else}}{{#if description_md}}{{{markdown description_md}}}{{/if}}{{/if}}
+        <pre class="mb-0"><code {{#if language}}class="language-{{language}}"{{/if}}>{{contents}}</code></pre>
     {{/each_row}}
 </div>
