@@ -6,7 +6,7 @@
    - see: https://github.com/apexcharts/apexcharts.js/releases/tag/v3.45.2
  - Updated Icon library with new icons
    - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
- - Added `prefix` and `suffix` attributes to the `form` to create an input group, useful to add a currency symbol or a unit to a form input.
+ - Added `prefix`, `prefix_icon` and `suffix` attributes to the `form` component to create input groups. Useful to add a currency symbol or a unit to a form input, or to visually illustrate the type of input expected.
 
 ## 0.18.3 (2024-02-03)
 
