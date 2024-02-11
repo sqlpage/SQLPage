@@ -67,8 +67,9 @@
                         {{/each}}
                         </select>
                     {{else}}
-			            <div class="input-group">
-			                {{#if prefix}}<span class="input-group-text">{{prefix}}</span>{{/if}}
+                        <div class="input-group">
+                            {{#if prefix_icon}}<span class="input-group-text">{{icon_img prefix_icon}}</span>{{/if}}
+                            {{#if prefix}}<span class="input-group-text">{{prefix}}</span>{{/if}}
                             <input name="{{name}}" class="form-control {{class}}" 
                                 {{~#if type}} type="{{type}}" {{/if~}}
                                 {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
@@ -93,9 +94,9 @@
                                 {{~#if accept}}accept="{{accept}}" {{/if~}}
                                 {{~#if autofocus}}autofocus {{/if~}}  
                             />
-			                {{#if suffix}}<span class="input-group-text">{{suffix}}</span>{{/if}}
-			            </div>
-		            {{/if}}
+                            {{#if suffix}}<span class="input-group-text">{{suffix}}</span>{{/if}}
+                        </div>
+                    {{/if}}
                     {{/if}}
                     {{#if description}}
                         <small class="form-hint mt-0">{{description}}</small>
