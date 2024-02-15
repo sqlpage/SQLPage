@@ -7,6 +7,8 @@
  - Updated Icon library with new icons
    - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
  - Added `prefix`, `prefix_icon` and `suffix` attributes to the `form` component to create input groups. Useful to add a currency symbol or a unit to a form input, or to visually illustrate the type of input expected.
+ - In the cookie component, set cookies for the entire website by default. The old behavior was to set the cookie
+   only for files inside the current folder by default, which did not match the documentation, that says "If not specified, the cookie will be sent for all paths".
 
 ## 0.18.3 (2024-02-03)
 

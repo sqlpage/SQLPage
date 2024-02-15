@@ -141,6 +141,8 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
         let path = obj.get("path").and_then(JsonValue::as_str);
         if let Some(path) = path {
             cookie.set_path(path);
+        } else {
+            cookie.set_path("/");
         }
         let domain = obj.get("domain").and_then(JsonValue::as_str);
         if let Some(domain) = domain {
