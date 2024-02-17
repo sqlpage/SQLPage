@@ -747,4 +747,4 @@ On other engines (such as SQLite), you can use the [`dynamic`](?component=dynami
             "css": "/prism-tabler-theme.css",
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]'));
-
+    
