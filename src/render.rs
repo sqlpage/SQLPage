@@ -305,7 +305,9 @@ impl<W: std::io::Write> RenderContext<W> {
             .and_then(|r| get_object_str(r, "component"))
         {
             Some(c) if c.starts_with(PAGE_SHELL_COMPONENT) => {
-                log::trace!("The first row is a shell component. No need to add the default shell.");
+                log::trace!(
+                    "The first row is a shell component. No need to add the default shell."
+                );
             }
             _ => {
                 log::trace!("No shell nor component found in the first row. Adding the default shell with the default component.");
