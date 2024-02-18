@@ -278,9 +278,9 @@ pub struct RenderContext<W: std::io::Write> {
     current_statement: usize,
 }
 
-const DEFAULT_COMPONENT: &str = "debug";
+const DEFAULT_COMPONENT: &str = "table";
 const PAGE_SHELL_COMPONENT: &str = "shell";
-const FRAGMENT_SHELL_COMPONENT: &str = "fragment-shell";
+const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
 const DYNAMIC_COMPONENT: &str = "dynamic";
 const MAX_RECURSION_DEPTH: usize = 256;
 
@@ -289,43 +289,47 @@ impl<W: std::io::Write> RenderContext<W> {
         app_state: Arc<AppState>,
         layout_context: &LayoutContext,
         mut writer: W,
-        mut initial_row: JsonValue,
+        initial_row: JsonValue,
     ) -> anyhow::Result<RenderContext<W>> {
         log::debug!("Creating the shell component for the page");
-        let shell_component = if layout_context.is_embedded {
-            FRAGMENT_SHELL_COMPONENT
-        } else {
-            PAGE_SHELL_COMPONENT
-        };
-        let mut shell_renderer = Self::create_renderer(shell_component, Arc::clone(&app_state), 0)
-            .await
-            .with_context(|| "The shell component should always exist")?;
 
-        let mut initial_component =
-            Some(get_object_str(&initial_row, "component").unwrap_or(DEFAULT_COMPONENT));
-        let mut shell_properties = JsonValue::Null;
-        match initial_component {
-            Some(PAGE_SHELL_COMPONENT) => {
-                shell_properties = initial_row.take();
-                initial_component = None;
-            },
-            Some(DYNAMIC_COMPONENT) => {
-                let dynamic_properties = Self::extract_dynamic_properties(&initial_row)?;
-                for prop in dynamic_properties {
-                    match get_object_str(&prop, "component") {
-                        None | Some(PAGE_SHELL_COMPONENT) => {
-                            shell_properties = prop.into_owned();
-                            initial_component = None;
-                        },
-                        _ => bail!("Dynamic components at the top level are not supported, except for setting the shell component properties"),
-                    }
-                }
-            },
-            _ => log::trace!("The first row is not a shell component, so we will render a shell with default properties"),
+        let mut initial_rows =
+            if get_object_str(&initial_row, "component") == Some(DYNAMIC_COMPONENT) {
+                Self::extract_dynamic_properties(&initial_row)?
+            } else {
+                vec![Cow::Borrowed(&initial_row)]
+            };
+
+        match initial_rows
+            .first()
+            .and_then(|r| get_object_str(r, "component"))
+        {
+            Some(c) if c.starts_with(PAGE_SHELL_COMPONENT) => {
+                log::trace!("The first row is a shell component. No need to add the default shell.");
+            }
+            _ => {
+                log::trace!("No shell nor component found in the first row. Adding the default shell with the default component.");
+                let default_shell = if layout_context.is_embedded {
+                    FRAGMENT_SHELL_COMPONENT
+                } else {
+                    PAGE_SHELL_COMPONENT
+                };
+                initial_rows.insert(0, Cow::Owned(json!({"component": default_shell})));
+            }
         }
 
-        log::debug!("Rendering the shell with properties: {shell_properties}");
-        shell_renderer.render_start(&mut writer, shell_properties)?;
+        let mut rows_iter = initial_rows.into_iter().map(|r| r.into_owned());
+
+        let shell_row = rows_iter.next().expect("at least one row");
+        let mut shell_renderer = Self::create_renderer(
+            get_object_str(&shell_row, "component").expect("shell should exist"),
+            Arc::clone(&app_state),
+            0,
+        )
+        .await
+        .with_context(|| "The shell component should always exist")?;
+        log::debug!("Rendering the shell with properties: {shell_row}");
+        shell_renderer.render_start(&mut writer, shell_row)?;
 
         let mut initial_context = RenderContext {
             app_state,
@@ -336,11 +340,8 @@ impl<W: std::io::Write> RenderContext<W> {
             current_statement: 1,
         };
 
-        if let Some(component) = initial_component {
-            log::trace!("The page starts with a component without a shell: {component}");
-            initial_context
-                .open_component_with_data(component, &initial_row)
-                .await?;
+        while let Some(row) = rows_iter.next() {
+            initial_context.handle_row(&row).await?;
         }
 
         Ok(initial_context)
