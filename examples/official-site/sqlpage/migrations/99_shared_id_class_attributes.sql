@@ -4,7 +4,7 @@ FROM (VALUES
     ('alert', TRUE),
     ('breadcrumb', TRUE),
     ('chart', TRUE),
-    -- ('code', TRUE),
+    ('code', TRUE),
     ('csv', TRUE),
     ('datagrid', TRUE),
     ('hero', TRUE),
@@ -15,7 +15,7 @@ FROM (VALUES
     ('table', TRUE),
     ('timeline', TRUE),
     ('timeline', FALSE),
-    -- ('title', TRUE),
+    ('title', TRUE),
     ('tracking', TRUE),
     ('text', TRUE),
     ('carousel', TRUE)
@@ -35,7 +35,7 @@ FROM (VALUES
     ('button', TRUE),
     ('card', FALSE),
     ('chart', TRUE),
-    -- ('code', TRUE),
+    ('code', TRUE),
     ('csv', TRUE),
     ('datagrid', TRUE),
     ('divider', TRUE),
@@ -47,7 +47,7 @@ FROM (VALUES
     ('table', TRUE),
     ('timeline', TRUE),
     ('timeline', FALSE),
-    -- ('title', TRUE),
+    ('title', TRUE),
     ('tracking', TRUE),
     ('carousel', TRUE)
 );

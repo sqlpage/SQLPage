@@ -13,6 +13,7 @@
    - If you have seen *Dynamic components at the top level are not supported, except for setting the shell component properties* in the past, you can now forget about it. You can now use dynamic components at the top level of your sql files, and they will be interpreted as expected.
  - Custom shells:
     - It has always been possible to change the default shell of a SQLPage website by writing a `sqlpage/shell.handlebars` file. But that forced you to have a single shell for the whole website. It is now possible to have multiple shells, just by creating multiple `shell-*.handlebars` files in the `sqlpage` directory. A `shell-empty` file is also provided by default, to create pages without a shell (useful for returning non-html content, such as an RSS feed).
+ - New `edit_link`, `delete_link`, and `view_link` row-level attributes in the list component to add icons and links to each row.
 
 ## 0.18.3 (2024-02-03)
 

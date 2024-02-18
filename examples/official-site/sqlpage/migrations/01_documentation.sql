@@ -40,7 +40,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon', 'Name of an icon to display on the left side of the item.', 'ICON', FALSE, TRUE),
     ('image_url', 'The URL of a small image to display on the left side of the item.', 'URL', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed as a dot near the list item contents.', 'COLOR', FALSE, TRUE),
-    ('active', 'Whether this item in the list is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+    ('active', 'Whether this item in the list is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE),
+    ('view_link', 'A URL to which the user should be taken when they click on the "view" icon. Does not show the icon when omitted.', 'URL', FALSE, TRUE),
+    ('edit_link', 'A URL to which the user should be taken when they click on the "edit" icon. Does not show the icon when omitted.', 'URL', FALSE, TRUE),
+    ('delete_link', 'A URL to which the user should be taken when they click on the "delete" icon. Does not show the icon when omitted.', 'URL', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -53,8 +56,8 @@ INSERT INTO example(component, description, properties) VALUES
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
             json('[{"component":"list", "title":"Popular websites"}, '||
-            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "active": true}, '||
-            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world"}]'));
+            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "active": true }, '||
+            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "edit_link": "?edit=wikipedia", "delete_link": "?delete=wikipedia" }]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('datagrid', 'grid-dots', 'Display small pieces of information in a clear and readable way. Each item has a name and is associated with a value.');
@@ -747,4 +750,4 @@ On other engines (such as SQLite), you can use the [`dynamic`](?component=dynami
             "css": "/prism-tabler-theme.css",
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]'));
-
+    

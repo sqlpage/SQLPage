@@ -6,11 +6,14 @@
     {{/if}}
     <div class="list-group list-group-flush list-group-hoverable">
         {{#each_row}}
-            <{{#if link}}a href="{{link}}" {{else}}div{{/if}}
-                {{#if id}}id="{{id}}"{{/if}}
+            <div {{#if id}}id="{{id}}"{{/if}}
                 class="list-group-item list-group-item-action {{#if active}}active{{/if}} {{class}}">
 
                 <div class="row align-items-center">
+                    {{#if link}}
+                        <a href="{{link}}" class="col text-truncate row align-items-center text-decoration-none link-body-emphasis">
+                    {{/if}}
+
                     {{#if color}}
                         <div class="col-auto"><span class="badge bg-{{color}}"></span></div>
                     {{/if}}
@@ -33,8 +36,31 @@
                             {{~/if~}}
                         </div>
                     </div>
+
+                    {{#if link}}
+                        </a>
+                    {{/if}}
+
+
+                    {{#if view_link}}
+                        <a href="{{view_link}}" class="link-secondary col-auto" title="View">
+                            {{~icon_img 'eye'~}}
+                        </a>
+                    {{/if}}
+
+                    {{#if delete_link}}
+                        <a href="{{delete_link}}" class="link-secondary col-auto" title="Delete">
+                            {{~icon_img 'trash'~}}
+                        </a>
+                    {{/if}}
+
+                    {{#if edit_link}}
+                        <a href="{{edit_link}}" class="link-secondary col-auto" title="Edit">
+                            {{~icon_img 'edit'~}}
+                        </a>
+                    {{/if}}
                 </div>
-            </{{#if link}}a {{else}}div{{/if}}>
+            </div>
         {{/each_row}}
         {{#if (eq @row_index 0)}}
             <a href="{{default empty_link '#'}}" class="list-group-item list-group-item-action">
