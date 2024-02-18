@@ -342,7 +342,7 @@ impl<W: std::io::Write> RenderContext<W> {
             current_statement: 1,
         };
 
-        while let Some(row) = rows_iter.next() {
+        for row in rows_iter {
             initial_context.handle_row(&row).await?;
         }
 
