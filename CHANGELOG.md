@@ -7,6 +7,7 @@
  - Updated Icon library with new icons
    - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
  - Added `prefix`, `prefix_icon` and `suffix` attributes to the `form` component to create input groups. Useful to add a currency symbol or a unit to a form input, or to visually illustrate the type of input expected.
+ - New `edit_link`, `delete_link`, and `view_link` row-level attributes in the list component to add icons and links to each row.
 
 ## 0.18.3 (2024-02-03)
 
