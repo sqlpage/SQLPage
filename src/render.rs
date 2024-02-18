@@ -320,7 +320,7 @@ impl<W: std::io::Write> RenderContext<W> {
             }
         }
 
-        let mut rows_iter = initial_rows.into_iter().map(|r| r.into_owned());
+        let mut rows_iter = initial_rows.into_iter().map(Cow::into_owned);
 
         let shell_row = rows_iter.next().expect("at least one row");
         let mut shell_renderer = Self::create_renderer(
