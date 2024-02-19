@@ -300,29 +300,27 @@ impl<W: std::io::Write> RenderContext<W> {
                 vec![Cow::Borrowed(&initial_row)]
             };
 
-        match initial_rows
+        if !initial_rows
             .first()
-            .and_then(|r| get_object_str(r, "component"))
+            .and_then(|c| get_object_str(c, "component"))
+            .is_some_and(Self::is_shell_component)
         {
-            Some(c) if c.starts_with(PAGE_SHELL_COMPONENT) => {
-                log::trace!(
-                    "The first row is a shell component. No need to add the default shell."
-                );
-            }
-            _ => {
-                log::trace!("No shell nor component found in the first row. Adding the default shell with the default component.");
-                let default_shell = if layout_context.is_embedded {
-                    FRAGMENT_SHELL_COMPONENT
-                } else {
-                    PAGE_SHELL_COMPONENT
-                };
-                initial_rows.insert(0, Cow::Owned(json!({"component": default_shell})));
-            }
+            let default_shell = if layout_context.is_embedded {
+                FRAGMENT_SHELL_COMPONENT
+            } else {
+                PAGE_SHELL_COMPONENT
+            };
+            let added_row = json!({"component": default_shell});
+            log::trace!(
+                "No shell component found in the first row. Adding the default shell: {added_row}"
+            );
+            initial_rows.insert(0, Cow::Owned(added_row));
         }
-
         let mut rows_iter = initial_rows.into_iter().map(Cow::into_owned);
 
-        let shell_row = rows_iter.next().expect("at least one row");
+        let shell_row = rows_iter
+            .next()
+            .expect("shell row should exist at this point");
         let mut shell_renderer = Self::create_renderer(
             get_object_str(&shell_row, "component").expect("shell should exist"),
             Arc::clone(&app_state),
@@ -347,6 +345,10 @@ impl<W: std::io::Write> RenderContext<W> {
         }
 
         Ok(initial_context)
+    }
+
+    fn is_shell_component(component: &str) -> bool {
+        component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
     async fn current_component(&mut self) -> anyhow::Result<&mut SplitTemplateRenderer> {
@@ -380,6 +382,11 @@ impl<W: std::io::Write> RenderContext<W> {
                 bail!("The {component_name} component cannot be used after data has already been sent to the client's browser. \
                 This component must be used before any other component. \
                 To fix this, either move the call to the '{component_name}' component to the top of the SQL file, or create a new SQL file where '{component_name}' is the first component.");
+            }
+            (_, Some(c)) if Self::is_shell_component(c) => {
+                bail!("There cannot be more than a single shell per page. \n\
+                You are trying to open the {c:?} component, but a shell component is already opened for the current page. \n\
+                You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data. \n")
             }
             (_current_component, Some(new_component)) => {
                 self.open_component_with_data(new_component, &data).await?;
