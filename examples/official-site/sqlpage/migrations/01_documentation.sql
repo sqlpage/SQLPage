@@ -749,5 +749,18 @@ On other engines (such as SQLite), you can use the [`dynamic`](?component=dynami
                            "https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"],
             "css": "/prism-tabler-theme.css",
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
-        }]'));
-    
+        }]')),
+    ('shell', '
+### A page without a shell
+SQLPage provides the `shell-empty` component to create a page without a shell.
+In this case, the `html` and `body` tags are not generated, and the components are rendered directly in the page
+without any styling, navigation bar, footer, or dynamic content.
+This is useful when you want to generate a snippet of HTML that can be dynamically included in a larger page.
+
+Any component whose name starts with `shell` will be considered as a shell component,
+so you can also [create your own shell component](custom_components.sql#custom-shell).
+
+If you generate your own HTML from a SQL query, you can also use the `shell-empty` component to include it in a page.
+Make sure you know what you are doing, and be careful to escape the HTML properly,
+as you are stepping out of the safe SQLPage framework and into the wild world of HTML.',
+    json('[{"component":"shell-empty"}, {"component": "text", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));

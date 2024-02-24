@@ -99,7 +99,10 @@ async fn test_files() {
             .await
             .unwrap();
         let body = test::read_body(resp).await;
-        assert!(body.starts_with(b"<!DOCTYPE html>"));
+        assert!(
+            body.starts_with(b"<!DOCTYPE html>"),
+            "Response to {req_str} is not HTML"
+        );
         // the body should contain the string "It works!" and should not contain the string "error"
         let body = String::from_utf8(body.to_vec()).unwrap();
         let lowercase_body = body.to_lowercase();

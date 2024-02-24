@@ -20,7 +20,30 @@ The `shell` component is always present unless explicitly skipped via the `?_sql
 If you don''t call it explicitly, it will be invoked with the default parameters automatically before your first component
 invocation that tries to render data on the page.
 
-There can be only one `shell` component per site, but you can customize its appearance as you see fit.
+#### Custom `shell` components
+
+You can override the default `shell` component by creating a file called `shell.handlebars` in the `sqlpage/templates` folder.
+
+If you want to keep the default `shell` component on most of your pages, but want to create a custom `shell` component for a specific page,
+you can create a file called `shell-custom.handlebars` (or any other name starting with `shell`) in the `sqlpage/templates` folder.
+Here is an example for a minimal custom `shell` component:
+
+
+```handlebars
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{default title "SQLPage"}}</title>
+</head>
+
+<body>
+{{~#each_row~}}{{~/each_row~}}
+</body>
+</html>
+```
+
+Since you have full control over the `shell` component, you can use it to generate non-HTML content.
+For instance, you can write an XML shell to create a custom RSS feed.
 
 ## Component template syntax
 

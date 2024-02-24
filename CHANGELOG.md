@@ -7,6 +7,12 @@
  - Updated Icon library with new icons
    - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
  - Added `prefix`, `prefix_icon` and `suffix` attributes to the `form` component to create input groups. Useful to add a currency symbol or a unit to a form input, or to visually illustrate the type of input expected.
+ - In the cookie component, set cookies for the entire website by default. The old behavior was to set the cookie
+   only for files inside the current folder by default, which did not match the documentation, that says "If not specified, the cookie will be sent for all paths".
+ - Dynamic components at the top of sql files.
+   - If you have seen *Dynamic components at the top level are not supported, except for setting the shell component properties* in the past, you can now forget about it. You can now use dynamic components at the top level of your sql files, and they will be interpreted as expected.
+ - [Custom shells](https://sql.ophir.dev/custom_components.sql):
+    - It has always been possible to change the default shell of a SQLPage website by writing a `sqlpage/shell.handlebars` file. But that forced you to have a single shell for the whole website. It is now possible to have multiple shells, just by creating multiple `shell-*.handlebars` files in the `sqlpage` directory. A `shell-empty` file is also provided by default, to create pages without a shell (useful for returning non-html content, such as an RSS feed).
  - New `edit_link`, `delete_link`, and `view_link` row-level attributes in the list component to add icons and links to each row.
 
 ## 0.18.3 (2024-02-03)
