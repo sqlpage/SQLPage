@@ -699,6 +699,7 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'shell', * FROM (VALUES
     -- top level
     ('title', 'The title of your page. Will be shown in a top bar above the page contents. Also usually displayed by web browsers as the name of the web page''s tab.', 'TEXT', TRUE, TRUE),
+    ('layout', 'The general page layout. Can be "boxed" (the default), "horizontal" (for a full-width menu), "vertical"(vertical menu), "fluid" (removes side margins).', 'TEXT', TRUE, TRUE),
     ('description', 'A description of the page. It can be displayed by search engines when your page appears in their results.', 'TEXT', TRUE, TRUE),
     ('link', 'The target of the link in the top navigation bar.', 'URL', TRUE, TRUE),
     ('css', 'The URL of a CSS file to load and apply to the page.', 'URL', TRUE, TRUE),
@@ -725,6 +726,8 @@ and in its object form, to generate a dropdown menu named "Community" with links
 
 The object form can be used directly only on database engines that have a native JSON type.
 On other engines (such as SQLite), you can use the [`dynamic`](?component=dynamic#component) component to generate the same result.
+
+You see the [page layouts demo](./examples/layouts.sql) for a live example of the different layouts.
 ',
      json('[{
             "component": "shell",
@@ -741,6 +744,7 @@ On other engines (such as SQLite), you can use the [`dynamic`](?component=dynami
                 "functions",
                 "components"
             ],
+            "layout": "boxed",
             "language": "en-US",
             "description": "Documentation for the SQLPage low-code web application framework.",
             "font": "Poppins",
