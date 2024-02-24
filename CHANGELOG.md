@@ -3,8 +3,9 @@
 ## 0.19.0 (unreleased)
 
  - Updated the chart component to use the latest version of the charting library
-   - see: https://github.com/apexcharts/apexcharts.js/releases/tag/v3.45.2
- - Updated Icon library with new icons
+   - https://github.com/apexcharts/apexcharts.js/releases/tag/v3.45.2
+   - https://github.com/apexcharts/apexcharts.js/releases/tag/v3.46.0
+ - Updated Tabler Icon library to v2.47 with new icons
    - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
  - Added `prefix`, `prefix_icon` and `suffix` attributes to the `form` component to create input groups. Useful to add a currency symbol or a unit to a form input, or to visually illustrate the type of input expected.
  - In the cookie component, set cookies for the entire website by default. The old behavior was to set the cookie
