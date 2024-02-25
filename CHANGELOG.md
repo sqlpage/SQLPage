@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.19.0 (unreleased)
+## 0.19.0 (2024-02-25)
 
  - Updated the chart component to use the latest version of the charting library
    - https://github.com/apexcharts/apexcharts.js/releases/tag/v3.45.2
