@@ -8,6 +8,7 @@
  - Updated Tabler Icon library to v2.47 with new icons
    - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
  - Added `prefix`, `prefix_icon` and `suffix` attributes to the `form` component to create input groups. Useful to add a currency symbol or a unit to a form input, or to visually illustrate the type of input expected.
+ - Added `striped_rows`, `striped_columns`, `hover`,`border`, and `small` attributes to the [table component](https://sql.ophir.dev/documentation.sql?component=table#component).
  - In the cookie component, set cookies for the entire website by default. The old behavior was to set the cookie
    only for files inside the current folder by default, which did not match the documentation, that says "If not specified, the cookie will be sent for all paths".
  - Dynamic components at the top of sql files.
