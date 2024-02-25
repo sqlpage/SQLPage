@@ -552,6 +552,12 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('markdown', 'Set this to the name of a column whose content should be interpreted as markdown . Used to display rich text with links in the table. This argument can be repeated multiple times to intepret multiple columns as markdown.', 'TEXT', TRUE, TRUE),
     ('icon', 'Set this to the name of a column whose content should be interpreted as a tabler icon name. Used to display icons in the table. This argument can be repeated multiple times to intepret multiple columns as icons. Introduced in v0.8.0.', 'TEXT', TRUE, TRUE),
     ('align_right', 'Name of a column the contents of which should be right-aligned. This argument can be repeated multiple times to align multiple columns to the right. Introduced in v0.15.0.', 'TEXT', TRUE, TRUE),
+    ('striped_rows', 'Whether to add zebra-striping to any table row.', 'BOOLEAN', TRUE, TRUE),
+    ('striped_columns', 'Whether to add zebra-striping to any table column.', 'BOOLEAN', TRUE, TRUE),
+    ('hover', 'Whether to enable a hover state on table rows.', 'BOOLEAN', TRUE, TRUE),
+    ('border', 'Whether to draw borders on all sides of the table and cells.', 'BOOLEAN', TRUE, TRUE),
+    ('small', 'Whether to use compact table.', 'BOOLEAN', TRUE, TRUE),
+    ('description','Description of the table content and helps users with screen readers to find a table and understand what it’s.','TEXT',TRUE,TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'TEXT', FALSE, TRUE)
@@ -577,6 +583,18 @@ INSERT INTO example(component, description, properties) VALUES
          '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C", "Price ($)": 12, "Amount in stock": 5},
           {"id": 996, "part_no": "MIC-ROCC-F-24-206-A", "Price ($)": 1, "Amount in stock": 15},
           {"id": 131456, "part_no": "KIB-ROCC-F-13-205-B", "Price ($)": 127, "Amount in stock": 9}
+        ]'
+    )),
+    (
+    'table',
+    'A table with some presentation options',
+    json(
+        '[{"component":"table", "hover": true, "striped_rows": true, "description": "Some Star Trek Starfleet starships", "small": true},'||
+        '{"name": "USS Enterprise", "registry": "NCC-1701-C", "class":"Ambassador"},
+         {"name": "USS Archer", "registry": "NCC-44278", "class":"Archer"},
+         {"name": "USS Endeavour", "registry": "NCC-06", "class":"Columbia"},
+         {"name": "USS Constellation", "registry": "NCC-1974", "class":"Constellation"},
+         {"name": "USS Dakota", "registry": "NCC-63892", "class":"Akira"}
         ]'
     )
     );

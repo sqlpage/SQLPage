@@ -6,7 +6,11 @@
                     <input type="search" class="form-control form-control-rounded fs-6 search" placeholder="Search…">
                 </div>
             {{/if}}
-            <table class="table">
+            <table class="table {{#if striped_rows}}table-striped {{/if}}{{#if
+            striped_columns}}table-striped-columns {{/if}}{{#if
+            hover}}table-hover {{/if}}{{#if border}}table-bordered {{/if}}
+            {{#if small}}table-sm {{/if}}">
+            {{#if description}}<caption>{{description}}</caption>{{/if}}
                 {{#each_row}}
                     {{#if (eq @row_index 0)}}
                         <thead>
