@@ -31,9 +31,13 @@ RUN touch src/main.rs && \
 
 FROM busybox:glibc
 RUN addgroup --gid 1000 --system sqlpage && \
-    adduser --uid 1000 --system --no-create-home --ingroup sqlpage sqlpage
+    adduser --uid 1000 --system --no-create-home --ingroup sqlpage sqlpage && \
+    mkdir -p /etc/sqlpage && \
+    touch /etc/sqlpage/sqlpage.db && \
+    chown -R sqlpage:sqlpage /etc/sqlpage/sqlpage.db
 ENV SQLPAGE_WEB_ROOT=/var/www
-WORKDIR /etc
+ENV SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage
+WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
 COPY --from=builder /usr/src/sqlpage/libgcc_s.so.1 /lib/libgcc_s.so.1
 USER sqlpage

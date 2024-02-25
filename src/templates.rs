@@ -341,7 +341,7 @@ impl AllTemplates {
     ) -> anyhow::Result<Arc<SplitTemplate>> {
         use anyhow::Context;
         let mut path: PathBuf =
-            PathBuf::with_capacity(TEMPLATES_DIR.len() + name.len() + ".handlebars".len() + 2);
+            PathBuf::with_capacity(TEMPLATES_DIR.len() + 1 + name.len() + ".handlebars".len());
         path.push(TEMPLATES_DIR);
         path.push(name);
         path.set_extension("handlebars");

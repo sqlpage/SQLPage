@@ -6,8 +6,6 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
 #[cfg(not(feature = "lambda-web"))]
-const DEFAULT_DATABASE_DIR: &str = "sqlpage";
-#[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
@@ -36,8 +34,13 @@ pub struct AppConfig {
     #[serde(default = "default_database_connection_acquire_timeout_seconds")]
     pub database_connection_acquire_timeout_seconds: f64,
 
+    /// The directory where the .sql files are located. Defaults to the current directory.
     #[serde(default = "default_web_root")]
     pub web_root: PathBuf,
+
+    /// The directory where the sqlpage configuration file is located. Defaults to `./sqlpage`.
+    #[serde(default = "configuration_directory")]
+    pub configuration_directory: PathBuf,
 
     /// Set to true to allow the `sqlpage.exec` function to be used in SQL queries.
     /// This should be enabled only if you trust the users writing SQL queries, since it gives
@@ -93,9 +96,27 @@ impl AppConfig {
     }
 }
 
+/// The directory where the `sqlpage.json` file is located.
+/// Determined by the `SQLPAGE_CONFIGURATION_DIRECTORY` environment variable
+fn configuration_directory() -> PathBuf {
+    std::env::var("SQLPAGE_CONFIGURATION_DIRECTORY")
+        .or_else(|_| std::env::var("CONFIGURATION_DIRECTORY"))
+        .map_or_else(|_| PathBuf::from("sqlpage"), PathBuf::from)
+}
+
+fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_owned())
+}
+
 pub fn load() -> anyhow::Result<AppConfig> {
+    let configuration_directory = &configuration_directory();
+    log::debug!(
+        "Loading configuration from {:?}",
+        cannonicalize_if_possible(configuration_directory)
+    );
+    let config_file = configuration_directory.join("sqlpage");
     Config::builder()
-        .add_source(config::File::with_name("sqlpage/sqlpage").required(false))
+        .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
         .add_source(env_config().prefix("SQLPAGE"))
         .build()?
@@ -135,14 +156,14 @@ fn default_database_url() -> String {
 
     #[cfg(not(feature = "lambda-web"))]
     {
-        let cwd = std::env::current_dir().unwrap_or_default();
-        let old_default_db_path = cwd.join(DEFAULT_DATABASE_FILE);
-        let default_db_path = cwd.join(DEFAULT_DATABASE_DIR).join(DEFAULT_DATABASE_FILE);
+        let config_dir = cannonicalize_if_possible(&configuration_directory());
+        let old_default_db_path = PathBuf::from(DEFAULT_DATABASE_FILE);
+        let default_db_path = config_dir.join(DEFAULT_DATABASE_FILE);
         if let Ok(true) = old_default_db_path.try_exists() {
             log::warn!("Your sqlite database in {old_default_db_path:?} is publicly accessible through your web server. Please move it to {default_db_path:?}.");
             return prefix + old_default_db_path.to_str().unwrap();
         } else if let Ok(true) = default_db_path.try_exists() {
-            log::debug!("Using the default datbase file in {default_db_path:?}.");
+            log::debug!("Using the default database file in {default_db_path:?}.");
             return prefix + default_db_path.to_str().unwrap();
         }
         // Create the default database file if we can
