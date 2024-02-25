@@ -193,8 +193,8 @@ async fn make_app_data() -> actix_web::web::Data<AppState> {
     init_log();
     let config = test_config();
     let state = AppState::init(&config).await.unwrap();
-    let data = actix_web::web::Data::new(state);
-    data
+
+    actix_web::web::Data::new(state)
 }
 
 async fn req_path(

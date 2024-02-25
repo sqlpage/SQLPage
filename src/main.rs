@@ -16,7 +16,7 @@ async fn start() -> anyhow::Result<()> {
     let app_config = app_config::load()?;
     log::debug!("Starting with the following configuration: {app_config:#?}");
     let state = AppState::init(&app_config).await?;
-    webserver::database::migrations::apply(&state.db).await?;
+    webserver::database::migrations::apply(&app_config, &state.db).await?;
     log::debug!("Starting server...");
     let (r, _) = tokio::join!(
         webserver::http::run_server(&app_config, state),

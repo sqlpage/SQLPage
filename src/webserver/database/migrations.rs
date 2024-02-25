@@ -7,10 +7,8 @@ use sqlx::migrate::MigrateError;
 use sqlx::migrate::Migration;
 use sqlx::migrate::Migrator;
 
-pub async fn apply(db: &Database) -> anyhow::Result<()> {
-    let migrations_dir = std::env::current_dir()
-        .unwrap_or_default()
-        .join(MIGRATIONS_DIR);
+pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyhow::Result<()> {
+    let migrations_dir = config.configuration_directory.join(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
         log::info!(
             "Not applying database migrations because '{}' does not exist",

@@ -19,9 +19,12 @@ use std::path::PathBuf;
 use templates::AllTemplates;
 use webserver::Database;
 
-pub const TEMPLATES_DIR: &str = "sqlpage/templates";
-pub const MIGRATIONS_DIR: &str = "sqlpage/migrations";
-pub const ON_CONNECT_FILE: &str = "sqlpage/on_connect.sql";
+/// `TEMPLATES_DIR` is the directory where .handlebars files are stored
+/// When a template is requested, it is looked up in `sqlpage/templates/component_name.handlebars` in the database,
+/// or in `$SQLPAGE_CONFIGURATION_DIRECTORY/templates/component_name.handlebars` in the filesystem.
+pub const TEMPLATES_DIR: &str = "sqlpage/templates/";
+pub const MIGRATIONS_DIR: &str = "migrations";
+pub const ON_CONNECT_FILE: &str = "on_connect.sql";
 
 pub struct AppState {
     pub db: Database,

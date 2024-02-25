@@ -1,6 +1,6 @@
 use crate::webserver::ErrorWithStatus;
 use crate::webserver::{make_placeholder, Database};
-use crate::AppState;
+use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
@@ -39,7 +39,7 @@ impl FileSystem {
         since: DateTime<Utc>,
         priviledged: bool,
     ) -> anyhow::Result<bool> {
-        let local_path = self.safe_local_path(path, priviledged)?;
+        let local_path = self.safe_local_path(app_state, path, priviledged)?;
         let local_result = file_modified_since_local(&local_path, since).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(modified), _) => Ok(modified),
@@ -75,7 +75,7 @@ impl FileSystem {
         path: &Path,
         priviledged: bool,
     ) -> anyhow::Result<Vec<u8>> {
-        let local_path = self.safe_local_path(path, priviledged)?;
+        let local_path = self.safe_local_path(app_state, path, priviledged)?;
         let local_result = tokio::fs::read(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
@@ -91,18 +91,37 @@ impl FileSystem {
         }
     }
 
-    fn safe_local_path(&self, path: &Path, priviledged: bool) -> anyhow::Result<PathBuf> {
-        for (i, component) in path.components().enumerate() {
-            if let Component::Normal(c) = component {
-                if !priviledged && i == 0 && c.eq_ignore_ascii_case("sqlpage") {
-                    anyhow::bail!(ErrorWithStatus {
-                        status: actix_web::http::StatusCode::FORBIDDEN,
-                    });
-                }
-            } else {
-                anyhow::bail!(
+    fn safe_local_path(
+        &self,
+        app_state: &AppState,
+        path: &Path,
+        priviledged: bool,
+    ) -> anyhow::Result<PathBuf> {
+        if priviledged {
+            // Templates requests are always made to the static TEMPLATES_DIR, because this is where they are stored in the database
+            // but when serving them from the filesystem, we need to serve them from the `SQLPAGE_CONFIGURATION_DIRECTORY/templates` directory
+            if let Ok(template_path) = path.strip_prefix(TEMPLATES_DIR) {
+                return Ok([
+                    &app_state.config.configuration_directory,
+                    Path::new("templates"),
+                    template_path,
+                ]
+                .iter()
+                .collect());
+            }
+        } else {
+            for (i, component) in path.components().enumerate() {
+                if let Component::Normal(c) = component {
+                    if i == 0 && c.eq_ignore_ascii_case("sqlpage") {
+                        anyhow::bail!(ErrorWithStatus {
+                            status: actix_web::http::StatusCode::FORBIDDEN,
+                        });
+                    }
+                } else {
+                    anyhow::bail!(
                     "Unsupported path: {path:?}. Path component '{component:?}' is not allowed."
                 );
+                }
             }
         }
         Ok(self.local_root.join(path))

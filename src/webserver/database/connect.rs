@@ -89,15 +89,16 @@ impl Database {
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
             ));
-        pool_options = add_on_connection_handler(pool_options);
+        pool_options = add_on_connection_handler(config, pool_options);
         pool_options
     }
 }
 
-fn add_on_connection_handler(pool_options: PoolOptions<Any>) -> PoolOptions<Any> {
-    let on_connect_file = std::env::current_dir()
-        .unwrap_or_default()
-        .join(ON_CONNECT_FILE);
+fn add_on_connection_handler(
+    config: &AppConfig,
+    pool_options: PoolOptions<Any>,
+) -> PoolOptions<Any> {
+    let on_connect_file = config.configuration_directory.join(ON_CONNECT_FILE);
     if !on_connect_file.exists() {
         log::debug!("Not creating a custom SQL database connection handler because {on_connect_file:?} does not exist");
         return pool_options;
