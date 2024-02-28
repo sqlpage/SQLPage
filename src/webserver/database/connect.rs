@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use super::Database;
 use crate::{app_config::AppConfig, ON_CONNECT_FILE};
+use anyhow::Context;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
@@ -13,7 +14,9 @@ impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
         let database_url = &config.database_url;
         let mut connect_options: AnyConnectOptions =
-            database_url.parse().expect("Invalid database URL");
+            database_url
+            .parse()
+            .with_context(|| format!("{database_url:?} is not a valid database URL"))?;
         connect_options.log_statements(log::LevelFilter::Trace);
         connect_options.log_slow_statements(
             log::LevelFilter::Warn,
