@@ -95,7 +95,16 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         self.static_files.insert(path, Cached::new(contents));
     }
 
+    /// Gets a file from the cache, or loads it from the file system if it's not there
+    /// This is a privileged operation; it should not be used for user-provided paths
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
+        self.get_with_privilege(app_state, path, true).await
+    }
+    
+    /// Gets a file from the cache, or loads it from the file system if it's not there
+    /// The privileged parameter is used to determine whether the access should be denied
+    /// if the file is in the sqlpage/ config directory
+    pub async fn get_with_privilege(&self, app_state: &AppState, path: &PathBuf, privileged: bool) -> anyhow::Result<Arc<T>> {
         log::trace!("Attempting to get from cache {:?}", path);
         if let Some(cached) = self.cache.read().await.get(path) {
             if app_state.config.environment.is_prod() && !cached.needs_check() {
@@ -104,7 +113,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
             }
             match app_state
                 .file_system
-                .modified_since(app_state, path, cached.last_check_time(), true)
+                .modified_since(app_state, path, cached.last_check_time(), privileged)
                 .await
             {
                 Ok(false) => {
@@ -120,7 +129,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         log::trace!("Loading and parsing {:?}", path);
         let file_contents = app_state
             .file_system
-            .read_to_string(app_state, path, true)
+            .read_to_string(app_state, path, privileged)
             .await;
 
         let parsed = match file_contents {

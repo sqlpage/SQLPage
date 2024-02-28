@@ -360,7 +360,7 @@ async fn process_sql_request(
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
     let sql_file = app_state
         .sql_file_cache
-        .get(app_state, &sql_path)
+        .get_with_privilege(app_state, &sql_path, false)
         .await
         .with_context(|| format!("Unable to get SQL file {sql_path:?}"))
         .map_err(anyhow_err_to_actix)?;
