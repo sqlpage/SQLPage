@@ -106,6 +106,8 @@ Later, when you want to deploy your website online, you can switch back to a per
  - a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://dev.mysql.com/doc/refman/8.0/en/connecting-using-uri-or-key-value-pairs.html)),
  - a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html), [note about named instances](https://github.com/lovasoa/SQLpage/issues/92)),
 
+If `user` or `password` contains special characters, you should [percent-encode](https://en.wikipedia.org/wiki/Percent-encoding) them.
+For instance, a SQL Server database named `db` running on `localhost` port `1433` with the username `funny:user` and the password `p@ssw0rd` would be represented as `mssql://funny%3Auser:p%40ssw0rd@localhost:1433/db`.
 For more information about the properties that can be set in sqlpage.json, see [SQLPage's configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
 
 
