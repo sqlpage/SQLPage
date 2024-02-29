@@ -188,7 +188,10 @@ async fn test_csv_upload() -> actix_web::Result<()> {
 /// `/sqlpage/migrations/0001_init.sql` should return a 403 Forbidden
 async fn privileged_paths_are_not_accessible() {
     let resp_result = req_path("/sqlpage/migrations/0001_init.sql").await;
-    assert!(resp_result.is_err(), "Accessing a migration file should be forbidden");
+    assert!(
+        resp_result.is_err(),
+        "Accessing a migration file should be forbidden"
+    );
     let resp = resp_result.unwrap_err().error_response();
     assert_eq!(resp.status(), http::StatusCode::FORBIDDEN);
     assert!(

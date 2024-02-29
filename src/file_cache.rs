@@ -100,11 +100,16 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
     pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
         self.get_with_privilege(app_state, path, true).await
     }
-    
+
     /// Gets a file from the cache, or loads it from the file system if it's not there
     /// The privileged parameter is used to determine whether the access should be denied
     /// if the file is in the sqlpage/ config directory
-    pub async fn get_with_privilege(&self, app_state: &AppState, path: &PathBuf, privileged: bool) -> anyhow::Result<Arc<T>> {
+    pub async fn get_with_privilege(
+        &self,
+        app_state: &AppState,
+        path: &PathBuf,
+        privileged: bool,
+    ) -> anyhow::Result<Arc<T>> {
         log::trace!("Attempting to get from cache {:?}", path);
         if let Some(cached) = self.cache.read().await.get(path) {
             if app_state.config.environment.is_prod() && !cached.needs_check() {
