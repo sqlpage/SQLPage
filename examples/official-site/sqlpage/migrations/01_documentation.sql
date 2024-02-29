@@ -396,7 +396,7 @@ INSERT INTO uploaded_file(name, data) VALUES(:filename, sqlpage.uploaded_file_da
 ```
 ',
     json('[{"component":"form", "title": "Upload a picture", "validate": "Upload", "action": "examples/handle_picture_upload.sql"}, 
-    {"name": "my_file", "type": "file", "accept": "image/png, image/jpeg",  "label": "Picture", "description": "Upload a nice picture", "required": true}
+    {"name": "my_file", "type": "file", "accept": "image/png, image/jpeg",  "label": "Picture", "description": "Upload a small picture", "required": true}
     ]')),
     ('form', '
 ## Bulk data insertion
