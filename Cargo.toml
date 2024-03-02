@@ -45,7 +45,7 @@ argon2 = "0.5.0"
 actix-web-httpauth = "0.8.0"
 rand = "0.8.5"
 actix-multipart = "0.6.1"
-base64 = "0.21.5"
+base64 = "0.22"
 rustls-acme = "0.7.7"
 dotenvy = "0.15.7"
 csv-async = { version = "1.2.6", features = ["tokio"] }
