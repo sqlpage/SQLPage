@@ -6,6 +6,11 @@
 
 ## 0.19.0 (2024-02-25)
 
+ - New `SQLPAGE_CONFIGURATION_DIRECTORY` environment variable to set the configuration directory from the environment.
+   The configuration directory is where SQLPage looks for the `sqlpage.json` configuration file, for the `migrations` and `templates` directories, and the `on_connect.sql` file. It used to be hardcoded to `./sqlpage/`, which made each SQLPage invokation dependent on the [current working directory](https://en.wikipedia.org/wiki/Working_directory).
+   Now you can, for instance, set `SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage/` in your environment, and SQLPage will look for its configuration files in `/etc/sqlpage`, which is a more standard location for configuration files in a Unix environment.
+     - The official docker image now sets `SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage/` by default, and changes the working directory to `/var/www/` by default.
+         - **⚠️ WARNING**: This change can break your docker image if you relied on setting the working directory to `/var/www` and putting the configuration in `/var/www/sqlpage`. In this case, the recommended setup is to store your sqlpage configuration directory and sql files in different directory. For more information see [this issue](https://github.com/lovasoa/SQLpage/issues/246).
  - Updated the chart component to use the latest version of the charting library
    - https://github.com/apexcharts/apexcharts.js/releases/tag/v3.45.2
    - https://github.com/apexcharts/apexcharts.js/releases/tag/v3.46.0
@@ -23,10 +28,6 @@
    - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/df085592-8359-4fed-9aeb-27a2416ab6b8)
  - **Multiple page layouts** : The page layout is now configurable from the [shell component](https://sql.ophir.dev/documentation.sql?component=shell#component). 3 layouts are available: `boxed` (the default), `fluid` (full width), and `horizontal` (with boxed contents but a full-width header).
    - ![horizontal layout screenshot](https://github.com/lovasoa/SQLpage/assets/552629/3c0fde36-7bf6-414e-b96f-c8880a2fc786)
- - New `SQLPAGE_CONFIGURATION_DIRECTORY` environment variable to set the configuration directory from the environment.
-   The configuration directory is where SQLPage looks for the `sqlpage.json` configuration file, for the `migrations` and `templates` directories, and the `on_connect.sql` file. It used to be hardcoded to `./sqlpage/`, which made each SQLPage invokation dependent on the [current working directory](https://en.wikipedia.org/wiki/Working_directory).
-   Now you can, for instance, set `SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage/` in your environment, and SQLPage will look for its configuration files in `/etc/sqlpage`, which is a more standard location for configuration files in a Unix environment.
-     - The official docker image now sets `SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage/` by default, and changes the working directory to `/var/www/` by default.
 
 ## 0.18.3 (2024-02-03)
 
