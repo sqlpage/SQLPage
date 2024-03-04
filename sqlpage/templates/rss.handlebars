@@ -1,17 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0">
-	<channel>
-		<title>{{title}}</title>
-		<link>{{link}}</link>
-		<description>{{description}}</description>
-		{{#each_row}}
-		<item>
-			<title>{{title}}</title>
-			<link>{{link}}</link>
-			<description><![CDATA[{{description}}]]></description>
-			{{~#if pubdate}}<pubDate>{{pubdate}}</pubDate>{{/if}}
-		</item>
-		{{/each_row}}
-	</channel>
+<rss version="2.0"
+    xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+    xmlns:podcast="https://podcastindex.org/namespace/1.0"
+    xmlns:atom="http://www.w3.org/2005/Atom"
+    xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title>{{title}}</title>
+        <link>{{link}}</link>
+        <description>{{description}}</description>
+        {{#if language}}<language>{{language}}</language>{{/if}}
+        {{#if category}}<itunes:category text="{{category}}">{{sub_category}}</itunes:category>{{/if}}
+        {{#if explicit}}<itunes:explicit>{{explicit}}</itunes:explicit>{{/if}}
+        {{#if image_url}}<itunes:image href="{{image_url}}" />{{/if}}
+        {{#if author}}<itunes:author>{{author}}</itunes:author>{{/if}}
+        {{#if copyright}}<copyright>{{copyright}}</copyright>{{/if}}
+        {{#if funding_url}}<podcast:funding url="{{funding_url}}">{{funding_text}}</podcast:funding>{{/if}}
+        {{#if type}}<itunes:type>{{type}}</itunes:type>{{/if}}
+        {{#if complete}}<itunes:complete>yes</itunes:complete>{{/if}}
+        {{#if locked}}<podcast:locked>yes</podcast:locked>{{/if}}
+        {{#if guid}}<podcast:guid>{{guid}}</podcast:guid>{{/if}}
+        {{#each_row}}
+        <item>
+            <title>{{title}}</title>
+            <link>{{link}}</link>
+            <description><![CDATA[{{description}}]]></description>
+            {{#if pubdate}}<pubDate>{{pubdate}}</pubDate>{{/if}}
+            {{#if enclosure_url}}<enclosure length="{{enclosure_length}}" type="{{enclosure_type}}" url="{{enclosure_url}}" />{{/if}}
+            {{#if guid}}<guid isPermaLink="false">{{guid}}</guid>{{/if}}
+            {{#if episode}}<itunes:episode>{{episode}}</itunes:episode>{{/if}}
+            {{#if season}}<itunes:season>{{season}}</itunes:season>{{/if}}
+            {{#if episode_type}}<itunes:episodeType>{{episode_type}}</itunes:episodeType>{{/if}}
+            {{#if block}}<itunes:block>{{block}}</itunes:block>{{/if}}
+            {{#if explicit}}<itunes:explicit>{{explicit}}</itunes:explicit>{{/if}}
+            {{#if image_url}}<itunes:image href="{{image_url}}" />{{/if}}
+            {{#if duration}}<itunes:duration>{{duration}}</itunes:duration>{{/if}}
+            {{#if transcript_url}}<podcast:transcript url="{{transcript_url}}" type="{{transcript_type}}" />{{/if}}
+        </item>
+        {{/each_row}}
+    </channel>
 </rss>
-
