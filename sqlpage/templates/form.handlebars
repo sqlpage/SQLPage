@@ -16,7 +16,7 @@
             {{#if (or (eq type "radio") (eq type "checkbox"))}}
                 <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column my-1 col-md-{{default width 12}}">
                     <label class="form-selectgroup-item flex-fill">
-                        <input type="{{type}}" name="{{name}}" value="{{value}}" {{#if required}}required{{/if}} {{#if checked}}checked{{/if}} class="form-selectgroup-input">
+                        <input type="{{type}}" {{#if id}}id="{{id}}" {{/if}}name="{{name}}" value="{{value}}" {{#if required}}required{{/if}} {{#if checked}}checked{{/if}} class="form-selectgroup-input">
                         <div class="form-selectgroup-label d-flex align-items-center p-3">
                             <div class="me-3">
                                 <span class="form-selectgroup-check"></span>
@@ -35,7 +35,7 @@
                 </div>
             {{else}}
             {{~#if (eq type "hidden")}}
-                <input type="hidden" name="{{name}}" value="{{value}}">
+                <input type="hidden" name="{{name}}" {{#if id}}id="{{id}}" {{/if}}value="{{value}}">
             {{else}}
                 <label class="form-label mb-2 col-md-{{default width 12}}">
                     {{default label name}}
@@ -48,7 +48,8 @@
                             class="form-control"
                             placeholder="{{placeholder}}"
                             rows="{{default rows 3}}"
-                            {{#if value}}value="{{value}}" {{/if~}}
+                            {{#if id}}id="{{id}}" {{/if~}}
+                            {{~#if value}}value="{{value}}" {{/if~}}
                             {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
                             {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
                             {{~#if required}}required="required" {{/if~}}
@@ -58,6 +59,7 @@
                         </textarea>
                     {{else}}{{#if (eq type 'select')}}
                         <select name="{{name}}" class="form-select"
+                        {{~#if id}} id="{{id}}" {{/if~}}
                         {{~#if required}} required="required" {{/if~}}
                         {{~#if autofocus}} autofocus {{/if~}}
                         {{~#if multiple}} multiple {{/if~}}
@@ -71,6 +73,7 @@
                             {{#if prefix_icon}}<span class="input-group-text">{{icon_img prefix_icon}}</span>{{/if}}
                             {{#if prefix}}<span class="input-group-text">{{prefix}}</span>{{/if}}
                             <input name="{{name}}" class="form-control {{class}}" 
+                                {{~#if id}} id="{{id}}" {{/if~}}
                                 {{~#if type}} type="{{type}}" {{/if~}}
                                 {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
                                 {{~#if value}} value="{{value}}" {{/if~}}
