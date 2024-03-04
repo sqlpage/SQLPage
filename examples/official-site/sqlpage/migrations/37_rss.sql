@@ -1,7 +1,7 @@
 -- Documentation for the RSS component
 INSERT INTO component (name, description, icon, introduced_in_version) VALUES (
     'rss',
-    'Produces a data flow in the RSS format. To use this component, you must first returning an HTTP header with the "application/rss+xml" content type (see http_header component). Next, you must use the shell-empty component to avoid that SQLPage generates HTML code. TIPS: If you don''t want change the page shell, you can also use the _sqlpage_embed URL parameter.',
+    'Produces a data flow in the RSS format. To use this component, you must first returning an HTTP header with the "application/rss+xml" content type (see http_header component). Next, you must use the shell-empty component to avoid that SQLPage generates HTML code.',
     'rss',
     '0.20.0'
 );
@@ -65,6 +65,8 @@ VALUES (
 ### An RSS chanel about SQLPage latest news.
 
 ```sql
+select ''http_header'' as component, ''application/rss+xml'' as content_type;
+select ''shell-empty'' as component;
 select
 	''rss'' as component,
 	''SQLPage blog'' as title,
