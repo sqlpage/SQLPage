@@ -257,4 +257,10 @@ select
   123456789 as enclosure_length,
   ''video/webm'' as enclosure_type,
   ''2023-12-04'' as date;
+```
+
+Once you have your rss feed ready, you can submit it to podcast directories like
+[Apple Podcasts](https://podcastsconnect.apple.com/my-podcasts),
+[Spotify](https://podcasters.spotify.com/),
+[Google Podcasts](https://podcastsmanager.google.com/)...
 ');
