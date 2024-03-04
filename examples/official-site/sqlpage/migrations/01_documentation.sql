@@ -237,7 +237,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('class', 'A CSS class to apply to the form element.', 'TEXT', FALSE, TRUE),
     ('prefix_icon','Icon to display on the left side of the input field, on the same line.','ICON',FALSE,TRUE),
     ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
-    ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE)
+    ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE),
+    ('id','A unique identifier for the input, which can then be used to select and manage the field with Javascript code. Usefull for advanced using as setting client side event listeners, interactive control of input field (disabled, visibility, read only, e.g.) and AJAX requests.','TEXT',FALSE,TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     (
