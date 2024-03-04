@@ -10,7 +10,7 @@
         <description>{{description}}</description>
         {{#if language}}<language>{{language}}</language>{{/if}}
         {{#if category}}<itunes:category text="{{category}}">{{sub_category}}</itunes:category>{{/if}}
-        {{#if explicit}}<itunes:explicit>{{explicit}}</itunes:explicit>{{/if}}
+        <itunes:explicit>{{#if explicit}}true{{else}}false{{/if}}</itunes:explicit>
         {{#if image_url}}<itunes:image href="{{image_url}}" />{{/if}}
         {{#if author}}<itunes:author>{{author}}</itunes:author>{{/if}}
         {{#if copyright}}<copyright>{{copyright}}</copyright>{{/if}}
@@ -24,14 +24,14 @@
             <title>{{title}}</title>
             <link>{{link}}</link>
             <description><![CDATA[{{description}}]]></description>
-            {{#if pubdate}}<pubDate>{{pubdate}}</pubDate>{{/if}}
+            {{#if date}}<pubDate>{{date}}</pubDate>{{/if}}
             {{#if enclosure_url}}<enclosure length="{{enclosure_length}}" type="{{enclosure_type}}" url="{{enclosure_url}}" />{{/if}}
             {{#if guid}}<guid isPermaLink="false">{{guid}}</guid>{{/if}}
             {{#if episode}}<itunes:episode>{{episode}}</itunes:episode>{{/if}}
             {{#if season}}<itunes:season>{{season}}</itunes:season>{{/if}}
             {{#if episode_type}}<itunes:episodeType>{{episode_type}}</itunes:episodeType>{{/if}}
-            {{#if block}}<itunes:block>{{block}}</itunes:block>{{/if}}
-            {{#if explicit}}<itunes:explicit>{{explicit}}</itunes:explicit>{{/if}}
+            {{#if block}}<itunes:block>yes</itunes:block>{{/if}}
+	        <itunes:explicit>{{#if explicit}}true{{else}}false{{/if}}</itunes:explicit>
             {{#if image_url}}<itunes:image href="{{image_url}}" />{{/if}}
             {{#if duration}}<itunes:duration>{{duration}}</itunes:duration>{{/if}}
             {{#if transcript_url}}<podcast:transcript url="{{transcript_url}}" type="{{transcript_type}}" />{{/if}}
