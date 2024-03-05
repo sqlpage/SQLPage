@@ -355,3 +355,14 @@ impl<F: CanHelp> handlebars::HelperDef for JFun<F> {
 fn register_helper(h: &mut Handlebars, name: &'static str, fun: impl CanHelp) {
     h.register_helper(name, Box::new(JFun { name, fun }));
 }
+
+#[test]
+fn test_rfc2822_date() {
+    assert_eq!(
+        rfc2822_date_helper(&JsonValue::String("1970-01-02T03:04:05+02:00".into()))
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "Fri, 02 Jan 1970 03:04:05 +0200"
+    );
+}
