@@ -7,8 +7,8 @@ pub mod app_config;
 pub mod file_cache;
 pub mod filesystem;
 pub mod render;
-pub mod templates;
 pub mod template_helpers;
+pub mod templates;
 pub mod utils;
 pub mod webserver;
 
