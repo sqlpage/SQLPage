@@ -13,16 +13,14 @@ use crate::utils::static_filename;
 type H = fn(&JsonValue) -> JsonValue;
 /// Simple json to json helper with error handling
 type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
+/// Helper that takes two arguments
+type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     register_helper(h, "stringify", stringify_helper as H);
     register_helper(h, "parse_json", parse_json_helper as EH);
-
-    handlebars_helper!(default: |a: Json, b:Json| if a.is_null() {b} else {a}.clone());
-    h.register_helper("default", Box::new(default));
-
+    register_helper(h, "default", default_helper as HH);
     register_helper(h, "entries", entries_helper as H);
-
     // delay helper: store a piece of information in memory that can be output later with flush_delayed
     h.register_helper("delay", Box::new(delay_helper));
     h.register_helper("flush_delayed", Box::new(flush_delayed_helper));
@@ -79,6 +77,14 @@ fn parse_json_helper(v: &JsonValue) -> Result<JsonValue, anyhow::Error> {
         serde_json::value::Value::String(s) => serde_json::from_str(s)?,
         other => other.clone(),
     })
+}
+
+fn default_helper(v: &JsonValue, default: &JsonValue) -> JsonValue {
+    if v.is_null() {
+        default.clone()
+    } else {
+        v.clone()
+    }
 }
 
 fn entries_helper(v: &JsonValue) -> JsonValue {
@@ -269,18 +275,33 @@ fn icon_img_helper<'reg, 'rc>(
 }
 
 trait CanHelp: Send + Sync + 'static {
-    fn call(&self, v: &JsonValue) -> Result<JsonValue, String>;
+    fn call(&self, v: &[PathAndJson]) -> Result<JsonValue, String>;
 }
 
 impl CanHelp for H {
-    fn call(&self, v: &JsonValue) -> Result<JsonValue, String> {
-        Ok(self(v))
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        match args {
+            [v] => Ok(self(v.value())),
+            _ => Err("expected one argument".to_string()),
+        }
     }
 }
 
 impl CanHelp for EH {
-    fn call(&self, v: &JsonValue) -> Result<JsonValue, String> {
-        self(v).map_err(|e| e.to_string())
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        match args {
+            [v] => self(v.value()).map_err(|e| e.to_string()),
+            _ => Err("expected one argument".to_string()),
+        }
+    }
+}
+
+impl CanHelp for HH {
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        match args {
+            [a, b] => Ok(self(a.value(), b.value())),
+            _ => Err("expected two arguments".to_string()),
+        }
     }
 }
 
@@ -296,13 +317,10 @@ impl<F: CanHelp> handlebars::HelperDef for JFun<F> {
         _: &'rc Context,
         _rc: &mut handlebars::RenderContext<'reg, 'rc>,
     ) -> Result<handlebars::ScopedJson<'rc>, RenderError> {
-        let value = helper
-            .param(0)
-            .ok_or(RenderErrorReason::ParamNotFoundForIndex(self.name, 0))?;
         let result = self
             .fun
-            .call(value.value())
-            .map_err(|s| RenderErrorReason::Other(s.to_string()))?;
+            .call(helper.params().as_slice())
+            .map_err(|s| RenderErrorReason::Other(format!("{}: {}", self.name, s)))?;
         Ok(ScopedJson::Derived(result))
     }
 }
