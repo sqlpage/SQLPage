@@ -24,17 +24,10 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     // delay helper: store a piece of information in memory that can be output later with flush_delayed
     h.register_helper("delay", Box::new(delay_helper));
     h.register_helper("flush_delayed", Box::new(flush_delayed_helper));
-
-    handlebars_helper!(plus: |a: Json, b:Json| a.as_i64().unwrap_or_default() + b.as_i64().unwrap_or_default());
-    h.register_helper("plus", Box::new(plus));
-
-    handlebars_helper!(minus: |a: Json, b:Json| a.as_i64().unwrap_or_default() - b.as_i64().unwrap_or_default());
-    h.register_helper("minus", Box::new(minus));
-
+    register_helper(h, "plus", plus_helper as HH);
+    register_helper(h, "plus", minus_helper as HH);
     h.register_helper("sum", Box::new(sum_helper));
-
-    handlebars_helper!(starts_with: |s: str, prefix:str| s.starts_with(prefix));
-    h.register_helper("starts_with", Box::new(starts_with));
+    register_helper(h, "starts_with", starts_with_helper as HH);
 
     // to_array: convert a value to a single-element array. If the value is already an array, return it as-is.
     register_helper(h, "to_array", to_array_helper as H);
@@ -51,21 +44,10 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
 
     // icon helper: generate an image with the specified icon
     h.register_helper("icon_img", Box::new(icon_img_helper));
-
     register_helper(h, "markdown", markdown_helper as EH);
     register_helper(h, "buildinfo", buildinfo_helper as EH);
-
     register_helper(h, "typeof", typeof_helper as H);
-
-    // rfc2822_date: take an ISO date and convert it to an RFC 2822 date
-    handlebars_helper!(rfc2822_date : |s: str| {
-        let Ok(date) = chrono::DateTime::parse_from_rfc3339(s) else {
-            log::error!("Invalid date: {}", s);
-            return Err(RenderErrorReason::InvalidParamType("date").into());
-        };
-        date.format("%a, %d %b %Y %T %z").to_string()
-    });
-    h.register_helper("rfc2822_date", Box::new(rfc2822_date));
+    register_helper(h, "rfc2822_date", rfc2822_date_helper as EH);
 }
 
 fn stringify_helper(v: &JsonValue) -> JsonValue {
@@ -87,6 +69,36 @@ fn default_helper(v: &JsonValue, default: &JsonValue) -> JsonValue {
     }
 }
 
+fn plus_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
+    if let (Some(a), Some(b)) = (a.as_i64(), b.as_i64()) {
+        (a + b).into()
+    } else if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
+        (a + b).into()
+    } else {
+        JsonValue::Null
+    }
+}
+
+fn minus_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
+    if let (Some(a), Some(b)) = (a.as_i64(), b.as_i64()) {
+        (a - b).into()
+    } else if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
+        (a - b).into()
+    } else {
+        JsonValue::Null
+    }
+}
+
+fn starts_with_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
+    if let (Some(a), Some(b)) = (a.as_str(), b.as_str()) {
+        a.starts_with(b)
+    } else if let (Some(arr1), Some(arr2)) = (a.as_array(), b.as_array()) {
+        arr1.starts_with(arr2)
+    } else {
+        false
+    }
+    .into()
+}
 fn entries_helper(v: &JsonValue) -> JsonValue {
     match v {
         serde_json::value::Value::Object(map) => map
@@ -163,6 +175,21 @@ fn buildinfo_helper(x: &JsonValue) -> anyhow::Result<JsonValue> {
         JsonValue::String(s) if s == "CARGO_PKG_VERSION" => Ok(env!("CARGO_PKG_VERSION").into()),
         other => Err(anyhow::anyhow!("unknown buildinfo key: {other:?}")),
     }
+}
+
+// rfc2822_date: take an ISO date and convert it to an RFC 2822 date
+fn rfc2822_date_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
+    let date = match v {
+        JsonValue::String(s) => chrono::DateTime::parse_from_rfc3339(s)?,
+        JsonValue::Number(n) => {
+            chrono::DateTime::from_timestamp(n.as_i64().with_context(|| "not a timestamp")?, 0)
+                .with_context(|| "invalid timestamp")?
+                .into()
+        }
+        other => anyhow::bail!("expected a date, got {other:?}"),
+    };
+    // format: Thu, 01 Jan 1970 00:00:00 +0000
+    Ok(date.format("%a, %d %b %Y %T %z").to_string().into())
 }
 
 fn with_each_block<'a, 'reg, 'rc>(
