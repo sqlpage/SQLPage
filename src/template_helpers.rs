@@ -21,7 +21,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     handlebars_helper!(default: |a: Json, b:Json| if a.is_null() {b} else {a}.clone());
     h.register_helper("default", Box::new(default));
 
-    register_helper(h, "entries", entries_helper as EH);
+    register_helper(h, "entries", entries_helper as H);
 
     // delay helper: store a piece of information in memory that can be output later with flush_delayed
     h.register_helper("delay", Box::new(delay_helper));
@@ -39,7 +39,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     h.register_helper("starts_with", Box::new(starts_with));
 
     // to_array: convert a value to a single-element array. If the value is already an array, return it as-is.
-    register_helper(h, "to_array", to_array_helper as EH);
+    register_helper(h, "to_array", to_array_helper as H);
 
     // array_contains: check if an array contains an element. If the first argument is not an array, it is compared to the second argument.
     handlebars_helper!(array_contains: |array: Json, element: Json| match array {
@@ -81,8 +81,8 @@ fn parse_json_helper(v: &JsonValue) -> Result<JsonValue, anyhow::Error> {
     })
 }
 
-fn entries_helper(v: &JsonValue) -> Result<JsonValue, anyhow::Error> {
-    Ok(match v {
+fn entries_helper(v: &JsonValue) -> JsonValue {
+    match v {
         serde_json::value::Value::Object(map) => map
             .into_iter()
             .map(|(k, v)| serde_json::json!({"key": k, "value": v}))
@@ -94,11 +94,11 @@ fn entries_helper(v: &JsonValue) -> Result<JsonValue, anyhow::Error> {
             .collect(),
         _ => vec![],
     }
-    .into())
+    .into()
 }
 
-fn to_array_helper(v: &JsonValue) -> Result<JsonValue, anyhow::Error> {
-    Ok(match v {
+fn to_array_helper(v: &JsonValue) -> JsonValue {
+    match v {
         JsonValue::Array(arr) => arr.clone(),
         JsonValue::Null => vec![],
         JsonValue::String(s) if s.starts_with('[') => {
@@ -110,7 +110,7 @@ fn to_array_helper(v: &JsonValue) -> Result<JsonValue, anyhow::Error> {
         }
         other => vec![other.clone()],
     }
-    .into())
+    .into()
 }
 
 fn static_path_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
@@ -272,13 +272,13 @@ trait CanHelp: Send + Sync + 'static {
     fn call(&self, v: &JsonValue) -> Result<JsonValue, String>;
 }
 
-impl CanHelp for fn(&JsonValue) -> JsonValue {
+impl CanHelp for H {
     fn call(&self, v: &JsonValue) -> Result<JsonValue, String> {
         Ok(self(v))
     }
 }
 
-impl CanHelp for fn(&JsonValue) -> anyhow::Result<JsonValue> {
+impl CanHelp for EH {
     fn call(&self, v: &JsonValue) -> Result<JsonValue, String> {
         self(v).map_err(|e| e.to_string())
     }
