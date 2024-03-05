@@ -9,7 +9,8 @@ select 'shell' as component,
     'blog' as menu_item,
     'documentation' as menu_item,
     19 as font_size,
-    'Poppins' as font;
+    'Poppins' as font,
+    './rss.sql' as rss;
 
 SELECT 'hero' as component,
     'SQLPage' as title,

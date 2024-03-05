@@ -34,6 +34,9 @@
     {{#if refresh}}
         <meta http-equiv="refresh" content="{{refresh}}">
     {{/if}}
+    {{#if rss}}
+        <link rel="alternate" type="application/rss+xml" title="{{title}}" href="{{rss}}">
+    {{/if}}
     <meta name="generator" content="SQLPage"/>
 </head>
 

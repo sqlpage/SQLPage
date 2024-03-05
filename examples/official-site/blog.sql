@@ -10,6 +10,7 @@ select 'shell' as component,
     'Poppins' as font,
     'https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js' as javascript,
     'https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js' as javascript,
+    './rss.sql' as rss,
     '/prism-tabler-theme.css' as css;
     
 SELECT 'text' AS component,
