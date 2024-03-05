@@ -73,6 +73,13 @@ INSERT INTO parameter (component,name,description,type,top_level,optional) VALUE
     TRUE
 ),(
     'rss',
+    'self_link',
+    'URL of the RSS feed.',
+    'URL',
+    TRUE,
+    TRUE
+),(
+    'rss',
     'funding_url',
     'Specifies the donation/funding links for the channel. The content of the tag is the recommended string to be used with the link.',
     'URL',

@@ -179,8 +179,16 @@ fn buildinfo_helper(x: &JsonValue) -> anyhow::Result<JsonValue> {
 
 // rfc2822_date: take an ISO date and convert it to an RFC 2822 date
 fn rfc2822_date_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
-    let date = match v {
-        JsonValue::String(s) => chrono::DateTime::parse_from_rfc3339(s)?,
+    let date: chrono::DateTime<chrono::FixedOffset> = match v {
+        JsonValue::String(s) => {
+            // we accept both dates with and without time
+            chrono::DateTime::parse_from_rfc3339(s)
+                .or_else(|_| {
+                    chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                        .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().fixed_offset())
+                })
+                .with_context(|| format!("invalid date: {s}"))?
+        }
         JsonValue::Number(n) => {
             chrono::DateTime::from_timestamp(n.as_i64().with_context(|| "not a timestamp")?, 0)
                 .with_context(|| "invalid timestamp")?
@@ -364,5 +372,12 @@ fn test_rfc2822_date() {
             .as_str()
             .unwrap(),
         "Fri, 02 Jan 1970 03:04:05 +0200"
+    );
+    assert_eq!(
+        rfc2822_date_helper(&JsonValue::String("1970-01-02".into()))
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "Fri, 02 Jan 1970 00:00:00 +0000"
     );
 }
