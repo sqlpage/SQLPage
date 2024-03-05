@@ -9,14 +9,19 @@ use serde_json::Value as JsonValue;
 
 use crate::utils::static_filename;
 
+/// Simple json to json helper
+type H = fn(&JsonValue) -> JsonValue;
+/// Simple json to json helper with error handling
+type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
+
 pub fn register_all_helpers(h: &mut Handlebars<'_>) {
-    register_helper(h, "stringify", stringify_helper);
-    register_helper(h, "parse_json", parse_json_helper);
+    register_helper(h, "stringify", stringify_helper as H);
+    register_helper(h, "parse_json", parse_json_helper as EH);
 
     handlebars_helper!(default: |a: Json, b:Json| if a.is_null() {b} else {a}.clone());
     h.register_helper("default", Box::new(default));
 
-    register_helper(h, "entries", entries_helper);
+    register_helper(h, "entries", entries_helper as EH);
 
     // delay helper: store a piece of information in memory that can be output later with flush_delayed
     h.register_helper("delay", Box::new(delay_helper));
@@ -34,7 +39,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     h.register_helper("starts_with", Box::new(starts_with));
 
     // to_array: convert a value to a single-element array. If the value is already an array, return it as-is.
-    register_helper(h, "to_array", to_array_helper);
+    register_helper(h, "to_array", to_array_helper as EH);
 
     // array_contains: check if an array contains an element. If the first argument is not an array, it is compared to the second argument.
     handlebars_helper!(array_contains: |array: Json, element: Json| match array {
@@ -44,44 +49,15 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     h.register_helper("array_contains", Box::new(array_contains));
 
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
-    register_helper(h, "static_path", static_path_helper);
+    register_helper(h, "static_path", static_path_helper as EH);
 
     // icon helper: generate an image with the specified icon
     h.register_helper("icon_img", Box::new(icon_img_helper));
 
-    register_helper(h, "markdown", |x| {
-        let as_str = match x {
-            JsonValue::String(s) => Cow::Borrowed(s),
-            JsonValue::Array(arr) => Cow::Owned(
-                arr.iter()
-                    .map(|v| v.as_str().unwrap_or_default())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-            JsonValue::Null => Cow::Owned(String::new()),
-            other => Cow::Owned(other.to_string()),
-        };
-        markdown::to_html_with_options(&as_str, &markdown::Options::gfm())
-            .map(JsonValue::String)
-            .map_err(|e| anyhow::anyhow!("markdown error: {e}"))
-    });
-    register_helper(h, "buildinfo", |x| match x {
-        JsonValue::String(s) if s == "CARGO_PKG_NAME" => Ok(env!("CARGO_PKG_NAME").into()),
-        JsonValue::String(s) if s == "CARGO_PKG_VERSION" => Ok(env!("CARGO_PKG_VERSION").into()),
-        other => Err(anyhow::anyhow!("unknown buildinfo key: {other:?}")),
-    });
+    register_helper(h, "markdown", markdown_helper as EH);
+    register_helper(h, "buildinfo", buildinfo_helper as EH);
 
-    register_helper(h, "typeof", |x| {
-        Ok(match x {
-            JsonValue::Null => "null",
-            JsonValue::Bool(_) => "boolean",
-            JsonValue::Number(_) => "number",
-            JsonValue::String(_) => "string",
-            JsonValue::Array(_) => "array",
-            JsonValue::Object(_) => "object",
-        }
-        .into())
-    });
+    register_helper(h, "typeof", typeof_helper as H);
 
     // rfc2822_date: take an ISO date and convert it to an RFC 2822 date
     handlebars_helper!(rfc2822_date : |s: str| {
@@ -94,8 +70,8 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     h.register_helper("rfc2822_date", Box::new(rfc2822_date));
 }
 
-fn stringify_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
-    Ok(v.to_string().into())
+fn stringify_helper(v: &JsonValue) -> JsonValue {
+    v.to_string().into()
 }
 
 fn parse_json_helper(v: &JsonValue) -> Result<JsonValue, anyhow::Error> {
@@ -143,6 +119,43 @@ fn static_path_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
         "sqlpage.css" => Ok(static_filename!("sqlpage.css").into()),
         "apexcharts.js" => Ok(static_filename!("apexcharts.js").into()),
         other => Err(anyhow::anyhow!("unknown static file: {other:?}")),
+    }
+}
+
+fn typeof_helper(v: &JsonValue) -> JsonValue {
+    match v {
+        JsonValue::Null => "null",
+        JsonValue::Bool(_) => "boolean",
+        JsonValue::Number(_) => "number",
+        JsonValue::String(_) => "string",
+        JsonValue::Array(_) => "array",
+        JsonValue::Object(_) => "object",
+    }
+    .into()
+}
+
+fn markdown_helper(x: &JsonValue) -> anyhow::Result<JsonValue> {
+    let as_str = match x {
+        JsonValue::String(s) => Cow::Borrowed(s),
+        JsonValue::Array(arr) => Cow::Owned(
+            arr.iter()
+                .map(|v| v.as_str().unwrap_or_default())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+        JsonValue::Null => Cow::Owned(String::new()),
+        other => Cow::Owned(other.to_string()),
+    };
+    markdown::to_html_with_options(&as_str, &markdown::Options::gfm())
+        .map(JsonValue::String)
+        .map_err(|e| anyhow::anyhow!("markdown error: {e}"))
+}
+
+fn buildinfo_helper(x: &JsonValue) -> anyhow::Result<JsonValue> {
+    match x {
+        JsonValue::String(s) if s == "CARGO_PKG_NAME" => Ok(env!("CARGO_PKG_NAME").into()),
+        JsonValue::String(s) if s == "CARGO_PKG_VERSION" => Ok(env!("CARGO_PKG_VERSION").into()),
+        other => Err(anyhow::anyhow!("unknown buildinfo key: {other:?}")),
     }
 }
 
@@ -255,11 +268,27 @@ fn icon_img_helper<'reg, 'rc>(
     Ok(())
 }
 
-struct JFun<F> {
+trait CanHelp: Send + Sync + 'static {
+    fn call(&self, v: &JsonValue) -> Result<JsonValue, String>;
+}
+
+impl CanHelp for fn(&JsonValue) -> JsonValue {
+    fn call(&self, v: &JsonValue) -> Result<JsonValue, String> {
+        Ok(self(v))
+    }
+}
+
+impl CanHelp for fn(&JsonValue) -> anyhow::Result<JsonValue> {
+    fn call(&self, v: &JsonValue) -> Result<JsonValue, String> {
+        self(v).map_err(|e| e.to_string())
+    }
+}
+
+struct JFun<F: CanHelp> {
     name: &'static str,
     fun: F,
 }
-impl handlebars::HelperDef for JFun<fn(&JsonValue) -> anyhow::Result<JsonValue>> {
+impl<F: CanHelp> handlebars::HelperDef for JFun<F> {
     fn call_inner<'reg: 'rc, 'rc>(
         &self,
         helper: &handlebars::Helper<'rc>,
@@ -270,49 +299,14 @@ impl handlebars::HelperDef for JFun<fn(&JsonValue) -> anyhow::Result<JsonValue>>
         let value = helper
             .param(0)
             .ok_or(RenderErrorReason::ParamNotFoundForIndex(self.name, 0))?;
-        let result =
-            (self.fun)(value.value()).map_err(|s| RenderErrorReason::Other(s.to_string()))?;
+        let result = self
+            .fun
+            .call(value.value())
+            .map_err(|s| RenderErrorReason::Other(s.to_string()))?;
         Ok(ScopedJson::Derived(result))
     }
 }
 
-struct JFun2<F> {
-    name: &'static str,
-    fun: F,
-}
-impl handlebars::HelperDef for JFun2<fn(&JsonValue, &JsonValue) -> JsonValue> {
-    fn call_inner<'reg: 'rc, 'rc>(
-        &self,
-        helper: &handlebars::Helper<'rc>,
-        _r: &'reg Handlebars<'reg>,
-        _: &'rc Context,
-        _rc: &mut handlebars::RenderContext<'reg, 'rc>,
-    ) -> Result<handlebars::ScopedJson<'rc>, RenderError> {
-        let value = helper
-            .param(0)
-            .ok_or(RenderErrorReason::ParamNotFoundForIndex(self.name, 0))?;
-        let value2 = helper
-            .param(1)
-            .ok_or(RenderErrorReason::ParamNotFoundForIndex(self.name, 1))?;
-        Ok(ScopedJson::Derived((self.fun)(
-            value.value(),
-            value2.value(),
-        )))
-    }
-}
-
-fn register_helper<F>(h: &mut Handlebars, name: &'static str, fun: F)
-where
-    JFun<F>: handlebars::HelperDef,
-    F: Send + Sync + 'static,
-{
+fn register_helper(h: &mut Handlebars, name: &'static str, fun: impl CanHelp) {
     h.register_helper(name, Box::new(JFun { name, fun }));
-}
-
-fn register_helper2<F>(h: &mut Handlebars, name: &'static str, fun: F)
-where
-    JFun2<F>: handlebars::HelperDef,
-    F: Send + Sync + 'static,
-{
-    h.register_helper(name, Box::new(JFun2 { name, fun }));
 }
