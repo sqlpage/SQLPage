@@ -15,6 +15,7 @@ SELECT title,
         WHEN external_url IS NOT NULL THEN external_url
         ELSE 'https://sql.ophir.dev/blog.sql?post=' || title
     END AS link,
-    created_at AS date
+    created_at AS date,
+    false AS explicit
 FROM blog_posts
 ORDER BY created_at DESC;
