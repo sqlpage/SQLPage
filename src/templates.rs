@@ -307,6 +307,16 @@ impl AllTemplates {
         });
         handlebars.register_helper("typeof", Box::new(typeof_helper));
 
+        // rfc2822_date: take an ISO date and convert it to an RFC 2822 date
+        handlebars_helper!(rfc2822_date : |s: str| {
+            let Ok(date) = chrono::DateTime::parse_from_rfc3339(s) else {
+                log::error!("Invalid date: {}", s);
+                return Err(RenderErrorReason::InvalidParamType("date").into());
+            };
+            date.format("%a, %d %b %Y %T %z").to_string()
+        });
+        handlebars.register_helper("rfc2822_date", Box::new(rfc2822_date));
+
         let mut this = Self {
             handlebars,
             split_templates: FileCache::new(),

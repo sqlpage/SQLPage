@@ -24,7 +24,7 @@
             <title>{{title}}</title>
             <link>{{link}}</link>
             <description><![CDATA[{{description}}]]></description>
-            {{#if date}}<pubDate>{{date}}</pubDate>{{/if}}
+            {{#if date}}<pubDate>{{rfc2822_date date}}</pubDate>{{/if}}
             {{#if enclosure_url}}<enclosure length="{{enclosure_length}}" type="{{enclosure_type}}" url="{{enclosure_url}}" />{{/if}}
             {{#if guid}}<guid isPermaLink="false">{{guid}}</guid>{{/if}}
             {{#if episode}}<itunes:episode>{{episode}}</itunes:episode>{{/if}}
