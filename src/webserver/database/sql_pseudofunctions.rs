@@ -8,10 +8,7 @@ use sqlparser::ast::FunctionArg;
 use tokio_stream::StreamExt;
 
 use crate::webserver::{
-    database::{
-        execute_queries::{stream_query_results, stream_query_results_boxed},
-        DbItem,
-    },
+    database::{execute_queries::stream_query_results_boxed, DbItem},
     http::SingleOrVec,
     http_request_info::RequestInfo,
     ErrorWithStatus,
@@ -264,6 +261,7 @@ async fn run_sql<'a>(
     param0: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    use serde::ser::{SerializeSeq, Serializer};
     let Some(sql_file_path) = extract_req_param_non_nested(param0, request)? else {
         log::debug!("run_sql: first argument is NULL, returning NULL");
         return Ok(None);
@@ -283,7 +281,6 @@ async fn run_sql<'a>(
         &sql_file,
         &mut tmp_req,
     ));
-    use serde::ser::{SerializeSeq, Serializer};
     let mut json_results_bytes = Vec::new();
     let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
     let mut seq = json_encoder.serialize_seq(None)?;
@@ -291,10 +288,10 @@ async fn run_sql<'a>(
         match db_item {
             DbItem::Row(row) => {
                 log::debug!("run_sql: row: {:?}", row);
-                seq.serialize_element(&row)?
+                seq.serialize_element(&row)?;
             }
             DbItem::FinishedQuery => log::trace!("run_sql: Finished query"),
-            DbItem::Error(err) => return Err(err.into()),
+            DbItem::Error(err) => return Err(err),
         }
     }
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
