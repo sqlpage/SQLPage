@@ -36,25 +36,11 @@ INSERT INTO parameter (component,name,description,type,top_level,optional) VALUE
     TRUE   
 ),(
     'image',
-    'class',
-    'class attribute added to the image in HTML. It can be used to apply custom styling to this item through css.',
-    'TEXT',
-    TRUE,
-    TRUE   
-),(
-    'image',
     'image',
     'The URL (absolute or relative) of an image to display.',
     'URL',
     TRUE,
     FALSE   
-),(
-    'image',
-    'id',
-    'id attribute added to the container in HTML. It can be used to target this item through css or for scrolling to this item through links (use "#id" in link url).',
-    'TEXT',
-    TRUE,
-    TRUE   
 ),(
     'image',
     'cross_origin',
