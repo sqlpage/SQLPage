@@ -3,6 +3,7 @@ use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
 use super::sql::{ParsedSqlFile, ParsedStatement, StmtWithParams};
@@ -81,6 +82,16 @@ pub fn stream_query_results<'a>(
         }
     }
     .map(|res| res.unwrap_or_else(DbItem::Error))
+}
+
+/// This function is used to create a pinned boxed stream of query results.
+/// This allows recursive calls.
+pub fn stream_query_results_boxed<'a>(
+    db: &'a Database,
+    sql_file: &'a ParsedSqlFile,
+    request: &'a mut RequestInfo,
+) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>> {
+    Box::pin(stream_query_results(db, sql_file, request))
 }
 
 fn vars_and_name<'a>(

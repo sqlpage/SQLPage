@@ -306,7 +306,7 @@ fn send_anyhow_error(
         .unwrap_or_else(|_| log::error!("could not send headers"));
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum SingleOrVec {
     Single(String),

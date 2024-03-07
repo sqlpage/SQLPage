@@ -35,6 +35,24 @@ pub struct RequestInfo {
     pub app_state: Arc<AppState>,
 }
 
+impl Clone for RequestInfo {
+    fn clone(&self) -> Self {
+        Self {
+            path: self.path.clone(),
+            protocol: self.protocol.clone(),
+            get_variables: self.get_variables.clone(),
+            post_variables: self.post_variables.clone(),
+            // uploaded_files is not cloned, as it contains file handles
+            uploaded_files: HashMap::new(),
+            headers: self.headers.clone(),
+            client_ip: self.client_ip,
+            cookies: self.cookies.clone(),
+            basic_auth: self.basic_auth.clone(),
+            app_state: self.app_state.clone(),
+        }
+    }
+}
+
 pub(crate) async fn extract_request_info(
     req: &mut ServiceRequest,
     app_state: Arc<AppState>,

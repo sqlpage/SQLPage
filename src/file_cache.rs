@@ -5,7 +5,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{
     AtomicU64,
     Ordering::{Acquire, Release},
@@ -97,7 +97,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
 
     /// Gets a file from the cache, or loads it from the file system if it's not there
     /// This is a privileged operation; it should not be used for user-provided paths
-    pub async fn get(&self, app_state: &AppState, path: &PathBuf) -> anyhow::Result<Arc<T>> {
+    pub async fn get(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Arc<T>> {
         self.get_with_privilege(app_state, path, true).await
     }
 
@@ -107,7 +107,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
     pub async fn get_with_privilege(
         &self,
         app_state: &AppState,
-        path: &PathBuf,
+        path: &Path,
         privileged: bool,
     ) -> anyhow::Result<Arc<T>> {
         log::trace!("Attempting to get from cache {:?}", path);
@@ -164,7 +164,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
             Ok(value) => {
                 let new_val = Arc::clone(&value.content);
                 log::trace!("Writing to cache {:?}", path);
-                self.cache.write().await.insert(path.clone(), value);
+                self.cache.write().await.insert(PathBuf::from(path), value);
                 log::trace!("Done writing to cache {:?}", path);
                 log::trace!("{:?} loaded in cache", path);
                 Ok(new_val)

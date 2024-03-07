@@ -5,8 +5,17 @@ use actix_web_httpauth::headers::authorization::Basic;
 use base64::Engine;
 use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
+use tokio_stream::StreamExt;
 
-use crate::webserver::{http::SingleOrVec, http_request_info::RequestInfo, ErrorWithStatus};
+use crate::webserver::{
+    database::{
+        execute_queries::{stream_query_results, stream_query_results_boxed},
+        DbItem,
+    },
+    http::SingleOrVec,
+    http_request_info::RequestInfo,
+    ErrorWithStatus,
+};
 
 use super::sql::{
     extract_integer, extract_single_quoted_string, extract_single_quoted_string_optional,
@@ -255,11 +264,40 @@ async fn run_sql<'a>(
     param0: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let Some(sql_file) = extract_req_param_non_nested(param0, request)? else {
+    let Some(sql_file_path) = extract_req_param_non_nested(param0, request)? else {
         log::debug!("run_sql: first argument is NULL, returning NULL");
         return Ok(None);
     };
-    todo!("run_sql: {sql_file:?}");
+    let sql_file = request
+        .app_state
+        .sql_file_cache
+        .get_with_privilege(
+            &request.app_state,
+            std::path::Path::new(sql_file_path.as_ref()),
+            true,
+        )
+        .await?;
+    let mut tmp_req = request.clone();
+    let mut results_stream = Box::pin(stream_query_results_boxed(
+        &request.app_state.db,
+        &sql_file,
+        &mut tmp_req,
+    ));
+    use serde::ser::{SerializeSeq, Serializer};
+    let mut json_results_bytes = Vec::new();
+    let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
+    let mut seq = json_encoder.serialize_seq(None)?;
+    while let Some(db_item) = results_stream.next().await {
+        match db_item {
+            DbItem::Row(row) => {
+                log::debug!("run_sql: row: {:?}", row);
+                seq.serialize_element(&row)?
+            }
+            DbItem::FinishedQuery => log::trace!("run_sql: Finished query"),
+            DbItem::Error(err) => return Err(err.into()),
+        }
+    }
+    Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
 }
 
 fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
