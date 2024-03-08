@@ -25,7 +25,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     h.register_helper("delay", Box::new(delay_helper));
     h.register_helper("flush_delayed", Box::new(flush_delayed_helper));
     register_helper(h, "plus", plus_helper as HH);
-    register_helper(h, "plus", minus_helper as HH);
+    register_helper(h, "minus", minus_helper as HH);
     h.register_helper("sum", Box::new(sum_helper));
     register_helper(h, "starts_with", starts_with_helper as HH);
 
