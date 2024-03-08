@@ -4,6 +4,7 @@
 
  - Add an `id` attribute to form fields in the [form](https://sql.ophir.dev/documentation.sql?component=form#component) component. This allows you to easily reference form fields in custom javascript code.
  - New [`rss`](https://sql.ophir.dev/documentation.sql?component=rss#component) component to create RSS feeds, including **podcast feeds**. You can now create and manage your podcast feed entirely in SQL, and distribute it to all podcast directories such as Apple Podcasts, Spotify, and Google Podcasts.
+ - Better error handling in template rendering. Many template helpers now display a more precise error message when they fail to execute. This makes it easier to debug errors when you [develop your own custom components](https://sql.ophir.dev/custom_components.sql).
 
 ## 0.19.1 (2024-02-28)
   - **SECURITY**: fixes users being able to re-run migrations by visiting `/sqlpage/migrations/NNNN_name.sql` pages. If you are using sqlpage migrations, your migrations are not idempotent, and you use the default SQLPAGE_WEB_ROOT (`./`) and `SQLPAGE_CONFIGURATION_DIRECTORY` (`./sqlpage/`), you should upgrade to this version as soon as possible. If you are using a custom `SQLPAGE_WEB_ROOT` or `SQLPAGE_CONFIGURATION_DIRECTORY` or your migrations are idempotent, you can upgrade at your convenience.
