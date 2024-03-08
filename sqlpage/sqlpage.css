@@ -11,10 +11,6 @@ td > p {
   margin: 0;
 }
 
-figcaption {
-  text-align: center;
-}
-
 /** Removes the margin-bottom from the last element */
 .remove-bottom-margin > :last-child {
   margin-bottom: 0 !important;
