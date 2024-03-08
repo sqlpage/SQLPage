@@ -1,7 +1,7 @@
 INSERT INTO component (name, description, icon, introduced_in_version)
 VALUES (
         'carousel',
-        'A carousel is used to display multiple pieces of visual content without taking up too much space.',
+        'A carousel is used to display images. When used with multiple images, it will cycle through them automatically or with controls, creating a slideshow.',
         'carousel-horizontal',
         '0.18.3'
     );
