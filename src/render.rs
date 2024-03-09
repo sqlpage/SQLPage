@@ -404,9 +404,12 @@ impl<W: std::io::Write> RenderContext<W> {
             .get(properties_key)
             .with_context(|| format!("Missing '{properties_key}' key."))?;
         Ok(match properties_obj {
-            Value::String(s) => match serde_json::from_str::<JsonValue>(s)
-                .with_context(|| "parsing json properties")?
-            {
+            Value::String(s) => match serde_json::from_str::<JsonValue>(s).with_context(|| {
+                format!(
+                    "Unable to parse the 'properties' property of the dynamic component as JSON.\n\
+                Invalid json: {s}"
+                )
+            })? {
                 Value::Array(values) => values.into_iter().map(Cow::Owned).collect(),
                 obj @ Value::Object(_) => vec![Cow::Owned(obj)],
                 other => bail!(
