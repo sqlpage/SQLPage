@@ -274,7 +274,8 @@ async fn run_sql<'a>(
             std::path::Path::new(sql_file_path.as_ref()),
             true,
         )
-        .await?;
+        .await
+        .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let mut tmp_req = request.clone();
     let mut results_stream = Box::pin(stream_query_results_boxed(
         &request.app_state.db,

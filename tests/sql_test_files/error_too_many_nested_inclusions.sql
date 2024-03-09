@@ -1,0 +1,1 @@
+select sqlpage.run_sql(sqlpage.path());

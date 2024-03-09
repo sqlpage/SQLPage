@@ -271,7 +271,7 @@ fn send_anyhow_error(
         body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
     } else {
         use std::fmt::Write;
-        write!(body, "{e:#}").unwrap();
+        write!(body, "{e:?}").unwrap();
     }
     resp = resp.set_body(BoxBody::new(body));
     resp.headers_mut().insert(
