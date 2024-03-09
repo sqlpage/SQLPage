@@ -300,6 +300,7 @@ async fn run_sql<'a>(
             }
         }
     }
+    seq.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
 }
 
