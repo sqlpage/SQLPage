@@ -282,11 +282,8 @@ async fn run_sql<'a>(
         This is to prevent infinite loops and stack overflows.\n\
         Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
     }
-    let mut results_stream = stream_query_results_boxed(
-        &request.app_state.db,
-        &sql_file,
-        &mut tmp_req,
-    );
+    let mut results_stream =
+        stream_query_results_boxed(&request.app_state.db, &sql_file, &mut tmp_req);
     let mut json_results_bytes = Vec::new();
     let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
     let mut seq = json_encoder.serialize_seq(None)?;
@@ -297,7 +294,9 @@ async fn run_sql<'a>(
                 seq.serialize_element(&row)?;
             }
             DbItem::FinishedQuery => log::trace!("run_sql: Finished query"),
-            DbItem::Error(err) => return Err(err),
+            DbItem::Error(err) => {
+                return Err(err.context(format!("run_sql: SQL error in {sql_file_path:?}")))
+            }
         }
     }
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
