@@ -72,6 +72,7 @@ fn parse_sql<'a>(
     dialect: &'a dyn Dialect,
     sql: &'a str,
 ) -> anyhow::Result<impl Iterator<Item = ParsedStatement> + 'a> {
+    log::trace!("Parsing SQL: {sql}");
     let tokens = Tokenizer::new(dialect, sql)
         .tokenize_with_location()
         .with_context(|| "SQLPage's SQL parser could not tokenize the sql file")?;
@@ -90,6 +91,7 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
         Ok(stmt) => stmt,
         Err(err) => return Some(syntax_error(err, parser)),
     };
+    log::debug!("Parsed statement: {stmt}");
     while parser.consume_token(&SemiColon) {}
     if let Some(static_statement) = extract_static_simple_select(&stmt) {
         log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
@@ -106,8 +108,10 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
         return Some(ParsedStatement::CsvImport(csv_import));
     }
+    let query = stmt.to_string();
+    log::debug!("Final transformed statement: {stmt}");
     Some(ParsedStatement::StmtWithParams(StmtWithParams {
-        query: stmt.to_string(),
+        query,
         params,
     }))
 }

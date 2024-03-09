@@ -42,6 +42,7 @@ VALUES (
         'run_sql',
         1,
         'file',
-        'Path to the SQL file to execute, relative to the WEB ROOT (the root folder of your website).',
+        'Path to the SQL file to execute, can be absolute, or relative to the web root (the root folder of your website sql files).
+        In-database files, from the sqlpage_files(path, contents, last_modified) table are supported.',
         'TEXT'
     );

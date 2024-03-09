@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
@@ -61,18 +61,10 @@ pub fn stream_query_results<'a>(
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
-                    let query = bind_parameters(value, request).await?;
-                    let connection = take_connection(db, &mut connection_opt).await?;
-                    log::debug!("Executing query to set the {variable:?} variable: {:?}", query.sql);
-                    let value: Option<String> = connection.fetch_optional(query).await?.as_ref().and_then(row_to_string);
-                    let (vars, name) = vars_and_name(request, variable)?;
-                    if let Some(value) = value {
-                        log::debug!("Setting variable {name} to {value:?}");
-                        vars.insert(name.clone(), SingleOrVec::Single(value));
-                    } else {
-                        log::debug!("Removing variable {name}");
-                        vars.remove(&name);
-                    }
+                    execute_set_variable_query(db, &mut connection_opt, request, variable, value).await
+                    .with_context(||
+                        format!("Failed to set the {variable:?} variable to {value:?}")
+                    )?;
                 },
                 ParsedStatement::StaticSimpleSelect(value) => {
                     yield DbItem::Row(value.clone().into())
@@ -92,6 +84,35 @@ pub fn stream_query_results_boxed<'a>(
     request: &'a mut RequestInfo,
 ) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>> {
     Box::pin(stream_query_results(db, sql_file, request))
+}
+
+async fn execute_set_variable_query<'a>(
+    db: &'a Database,
+    connection_opt: &mut Option<PoolConnection<sqlx::Any>>,
+    request: &'a mut RequestInfo,
+    variable: &StmtParam,
+    statement: &StmtWithParams,
+) -> anyhow::Result<()> {
+    let query = bind_parameters(statement, request).await?;
+    let connection = take_connection(db, connection_opt).await?;
+    log::debug!(
+        "Executing query to set the {variable:?} variable: {:?}",
+        query.sql
+    );
+    let value: Option<String> = connection
+        .fetch_optional(query)
+        .await?
+        .as_ref()
+        .and_then(row_to_string);
+    let (vars, name) = vars_and_name(request, variable)?;
+    if let Some(value) = value {
+        log::debug!("Setting variable {name} to {value:?}");
+        vars.insert(name.clone(), SingleOrVec::Single(value));
+    } else {
+        log::debug!("Removing variable {name}");
+        vars.remove(&name);
+    }
+    Ok(())
 }
 
 fn vars_and_name<'a>(
