@@ -277,6 +277,11 @@ async fn run_sql<'a>(
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let mut tmp_req = request.clone();
+    if tmp_req.clone_depth > 8 {
+        bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
+        This is to prevent infinite loops and stack overflows.\n\
+        Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
+    }
     let mut results_stream = Box::pin(stream_query_results_boxed(
         &request.app_state.db,
         &sql_file,

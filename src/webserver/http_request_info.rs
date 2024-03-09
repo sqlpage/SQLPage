@@ -33,6 +33,7 @@ pub struct RequestInfo {
     pub cookies: ParamMap,
     pub basic_auth: Option<Basic>,
     pub app_state: Arc<AppState>,
+    pub clone_depth: u8,
 }
 
 impl Clone for RequestInfo {
@@ -49,6 +50,7 @@ impl Clone for RequestInfo {
             cookies: self.cookies.clone(),
             basic_auth: self.basic_auth.clone(),
             app_state: self.app_state.clone(),
+            clone_depth: self.clone_depth + 1,
         }
     }
 }
@@ -94,6 +96,7 @@ pub(crate) async fn extract_request_info(
         basic_auth,
         app_state,
         protocol,
+        clone_depth: 0,
     }
 }
 
