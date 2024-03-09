@@ -282,11 +282,11 @@ async fn run_sql<'a>(
         This is to prevent infinite loops and stack overflows.\n\
         Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
     }
-    let mut results_stream = Box::pin(stream_query_results_boxed(
+    let mut results_stream = stream_query_results_boxed(
         &request.app_state.db,
         &sql_file,
         &mut tmp_req,
-    ));
+    );
     let mut json_results_bytes = Vec::new();
     let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
     let mut seq = json_encoder.serialize_seq(None)?;
