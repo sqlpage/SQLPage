@@ -279,6 +279,7 @@ async fn run_sql<'a>(
     let mut tmp_req = request.clone();
     if tmp_req.clone_depth > 8 {
         bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
+        Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\
         This is to prevent infinite loops and stack overflows.\n\
         Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
     }
@@ -295,7 +296,7 @@ async fn run_sql<'a>(
             }
             DbItem::FinishedQuery => log::trace!("run_sql: Finished query"),
             DbItem::Error(err) => {
-                return Err(err.context(format!("run_sql: SQL error in {sql_file_path:?}")))
+                return Err(err.context(format!("run_sql: unable to run {sql_file_path:?}")))
             }
         }
     }
