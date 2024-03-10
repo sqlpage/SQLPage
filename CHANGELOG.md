@@ -2,6 +2,11 @@
 
 ## 0.20.0 (unreleased)
 
+ - **file inclusion**. This is a long awaited feature that allows you to include the contents of one file in another. This is useful to factorize common parts of your website, such as the header, or the authentication logic. There is a new [`sqlpage.run_sql`](https://sql.ophir.dev/functions.sql?function=run_sql#function) function that runs a given SQL file and returns its result as a JSON array. Combined with the existing [`dynamic`](https://sql.ophir.dev/documentation.sql?component=dynamic#component) component, this allows you to include the content of a file in another, like this:
+  ```sql
+  select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
+  ```
+ - **more powerful *dynamic* component**: the dynamic component can now be used to generate the special *header* components too, such as the `redirect`, `cookie`, `authentication`, `http_header` and `json` components. The *shell* component used to be allowed in dynamic components, but only if they were not nested (a dynamic component inside another one). This limitation is now lifted. This is particularly useful in combination with the new file inclusion feature, to factorize common parts of your website.
  - Add an `id` attribute to form fields in the [form](https://sql.ophir.dev/documentation.sql?component=form#component) component. This allows you to easily reference form fields in custom javascript code.
  - New [`rss`](https://sql.ophir.dev/documentation.sql?component=rss#component) component to create RSS feeds, including **podcast feeds**. You can now create and manage your podcast feed entirely in SQL, and distribute it to all podcast directories such as Apple Podcasts, Spotify, and Google Podcasts.
  - Better error handling in template rendering. Many template helpers now display a more precise error message when they fail to execute. This makes it easier to debug errors when you [develop your own custom components](https://sql.ophir.dev/custom_components.sql).
