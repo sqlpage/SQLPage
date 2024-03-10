@@ -16,6 +16,8 @@ use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo}
 use sqlx::pool::PoolConnection;
 use sqlx::{Any, AnyConnection, Arguments, Either, Executor, Statement};
 
+use serde_json::Value as JsonValue;
+
 use super::sql_pseudofunctions::StmtParam;
 use super::{highlight_sql_error, Database, DbItem};
 
@@ -30,6 +32,55 @@ impl Database {
             .await
             .map(|s| s.to_owned())
             .map_err(|e| highlight_sql_error("Failed to prepare SQL statement", query, e))
+    }
+}
+
+/// the raw query results can include (potentially nested) rows with a 'component' column that has the value 'dynamic'.
+/// in that case we need to parse the JSON in the 'properties' column, and emit a row for each value in the resulting json array.
+pub fn parse_dynamic_rows(mut row: JsonValue) -> Box<dyn Iterator<Item = DbItem>> {
+    if let Some(properties) = extract_dynamic_properties(&mut row) {
+        match dynamic_properties_to_iter(properties) {
+            Ok(iter) => Box::new(iter.map(DbItem::Row)),
+            Err(e) => Box::new(std::iter::once(DbItem::Error(e))),
+        }
+    } else {
+        Box::new(std::iter::once(DbItem::Row(row)))
+    }
+}
+
+/// if row.component == 'dynamic', return Some(row.properties), otherwise return None
+fn extract_dynamic_properties(data: &mut JsonValue) -> Option<JsonValue> {
+    let component = data.get("component").and_then(|v| v.as_str());
+    if component == Some("dynamic") {
+        let properties = data.get_mut("properties").map(|v| v.take());
+        Some(properties.unwrap_or_default())
+    } else {
+        None
+    }
+}
+
+fn dynamic_properties_to_iter(
+    mut data: JsonValue,
+) -> anyhow::Result<Box<dyn Iterator<Item = JsonValue>>> {
+    let properties_key = "properties";
+    let mut properties_obj = data
+        .get_mut(properties_key)
+        .with_context(|| format!("Missing '{properties_key}' key."))?
+        .take();
+    if let JsonValue::String(s) = properties_obj {
+        properties_obj = serde_json::from_str::<JsonValue>(&s).with_context(|| {
+            format!(
+                "Unable to parse the 'properties' property of the dynamic component as JSON.\n\
+                    Invalid json: {s}"
+            )
+        })?;
+    }
+    match properties_obj {
+        obj @ JsonValue::Object(_) => Ok(Box::new(std::iter::once(obj))),
+        JsonValue::Array(values) => Ok(Box::new(values.into_iter())),
+        other => anyhow::bail!(
+            "Dynamic component expected properties of type array or object, got {other} instead."
+        ),
     }
 }
 
