@@ -7,7 +7,7 @@ execute the SQL files you write, and render the database responses as nice web p
 Download the file, and extract the executable file from the zip archive.
 
 > **Note**: Advanced users can alternatively install SQLPage using
-> [docker](https://hub.docker.com/repository/docker/sqlpage/SQLPage/general),
+> [docker](https://hub.docker.com/repository/docker/lovasoa/SQLPage/general),
 > [scoop](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116),
 > or [cargo](https://crates.io/crates/sqlpage).
 

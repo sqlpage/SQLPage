@@ -10,7 +10,7 @@ Download the one that corresponds to your operating system, and extract the exec
 > **Note**: On Mac OS, Apple blocks the execution of downloaded files by default. The easiest way to run SQLPage is to use [Homebrew](https://brew.sh).
 
 > **Note**: Advanced users can alternatively install SQLPage using:
->  - [docker](https://hub.docker.com/repository/docker/sqlpage/SQLPage/general) (docker images are also available for ARM, making it easy to run SQLPage on a Raspberry Pi, for example),
+>  - [docker](https://hub.docker.com/repository/docker/lovasoa/SQLPage/general) (docker images are also available for ARM, making it easy to run SQLPage on a Raspberry Pi, for example),
 > - [brew](https://formulae.brew.sh/formula/sqlpage) (the easiest way to install SQLPage on Mac OS),
 > - [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage) (declarative package management for reproducible deployments),
 > - [scoop](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116) (a command-line installer for Windows),

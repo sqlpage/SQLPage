@@ -11,7 +11,7 @@ sqlpage
 
 > **Note**: Advanced users can alternatively install SQLPage using
 > [the precompiled binaries](https://github.com/sqlpage/SQLPage/releases/latest),
-> [docker](https://hub.docker.com/repository/docker/sqlpage/SQLPage/general),
+> [docker](https://hub.docker.com/repository/docker/lovasoa/SQLPage/general),
 > [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage),
 > or [cargo](https://crates.io/crates/sqlpage).
 
