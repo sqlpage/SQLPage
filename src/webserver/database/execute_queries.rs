@@ -56,7 +56,7 @@ pub fn parse_dynamic_rows(db_item: DbItem) -> Box<dyn Iterator<Item = DbItem>> {
 fn extract_dynamic_properties(data: &mut JsonValue) -> Option<JsonValue> {
     let component = data.get("component").and_then(|v| v.as_str());
     if component == Some("dynamic") {
-        let properties = data.get_mut("properties").map(|v| v.take());
+        let properties = data.get_mut("properties").map(JsonValue::take);
         Some(properties.unwrap_or_default())
     } else {
         None
