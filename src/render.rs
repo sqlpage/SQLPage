@@ -274,15 +274,12 @@ pub struct RenderContext<W: std::io::Write> {
     pub writer: W,
     current_component: Option<SplitTemplateRenderer>,
     shell_renderer: SplitTemplateRenderer,
-    recursion_depth: usize,
     current_statement: usize,
 }
 
 const DEFAULT_COMPONENT: &str = "table";
 const PAGE_SHELL_COMPONENT: &str = "shell";
 const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
-const DYNAMIC_COMPONENT: &str = "dynamic";
-const MAX_RECURSION_DEPTH: usize = 256;
 
 impl<W: std::io::Write> RenderContext<W> {
     pub async fn new(
@@ -293,12 +290,7 @@ impl<W: std::io::Write> RenderContext<W> {
     ) -> anyhow::Result<RenderContext<W>> {
         log::debug!("Creating the shell component for the page");
 
-        let mut initial_rows =
-            if get_object_str(&initial_row, "component") == Some(DYNAMIC_COMPONENT) {
-                Self::extract_dynamic_properties(&initial_row)?
-            } else {
-                vec![Cow::Borrowed(&initial_row)]
-            };
+        let mut initial_rows = vec![Cow::Borrowed(&initial_row)];
 
         if !initial_rows
             .first()
@@ -336,7 +328,6 @@ impl<W: std::io::Write> RenderContext<W> {
             writer,
             current_component: None,
             shell_renderer,
-            recursion_depth: 0,
             current_statement: 1,
         };
 
@@ -367,11 +358,6 @@ impl<W: std::io::Write> RenderContext<W> {
         let new_component = get_object_str(data, "component");
         let current_component = self.current_component().await?.name();
         match (current_component, new_component) {
-            (_current_component, Some(DYNAMIC_COMPONENT)) => {
-                self.render_dynamic(data).await.with_context(|| {
-                    format!("Unable to render dynamic component with properties {data}")
-                })?;
-            }
             (
                 _,
                 Some(
@@ -394,44 +380,6 @@ impl<W: std::io::Write> RenderContext<W> {
             (_, _) => {
                 self.render_current_template_with_data(&data).await?;
             }
-        }
-        Ok(())
-    }
-
-    fn extract_dynamic_properties(data: &Value) -> anyhow::Result<Vec<Cow<'_, JsonValue>>> {
-        let properties_key = "properties";
-        let properties_obj = data
-            .get(properties_key)
-            .with_context(|| format!("Missing '{properties_key}' key."))?;
-        Ok(match properties_obj {
-            Value::String(s) => match serde_json::from_str::<JsonValue>(s).with_context(|| {
-                format!(
-                    "Unable to parse the 'properties' property of the dynamic component as JSON.\n\
-                Invalid json: {s}"
-                )
-            })? {
-                Value::Array(values) => values.into_iter().map(Cow::Owned).collect(),
-                obj @ Value::Object(_) => vec![Cow::Owned(obj)],
-                other => bail!(
-                    "Expected properties string to parse as array or object, got {other} instead."
-                ),
-            },
-            obj @ Value::Object(_) => vec![Cow::Borrowed(obj)],
-            Value::Array(values) => values.iter().map(Cow::Borrowed).collect(),
-            other => bail!("Expected properties of type array or object, got {other} instead."),
-        })
-    }
-
-    async fn render_dynamic(&mut self, data: &Value) -> anyhow::Result<()> {
-        anyhow::ensure!(
-            self.recursion_depth <= MAX_RECURSION_DEPTH,
-            "Maximum recursion depth exceeded in the dynamic component."
-        );
-        for dynamic_row_obj in Self::extract_dynamic_properties(data)? {
-            self.recursion_depth += 1;
-            let res = self.handle_row(&dynamic_row_obj).await;
-            self.recursion_depth -= 1;
-            res?;
         }
         Ok(())
     }
