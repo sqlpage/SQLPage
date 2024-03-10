@@ -64,13 +64,8 @@ fn extract_dynamic_properties(data: &mut JsonValue) -> Option<JsonValue> {
 }
 
 fn dynamic_properties_to_iter(
-    mut data: JsonValue,
+    mut properties_obj: JsonValue,
 ) -> anyhow::Result<Box<dyn Iterator<Item = JsonValue>>> {
-    let properties_key = "properties";
-    let mut properties_obj = data
-        .get_mut(properties_key)
-        .with_context(|| format!("Missing '{properties_key}' key."))?
-        .take();
     if let JsonValue::String(s) = properties_obj {
         properties_obj = serde_json::from_str::<JsonValue>(&s).with_context(|| {
             format!(
