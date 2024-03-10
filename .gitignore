@@ -9,3 +9,4 @@ x.sql
 xbed.sql
 **/sqlpage.bin
 node_modules/
+sqlpage/sqlpage.db

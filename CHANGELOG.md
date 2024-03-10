@@ -27,6 +27,7 @@
 - Fix a bug where the table component would not sort columns that contained a space in their name.
 - Fix a bug where stacked bar charts would not stack the bars correctly in some cases.
 - Update ApexCharts to [v4.1.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.1.0).
+- Temporarily disable automatic tick amount calculation in the chart component. This was causing issues with mislabeled x-axis data, because of a bug in ApexCharts.
 
 ## 0.31.0 (2024-11-24)
 

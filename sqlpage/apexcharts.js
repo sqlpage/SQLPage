@@ -120,11 +120,6 @@ sqlpage_chart = (() => {
 
     let series = Object.values(series_map);
 
-    // tickamount is the number of intervals, not the number of ticks
-    const tickAmount =
-      data.xticks ||
-      Math.min(30, Math.max(...series.map((s) => s.data.length - 1)));
-
     let labels;
     const categories =
       series.length > 0 && typeof series[0].data[0].x === "string";
@@ -182,7 +177,6 @@ sqlpage_chart = (() => {
         },
         min: data.xmin,
         max: data.xmax,
-        tickAmount,
         title: {
           text: data.xtitle || undefined,
         },
@@ -245,6 +239,8 @@ sqlpage_chart = (() => {
       series,
     };
     if (labels) options.labels = labels;
+    // tickamount is the number of intervals, not the number of ticks
+    if (data.xticks) options.xaxis.tickAmount = data.xticks;
     console.log("Rendering chart", options);
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
