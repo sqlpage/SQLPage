@@ -37,14 +37,18 @@ impl Database {
 
 /// the raw query results can include (potentially nested) rows with a 'component' column that has the value 'dynamic'.
 /// in that case we need to parse the JSON in the 'properties' column, and emit a row for each value in the resulting json array.
-pub fn parse_dynamic_rows(mut row: JsonValue) -> Box<dyn Iterator<Item = DbItem>> {
-    if let Some(properties) = extract_dynamic_properties(&mut row) {
-        match dynamic_properties_to_iter(properties) {
-            Ok(iter) => Box::new(iter.map(DbItem::Row)),
-            Err(e) => Box::new(std::iter::once(DbItem::Error(e))),
+pub fn parse_dynamic_rows(db_item: DbItem) -> Box<dyn Iterator<Item = DbItem>> {
+    if let DbItem::Row(mut row) = db_item {
+        if let Some(properties) = extract_dynamic_properties(&mut row) {
+            match dynamic_properties_to_iter(properties) {
+                Ok(iter) => Box::new(iter.map(DbItem::Row)),
+                Err(e) => Box::new(std::iter::once(DbItem::Error(e))),
+            }
+        } else {
+            Box::new(std::iter::once(DbItem::Row(row)))
         }
     } else {
-        Box::new(std::iter::once(DbItem::Row(row)))
+        Box::new(std::iter::once(db_item))
     }
 }
 
@@ -105,7 +109,9 @@ pub fn stream_query_results<'a>(
                     let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
-                        yield parse_single_sql_result(&stmt.query, elem);
+                        for i in parse_dynamic_rows(parse_single_sql_result(&stmt.query, elem)) {
+                            yield i;
+                        }
                         if is_err {
                             break;
                         }
@@ -118,7 +124,9 @@ pub fn stream_query_results<'a>(
                     )?;
                 },
                 ParsedStatement::StaticSimpleSelect(value) => {
-                    yield DbItem::Row(value.clone().into())
+                    for i in parse_dynamic_rows(DbItem::Row(value.clone().into())) {
+                        yield i;
+                    }
                 }
                 ParsedStatement::Error(e) => yield DbItem::Error(clone_anyhow_err(e)),
             }
