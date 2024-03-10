@@ -4,6 +4,7 @@
 extern crate core;
 
 pub mod app_config;
+pub mod dynamic_component;
 pub mod file_cache;
 pub mod filesystem;
 pub mod render;
