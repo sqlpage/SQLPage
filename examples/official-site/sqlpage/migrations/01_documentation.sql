@@ -775,6 +775,63 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]')),
     ('shell', '
+### Sharing the shell between multiple pages
+
+It is common to want to share the same shell between multiple pages.
+
+#### Static menu
+
+If your menu is completely static (it does not depend on the database content),
+you can use the [`dynamic`](?component=dynamic#component) component together with the 
+[`sqlpage.read_file_as_text`](functions.sql?function=read_file_as_text#function) function to load the shell from
+a json file.
+
+```sql
+SELECT ''dynamic'' AS component, sqlpage.read_file_as_text(''shell.json'') AS properties;
+```
+
+and in `shell.json`:
+
+```json
+{
+    "component": "shell",
+    "title": "SQL + JSON = <3",
+    "link": "/",
+    "menu_item": [
+        {"link": "index.sql", "title": "Home"},
+        {"title": "Community", "submenu": [
+            {"link": "blog.sql", "title": "Blog"},
+            {"link": "//github.com/lovasoa/sqlpage", "title": "Github"}
+        ]}
+    ]
+}
+```
+
+#### Dynamic menu
+
+If your menu depends on the database content, or on special `sqlpage` functions,
+you can use the `dynamic` component,
+but this time with the [`sqlpage.run_sql`](functions.sql?function=run_sql#function)
+function to generate the menu from the database.
+
+```sql
+SELECT ''dynamic'' AS component, sqlpage.run_sql(''shell.sql'') AS properties;
+```
+
+and in `shell.sql`:
+
+```sql
+SELECT ''shell'' AS component, ''run_sql is cool'' as title,
+    json_group_array(json_object(
+        ''link'', link,
+        ''title'', title
+    )) as menu_item
+FROM my_menu_items
+```
+
+(check your database documentation for the exact syntax of the `json_group_array` function).
+', NULL),
+    ('shell', '
 ### A page without a shell
 SQLPage provides the `shell-empty` component to create a page without a shell.
 In this case, the `html` and `body` tags are not generated, and the components are rendered directly in the page
