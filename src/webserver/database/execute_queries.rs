@@ -1,22 +1,23 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
 use super::sql::{ParsedSqlFile, ParsedStatement, StmtWithParams};
+use crate::dynamic_component::parse_dynamic_rows;
 use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::database::sql_to_json::row_to_string;
 use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
+use super::sql_pseudofunctions::StmtParam;
+use super::{highlight_sql_error, Database, DbItem};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
 use sqlx::{Any, AnyConnection, Arguments, Either, Executor, Statement};
-
-use super::sql_pseudofunctions::StmtParam;
-use super::{highlight_sql_error, Database, DbItem};
 
 impl Database {
     pub(crate) async fn prepare_with(
@@ -31,7 +32,6 @@ impl Database {
             .map_err(|e| highlight_sql_error("Failed to prepare SQL statement", query, e))
     }
 }
-
 pub fn stream_query_results<'a>(
     db: &'a Database,
     sql_file: &'a ParsedSqlFile,
@@ -53,34 +53,69 @@ pub fn stream_query_results<'a>(
                     let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
-                        yield parse_single_sql_result(&stmt.query, elem);
+                        for i in parse_dynamic_rows(parse_single_sql_result(&stmt.query, elem)) {
+                            yield i;
+                        }
                         if is_err {
                             break;
                         }
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
-                    let query = bind_parameters(value, request).await?;
-                    let connection = take_connection(db, &mut connection_opt).await?;
-                    log::debug!("Executing query to set the {variable:?} variable: {:?}", query.sql);
-                    let value: Option<String> = connection.fetch_optional(query).await?.as_ref().and_then(row_to_string);
-                    let (vars, name) = vars_and_name(request, variable)?;
-                    if let Some(value) = value {
-                        log::debug!("Setting variable {name} to {value:?}");
-                        vars.insert(name.clone(), SingleOrVec::Single(value));
-                    } else {
-                        log::debug!("Removing variable {name}");
-                        vars.remove(&name);
-                    }
+                    execute_set_variable_query(db, &mut connection_opt, request, variable, value).await
+                    .with_context(||
+                        format!("Failed to set the {variable:?} variable to {value:?}")
+                    )?;
                 },
                 ParsedStatement::StaticSimpleSelect(value) => {
-                    yield DbItem::Row(value.clone().into())
+                    for i in parse_dynamic_rows(DbItem::Row(value.clone().into())) {
+                        yield i;
+                    }
                 }
                 ParsedStatement::Error(e) => yield DbItem::Error(clone_anyhow_err(e)),
             }
         }
     }
     .map(|res| res.unwrap_or_else(DbItem::Error))
+}
+
+/// This function is used to create a pinned boxed stream of query results.
+/// This allows recursive calls.
+pub fn stream_query_results_boxed<'a>(
+    db: &'a Database,
+    sql_file: &'a ParsedSqlFile,
+    request: &'a mut RequestInfo,
+) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>> {
+    Box::pin(stream_query_results(db, sql_file, request))
+}
+
+async fn execute_set_variable_query<'a>(
+    db: &'a Database,
+    connection_opt: &mut Option<PoolConnection<sqlx::Any>>,
+    request: &'a mut RequestInfo,
+    variable: &StmtParam,
+    statement: &StmtWithParams,
+) -> anyhow::Result<()> {
+    let query = bind_parameters(statement, request).await?;
+    let connection = take_connection(db, connection_opt).await?;
+    log::debug!(
+        "Executing query to set the {variable:?} variable: {:?}",
+        query.sql
+    );
+    let value: Option<String> = connection
+        .fetch_optional(query)
+        .await?
+        .as_ref()
+        .and_then(row_to_string);
+    let (vars, name) = vars_and_name(request, variable)?;
+    if let Some(value) = value {
+        log::debug!("Setting variable {name} to {value:?}");
+        vars.insert(name.clone(), SingleOrVec::Single(value));
+    } else {
+        log::debug!("Removing variable {name}");
+        vars.remove(&name);
+    }
+    Ok(())
 }
 
 fn vars_and_name<'a>(

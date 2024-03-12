@@ -5,8 +5,14 @@ use actix_web_httpauth::headers::authorization::Basic;
 use base64::Engine;
 use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
+use tokio_stream::StreamExt;
 
-use crate::webserver::{http::SingleOrVec, http_request_info::RequestInfo, ErrorWithStatus};
+use crate::webserver::{
+    database::{execute_queries::stream_query_results_boxed, DbItem},
+    http::SingleOrVec,
+    http_request_info::RequestInfo,
+    ErrorWithStatus,
+};
 
 use super::sql::{
     extract_integer, extract_single_quoted_string, extract_single_quoted_string_optional,
@@ -38,6 +44,7 @@ pub(super) enum StmtParam {
     UploadedFileMimeType(String),
     ReadFileAsText(Box<StmtParam>),
     ReadFileAsDataUrl(Box<StmtParam>),
+    RunSql(Box<StmtParam>),
     Path,
     Protocol,
 }
@@ -107,6 +114,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "read_file_as_data_url" => StmtParam::ReadFileAsDataUrl(Box::new(
             extract_variable_argument("read_file_as_data_url", arguments),
         )),
+        "run_sql" => StmtParam::RunSql(Box::new(extract_variable_argument("run_sql", arguments))),
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -126,6 +134,7 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::UrlEncode(inner) => url_encode(inner, request)?,
         StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
         StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
+        StmtParam::RunSql(inner) => run_sql(inner, request).await?,
         _ => extract_req_param_non_nested(param, request)?,
     })
 }
@@ -248,6 +257,53 @@ async fn read_file_as_data_url<'a>(
     Ok(Some(Cow::Owned(data_url)))
 }
 
+async fn run_sql<'a>(
+    param0: &StmtParam,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    use serde::ser::{SerializeSeq, Serializer};
+    let Some(sql_file_path) = extract_req_param_non_nested(param0, request)? else {
+        log::debug!("run_sql: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let sql_file = request
+        .app_state
+        .sql_file_cache
+        .get_with_privilege(
+            &request.app_state,
+            std::path::Path::new(sql_file_path.as_ref()),
+            true,
+        )
+        .await
+        .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
+    let mut tmp_req = request.clone();
+    if tmp_req.clone_depth > 8 {
+        bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
+        Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\
+        This is to prevent infinite loops and stack overflows.\n\
+        Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
+    }
+    let mut results_stream =
+        stream_query_results_boxed(&request.app_state.db, &sql_file, &mut tmp_req);
+    let mut json_results_bytes = Vec::new();
+    let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
+    let mut seq = json_encoder.serialize_seq(None)?;
+    while let Some(db_item) = results_stream.next().await {
+        match db_item {
+            DbItem::Row(row) => {
+                log::debug!("run_sql: row: {:?}", row);
+                seq.serialize_element(&row)?;
+            }
+            DbItem::FinishedQuery => log::trace!("run_sql: Finished query"),
+            DbItem::Error(err) => {
+                return Err(err.context(format!("run_sql: unable to run {sql_file_path:?}")))
+            }
+        }
+    }
+    seq.end()?;
+    Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
+}
+
 fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
     if let StmtParam::UploadedFilePath(name) | StmtParam::UploadedFileMimeType(name) = param0 {
         request.uploaded_files.get(name)?.content_type.as_ref()
@@ -308,8 +364,9 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .map(|x| Cow::Borrowed(x.as_ref())),
         StmtParam::ReadFileAsText(_) => bail!("Nested read_file_as_text() function not allowed",),
         StmtParam::ReadFileAsDataUrl(_) => {
-            bail!("Nested read_file_as_data_url() function not allowed",)
+            bail!("Nested read_file_as_data_url() function not allowed")
         }
+        StmtParam::RunSql(_) => bail!("Nested run_sql() function not allowed"),
     })
 }
 

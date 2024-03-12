@@ -33,6 +33,26 @@ pub struct RequestInfo {
     pub cookies: ParamMap,
     pub basic_auth: Option<Basic>,
     pub app_state: Arc<AppState>,
+    pub clone_depth: u8,
+}
+
+impl Clone for RequestInfo {
+    fn clone(&self) -> Self {
+        Self {
+            path: self.path.clone(),
+            protocol: self.protocol.clone(),
+            get_variables: self.get_variables.clone(),
+            post_variables: self.post_variables.clone(),
+            // uploaded_files is not cloned, as it contains file handles
+            uploaded_files: HashMap::new(),
+            headers: self.headers.clone(),
+            client_ip: self.client_ip,
+            cookies: self.cookies.clone(),
+            basic_auth: self.basic_auth.clone(),
+            app_state: self.app_state.clone(),
+            clone_depth: self.clone_depth + 1,
+        }
+    }
 }
 
 pub(crate) async fn extract_request_info(
@@ -76,6 +96,7 @@ pub(crate) async fn extract_request_info(
         basic_auth,
         app_state,
         protocol,
+        clone_depth: 0,
     }
 }
 
