@@ -16,7 +16,9 @@ VALUES (
 
 It is common to want to run the same SQL queries at the beginning of all your pages,
 to check if an user is logged in, render a header, etc.
-You can create a file called `common_header.sql`, and use the `dynamic` component with the `run_sql` function to include it in all your pages.
+You can create a file called `common_header.sql`,
+and use the [`dynamic`](documentation.sql?component=dynamic#component) component with the `run_sql` function
+to include it in all your pages.
 
 ```sql
 select ''dynamic'' as component, sqlpage.run_sql(''common_header.sql'') as properties;
