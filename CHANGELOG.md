@@ -15,6 +15,7 @@
    - support [EXECUTE ... USING](https://www.postgresql.org/docs/current/plpgsql-statements.html#PLPGSQL-STATEMENTS-EXECUTING-DYN) in PostgreSQL
    - support `INSERT INTO ... SELECT ... RETURNING`, which allows you to insert data into a table, and easily pass values from the inserted row to a SQLPage component. [postgres docs](https://www.postgresql.org/docs/current/dml-returning.html), [mysql docs](https://mariadb.com/kb/en/insertreturning/), [sqlite docs](https://sqlite.org/lang_returning.html)
    - support [`UPDATE ... FROM`](https://www.sqlite.org/lang_update.html#update_from) in SQLite
+ - Bug fixes in charts. See https://github.com/apexcharts/apexcharts.js/releases/tag/v3.47.0
 
 ## 0.19.1 (2024-02-28)
   - **SECURITY**: fixes users being able to re-run migrations by visiting `/sqlpage/migrations/NNNN_name.sql` pages. If you are using sqlpage migrations, your migrations are not idempotent, and you use the default SQLPAGE_WEB_ROOT (`./`) and `SQLPAGE_CONFIGURATION_DIRECTORY` (`./sqlpage/`), you should upgrade to this version as soon as possible. If you are using a custom `SQLPAGE_WEB_ROOT` or `SQLPAGE_CONFIGURATION_DIRECTORY` or your migrations are idempotent, you can upgrade at your convenience.
