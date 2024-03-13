@@ -544,7 +544,12 @@ The `color` property sets the color of each series separately, in order.
       ]'));
 
 INSERT INTO component(name, icon, description) VALUES
-    ('table', 'table', 'A table with optional filtering and sorting. Unlike most others, this component does not have a fixed set of item properties, any property that is used will be rendered directly as a column in the table.');
+    ('table', 'table', 'A table with optional filtering and sorting.
+Unlike most others, this component does not have a fixed set of item properties, any property that is used will be rendered directly as a column in the table.
+Tables can contain rich text, including images, links, and icons. Table rows can be styled with a background color, and the table can be made striped, hoverable, and bordered.
+
+Advanced users can apply custom styles to table columns using a CSS class with the same name as the column, and to table rows using the `_sqlpage_css_class` property.
+');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'table', * FROM (VALUES
     -- top level

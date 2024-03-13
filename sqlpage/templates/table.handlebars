@@ -18,6 +18,7 @@
                             {{#each this}}
                                 {{#if (not (starts_with @key '_sqlpage_'))}}
                                 <th class="
+                                    {{~@key~}}
                                     {{~#if (array_contains ../../align_right @key)}} text-end {{/if~}}
                                 ">
                                     {{~#if ../../sort~}}
