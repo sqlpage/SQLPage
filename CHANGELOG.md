@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 0.20.1 (unreleased)
+
+ - More than 200 new icons, with [tabler icons v3](https://tabler.io/icons/changelog#3.0)
+
 ## 0.20.0 (2024-03-12)
 
  - **file inclusion**. This is a long awaited feature that allows you to include the contents of one file in another. This is useful to factorize common parts of your website, such as the header, or the authentication logic. There is a new [`sqlpage.run_sql`](https://sql.ophir.dev/functions.sql?function=run_sql#function) function that runs a given SQL file and returns its result as a JSON array. Combined with the existing [`dynamic`](https://sql.ophir.dev/documentation.sql?component=dynamic#component) component, this allows you to include the content of a file in another, like this:
