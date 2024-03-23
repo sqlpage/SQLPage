@@ -166,8 +166,8 @@ async fn extract_multipart_post_data(
                 .await
                 .with_context(|| {
                     format!(
-                        "Failed to extract file {field_name:?}. Max file size: {:.3} MB",
-                        config.max_uploaded_file_size as f32 / 1_000_000.0
+                        "Failed to extract file {field_name:?}. Max file size: {} kiB",
+                        config.max_uploaded_file_size / 1_024
                     )
                 })?;
             log::trace!("Extracted file {field_name} to {:?}", extracted.file.path());
