@@ -219,7 +219,9 @@ async fn render_sql(
         .clone() // Cheap reference count increase
         .into_inner();
 
-    let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state)).await;
+    let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state))
+        .await
+        .map_err(anyhow_err_to_actix)?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();

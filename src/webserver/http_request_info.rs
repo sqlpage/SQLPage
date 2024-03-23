@@ -15,6 +15,7 @@ use actix_web::HttpRequest;
 use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::anyhow;
+use anyhow::Context;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -58,12 +59,11 @@ impl Clone for RequestInfo {
 pub(crate) async fn extract_request_info(
     req: &mut ServiceRequest,
     app_state: Arc<AppState>,
-) -> RequestInfo {
+) -> anyhow::Result<RequestInfo> {
     let (http_req, payload) = req.parts_mut();
     let protocol = http_req.connection_info().scheme().to_string();
     let config = &app_state.config;
-    let (post_variables, uploaded_files) = extract_post_data(http_req, payload, config).await;
-
+    let (post_variables, uploaded_files) = extract_post_data(http_req, payload, config).await?;
     let headers = req.headers().iter().map(|(name, value)| {
         (
             name.to_string(),
@@ -85,7 +85,7 @@ pub(crate) async fn extract_request_info(
         .ok()
         .map(Authorization::into_scheme);
 
-    RequestInfo {
+    Ok(RequestInfo {
         path: req.path().to_string(),
         headers: param_map(headers),
         get_variables: param_map(get_variables),
@@ -97,48 +97,39 @@ pub(crate) async fn extract_request_info(
         app_state,
         protocol,
         clone_depth: 0,
-    }
+    })
 }
 
 async fn extract_post_data(
     http_req: &mut actix_web::HttpRequest,
     payload: &mut actix_web::dev::Payload,
     config: &crate::app_config::AppConfig,
-) -> (Vec<(String, String)>, Vec<(String, TempFile)>) {
+) -> anyhow::Result<(Vec<(String, String)>, Vec<(String, TempFile)>)> {
     let content_type = http_req
         .headers()
         .get(&CONTENT_TYPE)
         .map(AsRef::as_ref)
         .unwrap_or_default();
     if content_type.starts_with(b"application/x-www-form-urlencoded") {
-        match extract_urlencoded_post_variables(http_req, payload).await {
-            Ok(post_variables) => (post_variables, Vec::new()),
-            Err(e) => {
-                log::error!("Could not read urlencoded POST request data: {}", e);
-                (Vec::new(), Vec::new())
-            }
-        }
+        let vars = extract_urlencoded_post_variables(http_req, payload).await?;
+        Ok((vars, Vec::new()))
     } else if content_type.starts_with(b"multipart/form-data") {
-        extract_multipart_post_data(http_req, payload, config)
-            .await
-            .unwrap_or_else(|e| {
-                log::error!("Could not read request data: {}", e);
-                (Vec::new(), Vec::new())
-            })
+        extract_multipart_post_data(http_req, payload, config).await
     } else {
         let ct_str = String::from_utf8_lossy(content_type);
         log::debug!("Not parsing POST data from request without known content type {ct_str}");
-        (Vec::new(), Vec::new())
+        Ok((Vec::new(), Vec::new()))
     }
 }
 
 async fn extract_urlencoded_post_variables(
     http_req: &mut actix_web::HttpRequest,
     payload: &mut actix_web::dev::Payload,
-) -> actix_web::Result<Vec<(String, String)>> {
+) -> anyhow::Result<Vec<(String, String)>> {
     Form::<Vec<(String, String)>>::from_request(http_req, payload)
         .await
         .map(Form::into_inner)
+        .map_err(|e| anyhow!("could not parse request as urlencoded form data: {e}"))
 }
 
 async fn extract_multipart_post_data(
@@ -171,7 +162,9 @@ async fn extract_multipart_post_data(
         log::trace!("Parsing multipart field: {}", field_name);
         if let Some(filename) = filename {
             log::debug!("Extracting file: {field_name} ({filename})");
-            let extracted = extract_file(http_req, field, &mut limits).await?;
+            let extracted = extract_file(http_req, field, &mut limits).await.with_context(
+                || format!("Failed to extract file {field_name:?}. Max file size: {:.3} MB", config.max_uploaded_file_size as f32 / 1_000_000.0),
+            )?;
             log::trace!("Extracted file {field_name} to {:?}", extracted.file.path());
             uploaded_files.push((field_name, extracted));
         } else {
@@ -244,7 +237,7 @@ mod test {
             serde_json::from_str::<AppConfig>(r#"{"listen_on": "localhost:1234"}"#).unwrap();
         let mut service_request = TestRequest::default().to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data).await;
+        let request_info = extract_request_info(&mut service_request, app_data).await.unwrap();
         assert_eq!(request_info.post_variables.len(), 0);
         assert_eq!(request_info.uploaded_files.len(), 0);
         assert_eq!(request_info.get_variables.len(), 0);
@@ -260,7 +253,7 @@ mod test {
             .set_payload("my_array[]=3&my_array[]=Hello%20World&repeated=1&repeated=2")
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data).await;
+        let request_info = extract_request_info(&mut service_request, app_data).await.unwrap();
         assert_eq!(
             request_info.post_variables,
             vec![
@@ -307,7 +300,7 @@ mod test {
             )
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data).await;
+        let request_info = extract_request_info(&mut service_request, app_data).await.unwrap();
         assert_eq!(
             request_info.post_variables,
             vec![(

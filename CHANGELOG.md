@@ -3,6 +3,8 @@
 ## 0.20.1 (unreleased)
 
  - More than 200 new icons, with [tabler icons v3](https://tabler.io/icons/changelog#3.0)
+ - New [`sqlpage.persist_uploaded_file`](https://sql.ophir.dev/functions.sql?function=persist_uploaded_file#function) function to save uploaded files to a permanent location on the local filesystem (where SQLPage is running). This is useful to store files uploaded by users in a safe location, and to serve them back to users later.
+ - Correct error handling for file uploads. SQLPage used to silently ignore file uploads that failed (because they exceeded [max_uploaded_file_size](./configuration.md), for instance), but now it displays a clear error message to the user.
 
 ## 0.20.0 (2024-03-12)
 

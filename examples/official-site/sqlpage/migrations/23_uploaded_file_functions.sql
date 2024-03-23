@@ -48,27 +48,12 @@ insert into text_documents (title, path) values (:title, sqlpage.read_file_as_te
 When the uploaded file is larger than a few megabytes, it is not recommended to store it in the database.
 Instead, one can save the file to a permanent location on the server, and store the path to the file in the database.
 
-You can move the file to a permanent location using the [`sqlpage.exec`](?function=exec#function) function:
-
-```sql
-set file_name = sqlpage.random_string(10);
-set exec_result = sqlpage.exec(''mv'', sqlpage.uploaded_file_path(''myfile''), ''/my_upload_directory/'' || $file_name);
-insert into uploaded_files (title, path) values (:title, $file_name);
-```
-
-> *Notes*: 
->  - The `sqlpage.exec` function is disabled by default, and you need to enable it in the [configuration file](https://github.com/lovasoa/SQLpage/blob/main/configuration.md).
->  - `mv` is specific to MacOS and Linux. On Windows, you can use [`move`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/move) instead:
->    - ```sql
->      SET image_path = sqlpage.uploaded_file_path(''myfile'');
->      SET exec_result = sqlpage.exec(''cmd'', ''/C'', ''move'', $image_path, ''C:\MyUploadDirectory'');
->      ```
-
+You can move the file to a permanent location using the [`sqlpage.persist_uploaded_file`](?function=persist_uploaded_file#function) function.
 ### Advanced file handling
 
 For more advanced file handling, such as uploading files to a cloud storage service,
 you can write a small script in your favorite programming language,
-and call it using the `sqlpage.exec` function.
+and call it using the [`sqlpage.exec`](?function=exec#function) function.
 
 For instance, one could save the following small bash script to `/usr/local/bin/upload_to_s3`:
 

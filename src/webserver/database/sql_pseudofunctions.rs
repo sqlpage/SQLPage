@@ -42,6 +42,11 @@ pub(super) enum StmtParam {
     Literal(String),
     UploadedFilePath(String),
     UploadedFileMimeType(String),
+    PersistUploadedFile {
+        field_name: Box<StmtParam>,
+        folder: Option<Box<StmtParam>>,
+        allowed_extensions: Option<Box<StmtParam>>,
+    },
     ReadFileAsText(Box<StmtParam>),
     ReadFileAsDataUrl(Box<StmtParam>),
     RunSql(Box<StmtParam>),
@@ -107,6 +112,25 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
             extract_single_quoted_string("uploaded_file_mime_type", arguments)
                 .map_or_else(StmtParam::Error, StmtParam::UploadedFileMimeType)
         }
+        "persist_uploaded_file" => {
+            let field_name = Box::new(extract_variable_argument(
+                "persist_uploaded_file",
+                arguments,
+            ));
+            let folder = arguments
+                .get_mut(1)
+                .and_then(function_arg_to_stmt_param)
+                .map(Box::new);
+            let allowed_extensions = arguments
+                .get_mut(2)
+                .and_then(function_arg_to_stmt_param)
+                .map(Box::new);
+            StmtParam::PersistUploadedFile {
+                field_name,
+                folder,
+                allowed_extensions,
+            }
+        }
         "read_file_as_text" => StmtParam::ReadFileAsText(Box::new(extract_variable_argument(
             "read_file_as_text",
             arguments,
@@ -135,8 +159,86 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
         StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
         StmtParam::RunSql(inner) => run_sql(inner, request).await?,
+        StmtParam::PersistUploadedFile {
+            field_name,
+            folder,
+            allowed_extensions,
+        } => {
+            persist_uploaded_file(
+                field_name,
+                folder.as_deref(),
+                allowed_extensions.as_deref(),
+                request,
+            )
+            .await?
+        }
         _ => extract_req_param_non_nested(param, request)?,
     })
+}
+
+const DEFAULT_ALLOWED_EXTENSIONS: &str =
+    "jpg,jpeg,png,gif,bmp,webp,pdf,txt,doc,docx,xls,xlsx,csv,mp3,mp4,wav,avi,mov";
+
+async fn persist_uploaded_file<'a>(
+    field_name: &StmtParam,
+    folder: Option<&StmtParam>,
+    allowed_extensions: Option<&StmtParam>,
+    request: &'a RequestInfo,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    let field_name = extract_req_param_non_nested(field_name, request)?
+        .ok_or_else(|| anyhow!("persist_uploaded_file: field_name is NULL"))?;
+    let folder = folder
+        .map_or_else(|| Ok(None), |x| extract_req_param_non_nested(x, request))?
+        .unwrap_or(Cow::Borrowed("uploads"));
+    let allowed_extensions_str = &allowed_extensions
+        .map_or_else(|| Ok(None), |x| extract_req_param_non_nested(x, request))?
+        .unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
+    let allowed_extensions = allowed_extensions_str.split(',');
+    let uploaded_file = request
+        .uploaded_files
+        .get(&field_name.to_string())
+        .ok_or_else(|| {
+            anyhow!("persist_uploaded_file: no file uploaded with field name {field_name}. Uploaded files: {:?}", request.uploaded_files.keys())
+        })?;
+    let file_name = &uploaded_file.file_name.as_deref().unwrap_or_default();
+    let extension = file_name.split('.').last().unwrap_or_default();
+    if !allowed_extensions
+        .clone()
+        .any(|x| x.eq_ignore_ascii_case(extension))
+    {
+        let exts = allowed_extensions.collect::<Vec<_>>().join(", ");
+        bail!(
+            "persist_uploaded_file: file extension {extension} is not allowed. Allowed extensions: {exts}"
+        );
+    }
+    // resolve the folder path relative to the web root
+    let web_root = &request.app_state.config.web_root;
+    let target_folder = web_root.join(&*folder);
+    // create the folder if it doesn't exist
+    tokio::fs::create_dir_all(&target_folder)
+        .await
+        .with_context(|| {
+            format!("persist_uploaded_file: unable to create folder {target_folder:?}")
+        })?;
+    let date = chrono::Utc::now().format("%Y-%m-%d %Hh%Mm%Ss");
+    let random_part = random_string(8);
+    let random_target_name = format!("{date} {random_part}.{extension}");
+    let target_path = target_folder.join(&random_target_name);
+    tokio::fs::copy(&uploaded_file.file.path(), &target_path)
+        .await
+        .with_context(|| {
+            format!(
+                "persist_uploaded_file: unable to copy uploaded file {field_name:?} to {target_path:?}"
+            )
+        })?;
+    // remove the WEB_ROOT prefix from the path, but keep the leading slash
+    let path = "/".to_string() + target_path
+        .strip_prefix(web_root)?
+        .to_str()
+        .with_context(|| {
+            format!("persist_uploaded_file: unable to convert path {target_path:?} to a string")
+        })?;
+    Ok(Some(Cow::Owned(path)))
 }
 
 fn url_encode<'a>(
@@ -357,6 +459,9 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .get(x)
             .and_then(|x| x.file.path().to_str())
             .map(Cow::Borrowed),
+        StmtParam::PersistUploadedFile { .. } => {
+            bail!("Nested persist_uploaded_file() function not allowed")
+        }
         StmtParam::UploadedFileMimeType(x) => request
             .uploaded_files
             .get(x)

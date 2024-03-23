@@ -11,7 +11,10 @@ insert or ignore into image (title, description, image_url)
 values (
     :Title,
     :Description,
-    sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path('Image'))
+    -- Persist the uploaded file to the local "images" folder at the root of the website and return the path
+    sqlpage.persist_uploaded_file('Image', 'images', 'jpg,jpeg,png,gif')
+    -- alternatively, if the images are small, you could store them in the database directly with the following line
+    -- sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path('Image'))
 )
 returning 'redirect' as component,
           format('/?created_id=%d', id) as link;
