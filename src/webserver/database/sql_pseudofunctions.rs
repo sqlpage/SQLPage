@@ -232,12 +232,13 @@ async fn persist_uploaded_file<'a>(
             )
         })?;
     // remove the WEB_ROOT prefix from the path, but keep the leading slash
-    let path = "/".to_string() + target_path
-        .strip_prefix(web_root)?
-        .to_str()
-        .with_context(|| {
-            format!("persist_uploaded_file: unable to convert path {target_path:?} to a string")
-        })?;
+    let path = "/".to_string()
+        + target_path
+            .strip_prefix(web_root)?
+            .to_str()
+            .with_context(|| {
+                format!("persist_uploaded_file: unable to convert path {target_path:?} to a string")
+            })?;
     Ok(Some(Cow::Owned(path)))
 }
 

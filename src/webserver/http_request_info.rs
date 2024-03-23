@@ -162,9 +162,14 @@ async fn extract_multipart_post_data(
         log::trace!("Parsing multipart field: {}", field_name);
         if let Some(filename) = filename {
             log::debug!("Extracting file: {field_name} ({filename})");
-            let extracted = extract_file(http_req, field, &mut limits).await.with_context(
-                || format!("Failed to extract file {field_name:?}. Max file size: {:.3} MB", config.max_uploaded_file_size as f32 / 1_000_000.0),
-            )?;
+            let extracted = extract_file(http_req, field, &mut limits)
+                .await
+                .with_context(|| {
+                    format!(
+                        "Failed to extract file {field_name:?}. Max file size: {:.3} MB",
+                        config.max_uploaded_file_size as f32 / 1_000_000.0
+                    )
+                })?;
             log::trace!("Extracted file {field_name} to {:?}", extracted.file.path());
             uploaded_files.push((field_name, extracted));
         } else {
@@ -237,7 +242,9 @@ mod test {
             serde_json::from_str::<AppConfig>(r#"{"listen_on": "localhost:1234"}"#).unwrap();
         let mut service_request = TestRequest::default().to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data).await.unwrap();
+        let request_info = extract_request_info(&mut service_request, app_data)
+            .await
+            .unwrap();
         assert_eq!(request_info.post_variables.len(), 0);
         assert_eq!(request_info.uploaded_files.len(), 0);
         assert_eq!(request_info.get_variables.len(), 0);
@@ -253,7 +260,9 @@ mod test {
             .set_payload("my_array[]=3&my_array[]=Hello%20World&repeated=1&repeated=2")
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data).await.unwrap();
+        let request_info = extract_request_info(&mut service_request, app_data)
+            .await
+            .unwrap();
         assert_eq!(
             request_info.post_variables,
             vec![
@@ -300,7 +309,9 @@ mod test {
             )
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data).await.unwrap();
+        let request_info = extract_request_info(&mut service_request, app_data)
+            .await
+            .unwrap();
         assert_eq!(
             request_info.post_variables,
             vec![(
