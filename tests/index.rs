@@ -157,6 +157,35 @@ async fn test_file_upload() -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_file_upload_too_large() -> actix_web::Result<()> {
+    // Files larger than 12345 bytes should be rejected as per the test_config
+    let req = get_request_to("/tests/upload_file_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"testfile.txt\"\r\n\
+            Content-Type: text/plain\r\n\
+            \r\n\
+            "
+            .to_string()
+                + "a".repeat(12346).as_str()
+                + "\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let err_str = main_handler(req)
+        .await
+        .expect_err("Expected an error response")
+        .to_string();
+    assert!(
+        err_str.to_ascii_lowercase().contains("max file size"),
+        "{err_str}\nexpected to contain: File too large"
+    );
+    Ok(())
+}
+
+#[actix_web::test]
 async fn test_csv_upload() -> actix_web::Result<()> {
     let req = get_request_to("/tests/upload_csv_test.sql")
         .await?
@@ -243,6 +272,7 @@ pub fn test_config() -> AppConfig {
         "database_connection_retries": 2,
         "database_connection_acquire_timeout_seconds": 10,
         "allow_exec": true,
+        "max_uploaded_file_size": 12345,
         "listen_on": "111.111.111.111:1"
     }}"#,
         db_url
