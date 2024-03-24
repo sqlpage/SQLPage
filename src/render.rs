@@ -349,7 +349,10 @@ impl<W: std::io::Write> RenderContext<W> {
             serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
         );
         let new_component = get_object_str(data, "component");
-        let current_component = self.current_component.as_ref().map(SplitTemplateRenderer::name);
+        let current_component = self
+            .current_component
+            .as_ref()
+            .map(SplitTemplateRenderer::name);
         match (current_component, new_component) {
             (
                 _,

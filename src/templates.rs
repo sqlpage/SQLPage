@@ -34,16 +34,17 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
         }
     }
     let mut list_content = items_template.unwrap_or_default();
-    list_content.name = original.name.clone();
+    let original_name = original.name.unwrap_or_default();
+    list_content.name = Some(format!("{original_name} each block"));
     SplitTemplate {
         before_list: Template {
-            name: original.name.clone(),
+            name: Some(format!("{original_name} before each block")),
             elements: original.elements,
             mapping: original.mapping,
         },
         list_content,
         after_list: Template {
-            name: original.name,
+            name: Some(format!("{original_name} after each block")),
             elements: elements_after,
             mapping: mapping_after,
         },
@@ -53,7 +54,7 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
 #[async_trait(? Send)]
 impl AsyncFromStrWithState for SplitTemplate {
     async fn from_str_with_state(_app_state: &AppState, source: &str) -> anyhow::Result<Self> {
-        let tpl = Template::compile(source)?;
+        let tpl = Template::compile_with_name(source, "SQLPage component".to_string())?;
         Ok(split_template(tpl))
     }
 }
@@ -119,7 +120,7 @@ impl AllTemplates {
         self.split_templates
             .get(app_state, &path)
             .await
-            .with_context(|| format!("The component '{name}' was not found."))
+            .with_context(|| format!("Unable to get the component '{name}'"))
     }
 }
 
