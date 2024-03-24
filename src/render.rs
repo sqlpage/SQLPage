@@ -342,13 +342,6 @@ impl<W: std::io::Write> RenderContext<W> {
         component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
-    async fn current_component(&mut self) -> anyhow::Result<&mut SplitTemplateRenderer> {
-        if self.current_component.is_none() {
-            let _old = self.set_current_component(DEFAULT_COMPONENT).await?;
-        }
-        Ok(self.current_component.as_mut().unwrap())
-    }
-
     #[async_recursion(? Send)]
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         log::debug!(
@@ -356,7 +349,7 @@ impl<W: std::io::Write> RenderContext<W> {
             serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
         );
         let new_component = get_object_str(data, "component");
-        let current_component = self.current_component().await?.name();
+        let current_component = self.current_component.as_ref().map(SplitTemplateRenderer::name);
         match (current_component, new_component) {
             (
                 _,
@@ -374,10 +367,15 @@ impl<W: std::io::Write> RenderContext<W> {
                 You are trying to open the {c:?} component, but a shell component is already opened for the current page. \n\
                 You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data. \n")
             }
-            (_current_component, Some(new_component)) => {
+            (None, None) => {
+                self.open_component_with_data(DEFAULT_COMPONENT, &JsonValue::Null)
+                    .await?;
+                self.render_current_template_with_data(&data).await?;
+            }
+            (_, Some(new_component)) => {
                 self.open_component_with_data(new_component, &data).await?;
             }
-            (_, _) => {
+            (Some(_current_component), None) => {
                 self.render_current_template_with_data(&data).await?;
             }
         }

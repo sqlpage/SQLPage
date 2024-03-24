@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - the default component is now [table](https://sql.ophir.dev/documentation.sql?component=table#component), which makes it extremely easy to display the results of any SQL query. Just write any query in a `.sql` file open it in your browser, and you will see the results displayed in a table, without having to use any SQLPage-specific column names or attributes.
+
 ## 0.20.1 (2024-03-23)
 
  - More than 200 new icons, with [tabler icons v3](https://tabler.io/icons/changelog#3.0)
