@@ -3,6 +3,7 @@
 ## unreleased
 
  - the default component is now [table](https://sql.ophir.dev/documentation.sql?component=table#component), which makes it extremely easy to display the results of any SQL query. Just write any query in a `.sql` file open it in your browser, and you will see the results displayed in a table, without having to use any SQLPage-specific column names or attributes.
+ - Better error messages when a [custom component](https://sql.ophir.dev/custom_components.sql) contains a syntax error. [Fix contributed upstream](https://github.com/sunng87/handlebars-rust/pull/638)
 
 ## 0.20.1 (2024-03-23)
 
