@@ -34,7 +34,8 @@ function sqlpage_chart() {
 
     for (const c of document.querySelectorAll("[data-pre-init=chart]")) {
         try {
-            const data = JSON.parse(c.querySelector("data").innerText);
+            const [data_element] = c.getElementsByTagName("data");
+            const data = JSON.parse(data_element.textContent);
             const chartContainer = c.querySelector('.chart');
             chartContainer.innerHTML = "";
             const is_timeseries = !!data.time;
