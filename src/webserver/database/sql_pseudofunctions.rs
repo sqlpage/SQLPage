@@ -153,7 +153,7 @@ pub(super) async fn extract_req_param<'a>(
     request: &'a RequestInfo,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
-        StmtParam::HashPassword(inner) => has_password_param(inner, request).await?,
+        StmtParam::HashPassword(inner) => hash_password_param(inner, request).await?,
         StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
         StmtParam::UrlEncode(inner) => url_encode(inner, request)?,
         StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
@@ -506,7 +506,7 @@ fn random_string(len: usize) -> String {
         .collect()
 }
 
-async fn has_password_param<'a>(
+async fn hash_password_param<'a>(
     inner: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
