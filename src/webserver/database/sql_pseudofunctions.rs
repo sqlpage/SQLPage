@@ -146,36 +146,6 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
     }
 }
 
-/// Extracts the value of a parameter from the request.
-/// Returns `Ok(None)` when NULL should be used as the parameter value.
-pub(super) async fn extract_req_param<'a>(
-    param: &StmtParam,
-    request: &'a RequestInfo,
-) -> anyhow::Result<Option<Cow<'a, str>>> {
-    Ok(match param {
-        StmtParam::HashPassword(inner) => hash_password_param(inner, request).await?,
-        StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
-        StmtParam::UrlEncode(inner) => url_encode(inner, request)?,
-        StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
-        StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
-        StmtParam::RunSql(inner) => run_sql(inner, request).await?,
-        StmtParam::PersistUploadedFile {
-            field_name,
-            folder,
-            allowed_extensions,
-        } => {
-            persist_uploaded_file(
-                field_name,
-                folder.as_deref(),
-                allowed_extensions.as_deref(),
-                request,
-            )
-            .await?
-        }
-        _ => extract_req_param_non_nested(param, request)?,
-    })
-}
-
 const DEFAULT_ALLOWED_EXTENSIONS: &str =
     "jpg,jpeg,png,gif,bmp,webp,pdf,txt,doc,docx,xls,xlsx,csv,mp3,mp4,wav,avi,mov";
 
@@ -185,14 +155,21 @@ async fn persist_uploaded_file<'a>(
     allowed_extensions: Option<&StmtParam>,
     request: &'a RequestInfo,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
-    let field_name = extract_req_param_non_nested(field_name, request)?
+    let field_name = Box::pin(extract_req_param(field_name, request))
+        .await?
         .ok_or_else(|| anyhow!("persist_uploaded_file: field_name is NULL"))?;
-    let folder = folder
-        .map_or_else(|| Ok(None), |x| extract_req_param_non_nested(x, request))?
-        .unwrap_or(Cow::Borrowed("uploads"));
-    let allowed_extensions_str = &allowed_extensions
-        .map_or_else(|| Ok(None), |x| extract_req_param_non_nested(x, request))?
-        .unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
+    let folder = if let Some(x) = folder {
+        Box::pin(extract_req_param(x, request)).await?
+    } else {
+        None
+    }
+    .unwrap_or(Cow::Borrowed("uploads"));
+    let allowed_extensions_str = if let Some(x) = allowed_extensions {
+        Box::pin(extract_req_param(x, request)).await?
+    } else {
+        None
+    }
+    .unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
     let allowed_extensions = allowed_extensions_str.split(',');
     let uploaded_file = request
         .uploaded_files
@@ -242,11 +219,11 @@ async fn persist_uploaded_file<'a>(
     Ok(Some(Cow::Owned(path)))
 }
 
-fn url_encode<'a>(
+async fn url_encode<'a>(
     inner: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let param = extract_req_param_non_nested(inner, request);
+    let param = Box::pin(extract_req_param(inner, request)).await;
     match param {
         Ok(Some(Cow::Borrowed(inner))) => {
             let encoded = percent_encoding::percent_encode(
@@ -277,12 +254,16 @@ async fn exec_external_command<'a>(
     let param0 = iter_params
         .next()
         .with_context(|| "sqlite.exec(program) requires at least one argument")?;
-    let Some(program_name) = extract_req_param_non_nested(param0, request)? else {
+    let Some(program_name) = Box::pin(extract_req_param(param0, request)).await? else {
         return Ok(None);
     };
     let mut args = Vec::with_capacity(iter_params.len());
     for arg in iter_params {
-        args.push(extract_req_param_non_nested(arg, request)?.unwrap_or_else(|| "".into()));
+        args.push(
+            Box::pin(extract_req_param(arg, request))
+                .await?
+                .unwrap_or_else(|| "".into()),
+        );
     }
     let res = tokio::process::Command::new(&*program_name)
         .args(args.iter().map(|x| &**x))
@@ -332,7 +313,7 @@ async fn read_file_as_text<'a>(
     param0: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let Some(evaluated_param) = extract_req_param_non_nested(param0, request)? else {
+    let Some(evaluated_param) = Box::pin(extract_req_param(param0, request)).await? else {
         log::debug!("read_file: first argument is NULL, returning NULL");
         return Ok(None);
     };
@@ -346,7 +327,7 @@ async fn read_file_as_data_url<'a>(
     param0: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let Some(evaluated_param) = extract_req_param_non_nested(param0, request)? else {
+    let Some(evaluated_param) = Box::pin(extract_req_param(param0, request)).await? else {
         log::debug!("read_file: first argument is NULL, returning NULL");
         return Ok(None);
     };
@@ -365,7 +346,7 @@ async fn run_sql<'a>(
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
     use serde::ser::{SerializeSeq, Serializer};
-    let Some(sql_file_path) = extract_req_param_non_nested(param0, request)? else {
+    let Some(sql_file_path) = Box::pin(extract_req_param(param0, request)).await? else {
         log::debug!("run_sql: first argument is NULL, returning NULL");
         return Ok(None);
     };
@@ -420,11 +401,34 @@ fn mime_guess_from_filename(filename: &str) -> Mime {
     maybe_mime.unwrap_or(APPLICATION_OCTET_STREAM)
 }
 
-pub(super) fn extract_req_param_non_nested<'a>(
+/// Extracts the value of a parameter from the request.
+/// Returns `Ok(None)` when NULL should be used as the parameter value.
+pub(super) async fn extract_req_param<'a>(
     param: &StmtParam,
     request: &'a RequestInfo,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
+        // async functions
+        StmtParam::HashPassword(inner) => hash_password_param(inner, request).await?,
+        StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
+        StmtParam::UrlEncode(inner) => url_encode(inner, request).await?,
+        StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
+        StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
+        StmtParam::RunSql(inner) => run_sql(inner, request).await?,
+        StmtParam::PersistUploadedFile {
+            field_name,
+            folder,
+            allowed_extensions,
+        } => {
+            persist_uploaded_file(
+                field_name,
+                folder.as_deref(),
+                allowed_extensions.as_deref(),
+                request,
+            )
+            .await?
+        }
+        // sync functions
         StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),
         StmtParam::GetOrPost(x) => request
@@ -441,9 +445,6 @@ pub(super) fn extract_req_param_non_nested<'a>(
         StmtParam::BasicAuthUsername => extract_basic_auth_username(request)
             .map(Cow::Borrowed)
             .map(Some)?,
-        StmtParam::HashPassword(_) => bail!("Nested hash_password() function not allowed"),
-        StmtParam::Exec(_) => bail!("Nested exec() function not allowed"),
-        StmtParam::UrlEncode(_) => bail!("Nested url_encode() function not allowed"),
         StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
         StmtParam::CurrentWorkingDir => cwd()?,
         StmtParam::EnvironmentVariable(var) => std::env::var(var)
@@ -460,19 +461,11 @@ pub(super) fn extract_req_param_non_nested<'a>(
             .get(x)
             .and_then(|x| x.file.path().to_str())
             .map(Cow::Borrowed),
-        StmtParam::PersistUploadedFile { .. } => {
-            bail!("Nested persist_uploaded_file() function not allowed")
-        }
         StmtParam::UploadedFileMimeType(x) => request
             .uploaded_files
             .get(x)
             .and_then(|x| x.content_type.as_ref())
             .map(|x| Cow::Borrowed(x.as_ref())),
-        StmtParam::ReadFileAsText(_) => bail!("Nested read_file_as_text() function not allowed",),
-        StmtParam::ReadFileAsDataUrl(_) => {
-            bail!("Nested read_file_as_data_url() function not allowed")
-        }
-        StmtParam::RunSql(_) => bail!("Nested run_sql() function not allowed"),
     })
 }
 
