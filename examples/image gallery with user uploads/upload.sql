@@ -7,6 +7,10 @@ where not exists (
         created_at > datetime('now', '-1 day') -- require the user to log in again after 1 day
 );
 
+-- Redirect the user back to the form if no file was uploaded
+select 'redirect' as component, '/upload_form.sql' as link
+where sqlpage.uploaded_file_mime_type('Image') NOT LIKE 'image/%';
+
 insert or ignore into image (title, description, image_url)
 values (
     :Title,
