@@ -510,7 +510,7 @@ async fn has_password_param<'a>(
     inner: &StmtParam,
     request: &'a RequestInfo,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let password = match extract_req_param_non_nested(inner, request) {
+    let password = match Box::pin(extract_req_param(inner, request)).await {
         Ok(Some(x)) => x,
         err => return err,
     }
