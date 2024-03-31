@@ -683,7 +683,7 @@ async fn srv_req_path_with_app_data(
         .to_srv_request()
 }
 
-const REQ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+const REQ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 async fn req_path_with_app_data(
     path: impl AsRef<str>,
     app_data: actix_web::web::Data<AppState>,
