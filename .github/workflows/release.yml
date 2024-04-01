@@ -23,6 +23,7 @@ jobs:
           - os: ubuntu-20.04
             binary_path: target/superoptimized/sqlpage
     steps:
+      - run: rustup toolchain install stable --profile minimal
       - uses: actions/checkout@v4
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
