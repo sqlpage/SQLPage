@@ -10,8 +10,8 @@ select 'text' as component,
         ELSE 'Error: "/1" should be urlencoded to "%2F1"'
     END
     || ' | With a null value: ' ||
-    CASE sqlpage.url_encode(CONCAT('/', $thisisnull)) IS NULL
-        WHEN true THEN 'With a null value: It works !'
+    CASE COALESCE(sqlpage.url_encode(CONCAT('/', $thisisnull)), 'expected')
+        WHEN 'expected' THEN 'With a null value: It works !'
         ELSE 'Error: a null value concatenated with "/" should be null, and urlencoded to NULL'
     END
     AS contents;
