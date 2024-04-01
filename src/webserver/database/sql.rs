@@ -371,23 +371,54 @@ pub(super) fn extract_integer(
 }
 
 pub(super) fn function_arg_to_stmt_param(arg: &mut FunctionArg) -> Option<StmtParam> {
-    match function_arg_expr(arg) {
-        Some(Expr::Value(Value::Placeholder(placeholder))) => {
+    function_arg_expr(arg).and_then(expr_to_stmt_param)
+}
+
+fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
+    match arg {
+        Expr::Value(Value::Placeholder(placeholder)) => {
             Some(map_param(std::mem::take(placeholder)))
         }
-        Some(Expr::Identifier(ident)) => extract_ident_param(ident),
-        Some(Expr::Function(Function {
+        Expr::Identifier(ident) => extract_ident_param(ident),
+        Expr::Function(Function {
             name: ObjectName(func_name_parts),
             args,
             ..
-        })) if is_sqlpage_func(func_name_parts) => Some(func_call_to_param(
+        }) if is_sqlpage_func(func_name_parts) => Some(func_call_to_param(
             sqlpage_func_name(func_name_parts),
             args.as_mut_slice(),
         )),
-        Some(Expr::Value(Value::SingleQuotedString(param_value))) => {
+        Expr::Value(Value::SingleQuotedString(param_value)) => {
             Some(StmtParam::Literal(std::mem::take(param_value)))
         }
-        _ => None,
+        Expr::BinaryOp {
+            // 'str1' || 'str2'
+            left,
+            op: BinaryOperator::StringConcat,
+            right,
+        } => {
+            let left = expr_to_stmt_param(left)?;
+            let right = expr_to_stmt_param(right)?;
+            Some(StmtParam::Concat(vec![left, right]))
+        }
+        // CONCAT('str1', 'str2', ...)
+        Expr::Function(Function {
+            name: ObjectName(func_name_parts),
+            args,
+            ..
+        }) if func_name_parts.len() == 1
+            && func_name_parts[0].value.eq_ignore_ascii_case("concat") =>
+        {
+            let mut concat_args = Vec::with_capacity(args.len());
+            for arg in args {
+                concat_args.push(function_arg_to_stmt_param(arg)?);
+            }
+            Some(StmtParam::Concat(concat_args))
+        }
+        _ => {
+            log::warn!("Unsupported function argument: {arg}");
+            None
+        }
     }
 }
 
@@ -397,8 +428,10 @@ pub(super) fn stmt_param_error_invalid_arguments(
 ) -> StmtParam {
     StmtParam::Error(format!(
         "{func_name}({}) is not a valid call. \
-        Only variables (such as $my_variable) \
-        and sqlpage function calls (such as sqlpage.header('my_header')) \
+        Only variables (such as $my_variable), \
+        sqlpage function calls (such as sqlpage.header('my_header')), \
+        constants (such as 'my_string'), \
+        and concatenations (such as CONCAT(x, y)) \
         are supported as arguments to sqlpage functions.",
         FormatArguments(arguments)
     ))

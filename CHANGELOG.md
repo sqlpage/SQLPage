@@ -5,6 +5,7 @@
  - the default component is now [table](https://sql.ophir.dev/documentation.sql?component=table#component), which makes it extremely easy to display the results of any SQL query. Just write any query in a `.sql` file open it in your browser, and you will see the results displayed in a table, without having to use any SQLPage-specific column names or attributes.
  - Better error messages when a [custom component](https://sql.ophir.dev/custom_components.sql) contains a syntax error. [Fix contributed upstream](https://github.com/sunng87/handlebars-rust/pull/638)
  - Lift a limitation on sqlpage function nesting. In previous versions, some sqlpage functions could not be used inside other sqlpage functions. For instance, `sqlpage.url_encode(sqlpage.exec('my_program'))` used to throw an error saying `Nested exec() function not allowed`. This limitation is now lifted, and you can nest any sqlpage function inside any other sqlpage function.
+ - Allow string concatenation in inside sqlpage function parameters. For instance, `sqlpage.exec('echo', 'Hello ' || 'world')` is now supported, whereas it used to throw an error saying `exec('echo', 'Hello ' || 'world') is not a valid call. Only variables (such as $my_variable) and sqlpage function calls (such as sqlpage.header('my_header')) are supported as arguments to sqlpage functions.`.
 
 ## 0.20.1 (2024-03-23)
 

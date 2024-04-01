@@ -40,6 +40,7 @@ pub(super) enum StmtParam {
     EnvironmentVariable(String),
     SqlPageVersion,
     Literal(String),
+    Concat(Vec<StmtParam>),
     UploadedFilePath(String),
     UploadedFileMimeType(String),
     PersistUploadedFile {
@@ -453,6 +454,7 @@ pub(super) async fn extract_req_param<'a>(
             .with_context(|| format!("Unable to read environment variable {var}"))?,
         StmtParam::SqlPageVersion => Some(Cow::Borrowed(env!("CARGO_PKG_VERSION"))),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
+        StmtParam::Concat(args) => concat_params(&args[..], request).await?,
         StmtParam::AllVariables(get_or_post) => extract_get_or_post(*get_or_post, request),
         StmtParam::Path => Some(Cow::Borrowed(&request.path)),
         StmtParam::Protocol => Some(Cow::Borrowed(&request.protocol)),
@@ -467,6 +469,20 @@ pub(super) async fn extract_req_param<'a>(
             .and_then(|x| x.content_type.as_ref())
             .map(|x| Cow::Borrowed(x.as_ref())),
     })
+}
+
+async fn concat_params<'a>(
+    args: &[StmtParam],
+    request: &'a RequestInfo,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    let mut result = String::new();
+    for arg in args {
+        let Some(arg) = Box::pin(extract_req_param(arg, request)).await? else {
+            return Ok(None);
+        };
+        result.push_str(&arg);
+    }
+    Ok(Some(Cow::Owned(result)))
 }
 
 fn extract_get_or_post(
