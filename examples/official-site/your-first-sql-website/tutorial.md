@@ -6,11 +6,15 @@ SQLPage is a small executable file that will take requests to your website, exec
 and render the database responses as nice web pages.
 
 [Download the latest SQLPage](https://github.com/lovasoa/SQLpage/releases) for your operating system.
+In the *release assets* section, you will find files named `sqlpage-windows.zip`, `sqlpage-linux.tgz`, and `sqlpage-macos.tgz`.
+Download the one that corresponds to your operating system, and extract the executable file from the archive.
 
 > **Note**: Advanced users can alternatively install SQLPage using
 > [docker](https://hub.docker.com/repository/docker/lovasoa/sqlpage/general),
 > [brew](https://formulae.brew.sh/formula/sqlpage),
-> or [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage)
+> [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage),
+> [scoop](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116),
+> or [cargo](https://crates.io/crates/sqlpage).
 
 Building your website locally
 =============================
