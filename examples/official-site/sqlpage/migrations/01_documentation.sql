@@ -475,6 +475,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('toolbar', 'Whether to display a toolbar at the top right of the chart, that offers downloading the data as CSV.', 'BOOLEAN', TRUE, TRUE),
     ('logarithmic', 'Display the y-axis in logarithmic scale.', 'BOOLEAN', TRUE, TRUE),
     ('horizontal', 'Displays a bar chart with horizontal bars instead of vertical ones.', 'BOOLEAN', TRUE, TRUE),
+    ('height', 'Height of the chart, in pixels. By default: 250', 'INTEGER', TRUE, TRUE),
     -- item level
     ('x', 'The value of the point on the horizontal axis', 'NUMBER', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'NUMBER', FALSE, FALSE),
@@ -514,7 +515,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('chart', 'A scatter plot with multiple custom options.',
     json('[
         {"component":"chart", "title": "Gross domestic product and its growth", "type": "scatter",
-        "xtitle": "Growth Rate", "ytitle": "GDP (Trillions USD)", "marker": 8,
+        "xtitle": "Growth Rate", "ytitle": "GDP (Trillions USD)", "height": 500, "marker": 8,
         "xmin": 0, "xmax": 10, "ymin": 0, "ymax": 25, "yticks": 5},
 
         {"series": "Brazil", "x": 2.5, "y": 2},
