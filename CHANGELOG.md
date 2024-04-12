@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## 0.20.3 (unreleased)
+
+ - Fixed a bug that occured when using both HTTP and HTTPS in the same SQLPage instance. SQLPage tried to bind to the same (HTTP)
+   port twice instead of binding to the HTTPS port. This is now fixed, and SQLPage can now be used with both a non-443 `port` and
+   an `https_domain` set in the configuration file.
+ - [Updated sqlparser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md)
+   - adds support for named windows in window functions
+
 ## 0.20.2 (2024-04-01)
 
  - the **default component**, used when no `select '...' as component` is present, is now [table](https://sql.ophir.dev/documentation.sql?component=table#component). It used to be the `debug` component instead. `table` makes it extremely easy to display the results of any SQL query in a readable manner. Just write any query in a `.sql` file open it in your browser, and you will see the results displayed in a table, without having to use any SQLPage-specific column names or attributes.
