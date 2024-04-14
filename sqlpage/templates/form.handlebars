@@ -63,6 +63,9 @@
                         {{~#if required}} required="required" {{/if~}}
                         {{~#if autofocus}} autofocus {{/if~}}
                         {{~#if multiple}} multiple {{/if~}}
+                        {{~#if dropdown}} data-pre-init="select-dropdown" {{/if~}}
+                        {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
+                        {{~#if create_new}} data-create_new={{create_new}} {{/if~}}
                         >
                         {{#each (parse_json options)}}
                             <option value="{{value}}" {{#if (or (eq ../value value) selected)}}selected{{/if}}>{{label}}</option>

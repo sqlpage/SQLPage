@@ -31,3 +31,8 @@ td > p {
   color: inherit;
   text-decoration: underline;
 }
+
+/* orchidjs/tom-select#712 */
+.ts-wrapper.multi .ts-control>div.active {
+  border: 1px solid transparent !important;
+}

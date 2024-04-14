@@ -225,6 +225,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOL', FALSE, TRUE),
     ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOL', FALSE, TRUE),
+    ('dropdown', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOL', FALSE, TRUE),
+    ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOL', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
     ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
@@ -298,7 +300,7 @@ SELECT
 FROM fruits
 ```
 ', json('[{"component":"form"}, '||
-    '{"name": "Fruit", "type": "select", "value": 1, "options": '||
+    '{"name": "Fruit", "type": "select", "dropdown": true, "value": 1, "options": '||
         '"[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
     ]')),
     ('form', '### Multi-select
@@ -336,7 +338,7 @@ left join my_user_options
     and my_user_options.user_id = $user_id
 ```
 ', json('[{"component":"form"}, 
-    {"name": "Fruit", "type": "select", "multiple": true, "description": "press ctrl to select multiple values", "options":
+    {"label": "Fruits", "name": "fruits[]", "type": "select", "multiple": true, "create_new":true, "placeholder": "Good fruits...", "dropdown": true, "description": "press ctrl to select multiple values", "options":
         "[{\"label\": \"Orange\", \"value\": 0, \"selected\": true}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3, \"selected\": true}]"}
     ]')),
     ('form', 'This example illustrates the use of the `radio` type.
