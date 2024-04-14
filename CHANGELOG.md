@@ -7,6 +7,7 @@
    an `https_domain` set in the configuration file.
  - [Updated sqlparser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md)
    - adds support for named windows in window functions
+ - New icons with tabler icons 3.2: https://tabler.io/icons/changelog
 
 ## 0.20.2 (2024-04-01)
 
