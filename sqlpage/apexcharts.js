@@ -190,4 +190,4 @@ function bubbleTooltip({ series, seriesIndex, dataPointIndex, w }) {
     return tooltip.outerHTML;
 }
 
-sqlpage_chart();
+add_init_function(sqlpage_chart);

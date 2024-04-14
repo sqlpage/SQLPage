@@ -1,16 +1,6 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js */
 /* !include https://cdn.jsdelivr.net/npm/list.js-fixed@2.3.4/dist/list.min.js */
 
-function sqlpage_chart() {
-  let first_chart = document.querySelector("[data-pre-init=chart]");
-  if (first_chart) {
-    // Add the apexcharts js to the page
-    const apexcharts_js = document.createElement("script");
-    apexcharts_js.src = first_chart.dataset.js;
-    document.head.appendChild(apexcharts_js);
-  }
-}
-
 function sqlpage_card() {
     for (const c of document.querySelectorAll("[data-pre-init=card]")) {
         const source = c.dataset.embed;
@@ -151,14 +141,24 @@ function get_tabler_color(name) {
     return getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + name);
 }
 
-function init_components() {
-    sqlpage_table();
-    sqlpage_chart();
-    sqlpage_map();
-    sqlpage_card();
-    sqlpage_select_dropdown();
+function load_scripts() {
+  let addjs = document.querySelectorAll("[data-sqlpage-js]");
+  for (const js of new Set([...addjs].map(({dataset}) => dataset.sqlpageJs))) {
+    const script = document.createElement("script");
+    script.src = js;
+    document.head.appendChild(script);
+  }
 }
 
-document.addEventListener('DOMContentLoaded', init_components);
+function add_init_function(f) {
+  document.addEventListener('DOMContentLoaded', f);
+  document.addEventListener('fragment-loaded', f);
+  if (document.readyState !== "loading") f();
+}
 
-document.addEventListener('fragment-loaded', init_components);
+add_init_function(function init_components() {
+  sqlpage_table();
+  sqlpage_map();
+  sqlpage_card();
+  load_scripts();
+});

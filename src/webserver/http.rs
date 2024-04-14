@@ -483,6 +483,7 @@ pub fn create_app(
     App::new()
         .service(static_content::js())
         .service(static_content::apexcharts_js())
+        .service(static_content::tomselect_js())
         .service(static_content::css())
         .service(static_content::icons())
         .default_service(fn_service(main_handler))

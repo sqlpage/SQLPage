@@ -38,6 +38,10 @@ pub fn apexcharts_js() -> Resource {
     static_file_endpoint!("apexcharts", "js", "application/javascript")
 }
 
+pub fn tomselect_js() -> Resource {
+    static_file_endpoint!("tomselect", "js", "application/javascript")
+}
+
 pub fn css() -> Resource {
     static_file_endpoint!("sqlpage", "css", "text/css")
 }

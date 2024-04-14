@@ -136,6 +136,7 @@ fn static_path_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
         "sqlpage.js" => Ok(static_filename!("sqlpage.js").into()),
         "sqlpage.css" => Ok(static_filename!("sqlpage.css").into()),
         "apexcharts.js" => Ok(static_filename!("apexcharts.js").into()),
+        "tomselect.js" => Ok(static_filename!("tomselect.js").into()),
         other => Err(anyhow::anyhow!("unknown static file: {other:?}")),
     }
 }

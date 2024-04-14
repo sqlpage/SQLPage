@@ -17,6 +17,7 @@ async fn main() {
         spawn(download_deps("sqlpage.css")),
         spawn(download_deps("tabler-icons.svg")),
         spawn(download_deps("apexcharts.js")),
+        spawn(download_deps("tomselect.js")),
     ] {
         h.await.unwrap();
     }
