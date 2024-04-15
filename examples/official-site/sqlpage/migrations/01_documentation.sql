@@ -299,9 +299,9 @@ SELECT
     )) as options
 FROM fruits
 ```
-', json('[{"component":"form"}, '||
-    '{"name": "Fruit", "type": "select", "dropdown": true, "value": 1, "options": '||
-        '"[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
+', json('[{"component":"form", "action":"examples/show_variables.sql"},
+    {"name": "Fruit", "type": "select", "dropdown": true, "value": 1, "options":
+        "[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
     ]')),
     ('form', '### Multi-select
 You can authorize the user to select multiple options by setting the `multiple` property to `true`.
@@ -337,7 +337,7 @@ left join my_user_options
     on  my_options.id = my_user_options.option_id
     and my_user_options.user_id = $user_id
 ```
-', json('[{"component":"form"}, 
+', json('[{"component":"form", "action":"examples/show_variables.sql"}, 
     {"label": "Fruits", "name": "fruits[]", "type": "select", "multiple": true, "create_new":true, "placeholder": "Good fruits...", "dropdown": true, "description": "press ctrl to select multiple values", "options":
         "[{\"label\": \"Orange\", \"value\": 0, \"selected\": true}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3, \"selected\": true}]"}
     ]')),

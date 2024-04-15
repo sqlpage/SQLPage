@@ -1,3 +1,9 @@
+SELECT 'shell' as component, 'SQLPage' as title,
+    'chart' as menu_item,
+    'layouts' as menu_item,
+    'tabs' as menu_item,
+    'show_variables' as menu_item;
+
 create table if not exists tab_example_cards as 
 select 'Leaf' as title, 'Leaf_1_web' as img, 'f4' as prefix, 'green' as color, 'Autumn''s dance begins, Crimson leaves in breezy waltz, Nature''s fleeting art.' as description union all
 select 'Caterpillar', 'Caterpillar_of_box_tree_moth%2C_Germany_2019', 'a9', 'green', 'Caterpillar crawls, silent transformation unfolds.' union all

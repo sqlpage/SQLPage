@@ -11,6 +11,9 @@
  - Optimize queries like `select 'xxx' as component, sqlpage.some_function(...) as parameter`
    to avoid making an unneeded database query. 
    This is especially important for the performance of `sqlpage.run_sql` and the `dynamic` component.
+ - New `dropdown` row-level property in the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component)
+   - ![select dropdown in form](https://github.com/lovasoa/SQLpage/assets/552629/5a2268d3-4996-49c9-9fb5-d310e753f844)
+   - ![multiselect input](https://github.com/lovasoa/SQLpage/assets/552629/e8d62d1a-c851-4fef-8c5c-a22991ffadcf)
 
 ## 0.20.2 (2024-04-01)
 
