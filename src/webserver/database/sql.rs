@@ -216,11 +216,11 @@ fn extract_static_simple_select(
     let mut items = Vec::with_capacity(select_items.len());
     let mut params_iter = params.iter().cloned();
     for select_item in select_items {
+        use serde_json::Value::{Bool, Null, Number, String};
+        use SimpleSelectValue::{Dynamic, Static};
         let sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } = select_item else {
             return None;
         };
-        use serde_json::Value::*;
-        use SimpleSelectValue::*;
         let value = match expr {
             Expr::Value(Value::Boolean(b)) => Static(Bool(*b)),
             Expr::Value(Value::Number(n, _)) => Static(Number(n.parse().ok()?)),
