@@ -1,31 +1,20 @@
-select 
-    'chart'             as component,
-    'Quarterly Revenue' as title,
-    'area'              as type,
-    'indigo'            as color,
-    5                   as marker,
-    TRUE                as time;
-select 
-    '2022-01-01T00:00:00Z' as x,
-    15                     as y;
-select 
-    '2022-04-01T00:00:00Z' as x,
-    46                     as y;
-select 
-    '2022-07-01T00:00:00Z' as x,
-    23                     as y;
-select 
-    '2022-10-01T00:00:00Z' as x,
-    70                     as y;
-select 
-    '2023-01-01T00:00:00Z' as x,
-    35                     as y;
-select 
-    '2023-04-01T00:00:00Z' as x,
-    106                    as y;
-select 
-    '2023-07-01T00:00:00Z' as x,
-    53                     as y;
+set n=coalesce($n, 1);
 
-
+select 
+    'chart'                    as component,
+    'Syracuse Sequence'        as title,
+    coalesce($type, 'area')    as type,
+    coalesce($color, 'indigo')  as color,
+    5                          as marker;
+with recursive seq(x, y) as (
+    select 0, CAST($n as integer)
+    union all
+    select x+1, case
+        when y % 2 = 0 then y/2
+        else 3*y+1
+    end
+    from seq
+    where x<10
+)
+select x, y from seq;
 

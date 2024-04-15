@@ -21,7 +21,7 @@ use super::sql::{
 };
 use anyhow::{anyhow, bail, Context};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(super) enum StmtParam {
     Get(String),
     AllVariables(Option<GetOrPost>),
@@ -400,6 +400,19 @@ fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<
 fn mime_guess_from_filename(filename: &str) -> Mime {
     let maybe_mime = mime_guess::from_path(filename).first();
     maybe_mime.unwrap_or(APPLICATION_OCTET_STREAM)
+}
+
+/// Extracts the value of a parameter from the request.
+/// Returns `Ok(None)` when NULL should be used as the parameter value.
+pub(super) async fn extract_req_param_as_json(
+    param: &StmtParam,
+    request: &RequestInfo,
+) -> anyhow::Result<serde_json::Value> {
+    if let Some(val) = extract_req_param(param, request).await? {
+        Ok(serde_json::Value::String(val.into_owned()))
+    } else {
+        Ok(serde_json::Value::Null)
+    }
 }
 
 /// Extracts the value of a parameter from the request.

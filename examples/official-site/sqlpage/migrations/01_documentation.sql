@@ -544,7 +544,22 @@ The `color` property sets the color of each series separately, in order.
         { "series": "PostgreSQL", "x": "2000", "y": 48},{ "series": "SQLite", "x": "2000", "y": 14},{ "series": "MySQL", "x": "2000", "y": 78},
         { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 22},{ "series": "MySQL", "x": "2010", "y": 83},
         { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 28},{ "series": "MySQL", "x": "2020", "y": 87}
-      ]'));
+      ]')),
+    ('chart', '
+## Multiple charts on the same line
+
+You can create information-dense dashboards by using the [card component](?component=card#component)
+to put multiple charts on the same line.
+
+For this, create one sql file per visualization you want to show,
+and set the `embed` attribute of the [card](?component=card#component) component
+to the path of the file you want to include, followed by `?_sqlpage_embed`.
+',
+        json('[
+            {"component":"card", "title":"A dashboard with multiple graphs on the same line", "columns": 2},
+            {"embed": "/examples/chart.sql?color=green&n=42&_sqlpage_embed", "footer_md": "You can find the sql file that generates the chart [here](https://github.com/lovasoa/SQLpage/tree/main/examples/official-site/examples/chart.sql)" },
+            {"embed": "/examples/chart.sql?_sqlpage_embed" },
+        ]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('table', 'table', 'A table with optional filtering and sorting.

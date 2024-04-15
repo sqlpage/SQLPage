@@ -1,7 +1,6 @@
 use super::csv_import::{extract_csv_copy_statement, CsvImport};
 use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
 use crate::file_cache::AsyncFromStrWithState;
-use crate::utils::add_value_to_map;
 use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
@@ -59,13 +58,19 @@ pub(super) struct StmtWithParams {
 #[derive(Debug)]
 pub(super) enum ParsedStatement {
     StmtWithParams(StmtWithParams),
-    StaticSimpleSelect(serde_json::Map<String, serde_json::Value>),
+    StaticSimpleSelect(Vec<(String, SimpleSelectValue)>),
     SetVariable {
         variable: StmtParam,
         value: StmtWithParams,
     },
     CsvImport(CsvImport),
     Error(anyhow::Error),
+}
+
+#[derive(Debug, PartialEq)]
+pub(super) enum SimpleSelectValue {
+    Static(serde_json::Value),
+    Dynamic(StmtParam),
 }
 
 fn parse_sql<'a>(
@@ -93,11 +98,6 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     };
     log::debug!("Parsed statement: {stmt}");
     while parser.consume_token(&SemiColon) {}
-    if let Some(static_statement) = extract_static_simple_select(&stmt) {
-        log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
-        return Some(ParsedStatement::StaticSimpleSelect(static_statement));
-    }
-
     let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
     if let Some((variable, query)) = extract_set_variable(&mut stmt) {
         return Some(ParsedStatement::SetVariable {
@@ -107,6 +107,10 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
         return Some(ParsedStatement::CsvImport(csv_import));
+    }
+    if let Some(static_statement) = extract_static_simple_select(&stmt, &params) {
+        log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
+        return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
     let query = stmt.to_string();
     log::debug!("Final transformed statement: {stmt}");
@@ -174,7 +178,8 @@ fn map_param(mut name: String) -> StmtParam {
 
 fn extract_static_simple_select(
     stmt: &Statement,
-) -> Option<serde_json::Map<String, serde_json::Value>> {
+    params: &[StmtParam],
+) -> Option<Vec<(String, SimpleSelectValue)>> {
     let set_expr = match stmt {
         Statement::Query(q)
             if q.limit.is_none()
@@ -208,22 +213,52 @@ fn extract_static_simple_select(
         }
         _ => return None,
     };
-    let mut map = serde_json::Map::with_capacity(select_items.len());
+    let mut items = Vec::with_capacity(select_items.len());
+    let mut params_iter = params.iter().cloned();
     for select_item in select_items {
         let sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } = select_item else {
             return None;
         };
+        use serde_json::Value::*;
+        use SimpleSelectValue::*;
         let value = match expr {
-            Expr::Value(Value::Boolean(b)) => serde_json::Value::Bool(*b),
-            Expr::Value(Value::Number(n, _)) => serde_json::Value::Number(n.parse().ok()?),
-            Expr::Value(Value::SingleQuotedString(s)) => serde_json::Value::String(s.clone()),
-            Expr::Value(Value::Null) => serde_json::Value::Null,
-            _ => return None,
+            Expr::Value(Value::Boolean(b)) => Static(Bool(*b)),
+            Expr::Value(Value::Number(n, _)) => Static(Number(n.parse().ok()?)),
+            Expr::Value(Value::SingleQuotedString(s)) => Static(String(s.clone())),
+            Expr::Value(Value::Null) => Static(Null),
+            e if is_simple_select_placeholder(e) => {
+                if let Some(p) = params_iter.next() {
+                    Dynamic(p)
+                } else {
+                    log::error!("Parameter not extracted for placehorder: {expr:?}");
+                    return None;
+                }
+            }
+            other => {
+                log::trace!("Cancelling simple select optimization because of expr: {other:?}");
+                return None;
+            }
         };
         let key = alias.value.clone();
-        map = add_value_to_map(map, (key, value));
+        items.push((key, value));
     }
-    Some(map)
+    if let Some(p) = params_iter.next() {
+        log::error!("static select extraction failed because of extraneous parameter: {p:?}");
+        return None;
+    }
+    Some(items)
+}
+
+fn is_simple_select_placeholder(e: &Expr) -> bool {
+    match e {
+        Expr::Value(Value::Placeholder(_)) => true,
+        Expr::Cast {
+            expr,
+            data_type: DataType::Text | DataType::Varchar(_) | DataType::Char(_),
+            format: None,
+        } if is_simple_select_placeholder(expr) => true,
+        _ => false,
+    }
 }
 
 fn extract_set_variable(stmt: &mut Statement) -> Option<(StmtParam, String)> {
@@ -705,59 +740,109 @@ mod test {
 
     #[test]
     fn test_static_extract() {
+        use SimpleSelectValue::Static;
+
         assert_eq!(
-            extract_static_simple_select(&parse_postgres_stmt(
-                "select 'hello' as hello, 42 as answer, null as nothing, 'world' as hello"
-            )),
-            Some(
-                serde_json::json!({
-                    "hello": ["hello", "world"],
-                    "answer": 42,
-                    "nothing": (),
-                })
-                .as_object()
-                .unwrap()
-                .clone()
-            )
+            extract_static_simple_select(
+                &parse_postgres_stmt(
+                    "select 'hello' as hello, 42 as answer, null as nothing, 'world' as hello"
+                ),
+                &[]
+            ),
+            Some(vec![
+                ("hello".into(), Static("hello".into())),
+                ("answer".into(), Static(42.into())),
+                ("nothing".into(), Static(().into())),
+                ("hello".into(), Static("world".into())),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_simple_select_with_sqlpage_pseudofunction() {
+        let sql = "select 'text' as component, $x as contents, $y as title";
+        let dialects: &[&dyn Dialect] = &[
+            &PostgreSqlDialect {},
+            &SQLiteDialect {},
+            &MySqlDialect {},
+            &MsSqlDialect {},
+        ];
+        for &dialect in dialects {
+            let parsed: Vec<ParsedStatement> = parse_sql(dialect, sql).unwrap().collect();
+            use SimpleSelectValue::{Dynamic, Static};
+            use StmtParam::GetOrPost;
+            match &parsed[..] {
+                [ParsedStatement::StaticSimpleSelect(q)] => assert_eq!(
+                    q,
+                    &[
+                        ("component".into(), Static("text".into())),
+                        ("contents".into(), Dynamic(GetOrPost("x".into()))),
+                        ("title".into(), Dynamic(GetOrPost("y".into()))),
+                    ]
+                ),
+                other => panic!("failed to extract simple select in {dialect:?}: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_simple_select_only_extraction() {
+        use SimpleSelectValue::{Dynamic, Static};
+        use StmtParam::Cookie;
+        assert_eq!(
+            extract_static_simple_select(
+                &parse_postgres_stmt("select 'text' as component, $1 as contents"),
+                &[Cookie("cook".into())]
+            ),
+            Some(vec![
+                ("component".into(), Static("text".into())),
+                ("contents".into(), Dynamic(Cookie("cook".into()))),
+            ])
         );
     }
 
     #[test]
     fn test_static_extract_doesnt_match() {
         assert_eq!(
-            extract_static_simple_select(&parse_postgres_stmt(
-                "select 'hello' as hello, 42 as answer limit 0"
-            )),
+            extract_static_simple_select(
+                &parse_postgres_stmt("select 'hello' as hello, 42 as answer limit 0"),
+                &[]
+            ),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_postgres_stmt(
-                "select 'hello' as hello, 42 as answer order by 1"
-            )),
+            extract_static_simple_select(
+                &parse_postgres_stmt("select 'hello' as hello, 42 as answer order by 1"),
+                &[]
+            ),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_postgres_stmt(
-                "select 'hello' as hello, 42 as answer offset 1"
-            )),
+            extract_static_simple_select(
+                &parse_postgres_stmt("select 'hello' as hello, 42 as answer offset 1"),
+                &[]
+            ),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_postgres_stmt(
-                "select 'hello' as hello, 42 as answer where 1 = 0"
-            )),
+            extract_static_simple_select(
+                &parse_postgres_stmt("select 'hello' as hello, 42 as answer where 1 = 0"),
+                &[]
+            ),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_postgres_stmt(
-                "select 'hello' as hello, 42 as answer FROM t"
-            )),
+            extract_static_simple_select(
+                &parse_postgres_stmt("select 'hello' as hello, 42 as answer FROM t"),
+                &[]
+            ),
             None
         );
         assert_eq!(
-            extract_static_simple_select(&parse_postgres_stmt(
-                "select x'CAFEBABE' as hello, 42 as answer"
-            )),
+            extract_static_simple_select(
+                &parse_postgres_stmt("select x'CAFEBABE' as hello, 42 as answer"),
+                &[]
+            ),
             None
         );
     }

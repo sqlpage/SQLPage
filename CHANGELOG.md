@@ -8,6 +8,9 @@
  - [Updated sqlparser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md)
    - adds support for named windows in window functions
  - New icons with tabler icons 3.2: https://tabler.io/icons/changelog
+ - Optimize queries like `select 'xxx' as component, sqlpage.some_function(...) as parameter`
+   to avoid making an unneeded database query. 
+   This is especially important for the performance of `sqlpage.run_sql` and the `dynamic` component.
 
 ## 0.20.2 (2024-04-01)
 
