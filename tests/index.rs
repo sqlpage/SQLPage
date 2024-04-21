@@ -85,18 +85,21 @@ async fn test_concurrent_requests() {
 
 fn start_echo_server() -> ServerHandle {
     async fn echo_server(mut r: ServiceRequest) -> actix_web::Result<ServiceResponse> {
-        let method = r.method();
-        let path = r.uri();
-        let mut headers_vec = r
-            .headers()
-            .into_iter()
-            .map(|(k, v)| format!("{k}: {}", String::from_utf8_lossy(v.as_bytes())))
-            .collect::<Vec<_>>();
-        headers_vec.sort();
-        let headers = headers_vec.join("\n");
-        let mut resp_bytes = format!("{method} {path}\n{headers}\n\n").into_bytes();
-        resp_bytes.extend(r.extract::<actix_web::web::Bytes>().await?);
-        let resp = HttpResponse::Ok().body(resp_bytes);
+        use std::io::Write;
+        let mut f = Vec::new();
+        write!(f, "{} {}", r.method(), r.uri()).unwrap();
+        let mut sorted_headers = r.headers().into_iter().collect::<Vec<_>>();
+        sorted_headers.sort_by_key(|(k, _)| k.as_str());
+        for (k, v) in sorted_headers {
+            if k.as_str().eq_ignore_ascii_case("date") {
+                continue;
+            }
+            write!(f, "|{k}: ").unwrap();
+            f.extend_from_slice(v.as_bytes());
+        }
+        f.push(b'|');
+        f.extend_from_slice(&r.extract::<actix_web::web::Bytes>().await?);
+        let resp = HttpResponse::Ok().body(f);
         Ok(r.into_response(resp))
     }
     let server = actix_web::HttpServer::new(move || {
