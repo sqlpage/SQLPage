@@ -1,7 +1,9 @@
 use actix_web::{
     body::MessageBody,
+    dev::{fn_service, ServerHandle, ServiceRequest, ServiceResponse},
     http::{self, header::ContentType, StatusCode},
     test::{self, TestRequest},
+    HttpResponse,
 };
 use sqlpage::{app_config::AppConfig, webserver::http::main_handler, AppState};
 
@@ -81,8 +83,40 @@ async fn test_concurrent_requests() {
     }
 }
 
+fn start_echo_server() -> ServerHandle {
+    async fn echo_server(mut r: ServiceRequest) -> actix_web::Result<ServiceResponse> {
+        let method = r.method();
+        let path = r.uri();
+        let mut headers_vec = r
+            .headers()
+            .into_iter()
+            .map(|(k, v)| format!("{k}: {}", String::from_utf8_lossy(v.as_bytes())))
+            .collect::<Vec<_>>();
+        headers_vec.sort();
+        let headers = headers_vec.join("\n");
+        let mut resp_bytes = format!("{method} {path}\n{headers}\n\n").into_bytes();
+        resp_bytes.extend(r.extract::<actix_web::web::Bytes>().await?);
+        let resp = HttpResponse::Ok().body(resp_bytes);
+        Ok(r.into_response(resp))
+    }
+    let server = actix_web::HttpServer::new(move || {
+        actix_web::App::new().default_service(fn_service(echo_server))
+    })
+    .bind("localhost:62802")
+    .unwrap()
+    .shutdown_timeout(5) // shutdown timeout
+    .run();
+
+    let handle = server.handle();
+    tokio::spawn(server);
+
+    handle
+}
+
 #[actix_web::test]
 async fn test_files() {
+    // start a dummy server that test files can query
+    let echo_server = start_echo_server();
     // Iterate over all the sql test files in the tests/ directory
     let path = std::path::Path::new("tests/sql_test_files");
     let app_data = make_app_data().await;
@@ -128,6 +162,7 @@ async fn test_files() {
             );
         }
     }
+    echo_server.stop(true).await
 }
 
 #[actix_web::test]

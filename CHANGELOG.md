@@ -2,6 +2,10 @@
 
 ## 0.20.3 (unreleased)
 
+ - New `dropdown` row-level property in the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component)
+   - ![select dropdown in form](https://github.com/lovasoa/SQLpage/assets/552629/5a2268d3-4996-49c9-9fb5-d310e753f844)
+   - ![multiselect input](https://github.com/lovasoa/SQLpage/assets/552629/e8d62d1a-c851-4fef-8c5c-a22991ffadcf)
+ - Adds a new [`sqlpage.fetch`](https://sql.ophir.dev/functions.sql?function=fetch#function) function that allows sending http requests from SQLPage. This is useful to query external APIs. This avoids having to resort to `sqlpage.exec`.
  - Fixed a bug that occured when using both HTTP and HTTPS in the same SQLPage instance. SQLPage tried to bind to the same (HTTP)
    port twice instead of binding to the HTTPS port. This is now fixed, and SQLPage can now be used with both a non-443 `port` and
    an `https_domain` set in the configuration file.
@@ -11,9 +15,6 @@
  - Optimize queries like `select 'xxx' as component, sqlpage.some_function(...) as parameter`
    to avoid making an unneeded database query. 
    This is especially important for the performance of `sqlpage.run_sql` and the `dynamic` component.
- - New `dropdown` row-level property in the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component)
-   - ![select dropdown in form](https://github.com/lovasoa/SQLpage/assets/552629/5a2268d3-4996-49c9-9fb5-d310e753f844)
-   - ![multiselect input](https://github.com/lovasoa/SQLpage/assets/552629/e8d62d1a-c851-4fef-8c5c-a22991ffadcf)
 
 ## 0.20.2 (2024-04-01)
 

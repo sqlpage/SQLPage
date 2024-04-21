@@ -1,7 +1,8 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, str::FromStr};
 
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
+use awc::http::Method;
 use base64::Engine;
 use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
@@ -51,6 +52,7 @@ pub(super) enum StmtParam {
     ReadFileAsText(Box<StmtParam>),
     ReadFileAsDataUrl(Box<StmtParam>),
     RunSql(Box<StmtParam>),
+    Fetch(Box<StmtParam>),
     Path,
     Protocol,
 }
@@ -140,6 +142,7 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
             extract_variable_argument("read_file_as_data_url", arguments),
         )),
         "run_sql" => StmtParam::RunSql(Box::new(extract_variable_argument("run_sql", arguments))),
+        "fetch" => StmtParam::Fetch(Box::new(extract_variable_argument("fetch", arguments))),
         unknown_name => StmtParam::Error(format!(
             "Unknown function {unknown_name}({})",
             FormatArguments(arguments)
@@ -389,6 +392,90 @@ async fn run_sql<'a>(
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
 }
 
+type HeaderVec<'a> = Vec<(Cow<'a, str>, Cow<'a, str>)>;
+#[derive(serde::Deserialize)]
+struct Req<'b> {
+    #[serde(borrow)]
+    url: Cow<'b, str>,
+    #[serde(borrow)]
+    method: Option<Cow<'b, str>>,
+    #[serde(borrow, deserialize_with = "deserialize_map_to_vec_pairs")]
+    headers: HeaderVec<'b>,
+    #[serde(borrow)]
+    body: Option<&'b serde_json::value::RawValue>,
+}
+
+fn deserialize_map_to_vec_pairs<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<HeaderVec<'de>, D::Error> {
+    struct Visitor;
+
+    impl<'de> serde::de::Visitor<'de> for Visitor {
+        type Value = Vec<(Cow<'de, str>, Cow<'de, str>)>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a map")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut vec = Vec::new();
+            while let Some((key, value)) = map.next_entry()? {
+                vec.push((key, value));
+            }
+            Ok(vec)
+        }
+    }
+
+    deserializer.deserialize_map(Visitor)
+}
+
+async fn fetch<'a>(
+    param0: &StmtParam,
+    request: &'a RequestInfo,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let Some(fetch_target) = Box::pin(extract_req_param(param0, request)).await? else {
+        log::debug!("fetch: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let client = awc::Client::default();
+    let res = if fetch_target.starts_with("http") {
+        client.get(fetch_target.as_ref()).send()
+    } else {
+        let r = serde_json::from_str::<'_, Req<'_>>(&fetch_target)
+            .with_context(|| format!("Invalid request: {fetch_target}"))?;
+        let method = if let Some(method) = r.method {
+            Method::from_str(&method)?
+        } else {
+            Method::GET
+        };
+        let mut req = client.request(method, r.url.as_ref());
+        for (k, v) in r.headers {
+            req = req.insert_header((k.as_ref(), v.as_ref()));
+        }
+        if let Some(body) = r.body {
+            let val = body.get();
+            // The body can be either json, or a string representing a raw body
+            let body = if val.starts_with('"') {
+                serde_json::from_str::<'_, String>(val)?
+            } else {
+                req = req.content_type("application/json");
+                val.to_owned()
+            };
+            req.send_body(body)
+        } else {
+            req.send()
+        }
+    };
+    let mut res = res
+        .await
+        .map_err(|e| anyhow!("Unable to fetch {fetch_target}: {e}"))?;
+    let body = res.body().await?.to_vec();
+    Ok(Some(String::from_utf8(body)?.into()))
+}
+
 fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
     if let StmtParam::UploadedFilePath(name) | StmtParam::UploadedFileMimeType(name) = param0 {
         request.uploaded_files.get(name)?.content_type.as_ref()
@@ -429,6 +516,7 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
         StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
         StmtParam::RunSql(inner) => run_sql(inner, request).await?,
+        StmtParam::Fetch(inner) => fetch(inner, request).await?,
         StmtParam::PersistUploadedFile {
             field_name,
             folder,
