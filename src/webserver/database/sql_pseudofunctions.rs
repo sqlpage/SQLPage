@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap, str::FromStr};
 
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
-use awc::http::Method;
+use awc::http::{header::USER_AGENT, Method};
 use base64::Engine;
 use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
@@ -440,7 +440,9 @@ async fn fetch<'a>(
         log::debug!("fetch: first argument is NULL, returning NULL");
         return Ok(None);
     };
-    let client = awc::Client::default();
+    let client = awc::Client::builder()
+        .add_default_header((USER_AGENT, env!("CARGO_PKG_NAME")))
+        .finish();
     let res = if fetch_target.starts_with("http") {
         client.get(fetch_target.as_ref()).send()
     } else {
