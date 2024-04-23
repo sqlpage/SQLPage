@@ -1,5 +1,12 @@
 # CHANGELOG.md
 
+## 0.20.4 (2024-04-23)
+
+ - Improvements to the fetch function
+   - Set a default [user-agent header](https://en.wikipedia.org/wiki/User-Agent_header) when none is specified (`User-Agent: sqlpage`).
+   - bundle root certificates with sqlpage so that we can always access HTTPS URLs even on outdated or stripped-down systems.
+   - update our https library to the latest version everywhere, to avoid having to bundle two distinct versions of it.
+
 ## 0.20.3 (2024-04-22)
 
  - New `dropdown` row-level property in the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component)
