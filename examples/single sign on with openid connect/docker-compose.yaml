@@ -1,0 +1,38 @@
+# This file lets you run the example with a single command: docker-compose up
+# Download docker here: https://www.docker.com/products/docker-desktop
+#
+# This docker compose starts two services:
+# 1. a SQLPage service that serves a simple page with a login button
+# 2. a Keycloak service that acts as an OpenID Connect provider (manages users and authentication)
+#
+
+services:
+  sqlpage:
+    image: lovasoa/sqlpage:main # Use the latest development version of SQLPage
+    volumes:
+      - .:/var/www
+      - ./sqlpage:/etc/sqlpage
+    ports:
+      - 8080:8080
+    environment:
+      - OIDC_CLIENT_ID=sqlpage
+      - OIDC_CLIENT_SECRET=qiawfnYrYzsmoaOZT28rRjPPRamfvrYr
+      - RUST_LOG=sqlpage=debug
+    networks:
+      - sqlpage-network
+
+  keycloak:
+    image: keycloak/keycloak
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - 8181:8181
+    volumes:
+      - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
+    command: start-dev --import-realm --http-port 8181
+    networks:
+      - sqlpage-network
+
+networks:
+  sqlpage-network:

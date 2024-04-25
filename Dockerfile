@@ -21,9 +21,13 @@ RUN apt-get update && \
     fi && \
     rustup target add $(cat TARGET) && \
     cargo init .
+
+# Build dependencies (creates a layer that avoids recompiling dependencies on every build)
 COPY Cargo.toml Cargo.lock ./
 COPY .cargo ./.cargo
 RUN cargo build --target $(cat TARGET) --profile superoptimized
+
+# Build the project
 COPY . .
 RUN touch src/main.rs && \
     cargo build --target $(cat TARGET) --profile superoptimized && \
