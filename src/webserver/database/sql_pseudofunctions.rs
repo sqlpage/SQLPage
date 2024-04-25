@@ -471,11 +471,15 @@ async fn fetch<'a>(
             req.send()
         }
     };
+    log::info!("Fetching {fetch_target}");
     let mut res = res
         .await
         .map_err(|e| anyhow!("Unable to fetch {fetch_target}: {e}"))?;
+    log::debug!("Finished fetching {fetch_target}. Status: {}", res.status());
     let body = res.body().await?.to_vec();
-    Ok(Some(String::from_utf8(body)?.into()))
+    let response_str = String::from_utf8(body)?.into();
+    log::debug!("Fetch response: {response_str}");
+    Ok(Some(response_str))
 }
 
 fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
