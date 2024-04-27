@@ -12,27 +12,24 @@ services:
     volumes:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage
-    ports:
-      - 8080:8080
     environment:
+      - OIDC_AUTHORIZATION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/auth
+      - OIDC_TOKEN_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/token
+      - OIDC_USERINFO_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/userinfo
+      - OIDC_END_SESSION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/logout
       - OIDC_CLIENT_ID=sqlpage
       - OIDC_CLIENT_SECRET=qiawfnYrYzsmoaOZT28rRjPPRamfvrYr
       - RUST_LOG=sqlpage=debug
-    networks:
-      - sqlpage-network
+    network_mode: host
 
   keycloak:
     image: keycloak/keycloak
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
-    ports:
-      - 8181:8181
     volumes:
       - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
     command: start-dev --import-realm --http-port 8181
-    networks:
-      - sqlpage-network
+    network_mode: host
 
-networks:
-  sqlpage-network:
+

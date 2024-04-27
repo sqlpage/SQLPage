@@ -120,5 +120,6 @@ RETURNING
 ### Single sign-on with OpenID Connect
 
 If you don''t want to manage your own user database, you can use OpenID Connect to authenticate users.
+This allows users to log in with their Google, Facebook, or internal company account.
 You will find an example of how to do this in the [Single sign-on with OpenID Connect example](https://github.com/lovasoa/SQLpage/tree/main/examples/single%20sign%20on%20with%20openid%20connect).
 ');

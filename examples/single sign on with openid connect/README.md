@@ -36,19 +36,25 @@ If you want to use this implementation in your own SQLPage application,
 with a different OIDC provider, here are the steps you need to follow:
 
 1. Create an OIDC application in your OIDC provider (e.g., Keycloak). You will need to provide the following information:
- - Redirect URI: This is the URL of your SQLPage application, followed by `/oidc_redirect_handler.sql`. For example, `https://example.com/oidc_redirect_handler.sql`.
- - Client ID: This is a unique identifier for your application. You will need to provide this value to your SQLPage application as an environment variable.
- - Client type (`public` or `confidential`). For this implementation, you should use `confidential` (sometimes called `web application`, `server-side`, or `backend`).
- - Client secret: This is a secret key that is used to authenticate your application with the OIDC provider. You will need to provide this value to your SQLPage application as an environment variable.
+ - **Client type** (`public` or `confidential`). For this implementation, you should use `confidential` (sometimes called `web application`, `server-side`, or `backend`). In Keycloak, this is set by switching on the `Client Authentication` toggle. In google, this is set by setting `Grant Type` to `Code Flow`.
+ - **Client ID**: This is a unique identifier for your application. You will need to provide this value to your SQLPage application as an environment variable.
+ - **Redirect URI**: This is the URL of your SQLPage application, followed by `/oidc_redirect_handler.sql`. For example, `https://example.com/oidc_redirect_handler.sql`.
+ - **Logout redirect URI**: This is the URL where the user should be redirected after logging out. For this implementation, we use the home page URL: `https://example.com/`.
 
-2. You need to replace the following placeholders in the `oidc_redirect_handler.sql` file with your actual values:
-- `http://keycloak:8181/realms/sqlpage_demo/protocol/openid-connect/`: Replace this with the base URL of your OIDC implementation.
-- `http://localhost:8080/`: Replace this with the URL of your application.
+2. Once the application is created, the provider will give you the following information:
+ - **Client secret**: This is a secret key that is used to authenticate your application with the OIDC provider. You will need to provide this value to your SQLPage application as an environment variable.
 
-You also need to set the following environment variables:
 
-- `OIDC_CLIENT_ID`: The client ID of your OIDC application.
-- `OIDC_CLIENT_SECRET`: The client secret of your OIDC application.
+3. Once you have the client ID and client secret, you can configure your SQLPage application to use OIDC authentication. You will need to set the following [environment variables](https://en.wikipedia.org/wiki/Environment_variable) in your SQLPage application:
+
+- `OIDC_CLIENT_ID`: The value you chose for the client ID of your OIDC application.
+- `OIDC_CLIENT_SECRET`: The client secret of your OIDC application that you received from the OIDC provider in step 2.
+- `OIDC_AUTHORIZATION_ENDPOINT`: The authorization endpoint of your OIDC provider. This is the URL where the user is redirected to log in. For Keycloak, this is usually `your-keycloak-url/auth/realms/master/protocol/openid-connect/auth`. For Google, this is `https://accounts.google.com/o/oauth2/auth`.
+- `OIDC_TOKEN_ENDPOINT`: The token endpoint of your OIDC provider. This is the URL where the application exchanges the authorization code for an access token. For Keycloak, this is usually `your-keycloak-url/auth/realms/master/protocol/openid-connect/token`. For Google, this is `https://oauth2.googleapis.com/token`.
+- `OIDC_USERINFO_ENDPOINT`: The userinfo endpoint of your OIDC provider. This is the URL where the application can retrieve information about the authenticated user. For Keycloak, this is usually `your-keycloak-url/auth/realms/master/protocol/openid-connect/userinfo`. For Google, this is `https://openidconnect.googleapis.com/v1/userinfo`.
+- `OIDC_END_SESSION_ENDPOINT`: The logout endpoint of your OIDC provider. This is the URL where the application can redirect the user to log out. For Keycloak, this is usually `your-keycloak-url/auth/realms/master/protocol/openid-connect/logout`.
+
+In order to find the various endpoints for your OIDC provider, you can refer to the OIDC provider's **Discovery Document**, at the URL `base-url/.well-known/openid-configuration`.
 
 Here is a screenshot of the Keycloak configuration for the demo application:
 

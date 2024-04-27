@@ -4,14 +4,14 @@ select 'redirect' as component, '/login.sql' as link where sqlpage.cookie('oauth
 
 -- Exchange the authorization code for an access token
 set $authorization_code_request = json_object(
-    'url', 'http://keycloak:8181/realms/sqlpage_demo/protocol/openid-connect/token', -- replace this with the URL of your OpenID Connect provider
+    'url', sqlpage.environment_variable('OIDC_TOKEN_ENDPOINT'),
     'method', 'POST',
     'headers', json_object(
         'Content-Type', 'application/x-www-form-urlencoded'
     ),
     'body', 'grant_type=authorization_code'
         || '&code=' || $code
-        || '&redirect_uri=http://localhost:8080/oidc_redirect_handler.sql' -- replace this with the URL of your application
+        || '&redirect_uri=' || sqlpage.protocol() || '://' || sqlpage.header('host') || '/oidc_redirect_handler.sql'
         || '&client_id=' || sqlpage.environment_variable('OIDC_CLIENT_ID')
         || '&client_secret=' || sqlpage.environment_variable('OIDC_CLIENT_SECRET')
 );
@@ -24,7 +24,7 @@ select 'redirect' as component, '/login.sql' as link where $access_token->>'erro
 
 -- Fetch the user's profile
 set $profile_request = json_object(
-    'url', 'http://keycloak:8181/realms/sqlpage_demo/protocol/openid-connect/userinfo', -- replace this with the URL of your OpenID Connect provider
+    'url', sqlpage.environment_variable('OIDC_USERINFO_ENDPOINT'),
     'method', 'GET',
     'headers', json_object(
         'Authorization', 'Bearer ' || ($access_token->>'access_token')
