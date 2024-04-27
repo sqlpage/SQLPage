@@ -5,7 +5,10 @@ This project demonstrates how to implement OpenID Connect (OIDC) authentication 
 OIDC is an authentication protocol that allows users to authenticate with a third-party identity provider and then access applications without having to log in again. This is useful for single sign-on (SSO) scenarios where users need to access multiple applications with a single set of credentials.
 OIDC can be used to implement a "Login with Google" or "Login with Facebook" button in your application, since these providers support the OIDC protocol.
 
-SQLPage currently doesn't have a native OIDC implementation, but you can implement OIDC authentication in your SQLPage yourself. This project provides a basic implementation of OIDC authentication in a SQLPage application, using [Keycloak](https://www.keycloak.org/) as the OIDC provider.
+SQLPage currently doesn't have a native OIDC implementation, but you can implement OIDC authentication in your SQLPage app yourself.
+
+This project provides a basic implementation of OIDC authentication in a SQLPage application. It uses the free and open source [Keycloak](https://www.keycloak.org/) OIDC provider
+to authenticate users. You can easily replace Keycloak with another OIDC provider, such as Google, or your enterprise OIDC provider, by following the steps in the [Configuration](#configuration) section.
 
 
 ## Screenshots
@@ -60,15 +63,27 @@ Here is a screenshot of the Keycloak configuration for the demo application:
 
 ![Keycloak Configuration](assets/keycloak_configuration.png)
 
-## Overview
+## Code Overview
 
-The main logic is contained in the `oidc_redirect_handler.sql` file. This script handles the OIDC redirect after the user has authenticated with the OIDC provider. It performs the following steps:
+### `login.sql`
+
+The [`login.sql`](./login.sql) file simply redirects the user to the OIDC provider's authorization endpoint.
+The provider is then responsible for authenticating the user and redirecting them back to the SQLPage application's `oidc_redirect_handler.sql` script.
+
+### `oidc_redirect_handler.sql`
+The main logic is contained in the [`oidc_redirect_handler.sql`](./oidc_redirect_handler.sql)
+file. This script handles the OIDC redirect after the user has authenticated with the OIDC provider. It performs the following steps:
 
 1. Checks if the `oauth_state` cookie matches the `state` parameter in the query string. This is a security measure to prevent CSRF attacks. If the states do not match, the user is redirected to the login page.
 
 2. Exchanges the authorization code for an access token. This is done by making a POST request to the OIDC provider's token endpoint. The request includes the authorization code, the redirect URI, and the client ID and secret.
 
 3. If the access token cannot be obtained, the user is redirected to the login page.
+
+### `logout.sql`
+
+The [`logout.sql`](./logout.sql) file simply clears the `session_id` cookie,
+removes the session information from the database, and redirects the user to the OIDC provider's logout endpoint.
 
 ## References
 
