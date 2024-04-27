@@ -39,8 +39,8 @@ If you want to use this implementation in your own SQLPage application,
 with a different OIDC provider, here are the steps you need to follow:
 
 1. Create an OIDC application in your OIDC provider (e.g., Keycloak). You will need to provide the following information:
- - **Client type** (`public` or `confidential`). For this implementation, you should use `confidential` (sometimes called `web application`, `server-side`, or `backend`). In Keycloak, this is set by switching on the `Client Authentication` toggle. In google, this is set by setting `Grant Type` to `Code Flow`.
- - **Client ID**: This is a unique identifier for your application. You will need to provide this value to your SQLPage application as an environment variable.
+ - **Client type** (`public` or `confidential`). For this implementation, you should use `confidential` (sometimes called `regular web application:`, `server-side`, `backend`, or `Authorization Code Flow`). In Keycloak, this is set by switching on the `Client Authentication` toggle.
+ - **Client ID**: This is a unique identifier for your application. Choose a short and descriptive name for your application without spaces or special characters.
  - **Redirect URI**: This is the URL of your SQLPage application, followed by `/oidc_redirect_handler.sql`. For example, `https://example.com/oidc_redirect_handler.sql`.
  - **Logout redirect URI**: This is the URL where the user should be redirected after logging out. For this implementation, we use the home page URL: `https://example.com/`.
 
