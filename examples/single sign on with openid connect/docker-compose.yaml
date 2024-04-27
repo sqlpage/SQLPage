@@ -31,5 +31,16 @@ services:
       - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
     command: start-dev --import-realm --http-port 8181
     network_mode: host
+  
+  cas:
+    build:
+      context: .
+      dockerfile: cas.dockerfile
+    environment:
+      - CAS_SERVER_NAME=http://localhost:8080
+      - CAS_SERVER_HOSTNAME=localhost
+      - CAS_ADMIN_USER=admin
+      - CAS_ADMIN_PASS=admin
+    network_mode: host
 
 
