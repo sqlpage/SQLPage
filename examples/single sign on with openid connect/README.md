@@ -8,6 +8,12 @@ OIDC can be used to implement a "Login with Google" or "Login with Facebook" but
 SQLPage currently doesn't have a native OIDC implementation, but you can implement OIDC authentication in your SQLPage yourself. This project provides a basic implementation of OIDC authentication in a SQLPage application, using [Keycloak](https://www.keycloak.org/) as the OIDC provider.
 
 
+## Screenshots
+
+| Home Page | Login Page | User Info |
+| --- | --- | --- |
+| ![Home Page](assets/homepage.png) | ![Login Page](assets/login_page.png) | ![User Info](assets/logged_in.png) |
+
 ## Running the Demo
 
 To run the demo, you just need docker and docker-compose installed on your machine. Then, run the following commands:
@@ -43,6 +49,10 @@ You also need to set the following environment variables:
 
 - `OIDC_CLIENT_ID`: The client ID of your OIDC application.
 - `OIDC_CLIENT_SECRET`: The client secret of your OIDC application.
+
+Here is a screenshot of the Keycloak configuration for the demo application:
+
+![Keycloak Configuration](assets/keycloak_configuration.png)
 
 ## Overview
 
