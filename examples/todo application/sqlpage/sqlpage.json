@@ -1,0 +1,3 @@
+{
+  "database_url": "sqlite://./sqlpage/sqlpage.db?mode=rwc"
+}
