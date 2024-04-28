@@ -11,4 +11,6 @@ You will be redirected to the identity provider's login page, where you can logi
 
 After logging in, you will be redirected back to this page, and you will see the user information that was returned by the identity provider.
 
+This example also contains a CAS (Central Authentication Service) client that demonstrates how to authenticate users using the CAS protocol (version 3.0), which is mostly used in academic institutions. [Log in with CAS](/cas/login.sql)
+
 ![closed](/assets/closed.jpeg)

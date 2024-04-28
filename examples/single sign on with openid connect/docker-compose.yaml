@@ -13,34 +13,29 @@ services:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage
     environment:
+      # OIDC configuration
       - OIDC_AUTHORIZATION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/auth
       - OIDC_TOKEN_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/token
       - OIDC_USERINFO_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/userinfo
       - OIDC_END_SESSION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/logout
       - OIDC_CLIENT_ID=sqlpage
       - OIDC_CLIENT_SECRET=qiawfnYrYzsmoaOZT28rRjPPRamfvrYr
+
+      # CAS (central authentication system) configuration
+      # (you can ignore this if you're only using OpenID Connect)
+      - CAS_ROOT_URL=http://localhost:8181/realms/sqlpage_demo/protocol/cas
+
+      # SQLPage configuration
       - RUST_LOG=sqlpage=debug
     network_mode: host
 
   keycloak:
-    image: keycloak/keycloak
+    build:
+      context: .
+      dockerfile: keycloak.Dockerfile
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
     volumes:
       - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
-    command: start-dev --import-realm --http-port 8181
     network_mode: host
-  
-  cas:
-    build:
-      context: .
-      dockerfile: cas.dockerfile
-    environment:
-      - CAS_SERVER_NAME=http://localhost:8080
-      - CAS_SERVER_HOSTNAME=localhost
-      - CAS_ADMIN_USER=admin
-      - CAS_ADMIN_PASS=admin
-    network_mode: host
-
-

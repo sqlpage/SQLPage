@@ -33,6 +33,12 @@ The credentials for the demo are:
 
 The credentials to the keycloak admin console accessible at http://localhost:8180 are `admin/admin`.
 
+## CAS Client
+
+This example also contains a CAS (Central Authentication Service) client
+in the [`cas`](./cas) directory that demonstrates how to authenticate users using
+the [CAS protocol](https://apereo.github.io/cas/) (version 3.0), which is mostly used in academic institutions.
+
 ## Configuration
 
 If you want to use this implementation in your own SQLPage application, 
