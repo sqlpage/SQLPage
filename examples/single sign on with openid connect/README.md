@@ -1,15 +1,13 @@
-# SQLPage OIDC Implementation Demo
+# SQLPage Single Sign-On demo
 
-This project demonstrates how to implement OpenID Connect (OIDC) authentication in a SQLPage application.
+This project demonstrates how to implement 
+external authentication (Single Sign-On) in a SQLPage application.
 
-OIDC is an authentication protocol that allows users to authenticate with a third-party identity provider and then access applications without having to log in again. This is useful for single sign-on (SSO) scenarios where users need to access multiple applications with a single set of credentials.
-OIDC can be used to implement a "Login with Google" or "Login with Facebook" button in your application, since these providers support the OIDC protocol.
+It demonstrates the implementation of two external authentication protocols:
+- [OpenID Connect (OIDC)](https://openid.net/connect/)
+- [Central Authentication Service (CAS)](https://apereo.github.io/cas/)
 
-SQLPage currently doesn't have a native OIDC implementation, but you can implement OIDC authentication in your SQLPage app yourself.
-
-This project provides a basic implementation of OIDC authentication in a SQLPage application. It uses the free and open source [Keycloak](https://www.keycloak.org/) OIDC provider
-to authenticate users. You can easily replace Keycloak with another OIDC provider, such as Google, or your enterprise OIDC provider, by following the steps in the [Configuration](#configuration) section.
-
+Depending on your use case, you can choose the appropriate protocol for your application.
 
 ## Screenshots
 
@@ -39,7 +37,17 @@ This example also contains a CAS (Central Authentication Service) client
 in the [`cas`](./cas) directory that demonstrates how to authenticate users using
 the [CAS protocol](https://apereo.github.io/cas/) (version 3.0), which is mostly used in academic institutions.
 
-## Configuration
+## OIDC Client
+
+OIDC is an authentication protocol that allows users to authenticate with a third-party identity provider and then access applications without having to log in again. This is useful for single sign-on (SSO) scenarios where users need to access multiple applications with a single set of credentials.
+OIDC can be used to implement a "Login with Google" or "Login with Facebook" button in your application, since these providers support the OIDC protocol.
+
+SQLPage currently doesn't have a native OIDC implementation, but you can implement OIDC authentication in your SQLPage app yourself.
+
+This project provides a basic implementation of OIDC authentication in a SQLPage application. It uses the free and open source [Keycloak](https://www.keycloak.org/) OIDC provider
+to authenticate users. You can easily replace Keycloak with another OIDC provider, such as Google, or your enterprise OIDC provider, by following the steps in the [Configuration](#configuration) section.
+
+### Configuration
 
 If you want to use this implementation in your own SQLPage application, 
 with a different OIDC provider, here are the steps you need to follow:
