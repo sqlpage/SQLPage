@@ -1,0 +1,89 @@
+<mxfile host="app.diagrams.net" modified="2024-04-28T20:57:38.467Z" agent="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0" etag="IT9UHuSMXK38mUZmlf-4" version="24.3.0" type="device">
+  <diagram name="Page-1" id="qWvz8Z0mP-6tBl2-Tc15">
+    <mxGraphModel dx="2195" dy="910" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="230" width="320" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-1" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;GET /todo.sql?&lt;font color=&quot;#003300&quot;&gt;id=1&lt;/font&gt;&lt;br&gt;&lt;/h1&gt;&lt;pre style=&quot;font-size: 13px;&quot;&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Host: example.com&lt;/font&gt;&lt;/pre&gt;&lt;pre style=&quot;font-size: 13px;&quot; data-signature=&quot;FRjGbP3zQQCt51JFaD0Ll1xKb2HQKZ0zWZPelzg69HE=&quot; class=&quot;brush: http notranslate&quot;&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;&lt;code&gt;&lt;span class=&quot;token header&quot;&gt;&lt;span class=&quot;token header-name keyword&quot;&gt;Cookie&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token header-value&quot;&gt;name=value&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/font&gt;&lt;/pre&gt;&lt;p&gt;&lt;/p&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="245" width="290" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-3" value="" style="curved=1;endArrow=classic;html=1;rounded=0;strokeWidth=5;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="370" y="320" as="sourcePoint" />
+            <mxPoint x="390" y="700" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="550" y="320" />
+              <mxPoint x="720" y="330" />
+              <mxPoint x="800" y="480" />
+              <mxPoint x="790" y="590" />
+              <mxPoint x="710" y="710" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-4" value="" style="whiteSpace=wrap;html=1;shape=mxgraph.basic.document;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="480" y="230" width="140" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-5" value="" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="677" y="420" width="150" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-6" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="25" y="600" width="320" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-7" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;HTTP/1.1 200 OK&lt;br&gt;&lt;/h1&gt;&lt;pre style=&quot;font-size: 13px;&quot;&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Server: SQLPage&lt;/font&gt;&lt;/pre&gt;&lt;pre style=&quot;font-size: 13px;&quot; data-signature=&quot;FRjGbP3zQQCt51JFaD0Ll1xKb2HQKZ0zWZPelzg69HE=&quot; class=&quot;brush: http notranslate&quot;&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;&lt;code&gt;&lt;span class=&quot;token header&quot;&gt;&lt;span class=&quot;token header-name keyword&quot;&gt;&lt;br&gt;&amp;lt;html&amp;gt;&amp;lt;head&amp;gt;&amp;lt;title&amp;gt;My SQLPage...&lt;br&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/font&gt;&lt;/pre&gt;&lt;p&gt;&lt;/p&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="45" y="615" width="290" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-8" value="&lt;div&gt;SELECT&lt;/div&gt;&lt;div&gt;&amp;nbsp; &#39;list&#39; AS component;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;SELECT *&lt;/div&gt;&lt;div&gt;FROM todos&lt;/div&gt;&lt;div&gt;WHERE id =&lt;font color=&quot;#003300&quot;&gt; $id&lt;br&gt;&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="486" y="250" width="140" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-9" value="&lt;div&gt;list.handlebars&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;(pre-built component)&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;shape=mxgraph.basic.document" vertex="1" parent="1">
+          <mxGeometry x="490" y="610" width="140" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-10" value="" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://upload.wikimedia.org/wikipedia/commons/2/29/Postgresql_elephant.svg;" vertex="1" parent="1">
+          <mxGeometry x="713.5" y="490" width="77" height="79.41" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-11" value="Website User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="-80" y="400" width="80" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-15" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=10;fillColor=#f8cecc;strokeColor=#b85450;exitX=-0.061;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="-Mu83Rb6pQ0imwjiuAuA-16" target="-Mu83Rb6pQ0imwjiuAuA-8">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="677" y="220" as="sourcePoint" />
+            <mxPoint x="637" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-16" value="You write this" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily= Just Another Hand ;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3D%2BJust%2BAnother%2BHand%2B;fontSize=24;fontColor=#FF3333;" vertex="1" parent="1">
+          <mxGeometry x="700.5" y="170" width="90" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-17" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=10;fillColor=#e1d5e7;strokeColor=#9673a6;exitX=-0.061;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="224.5" y="538" as="sourcePoint" />
+            <mxPoint x="155.5" y="585" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-18" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=10;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="217.25" y="433" as="sourcePoint" />
+            <mxPoint x="152.75" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-19" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=10;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="450" y="550" as="sourcePoint" />
+            <mxPoint x="525.5" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-20" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=10;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="520" y="490" as="sourcePoint" />
+            <mxPoint x="675.5" y="485" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-Mu83Rb6pQ0imwjiuAuA-21" value="All of this is handled for you automatically" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily= Just Another Hand ;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3D%2BJust%2BAnother%2BHand%2B;fontSize=24;fillColor=#f5f5f5;fontColor=#9577a3;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="240" y="430" width="230" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
