@@ -204,7 +204,7 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 - [Bulk data import from CSV files](./examples/official-site/examples/handle_csv_upload.sql) : A simple form letting users import CSV files to fill a database table.
 - [Advanced authentication example using PostgreSQL stored procedures](https://github.com/mnesarco/sqlpage_auth_example)
 - [Complex web application in SQLite with user management, file uploads, plots, maps, tables, menus, ...](https://github.com/DSMejantel/Ecole_inclusive)
-- [Single sign-on with OpenID Connect](./examples/single%20sign%20on%20with%20openid%20connect/): An example of how to implement OAuth and OpenID Connect (OIDC) authentication in SQLPage.
+- [Single sign-on](./examples/single%20sign%20on): An example of how to implement OAuth and OpenID Connect (OIDC) authentication in SQLPage. The demo also includes a CAS (Central Authentication Service) client.
 
 You can try all the examples online without installing anything on your computer using [SQLPage's online demo on replit](https://replit.com/@pimaj62145/SQLPage).
 
