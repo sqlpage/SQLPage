@@ -21,7 +21,7 @@ To use this CAS client in your own SQLPage application, you need to follow these
    - **Service Name**: A descriptive name for your service. This can be anything you want.
    - **Service Type**: `CAS 3.0`.
 2. In your SQLPage application, set the following environment variable:
-    - `CAS_SERVER_URL`: The URL of your CAS server. For example, `https://cas.example.com/cas`.
+    - `CAS_ROOT_URL`: The URL of your CAS server. For example, `https://cas.example.com/cas`.
 
 ## Notes
 
