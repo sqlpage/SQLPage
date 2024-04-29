@@ -1,5 +1,11 @@
 # CHANGELOG.md
 
+## 0.20.5 (unreleased)
+
+ - Fix missing visual indication of selected item in form dropdown fields. 
+   - ![screenshot](https://github.com/tabler/tabler/assets/552629/a575db2f-e210-4984-a786-5727687ac037)
+
+
 ## 0.20.4 (2024-04-23)
 
  - Improvements to the fetch function

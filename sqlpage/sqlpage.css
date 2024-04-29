@@ -36,3 +36,8 @@ td > p {
 .ts-wrapper.multi .ts-control>div.active {
   border: 1px solid transparent !important;
 }
+
+:root {
+  /* Workaround for https://github.com/tabler/tabler/issues/1879 */
+  --tblr-text-secondary-rgb: var(--tblr-secondary-rgb);
+}
