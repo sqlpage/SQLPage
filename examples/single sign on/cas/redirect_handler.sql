@@ -30,8 +30,8 @@ where $validation_response->'serviceResponse'->'authenticationFailure' is not nu
 insert into user_sessions(session_id, user_id, email, oidc_token)
     values(
         sqlpage.random_string(32),
-        $validation_response->'serviceResponse'->'authenticationSuccess'->'user',
-        $validation_response->'serviceResponse'->'authenticationSuccess'->'attributes'->'mail',
+        $validation_response->'serviceResponse'->'authenticationSuccess'->>'user', -- The '->' operator extracts a JSON object field as JSON, while the '->>' operator extracts a JSON object field as text
+        $validation_response->'serviceResponse'->'authenticationSuccess'->'attributes'->>'mail',
         $ticket
     )
 returning 
