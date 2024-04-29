@@ -38,6 +38,50 @@ To use this CAS client in your own SQLPage application, you need to follow these
 > `sqlpage.environment_variable('CAS_ROOT_URL')` with `(SELECT cas_root_url FROM cas_config)`
 > in the `login.sql` and `redirect_handler.sql` files.
 
+## CAS v3 Authentication Flow, step by step
+
+### Login
+The client (usually a web browser) requests a resource from the application (client service).
+The application redirects the client to the CAS server with a service URL (the URL to which CAS should return the user after authentication).
+
+### CAS Server Authentication
+The CAS server presents a login form.
+The user submits their credentials (username and password).
+Upon successful authentication, the CAS server redirects the user back to the application with a service ticket (ST) appended to the service URL.
+
+### Service Ticket Validation
+The application receives the service ticket and makes a back-channel request to the CAS server to validate the service ticket.
+The CAS server responds with a success or failure. If successful, it also returns the user's attributes (such as username, email, etc.).
+
+### User Session
+Upon successful validation, the application creates a session for the user and grants access to the requested resource.
+
+### CAS v3 Pseudocode Implementation
+
+```plaintext
+function authenticateUser(serviceUrl):
+    if userNotLoggedIn():
+        redirectToCasServer(serviceUrl)
+
+function redirectToCasServer(serviceUrl):
+    casLoginUrl = "https://cas.example.com/login?service=" + urlEncode(serviceUrl)
+    redirect(casLoginUrl)
+
+function casCallback(request):
+    serviceTicket = request.getParameter("ticket")
+    if serviceTicket is not None:
+        validationUrl = "https://cas.example.com/serviceValidate?ticket=" + serviceTicket + "&service=" + urlEncode(serviceUrl)
+        validationResponse = httpRequest(validationUrl)
+        if validateResponse(validationResponse):
+            userAttributes = extractAttributes(validationResponse)
+            createUserSession(userAttributes)
+            redirectToService(serviceUrl)
+        else:
+            authenticationFailed()
+    else:
+        error("Invalid service ticket.")
+```
+
 ## Notes
 
 - This implementation uses the CAS 3.0 protocol. If your CAS server uses a different version of the protocol, you may need to modify the code (the ticket validation URL in redirect_handler.sql in particular).
