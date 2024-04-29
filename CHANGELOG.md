@@ -1,10 +1,10 @@
 # CHANGELOG.md
 
-## 0.20.5 (unreleased)
+## unreleased
 
  - Fix missing visual indication of selected item in form dropdown fields. 
    - ![screenshot](https://github.com/tabler/tabler/assets/552629/a575db2f-e210-4984-a786-5727687ac037)
-
+ - fix autofocus on select fields with dropdown
 
 ## 0.20.4 (2024-04-23)
 
