@@ -23,6 +23,21 @@ To use this CAS client in your own SQLPage application, you need to follow these
 2. In your SQLPage application, set the following environment variable:
     - `CAS_ROOT_URL`: The URL of your CAS server. For example, `https://cas.example.com/cas`.
 
+> Environment variables are global variables that can be made available to a program.
+> Using environment variables is a good practice for storing sensitive information and configuration settings,
+> so that they are not hard-coded in the code and are easy to change without modifying the code.
+> You can set an environment variable by running `export VARIABLE_NAME=value` in the terminal before starting your SQLPage application.
+> If you are running your application as a [systemd](https://en.wikipedia.org/wiki/Systemd) service,
+> you can set environment variables in the service configuration file, like this:
+> ```ini
+> [Service]
+> Environment="VARIABLE_NAME=value"
+> ```
+>
+> Alternatively, you could store the CAS root URL inside your database and replace
+> `sqlpage.environment_variable('CAS_ROOT_URL')` with `(SELECT cas_root_url FROM cas_config)`
+> in the `login.sql` and `redirect_handler.sql` files.
+
 ## Notes
 
 - This implementation uses the CAS 3.0 protocol. If your CAS server uses a different version of the protocol, you may need to modify the code (the ticket validation URL in redirect_handler.sql in particular).
