@@ -1,0 +1,47 @@
+digraph {
+    rankdir=LR;
+    node [shape=rectangle, style=rounded, fontname=helvetica];
+    edge [arrowhead=normal, arrowtail=crow, dir=both];
+
+    subgraph cluster_browser {
+        label = "Web Browser";
+        style = filled;
+        color = lightgrey;
+        node [style=filled, color=white];
+        browser [label = "<f0>Web Browser|<f1>"];
+    }
+
+    subgraph cluster_sqlpage {
+        label = "SQLPage";
+        style = filled;
+        color = lightblue;
+        node [style=filled, color=white];
+        read_file [label = "<f0>Read File|<f1>todos.sql"];
+        replace_param [label = "<f0>Replace Parameter|<f1>$todo_id with 1"];
+        format_results [label = "<f0>Format Results|<f1>as HTML"];
+    }
+
+    subgraph cluster_database {
+        label = "Database";
+        style = filled;
+        color = palegreen;
+        node [style=filled, color=white];
+        execute_query [label = "<f0>Execute|<f1>Query"];
+        return_results [label = "<f0>Return|<f1>Results"];
+    }
+
+    browser:f1 -> http_request [label = " HTTP GET Request\n/todos.sql?todo_id=1", lhead=cluster_browser];
+    http_request -> read_file:f0 [lhead=cluster_sqlpage];
+    read_file:f1 -> replace_param:f0;
+    replace_param:f1 -> sql_query [label = " SQL Query\nSELECT * FROM todos\nWHERE id = 1", lhead=cluster_sqlpage];
+    sql_query -> execute_query:f0 [lhead=cluster_database];
+    execute_query:f1 -> return_results:f0;
+    return_results:f1 -> result_stream [label = " Result Stream", lhead=cluster_database];
+    result_stream -> format_results:f0 [lhead=cluster_sqlpage];
+    format_results:f1 -> html_response [label = " HTML Response\nwith Formatted Results", ltail=cluster_sqlpage];
+    html_response -> browser:f0 [label = " Display Results", lhead=cluster_browser];
+
+    // Additional Styles
+    edge [arrowhead=normal, arrowtail=none, dir=both, fontname=helvetica, fontsize=10];
+    node [fontsize=12];
+}

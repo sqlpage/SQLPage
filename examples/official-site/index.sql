@@ -5,7 +5,7 @@ select 'shell' as component,
     'database' as icon,
     '/' as link,
     'en-US' as language,
-    'Official SQLPage website: write web applications in SQL !' as description,
+    'Web development, simplified ! Create robust, beautiful web applications with just SQL queries. Build webapps on a low-code sql-only platform.' as description,
     'blog' as menu_item,
     'documentation' as menu_item,
     19 as font_size,
@@ -14,9 +14,9 @@ select 'shell' as component,
 
 SELECT 'hero' as component,
     'SQLPage' as title,
-    'Open-source *low-code* web application server.
+    'Build **Web Apps** Effortlessly with **Only SQL Skills**
 
-Create **full websites** writing only simple database queries.' as description_md,
+Open-source *low-code* web application server' as description_md,
     'sqlpage_introduction_video.webm' as video,
     'your-first-sql-website/' as link,
     'Build your first SQL website now !' as link_text;

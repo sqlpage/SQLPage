@@ -132,7 +132,7 @@ select
 
 ## How it works
 
-![architecture diagram](./docs/architecture.jpg)
+![architecture diagram](./docs/sqlpage%20logic.drawio.svg)
 
 SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
 [rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
