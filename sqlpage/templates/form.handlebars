@@ -63,7 +63,7 @@
                         {{~#if required}} required="required" {{/if~}}
                         {{~#if autofocus}} autofocus {{/if~}}
                         {{~#if multiple}} multiple {{/if~}}
-                        {{~#if dropdown}} 
+                        {{~#if (or dropdown searchable)}} 
                             data-pre-init="select-dropdown"
                             data-sqlpage-js="/{{static_path 'tomselect.js'}}"
                         {{/if~}}
