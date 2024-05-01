@@ -23,16 +23,17 @@ Open-source *low-code* web application server' as description_md,
 
 -- the mantra: fast, beautiful, easy
 SELECT 'Easy' as title,
-    'You can teach yourself enough SQL to select, update, and insert data in a database through SQLPage in a weekend.' as description,
+    'You can teach yourself enough SQL to query and edit a database through SQLPage in a weekend.
+We handle [security](safety.sql) and [performance](performance.sql) for you, so you can focus on your data.' as description_md,
     'sofa' as icon,
     'blue' as color;
 SELECT 'Beautiful' as title,
-    'The page you are looking at right now is written entirely in SQL,
-    using only professional looking pre-defined SQLPage components.' as description,
+    'The page you are looking at right now is written entirely in SQL.
+No design skills are required, yet your website will be responsive, and look professional and modern by default.' as description,
     'eye' as icon,
     'green' as color;
 SELECT 'Fast' as title,
-    'Pages load instantly, even on slow mobile networks.
+    'Pages [load instantly](performance.sql), even on slow mobile networks.
     SQLPage is designed as a single **lightweight** executable, ensuring fast performance even on low-cost servers.' as description_md,
     'mail-fast' as icon,
     'red' as color;
@@ -46,9 +47,9 @@ SELECT 'SQLPage transforms your SQL queries into stunning websites' as title,
 SQLPage is a tool that allows you to **build websites** using nothing more than **SQL queries**.
 You write simple text files containing SQL queries, SQLPage runs them on your database, and **renders the results as a website**.
 
-You can display the information you `SELECT` from your database in lists, tables, cards and other user interface widgets.
-But you can also `INSERT`, `UPDATE` and `DELETE` data from your database using SQLPage, and build a full webapp with **C**reate, **R**ead,
-**U**pdate, **D**elete functionality.' as description_md,
+You can display the information you `SELECT` from your database in
+lists, tables, charts, maps, forms, and many other user interface widgets.
+But you can also `INSERT`, `UPDATE` and `DELETE` data from your database using SQLPage, and build a full webapp.' as description_md,
     'paint' as icon,
     'blue' as color;
 SELECT 'Pre-built components let you construct websites Quickly and Easily' as title,
@@ -80,7 +81,7 @@ SQLPage is a *web server* written in a fast and secure programming language:
 It is extremely easy to use:
 you [download a single executable file](https://github.com/lovasoa/SQLpage/releases),
 write an `.sql` file, and you''re done.
-We made all the optimizations, wrote all of the HTTP request handling code and rendering logic,
+We made all the [optimizations](performance.sql), wrote all of the HTTP request handling code and rendering logic,
 implemented all of the security features, so that you can think about your data, and nothing else.
 
 When SQLPage receives a request with a URL ending in `.sql`, it finds the corresponding

@@ -1,6 +1,6 @@
 select 'shell' as component,
     'SQLPage safety' as title,
-    'shield-check-filled' as icon,
+    'shield-check' as icon,
     '/' as link,
     'en-US' as lang,
     'SQLPage security guarantees' as description,
@@ -62,8 +62,8 @@ but it *will not* execute the `DROP TABLE` statement.
 XSS attacks are a common security vulnerability in traditional front-end web development,
 that allow an attacker to execute arbitrary JavaScript code on your users'' browsers.
 
-**SQLPage is immune to XSS attacks**, because it uses an HTML-aware templating engine to render your SQL results to HTML.
-When you execute the following SQL code:
+**SQLPage is immune to XSS attacks**, because it uses an HTML-aware templating engine to render your
+SQL query results to HTML. When you execute the following SQL code:
 
 ```sql
 SELECT ''text'' AS component, ''<script>alert("I am evil")</script>'' AS contents;
@@ -132,11 +132,12 @@ For more information, see the [this discussion](https://github.com/lovasoa/SQLpa
 
 SQLPage uses a fixed pool of database connections, and will never open more connections than the ones you
 [configured](https://github.com/lovasoa/SQLpage/blob/main/configuration.md). So even under heavy load, your database
-connection limit should never be saturated by SQLPage.
+connection limit will never be saturated by SQLPage.
 
 And SQLPage will accept any restriction you put on the database user you use to connect to your database, so you can
 create a specific user for SQLPage that only has access to the specific tables you will use in your application.
 
 If your entire application is read-only, you can even create a user that only has the `SELECT` privilege on your database,
-
+preventing any accidental data modification. SQLPage will work fine with such a user and will never try to execute any
+other SQL statements than the ones you explicitly wrote in your SQL files.
 ' as contents_md;
