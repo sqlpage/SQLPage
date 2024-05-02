@@ -73,7 +73,7 @@ pub struct AppConfig {
     #[serde(default = "default_https_acme_directory_url")]
     pub https_acme_directory_url: String,
 
-    /// Whether SQLPage is running in development or production mode. This is used to determine
+    /// Whether we should run in development or production mode. Used to determine
     /// whether to show error messages to the user.
     #[serde(default)]
     pub environment: DevOrProd,
