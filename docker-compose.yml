@@ -10,15 +10,19 @@ services:
       # mssql: { condition: service_healthy }
       [ "${COMPOSE_PROFILES-postgres}" ]
     environment:
-      DATABASE_URL: ${COMPOSE_PROFILES-postgres}://root:Password123!@${COMPOSE_PROFILES:-postgres}/sqlpage
+      DATABASE_URL: ${COMPOSE_PROFILES-postgres}://root:Password123!@${COMPOSE_PROFILES:-postgres}/sqlpage${DATABASE_URL_PARAMS:-}
   postgres:
     profiles: ["postgres"]
     ports: ["5432:5432"]
-    image: postgres
+    build: { context: "db-test-setup/postgres" }
+    shm_size: 128mb
     environment:
       POSTGRES_USER: root
       POSTGRES_DB: sqlpage
       POSTGRES_PASSWORD: Password123!
+    healthcheck:
+      test: pg_isready -U root -d sqlpage
+
   mysql:
     profiles: ["mysql"]
     ports: ["3306:3306"]
@@ -29,7 +33,7 @@ services:
   mssql:
     profiles: ["mssql"]
     ports: ["1433:1433"]
-    build: { context: "mssql" }
+    build: { context: "db-test-setup/mssql" }
     healthcheck:
       test: /opt/mssql-tools/bin/sqlcmd -S localhost -U root -P "Password123!" -Q "SELECT 1" -b -o /dev/null
       interval: 10s

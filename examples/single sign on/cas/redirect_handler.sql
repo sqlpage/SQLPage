@@ -38,4 +38,4 @@ returning
     'cookie' as component, 'session_id' as name, session_id as value;
 
 -- Redirect the user to the home page
-select 'redirect' as component, '/cas' as link;
+select 'redirect' as component, '/cas/' as link;
