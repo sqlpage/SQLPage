@@ -44,6 +44,31 @@ environment variable to `sqlpage=debug` to get more detailed logs and see exactl
 
 If you have a `.env` file in the current directory or in any of its parent directories, SQLPage will automatically load environment variables from it.
 
+### Database connection strings
+
+The `database_url` parameter sets all the connection parameters for the database, including
+
+ - the database type (`sqlite`, `postgres`, `mysql`, `mssql`, etc.)
+ - the username and password
+ - the host (or ip adress) and port
+ - the database name
+ - any additional parameters, including
+    - `mode=rwc` for SQLite to allow read-write connections
+    - `sslmode=require` (or `disable`, `allow`, `verify-ca`, `verify-full`)
+     for PostgreSQL to enable or disable SSL
+    - `sslrootcert=/path/to/ca.pem` for PostgreSQL to specify the path to the CA certificate file
+    - `sslcert=/path/to/cert.pem` to specify the path to the TLS client certificate file and `sslkey=/path/to/key.pem` to specify the path to the TLS client key file for PostgreSQL and MySQL.
+    - `application_name=my_application` for PostgreSQL to set the application name, which can be useful for monitoring and logging on the database server side.
+    - `collation=utf8mb4_unicode_ci` for MySQL to set the collation of the connection
+
+All the parameters need to be properly [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding) if they contain special characters.
+
+A full connection string for a PostgreSQL database might look like this:
+
+```
+postgres://my_user:p%40ss@localhost:5432/my_database?sslmode=verify-ca&sslrootcert=/path/to/ca.pem&sslcert=/path/to/cert.pem&sslkey=/path/to/key.pem&application_name=my_application
+```
+
 ### Example `.env` file
 
 ```bash

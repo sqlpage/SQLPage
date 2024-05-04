@@ -5,6 +5,9 @@
  - Fix missing visual indication of selected item in form dropdown fields. 
    - ![screenshot](https://github.com/tabler/tabler/assets/552629/a575db2f-e210-4984-a786-5727687ac037)
  - fix autofocus on select fields with dropdown
+ - Added support for SSL client certificates in MySQL and Postgres
+    - SSL client certificates are commonly used to secure connections to databases in cloud environments. To connect to a database that requires a client certificate, you can now use the ssl_cert and ssl_key connection options in the connection string. For example: postgres://user@host/db?ssl_cert=/path/to/client-cert.pem&ssl_key=/path/to/client-key.pem
+
 
 ## 0.20.4 (2024-04-23)
 
