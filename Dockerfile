@@ -24,7 +24,7 @@ RUN apt-get update && \
 
 # Build dependencies (creates a layer that avoids recompiling dependencies on every build)
 COPY Cargo.toml Cargo.lock ./
-COPY .cargo ./.cargo
+COPY config.toml .
 RUN cargo build --target $(cat TARGET) --profile superoptimized
 
 # Build the project
