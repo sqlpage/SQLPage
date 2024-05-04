@@ -43,7 +43,7 @@ jobs:
     - name: Set up cargo cache
       uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - name: Start database container
-      run: docker-compose up -d ${{ matrix.database }}
+      run: docker compose up --wait ${{ matrix.database }}
     - name: Run tests against ${{ matrix.database }}
       run: cargo test
       env:

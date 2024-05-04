@@ -307,8 +307,8 @@ pub fn test_config() -> AppConfig {
     serde_json::from_str::<AppConfig>(&format!(
         r#"{{
         "database_url": "{}",
-        "database_connection_retries": 2,
-        "database_connection_acquire_timeout_seconds": 10,
+        "database_connection_retries": 3,
+        "database_connection_acquire_timeout_seconds": 15,
         "allow_exec": true,
         "max_uploaded_file_size": 12345,
         "listen_on": "111.111.111.111:1"
