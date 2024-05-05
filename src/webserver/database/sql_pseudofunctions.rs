@@ -649,22 +649,16 @@ fn random_string(len: usize) -> String {
         .collect()
 }
 
-async fn hash_password(
-    _request: &RequestInfo,
-    password: String,
-) -> Result<Option<Cow<'_, str>>, anyhow::Error> {
-    let encoded =
-        actix_web::rt::task::spawn_blocking(move || hash_password_blocking(&password)).await??;
-    Ok(Some(Cow::Owned(encoded)))
-}
-
-/// Hashes a password using Argon2. This is a CPU-intensive blocking operation.
-fn hash_password_blocking(password: &str) -> anyhow::Result<String> {
-    let phf = argon2::Argon2::default();
-    let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
-    let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
-        .map_err(|e| anyhow!("Unable to hash password: {}", e))?;
-    Ok(password_hash.to_string())
+async fn hash_password(_request: &RequestInfo, password: String) -> anyhow::Result<String> {
+    actix_web::rt::task::spawn_blocking(move || {
+        // Hashes a password using Argon2. This is a CPU-intensive blocking operation.
+        let phf = argon2::Argon2::default();
+        let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
+        let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
+            .map_err(|e| anyhow!("Unable to hash password: {}", e))?;
+        Ok(password_hash.to_string())
+    })
+    .await?
 }
 
 fn extract_basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {
@@ -813,13 +807,14 @@ macro_rules! sqlpage_functions {
                         SqlPageFunctionName::$func_name => {
                             let mut iter_params = params.into_iter();
                             $(
-                                let $param_name = <$param_type>::from_param_iter(&mut iter_params)
+                                let $param_name = <$param_type as FunctionParamType<'_>>::from_args(&mut iter_params)
                                     .map_err(|e| anyhow!("Parameter {}: {e}", stringify!($param_name)))?;
                             )*
                             if let Some(extraneous_param) = iter_params.next() {
                                 anyhow::bail!("Too many arguments. Remove extra argument {}", as_sql(extraneous_param));
                             }
-                            $func_name(request, $($param_name),*).await
+                            let result = $func_name(request, $($param_name),*).await?;
+                            Ok(result.into_cow())
                         }
                     )*
                 }
@@ -837,21 +832,65 @@ sqlpage_functions! {
 }
 
 trait FunctionParamType<'a>: Sized {
-    fn from_param_iter(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self>;
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self>;
 }
 
-impl<'a, T: FromStr + Sized + 'a> FunctionParamType<'a> for T
+impl<'a> FunctionParamType<'a> for Option<Cow<'a, str>> {
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        arg.next().ok_or_else(|| anyhow!("Missing"))
+    }
+}
+
+impl<'a> FunctionParamType<'a> for Cow<'a, str> {
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        <Option<Cow<'a, str>>>::from_args(arg)?.ok_or_else(|| anyhow!("Unexpected NULL value"))
+    }
+}
+
+impl<'a> FunctionParamType<'a> for String {
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        Ok(<Cow<'a, str>>::from_args(arg)?.into_owned())
+    }
+}
+
+struct SqlPageFunctionParam<T>(T);
+
+impl<'a, T: FromStr + Sized + 'a> FunctionParamType<'a> for SqlPageFunctionParam<T>
 where
     <T as FromStr>::Err: Sync + Send + std::error::Error + 'static,
 {
-    fn from_param_iter(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        let param = arg
-            .next()
-            .ok_or_else(|| anyhow!("Missing"))?
-            .ok_or_else(|| anyhow!("Unexpected NULL value"))?;
-        let param = param.as_ref();
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        let param = <Cow<'a, str>>::from_args(arg)?;
         param
             .parse()
-            .with_context(|| format!("Unable to parse {param:?}"))
+            .with_context(|| {
+                format!(
+                    "Unable to parse {param:?} as {}",
+                    std::any::type_name::<T>()
+                )
+            })
+            .map(SqlPageFunctionParam)
+    }
+}
+
+trait FunctionResultType<'a> {
+    fn into_cow(self) -> Option<Cow<'a, str>>;
+}
+
+impl<'a> FunctionResultType<'a> for Option<Cow<'a, str>> {
+    fn into_cow(self) -> Option<Cow<'a, str>> {
+        self
+    }
+}
+
+impl<'a> FunctionResultType<'a> for Cow<'a, str> {
+    fn into_cow(self) -> Option<Cow<'a, str>> {
+        Some(self)
+    }
+}
+
+impl<'a> FunctionResultType<'a> for String {
+    fn into_cow(self) -> Option<Cow<'a, str>> {
+        Some(Cow::Owned(self))
     }
 }
