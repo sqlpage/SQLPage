@@ -489,7 +489,12 @@ pub(super) fn extract_variable_argument(
 fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
     match arg {
         FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) => Some(expr),
-        _ => None,
+        other => {
+            log::warn!(
+                "Using named function arguments ({other}) is not supported by SQLPage functions."
+            );
+            None
+        }
     }
 }
 
@@ -655,11 +660,11 @@ mod test {
     #[test]
     fn test_sqlpage_function_with_argument() {
         for &(dialect, kind) in ALL_DIALECTS {
-            let mut ast = parse_stmt("select sqlpage.hash_password($x)", dialect);
+            let mut ast = parse_stmt("select sqlpage.fetch($x)", dialect);
             let parameters = ParameterExtractor::extract_parameters(&mut ast, kind);
             assert_eq!(
                 parameters,
-                [StmtParam::HashPassword(Box::new(StmtParam::GetOrPost(
+                [StmtParam::Fetch(Box::new(StmtParam::GetOrPost(
                     "x".to_string()
                 )))],
                 "Failed for dialect {dialect:?}"
