@@ -711,7 +711,17 @@ impl SqlPageFunctionCall {
             .iter_mut()
             .map(|arg| {
                 function_arg_to_stmt_param(arg)
-                    .ok_or_else(|| anyhow!("Invalid argument format \"{arg}\" in {function:#}"))
+                    .ok_or_else(|| anyhow!("Passing \"{arg}\" to {function:#} is not supported. \n\
+                    The only supported sqlpage function parameter types are : \n\
+                      - variables (such as $my_variable), \n\
+                      - other sqlpage function calls (such as sqlpage.cookie('my_cookie')), \n\
+                      - literal strings (such as 'my_string'), \n\
+                      - concatenations of the above (such as CONCAT(x, y)).\n\n\
+                    Arbitrary SQL exceptions as function arguments are not supported.\n\
+                    Try executing the SQL expression in a separate SET expression, then passing it to the function:\n\n\
+                    SET my_parameter = {arg}; \n\
+                    SELECT ... {function}(... $my_parameter ...) ...
+                    "))
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
         Ok(Self {
