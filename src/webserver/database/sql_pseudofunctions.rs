@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::HashMap, str::FromStr};
 
-use actix_multipart::form;
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
 use awc::http::{header::USER_AGENT, Method};
@@ -166,7 +165,10 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
                     FormatArguments(arguments)
                 )
             })
-            .map_or_else(|e| StmtParam::Error(e.to_string()), StmtParam::FunctionCall),
+            .map_or_else(
+                |e| StmtParam::Error(format!("{e:#}")),
+                StmtParam::FunctionCall,
+            ),
     }
 }
 
@@ -594,10 +596,12 @@ pub(super) async fn extract_req_param<'a>(
             .get(x)
             .and_then(|x| x.content_type.as_ref())
             .map(|x| Cow::Borrowed(x.as_ref())),
-        StmtParam::FunctionCall(func) => func
-            .evaluate(request)
-            .await
-            .with_context(|| format!("Error in function call {func}"))?,
+        StmtParam::FunctionCall(func) => func.evaluate(request).await.with_context(|| {
+            format!(
+                "Error in function call {func}.\nExpected {:#}",
+                func.function
+            )
+        })?,
     })
 }
 
@@ -707,7 +711,7 @@ impl SqlPageFunctionCall {
             .iter_mut()
             .map(|arg| {
                 function_arg_to_stmt_param(arg)
-                    .ok_or_else(|| anyhow!("Invalid argument format: {arg:?}"))
+                    .ok_or_else(|| anyhow!("Invalid argument format \"{arg}\" in {function:#}"))
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
         Ok(Self {
@@ -728,7 +732,7 @@ impl SqlPageFunctionCall {
 
 impl std::fmt::Display for SqlPageFunctionCall {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "sqlpage.{}(", self.function)?;
+        write!(f, "{}(", self.function)?;
         // interleave the arguments with commas
         let mut it = self.arguments.iter();
         if let Some(x) = it.next() {
@@ -766,9 +770,25 @@ macro_rules! sqlpage_functions {
         }
 
         impl std::fmt::Display for SqlPageFunctionName {
+            #[allow(unused_assignments)]
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 match self {
-                    $(SqlPageFunctionName::$func_name => write!(f, stringify!($func_name)),)*
+                    $(SqlPageFunctionName::$func_name => {
+                        write!(f, "sqlpage.{}", stringify!($func_name))?;
+                        if f.alternate() {
+                            write!(f, "(")?;
+                            let mut first = true;
+                            $(
+                                if !first {
+                                    write!(f, ", ")?;
+                                }
+                                write!(f, "{}", stringify!($param_name))?;
+                                first = false;
+                            )*
+                            write!(f, ")")?;
+                        }
+                        Ok(())
+                    }),*
                 }
             }
         }
@@ -783,7 +803,8 @@ macro_rules! sqlpage_functions {
                         SqlPageFunctionName::$func_name => {
                             let mut iter_params = params.into_iter();
                             $(
-                                let $param_name = <$param_type>::from_param_iter(&mut iter_params)?;
+                                let $param_name = <$param_type>::from_param_iter(&mut iter_params)
+                                    .map_err(|e| anyhow!("Parameter {}: {e}", stringify!($param_name)))?;
                             )*
                             if let Some(extraneous_param) = iter_params.next() {
                                 anyhow::bail!("Too many arguments. Remove extra argument {}", as_sql(extraneous_param));
@@ -818,8 +839,8 @@ where
     fn from_param_iter(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         let param = arg
             .next()
-            .ok_or_else(|| anyhow!("Missing argument"))?
-            .ok_or_else(|| anyhow!("Unexpected NULL argument"))?;
+            .ok_or_else(|| anyhow!("Missing"))?
+            .ok_or_else(|| anyhow!("Unexpected NULL value"))?;
         let param = param.as_ref();
         param
             .parse()
