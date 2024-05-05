@@ -1,5 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, str::FromStr};
 
+use actix_multipart::form;
 use actix_web::http::StatusCode;
 use actix_web_httpauth::headers::authorization::Basic;
 use awc::http::{header::USER_AGENT, Method};
@@ -54,7 +55,7 @@ pub(super) enum StmtParam {
     Fetch(Box<StmtParam>),
     Path,
     Protocol,
-    FunctionCall(SqlPageFunction),
+    FunctionCall(SqlPageFunctionCall),
 }
 
 impl std::fmt::Display for StmtParam {
@@ -158,14 +159,14 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         )),
         "run_sql" => StmtParam::RunSql(Box::new(extract_variable_argument("run_sql", arguments))),
         "fetch" => StmtParam::Fetch(Box::new(extract_variable_argument("fetch", arguments))),
-        _ => SqlPageFunction::from_func_call(func_name, arguments)
-            .map(StmtParam::FunctionCall)
-            .unwrap_or_else(|e| {
-                StmtParam::Error(format!(
-                    "Invalid function call: {func_name}({}): {e}",
+        _ => SqlPageFunctionCall::from_func_call(func_name, arguments)
+            .with_context(|| {
+                format!(
+                    "Invalid function call: sqlpage.{func_name}({})",
                     FormatArguments(arguments)
-                ))
-            }),
+                )
+            })
+            .map_or_else(|e| StmtParam::Error(e.to_string()), StmtParam::FunctionCall),
     }
 }
 
@@ -593,7 +594,10 @@ pub(super) async fn extract_req_param<'a>(
             .get(x)
             .and_then(|x| x.content_type.as_ref())
             .map(|x| Cow::Borrowed(x.as_ref())),
-        StmtParam::FunctionCall(func) => func.evaluate(request).await?,
+        StmtParam::FunctionCall(func) => func
+            .evaluate(request)
+            .await
+            .with_context(|| format!("Error in function call {func}"))?,
     })
 }
 
@@ -643,9 +647,8 @@ fn random_string(len: usize) -> String {
 
 async fn hash_password<'a>(
     _request: &'a RequestInfo,
-    password: Cow<'a, str>,
+    password: String,
 ) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let password = password.into_owned();
     let encoded =
         actix_web::rt::task::spawn_blocking(move || hash_password_blocking(&password)).await??;
     Ok(Some(Cow::Owned(encoded)))
@@ -691,6 +694,53 @@ fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {
     Ok(Some(Cow::Owned(cwd.to_string_lossy().to_string())))
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct SqlPageFunctionCall {
+    function: SqlPageFunctionName,
+    arguments: Vec<StmtParam>,
+}
+
+impl SqlPageFunctionCall {
+    pub fn from_func_call(func_name: &str, arguments: &mut [FunctionArg]) -> anyhow::Result<Self> {
+        let function = SqlPageFunctionName::from_str(func_name)?;
+        let arguments = arguments
+            .iter_mut()
+            .map(|arg| {
+                function_arg_to_stmt_param(arg)
+                    .ok_or_else(|| anyhow!("Invalid argument format: {arg:?}"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        Ok(Self {
+            function,
+            arguments,
+        })
+    }
+
+    pub async fn evaluate<'a>(
+        &self,
+        request: &'a RequestInfo,
+    ) -> anyhow::Result<Option<Cow<'a, str>>> {
+        let evaluated_args = self.arguments.iter().map(|x| extract_req_param(x, request));
+        let evaluated_args = futures_util::future::try_join_all(evaluated_args).await?;
+        self.function.evaluate(request, evaluated_args).await
+    }
+}
+
+impl std::fmt::Display for SqlPageFunctionCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "sqlpage.{}(", self.function)?;
+        // interleave the arguments with commas
+        let mut it = self.arguments.iter();
+        if let Some(x) = it.next() {
+            write!(f, "{}", x)?;
+        }
+        for x in it {
+            write!(f, ", {}", x)?;
+        }
+        write!(f, ")")
+    }
+}
+
 /// Defines all sqlpage functions using a simple syntax:
 /// `sqlpage_functions! {
 ///    simple_function(param1, param2);
@@ -698,69 +748,47 @@ fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {
 ///    function_with_varargs(param1, param2 repeated);
 /// }`
 macro_rules! sqlpage_functions {
-    ($($func_name:ident($($param_name:ident $($modifier:ident)?),*);)*) => {
-        #[derive(Debug, PartialEq, Eq, Clone)]
-        pub enum SqlPageFunction {
-            $(
-                #[allow(non_camel_case_types)]
-                $func_name(
-                    $(function_param_type!($param_name $($modifier)*),)*
-                )
-            ),*
+    ($($func_name:ident($($param_name:ident : $param_type:ty),*);)*) => {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        pub enum SqlPageFunctionName {
+            $( #[allow(non_camel_case_types)] $func_name ),*
         }
 
-        impl SqlPageFunction {
-            pub(super) fn from_func_call(func_name: &str, arguments: &mut [FunctionArg]) -> Result<Self, FuncCallError> {
-                match func_name {
-                    $(
-                        stringify!($func_name) => {
-                            let mut iter_params = arguments.iter_mut();
-                            $(
-                                let $param_name = <function_param_type!($param_name $($modifier)*)>::from_param_iter(&mut iter_params)?;
-                            )*
-                            if iter_params.next().is_some() {
-                                return Err(FuncCallError::TooManyArguments);
-                            }
-                            Ok(SqlPageFunction::$func_name($($param_name),*))
-                        }
-                    )*
+        impl FromStr for SqlPageFunctionName {
+            type Err = anyhow::Error;
 
-                    unknown_name => {
-                        Err(FuncCallError::UnknownFunction(unknown_name.to_string()))
-                    },
-                }
-            }
-
-            pub(super) async fn evaluate<'a>(&self, request: &'a RequestInfo) -> anyhow::Result<Option<Cow<'a, str>>> {
-                match self {
-                    $(
-                        SqlPageFunction::$func_name($($param_name),*) => {
-                            log::debug!("Starting evaluation of function {}", stringify!($func_name));
-                            let result = $func_name(
-                                request,
-                                $(
-                                    $param_name.extract_from_req(request).await
-                                        .with_context(|| format!("Unable to extract parameter {:?} for function {}", stringify!($param_name), stringify!($func_name)))?
-                                ),*
-                            ).await;
-                            log::debug!("Finished evaluation of function {}. Result: {:?}", stringify!($func_name), result);
-                            result
-                        }
-                    )*
+            fn from_str(s: &str) -> anyhow::Result<Self> {
+                match s {
+                    $(stringify!($func_name) => Ok(SqlPageFunctionName::$func_name),)*
+                    unknown_name => anyhow::bail!("Unknown function {unknown_name:?}"),
                 }
             }
         }
 
-        impl std::fmt::Display for SqlPageFunction {
+        impl std::fmt::Display for SqlPageFunctionName {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 match self {
+                    $(SqlPageFunctionName::$func_name => write!(f, stringify!($func_name)),)*
+                }
+            }
+        }
+        impl SqlPageFunctionName {
+            pub(super) async fn evaluate<'a>(
+                &self,
+                request: &'a RequestInfo,
+                params: Vec<Option<Cow<'a, str>>>
+            ) -> anyhow::Result<Option<Cow<'a, str>>> {
+                match self {
                     $(
-                        SqlPageFunction::$func_name($($param_name),*) => {
-                            write!(f, "sqlpage.{}(", stringify!($func_name))?;
+                        SqlPageFunctionName::$func_name => {
+                            let mut iter_params = params.into_iter();
                             $(
-                                write!(f, "{}, ", $param_name)?;
+                                let $param_name = <$param_type>::from_param_iter(&mut iter_params)?;
                             )*
-                            write!(f, ")")
+                            if let Some(extraneous_param) = iter_params.next() {
+                                anyhow::bail!("Too many arguments. Remove extra argument {}", as_sql(extraneous_param));
+                            }
+                            $func_name(request, $($param_name),*).await
                         }
                     )*
                 }
@@ -769,131 +797,32 @@ macro_rules! sqlpage_functions {
     }
 }
 
-/// Defines the type of a function parameter based on whether it's optional or repeated.
-macro_rules! function_param_type {
-    ($param_name:ident) => { Box<StmtParam> };
-    ($param_name:ident optional) => { OptionalParam };
-    ($param_name:ident repeated) => { RepeatedParam };
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct OptionalParam(Option<Box<StmtParam>>);
-
-impl std::fmt::Display for OptionalParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match &self.0 {
-            Some(x) => write!(f, "{:?}", x),
-            None => write!(f, "NULL"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct RepeatedParam(Vec<StmtParam>);
-
-impl std::fmt::Display for RepeatedParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut it = self.0.iter();
-        if let Some(x) = it.next() {
-            write!(f, "{:?}", x)?;
-        }
-        for x in it {
-            write!(f, ", {:?}", x)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum FuncCallError {
-    MissingArgument,
-    TooManyArguments,
-    InvalidArgumentSyntax,
-    UnknownFunction(String),
-}
-
-impl std::fmt::Display for FuncCallError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            FuncCallError::MissingArgument => write!(f, "Missing argument"),
-            FuncCallError::TooManyArguments => write!(f, "Too many arguments"),
-            FuncCallError::InvalidArgumentSyntax => write!(f, "Invalid argument syntax"),
-            FuncCallError::UnknownFunction(name) => write!(f, "Unknown function {:?}", name),
-        }
-    }
+fn as_sql<'a>(param: Option<Cow<'a, str>>) -> String {
+    param
+        .map(|x| format!("'{}'", x.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".into())
 }
 
 sqlpage_functions! {
-    hash_password(password);
+    hash_password(password: String);
 }
 
-impl std::error::Error for FuncCallError {}
-
-trait FunctionParamType {
-    type ExtractionResult<'a>: 'a;
-    async fn extract_from_req<'a>(
-        &self,
-        request: &'a RequestInfo,
-    ) -> anyhow::Result<Self::ExtractionResult<'a>>;
-    fn from_param_iter<'a>(
-        arg: &mut std::slice::IterMut<'a, FunctionArg>,
-    ) -> Result<Self, FuncCallError>
-    where
-        Self: Sized;
+trait FunctionParamType<'a>: Sized {
+    fn from_param_iter(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self>;
 }
 
-impl FunctionParamType for Box<StmtParam> {
-    type ExtractionResult<'a> = Cow<'a, str>;
-    fn from_param_iter(arg: &mut std::slice::IterMut<FunctionArg>) -> Result<Self, FuncCallError> {
-        OptionalParam::from_param_iter(arg).and_then(|x| x.0.ok_or(FuncCallError::MissingArgument))
-    }
-
-    async fn extract_from_req<'a>(
-        &self,
-        request: &'a RequestInfo,
-    ) -> anyhow::Result<Self::ExtractionResult<'a>> {
-        // actually, we need to pin the future:
-        let extracted = Box::pin(extract_req_param(self, request)).await?;
-        extracted.ok_or_else(|| anyhow!("{self:?} is NULL"))
-    }
-}
-
-impl FunctionParamType for OptionalParam {
-    type ExtractionResult<'a> = Option<Cow<'a, str>>;
-    fn from_param_iter(arg: &mut std::slice::IterMut<FunctionArg>) -> Result<Self, FuncCallError> {
-        if let Some(arg) = arg.next() {
-            let param =
-                function_arg_to_stmt_param(arg).ok_or(FuncCallError::InvalidArgumentSyntax)?;
-            Ok(OptionalParam(Some(Box::new(param))))
-        } else {
-            Ok(OptionalParam(None))
-        }
-    }
-
-    async fn extract_from_req<'a>(
-        &self,
-        request: &'a RequestInfo,
-    ) -> anyhow::Result<Self::ExtractionResult<'a>> {
-        todo!()
-    }
-}
-
-impl FunctionParamType for RepeatedParam {
-    type ExtractionResult<'a> = Vec<Cow<'a, str>>;
-    fn from_param_iter(arg: &mut std::slice::IterMut<FunctionArg>) -> Result<Self, FuncCallError> {
-        let mut params = Vec::with_capacity(arg.len());
-        for arg in arg {
-            let param =
-                function_arg_to_stmt_param(arg).ok_or(FuncCallError::InvalidArgumentSyntax)?;
-            params.push(param);
-        }
-        Ok(RepeatedParam(params))
-    }
-
-    async fn extract_from_req<'a>(
-        &self,
-        request: &'a RequestInfo,
-    ) -> anyhow::Result<Self::ExtractionResult<'a>> {
-        todo!()
+impl<'a, T: FromStr + Sized + 'a> FunctionParamType<'a> for T
+where
+    <T as FromStr>::Err: Sync + Send + std::error::Error + 'static,
+{
+    fn from_param_iter(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        let param = arg
+            .next()
+            .ok_or_else(|| anyhow!("Missing argument"))?
+            .ok_or_else(|| anyhow!("Unexpected NULL argument"))?;
+        let param = param.as_ref();
+        param
+            .parse()
+            .with_context(|| format!("Unable to parse {param:?}"))
     }
 }
