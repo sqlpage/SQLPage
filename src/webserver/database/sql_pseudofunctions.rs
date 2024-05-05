@@ -67,7 +67,7 @@ impl std::fmt::Display for StmtParam {
             StmtParam::Concat(items) => {
                 write!(f, "CONCAT(")?;
                 for item in items {
-                    write!(f, "{}, ", item)?;
+                    write!(f, "{item}, ")?;
                 }
                 write!(f, ")")
             }
@@ -649,10 +649,10 @@ fn random_string(len: usize) -> String {
         .collect()
 }
 
-async fn hash_password<'a>(
-    _request: &'a RequestInfo,
+async fn hash_password(
+    _request: &RequestInfo,
     password: String,
-) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+) -> Result<Option<Cow<'_, str>>, anyhow::Error> {
     let encoded =
         actix_web::rt::task::spawn_blocking(move || hash_password_blocking(&password)).await??;
     Ok(Some(Cow::Owned(encoded)))
@@ -746,10 +746,10 @@ impl std::fmt::Display for SqlPageFunctionCall {
         // interleave the arguments with commas
         let mut it = self.arguments.iter();
         if let Some(x) = it.next() {
-            write!(f, "{}", x)?;
+            write!(f, "{x}")?;
         }
         for x in it {
-            write!(f, ", {}", x)?;
+            write!(f, ", {x}")?;
         }
         write!(f, ")")
     }
@@ -828,10 +828,8 @@ macro_rules! sqlpage_functions {
     }
 }
 
-fn as_sql<'a>(param: Option<Cow<'a, str>>) -> String {
-    param
-        .map(|x| format!("'{}'", x.replace('\'', "''")))
-        .unwrap_or_else(|| "NULL".into())
+fn as_sql(param: Option<Cow<'_, str>>) -> String {
+    param.map_or_else(|| "NULL".into(), |x| format!("'{}'", x.replace('\'', "''")))
 }
 
 sqlpage_functions! {
