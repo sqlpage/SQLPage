@@ -221,7 +221,7 @@ async fn persist_uploaded_file<'a>(
             format!("persist_uploaded_file: unable to create folder {target_folder:?}")
         })?;
     let date = chrono::Utc::now().format("%Y-%m-%d %Hh%Mm%Ss");
-    let random_part = random_string(request, SqlPageFunctionParam(8)).await?;
+    let random_part = random_string_sync(8);
     let random_target_name = format!("{date} {random_part}.{extension}");
     let target_path = target_folder.join(&random_target_name);
     tokio::fs::copy(&uploaded_file.file.path(), &target_path)
@@ -637,16 +637,22 @@ fn extract_get_or_post(
 }
 
 /// Returns a random string of the specified length.
-async fn random_string(_request: &RequestInfo, len: SqlPageFunctionParam<usize>) -> anyhow::Result<String> {
+async fn random_string(
+    _request: &RequestInfo,
+    len: SqlPageFunctionParam<usize>,
+) -> anyhow::Result<String> {
+    // OsRng can block on Linux, so we run this on a blocking thread.
+    Ok(tokio::task::spawn_blocking(move || random_string_sync(len.0)).await?)
+}
+
+/// Returns a random string of the specified length.
+fn random_string_sync(len: usize) -> String {
     use rand::{distributions::Alphanumeric, Rng};
-    // This can take a long time, so we run it in a blocking task
-    Ok(tokio::task::spawn_blocking(move || {
-        rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(len.0)
-            .map(char::from)
-            .collect()
-    }).await?)
+    password_hash::rand_core::OsRng
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
 }
 
 async fn hash_password(_request: &RequestInfo, password: String) -> anyhow::Result<String> {
