@@ -66,7 +66,7 @@ pub fn stream_query_results<'a>(
                 ParsedStatement::SetVariable { variable, value} => {
                     execute_set_variable_query(db, &mut connection_opt, request, variable, value).await
                     .with_context(||
-                        format!("Failed to set the {variable:?} variable to {value:?}")
+                        format!("Failed to set the {variable} variable to {value:?}")
                     )?;
                 },
                 ParsedStatement::StaticSimpleSelect(value) => {
@@ -207,7 +207,7 @@ async fn bind_parameters<'a>(
     log::debug!("Preparing statement: {}", sql);
     let mut arguments = AnyArguments::default();
     for (param_idx, param) in stmt.params.iter().enumerate() {
-        log::trace!("\tevaluating parameter {}: {:?}", param_idx + 1, param);
+        log::trace!("\tevaluating parameter {}: {}", param_idx + 1, param);
         let argument = extract_req_param(param, request).await?;
         log::debug!(
             "\tparameter {}: {}",
