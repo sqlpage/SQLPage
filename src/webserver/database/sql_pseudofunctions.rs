@@ -762,7 +762,7 @@ impl std::fmt::Display for SqlPageFunctionCall {
 ///    function_with_varargs(param1, param2 repeated);
 /// }`
 macro_rules! sqlpage_functions {
-    ($($func_name:ident($($param_name:ident : $param_type:ty),*);)*) => {
+    ($($func_name:ident($(($request:ty),)? $($param_name:ident : $param_type:ty),*);)*) => {
         #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub enum SqlPageFunctionName {
             $( #[allow(non_camel_case_types)] $func_name ),*
@@ -819,8 +819,11 @@ macro_rules! sqlpage_functions {
                             if let Some(extraneous_param) = iter_params.next() {
                                 anyhow::bail!("Too many arguments. Remove extra argument {}", as_sql(extraneous_param));
                             }
-                            let result = $func_name(request, $($param_name),*).await?;
-                            Ok(result.into_cow())
+                            let result = $func_name(
+                                $(<$request>::from(request),)*
+                                $($param_name),*
+                            ).await;
+                            result.into_cow_result()
                         }
                     )*
                 }
@@ -834,8 +837,8 @@ fn as_sql(param: Option<Cow<'_, str>>) -> String {
 }
 
 sqlpage_functions! {
-    hash_password(password: String);
-    random_string(string_length: SqlPageFunctionParam<usize>);
+    hash_password((&RequestInfo), password: String);
+    random_string((&RequestInfo), string_length: SqlPageFunctionParam<usize>);
 }
 
 trait FunctionParamType<'a>: Sized {
@@ -879,24 +882,39 @@ where
             .map(SqlPageFunctionParam)
     }
 }
-
 trait FunctionResultType<'a> {
+    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>>;
+}
+
+impl<'a, T: IntoCow<'a>> FunctionResultType<'a> for anyhow::Result<T> {
+    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>> {
+        self.map(IntoCow::into_cow)
+    }
+}
+
+impl<'a, T: IntoCow<'a>> FunctionResultType<'a> for T {
+    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>> {
+        Ok(self.into_cow())
+    }
+}
+
+trait IntoCow<'a> {
     fn into_cow(self) -> Option<Cow<'a, str>>;
 }
 
-impl<'a> FunctionResultType<'a> for Option<Cow<'a, str>> {
+impl<'a> IntoCow<'a> for Option<Cow<'a, str>> {
     fn into_cow(self) -> Option<Cow<'a, str>> {
         self
     }
 }
 
-impl<'a> FunctionResultType<'a> for Cow<'a, str> {
+impl<'a> IntoCow<'a> for Cow<'a, str> {
     fn into_cow(self) -> Option<Cow<'a, str>> {
         Some(self)
     }
 }
 
-impl<'a> FunctionResultType<'a> for String {
+impl<'a> IntoCow<'a> for String {
     fn into_cow(self) -> Option<Cow<'a, str>> {
         Some(Cow::Owned(self))
     }
