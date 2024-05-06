@@ -588,6 +588,10 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
 
 #[cfg(test)]
 mod test {
+    use crate::webserver::database::sql_pseudofunctions::{
+        SqlPageFunctionCall, SqlPageFunctionName,
+    };
+
     use super::*;
 
     fn parse_stmt(sql: &str, dialect: &dyn Dialect) -> Statement {
@@ -616,7 +620,10 @@ mod test {
                 StmtParam::GetOrPost("x".to_string()),
                 StmtParam::GetOrPost("a".to_string()),
                 StmtParam::GetOrPost("x".to_string()),
-                StmtParam::Cookie("cookoo".to_string()),
+                StmtParam::FunctionCall(SqlPageFunctionCall {
+                    function: SqlPageFunctionName::cookie,
+                    arguments: vec![StmtParam::Literal("cookoo".to_string())]
+                }),
             ]
         );
     }
@@ -781,15 +788,15 @@ mod test {
     #[test]
     fn test_simple_select_only_extraction() {
         use SimpleSelectValue::{Dynamic, Static};
-        use StmtParam::Cookie;
+        use StmtParam::GetOrPost;
         assert_eq!(
             extract_static_simple_select(
                 &parse_postgres_stmt("select 'text' as component, $1 as contents"),
-                &[Cookie("cook".into())]
+                &[GetOrPost("cook".into())]
             ),
             Some(vec![
                 ("component".into(), Static("text".into())),
-                ("contents".into(), Dynamic(Cookie("cook".into()))),
+                ("contents".into(), Dynamic(GetOrPost("cook".into()))),
             ])
         );
     }

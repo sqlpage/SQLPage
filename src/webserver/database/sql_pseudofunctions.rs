@@ -696,8 +696,8 @@ fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SqlPageFunctionCall {
-    function: SqlPageFunctionName,
-    arguments: Vec<StmtParam>,
+    pub function: SqlPageFunctionName,
+    pub arguments: Vec<StmtParam>,
 }
 
 impl SqlPageFunctionCall {
