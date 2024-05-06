@@ -5,7 +5,7 @@ use awc::http::{header::USER_AGENT, Method};
 use base64::Engine;
 use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
-use std::{borrow::Cow, collections::HashMap, str::FromStr};
+use std::{borrow::Cow, str::FromStr};
 use tokio_stream::StreamExt;
 
 use crate::webserver::{
@@ -15,29 +15,13 @@ use crate::webserver::{
 };
 
 use super::syntax_tree::SqlPageFunctionCall;
-use super::syntax_tree::{GetOrPost, StmtParam};
+use super::syntax_tree::StmtParam;
 
 use super::sql::{
-    extract_single_quoted_string, extract_single_quoted_string_optional, extract_variable_argument,
-    function_arg_to_stmt_param, stmt_param_error_invalid_arguments, FormatArguments,
+    extract_single_quoted_string, extract_variable_argument, function_arg_to_stmt_param,
+    stmt_param_error_invalid_arguments, FormatArguments,
 };
 use anyhow::{anyhow, bail, Context};
-
-fn parse_get_or_post(arg: Option<String>) -> StmtParam {
-    if let Some(s) = arg {
-        if s.eq_ignore_ascii_case("get") {
-            StmtParam::AllVariables(Some(GetOrPost::Get))
-        } else if s.eq_ignore_ascii_case("post") {
-            StmtParam::AllVariables(Some(GetOrPost::Post))
-        } else {
-            StmtParam::Error(format!(
-                "The variables() function expected 'get' or 'post' as argument, not {s:?}"
-            ))
-        }
-    } else {
-        StmtParam::AllVariables(None)
-    }
-}
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
@@ -54,7 +38,6 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
             StmtParam::UrlEncode(Box::new(extract_variable_argument("url_encode", arguments)))
         }
         "version" => StmtParam::SqlPageVersion,
-        "variables" => parse_get_or_post(extract_single_quoted_string_optional(arguments)),
         "path" => StmtParam::Path,
         "protocol" => StmtParam::Protocol,
         "uploaded_file_path" => extract_single_quoted_string("uploaded_file_path", arguments)
@@ -507,7 +490,6 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::SqlPageVersion => Some(Cow::Borrowed(env!("CARGO_PKG_VERSION"))),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::Concat(args) => concat_params(&args[..], request).await?,
-        StmtParam::AllVariables(get_or_post) => extract_get_or_post(*get_or_post, request),
         StmtParam::Path => Some(Cow::Borrowed(&request.path)),
         StmtParam::Protocol => Some(Cow::Borrowed(&request.protocol)),
         StmtParam::UploadedFilePath(x) => request
@@ -541,27 +523,6 @@ async fn concat_params<'a>(
         result.push_str(&arg);
     }
     Ok(Some(Cow::Owned(result)))
-}
-
-fn extract_get_or_post(
-    get_or_post: Option<GetOrPost>,
-    request: &RequestInfo,
-) -> Option<Cow<'_, str>> {
-    match get_or_post {
-        Some(GetOrPost::Get) => serde_json::to_string(&request.get_variables),
-        Some(GetOrPost::Post) => serde_json::to_string(&request.post_variables),
-        None => {
-            let all: HashMap<_, _> = request
-                .get_variables
-                .iter()
-                .chain(&request.post_variables)
-                .collect();
-            serde_json::to_string(&all)
-        }
-    }
-    .map_err(|e| log::warn!("{}", e))
-    .map(Cow::Owned)
-    .ok()
 }
 
 fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {

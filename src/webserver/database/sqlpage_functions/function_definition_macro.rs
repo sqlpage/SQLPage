@@ -90,7 +90,7 @@ pub(super) trait FunctionParamType<'a>: Sized {
 impl<'a> FunctionParamType<'a> for Option<Cow<'a, str>> {
     type TargetType = Self;
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        arg.next().ok_or_else(|| anyhow::anyhow!("Missing"))
+        Ok(arg.next().flatten())
     }
     fn into_arg(self) -> Self::TargetType {
         self

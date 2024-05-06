@@ -17,7 +17,6 @@ use anyhow::anyhow;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum StmtParam {
     Get(String),
-    AllVariables(Option<GetOrPost>),
     Post(String),
     GetOrPost(String),
     Error(String),
@@ -62,12 +61,6 @@ impl std::fmt::Display for StmtParam {
             _ => todo!(),
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum GetOrPost {
-    Get,
-    Post,
 }
 
 /// Represents a call to a `sqlpage.` function.

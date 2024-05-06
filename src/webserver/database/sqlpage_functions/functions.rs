@@ -10,6 +10,7 @@ super::function_definition_macro::sqlpage_functions! {
     hash_password(password: String);
     basic_auth_username((&RequestInfo));
     basic_auth_password((&RequestInfo));
+    variables((&RequestInfo), get_or_post: Option<Cow<str>>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -73,4 +74,33 @@ fn extract_basic_auth(
             })
         })
         .with_context(|| "Expected the user to be authenticated with HTTP basic auth")
+}
+
+async fn variables<'a>(
+    request: &'a RequestInfo,
+    get_or_post: Option<Cow<'a, str>>,
+) -> anyhow::Result<String> {
+    Ok(if let Some(get_or_post) = get_or_post {
+        if get_or_post.eq_ignore_ascii_case("get") {
+            serde_json::to_string(&request.get_variables)?
+        } else if get_or_post.eq_ignore_ascii_case("post") {
+            serde_json::to_string(&request.post_variables)?
+        } else {
+            return Err(anyhow!(
+                "Expected 'get' or 'post' as the argument to sqlpage.all_variables"
+            ));
+        }
+    } else {
+        use serde::{ser::SerializeMap, Serializer};
+        let mut res = Vec::new();
+        let mut serializer = serde_json::Serializer::new(&mut res);
+        let len = request.get_variables.len() + request.post_variables.len();
+        let mut ser = serializer.serialize_map(Some(len))?;
+        let iter = request.get_variables.iter().chain(&request.post_variables);
+        for (k, v) in iter {
+            ser.serialize_entry(k, v)?;
+        }
+        ser.end()?;
+        String::from_utf8(res)?
+    })
 }
