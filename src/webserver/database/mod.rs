@@ -3,7 +3,9 @@ mod csv_import;
 pub mod execute_queries;
 pub mod migrations;
 mod sql;
-mod sql_pseudofunctions;
+mod sqlpage_functions;
+mod syntax_tree;
+
 mod sql_to_json;
 
 pub use sql::{make_placeholder, ParsedSqlFile};

@@ -7,14 +7,15 @@ use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
 use super::sql::{ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams};
+use super::sqlpage_functions::extract_req_param;
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
-use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::database::sql_to_json::row_to_string;
 use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::sql_pseudofunctions::{extract_req_param_as_json, StmtParam};
+use super::sqlpage_functions::extract_req_param_as_json;
+use super::syntax_tree::StmtParam;
 use super::{highlight_sql_error, Database, DbItem};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;

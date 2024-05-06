@@ -1,3 +1,6 @@
+mod function_definition_macro;
+pub(super) mod functions;
+
 use std::{borrow::Cow, collections::HashMap, str::FromStr};
 
 use actix_web::http::StatusCode;
@@ -15,68 +18,14 @@ use crate::webserver::{
     ErrorWithStatus,
 };
 
+use super::syntax_tree::SqlPageFunctionCall;
+use super::syntax_tree::{GetOrPost, StmtParam};
+
 use super::sql::{
     extract_single_quoted_string, extract_single_quoted_string_optional, extract_variable_argument,
     function_arg_to_stmt_param, stmt_param_error_invalid_arguments, FormatArguments,
 };
 use anyhow::{anyhow, bail, Context};
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub(super) enum StmtParam {
-    Get(String),
-    AllVariables(Option<GetOrPost>),
-    Post(String),
-    GetOrPost(String),
-    Error(String),
-    BasicAuthPassword,
-    BasicAuthUsername,
-    UrlEncode(Box<StmtParam>),
-    Exec(Vec<StmtParam>),
-    CurrentWorkingDir,
-    EnvironmentVariable(String),
-    SqlPageVersion,
-    Literal(String),
-    Concat(Vec<StmtParam>),
-    UploadedFilePath(String),
-    UploadedFileMimeType(String),
-    PersistUploadedFile {
-        field_name: Box<StmtParam>,
-        folder: Option<Box<StmtParam>>,
-        allowed_extensions: Option<Box<StmtParam>>,
-    },
-    ReadFileAsText(Box<StmtParam>),
-    ReadFileAsDataUrl(Box<StmtParam>),
-    RunSql(Box<StmtParam>),
-    Fetch(Box<StmtParam>),
-    Path,
-    Protocol,
-    FunctionCall(SqlPageFunctionCall),
-}
-
-impl std::fmt::Display for StmtParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            StmtParam::Get(name) => write!(f, "?{name}"),
-            StmtParam::Post(name) => write!(f, ":{name}"),
-            StmtParam::GetOrPost(name) => write!(f, "${name}"),
-            StmtParam::Literal(x) => write!(f, "'{}'", x.replace('\'', "''")),
-            StmtParam::Concat(items) => {
-                write!(f, "CONCAT(")?;
-                for item in items {
-                    write!(f, "{item}, ")?;
-                }
-                write!(f, ")")
-            }
-            StmtParam::FunctionCall(call) => write!(f, "{call}"),
-            _ => todo!(),
-        }
-    }
-}
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(super) enum GetOrPost {
-    Get,
-    Post,
-}
 
 fn parse_get_or_post(arg: Option<String>) -> StmtParam {
     if let Some(s) = arg {
@@ -214,7 +163,7 @@ async fn persist_uploaded_file<'a>(
             format!("persist_uploaded_file: unable to create folder {target_folder:?}")
         })?;
     let date = chrono::Utc::now().format("%Y-%m-%d %Hh%Mm%Ss");
-    let random_part = random_string_sync(8);
+    let random_part = functions::random_string_sync(8);
     let random_target_name = format!("{date} {random_part}.{extension}");
     let target_path = target_folder.join(&random_target_name);
     tokio::fs::copy(&uploaded_file.file.path(), &target_path)
@@ -257,14 +206,6 @@ async fn url_encode<'a>(
         }
         param => param,
     }
-}
-
-async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
-    request.cookies.get(&*name).map(SingleOrVec::as_json_str)
-}
-
-async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
-    request.headers.get(&*name).map(SingleOrVec::as_json_str)
 }
 
 async fn exec_external_command<'a>(
@@ -635,34 +576,6 @@ fn extract_get_or_post(
     .ok()
 }
 
-/// Returns a random string of the specified length.
-async fn random_string(len: usize) -> anyhow::Result<String> {
-    // OsRng can block on Linux, so we run this on a blocking thread.
-    Ok(tokio::task::spawn_blocking(move || random_string_sync(len)).await?)
-}
-
-/// Returns a random string of the specified length.
-fn random_string_sync(len: usize) -> String {
-    use rand::{distributions::Alphanumeric, Rng};
-    password_hash::rand_core::OsRng
-        .sample_iter(&Alphanumeric)
-        .take(len)
-        .map(char::from)
-        .collect()
-}
-
-async fn hash_password(password: String) -> anyhow::Result<String> {
-    actix_web::rt::task::spawn_blocking(move || {
-        // Hashes a password using Argon2. This is a CPU-intensive blocking operation.
-        let phf = argon2::Argon2::default();
-        let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
-        let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
-            .map_err(|e| anyhow!("Unable to hash password: {}", e))?;
-        Ok(password_hash.to_string())
-    })
-    .await?
-}
-
 fn extract_basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {
     Ok(extract_basic_auth(request)?.user_id())
 }
@@ -692,248 +605,4 @@ fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {
     let cwd = std::env::current_dir()
         .with_context(|| "unable to access the current working directory")?;
     Ok(Some(Cow::Owned(cwd.to_string_lossy().to_string())))
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct SqlPageFunctionCall {
-    pub function: SqlPageFunctionName,
-    pub arguments: Vec<StmtParam>,
-}
-
-impl SqlPageFunctionCall {
-    pub fn from_func_call(func_name: &str, arguments: &mut [FunctionArg]) -> anyhow::Result<Self> {
-        let function = SqlPageFunctionName::from_str(func_name)?;
-        let arguments = arguments
-            .iter_mut()
-            .map(|arg| {
-                function_arg_to_stmt_param(arg)
-                    .ok_or_else(|| anyhow!("Passing \"{arg}\" to {function:#} is not supported. \n\
-                    The only supported sqlpage function parameter types are : \n\
-                      - variables (such as $my_variable), \n\
-                      - other sqlpage function calls (such as sqlpage.cookie('my_cookie')), \n\
-                      - literal strings (such as 'my_string'), \n\
-                      - concatenations of the above (such as CONCAT(x, y)).\n\n\
-                    Arbitrary SQL exceptions as function arguments are not supported.\n\
-                    Try executing the SQL expression in a separate SET expression, then passing it to the function:\n\n\
-                    SET my_parameter = {arg}; \n\
-                    SELECT ... {function}(... $my_parameter ...) ...
-                    "))
-            })
-            .collect::<anyhow::Result<Vec<_>>>()?;
-        Ok(Self {
-            function,
-            arguments,
-        })
-    }
-
-    pub async fn evaluate<'a>(
-        &self,
-        request: &'a RequestInfo,
-    ) -> anyhow::Result<Option<Cow<'a, str>>> {
-        let evaluated_args = self.arguments.iter().map(|x| extract_req_param(x, request));
-        let evaluated_args = futures_util::future::try_join_all(evaluated_args).await?;
-        self.function.evaluate(request, evaluated_args).await
-    }
-}
-
-impl std::fmt::Display for SqlPageFunctionCall {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}(", self.function)?;
-        // interleave the arguments with commas
-        let mut it = self.arguments.iter();
-        if let Some(x) = it.next() {
-            write!(f, "{x}")?;
-        }
-        for x in it {
-            write!(f, ", {x}")?;
-        }
-        write!(f, ")")
-    }
-}
-
-/// Defines all sqlpage functions using a simple syntax:
-/// `sqlpage_functions! {
-///    simple_function(param1, param2);
-///    function_with_optional_param(param1, param2 optional);
-///    function_with_varargs(param1, param2 repeated);
-/// }`
-macro_rules! sqlpage_functions {
-    ($($func_name:ident($(($request:ty),)? $($param_name:ident : $param_type:ty),*);)*) => {
-        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-        pub enum SqlPageFunctionName {
-            $( #[allow(non_camel_case_types)] $func_name ),*
-        }
-
-        impl FromStr for SqlPageFunctionName {
-            type Err = anyhow::Error;
-
-            fn from_str(s: &str) -> anyhow::Result<Self> {
-                match s {
-                    $(stringify!($func_name) => Ok(SqlPageFunctionName::$func_name),)*
-                    unknown_name => anyhow::bail!("Unknown function {unknown_name:?}"),
-                }
-            }
-        }
-
-        impl std::fmt::Display for SqlPageFunctionName {
-            #[allow(unused_assignments)]
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                match self {
-                    $(SqlPageFunctionName::$func_name => {
-                        write!(f, "sqlpage.{}", stringify!($func_name))?;
-                        if f.alternate() {
-                            write!(f, "(")?;
-                            let mut first = true;
-                            $(
-                                if !first {
-                                    write!(f, ", ")?;
-                                }
-                                write!(f, "{}", stringify!($param_name))?;
-                                first = false;
-                            )*
-                            write!(f, ")")?;
-                        }
-                        Ok(())
-                    }),*
-                }
-            }
-        }
-        impl SqlPageFunctionName {
-            pub(super) async fn evaluate<'a>(
-                &self,
-                #[allow(unused_variables)]
-                request: &'a RequestInfo,
-                params: Vec<Option<Cow<'a, str>>>
-            ) -> anyhow::Result<Option<Cow<'a, str>>> {
-                match self {
-                    $(
-                        SqlPageFunctionName::$func_name => {
-                            let mut iter_params = params.into_iter();
-                            $(
-                                let $param_name = <$param_type as FunctionParamType<'_>>::from_args(&mut iter_params)
-                                    .map_err(|e| anyhow!("Parameter {}: {e}", stringify!($param_name)))?;
-                            )*
-                            if let Some(extraneous_param) = iter_params.next() {
-                                anyhow::bail!("Too many arguments. Remove extra argument {}", as_sql(extraneous_param));
-                            }
-                            let result = $func_name(
-                                $(<$request>::from(request),)*
-                                $($param_name.into_arg()),*
-                            ).await;
-                            result.into_cow_result()
-                        }
-                    )*
-                }
-            }
-        }
-    }
-}
-
-fn as_sql(param: Option<Cow<'_, str>>) -> String {
-    param.map_or_else(|| "NULL".into(), |x| format!("'{}'", x.replace('\'', "''")))
-}
-
-sqlpage_functions! {
-    hash_password(password: String);
-    random_string(string_length: SqlPageFunctionParam<usize>);
-    cookie((&RequestInfo), name: Cow<str>);
-    header((&RequestInfo), name: Cow<str>);
-}
-
-trait FunctionParamType<'a>: Sized {
-    type TargetType: 'a;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self>;
-    fn into_arg(self) -> Self::TargetType;
-}
-
-impl<'a> FunctionParamType<'a> for Option<Cow<'a, str>> {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        arg.next().ok_or_else(|| anyhow!("Missing"))
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-impl<'a> FunctionParamType<'a> for Cow<'a, str> {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        <Option<Cow<'a, str>>>::from_args(arg)?.ok_or_else(|| anyhow!("Unexpected NULL value"))
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-impl<'a> FunctionParamType<'a> for String {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        Ok(<Cow<'a, str>>::from_args(arg)?.into_owned())
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-struct SqlPageFunctionParam<T>(T);
-
-impl<'a, T: FromStr + Sized + 'a> FunctionParamType<'a> for SqlPageFunctionParam<T>
-where
-    <T as FromStr>::Err: Sync + Send + std::error::Error + 'static,
-{
-    type TargetType = T;
-
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        let param = <Cow<'a, str>>::from_args(arg)?;
-        param
-            .parse()
-            .with_context(|| {
-                format!(
-                    "Unable to parse {param:?} as {}",
-                    std::any::type_name::<T>()
-                )
-            })
-            .map(SqlPageFunctionParam)
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self.0
-    }
-}
-trait FunctionResultType<'a> {
-    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>>;
-}
-
-impl<'a, T: IntoCow<'a>> FunctionResultType<'a> for anyhow::Result<T> {
-    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>> {
-        self.map(IntoCow::into_cow)
-    }
-}
-
-impl<'a, T: IntoCow<'a>> FunctionResultType<'a> for T {
-    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>> {
-        Ok(self.into_cow())
-    }
-}
-
-trait IntoCow<'a> {
-    fn into_cow(self) -> Option<Cow<'a, str>>;
-}
-
-impl<'a> IntoCow<'a> for Option<Cow<'a, str>> {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        self
-    }
-}
-
-impl<'a> IntoCow<'a> for Cow<'a, str> {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        Some(self)
-    }
-}
-
-impl<'a> IntoCow<'a> for String {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        Some(Cow::Owned(self))
-    }
 }

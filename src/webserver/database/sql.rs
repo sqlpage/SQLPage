@@ -1,5 +1,6 @@
 use super::csv_import::{extract_csv_copy_statement, CsvImport};
-use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
+use super::sqlpage_functions::func_call_to_param;
+use super::syntax_tree::StmtParam;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::{AppState, Database};
 use anyhow::Context;
@@ -588,9 +589,8 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
 
 #[cfg(test)]
 mod test {
-    use crate::webserver::database::sql_pseudofunctions::{
-        SqlPageFunctionCall, SqlPageFunctionName,
-    };
+    use super::super::sqlpage_functions::functions::SqlPageFunctionName;
+    use super::super::syntax_tree::SqlPageFunctionCall;
 
     use super::*;
 
