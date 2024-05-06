@@ -637,12 +637,9 @@ fn extract_get_or_post(
 }
 
 /// Returns a random string of the specified length.
-async fn random_string(
-    _request: &RequestInfo,
-    len: SqlPageFunctionParam<usize>,
-) -> anyhow::Result<String> {
+async fn random_string(len: usize) -> anyhow::Result<String> {
     // OsRng can block on Linux, so we run this on a blocking thread.
-    Ok(tokio::task::spawn_blocking(move || random_string_sync(len.0)).await?)
+    Ok(tokio::task::spawn_blocking(move || random_string_sync(len)).await?)
 }
 
 /// Returns a random string of the specified length.
@@ -655,7 +652,7 @@ fn random_string_sync(len: usize) -> String {
         .collect()
 }
 
-async fn hash_password(_request: &RequestInfo, password: String) -> anyhow::Result<String> {
+async fn hash_password(password: String) -> anyhow::Result<String> {
     actix_web::rt::task::spawn_blocking(move || {
         // Hashes a password using Argon2. This is a CPU-intensive blocking operation.
         let phf = argon2::Argon2::default();
@@ -805,6 +802,7 @@ macro_rules! sqlpage_functions {
         impl SqlPageFunctionName {
             pub(super) async fn evaluate<'a>(
                 &self,
+                #[allow(unused_variables)]
                 request: &'a RequestInfo,
                 params: Vec<Option<Cow<'a, str>>>
             ) -> anyhow::Result<Option<Cow<'a, str>>> {
@@ -821,7 +819,7 @@ macro_rules! sqlpage_functions {
                             }
                             let result = $func_name(
                                 $(<$request>::from(request),)*
-                                $($param_name),*
+                                $($param_name.into_arg()),*
                             ).await;
                             result.into_cow_result()
                         }
@@ -837,30 +835,38 @@ fn as_sql(param: Option<Cow<'_, str>>) -> String {
 }
 
 sqlpage_functions! {
-    hash_password((&RequestInfo), password: String);
-    random_string((&RequestInfo), string_length: SqlPageFunctionParam<usize>);
+    hash_password(password: String);
+    random_string(string_length: SqlPageFunctionParam<usize>);
 }
 
 trait FunctionParamType<'a>: Sized {
+    type TargetType: 'a;
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self>;
+    fn into_arg(self) -> Self::TargetType;
 }
 
 impl<'a> FunctionParamType<'a> for Option<Cow<'a, str>> {
+    type TargetType = Self;
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         arg.next().ok_or_else(|| anyhow!("Missing"))
     }
+    fn into_arg(self) -> Self::TargetType {self}
 }
 
 impl<'a> FunctionParamType<'a> for Cow<'a, str> {
+    type TargetType = Self;
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         <Option<Cow<'a, str>>>::from_args(arg)?.ok_or_else(|| anyhow!("Unexpected NULL value"))
     }
+    fn into_arg(self) -> Self::TargetType {self}
 }
 
 impl<'a> FunctionParamType<'a> for String {
+    type TargetType = Self;
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         Ok(<Cow<'a, str>>::from_args(arg)?.into_owned())
     }
+    fn into_arg(self) -> Self::TargetType {self}
 }
 
 struct SqlPageFunctionParam<T>(T);
@@ -869,6 +875,8 @@ impl<'a, T: FromStr + Sized + 'a> FunctionParamType<'a> for SqlPageFunctionParam
 where
     <T as FromStr>::Err: Sync + Send + std::error::Error + 'static,
 {
+    type TargetType = T;
+
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         let param = <Cow<'a, str>>::from_args(arg)?;
         param
@@ -881,6 +889,7 @@ where
             })
             .map(SqlPageFunctionParam)
     }
+    fn into_arg(self) -> Self::TargetType {self.0}
 }
 trait FunctionResultType<'a> {
     fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>>;
