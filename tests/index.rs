@@ -134,7 +134,7 @@ async fn test_files() {
         let req_str = format!("/{}?x=1", test_file_path_string);
         let resp = req_path_with_app_data(&req_str, app_data.clone())
             .await
-            .unwrap();
+            .expect(&format!("Failed to get response for {req_str}"));
         let body = test::read_body(resp).await;
         assert!(
             body.starts_with(b"<!DOCTYPE html>"),
@@ -270,7 +270,10 @@ async fn privileged_paths_are_not_accessible() {
 
 async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     let data = make_app_data().await;
-    Ok(test::TestRequest::get().uri(path).app_data(data))
+    Ok(test::TestRequest::get()
+        .uri(path)
+        .insert_header(ContentType::plaintext())
+        .app_data(data))
 }
 
 async fn make_app_data() -> actix_web::web::Data<AppState> {
@@ -286,7 +289,7 @@ async fn req_path(
 ) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     let req = get_request_to(path.as_ref())
         .await?
-        .insert_header(ContentType::plaintext())
+        .insert_header(("cookie", "test_cook=123"))
         .to_srv_request();
     main_handler(req).await
 }
@@ -297,6 +300,7 @@ async fn req_path_with_app_data(
 ) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     let req = test::TestRequest::get()
         .uri(path.as_ref())
+        .insert_header(("cookie", "test_cook=123"))
         .app_data(app_data)
         .to_srv_request();
     main_handler(req).await
