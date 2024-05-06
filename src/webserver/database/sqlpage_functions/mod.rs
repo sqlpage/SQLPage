@@ -1,21 +1,17 @@
 mod function_definition_macro;
 pub(super) mod functions;
 
-use std::{borrow::Cow, collections::HashMap, str::FromStr};
-
-use actix_web::http::StatusCode;
-use actix_web_httpauth::headers::authorization::Basic;
 use awc::http::{header::USER_AGENT, Method};
 use base64::Engine;
 use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
+use std::{borrow::Cow, collections::HashMap, str::FromStr};
 use tokio_stream::StreamExt;
 
 use crate::webserver::{
     database::{execute_queries::stream_query_results_boxed, DbItem},
     http::SingleOrVec,
     http_request_info::RequestInfo,
-    ErrorWithStatus,
 };
 
 use super::syntax_tree::SqlPageFunctionCall;
@@ -45,8 +41,6 @@ fn parse_get_or_post(arg: Option<String>) -> StmtParam {
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
-        "basic_auth_username" => StmtParam::BasicAuthUsername,
-        "basic_auth_password" => StmtParam::BasicAuthPassword,
         "exec" => arguments
             .iter_mut()
             .map(function_arg_to_stmt_param)
@@ -505,12 +499,6 @@ pub(super) async fn extract_req_param<'a>(
             .or_else(|| request.get_variables.get(x))
             .map(SingleOrVec::as_json_str),
         StmtParam::Error(x) => anyhow::bail!("{}", x),
-        StmtParam::BasicAuthPassword => extract_basic_auth_password(request)
-            .map(Cow::Borrowed)
-            .map(Some)?,
-        StmtParam::BasicAuthUsername => extract_basic_auth_username(request)
-            .map(Cow::Borrowed)
-            .map(Some)?,
         StmtParam::CurrentWorkingDir => cwd()?,
         StmtParam::EnvironmentVariable(var) => std::env::var(var)
             .map(Cow::Owned)
@@ -574,31 +562,6 @@ fn extract_get_or_post(
     .map_err(|e| log::warn!("{}", e))
     .map(Cow::Owned)
     .ok()
-}
-
-fn extract_basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {
-    Ok(extract_basic_auth(request)?.user_id())
-}
-
-fn extract_basic_auth_password(request: &RequestInfo) -> anyhow::Result<&str> {
-    let password = extract_basic_auth(request)?.password().ok_or_else(|| {
-        anyhow::Error::new(ErrorWithStatus {
-            status: StatusCode::UNAUTHORIZED,
-        })
-    })?;
-    Ok(password)
-}
-
-fn extract_basic_auth(request: &RequestInfo) -> anyhow::Result<&Basic> {
-    request
-        .basic_auth
-        .as_ref()
-        .ok_or_else(|| {
-            anyhow::Error::new(ErrorWithStatus {
-                status: StatusCode::UNAUTHORIZED,
-            })
-        })
-        .with_context(|| "Expected the user to be authenticated with HTTP basic auth")
 }
 
 fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {

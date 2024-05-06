@@ -21,8 +21,6 @@ pub(crate) enum StmtParam {
     Post(String),
     GetOrPost(String),
     Error(String),
-    BasicAuthPassword,
-    BasicAuthUsername,
     UrlEncode(Box<StmtParam>),
     Exec(Vec<StmtParam>),
     CurrentWorkingDir,

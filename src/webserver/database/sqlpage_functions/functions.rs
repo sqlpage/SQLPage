@@ -1,6 +1,6 @@
 use super::RequestInfo;
-use crate::webserver::http::SingleOrVec;
-use anyhow::anyhow;
+use crate::webserver::{http::SingleOrVec, ErrorWithStatus};
+use anyhow::{anyhow, Context as _};
 use std::borrow::Cow;
 
 super::function_definition_macro::sqlpage_functions! {
@@ -8,6 +8,8 @@ super::function_definition_macro::sqlpage_functions! {
     header((&RequestInfo), name: Cow<str>);
     random_string(string_length: SqlPageFunctionParam<usize>);
     hash_password(password: String);
+    basic_auth_username((&RequestInfo));
+    basic_auth_password((&RequestInfo));
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -44,4 +46,31 @@ pub(crate) async fn hash_password(password: String) -> anyhow::Result<String> {
         Ok(password_hash.to_string())
     })
     .await?
+}
+
+async fn basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {
+    Ok(extract_basic_auth(request)?.user_id())
+}
+
+async fn basic_auth_password(request: &RequestInfo) -> anyhow::Result<&str> {
+    let password = extract_basic_auth(request)?.password().ok_or_else(|| {
+        anyhow::Error::new(ErrorWithStatus {
+            status: actix_web::http::StatusCode::UNAUTHORIZED,
+        })
+    })?;
+    Ok(password)
+}
+
+fn extract_basic_auth(
+    request: &RequestInfo,
+) -> anyhow::Result<&actix_web_httpauth::headers::authorization::Basic> {
+    request
+        .basic_auth
+        .as_ref()
+        .ok_or_else(|| {
+            anyhow::Error::new(ErrorWithStatus {
+                status: actix_web::http::StatusCode::UNAUTHORIZED,
+            })
+        })
+        .with_context(|| "Expected the user to be authenticated with HTTP basic auth")
 }

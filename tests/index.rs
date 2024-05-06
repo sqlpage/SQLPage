@@ -287,10 +287,7 @@ async fn make_app_data() -> actix_web::web::Data<AppState> {
 async fn req_path(
     path: impl AsRef<str>,
 ) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
-    let req = get_request_to(path.as_ref())
-        .await?
-        .insert_header(("cookie", "test_cook=123"))
-        .to_srv_request();
+    let req = get_request_to(path.as_ref()).await?.to_srv_request();
     main_handler(req).await
 }
 
@@ -301,6 +298,7 @@ async fn req_path_with_app_data(
     let req = test::TestRequest::get()
         .uri(path.as_ref())
         .insert_header(("cookie", "test_cook=123"))
+        .insert_header(("authorization", "Basic dGVzdDp0ZXN0")) // test:test
         .app_data(app_data)
         .to_srv_request();
     main_handler(req).await

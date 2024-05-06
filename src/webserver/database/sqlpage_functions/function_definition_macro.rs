@@ -1,7 +1,7 @@
 /// Defines all sqlpage functions
 #[macro_export]
 macro_rules! sqlpage_functions {
-    ($($func_name:ident($(($request:ty),)? $($param_name:ident : $param_type:ty),*);)*) => {
+    ($($func_name:ident($(($request:ty)$(,)?)? $($param_name:ident : $param_type:ty),*);)*) => {
         #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub enum SqlPageFunctionName {
             $( #[allow(non_camel_case_types)] $func_name ),*
@@ -19,20 +19,19 @@ macro_rules! sqlpage_functions {
         }
 
         impl std::fmt::Display for SqlPageFunctionName {
-            #[allow(unused_assignments)]
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 match self {
                     $(SqlPageFunctionName::$func_name => {
                         write!(f, "sqlpage.{}", stringify!($func_name))?;
                         if f.alternate() {
                             write!(f, "(")?;
-                            let mut first = true;
+                            let mut _first = true;
                             $(
-                                if !first {
+                                if !_first {
                                     write!(f, ", ")?;
                                 }
                                 write!(f, "{}", stringify!($param_name))?;
-                                first = false;
+                                _first = false;
                             )*
                             write!(f, ")")?;
                         }
@@ -178,5 +177,11 @@ impl<'a> IntoCow<'a> for Cow<'a, str> {
 impl<'a> IntoCow<'a> for String {
     fn into_cow(self) -> Option<Cow<'a, str>> {
         Some(Cow::Owned(self))
+    }
+}
+
+impl<'a> IntoCow<'a> for &'a str {
+    fn into_cow(self) -> Option<Cow<'a, str>> {
+        Some(Cow::Borrowed(self))
     }
 }
