@@ -16,9 +16,8 @@ use crate::webserver::{
 };
 
 use super::sql::{
-    extract_integer, extract_single_quoted_string, extract_single_quoted_string_optional,
-    extract_variable_argument, function_arg_to_stmt_param, stmt_param_error_invalid_arguments,
-    FormatArguments,
+    extract_single_quoted_string, extract_single_quoted_string_optional, extract_variable_argument,
+    function_arg_to_stmt_param, stmt_param_error_invalid_arguments, FormatArguments,
 };
 use anyhow::{anyhow, bail, Context};
 
@@ -850,7 +849,9 @@ impl<'a> FunctionParamType<'a> for Option<Cow<'a, str>> {
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         arg.next().ok_or_else(|| anyhow!("Missing"))
     }
-    fn into_arg(self) -> Self::TargetType {self}
+    fn into_arg(self) -> Self::TargetType {
+        self
+    }
 }
 
 impl<'a> FunctionParamType<'a> for Cow<'a, str> {
@@ -858,7 +859,9 @@ impl<'a> FunctionParamType<'a> for Cow<'a, str> {
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         <Option<Cow<'a, str>>>::from_args(arg)?.ok_or_else(|| anyhow!("Unexpected NULL value"))
     }
-    fn into_arg(self) -> Self::TargetType {self}
+    fn into_arg(self) -> Self::TargetType {
+        self
+    }
 }
 
 impl<'a> FunctionParamType<'a> for String {
@@ -866,7 +869,9 @@ impl<'a> FunctionParamType<'a> for String {
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
         Ok(<Cow<'a, str>>::from_args(arg)?.into_owned())
     }
-    fn into_arg(self) -> Self::TargetType {self}
+    fn into_arg(self) -> Self::TargetType {
+        self
+    }
 }
 
 struct SqlPageFunctionParam<T>(T);
@@ -889,7 +894,9 @@ where
             })
             .map(SqlPageFunctionParam)
     }
-    fn into_arg(self) -> Self::TargetType {self.0}
+    fn into_arg(self) -> Self::TargetType {
+        self.0
+    }
 }
 trait FunctionResultType<'a> {
     fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>>;
