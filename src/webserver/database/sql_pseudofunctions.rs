@@ -27,7 +27,6 @@ pub(super) enum StmtParam {
     AllVariables(Option<GetOrPost>),
     Post(String),
     GetOrPost(String),
-    Cookie(String),
     Header(String),
     Error(String),
     BasicAuthPassword,
@@ -98,8 +97,6 @@ fn parse_get_or_post(arg: Option<String>) -> StmtParam {
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
-        "cookie" => extract_single_quoted_string("cookie", arguments)
-            .map_or_else(StmtParam::Error, StmtParam::Cookie),
         "header" => extract_single_quoted_string("header", arguments)
             .map_or_else(StmtParam::Error, StmtParam::Header),
         "basic_auth_username" => StmtParam::BasicAuthUsername,
@@ -263,6 +260,10 @@ async fn url_encode<'a>(
         }
         param => param,
     }
+}
+
+async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
+    request.cookies.get(&*name).map(SingleOrVec::as_json_str)
 }
 
 async fn exec_external_command<'a>(
@@ -561,7 +562,6 @@ pub(super) async fn extract_req_param<'a>(
             .get(x)
             .or_else(|| request.get_variables.get(x))
             .map(SingleOrVec::as_json_str),
-        StmtParam::Cookie(x) => request.cookies.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Header(x) => request.headers.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Error(x) => anyhow::bail!("{}", x),
         StmtParam::BasicAuthPassword => extract_basic_auth_password(request)
@@ -836,6 +836,7 @@ fn as_sql(param: Option<Cow<'_, str>>) -> String {
 sqlpage_functions! {
     hash_password(password: String);
     random_string(string_length: SqlPageFunctionParam<usize>);
+    cookie((&RequestInfo), name: Cow<str>);
 }
 
 trait FunctionParamType<'a>: Sized {
