@@ -426,6 +426,9 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
         Expr::Value(Value::SingleQuotedString(param_value)) => {
             Some(StmtParam::Literal(std::mem::take(param_value)))
         }
+        Expr::Value(Value::Number(param_value, _is_long)) => {
+            Some(StmtParam::Literal(param_value.clone()))
+        }
         Expr::BinaryOp {
             // 'str1' || 'str2'
             left,

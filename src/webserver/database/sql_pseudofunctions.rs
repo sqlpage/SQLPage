@@ -35,7 +35,6 @@ pub(super) enum StmtParam {
     BasicAuthUsername,
     UrlEncode(Box<StmtParam>),
     Exec(Vec<StmtParam>),
-    RandomString(usize),
     CurrentWorkingDir,
     EnvironmentVariable(String),
     SqlPageVersion,
@@ -112,8 +111,6 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
             .collect::<Option<Vec<_>>>()
             .map(StmtParam::Exec)
             .unwrap_or_else(|| stmt_param_error_invalid_arguments("exec", arguments)),
-        "random_string" => extract_integer("random_string", arguments)
-            .map_or_else(StmtParam::Error, StmtParam::RandomString),
         "current_working_directory" => StmtParam::CurrentWorkingDir,
         "environment_variable" => extract_single_quoted_string("environment_variable", arguments)
             .map_or_else(StmtParam::Error, StmtParam::EnvironmentVariable),
@@ -224,7 +221,7 @@ async fn persist_uploaded_file<'a>(
             format!("persist_uploaded_file: unable to create folder {target_folder:?}")
         })?;
     let date = chrono::Utc::now().format("%Y-%m-%d %Hh%Mm%Ss");
-    let random_part = random_string(8);
+    let random_part = random_string(request, SqlPageFunctionParam(8)).await?;
     let random_target_name = format!("{date} {random_part}.{extension}");
     let target_path = target_folder.join(&random_target_name);
     tokio::fs::copy(&uploaded_file.file.path(), &target_path)
@@ -574,7 +571,6 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::BasicAuthUsername => extract_basic_auth_username(request)
             .map(Cow::Borrowed)
             .map(Some)?,
-        StmtParam::RandomString(len) => Some(Cow::Owned(random_string(*len))),
         StmtParam::CurrentWorkingDir => cwd()?,
         StmtParam::EnvironmentVariable(var) => std::env::var(var)
             .map(Cow::Owned)
@@ -640,13 +636,17 @@ fn extract_get_or_post(
     .ok()
 }
 
-fn random_string(len: usize) -> String {
+/// Returns a random string of the specified length.
+async fn random_string(_request: &RequestInfo, len: SqlPageFunctionParam<usize>) -> anyhow::Result<String> {
     use rand::{distributions::Alphanumeric, Rng};
-    password_hash::rand_core::OsRng
-        .sample_iter(&Alphanumeric)
-        .take(len)
-        .map(char::from)
-        .collect()
+    // This can take a long time, so we run it in a blocking task
+    Ok(tokio::task::spawn_blocking(move || {
+        rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(len.0)
+            .map(char::from)
+            .collect()
+    }).await?)
 }
 
 async fn hash_password(_request: &RequestInfo, password: String) -> anyhow::Result<String> {
@@ -829,6 +829,7 @@ fn as_sql(param: Option<Cow<'_, str>>) -> String {
 
 sqlpage_functions! {
     hash_password(password: String);
+    random_string(string_length: SqlPageFunctionParam<usize>);
 }
 
 trait FunctionParamType<'a>: Sized {
