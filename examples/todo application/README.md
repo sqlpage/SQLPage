@@ -10,7 +10,7 @@ It is meant as an illustrative example of how to use SQLPage to create a simple 
 
 ![diagram explaining the structure of the application](./explanation_diagram.svg)
 
-### `index.sql`
+### [`index.sql`](./index.sql)
 
 This is the main file of the application.
 It will be loaded when the user visits the root of the application
@@ -22,7 +22,7 @@ in the application to create a consistent layout and top bar.
  - the [`list`](https://sql.ophir.dev/documentation.sql?component=list#component) component to display the list of todo items.
  - the [`button`](https://sql.ophir.dev/documentation.sql?component=button#component) component to create a button that will redirect the user to the [`todo_form.sql`](#todo_formsql) page to create a new todo item when clicked.
 
-### `todo_form.sql`
+### [`todo_form.sql`](./todo_form.sql)
 
 This file is used to create a new todo item or edit an existing one.
 
@@ -35,7 +35,7 @@ It uses:
  the form was submitted, not when the page is
  initially loaded by the user in their browser.
 
-### `delete.sql`
+### [`delete.sql`](./delete.sql)
 
 This file is used to delete a todo item.
 
@@ -72,7 +72,7 @@ The detailed step by step explanation of the delete process is as follows:
     - SQLPage receives the row back from the database, and immediately returns sends a 302 redirect response to the browser, redirecting the user to the `/` page.
     - The following queries are not executed, as the page is redirected before they are processed.
 
-### `shell.sql`
+### [`shell.sql`](./shell.sql)
 
 This file is not meant to be accessed directly by the user (it would display an empty page with only the top bar).
 
