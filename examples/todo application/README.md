@@ -8,8 +8,6 @@ It is meant as an illustrative example of how to use SQLPage to create a simple 
 
 ## Structure
 
-![diagram explaining the structure of the application](./explanation_diagram.svg)
-
 ### [`index.sql`](./index.sql)
 
 This is the main file of the application.
@@ -34,6 +32,8 @@ It uses:
  The order of the components is important, as the `redirect` component cannot be used after the page has been displayed. It is called first to ensure that the user is redirected immediately after submitting the form. It is guarded by a `WHERE :todo_id IS NOT NULL` clause to ensure that it only redirects when 
  the form was submitted, not when the page is
  initially loaded by the user in their browser.
+
+![diagram explaining the structure of the application](./explanation_diagram.svg)
 
 ### [`delete.sql`](./delete.sql)
 
