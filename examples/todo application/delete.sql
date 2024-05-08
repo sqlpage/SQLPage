@@ -19,12 +19,12 @@ select 'dynamic' as component, sqlpage.run_sql('shell.sql') as properties;
 -- and the 'redirect' component will not be returned.
 -- In this case, we display a confirmation message to the user.
 select
-    'alert' as component,
+    'alert' as component, -- an alert is a message that is displayed to the user
     'red' as color,
     'Confirm deletion' as title,
     'Are you sure you want to delete the following todo item ?
 
-> ' || title as description_md,
-    '?todo_id=' || $todo_id || '&confirm=yes' as link,
+> ' || title as description_md, -- we include the text of the todo item in the markdown confirmation message
+    '?todo_id=' || $todo_id || '&confirm=yes' as link, -- When the user clicks on the 'Yes' button, the page will be reloaded with the confirm parameter set to 'yes', so that the delete statement above will delete the todo item
     'Delete' as link_text
-from todos where id = $todo_id;
+from todos where id = $todo_id; -- finds the todo item with the id given in the URL
