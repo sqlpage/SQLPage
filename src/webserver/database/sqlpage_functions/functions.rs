@@ -1,6 +1,6 @@
 use super::RequestInfo;
 use crate::webserver::{http::SingleOrVec, ErrorWithStatus};
-use anyhow::{anyhow, Context as _};
+use anyhow::{anyhow, Context};
 use std::borrow::Cow;
 
 super::function_definition_macro::sqlpage_functions! {
@@ -13,6 +13,9 @@ super::function_definition_macro::sqlpage_functions! {
     variables((&RequestInfo), get_or_post: Option<Cow<str>>);
     url_encode(raw_text: Option<Cow<str>>);
     exec((&RequestInfo), program_name: Cow<str>, args: Vec<Cow<str>>);
+    current_working_directory();
+    environment_variable(name: Cow<str>);
+    version();
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -27,6 +30,12 @@ async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<
 pub(crate) async fn random_string(len: usize) -> anyhow::Result<String> {
     // OsRng can block on Linux, so we run this on a blocking thread.
     Ok(tokio::task::spawn_blocking(move || random_string_sync(len)).await?)
+}
+
+#[tokio::test]
+async fn test_random_string() {
+    let s = random_string(10).await.unwrap();
+    assert_eq!(s.len(), 10);
 }
 
 /// Returns a random string of the specified length.
@@ -49,6 +58,12 @@ pub(crate) async fn hash_password(password: String) -> anyhow::Result<String> {
         Ok(password_hash.to_string())
     })
     .await?
+}
+
+#[tokio::test]
+async fn test_hash_password() {
+    let s = hash_password("password".to_string()).await.unwrap();
+    assert!(s.starts_with("$argon2"));
 }
 
 /// Returns the username from the HTTP basic auth header, if present.
@@ -168,19 +183,20 @@ async fn exec<'a>(
     Ok(String::from_utf8_lossy(&res.stdout).into_owned())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+async fn current_working_directory() -> anyhow::Result<String> {
+    std::env::current_dir()
+        .with_context(|| "unable to access the current working directory")
+        .map(|x| x.to_string_lossy().into_owned())
+}
 
-    #[tokio::test]
-    async fn test_random_string() {
-        let s = random_string(10).await.unwrap();
-        assert_eq!(s.len(), 10);
-    }
+/// Returns the value of an environment variable.
+async fn environment_variable(name: Cow<'_, str>) -> anyhow::Result<Cow<'_, str>> {
+    std::env::var(&*name)
+        .with_context(|| format!("unable to access the environment variable {name}"))
+        .map(Cow::Owned)
+}
 
-    #[tokio::test]
-    async fn test_hash_password() {
-        let s = hash_password("password".to_string()).await.unwrap();
-        assert!(s.starts_with("$argon2"));
-    }
+/// Returns the version of the sqlpage that is running.
+async fn version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
 }

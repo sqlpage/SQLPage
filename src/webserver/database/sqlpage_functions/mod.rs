@@ -25,10 +25,6 @@ use anyhow::{anyhow, bail, Context};
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
-        "current_working_directory" => StmtParam::CurrentWorkingDir,
-        "environment_variable" => extract_single_quoted_string("environment_variable", arguments)
-            .map_or_else(StmtParam::Error, StmtParam::EnvironmentVariable),
-        "version" => StmtParam::SqlPageVersion,
         "path" => StmtParam::Path,
         "protocol" => StmtParam::Protocol,
         "uploaded_file_path" => extract_single_quoted_string("uploaded_file_path", arguments)
@@ -401,12 +397,6 @@ pub(super) async fn extract_req_param<'a>(
             .or_else(|| request.get_variables.get(x))
             .map(SingleOrVec::as_json_str),
         StmtParam::Error(x) => anyhow::bail!("{}", x),
-        StmtParam::CurrentWorkingDir => cwd()?,
-        StmtParam::EnvironmentVariable(var) => std::env::var(var)
-            .map(Cow::Owned)
-            .map(Some)
-            .with_context(|| format!("Unable to read environment variable {var}"))?,
-        StmtParam::SqlPageVersion => Some(Cow::Borrowed(env!("CARGO_PKG_VERSION"))),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::Concat(args) => concat_params(&args[..], request).await?,
         StmtParam::Path => Some(Cow::Borrowed(&request.path)),
@@ -442,10 +432,4 @@ async fn concat_params<'a>(
         result.push_str(&arg);
     }
     Ok(Some(Cow::Owned(result)))
-}
-
-fn cwd() -> anyhow::Result<Option<Cow<'static, str>>> {
-    let cwd = std::env::current_dir()
-        .with_context(|| "unable to access the current working directory")?;
-    Ok(Some(Cow::Owned(cwd.to_string_lossy().to_string())))
 }
