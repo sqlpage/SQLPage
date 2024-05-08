@@ -97,6 +97,26 @@ impl<'a> FunctionParamType<'a> for Option<Cow<'a, str>> {
     }
 }
 
+impl<'a> FunctionParamType<'a> for Vec<Option<Cow<'a, str>>> {
+    type TargetType = Self;
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        Ok(arg.collect())
+    }
+    fn into_arg(self) -> Self::TargetType {
+        self
+    }
+}
+
+impl<'a> FunctionParamType<'a> for Vec<Cow<'a, str>> {
+    type TargetType = Self;
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        Ok(arg.flatten().collect())
+    }
+    fn into_arg(self) -> Self::TargetType {
+        self
+    }
+}
+
 impl<'a> FunctionParamType<'a> for Cow<'a, str> {
     type TargetType = Self;
     fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {

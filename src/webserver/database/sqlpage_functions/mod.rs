@@ -19,18 +19,12 @@ use super::syntax_tree::StmtParam;
 
 use super::sql::{
     extract_single_quoted_string, extract_variable_argument, function_arg_to_stmt_param,
-    stmt_param_error_invalid_arguments, FormatArguments,
+    FormatArguments,
 };
 use anyhow::{anyhow, bail, Context};
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
-        "exec" => arguments
-            .iter_mut()
-            .map(function_arg_to_stmt_param)
-            .collect::<Option<Vec<_>>>()
-            .map(StmtParam::Exec)
-            .unwrap_or_else(|| stmt_param_error_invalid_arguments("exec", arguments)),
         "current_working_directory" => StmtParam::CurrentWorkingDir,
         "environment_variable" => extract_single_quoted_string("environment_variable", arguments)
             .map_or_else(StmtParam::Error, StmtParam::EnvironmentVariable),
@@ -156,52 +150,6 @@ async fn persist_uploaded_file<'a>(
                 format!("persist_uploaded_file: unable to convert path {target_path:?} to a string")
             })?;
     Ok(Some(Cow::Owned(path)))
-}
-
-async fn exec_external_command<'a>(
-    args_params: &[StmtParam],
-    request: &'a RequestInfo,
-) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    if !request.app_state.config.allow_exec {
-        anyhow::bail!("The sqlpage.exec() function is disabled in the configuration. Enable it by setting the allow_exec option to true in the sqlpage.json configuration file.")
-    }
-    let mut iter_params = args_params.iter();
-    let param0 = iter_params
-        .next()
-        .with_context(|| "sqlite.exec(program) requires at least one argument")?;
-    let Some(program_name) = Box::pin(extract_req_param(param0, request)).await? else {
-        return Ok(None);
-    };
-    let mut args = Vec::with_capacity(iter_params.len());
-    for arg in iter_params {
-        args.push(
-            Box::pin(extract_req_param(arg, request))
-                .await?
-                .unwrap_or_else(|| "".into()),
-        );
-    }
-    let res = tokio::process::Command::new(&*program_name)
-        .args(args.iter().map(|x| &**x))
-        .output()
-        .await
-        .with_context(|| {
-            let mut s = format!("Unable to execute command: {program_name}");
-            for arg in args {
-                s.push(' ');
-                s.push_str(&arg);
-            }
-            s
-        })?;
-    if !res.status.success() {
-        bail!(
-            "Command '{program_name}' failed with exit code {}: {}",
-            res.status,
-            String::from_utf8_lossy(&res.stderr)
-        );
-    }
-    Ok(Some(Cow::Owned(
-        String::from_utf8_lossy(&res.stdout).to_string(),
-    )))
 }
 
 async fn read_file_bytes<'a>(
@@ -427,7 +375,6 @@ pub(super) async fn extract_req_param<'a>(
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
         // async functions
-        StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
         StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
         StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
         StmtParam::RunSql(inner) => run_sql(inner, request).await?,

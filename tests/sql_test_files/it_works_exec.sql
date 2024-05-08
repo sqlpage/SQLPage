@@ -1,1 +1,1 @@
-select 'text' as component, sqlpage.exec('echo', $thisisnull, 'It', 'works', '!') as contents;
+select 'text' as component, sqlpage.exec('echo', 'It', $thisisnull, 'works', '!') as contents;
