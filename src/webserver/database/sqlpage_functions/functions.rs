@@ -110,13 +110,12 @@ async fn variables<'a>(
     })
 }
 
-
 /// escapes a string for use in a URL using percent encoding
 /// for example, spaces are replaced with %20, '/' with %2F, etc.
 /// This is useful for constructing URLs in SQL queries.
 /// If this function is passed a NULL value, it will return NULL (None in Rust),
 /// rather than an empty string or an error.
-async fn url_encode<'a>(raw_text: Option<Cow<'a, str>>) -> Option<Cow<'a, str>> {
+async fn url_encode(raw_text: Option<Cow<'_, str>>) -> Option<Cow<'_, str>> {
     Some(match raw_text? {
         Cow::Borrowed(inner) => {
             let encoded = percent_encoding::percent_encode(
