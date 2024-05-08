@@ -167,3 +167,20 @@ async fn exec<'a>(
     }
     Ok(String::from_utf8_lossy(&res.stdout).into_owned())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_random_string() {
+        let s = random_string(10).await.unwrap();
+        assert_eq!(s.len(), 10);
+    }
+
+    #[tokio::test]
+    async fn test_hash_password() {
+        let s = hash_password("password".to_string()).await.unwrap();
+        assert!(s.starts_with("$argon2"));
+    }
+}
