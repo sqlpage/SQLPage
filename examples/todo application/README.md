@@ -46,6 +46,32 @@ is initially loaded, but only when the user
 clicks the "Yes" button, which contains a link 
 pointing to the same page with the `confirm=yes` query parameter.
 
+The detailed step by step explanation of the delete process is as follows:
+ 
+ - From the `index.sql` page, the user clicks the 'Delete' button on a todo item
+ - It loads the page `/delete.sql?todo_id=7` (without the `confirm=yes` parameter)
+   -  the delete statement **is** sent to the database and executed. SQLPage has bound the values to URL query parameters, so we have
+       -  `$todo_id` bound to `'7'`, and
+       -  `$confirm` bound to `NULL` (since there was no `confirm` parameter in the url)
+    - the database evaluates the `where id = $todo_id and $confirm = 'yes'` condition to FALSE
+    - so it deletes nothing, and returns nothing
+    - SQLPage receives no row back from the database, it continues processing normally
+    - it executes the `select 'dynamic' ...` query, which itself requires executing the `shell.sql` file. The result of this is a row that contains `component=dynamic` and `properties={"component": "shell", "title": "My Todo App", ... }`
+    - it renders the page header with the application header and the top bar following the results of the query
+    - it sends to the database the last query: `select 'alert' as component,  ... from todos where id = $todo_id` it binds the parameters like before
+       -  `$todo_id` bound to `'7'`
+    - the database returns a single row, containing `component=alert`, `description_md=Are you sure [...] [the title of the todo item with id 7]`, ...
+    - SQLPage returns the the `alert` component with its contents to the browser
+ - The user sees the confirmation alert and clicks the 'Delete' button
+ - The page is reloaded, this time with the URL `/delete.sql?todo_id=7&confirm=yes`
+     -  the delete statement is sent to the database and executed like last time. But this time SQLPage has bound the values to the new URL query parameters,
+         -  `$todo_id` bound to `'7'`, (like before)
+         -  `$confirm` bound to `'yes'` (since there is now a `confirm` parameter in the url)
+     - the database evaluates the `where id = $todo_id and $confirm = 'yes'` condition to TRUE
+     - so it deletes the todo item with id 7 and, as instructed by the `returning` clause, returns a single row containing `component=redirect`, `link=/`
+    - SQLPage receives the row back from the database, and immediately returns sends a 302 redirect response to the browser, redirecting the user to the `/` page.
+    - The following queries are not executed, as the page is redirected before they are processed.
+
 ### `shell.sql`
 
 This file is not meant to be accessed directly by the user (it would display an empty page with only the top bar).
