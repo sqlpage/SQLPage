@@ -2,9 +2,11 @@
 -- When the form is submitted, we insert the todo item into the database
 -- or update it if it already exists
 -- and redirect the user to the home page.
+-- When the form is initially loaded, :todo is null,
+-- nothing is inserted, and the 'redirect' component is not returned.
 insert or replace into todos(id, title)
 select $todo_id, :todo -- $todo_id will be null if the page is accessed via the 'Add new todo' button (without a ?todo_id= parameter)
-where :todo is not null -- form was submitted
+where :todo is not null -- only insert if the form was submitted
 returning
     'redirect' as component,
     '/' as link;
