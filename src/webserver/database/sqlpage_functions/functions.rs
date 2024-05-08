@@ -11,6 +11,7 @@ super::function_definition_macro::sqlpage_functions! {
     basic_auth_username((&RequestInfo));
     basic_auth_password((&RequestInfo));
     variables((&RequestInfo), get_or_post: Option<Cow<str>>);
+    url_encode(raw_text: Option<Cow<str>>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -49,10 +50,13 @@ pub(crate) async fn hash_password(password: String) -> anyhow::Result<String> {
     .await?
 }
 
+/// Returns the username from the HTTP basic auth header, if present.
+/// Otherwise, returns an HTTP 401 Unauthorized error.
 async fn basic_auth_username(request: &RequestInfo) -> anyhow::Result<&str> {
     Ok(extract_basic_auth(request)?.user_id())
 }
 
+/// Returns the password from the HTTP basic auth header, if present.
 async fn basic_auth_password(request: &RequestInfo) -> anyhow::Result<&str> {
     let password = extract_basic_auth(request)?.password().ok_or_else(|| {
         anyhow::Error::new(ErrorWithStatus {
@@ -76,6 +80,7 @@ fn extract_basic_auth(
         .with_context(|| "Expected the user to be authenticated with HTTP basic auth")
 }
 
+/// Returns all variables in the request as a JSON object.
 async fn variables<'a>(
     request: &'a RequestInfo,
     get_or_post: Option<Cow<'a, str>>,
@@ -102,5 +107,30 @@ async fn variables<'a>(
         }
         ser.end()?;
         String::from_utf8(res)?
+    })
+}
+
+
+/// escapes a string for use in a URL using percent encoding
+/// for example, spaces are replaced with %20, '/' with %2F, etc.
+/// This is useful for constructing URLs in SQL queries.
+/// If this function is passed a NULL value, it will return NULL (None in Rust),
+/// rather than an empty string or an error.
+async fn url_encode<'a>(raw_text: Option<Cow<'a, str>>) -> Option<Cow<'a, str>> {
+    Some(match raw_text? {
+        Cow::Borrowed(inner) => {
+            let encoded = percent_encoding::percent_encode(
+                inner.as_bytes(),
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+            encoded.into()
+        }
+        Cow::Owned(inner) => {
+            let encoded = percent_encoding::percent_encode(
+                inner.as_bytes(),
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+            Cow::Owned(encoded.collect())
+        }
     })
 }

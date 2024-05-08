@@ -20,7 +20,6 @@ pub(crate) enum StmtParam {
     Post(String),
     GetOrPost(String),
     Error(String),
-    UrlEncode(Box<StmtParam>),
     Exec(Vec<StmtParam>),
     CurrentWorkingDir,
     EnvironmentVariable(String),

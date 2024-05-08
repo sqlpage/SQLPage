@@ -34,9 +34,6 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
         "current_working_directory" => StmtParam::CurrentWorkingDir,
         "environment_variable" => extract_single_quoted_string("environment_variable", arguments)
             .map_or_else(StmtParam::Error, StmtParam::EnvironmentVariable),
-        "url_encode" => {
-            StmtParam::UrlEncode(Box::new(extract_variable_argument("url_encode", arguments)))
-        }
         "version" => StmtParam::SqlPageVersion,
         "path" => StmtParam::Path,
         "protocol" => StmtParam::Protocol,
@@ -159,30 +156,6 @@ async fn persist_uploaded_file<'a>(
                 format!("persist_uploaded_file: unable to convert path {target_path:?} to a string")
             })?;
     Ok(Some(Cow::Owned(path)))
-}
-
-async fn url_encode<'a>(
-    inner: &StmtParam,
-    request: &'a RequestInfo,
-) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let param = Box::pin(extract_req_param(inner, request)).await;
-    match param {
-        Ok(Some(Cow::Borrowed(inner))) => {
-            let encoded = percent_encoding::percent_encode(
-                inner.as_bytes(),
-                percent_encoding::NON_ALPHANUMERIC,
-            );
-            Ok(Some(encoded.into()))
-        }
-        Ok(Some(Cow::Owned(inner))) => {
-            let encoded = percent_encoding::percent_encode(
-                inner.as_bytes(),
-                percent_encoding::NON_ALPHANUMERIC,
-            );
-            Ok(Some(Cow::Owned(encoded.to_string())))
-        }
-        param => param,
-    }
 }
 
 async fn exec_external_command<'a>(
@@ -455,7 +428,6 @@ pub(super) async fn extract_req_param<'a>(
     Ok(match param {
         // async functions
         StmtParam::Exec(args_params) => exec_external_command(args_params, request).await?,
-        StmtParam::UrlEncode(inner) => url_encode(inner, request).await?,
         StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
         StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
         StmtParam::RunSql(inner) => run_sql(inner, request).await?,
