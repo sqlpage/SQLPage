@@ -13,7 +13,13 @@ macro_rules! sqlpage_functions {
             fn from_str(s: &str) -> anyhow::Result<Self> {
                 match s {
                     $(stringify!($func_name) => Ok(SqlPageFunctionName::$func_name),)*
-                    unknown_name => anyhow::bail!("Unknown function {unknown_name:?}"),
+                    unknown_name => anyhow::bail!(
+                        "Unknown function {unknown_name:?}.\n\
+                        Supported functions: \n\
+                        {}", [$(SqlPageFunctionName::$func_name),*]
+                            .iter()
+                            .map(|f| format!("  - {f:#}\n"))
+                            .collect::<String>())
                 }
             }
         }
