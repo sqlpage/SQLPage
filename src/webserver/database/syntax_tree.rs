@@ -22,8 +22,6 @@ pub(crate) enum StmtParam {
     Error(String),
     Literal(String),
     Concat(Vec<StmtParam>),
-    UploadedFilePath(String),
-    UploadedFileMimeType(String),
     PersistUploadedFile {
         field_name: Box<StmtParam>,
         folder: Option<Box<StmtParam>>,

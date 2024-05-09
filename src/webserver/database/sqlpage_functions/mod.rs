@@ -15,22 +15,13 @@ use crate::webserver::{
 use super::syntax_tree::SqlPageFunctionCall;
 use super::syntax_tree::StmtParam;
 
-use super::sql::{
-    extract_single_quoted_string, extract_variable_argument, function_arg_to_stmt_param,
-    FormatArguments,
-};
+use super::sql::{extract_variable_argument, function_arg_to_stmt_param, FormatArguments};
 use anyhow::{anyhow, bail, Context};
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
         "path" => StmtParam::Path,
         "protocol" => StmtParam::Protocol,
-        "uploaded_file_path" => extract_single_quoted_string("uploaded_file_path", arguments)
-            .map_or_else(StmtParam::Error, StmtParam::UploadedFilePath),
-        "uploaded_file_mime_type" => {
-            extract_single_quoted_string("uploaded_file_mime_type", arguments)
-                .map_or_else(StmtParam::Error, StmtParam::UploadedFileMimeType)
-        }
         "persist_uploaded_file" => {
             let field_name = Box::new(extract_variable_argument(
                 "persist_uploaded_file",
@@ -325,16 +316,6 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::Concat(args) => concat_params(&args[..], request).await?,
         StmtParam::Path => Some(Cow::Borrowed(&request.path)),
         StmtParam::Protocol => Some(Cow::Borrowed(&request.protocol)),
-        StmtParam::UploadedFilePath(x) => request
-            .uploaded_files
-            .get(x)
-            .and_then(|x| x.file.path().to_str())
-            .map(Cow::Borrowed),
-        StmtParam::UploadedFileMimeType(x) => request
-            .uploaded_files
-            .get(x)
-            .and_then(|x| x.content_type.as_ref())
-            .map(|x| Cow::Borrowed(x.as_ref())),
         StmtParam::FunctionCall(func) => func.evaluate(request).await.with_context(|| {
             format!(
                 "Error in function call {func}.\nExpected {:#}",

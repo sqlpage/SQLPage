@@ -368,29 +368,6 @@ impl std::fmt::Display for FormatArguments<'_> {
     }
 }
 
-pub(super) fn extract_single_quoted_string_optional(
-    arguments: &mut [FunctionArg],
-) -> Option<String> {
-    if let Some(Expr::Value(Value::SingleQuotedString(param_value))) =
-        arguments.first_mut().and_then(function_arg_expr)
-    {
-        return Some(std::mem::take(param_value));
-    }
-    None
-}
-
-pub(super) fn extract_single_quoted_string(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> Result<String, String> {
-    extract_single_quoted_string_optional(arguments).ok_or_else(|| {
-        format!(
-            "{func_name}({}) is not a valid call. Expected a literal single quoted string.",
-            FormatArguments(arguments)
-        )
-    })
-}
-
 pub(super) fn function_arg_to_stmt_param(arg: &mut FunctionArg) -> Option<StmtParam> {
     function_arg_expr(arg).and_then(expr_to_stmt_param)
 }

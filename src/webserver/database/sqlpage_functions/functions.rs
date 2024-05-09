@@ -18,6 +18,8 @@ super::function_definition_macro::sqlpage_functions! {
     version();
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
     read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
+    uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
+    uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -239,7 +241,7 @@ async fn read_file_as_text<'a>(
     Ok(Some(Cow::Owned(as_str)))
 }
 
-fn mime_from_upload<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a mime_guess::Mime> {
+fn mime_from_upload_path<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a mime_guess::Mime> {
     request.uploaded_files.values().find_map(|uploaded_file| {
         if uploaded_file.file.path() == OsStr::new(path) {
             uploaded_file.content_type.as_ref()
@@ -263,7 +265,7 @@ async fn read_file_as_data_url<'a>(
         return Ok(None);
     };
     let bytes = read_file_bytes(request, &file_path).await?;
-    let mime = mime_from_upload(request, &file_path).map_or_else(
+    let mime = mime_from_upload_path(request, &file_path).map_or_else(
         || Cow::Owned(mime_guess_from_filename(&file_path)),
         Cow::Borrowed,
     );
@@ -274,4 +276,24 @@ async fn read_file_as_data_url<'a>(
         &mut data_url,
     );
     Ok(Some(Cow::Owned(data_url)))
+}
+
+async fn uploaded_file_mime_type<'a>(
+    request: &'a RequestInfo,
+    upload_name: Cow<'a, str>,
+) -> Option<Cow<'a, str>> {
+    let mime = request
+        .uploaded_files
+        .get(&*upload_name)?
+        .content_type
+        .as_ref()?;
+    Some(Cow::Borrowed(mime.as_ref()))
+}
+
+async fn uploaded_file_path<'a>(
+    request: &'a RequestInfo,
+    upload_name: Cow<'a, str>,
+) -> Option<Cow<'a, str>> {
+    let uploaded_file = request.uploaded_files.get(&*upload_name)?;
+    Some(uploaded_file.file.path().to_string_lossy())
 }
