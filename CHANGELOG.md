@@ -10,6 +10,7 @@
  - The SQLPage function system was greatly improved
    - All the functions can now be freely combined and nested, without any limitation. No more `Expected a literal single quoted string.` errors when trying to nest functions.
    - The error messages when a function call is invalid were rewritten, to include more context, and provide suggestions on how to fix the error. This should make it easier get started with SQLPage functions.
+   - Adding new functions is now easier, and the code is more maintainable. This should make it easier to contribute new functions to SQLPage. If you have an idea for a new function, feel free to open an issue or a pull request on the SQLPage repository. All sqlpage functions are defined in [`functions.rs`](./src/webserver/database/sqlpage_functions/functions.rs).
 
 ## 0.20.4 (2024-04-23)
 
