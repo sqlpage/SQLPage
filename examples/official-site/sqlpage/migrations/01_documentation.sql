@@ -868,4 +868,4 @@ so you can also [create your own shell component](custom_components.sql#custom-s
 If you generate your own HTML from a SQL query, you can also use the `shell-empty` component to include it in a page.
 Make sure you know what you are doing, and be careful to escape the HTML properly,
 as you are stepping out of the safe SQLPage framework and into the wild world of HTML.',
-    json('[{"component":"shell-empty"}, {"component": "text", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));
+    json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));

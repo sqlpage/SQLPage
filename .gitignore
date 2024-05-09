@@ -5,4 +5,5 @@ sqlpage.db
 docs/presentation-pgconf.html
 examples/inrap_badass/
 sqlpage/https/*
+x.sql
 **/sqlpage.bin

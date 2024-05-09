@@ -134,7 +134,7 @@ async fn test_files() {
         let req_str = format!("/{}?x=1", test_file_path_string);
         let resp = req_path_with_app_data(&req_str, app_data.clone())
             .await
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Failed to get response for {req_str}"));
         let body = test::read_body(resp).await;
         assert!(
             body.starts_with(b"<!DOCTYPE html>"),
@@ -224,6 +224,30 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_upload_file_data_url() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/upload_file_data_url_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"testfile.txt\"\r\n\
+            Content-Type: application/json\r\n\
+            \r\n\
+            {\"a\": 1}\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    // The file name suffix was ".txt", but the content type was "application/json"
+    // so the file should be treated as a JSON file
+    assert_eq!(body_str, "data:application/json;base64,eyJhIjogMX0=");
+    Ok(())
+}
+
+#[actix_web::test]
 async fn test_csv_upload() -> actix_web::Result<()> {
     let req = get_request_to("/tests/upload_csv_test.sql")
         .await?
@@ -270,7 +294,10 @@ async fn privileged_paths_are_not_accessible() {
 
 async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     let data = make_app_data().await;
-    Ok(test::TestRequest::get().uri(path).app_data(data))
+    Ok(test::TestRequest::get()
+        .uri(path)
+        .insert_header(ContentType::plaintext())
+        .app_data(data))
 }
 
 async fn make_app_data() -> actix_web::web::Data<AppState> {
@@ -284,10 +311,7 @@ async fn make_app_data() -> actix_web::web::Data<AppState> {
 async fn req_path(
     path: impl AsRef<str>,
 ) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
-    let req = get_request_to(path.as_ref())
-        .await?
-        .insert_header(ContentType::plaintext())
-        .to_srv_request();
+    let req = get_request_to(path.as_ref()).await?.to_srv_request();
     main_handler(req).await
 }
 
@@ -297,6 +321,8 @@ async fn req_path_with_app_data(
 ) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     let req = test::TestRequest::get()
         .uri(path.as_ref())
+        .insert_header(("cookie", "test_cook=123"))
+        .insert_header(("authorization", "Basic dGVzdDp0ZXN0")) // test:test
         .app_data(app_data)
         .to_srv_request();
     main_handler(req).await

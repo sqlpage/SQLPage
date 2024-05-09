@@ -1,5 +1,6 @@
 use super::csv_import::{extract_csv_copy_statement, CsvImport};
-use super::sql_pseudofunctions::{func_call_to_param, StmtParam};
+use super::sqlpage_functions::func_call_to_param;
+use super::syntax_tree::StmtParam;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::{AppState, Database};
 use anyhow::Context;
@@ -367,44 +368,6 @@ impl std::fmt::Display for FormatArguments<'_> {
     }
 }
 
-pub(super) fn extract_single_quoted_string_optional(
-    arguments: &mut [FunctionArg],
-) -> Option<String> {
-    if let Some(Expr::Value(Value::SingleQuotedString(param_value))) =
-        arguments.first_mut().and_then(function_arg_expr)
-    {
-        return Some(std::mem::take(param_value));
-    }
-    None
-}
-
-pub(super) fn extract_single_quoted_string(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> Result<String, String> {
-    extract_single_quoted_string_optional(arguments).ok_or_else(|| {
-        format!(
-            "{func_name}({}) is not a valid call. Expected a literal single quoted string.",
-            FormatArguments(arguments)
-        )
-    })
-}
-
-pub(super) fn extract_integer(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> Result<usize, String> {
-    match arguments.first_mut().and_then(function_arg_expr) {
-        Some(Expr::Value(Value::Number(param_value, _b))) => param_value
-            .parse::<usize>()
-            .map_err(|e| format!("{func_name}({param_value}) failed: {e}")),
-        _ => Err(format!(
-            "{func_name}({}) is not a valid call. Expected a literal integer",
-            FormatArguments(arguments)
-        )),
-    }
-}
-
 pub(super) fn function_arg_to_stmt_param(arg: &mut FunctionArg) -> Option<StmtParam> {
     function_arg_expr(arg).and_then(expr_to_stmt_param)
 }
@@ -425,6 +388,9 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
         )),
         Expr::Value(Value::SingleQuotedString(param_value)) => {
             Some(StmtParam::Literal(std::mem::take(param_value)))
+        }
+        Expr::Value(Value::Number(param_value, _is_long)) => {
+            Some(StmtParam::Literal(param_value.clone()))
         }
         Expr::BinaryOp {
             // 'str1' || 'str2'
@@ -457,39 +423,15 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
     }
 }
 
-pub(super) fn stmt_param_error_invalid_arguments(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> StmtParam {
-    StmtParam::Error(format!(
-        "{func_name}({}) is not a valid call. \
-        Only variables (such as $my_variable), \
-        sqlpage function calls (such as sqlpage.header('my_header')), \
-        constants (such as 'my_string'), \
-        and concatenations (such as CONCAT(x, y)) \
-        are supported as arguments to sqlpage functions.",
-        FormatArguments(arguments)
-    ))
-}
-
-pub(super) fn extract_optional_variable_argument(
-    arguments: &mut [FunctionArg],
-) -> Option<StmtParam> {
-    arguments.first_mut().and_then(function_arg_to_stmt_param)
-}
-
-pub(super) fn extract_variable_argument(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> StmtParam {
-    extract_optional_variable_argument(arguments)
-        .unwrap_or_else(|| stmt_param_error_invalid_arguments(func_name, arguments))
-}
-
 fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
     match arg {
         FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) => Some(expr),
-        _ => None,
+        other => {
+            log::warn!(
+                "Using named function arguments ({other}) is not supported by SQLPage functions."
+            );
+            None
+        }
     }
 }
 
@@ -595,6 +537,9 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
 
 #[cfg(test)]
 mod test {
+    use super::super::sqlpage_functions::functions::SqlPageFunctionName;
+    use super::super::syntax_tree::SqlPageFunctionCall;
+
     use super::*;
 
     fn parse_stmt(sql: &str, dialect: &dyn Dialect) -> Statement {
@@ -623,7 +568,10 @@ mod test {
                 StmtParam::GetOrPost("x".to_string()),
                 StmtParam::GetOrPost("a".to_string()),
                 StmtParam::GetOrPost("x".to_string()),
-                StmtParam::Cookie("cookoo".to_string()),
+                StmtParam::FunctionCall(SqlPageFunctionCall {
+                    function: SqlPageFunctionName::cookie,
+                    arguments: vec![StmtParam::Literal("cookoo".to_string())]
+                }),
             ]
         );
     }
@@ -655,13 +603,14 @@ mod test {
     #[test]
     fn test_sqlpage_function_with_argument() {
         for &(dialect, kind) in ALL_DIALECTS {
-            let mut ast = parse_stmt("select sqlpage.hash_password($x)", dialect);
+            let mut ast = parse_stmt("select sqlpage.fetch($x)", dialect);
             let parameters = ParameterExtractor::extract_parameters(&mut ast, kind);
             assert_eq!(
                 parameters,
-                [StmtParam::HashPassword(Box::new(StmtParam::GetOrPost(
-                    "x".to_string()
-                )))],
+                [StmtParam::FunctionCall(SqlPageFunctionCall {
+                    function: SqlPageFunctionName::fetch,
+                    arguments: vec![StmtParam::GetOrPost("x".to_string())]
+                })],
                 "Failed for dialect {dialect:?}"
             );
         }
@@ -768,9 +717,10 @@ mod test {
             &MsSqlDialect {},
         ];
         for &dialect in dialects {
-            let parsed: Vec<ParsedStatement> = parse_sql(dialect, sql).unwrap().collect();
             use SimpleSelectValue::{Dynamic, Static};
             use StmtParam::GetOrPost;
+
+            let parsed: Vec<ParsedStatement> = parse_sql(dialect, sql).unwrap().collect();
             match &parsed[..] {
                 [ParsedStatement::StaticSimpleSelect(q)] => assert_eq!(
                     q,
@@ -788,15 +738,15 @@ mod test {
     #[test]
     fn test_simple_select_only_extraction() {
         use SimpleSelectValue::{Dynamic, Static};
-        use StmtParam::Cookie;
+        use StmtParam::GetOrPost;
         assert_eq!(
             extract_static_simple_select(
                 &parse_postgres_stmt("select 'text' as component, $1 as contents"),
-                &[Cookie("cook".into())]
+                &[GetOrPost("cook".into())]
             ),
             Some(vec![
                 ("component".into(), Static("text".into())),
-                ("contents".into(), Dynamic(Cookie("cook".into()))),
+                ("contents".into(), Dynamic(GetOrPost("cook".into()))),
             ])
         );
     }

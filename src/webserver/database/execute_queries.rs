@@ -7,14 +7,14 @@ use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
 use super::sql::{ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams};
+use super::sqlpage_functions::extract_req_param;
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
-use crate::webserver::database::sql_pseudofunctions::extract_req_param;
 use crate::webserver::database::sql_to_json::row_to_string;
 use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::sql_pseudofunctions::{extract_req_param_as_json, StmtParam};
+use super::syntax_tree::StmtParam;
 use super::{highlight_sql_error, Database, DbItem};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
@@ -65,7 +65,7 @@ pub fn stream_query_results<'a>(
                 ParsedStatement::SetVariable { variable, value} => {
                     execute_set_variable_query(db, &mut connection_opt, request, variable, value).await
                     .with_context(||
-                        format!("Failed to set the {variable:?} variable to {value:?}")
+                        format!("Failed to set the {variable} variable to {value:?}")
                     )?;
                 },
                 ParsedStatement::StaticSimpleSelect(value) => {
@@ -94,6 +94,19 @@ async fn exec_static_simple_select(
         map = add_value_to_map(map, (name.clone(), value));
     }
     Ok(serde_json::Value::Object(map))
+}
+
+/// Extracts the value of a parameter from the request.
+/// Returns `Ok(None)` when NULL should be used as the parameter value.
+async fn extract_req_param_as_json(
+    param: &StmtParam,
+    request: &RequestInfo,
+) -> anyhow::Result<serde_json::Value> {
+    if let Some(val) = extract_req_param(param, request).await? {
+        Ok(serde_json::Value::String(val.into_owned()))
+    } else {
+        Ok(serde_json::Value::Null)
+    }
 }
 
 /// This function is used to create a pinned boxed stream of query results.
@@ -206,7 +219,7 @@ async fn bind_parameters<'a>(
     log::debug!("Preparing statement: {}", sql);
     let mut arguments = AnyArguments::default();
     for (param_idx, param) in stmt.params.iter().enumerate() {
-        log::trace!("\tevaluating parameter {}: {:?}", param_idx + 1, param);
+        log::trace!("\tevaluating parameter {}: {}", param_idx + 1, param);
         let argument = extract_req_param(param, request).await?;
         log::debug!(
             "\tparameter {}: {}",

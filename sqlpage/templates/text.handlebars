@@ -1,14 +1,14 @@
 {{{~html~}}}
-{{#if title}}
+{{~#if title~}}
     <h1 id="{{id}}" class="mt-3 {{#if center}}text-center{{/if}}">{{title}}</h1>
-{{else}}
+{{~else~}}
     {{#if id}}
         <a id="{{id}}"></a>
     {{/if}}
-{{/if}}
-{{#if contents_md}}
+{{~/if~}}
+{{~#if contents_md~}}
     <div class="remove-bottom-margin">{{{markdown contents_md}}}</div>
-{{/if}}
+{{~/if~}}
 <p class="{{#if center}}mx-auto{{/if}}">
     {{contents}}
     {{~#each_row~}}
