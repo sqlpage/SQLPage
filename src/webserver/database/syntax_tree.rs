@@ -40,15 +40,13 @@ impl std::fmt::Display for StmtParam {
                 write!(f, ")")
             }
             StmtParam::FunctionCall(call) => write!(f, "{call}"),
-            StmtParam::Error(x) => write!(
-                f,
-                "ERROR('{}...')",
-                if f.alternate() {
-                    x
+            StmtParam::Error(x) => {
+                if let Some((i, _)) = x.char_indices().nth(21) {
+                    write!(f, "## {}... ##", &x[..i])
                 } else {
-                    &x[..x.char_indices().nth(21).map_or(x.len(), |(i, _)| i)]
+                    write!(f, "## {} ##", x)
                 }
-            ),
+            }
         }
     }
 }
