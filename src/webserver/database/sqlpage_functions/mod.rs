@@ -20,8 +20,6 @@ use anyhow::{anyhow, bail, Context};
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
-        "path" => StmtParam::Path,
-        "protocol" => StmtParam::Protocol,
         "persist_uploaded_file" => {
             let field_name = Box::new(extract_variable_argument(
                 "persist_uploaded_file",
@@ -314,8 +312,6 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::Error(x) => anyhow::bail!("{}", x),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::Concat(args) => concat_params(&args[..], request).await?,
-        StmtParam::Path => Some(Cow::Borrowed(&request.path)),
-        StmtParam::Protocol => Some(Cow::Borrowed(&request.protocol)),
         StmtParam::FunctionCall(func) => func.evaluate(request).await.with_context(|| {
             format!(
                 "Error in function call {func}.\nExpected {:#}",

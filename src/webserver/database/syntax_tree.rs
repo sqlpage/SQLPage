@@ -29,8 +29,6 @@ pub(crate) enum StmtParam {
     },
     RunSql(Box<StmtParam>),
     Fetch(Box<StmtParam>),
-    Path,
-    Protocol,
     FunctionCall(SqlPageFunctionCall),
 }
 

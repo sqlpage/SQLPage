@@ -20,6 +20,8 @@ super::function_definition_macro::sqlpage_functions! {
     read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
+    path((&RequestInfo));
+    protocol((&RequestInfo));
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -296,4 +298,14 @@ async fn uploaded_file_path<'a>(
 ) -> Option<Cow<'a, str>> {
     let uploaded_file = request.uploaded_files.get(&*upload_name)?;
     Some(uploaded_file.file.path().to_string_lossy())
+}
+
+/// Returns the path component of the URL of the current request.
+async fn path(request: &RequestInfo) -> &str {
+    &request.path
+}
+
+/// Returns the protocol of the current request (http or https).
+async fn protocol(request: &RequestInfo) -> &str {
+    &request.protocol
 }
