@@ -44,7 +44,7 @@ impl std::fmt::Display for StmtParam {
                 if let Some((i, _)) = x.char_indices().nth(21) {
                     write!(f, "## {}... ##", &x[..i])
                 } else {
-                    write!(f, "## {} ##", x)
+                    write!(f, "## {x} ##")
                 }
             }
         }
