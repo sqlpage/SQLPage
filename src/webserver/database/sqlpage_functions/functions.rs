@@ -2,7 +2,7 @@ use super::RequestInfo;
 use crate::webserver::{http::SingleOrVec, ErrorWithStatus};
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
-use std::{borrow::Cow, ffi::OsStr};
+use std::{borrow::Cow, ffi::OsStr, str::FromStr};
 
 super::function_definition_macro::sqlpage_functions! {
     cookie((&RequestInfo), name: Cow<str>);
@@ -25,6 +25,7 @@ super::function_definition_macro::sqlpage_functions! {
     protocol((&RequestInfo));
     persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
     run_sql((&RequestInfo), sql_file_path: Option<Cow<str>>);
+    fetch(http_request: SqlPageFunctionParam<super::http_fetch_request::Req<'_>>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -419,4 +420,45 @@ async fn run_sql<'a>(
     }
     seq.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
+}
+
+async fn fetch(http_request: super::http_fetch_request::Req<'_>) -> anyhow::Result<String> {
+    use awc::http::Method;
+    let client = awc::Client::builder()
+        .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
+        .finish();
+    let method = if let Some(method) = http_request.method {
+        Method::from_str(&method)?
+    } else {
+        Method::GET
+    };
+    let mut req = client.request(method, http_request.url.as_ref());
+    for (k, v) in http_request.headers {
+        req = req.insert_header((k.as_ref(), v.as_ref()));
+    }
+    log::info!("Fetching {}", http_request.url);
+    let mut response = if let Some(body) = http_request.body {
+        let val = body.get();
+        // The body can be either json, or a string representing a raw body
+        let body = if val.starts_with('"') {
+            serde_json::from_str::<'_, String>(val)?
+        } else {
+            req = req.content_type("application/json");
+            val.to_owned()
+        };
+        req.send_body(body)
+    } else {
+        req.send()
+    }
+    .await
+    .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
+    log::debug!(
+        "Finished fetching {}. Status: {}",
+        http_request.url,
+        response.status()
+    );
+    let body = response.body().await?.to_vec();
+    let response_str = String::from_utf8(body)?;
+    log::debug!("Fetch response: {response_str}");
+    Ok(response_str)
 }

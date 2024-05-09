@@ -423,35 +423,6 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
     }
 }
 
-pub(super) fn stmt_param_error_invalid_arguments(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> StmtParam {
-    StmtParam::Error(format!(
-        "{func_name}({}) is not a valid call. \
-        Only variables (such as $my_variable), \
-        sqlpage function calls (such as sqlpage.header('my_header')), \
-        constants (such as 'my_string'), \
-        and concatenations (such as CONCAT(x, y)) \
-        are supported as arguments to sqlpage functions.",
-        FormatArguments(arguments)
-    ))
-}
-
-pub(super) fn extract_optional_variable_argument(
-    arguments: &mut [FunctionArg],
-) -> Option<StmtParam> {
-    arguments.first_mut().and_then(function_arg_to_stmt_param)
-}
-
-pub(super) fn extract_variable_argument(
-    func_name: &'static str,
-    arguments: &mut [FunctionArg],
-) -> StmtParam {
-    extract_optional_variable_argument(arguments)
-        .unwrap_or_else(|| stmt_param_error_invalid_arguments(func_name, arguments))
-}
-
 fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
     match arg {
         FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) => Some(expr),
@@ -636,9 +607,10 @@ mod test {
             let parameters = ParameterExtractor::extract_parameters(&mut ast, kind);
             assert_eq!(
                 parameters,
-                [StmtParam::Fetch(Box::new(StmtParam::GetOrPost(
-                    "x".to_string()
-                )))],
+                [StmtParam::FunctionCall(SqlPageFunctionCall {
+                    function: SqlPageFunctionName::fetch,
+                    arguments: vec![StmtParam::GetOrPost("x".to_string())]
+                })],
                 "Failed for dialect {dialect:?}"
             );
         }
@@ -745,9 +717,10 @@ mod test {
             &MsSqlDialect {},
         ];
         for &dialect in dialects {
-            let parsed: Vec<ParsedStatement> = parse_sql(dialect, sql).unwrap().collect();
             use SimpleSelectValue::{Dynamic, Static};
             use StmtParam::GetOrPost;
+
+            let parsed: Vec<ParsedStatement> = parse_sql(dialect, sql).unwrap().collect();
             match &parsed[..] {
                 [ParsedStatement::StaticSimpleSelect(q)] => assert_eq!(
                     q,

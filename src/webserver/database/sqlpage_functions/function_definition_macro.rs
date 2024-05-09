@@ -47,7 +47,7 @@ macro_rules! sqlpage_functions {
                 request: &'a RequestInfo,
                 params: Vec<Option<Cow<'a, str>>>
             ) -> anyhow::Result<Option<Cow<'a, str>>> {
-                use $crate::webserver::database::sqlpage_functions::function_definition_macro::*;
+                use $crate::webserver::database::sqlpage_functions::function_traits::*;
                 match self {
                     $(
                         SqlPageFunctionName::$func_name => {
@@ -61,7 +61,7 @@ macro_rules! sqlpage_functions {
                             }
                             let result = $func_name(
                                 $(<$request>::from(request),)*
-                                $($param_name.into_arg()),*
+                                $($param_name.into()),*
                             ).await;
                             result.into_cow_result()
                         }
@@ -72,136 +72,4 @@ macro_rules! sqlpage_functions {
     }
 }
 
-use std::{borrow::Cow, str::FromStr};
-
-use anyhow::Context as _;
 pub use sqlpage_functions;
-
-pub(super) fn as_sql(param: Option<Cow<'_, str>>) -> String {
-    param.map_or_else(|| "NULL".into(), |x| format!("'{}'", x.replace('\'', "''")))
-}
-
-pub(super) trait FunctionParamType<'a>: Sized {
-    type TargetType: 'a;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self>;
-    fn into_arg(self) -> Self::TargetType;
-}
-
-impl<'a> FunctionParamType<'a> for Option<Cow<'a, str>> {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        Ok(arg.next().flatten())
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-impl<'a> FunctionParamType<'a> for Vec<Option<Cow<'a, str>>> {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        Ok(arg.collect())
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-impl<'a> FunctionParamType<'a> for Vec<Cow<'a, str>> {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        Ok(arg.flatten().collect())
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-impl<'a> FunctionParamType<'a> for Cow<'a, str> {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        <Option<Cow<'a, str>>>::from_args(arg)?
-            .ok_or_else(|| anyhow::anyhow!("Unexpected NULL value"))
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-impl<'a> FunctionParamType<'a> for String {
-    type TargetType = Self;
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        Ok(<Cow<'a, str>>::from_args(arg)?.into_owned())
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self
-    }
-}
-
-pub(super) struct SqlPageFunctionParam<T>(T);
-
-impl<'a, T: FromStr + Sized + 'a> FunctionParamType<'a> for SqlPageFunctionParam<T>
-where
-    <T as FromStr>::Err: Sync + Send + std::error::Error + 'static,
-{
-    type TargetType = T;
-
-    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
-        let param = <Cow<'a, str>>::from_args(arg)?;
-        param
-            .parse()
-            .with_context(|| {
-                format!(
-                    "Unable to parse {param:?} as {}",
-                    std::any::type_name::<T>()
-                )
-            })
-            .map(SqlPageFunctionParam)
-    }
-    fn into_arg(self) -> Self::TargetType {
-        self.0
-    }
-}
-pub(super) trait FunctionResultType<'a> {
-    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>>;
-}
-
-impl<'a, T: IntoCow<'a>> FunctionResultType<'a> for anyhow::Result<T> {
-    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>> {
-        self.map(IntoCow::into_cow)
-    }
-}
-
-impl<'a, T: IntoCow<'a>> FunctionResultType<'a> for T {
-    fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>> {
-        Ok(self.into_cow())
-    }
-}
-
-trait IntoCow<'a> {
-    fn into_cow(self) -> Option<Cow<'a, str>>;
-}
-
-impl<'a> IntoCow<'a> for Option<Cow<'a, str>> {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        self
-    }
-}
-
-impl<'a> IntoCow<'a> for Cow<'a, str> {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        Some(self)
-    }
-}
-
-impl<'a> IntoCow<'a> for String {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        Some(Cow::Owned(self))
-    }
-}
-
-impl<'a> IntoCow<'a> for &'a str {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        Some(Cow::Borrowed(self))
-    }
-}

@@ -22,7 +22,6 @@ pub(crate) enum StmtParam {
     Error(String),
     Literal(String),
     Concat(Vec<StmtParam>),
-    Fetch(Box<StmtParam>),
     FunctionCall(SqlPageFunctionCall),
 }
 
@@ -41,7 +40,7 @@ impl std::fmt::Display for StmtParam {
                 write!(f, ")")
             }
             StmtParam::FunctionCall(call) => write!(f, "{call}"),
-            _ => todo!(),
+            StmtParam::Error(x) => write!(f, "ERROR('{x}')"),
         }
     }
 }

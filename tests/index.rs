@@ -134,7 +134,7 @@ async fn test_files() {
         let req_str = format!("/{}?x=1", test_file_path_string);
         let resp = req_path_with_app_data(&req_str, app_data.clone())
             .await
-            .expect(&format!("Failed to get response for {req_str}"));
+            .unwrap_or_else(|_| panic!("Failed to get response for {req_str}"));
         let body = test::read_body(resp).await;
         assert!(
             body.starts_with(b"<!DOCTYPE html>"),
