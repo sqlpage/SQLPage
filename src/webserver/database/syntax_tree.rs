@@ -29,8 +29,6 @@ pub(crate) enum StmtParam {
         folder: Option<Box<StmtParam>>,
         allowed_extensions: Option<Box<StmtParam>>,
     },
-    ReadFileAsText(Box<StmtParam>),
-    ReadFileAsDataUrl(Box<StmtParam>),
     RunSql(Box<StmtParam>),
     Fetch(Box<StmtParam>),
     Path,

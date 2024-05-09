@@ -224,6 +224,30 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_upload_file_data_url() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/upload_file_data_url_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"testfile.txt\"\r\n\
+            Content-Type: application/json\r\n\
+            \r\n\
+            {\"a\": 1}\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    // The file name suffix was ".txt", but the content type was "application/json"
+    // so the file should be treated as a JSON file
+    assert_eq!(body_str, "data:application/json;base64,eyJhIjogMX0=");
+    Ok(())
+}
+
+#[actix_web::test]
 async fn test_csv_upload() -> actix_web::Result<()> {
     let req = get_request_to("/tests/upload_csv_test.sql")
         .await?

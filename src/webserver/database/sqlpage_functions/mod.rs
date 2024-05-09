@@ -2,8 +2,6 @@ mod function_definition_macro;
 pub(super) mod functions;
 
 use awc::http::{header::USER_AGENT, Method};
-use base64::Engine;
-use mime_guess::{mime::APPLICATION_OCTET_STREAM, Mime};
 use sqlparser::ast::FunctionArg;
 use std::{borrow::Cow, str::FromStr};
 use tokio_stream::StreamExt;
@@ -52,13 +50,6 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
                 allowed_extensions,
             }
         }
-        "read_file_as_text" => StmtParam::ReadFileAsText(Box::new(extract_variable_argument(
-            "read_file_as_text",
-            arguments,
-        ))),
-        "read_file_as_data_url" => StmtParam::ReadFileAsDataUrl(Box::new(
-            extract_variable_argument("read_file_as_data_url", arguments),
-        )),
         "run_sql" => StmtParam::RunSql(Box::new(extract_variable_argument("run_sql", arguments))),
         "fetch" => StmtParam::Fetch(Box::new(extract_variable_argument("fetch", arguments))),
         _ => SqlPageFunctionCall::from_func_call(func_name, arguments)
@@ -146,58 +137,6 @@ async fn persist_uploaded_file<'a>(
                 format!("persist_uploaded_file: unable to convert path {target_path:?} to a string")
             })?;
     Ok(Some(Cow::Owned(path)))
-}
-
-async fn read_file_bytes<'a>(
-    path_str: &str,
-    request: &'a RequestInfo,
-) -> Result<Vec<u8>, anyhow::Error> {
-    let path = std::path::Path::new(path_str);
-    // If the path is relative, it's relative to the web root, not the current working directory,
-    // and it can be fetched from the on-database filesystem table
-    if path.is_relative() {
-        request
-            .app_state
-            .file_system
-            .read_file(&request.app_state, path, true)
-            .await
-    } else {
-        tokio::fs::read(path)
-            .await
-            .with_context(|| format!("Unable to read file {path:?}"))
-    }
-}
-
-async fn read_file_as_text<'a>(
-    param0: &StmtParam,
-    request: &'a RequestInfo,
-) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let Some(evaluated_param) = Box::pin(extract_req_param(param0, request)).await? else {
-        log::debug!("read_file: first argument is NULL, returning NULL");
-        return Ok(None);
-    };
-    let bytes = read_file_bytes(&evaluated_param, request).await?;
-    let as_str = String::from_utf8(bytes)
-        .with_context(|| format!("read_file_as_text: {param0:?} does not contain raw UTF8 text"))?;
-    Ok(Some(Cow::Owned(as_str)))
-}
-
-async fn read_file_as_data_url<'a>(
-    param0: &StmtParam,
-    request: &'a RequestInfo,
-) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    let Some(evaluated_param) = Box::pin(extract_req_param(param0, request)).await? else {
-        log::debug!("read_file: first argument is NULL, returning NULL");
-        return Ok(None);
-    };
-    let bytes = read_file_bytes(&evaluated_param, request).await?;
-    let mime = mime_from_upload(param0, request).map_or_else(
-        || Cow::Owned(mime_guess_from_filename(&evaluated_param)),
-        Cow::Borrowed,
-    );
-    let mut data_url = format!("data:{}/{};base64,", mime.type_(), mime.subtype());
-    base64::engine::general_purpose::STANDARD.encode_string(bytes, &mut data_url);
-    Ok(Some(Cow::Owned(data_url)))
 }
 
 async fn run_sql<'a>(
@@ -337,19 +276,6 @@ async fn fetch<'a>(
     Ok(Some(response_str))
 }
 
-fn mime_from_upload<'a>(param0: &StmtParam, request: &'a RequestInfo) -> Option<&'a Mime> {
-    if let StmtParam::UploadedFilePath(name) | StmtParam::UploadedFileMimeType(name) = param0 {
-        request.uploaded_files.get(name)?.content_type.as_ref()
-    } else {
-        None
-    }
-}
-
-fn mime_guess_from_filename(filename: &str) -> Mime {
-    let maybe_mime = mime_guess::from_path(filename).first();
-    maybe_mime.unwrap_or(APPLICATION_OCTET_STREAM)
-}
-
 /// Extracts the value of a parameter from the request.
 /// Returns `Ok(None)` when NULL should be used as the parameter value.
 pub(super) async fn extract_req_param_as_json(
@@ -371,8 +297,6 @@ pub(super) async fn extract_req_param<'a>(
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
         // async functions
-        StmtParam::ReadFileAsText(inner) => read_file_as_text(inner, request).await?,
-        StmtParam::ReadFileAsDataUrl(inner) => read_file_as_data_url(inner, request).await?,
         StmtParam::RunSql(inner) => run_sql(inner, request).await?,
         StmtParam::Fetch(inner) => fetch(inner, request).await?,
         StmtParam::PersistUploadedFile {

@@ -1,7 +1,7 @@
 use super::RequestInfo;
 use crate::webserver::{http::SingleOrVec, ErrorWithStatus};
 use anyhow::{anyhow, Context};
-use std::borrow::Cow;
+use std::{borrow::Cow, ffi::OsStr};
 
 super::function_definition_macro::sqlpage_functions! {
     cookie((&RequestInfo), name: Cow<str>);
@@ -16,6 +16,8 @@ super::function_definition_macro::sqlpage_functions! {
     current_working_directory();
     environment_variable(name: Cow<str>);
     version();
+    read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
+    read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -199,4 +201,77 @@ async fn environment_variable(name: Cow<'_, str>) -> anyhow::Result<Cow<'_, str>
 /// Returns the version of the sqlpage that is running.
 async fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+async fn read_file_bytes<'a>(
+    request: &'a RequestInfo,
+    path_str: &str,
+) -> Result<Vec<u8>, anyhow::Error> {
+    let path = std::path::Path::new(path_str);
+    // If the path is relative, it's relative to the web root, not the current working directory,
+    // and it can be fetched from the on-database filesystem table
+    if path.is_relative() {
+        request
+            .app_state
+            .file_system
+            .read_file(&request.app_state, path, true)
+            .await
+    } else {
+        tokio::fs::read(path)
+            .await
+            .with_context(|| format!("Unable to read file {path:?}"))
+    }
+}
+
+/// Returns the contents of a file as a string
+async fn read_file_as_text<'a>(
+    request: &'a RequestInfo,
+    file_path: Option<Cow<'a, str>>,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let Some(file_path) = file_path else {
+        log::debug!("read_file: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let bytes = read_file_bytes(request, &file_path).await?;
+    let as_str = String::from_utf8(bytes).with_context(|| {
+        format!("read_file_as_text: {file_path} does not contain raw UTF8 text")
+    })?;
+    Ok(Some(Cow::Owned(as_str)))
+}
+
+fn mime_from_upload<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a mime_guess::Mime> {
+    request.uploaded_files.values().find_map(|uploaded_file| {
+        if uploaded_file.file.path() == OsStr::new(path) {
+            uploaded_file.content_type.as_ref()
+        } else {
+            None
+        }
+    })
+}
+
+fn mime_guess_from_filename(filename: &str) -> mime_guess::Mime {
+    let maybe_mime = mime_guess::from_path(filename).first();
+    maybe_mime.unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM)
+}
+
+async fn read_file_as_data_url<'a>(
+    request: &'a RequestInfo,
+    file_path: Option<Cow<'a, str>>,
+) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
+    let Some(file_path) = file_path else {
+        log::debug!("read_file: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let bytes = read_file_bytes(request, &file_path).await?;
+    let mime = mime_from_upload(request, &file_path).map_or_else(
+        || Cow::Owned(mime_guess_from_filename(&file_path)),
+        Cow::Borrowed,
+    );
+    let mut data_url = format!("data:{}/{};base64,", mime.type_(), mime.subtype());
+    base64::Engine::encode_string(
+        &base64::engine::general_purpose::STANDARD,
+        bytes,
+        &mut data_url,
+    );
+    Ok(Some(Cow::Owned(data_url)))
 }
