@@ -54,7 +54,8 @@ impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
         } else {
             match s {
                 Cow::Borrowed(s) => serde_json::from_str(s)?,
-                Cow::Owned(s) => serde_json::from_str::<HttpFetchRequest<'_>>(&s).map(HttpFetchRequest::into_owned)?,
+                Cow::Owned(s) => serde_json::from_str::<HttpFetchRequest<'_>>(&s)
+                    .map(HttpFetchRequest::into_owned)?,
             }
         })
     }

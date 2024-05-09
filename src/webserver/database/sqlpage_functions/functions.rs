@@ -36,7 +36,6 @@ super::function_definition_macro::sqlpage_functions! {
     version();
 }
 
-
 /// Returns the password from the HTTP basic auth header, if present.
 async fn basic_auth_password(request: &RequestInfo) -> anyhow::Result<&str> {
     let password = extract_basic_auth(request)?.password().ok_or_else(|| {
@@ -117,8 +116,9 @@ async fn exec<'a>(
     Ok(String::from_utf8_lossy(&res.stdout).into_owned())
 }
 
-
-async fn fetch(http_request: super::http_fetch_request::HttpFetchRequest<'_>) -> anyhow::Result<String> {
+async fn fetch(
+    http_request: super::http_fetch_request::HttpFetchRequest<'_>,
+) -> anyhow::Result<String> {
     use awc::http::Method;
     let client = awc::Client::builder()
         .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
@@ -175,12 +175,10 @@ async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<
     request.headers.get(&*name).map(SingleOrVec::as_json_str)
 }
 
-
 /// Returns the path component of the URL of the current request.
 async fn path(request: &RequestInfo) -> &str {
     &request.path
 }
-
 
 const DEFAULT_ALLOWED_EXTENSIONS: &str =
     "jpg,jpeg,png,gif,bmp,webp,pdf,txt,doc,docx,xls,xlsx,csv,mp3,mp4,wav,avi,mov";
@@ -259,13 +257,11 @@ pub(crate) fn random_string_sync(len: usize) -> String {
         .collect()
 }
 
-
 #[tokio::test]
 async fn test_random_string() {
     let s = random_string(10).await.unwrap();
     assert_eq!(s.len(), 10);
 }
-
 
 async fn read_file_bytes<'a>(
     request: &'a RequestInfo,
@@ -286,7 +282,6 @@ async fn read_file_bytes<'a>(
             .with_context(|| format!("Unable to read file {path:?}"))
     }
 }
-
 
 async fn read_file_as_data_url<'a>(
     request: &'a RequestInfo,
@@ -393,7 +388,6 @@ async fn run_sql<'a>(
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
 }
 
-
 #[tokio::test]
 async fn test_hash_password() {
     let s = hash_password("password".to_string()).await.unwrap();
@@ -419,7 +413,6 @@ async fn uploaded_file_path<'a>(
     let uploaded_file = request.uploaded_files.get(&*upload_name)?;
     Some(uploaded_file.file.path().to_string_lossy())
 }
-
 
 /// escapes a string for use in a URL using percent encoding
 /// for example, spaces are replaced with %20, '/' with %2F, etc.
