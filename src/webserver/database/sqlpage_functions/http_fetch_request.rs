@@ -3,7 +3,8 @@ use std::borrow::Cow;
 
 type HeaderVec<'a> = Vec<(Cow<'a, str>, Cow<'a, str>)>;
 #[derive(serde::Deserialize, Debug)]
-pub(super) struct Req<'b> {
+#[serde(expecting = "an http request object, e.g. '{\"url\":\"http://example.com\"}'")]
+pub(super) struct HttpFetchRequest<'b> {
     #[serde(borrow)]
     pub url: Cow<'b, str>,
     #[serde(borrow)]
@@ -41,10 +42,10 @@ fn deserialize_map_to_vec_pairs<'de, D: serde::Deserializer<'de>>(
     deserializer.deserialize_map(Visitor)
 }
 
-impl<'a> BorrowFromStr<'a> for Req<'a> {
+impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
     fn borrow_from_str(s: Cow<'a, str>) -> anyhow::Result<Self> {
         Ok(if s.starts_with("http") {
-            Req {
+            HttpFetchRequest {
                 url: s,
                 method: None,
                 headers: Vec::new(),
@@ -53,15 +54,15 @@ impl<'a> BorrowFromStr<'a> for Req<'a> {
         } else {
             match s {
                 Cow::Borrowed(s) => serde_json::from_str(s)?,
-                Cow::Owned(s) => serde_json::from_str::<Req<'_>>(&s).map(Req::into_owned)?,
+                Cow::Owned(s) => serde_json::from_str::<HttpFetchRequest<'_>>(&s).map(HttpFetchRequest::into_owned)?,
             }
         })
     }
 }
 
-impl<'a> Req<'a> {
-    fn into_owned(self) -> Req<'static> {
-        Req {
+impl<'a> HttpFetchRequest<'a> {
+    fn into_owned(self) -> HttpFetchRequest<'static> {
+        HttpFetchRequest {
             url: Cow::Owned(self.url.into_owned()),
             method: self.method.map(Cow::into_owned).map(Cow::Owned),
             headers: self

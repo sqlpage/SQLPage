@@ -25,7 +25,7 @@ super::function_definition_macro::sqlpage_functions! {
     protocol((&RequestInfo));
     persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
     run_sql((&RequestInfo), sql_file_path: Option<Cow<str>>);
-    fetch(http_request: SqlPageFunctionParam<super::http_fetch_request::Req<'_>>);
+    fetch(http_request: SqlPageFunctionParam<super::http_fetch_request::HttpFetchRequest<'_>>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -422,7 +422,7 @@ async fn run_sql<'a>(
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
 }
 
-async fn fetch(http_request: super::http_fetch_request::Req<'_>) -> anyhow::Result<String> {
+async fn fetch(http_request: super::http_fetch_request::HttpFetchRequest<'_>) -> anyhow::Result<String> {
     use awc::http::Method;
     let client = awc::Client::builder()
         .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
