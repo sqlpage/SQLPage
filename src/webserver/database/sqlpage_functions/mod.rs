@@ -4,23 +4,17 @@ pub(super) mod functions;
 use awc::http::{header::USER_AGENT, Method};
 use sqlparser::ast::FunctionArg;
 use std::{borrow::Cow, str::FromStr};
-use tokio_stream::StreamExt;
 
-use crate::webserver::{
-    database::{execute_queries::stream_query_results_boxed, DbItem},
-    http::SingleOrVec,
-    http_request_info::RequestInfo,
-};
+use crate::webserver::{http::SingleOrVec, http_request_info::RequestInfo};
 
 use super::syntax_tree::SqlPageFunctionCall;
 use super::syntax_tree::StmtParam;
 
 use super::sql::{extract_variable_argument, FormatArguments};
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, Context};
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
-        "run_sql" => StmtParam::RunSql(Box::new(extract_variable_argument("run_sql", arguments))),
         "fetch" => StmtParam::Fetch(Box::new(extract_variable_argument("fetch", arguments))),
         _ => SqlPageFunctionCall::from_func_call(func_name, arguments)
             .with_context(|| {
@@ -34,53 +28,6 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
                 StmtParam::FunctionCall,
             ),
     }
-}
-
-async fn run_sql<'a>(
-    param0: &StmtParam,
-    request: &'a RequestInfo,
-) -> Result<Option<Cow<'a, str>>, anyhow::Error> {
-    use serde::ser::{SerializeSeq, Serializer};
-    let Some(sql_file_path) = Box::pin(extract_req_param(param0, request)).await? else {
-        log::debug!("run_sql: first argument is NULL, returning NULL");
-        return Ok(None);
-    };
-    let sql_file = request
-        .app_state
-        .sql_file_cache
-        .get_with_privilege(
-            &request.app_state,
-            std::path::Path::new(sql_file_path.as_ref()),
-            true,
-        )
-        .await
-        .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
-    let mut tmp_req = request.clone();
-    if tmp_req.clone_depth > 8 {
-        bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
-        Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\
-        This is to prevent infinite loops and stack overflows.\n\
-        Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
-    }
-    let mut results_stream =
-        stream_query_results_boxed(&request.app_state.db, &sql_file, &mut tmp_req);
-    let mut json_results_bytes = Vec::new();
-    let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
-    let mut seq = json_encoder.serialize_seq(None)?;
-    while let Some(db_item) = results_stream.next().await {
-        match db_item {
-            DbItem::Row(row) => {
-                log::debug!("run_sql: row: {:?}", row);
-                seq.serialize_element(&row)?;
-            }
-            DbItem::FinishedQuery => log::trace!("run_sql: Finished query"),
-            DbItem::Error(err) => {
-                return Err(err.context(format!("run_sql: unable to run {sql_file_path:?}")))
-            }
-        }
-    }
-    seq.end()?;
-    Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
 }
 
 type HeaderVec<'a> = Vec<(Cow<'a, str>, Cow<'a, str>)>;
@@ -194,7 +141,6 @@ pub(super) async fn extract_req_param<'a>(
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
         // async functions
-        StmtParam::RunSql(inner) => run_sql(inner, request).await?,
         StmtParam::Fetch(inner) => fetch(inner, request).await?,
         // sync functions
         StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),

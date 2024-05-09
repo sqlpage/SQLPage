@@ -22,7 +22,6 @@ pub(crate) enum StmtParam {
     Error(String),
     Literal(String),
     Concat(Vec<StmtParam>),
-    RunSql(Box<StmtParam>),
     Fetch(Box<StmtParam>),
     FunctionCall(SqlPageFunctionCall),
 }

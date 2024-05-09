@@ -1,6 +1,7 @@
 use super::RequestInfo;
 use crate::webserver::{http::SingleOrVec, ErrorWithStatus};
 use anyhow::{anyhow, Context};
+use futures_util::StreamExt;
 use std::{borrow::Cow, ffi::OsStr};
 
 super::function_definition_macro::sqlpage_functions! {
@@ -23,6 +24,7 @@ super::function_definition_macro::sqlpage_functions! {
     path((&RequestInfo));
     protocol((&RequestInfo));
     persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
+    run_sql((&RequestInfo), sql_file_path: Option<Cow<str>>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -365,4 +367,56 @@ async fn persist_uploaded_file<'a>(
             .to_str()
             .with_context(|| format!("unable to convert path {target_path:?} to a string"))?;
     Ok(path)
+}
+
+async fn run_sql<'a>(
+    request: &'a RequestInfo,
+    sql_file_path: Option<Cow<'a, str>>,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    use serde::ser::{SerializeSeq, Serializer};
+    let Some(sql_file_path) = sql_file_path else {
+        log::debug!("run_sql: first argument is NULL, returning NULL");
+        return Ok(None);
+    };
+    let sql_file = request
+        .app_state
+        .sql_file_cache
+        .get_with_privilege(
+            &request.app_state,
+            std::path::Path::new(sql_file_path.as_ref()),
+            true,
+        )
+        .await
+        .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
+    let mut tmp_req = request.clone();
+    if tmp_req.clone_depth > 8 {
+        anyhow::bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
+        Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\
+        This is to prevent infinite loops and stack overflows.\n\
+        Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
+    }
+    let mut results_stream =
+        crate::webserver::database::execute_queries::stream_query_results_boxed(
+            &request.app_state.db,
+            &sql_file,
+            &mut tmp_req,
+        );
+    let mut json_results_bytes = Vec::new();
+    let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
+    let mut seq = json_encoder.serialize_seq(None)?;
+    while let Some(db_item) = results_stream.next().await {
+        use crate::webserver::database::DbItem::{Error, FinishedQuery, Row};
+        match db_item {
+            Row(row) => {
+                log::debug!("run_sql: row: {:?}", row);
+                seq.serialize_element(&row)?;
+            }
+            FinishedQuery => log::trace!("run_sql: Finished query"),
+            Error(err) => {
+                return Err(err.context(format!("run_sql: unable to run {sql_file_path:?}")))
+            }
+        }
+    }
+    seq.end()?;
+    Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
 }
