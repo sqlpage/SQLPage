@@ -15,30 +15,11 @@ use crate::webserver::{
 use super::syntax_tree::SqlPageFunctionCall;
 use super::syntax_tree::StmtParam;
 
-use super::sql::{extract_variable_argument, function_arg_to_stmt_param, FormatArguments};
+use super::sql::{extract_variable_argument, FormatArguments};
 use anyhow::{anyhow, bail, Context};
 
 pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
     match func_name {
-        "persist_uploaded_file" => {
-            let field_name = Box::new(extract_variable_argument(
-                "persist_uploaded_file",
-                arguments,
-            ));
-            let folder = arguments
-                .get_mut(1)
-                .and_then(function_arg_to_stmt_param)
-                .map(Box::new);
-            let allowed_extensions = arguments
-                .get_mut(2)
-                .and_then(function_arg_to_stmt_param)
-                .map(Box::new);
-            StmtParam::PersistUploadedFile {
-                field_name,
-                folder,
-                allowed_extensions,
-            }
-        }
         "run_sql" => StmtParam::RunSql(Box::new(extract_variable_argument("run_sql", arguments))),
         "fetch" => StmtParam::Fetch(Box::new(extract_variable_argument("fetch", arguments))),
         _ => SqlPageFunctionCall::from_func_call(func_name, arguments)
@@ -53,79 +34,6 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
                 StmtParam::FunctionCall,
             ),
     }
-}
-
-const DEFAULT_ALLOWED_EXTENSIONS: &str =
-    "jpg,jpeg,png,gif,bmp,webp,pdf,txt,doc,docx,xls,xlsx,csv,mp3,mp4,wav,avi,mov";
-
-async fn persist_uploaded_file<'a>(
-    field_name: &StmtParam,
-    folder: Option<&StmtParam>,
-    allowed_extensions: Option<&StmtParam>,
-    request: &'a RequestInfo,
-) -> anyhow::Result<Option<Cow<'a, str>>> {
-    let field_name = Box::pin(extract_req_param(field_name, request))
-        .await?
-        .ok_or_else(|| anyhow!("persist_uploaded_file: field_name is NULL"))?;
-    let folder = if let Some(x) = folder {
-        Box::pin(extract_req_param(x, request)).await?
-    } else {
-        None
-    }
-    .unwrap_or(Cow::Borrowed("uploads"));
-    let allowed_extensions_str = if let Some(x) = allowed_extensions {
-        Box::pin(extract_req_param(x, request)).await?
-    } else {
-        None
-    }
-    .unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
-    let allowed_extensions = allowed_extensions_str.split(',');
-    let uploaded_file = request
-        .uploaded_files
-        .get(&field_name.to_string())
-        .ok_or_else(|| {
-            anyhow!("persist_uploaded_file: no file uploaded with field name {field_name}. Uploaded files: {:?}", request.uploaded_files.keys())
-        })?;
-    let file_name = &uploaded_file.file_name.as_deref().unwrap_or_default();
-    let extension = file_name.split('.').last().unwrap_or_default();
-    if !allowed_extensions
-        .clone()
-        .any(|x| x.eq_ignore_ascii_case(extension))
-    {
-        let exts = allowed_extensions.collect::<Vec<_>>().join(", ");
-        bail!(
-            "persist_uploaded_file: file extension {extension} is not allowed. Allowed extensions: {exts}"
-        );
-    }
-    // resolve the folder path relative to the web root
-    let web_root = &request.app_state.config.web_root;
-    let target_folder = web_root.join(&*folder);
-    // create the folder if it doesn't exist
-    tokio::fs::create_dir_all(&target_folder)
-        .await
-        .with_context(|| {
-            format!("persist_uploaded_file: unable to create folder {target_folder:?}")
-        })?;
-    let date = chrono::Utc::now().format("%Y-%m-%d %Hh%Mm%Ss");
-    let random_part = functions::random_string_sync(8);
-    let random_target_name = format!("{date} {random_part}.{extension}");
-    let target_path = target_folder.join(&random_target_name);
-    tokio::fs::copy(&uploaded_file.file.path(), &target_path)
-        .await
-        .with_context(|| {
-            format!(
-                "persist_uploaded_file: unable to copy uploaded file {field_name:?} to {target_path:?}"
-            )
-        })?;
-    // remove the WEB_ROOT prefix from the path, but keep the leading slash
-    let path = "/".to_string()
-        + target_path
-            .strip_prefix(web_root)?
-            .to_str()
-            .with_context(|| {
-                format!("persist_uploaded_file: unable to convert path {target_path:?} to a string")
-            })?;
-    Ok(Some(Cow::Owned(path)))
 }
 
 async fn run_sql<'a>(
@@ -288,19 +196,6 @@ pub(super) async fn extract_req_param<'a>(
         // async functions
         StmtParam::RunSql(inner) => run_sql(inner, request).await?,
         StmtParam::Fetch(inner) => fetch(inner, request).await?,
-        StmtParam::PersistUploadedFile {
-            field_name,
-            folder,
-            allowed_extensions,
-        } => {
-            persist_uploaded_file(
-                field_name,
-                folder.as_deref(),
-                allowed_extensions.as_deref(),
-                request,
-            )
-            .await?
-        }
         // sync functions
         StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),

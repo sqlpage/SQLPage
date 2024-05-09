@@ -22,6 +22,7 @@ super::function_definition_macro::sqlpage_functions! {
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
     path((&RequestInfo));
     protocol((&RequestInfo));
+    persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
 }
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -308,4 +309,60 @@ async fn path(request: &RequestInfo) -> &str {
 /// Returns the protocol of the current request (http or https).
 async fn protocol(request: &RequestInfo) -> &str {
     &request.protocol
+}
+
+const DEFAULT_ALLOWED_EXTENSIONS: &str =
+    "jpg,jpeg,png,gif,bmp,webp,pdf,txt,doc,docx,xls,xlsx,csv,mp3,mp4,wav,avi,mov";
+
+async fn persist_uploaded_file<'a>(
+    request: &'a RequestInfo,
+    field_name: Cow<'a, str>,
+    folder: Option<Cow<'a, str>>,
+    allowed_extensions: Option<Cow<'a, str>>,
+) -> anyhow::Result<String> {
+    let folder = folder.unwrap_or(Cow::Borrowed("uploads"));
+    let allowed_extensions_str =
+        allowed_extensions.unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
+    let allowed_extensions = allowed_extensions_str.split(',');
+    let uploaded_file = request
+        .uploaded_files
+        .get(&field_name.to_string())
+        .ok_or_else(|| {
+            anyhow!(
+                "no file uploaded with field name {field_name}. Uploaded files: {:?}",
+                request.uploaded_files.keys()
+            )
+        })?;
+    let file_name = uploaded_file.file_name.as_deref().unwrap_or_default();
+    let extension = file_name.split('.').last().unwrap_or_default();
+    if !allowed_extensions
+        .clone()
+        .any(|x| x.eq_ignore_ascii_case(extension))
+    {
+        let exts = allowed_extensions.collect::<Vec<_>>().join(", ");
+        anyhow::bail!("file extension {extension} is not allowed. Allowed extensions: {exts}");
+    }
+    // resolve the folder path relative to the web root
+    let web_root = &request.app_state.config.web_root;
+    let target_folder = web_root.join(&*folder);
+    // create the folder if it doesn't exist
+    tokio::fs::create_dir_all(&target_folder)
+        .await
+        .with_context(|| format!("unable to create folder {target_folder:?}"))?;
+    let date = chrono::Utc::now().format("%Y-%m-%d %Hh%Mm%Ss");
+    let random_part = random_string_sync(8);
+    let random_target_name = format!("{date} {random_part}.{extension}");
+    let target_path = target_folder.join(&random_target_name);
+    tokio::fs::copy(&uploaded_file.file.path(), &target_path)
+        .await
+        .with_context(|| {
+            format!("unable to copy uploaded file {field_name:?} to {target_path:?}")
+        })?;
+    // remove the WEB_ROOT prefix from the path, but keep the leading slash
+    let path = "/".to_string()
+        + target_path
+            .strip_prefix(web_root)?
+            .to_str()
+            .with_context(|| format!("unable to convert path {target_path:?} to a string"))?;
+    Ok(path)
 }

@@ -22,11 +22,6 @@ pub(crate) enum StmtParam {
     Error(String),
     Literal(String),
     Concat(Vec<StmtParam>),
-    PersistUploadedFile {
-        field_name: Box<StmtParam>,
-        folder: Option<Box<StmtParam>>,
-        allowed_extensions: Option<Box<StmtParam>>,
-    },
     RunSql(Box<StmtParam>),
     Fetch(Box<StmtParam>),
     FunctionCall(SqlPageFunctionCall),
