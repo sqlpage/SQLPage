@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.20.4"
+version = "0.20.5"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -33,7 +33,7 @@ anyhow = "1"
 serde = "1"
 serde_json = { version = "1.0.82", features = ["preserve_order", "raw_value"] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.45.0", features = ["visitor"] }
+sqlparser = { version = "0.46.0", features = ["visitor"] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"

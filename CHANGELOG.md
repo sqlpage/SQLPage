@@ -12,6 +12,8 @@
    - The error messages when a function call is invalid were rewritten, to include more context, and provide suggestions on how to fix the error. This should make it easier get started with SQLPage functions.
    - Adding new functions is now easier, and the code is more maintainable. This should make it easier to contribute new functions to SQLPage. If you have an idea for a new function, feel free to open an issue or a pull request on the SQLPage repository. All sqlpage functions are defined in [`functions.rs`](./src/webserver/database/sqlpage_functions/functions.rs).
  - The `shell-empty` component (used to create pages without a shell) now supports the `html` attribute, to directly set the raw contents of the page. This is useful to advanced users who want to generate the page content directly in SQL, without using the SQLPage components. 
+ - Updated sqlparser to [v0.46](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0460-2024-05-03)
+   - The changes include support for DECLARE parsing and CONVERT styles in MSSQL, improved JSON access parsing and ?-based jsonb operators in Postgres, and `ALTER TABLE ... MODIFY` support for MySQL.
 
 ## 0.20.4 (2024-04-23)
 

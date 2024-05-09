@@ -6,8 +6,9 @@ use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
-    BinaryOperator, CharacterLength, DataType, Expr, Function, FunctionArg, FunctionArgExpr, Ident,
-    ObjectName, Statement, Value, VisitMut, VisitorMut,
+    BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
+    FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, Statement, Value,
+    VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -257,6 +258,7 @@ fn is_simple_select_placeholder(e: &Expr) -> bool {
             expr,
             data_type: DataType::Text | DataType::Varchar(_) | DataType::Char(_),
             format: None,
+            kind: CastKind::Cast,
         } if is_simple_select_placeholder(expr) => true,
         _ => false,
     }
@@ -322,6 +324,7 @@ impl ParameterExtractor {
             expr: Box::new(value),
             data_type,
             format: None,
+            kind: CastKind::Cast,
         }
     }
 
@@ -380,7 +383,12 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
         Expr::Identifier(ident) => extract_ident_param(ident),
         Expr::Function(Function {
             name: ObjectName(func_name_parts),
-            args,
+            args:
+                FunctionArguments::List(FunctionArgumentList {
+                    args,
+                    duplicate_treatment: None,
+                    ..
+                }),
             ..
         }) if is_sqlpage_func(func_name_parts) => Some(func_call_to_param(
             sqlpage_func_name(func_name_parts),
@@ -405,7 +413,12 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
         // CONCAT('str1', 'str2', ...)
         Expr::Function(Function {
             name: ObjectName(func_name_parts),
-            args,
+            args:
+                FunctionArguments::List(FunctionArgumentList {
+                    args,
+                    duplicate_treatment: None,
+                    ..
+                }),
             ..
         }) if func_name_parts.len() == 1
             && func_name_parts[0].value.eq_ignore_ascii_case("concat") =>
@@ -476,9 +489,14 @@ impl VisitorMut for ParameterExtractor {
             }
             Expr::Function(Function {
                 name: ObjectName(func_name_parts),
-                args,
-                special: false,
-                distinct: false,
+                args:
+                    FunctionArguments::List(FunctionArgumentList {
+                        args,
+                        duplicate_treatment: None,
+                        ..
+                    }),
+                filter: None,
+                null_treatment: None,
                 over: None,
                 ..
             }) if is_sqlpage_func(func_name_parts) => {
@@ -497,16 +515,18 @@ impl VisitorMut for ParameterExtractor {
                 let right = std::mem::replace(right.as_mut(), Expr::Value(Value::Null));
                 *value = Expr::Function(Function {
                     name: ObjectName(vec![Ident::new("CONCAT")]),
-                    args: vec![
-                        FunctionArg::Unnamed(FunctionArgExpr::Expr(left)),
-                        FunctionArg::Unnamed(FunctionArgExpr::Expr(right)),
-                    ],
+                    args: FunctionArguments::List(FunctionArgumentList {
+                        args: vec![
+                            FunctionArg::Unnamed(FunctionArgExpr::Expr(left)),
+                            FunctionArg::Unnamed(FunctionArgExpr::Expr(right)),
+                        ],
+                        duplicate_treatment: None,
+                        clauses: Vec::new(),
+                    }),
                     over: None,
                     filter: None,
                     null_treatment: None,
-                    distinct: false,
-                    special: false,
-                    order_by: vec![],
+                    within_group: Vec::new(),
                 });
             }
             _ => (),
