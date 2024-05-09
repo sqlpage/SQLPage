@@ -12,6 +12,7 @@
  - The SQLPage function system was greatly improved
    - All the functions can now be freely combined and nested, without any limitation. No more `Expected a literal single quoted string.` errors when trying to nest functions.
    - The error messages when a function call is invalid were rewritten, to include more context, and provide suggestions on how to fix the error. This should make it easier get started with SQLPage functions.
+   Error messages should always be clear and actionnable. If you encounter an error message you don't understand, please [open an issue](https://github.com/lovasoa/SQLpage/issues) on the SQLPage repository.
    - Adding new functions is now easier, and the code is more maintainable. This should make it easier to contribute new functions to SQLPage. If you have an idea for a new function, feel free to open an issue or a pull request on the SQLPage repository. All sqlpage functions are defined in [`functions.rs`](./src/webserver/database/sqlpage_functions/functions.rs).
  - The `shell-empty` component (used to create pages without a shell) now supports the `html` attribute, to directly set the raw contents of the page. This is useful to advanced users who want to generate the page content directly in SQL, without using the SQLPage components. 
  - Updated sqlparser to [v0.46](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0460-2024-05-03)
