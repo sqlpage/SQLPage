@@ -54,7 +54,7 @@ FROM json_each_text(sqlpage.variables(''post'')::json);
 ```sql
 INSERT INTO survey_answers
 SELECT [key] AS question_id, [value] AS answer
-FROM OPENJSON(''{"x":"y"}'');
+FROM OPENJSON(sqlpage.variables(''post''));
 ```
 
 #### In MySQL
