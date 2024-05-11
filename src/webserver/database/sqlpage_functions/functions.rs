@@ -16,7 +16,7 @@ super::function_definition_macro::sqlpage_functions! {
 
     fetch(http_request: SqlPageFunctionParam<super::http_fetch_request::HttpFetchRequest<'_>>);
 
-    hash_password(password: String);
+    hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
 
     path((&RequestInfo));
@@ -159,7 +159,10 @@ async fn fetch(
     Ok(response_str)
 }
 
-pub(crate) async fn hash_password(password: String) -> anyhow::Result<String> {
+pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Option<String>> {
+    let Some(password) = password else {
+        return Ok(None);
+    };
     actix_web::rt::task::spawn_blocking(move || {
         // Hashes a password using Argon2. This is a CPU-intensive blocking operation.
         let phf = argon2::Argon2::default();
@@ -169,6 +172,7 @@ pub(crate) async fn hash_password(password: String) -> anyhow::Result<String> {
         Ok(password_hash.to_string())
     })
     .await?
+    .map(Some)
 }
 
 async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
@@ -390,7 +394,10 @@ async fn run_sql<'a>(
 
 #[tokio::test]
 async fn test_hash_password() {
-    let s = hash_password("password".to_string()).await.unwrap();
+    let s = hash_password(Some("password".to_string()))
+        .await
+        .unwrap()
+        .unwrap();
     assert!(s.starts_with("$argon2"));
 }
 

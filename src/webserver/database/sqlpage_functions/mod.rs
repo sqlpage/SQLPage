@@ -45,6 +45,7 @@ pub(super) async fn extract_req_param<'a>(
             .map(SingleOrVec::as_json_str),
         StmtParam::Error(x) => anyhow::bail!("{}", x),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
+        StmtParam::Null => None,
         StmtParam::Concat(args) => concat_params(&args[..], request).await?,
         StmtParam::FunctionCall(func) => func.evaluate(request).await.with_context(|| {
             format!(

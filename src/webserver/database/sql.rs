@@ -400,6 +400,7 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
         Expr::Value(Value::Number(param_value, _is_long)) => {
             Some(StmtParam::Literal(param_value.clone()))
         }
+        Expr::Value(Value::Null) => Some(StmtParam::Null),
         Expr::BinaryOp {
             // 'str1' || 'str2'
             left,

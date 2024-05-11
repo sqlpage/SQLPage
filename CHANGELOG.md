@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased 
+
+ - `sqlpage.hash_password(NULL)` now returns `NULL` instead of throwing an error. This behavior was changed unintentionally in 0.20.5 and could have broken existing SQLPage websites.
+
 ## 0.20.5 (2024-05-07)
 
  - Searchable multi-valued selects in the form component

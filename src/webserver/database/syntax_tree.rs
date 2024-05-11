@@ -21,6 +21,7 @@ pub(crate) enum StmtParam {
     GetOrPost(String),
     Error(String),
     Literal(String),
+    Null,
     Concat(Vec<StmtParam>),
     FunctionCall(SqlPageFunctionCall),
 }
@@ -32,6 +33,7 @@ impl std::fmt::Display for StmtParam {
             StmtParam::Post(name) => write!(f, ":{name}"),
             StmtParam::GetOrPost(name) => write!(f, "${name}"),
             StmtParam::Literal(x) => write!(f, "'{}'", x.replace('\'', "''")),
+            StmtParam::Null => write!(f, "NULL"),
             StmtParam::Concat(items) => {
                 write!(f, "CONCAT(")?;
                 for item in items {

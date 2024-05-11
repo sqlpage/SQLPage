@@ -49,6 +49,13 @@ impl<'a> FunctionParamType<'a> for String {
     }
 }
 
+impl<'a> FunctionParamType<'a> for Option<String> {
+    type TargetType = Self;
+    fn from_args(arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>) -> anyhow::Result<Self> {
+        <Option<Cow<'a, str>>>::from_args(arg).map(|x| x.map(Cow::into_owned))
+    }
+}
+
 /// similar to `FromStr`, but borrows the input string
 pub(super) trait BorrowFromStr<'a>: Sized {
     fn borrow_from_str(s: Cow<'a, str>) -> anyhow::Result<Self>;
@@ -97,12 +104,6 @@ trait IntoCow<'a> {
     fn into_cow(self) -> Option<Cow<'a, str>>;
 }
 
-impl<'a> IntoCow<'a> for Option<Cow<'a, str>> {
-    fn into_cow(self) -> Option<Cow<'a, str>> {
-        self
-    }
-}
-
 impl<'a> IntoCow<'a> for Cow<'a, str> {
     fn into_cow(self) -> Option<Cow<'a, str>> {
         Some(self)
@@ -118,5 +119,11 @@ impl<'a> IntoCow<'a> for String {
 impl<'a> IntoCow<'a> for &'a str {
     fn into_cow(self) -> Option<Cow<'a, str>> {
         Some(Cow::Borrowed(self))
+    }
+}
+
+impl<'a, T: IntoCow<'a>> IntoCow<'a> for Option<T> {
+    fn into_cow(self) -> Option<Cow<'a, str>> {
+        self.and_then(IntoCow::into_cow)
     }
 }
