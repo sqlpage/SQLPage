@@ -1,3 +1,5 @@
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+
 select 'text' as component, '
 
 # Password Hashing
@@ -12,13 +14,23 @@ recover the passwords.
 
 They could still try to guess the passwords, but since SQLPage
 uses the [argon2](https://en.wikipedia.org/wiki/Argon2) algorithm,
-it would take a very long time (multiple years) to guess a strong password.
+it would take a very long time (hundreds of years) to guess a strong password.
 
 The `sqlpage.hash_password` function takes a password as input, and
 returns a hash of the password as output. It takes some time
 (a few hundred milliseconds) to compute the hash, so you should
 only call it when the user is creating a new account and on the initial
 login. You should not call it on every page load.
+
+When you have logged in an user using the 
+[`authentication`](/documentation.sql?component=authentication#component) component,
+you can store their session identifier on their browser using the
+[`cookie`](/documentation.sql?component=cookie#component) component.
+
+## Example
+
+ - [Source code for this page](https://github.com/lovasoa/SQLpage/blob/main/examples/official-site/examples/hash_password.sql)
+ - [Full user authentication and session management example](https://github.com/lovasoa/SQLpage/blob/main/examples/user-authentication)
 
 # Try it out
 
@@ -35,7 +47,7 @@ select 'text' as component, '
 
 The password you entered above hashed to the following value:
 
-```sql
+```
 ' || sqlpage.hash_password(:password) || '
 ```
 ' as contents_md

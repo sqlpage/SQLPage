@@ -788,6 +788,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/examples/tabs.sql", "title": "Tabs"},
                     {"link": "/examples/layouts.sql", "title": "Layouts"},
                     {"link": "/examples/handle_picture_upload.sql", "title": "File uploads"},
+                    {"link": "/examples/hash_password.sql", "title": "Password protection"},
                     {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos"}
                 ]},
                 {"title": "Community", "submenu": [
