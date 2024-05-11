@@ -1,18 +1,4 @@
-select 
-    'shell'                   as component,
-    'SQLPage'                 as title,
-    '/'                       as link,
-    'layouts'                 as menu_item,
-    'chart'                   as menu_item,
-    'tabs'                    as menu_item,
-    'hash_password'           as menu_item,
-    COALESCE($layout,'boxed') as layout,
-    'Documentation for the SQLPage low-code web application framework.' as description,
-    'Poppins'                 as font,
-    'layout'                    as icon,
-    'https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js' as javascript,
-    'https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js' as javascript,
-    '/prism-tabler-theme.css' as css;
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, '
 # Layouts

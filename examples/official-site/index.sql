@@ -1,16 +1,7 @@
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
--- Using the 'shell' component at the top allows you to customize your web page, giving it a title and a description
-select 'shell' as component,
-    'SQLPage' as title,
-    'database' as icon,
-    '/' as link,
-    'en-US' as language,
-    'Web development, simplified ! Create robust, beautiful web applications with just SQL queries. Build webapps on a low-code sql-only platform.' as description,
-    'blog' as menu_item,
-    'documentation' as menu_item,
-    19 as font_size,
-    'Poppins' as font,
-    './rss.sql' as rss;
+
+-- Fetch the page title and header from the database
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 SELECT 'hero' as component,
     'SQLPage' as title,

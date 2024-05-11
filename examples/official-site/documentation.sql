@@ -6,14 +6,7 @@ where $component is not null and not exists (select 1 from component where name 
 -- This line, at the top of the page, tells web browsers to keep the page locally in cache once they have it.
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 
-select 
-    'dynamic' as component,
-    json_set(
-        properties,
-        '$[0].title',
-        'SQLPage components' || COALESCE(': ' || $component, ' documentation')
-    ) as properties
-FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, format('SQLPage v%s documentation', sqlpage.version()) as title;
 select '

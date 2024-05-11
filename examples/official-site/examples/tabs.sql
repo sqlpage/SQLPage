@@ -1,8 +1,4 @@
-SELECT 'shell' as component, 'SQLPage' as title,
-    'chart' as menu_item,
-    'layouts' as menu_item,
-    'tabs' as menu_item,
-    'show_variables' as menu_item;
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 create table if not exists tab_example_cards as 
 select 'Leaf' as title, 'Leaf_1_web' as img, 'f4' as prefix, 'green' as color, 'Autumn''s dance begins, Crimson leaves in breezy waltz, Nature''s fleeting art.' as description union all

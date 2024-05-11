@@ -1,15 +1,7 @@
 select 'http_header' as component,
     'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 
-select 'shell' as component,
-    'Your SQL Website' as title,
-    'database' as icon,
-    '/' as link,
-    'en-US' as language,
-    'Get started with SQLPage: short tutorial for making a SQL-only website' as description,
-    'documentation' as menu_item,
-    20 as font_size,
-    'Poppins' as font;
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 SELECT 'hero' as component,
     'Your first SQL Website' as title,

@@ -775,24 +775,39 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
 ',
      json('[{
             "component": "shell",
-            "title": "SQLPage documentation",
+            "title": "SQLPage",
+            "icon": "database",
             "link": "/",
             "menu_item": [
-                {"link": "index.sql", "title": "Home"},
+                {"title": "About", "submenu": [
+                    {"link": "/safety.sql", "title": "Security"},
+                    {"link": "/performance.sql", "title": "Performance"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License"}
+                ]},
+                {"title": "Examples", "submenu": [
+                    {"link": "/examples/tabs.sql", "title": "Tabs"},
+                    {"link": "/examples/layouts.sql", "title": "Layouts"},
+                    {"link": "/examples/handle_picture_upload.sql", "title": "File uploads"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos"}
+                ]},
                 {"title": "Community", "submenu": [
                     {"link": "blog.sql", "title": "Blog"},
-                    {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
+                    {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Report a bug"},
                     {"link": "//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
                     {"link": "//github.com/lovasoa/sqlpage", "title": "Github"}
                 ]},
-                "functions",
-                "components"
+                {"title": "Documentation", "submenu": [
+                    {"link": "/your-first-sql-website", "title": "Getting started"},
+                    {"link": "/components.sql", "title": "All Components"},
+                    {"link": "/functions.sql", "title": "SQLPage Functions"},
+                    {"link": "/custom_components.sql", "title": "Custom Components"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration"}
+                ]}
             ],
             "layout": "boxed",
             "language": "en-US",
             "description": "Documentation for the SQLPage low-code web application framework.",
             "font": "Poppins",
-            "icon": "book",
             "javascript": ["https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js", 
                            "https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"],
             "css": "/prism-tabler-theme.css",
