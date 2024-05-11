@@ -1,14 +1,27 @@
+/// This module contains the syntax tree for sqlpage statement parameters.
+/// In a query like `SELECT sqlpage.some_function($my_param)`,
+/// The stored database statement will be just `SELECT $1`,
+/// and the `StmtParam` will contain a the following tree:
+///
+/// ```text
+/// StmtParam::FunctionCall(
+///    SqlPageFunctionCall {
+///       function: SqlPageFunctionName::some_function,
+///      arguments: vec![StmtParam::Get("$my_param")]
+///   }
+/// )
+/// ```
 use std::borrow::Cow;
 use std::str::FromStr;
 
 use sqlparser::ast::FunctionArg;
 
 use crate::webserver::database::sql::function_arg_to_stmt_param;
+use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::sqlpage_functions::extract_req_param;
 use super::sqlpage_functions::functions::SqlPageFunctionName;
-use anyhow::anyhow;
+use anyhow::{anyhow, Context as _};
 
 /// Represents a parameter to a SQL statement.
 /// Objects of this type are created during SQL parsing.
@@ -110,4 +123,46 @@ impl std::fmt::Display for SqlPageFunctionCall {
         }
         write!(f, ")")
     }
+}
+
+/// Extracts the value of a parameter from the request.
+/// Returns `Ok(None)` when NULL should be used as the parameter value.
+pub(super) async fn extract_req_param<'a>(
+    param: &StmtParam,
+    request: &'a RequestInfo,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    Ok(match param {
+        // sync functions
+        StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
+        StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),
+        StmtParam::GetOrPost(x) => request
+            .post_variables
+            .get(x)
+            .or_else(|| request.get_variables.get(x))
+            .map(SingleOrVec::as_json_str),
+        StmtParam::Error(x) => anyhow::bail!("{}", x),
+        StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
+        StmtParam::Null => None,
+        StmtParam::Concat(args) => concat_params(&args[..], request).await?,
+        StmtParam::FunctionCall(func) => func.evaluate(request).await.with_context(|| {
+            format!(
+                "Error in function call {func}.\nExpected {:#}",
+                func.function
+            )
+        })?,
+    })
+}
+
+async fn concat_params<'a>(
+    args: &[StmtParam],
+    request: &'a RequestInfo,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    let mut result = String::new();
+    for arg in args {
+        let Some(arg) = Box::pin(extract_req_param(arg, request)).await? else {
+            return Ok(None);
+        };
+        result.push_str(&arg);
+    }
+    Ok(Some(Cow::Owned(result)))
 }
