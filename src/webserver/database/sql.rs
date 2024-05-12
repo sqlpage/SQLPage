@@ -529,6 +529,14 @@ impl VisitorMut for ParameterExtractor {
                     null_treatment: None,
                     within_group: Vec::new(),
                 });
+            },
+            Expr::Cast {
+                kind: kind @ CastKind::DoubleColon,
+                ..
+            } if self.db_kind != AnyKind::Postgres => {
+                log::warn!("Casting with '::' is not supported on your database. \
+                For backwards compatibility with older SQLPage versions, we will transform it to CAST(... AS ...).");
+                *kind = CastKind::Cast;
             }
             _ => (),
         }
