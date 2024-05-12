@@ -65,7 +65,7 @@
                         {{~#if multiple}} multiple {{/if~}}
                         {{~#if (or dropdown searchable)}} 
                             data-pre-init="select-dropdown"
-                            data-sqlpage-js="/{{static_path 'tomselect.js'}}"
+                            data-sqlpage-js="{{static_path 'tomselect.js'}}"
                         {{/if~}}
                         {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
                         {{~#if create_new}} data-create_new={{create_new}} {{/if~}}

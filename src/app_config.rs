@@ -77,6 +77,11 @@ pub struct AppConfig {
     /// whether to show error messages to the user.
     #[serde(default)]
     pub environment: DevOrProd,
+
+    /// Strip prefix to enable hosting behind a reverse proxy
+    /// must NOT have a trailing /
+    #[serde(default = "default_site_prefix")]
+    pub site_prefix: String,
 }
 
 impl AppConfig {
@@ -205,6 +210,10 @@ fn default_https_certificate_cache_dir() -> PathBuf {
 
 fn default_https_acme_directory_url() -> String {
     "https://acme-v02.api.letsencrypt.org/directory".to_string()
+}
+
+fn default_site_prefix() -> String {
+    "".to_string()
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy, Eq, Default)]

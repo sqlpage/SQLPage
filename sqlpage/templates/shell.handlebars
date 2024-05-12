@@ -4,7 +4,8 @@
     <meta charset="utf-8"/>
     <title>{{default title "SQLPage"}}</title>
 
-    <link rel="stylesheet" href="/{{static_path 'sqlpage.css'}}">
+    <link rel="icon" href="{{ site_prefix }}favicon.ico">
+    <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
    {{#each (to_array css)}}
         {{#if this}}
             <link rel="stylesheet" href="{{this}}">
@@ -18,7 +19,7 @@
         <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
     {{/if}}
 
-    <script src="/{{static_path 'sqlpage.js'}}" defer></script>
+    <script src="{{static_path 'sqlpage.js'}}" defer></script>
     {{#each (to_array javascript)}}
         {{#if this}}
             <script src="{{this}}" defer></script>
