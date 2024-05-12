@@ -40,11 +40,19 @@ impl Iterator for DynamicComponentIterator {
 }
 
 fn expand_dynamic_stack(stack: &mut Vec<anyhow::Result<JsonValue>>) {
-    while let Some(Ok(mut next)) = stack.pop() {
-        if let Some(properties) = extract_dynamic_properties(&mut next) {
+    while let Some(mut next) = stack.pop() {
+        let dyn_props = next
+            .as_mut()
+            .ok()
+            .and_then(|mut v| extract_dynamic_properties(&mut v));
+        if let Some(properties) = dyn_props {
+            // if the properties contain new (nested) dynamic components, push them onto the stack
             stack.extend(dynamic_properties_to_vec(properties));
         } else {
-            stack.push(Ok(next));
+            // If the properties are not dynamic, push the row back onto the stack
+            stack.push(next);
+            // return at the first non-dynamic row
+            // we don't support non-dynamic rows after dynamic rows nested in the same array
             return;
         }
     }
@@ -79,12 +87,8 @@ fn dynamic_properties_to_result_vec(
     mut properties_obj: JsonValue,
 ) -> anyhow::Result<Vec<JsonValue>> {
     if let JsonValue::String(s) = properties_obj {
-        properties_obj = serde_json::from_str::<JsonValue>(&s).with_context(|| {
-            format!(
-                "Unable to parse the 'properties' property of the dynamic component as JSON.\n\
-                    Invalid json: {s}"
-            )
-        })?;
+        properties_obj = serde_json::from_str::<JsonValue>(&s)
+            .with_context(|| format!("Invalid json in dynamic component properties: {s}"))?;
     }
     match properties_obj {
         obj @ JsonValue::Object(_) => Ok(vec![obj]),

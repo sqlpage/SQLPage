@@ -11,6 +11,7 @@
    ```
  - Casting values from one type to another using the `::` operator is only supported by PostgreSQL. SQLPage versions before 0.20.5 would silently convert all casts to the `CAST(... AS ...)` syntax, which is supported by all databases. Since 0.20.5, SQLPage started to respect the original `::` syntax, and pass it as-is to the database. This broke existing SQLPage websites that used the `::` syntax with databases other than PostgreSQL. For backward compatibility, this version of SQLPage re-establishes the previous behavior, converts `::` casts on non-PostgreSQL databases to the `CAST(... AS ...)` syntax, but will display a warning in the logs. 
     - In short, if you saw an error like `Error: unrecognized token ":"` after upgrading to 0.20.5, this version should fix it.
+ - The `dynamic` component now properly displays error messages when its properties are invalid. There used to be a bug where errors would be silently ignored, making it hard to debug invalid dynamic components.
 
 ## 0.20.5 (2024-05-07)
 
