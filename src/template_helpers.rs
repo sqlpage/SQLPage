@@ -7,7 +7,7 @@ use handlebars::{
 };
 use serde_json::Value as JsonValue;
 
-use crate::{app_config};
+use crate::app_config;
 use crate::utils::static_filename;
 
 /// Simple json value helper
@@ -20,7 +20,6 @@ type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
 type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>) {
-
     register_helper(h, "stringify", stringify_helper as H);
     register_helper(h, "parse_json", parse_json_helper as EH);
     register_helper(h, "default", default_helper as HH);
@@ -138,7 +137,7 @@ fn to_array_helper(v: &JsonValue) -> JsonValue {
     .into()
 }
 
-fn get_site_prefix() -> String{
+fn get_site_prefix() -> String {
     let app_config = app_config::load();
     app_config.unwrap().site_prefix + "/"
 }

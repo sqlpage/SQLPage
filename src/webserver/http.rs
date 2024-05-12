@@ -345,7 +345,9 @@ impl SingleOrVec {
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
 async fn path_to_sql_file(req: &ServiceRequest, path: &str) -> Option<PathBuf> {
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-    let strip_path = path.strip_prefix(&app_state.config.site_prefix).unwrap_or(path);
+    let strip_path = path
+        .strip_prefix(&app_state.config.site_prefix)
+        .unwrap_or(path);
     let mut path = PathBuf::from(strip_path.strip_prefix('/').unwrap_or(strip_path));
     match path.extension() {
         None => {
@@ -485,13 +487,15 @@ pub fn create_app(
 > {
     let pfx: &String = &app_state.config.site_prefix;
     App::new()
-        .service(web::scope(pfx)
-            .service(static_content::js())
-            .service(static_content::apexcharts_js())
-            .service(static_content::tomselect_js())
-            .service(static_content::css())
-            .service(static_content::icons())
-            .default_service(fn_service(main_handler)))
+        .service(
+            web::scope(pfx)
+                .service(static_content::js())
+                .service(static_content::apexcharts_js())
+                .service(static_content::tomselect_js())
+                .service(static_content::css())
+                .service(static_content::icons())
+                .default_service(fn_service(main_handler)),
+        )
         .wrap(Logger::default())
         .wrap(
             middleware::DefaultHeaders::new()
