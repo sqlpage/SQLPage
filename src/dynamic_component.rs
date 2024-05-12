@@ -88,7 +88,13 @@ fn dynamic_properties_to_result_vec(
     }
     match properties_obj {
         obj @ JsonValue::Object(_) => Ok(vec![obj]),
-        JsonValue::Array(values) => Ok(values),
+        JsonValue::Array(values) => {
+            let mut vec = Vec::with_capacity(values.len());
+            for value in values {
+                vec.extend_from_slice(&dynamic_properties_to_result_vec(value)?);
+            }
+            Ok(vec)
+        }
         other => anyhow::bail!(
             "Dynamic component expected properties of type array or object, got {other} instead."
         ),
@@ -112,7 +118,7 @@ mod tests {
         properties = JsonValue::Array(vec![JsonValue::String(r#"{"a": 1}"#.to_string())]);
         assert_eq!(
             dynamic_properties_to_result_vec(properties.clone()).unwrap(),
-            vec![JsonValue::String(r#"{"a": 1}"#.to_string())]
+            vec![serde_json::json!({"a": 1})]
         );
 
         properties = JsonValue::Object(serde_json::from_str(r#"{"a": 1}"#).unwrap());
@@ -161,6 +167,27 @@ mod tests {
                 serde_json::json!({"a": 1}),
                 serde_json::json!({"nested": 2}),
             ]
+        );
+    }
+
+    #[test]
+    fn test_parse_dynamic_array_json_strings() {
+        let row = DbItem::Row(serde_json::json!({
+            "component": "dynamic",
+            "properties": [
+                r#"{"a": 1}"#,
+                r#"{"b": 2}"#,
+            ]
+        }));
+        let iter = parse_dynamic_rows(row)
+            .map(|item| match item {
+                DbItem::Row(row) => row,
+                x => panic!("Expected a row, got {x:?}"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            iter,
+            vec![serde_json::json!({"a": 1}), serde_json::json!({"b": 2}),]
         );
     }
 }
