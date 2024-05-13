@@ -1,3 +1,4 @@
+use crate::app_config::AppConfig;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::template_helpers::register_all_helpers;
 use crate::{AppState, FileCache, TEMPLATES_DIR};
@@ -76,9 +77,9 @@ pub struct AllTemplates {
 const STATIC_TEMPLATES: Dir = include_dir!("$CARGO_MANIFEST_DIR/sqlpage/templates");
 
 impl AllTemplates {
-    pub fn init() -> anyhow::Result<Self> {
+    pub fn init(config: &AppConfig) -> anyhow::Result<Self> {
         let mut handlebars = Handlebars::new();
-        register_all_helpers(&mut handlebars);
+        register_all_helpers(&mut handlebars, config);
         let mut this = Self {
             handlebars,
             split_templates: FileCache::new(),

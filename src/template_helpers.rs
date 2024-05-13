@@ -1,14 +1,12 @@
 use std::borrow::Cow;
 
+use crate::{app_config::AppConfig, utils::static_filename};
 use anyhow::Context as _;
 use handlebars::{
     handlebars_helper, Context, Handlebars, PathAndJson, RenderError, RenderErrorReason,
     Renderable, ScopedJson,
 };
 use serde_json::Value as JsonValue;
-
-use crate::app_config;
-use crate::utils::static_filename;
 
 /// Simple json to json helper
 type H = fn(&JsonValue) -> JsonValue;
@@ -17,9 +15,7 @@ type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
 /// Helper that takes two arguments
 type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 
-pub fn register_all_helpers(h: &mut Handlebars<'_>) {
-    let app_config = app_config::load();
-    let pfx = app_config.unwrap().site_prefix;
+pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "stringify", stringify_helper as H);
     register_helper(h, "parse_json", parse_json_helper as EH);
     register_helper(h, "default", default_helper as HH);
@@ -43,10 +39,10 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     h.register_helper("array_contains", Box::new(array_contains));
 
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
-    register_helper(h, "static_path", static_path_helper as EH);
-
-    // site_prefix partial: the site prefix like: /app/
-    let _ = h.register_partial("site_prefix", &pfx);
+    let static_path_helper = StaticPathHelper {
+        site_prefix: config.site_prefix.clone(),
+    };
+    register_helper(h, "static_path", static_path_helper);
 
     // icon helper: generate an image with the specified icon
     h.register_helper("icon_img", Box::new(icon_img_helper));
@@ -137,13 +133,27 @@ fn to_array_helper(v: &JsonValue) -> JsonValue {
     .into()
 }
 
-fn static_path_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
-    match v.as_str().with_context(|| "static_path: not a string")? {
-        "sqlpage.js" => Ok(static_filename!("sqlpage.js").into()),
-        "sqlpage.css" => Ok(static_filename!("sqlpage.css").into()),
-        "apexcharts.js" => Ok(static_filename!("apexcharts.js").into()),
-        "tomselect.js" => Ok(static_filename!("tomselect.js").into()),
-        other => Err(anyhow::anyhow!("unknown static file: {other:?}")),
+struct StaticPathHelper {
+    site_prefix: String,
+}
+
+impl CanHelp for StaticPathHelper {
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        let static_file = match args {
+            [v] => v.value(),
+            _ => return Err("expected one argument".to_string()),
+        };
+        let name = static_file
+            .as_str()
+            .ok_or_else(|| format!("static_path: not a string: {static_file}"))?;
+        let path = match name {
+            "sqlpage.js" => static_filename!("sqlpage.js"),
+            "sqlpage.css" => static_filename!("sqlpage.css"),
+            "apexcharts.js" => static_filename!("apexcharts.js"),
+            "tomselect.js" => static_filename!("tomselect.js"),
+            other => return Err(format!("unknown static file: {other:?}")),
+        };
+        Ok(format!("{}{}", self.site_prefix, path).into())
     }
 }
 

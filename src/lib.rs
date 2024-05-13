@@ -40,7 +40,7 @@ impl AppState {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
         // Connect to the database
         let db = Database::init(config).await?;
-        let all_templates = AllTemplates::init()?;
+        let all_templates = AllTemplates::init(config)?;
         let mut sql_file_cache = FileCache::new();
         let file_system = FileSystem::init(&config.web_root, &db).await;
         sql_file_cache.add_static(

@@ -300,6 +300,28 @@ async fn test_static_files() {
     assert_eq!(&body, &b"It works !"[..]);
 }
 
+#[actix_web::test]
+async fn test_with_site_prefix() {
+    let mut config = test_config();
+    config.site_prefix = "/xxx/".to_string();
+    let state = AppState::init(&config).await.unwrap();
+    let app_data = actix_web::web::Data::new(state);
+    let resp = req_path_with_app_data("/xxx/tests/sql_test_files/it_works_simple.sql", app_data)
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("It works !"),
+        "{body_str}\nexpected to contain: It works !"
+    );
+    assert!(
+        body_str.contains("href=\"/xxx/"),
+        "{body_str}\nexpected to contain stylesheet link with site prefix"
+    );
+}
+
 async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     let data = make_app_data().await;
     Ok(test::TestRequest::get()
