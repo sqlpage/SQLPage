@@ -152,9 +152,10 @@ fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
 /// The site prefix should always start and end with a `/`.
 fn deserialize_site_prefix<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
     let prefix: Option<String> = Deserialize::deserialize(deserializer)?;
-    Ok(prefix
-        .map(|h| "/".to_string() + h.trim_start_matches('/').trim_end_matches('/') + "/")
-        .unwrap_or_else(|| "/".to_string()))
+    Ok(prefix.map_or_else(
+        || '/'.to_string(),
+        |h| '/'.to_string() + h.trim_start_matches('/').trim_end_matches('/') + "/",
+    ))
 }
 
 fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {
