@@ -213,7 +213,7 @@ fn default_https_acme_directory_url() -> String {
 }
 
 fn default_site_prefix() -> String {
-    "".to_string()
+    "/".to_string()
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy, Eq, Default)]

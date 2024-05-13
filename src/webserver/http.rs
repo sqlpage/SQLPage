@@ -345,10 +345,9 @@ impl SingleOrVec {
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
 async fn path_to_sql_file(req: &ServiceRequest, path: &str) -> Option<PathBuf> {
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-    let strip_path = path
+    let mut path = PathBuf::from(path
         .strip_prefix(&app_state.config.site_prefix)
-        .unwrap_or(path);
-    let mut path = PathBuf::from(strip_path.strip_prefix('/').unwrap_or(strip_path));
+        .unwrap_or(path));
     match path.extension() {
         None => {
             path.push("index.sql");
@@ -389,8 +388,7 @@ async fn serve_file(
     state: &AppState,
     if_modified_since: Option<IfModifiedSince>,
 ) -> actix_web::Result<HttpResponse> {
-    let strip_path = path.strip_prefix(&state.config.site_prefix).unwrap_or(path);
-    let path = PathBuf::from(strip_path.strip_prefix('/').unwrap_or(strip_path));
+    let path = path.strip_prefix(&state.config.site_prefix).unwrap_or(path);
     if let Some(IfModifiedSince(date)) = if_modified_since {
         let since = DateTime::<Utc>::from(SystemTime::from(date));
         let modified = state
@@ -488,7 +486,7 @@ pub fn create_app(
     let pfx: &String = &app_state.config.site_prefix;
     App::new()
         .service(
-            web::scope(pfx)
+            web::scope(pfx.strip_suffix("/").unwrap_or(pfx))
                 .service(static_content::js())
                 .service(static_content::apexcharts_js())
                 .service(static_content::tomselect_js())

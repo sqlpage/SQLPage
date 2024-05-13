@@ -20,6 +20,8 @@ type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
 type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>) {
+    let app_config = app_config::load();
+    let pfx = app_config.unwrap().site_prefix;
     register_helper(h, "stringify", stringify_helper as H);
     register_helper(h, "parse_json", parse_json_helper as EH);
     register_helper(h, "default", default_helper as HH);
@@ -45,8 +47,8 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>) {
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
     register_helper(h, "static_path", static_path_helper as EH);
 
-    // site_prefix helper: the site prefix like: /app/
-    register_helper(h, "site_prefix", site_prefix_helper as NH);
+    // site_prefix partial: the site prefix like: /app/
+    let _ = h.register_partial("site_prefix", &pfx);
 
     // icon helper: generate an image with the specified icon
     h.register_helper("icon_img", Box::new(icon_img_helper));
@@ -137,22 +139,12 @@ fn to_array_helper(v: &JsonValue) -> JsonValue {
     .into()
 }
 
-fn get_site_prefix() -> String {
-    let app_config = app_config::load();
-    app_config.unwrap().site_prefix + "/"
-}
-
-fn site_prefix_helper() -> JsonValue {
-    get_site_prefix().into()
-}
-
 fn static_path_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
-    let pfx = get_site_prefix();
     match v.as_str().with_context(|| "static_path: not a string")? {
-        "sqlpage.js" => Ok((pfx + static_filename!("sqlpage.js")).into()),
-        "sqlpage.css" => Ok((pfx + static_filename!("sqlpage.css")).into()),
-        "apexcharts.js" => Ok((pfx + static_filename!("apexcharts.js")).into()),
-        "tomselect.js" => Ok((pfx + static_filename!("tomselect.js")).into()),
+        "sqlpage.js" => Ok(static_filename!("sqlpage.js").into()),
+        "sqlpage.css" => Ok(static_filename!("sqlpage.css").into()),
+        "apexcharts.js" => Ok(static_filename!("apexcharts.js").into()),
+        "tomselect.js" => Ok(static_filename!("tomselect.js").into()),
         other => Err(anyhow::anyhow!("unknown static file: {other:?}")),
     }
 }
