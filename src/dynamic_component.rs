@@ -41,10 +41,7 @@ impl Iterator for DynamicComponentIterator {
 
 fn expand_dynamic_stack(stack: &mut Vec<anyhow::Result<JsonValue>>) {
     while let Some(mut next) = stack.pop() {
-        let dyn_props = next
-            .as_mut()
-            .ok()
-            .and_then(|mut v| extract_dynamic_properties(&mut v));
+        let dyn_props = next.as_mut().ok().and_then(extract_dynamic_properties);
         if let Some(properties) = dyn_props {
             // if the properties contain new (nested) dynamic components, push them onto the stack
             stack.extend(dynamic_properties_to_vec(properties));

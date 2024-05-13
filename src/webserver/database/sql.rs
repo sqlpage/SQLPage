@@ -529,7 +529,7 @@ impl VisitorMut for ParameterExtractor {
                     null_treatment: None,
                     within_group: Vec::new(),
                 });
-            },
+            }
             Expr::Cast {
                 kind: kind @ CastKind::DoubleColon,
                 ..
