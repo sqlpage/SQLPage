@@ -471,6 +471,24 @@ fn redirect_missing_trailing_slash(uri: &Uri) -> Option<HttpResponse> {
     }
 }
 
+/// called when a request is made to a path outside of the sub-path we are serving the site from
+async fn default_prefix_redirect(
+    service_request: ServiceRequest,
+) -> actix_web::Result<ServiceResponse> {
+    let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+    let redirect_path = app_state
+        .config
+        .site_prefix
+        .trim_end_matches('/')
+        .to_string()
+        + service_request.path();
+    Ok(service_request.into_response(
+        HttpResponse::PermanentRedirect()
+            .insert_header((header::LOCATION, redirect_path))
+            .finish(),
+    ))
+}
+
 pub fn create_app(
     app_state: web::Data<AppState>,
 ) -> App<
@@ -496,6 +514,8 @@ pub fn create_app(
                 .service(static_content::icons())
                 .default_service(fn_service(main_handler)),
         )
+        // when receiving a request outside of the prefix, redirect to the prefix
+        .default_service(fn_service(default_prefix_redirect))
         .wrap(Logger::default())
         .wrap(
             middleware::DefaultHeaders::new()
