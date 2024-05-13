@@ -82,7 +82,10 @@ pub struct AppConfig {
     /// served from `https://yourdomain.com/sqlpage/`. Defaults to `/`.
     /// This is useful if you want to serve the website on the same domain as other content, and
     /// you are using a reverse proxy to route requests to the correct server.
-    #[serde(deserialize_with = "deserialize_site_prefix")]
+    #[serde(
+        deserialize_with = "deserialize_site_prefix",
+        default = "default_site_prefix"
+    )]
     pub site_prefix: String,
 }
 
@@ -156,6 +159,10 @@ fn deserialize_site_prefix<'de, D: Deserializer<'de>>(deserializer: D) -> Result
         || '/'.to_string(),
         |h| '/'.to_string() + h.trim_start_matches('/').trim_end_matches('/') + "/",
     ))
+}
+
+fn default_site_prefix() -> String {
+    '/'.to_string()
 }
 
 fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {

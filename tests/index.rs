@@ -292,6 +292,14 @@ async fn privileged_paths_are_not_accessible() {
     );
 }
 
+#[actix_web::test]
+async fn test_static_files() {
+    let resp = req_path("/tests/it_works.txt").await.unwrap();
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    assert_eq!(&body, &b"It works !"[..]);
+}
+
 async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     let data = make_app_data().await;
     Ok(test::TestRequest::get()
