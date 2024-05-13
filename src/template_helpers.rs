@@ -10,8 +10,6 @@ use serde_json::Value as JsonValue;
 use crate::app_config;
 use crate::utils::static_filename;
 
-/// Simple json value helper
-type NH = fn() -> JsonValue;
 /// Simple json to json helper
 type H = fn(&JsonValue) -> JsonValue;
 /// Simple json to json helper with error handling
@@ -320,15 +318,6 @@ fn icon_img_helper<'reg, 'rc>(
 
 trait CanHelp: Send + Sync + 'static {
     fn call(&self, v: &[PathAndJson]) -> Result<JsonValue, String>;
-}
-
-impl CanHelp for NH {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
-        match args {
-            [_v] => Err("expected zero arguments".to_string()),
-            _ => Ok(self()),
-        }
-    }
 }
 
 impl CanHelp for H {

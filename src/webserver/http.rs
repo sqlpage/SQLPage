@@ -345,9 +345,10 @@ impl SingleOrVec {
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
 async fn path_to_sql_file(req: &ServiceRequest, path: &str) -> Option<PathBuf> {
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-    let mut path = PathBuf::from(path
-        .strip_prefix(&app_state.config.site_prefix)
-        .unwrap_or(path));
+    let mut path = PathBuf::from(
+        path.strip_prefix(&app_state.config.site_prefix)
+            .unwrap_or(path),
+    );
     match path.extension() {
         None => {
             path.push("index.sql");
