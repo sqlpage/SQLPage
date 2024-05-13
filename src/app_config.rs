@@ -78,8 +78,8 @@ pub struct AppConfig {
     #[serde(default)]
     pub environment: DevOrProd,
 
-    /// Strip prefix to enable hosting behind a reverse proxy
-    /// must NOT have a trailing /
+    /// Site prefix to enable hosting behind a reverse proxy
+    /// must have a trailing /
     #[serde(default = "default_site_prefix")]
     pub site_prefix: String,
 }
