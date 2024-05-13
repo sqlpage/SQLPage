@@ -484,10 +484,11 @@ pub fn create_app(
         InitError = (),
     >,
 > {
-    let pfx: &String = &app_state.config.site_prefix;
+    let encoded_scope: &str = app_state.config.site_prefix.trim_end_matches('/');
+    let decoded_scope = percent_encoding::percent_decode_str(encoded_scope).decode_utf8_lossy();
     App::new()
         .service(
-            web::scope(pfx.trim_end_matches('/'))
+            web::scope(&decoded_scope)
                 .service(static_content::js())
                 .service(static_content::apexcharts_js())
                 .service(static_content::tomselect_js())

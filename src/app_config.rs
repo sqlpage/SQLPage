@@ -157,7 +157,15 @@ fn deserialize_site_prefix<'de, D: Deserializer<'de>>(deserializer: D) -> Result
     let prefix: Option<String> = Deserialize::deserialize(deserializer)?;
     Ok(prefix.map_or_else(
         || '/'.to_string(),
-        |h| '/'.to_string() + h.trim_start_matches('/').trim_end_matches('/') + "/",
+        |h| {
+            std::iter::once("/")
+                .chain(percent_encoding::utf8_percent_encode(
+                    &h,
+                    percent_encoding::NON_ALPHANUMERIC,
+                ))
+                .chain(std::iter::once("/"))
+                .collect::<String>()
+        },
     ))
 }
 
