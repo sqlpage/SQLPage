@@ -487,7 +487,7 @@ pub fn create_app(
     let pfx: &String = &app_state.config.site_prefix;
     App::new()
         .service(
-            web::scope(pfx.strip_suffix("/").unwrap_or(pfx))
+            web::scope(pfx.trim_end_matches('/'))
                 .service(static_content::js())
                 .service(static_content::apexcharts_js())
                 .service(static_content::tomselect_js())

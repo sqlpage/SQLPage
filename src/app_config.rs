@@ -78,9 +78,11 @@ pub struct AppConfig {
     #[serde(default)]
     pub environment: DevOrProd,
 
-    /// Site prefix to enable hosting behind a reverse proxy
-    /// must have a trailing /
-    #[serde(default = "default_site_prefix")]
+    /// Serve the website from a sub path. For example, if you set this to `/sqlpage/`, the website will be
+    /// served from `https://yourdomain.com/sqlpage/`. Defaults to `/`.
+    /// This is useful if you want to serve the website on the same domain as other content, and
+    /// you are using a reverse proxy to route requests to the correct server.
+    #[serde(deserialize_with = "deserialize_site_prefix")]
     pub site_prefix: String,
 }
 
@@ -113,6 +115,8 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_owned())
 }
 
+/// Parses and loads the configuration from the `sqlpage.json` file in the current directory.
+/// This should be called only once at the start of the program.
 pub fn load() -> anyhow::Result<AppConfig> {
     let configuration_directory = &configuration_directory();
     log::debug!(
@@ -143,6 +147,14 @@ fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
     host_str
         .map(|h| parse_socket_addr(&h).map_err(D::Error::custom))
         .transpose()
+}
+
+/// The site prefix should always start and end with a `/`.
+fn deserialize_site_prefix<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let prefix: Option<String> = Deserialize::deserialize(deserializer)?;
+    Ok(prefix
+        .map(|h| "/".to_string() + h.trim_start_matches('/').trim_end_matches('/') + "/")
+        .unwrap_or_else(|| "/".to_string()))
 }
 
 fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {
@@ -210,10 +222,6 @@ fn default_https_certificate_cache_dir() -> PathBuf {
 
 fn default_https_acme_directory_url() -> String {
     "https://acme-v02.api.letsencrypt.org/directory".to_string()
-}
-
-fn default_site_prefix() -> String {
-    "/".to_string()
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy, Eq, Default)]
