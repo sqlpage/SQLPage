@@ -343,12 +343,8 @@ impl SingleOrVec {
 }
 
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
-async fn path_to_sql_file(req: &ServiceRequest, path: &str) -> Option<PathBuf> {
-    let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-    let mut path = PathBuf::from(
-        path.strip_prefix(&app_state.config.site_prefix)
-            .unwrap_or(path),
-    );
+fn path_to_sql_file(path: &str) -> Option<PathBuf> {
+    let mut path = PathBuf::from(path);
     match path.extension() {
         None => {
             path.push("index.sql");
@@ -424,7 +420,7 @@ pub async fn main_handler(
     mut service_request: ServiceRequest,
 ) -> actix_web::Result<ServiceResponse> {
     let path = req_path(&service_request);
-    let sql_file_path = path_to_sql_file(&service_request, &path).await;
+    let sql_file_path = path_to_sql_file(&path);
     if let Some(sql_path) = sql_file_path {
         if let Some(redirect) = redirect_missing_trailing_slash(service_request.uri()) {
             return Ok(service_request.into_response(redirect));
@@ -444,6 +440,10 @@ pub async fn main_handler(
 /// Extracts the path from a request and percent-decodes it
 fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
     let encoded_path = req.path();
+    let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
+    let encoded_path = encoded_path
+        .strip_prefix(&app_state.config.site_prefix)
+        .unwrap_or(encoded_path);
     percent_encoding::percent_decode_str(encoded_path).decode_utf8_lossy()
 }
 
