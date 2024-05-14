@@ -1,5 +1,6 @@
 use anyhow::Context;
 use config::Config;
+use percent_encoding::AsciiSet;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -152,21 +153,41 @@ fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
         .transpose()
 }
 
-/// The site prefix should always start and end with a `/`.
 fn deserialize_site_prefix<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
-    let prefix: Option<String> = Deserialize::deserialize(deserializer)?;
-    Ok(prefix.map_or_else(
-        || '/'.to_string(),
-        |h| {
-            std::iter::once("/")
-                .chain(percent_encoding::utf8_percent_encode(
-                    &h,
-                    percent_encoding::NON_ALPHANUMERIC,
-                ))
-                .chain(std::iter::once("/"))
-                .collect::<String>()
-        },
-    ))
+    let prefix: String = Deserialize::deserialize(deserializer)?;
+    Ok(normalize_site_prefix(prefix.as_str()))
+}
+
+/// We standardize the site prefix to always be stored with both leading and trailing slashes.
+/// We also percent-encode special characters in the prefix, but allow it to contain slashes (to allow
+/// hosting on a sub-sub-path).
+fn normalize_site_prefix(prefix: &str) -> String {
+    const TO_ENCODE: AsciiSet = percent_encoding::NON_ALPHANUMERIC.remove(b'/');
+
+    let prefix = prefix.trim_start_matches('/').trim_end_matches('/');
+    if prefix.is_empty() {
+        return default_site_prefix();
+    }
+    let encoded_prefix = percent_encoding::percent_encode(prefix.as_bytes(), &TO_ENCODE);
+
+    std::iter::once("/")
+        .chain(encoded_prefix)
+        .chain(std::iter::once("/"))
+        .collect::<String>()
+}
+
+#[test]
+fn test_normalize_site_prefix() {
+    assert_eq!(normalize_site_prefix(""), "/");
+    assert_eq!(normalize_site_prefix("/"), "/");
+    assert_eq!(normalize_site_prefix("a"), "/a/");
+    assert_eq!(normalize_site_prefix("a/"), "/a/");
+    assert_eq!(normalize_site_prefix("/a"), "/a/");
+    assert_eq!(normalize_site_prefix("a/b"), "/a/b/");
+    assert_eq!(normalize_site_prefix("a/b/"), "/a/b/");
+    assert_eq!(normalize_site_prefix("a/b/c"), "/a/b/c/");
+    assert_eq!(normalize_site_prefix("a b"), "/a%20b/");
+    assert_eq!(normalize_site_prefix("a b/c"), "/a%20b/c/");
 }
 
 fn default_site_prefix() -> String {
