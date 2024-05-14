@@ -24,6 +24,7 @@ use tokio_stream::StreamExt;
 
 #[derive(Debug)]
 pub struct RequestInfo {
+    pub method: actix_web::http::Method,
     pub path: String,
     pub protocol: String,
     pub get_variables: ParamMap,
@@ -40,6 +41,7 @@ pub struct RequestInfo {
 impl Clone for RequestInfo {
     fn clone(&self) -> Self {
         Self {
+            method: self.method.clone(),
             path: self.path.clone(),
             protocol: self.protocol.clone(),
             get_variables: self.get_variables.clone(),
@@ -61,6 +63,7 @@ pub(crate) async fn extract_request_info(
     app_state: Arc<AppState>,
 ) -> anyhow::Result<RequestInfo> {
     let (http_req, payload) = req.parts_mut();
+    let method = http_req.method().clone();
     let protocol = http_req.connection_info().scheme().to_string();
     let config = &app_state.config;
     let (post_variables, uploaded_files) = extract_post_data(http_req, payload, config).await?;
@@ -86,6 +89,7 @@ pub(crate) async fn extract_request_info(
         .map(Authorization::into_scheme);
 
     Ok(RequestInfo {
+        method,
         path: req.path().to_string(),
         headers: param_map(headers),
         get_variables: param_map(get_variables),

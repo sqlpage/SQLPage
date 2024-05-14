@@ -26,6 +26,7 @@ super::function_definition_macro::sqlpage_functions! {
     random_string(string_length: SqlPageFunctionParam<usize>);
     read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
+    request_method((&RequestInfo));
     run_sql((&RequestInfo), sql_file_path: Option<Cow<str>>);
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
@@ -338,6 +339,10 @@ fn mime_from_upload_path<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a
 fn mime_guess_from_filename(filename: &str) -> mime_guess::Mime {
     let maybe_mime = mime_guess::from_path(filename).first();
     maybe_mime.unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM)
+}
+
+async fn request_method(request: &RequestInfo) -> String {
+    request.method.to_string()
 }
 
 async fn run_sql<'a>(

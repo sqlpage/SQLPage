@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased 
+## 0.20.6 (unreleased) 
 
  - `sqlpage.hash_password(NULL)` now returns `NULL` instead of throwing an error. This behavior was changed unintentionally in 0.20.5 and could have broken existing SQLPage websites.
  - The [dynamic](https://sql.ophir.dev/documentation.sql?component=dynamic#component) component now supports multiple `properties` attributes. The following is now possible:
@@ -12,6 +12,7 @@
  - Casting values from one type to another using the `::` operator is only supported by PostgreSQL. SQLPage versions before 0.20.5 would silently convert all casts to the `CAST(... AS ...)` syntax, which is supported by all databases. Since 0.20.5, SQLPage started to respect the original `::` syntax, and pass it as-is to the database. This broke existing SQLPage websites that used the `::` syntax with databases other than PostgreSQL. For backward compatibility, this version of SQLPage re-establishes the previous behavior, converts `::` casts on non-PostgreSQL databases to the `CAST(... AS ...)` syntax, but will display a warning in the logs. 
     - In short, if you saw an error like `Error: unrecognized token ":"` after upgrading to 0.20.5, this version should fix it.
  - The `dynamic` component now properly displays error messages when its properties are invalid. There used to be a bug where errors would be silently ignored, making it hard to debug invalid dynamic components.
+ - New [`sqlpage.request_method`](https://sql.ophir.dev/functions.sql?function=request_method#function) function to get the HTTP method used to access the current page. This is useful to create pages that behave differently depending on whether they are accessed with a GET request (to display a form, for instance) or a POST request (to process the form).
 
 ## 0.20.5 (2024-05-07)
 
