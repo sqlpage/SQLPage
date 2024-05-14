@@ -782,7 +782,8 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                 {"title": "About", "submenu": [
                     {"link": "/safety.sql", "title": "Security"},
                     {"link": "/performance.sql", "title": "Performance"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License"}
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License"},
+                    {"link": "/blog.sql", "title": "Articles"}
                 ]},
                 {"title": "Examples", "submenu": [
                     {"link": "/examples/tabs.sql", "title": "Tabs"},

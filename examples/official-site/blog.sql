@@ -1,18 +1,5 @@
-select 'shell' as component,
-    'SQLPage' as title,
-    'database' as icon,
-    '/' as link,
-    'en-US' as language,
-    'Official SQLPage website: write web applications in SQL !' as description,
-    'blog' as menu_item,
-    'documentation' as menu_item,
-    19 as font_size,
-    'Poppins' as font,
-    'https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js' as javascript,
-    'https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js' as javascript,
-    './rss.sql' as rss,
-    '/prism-tabler-theme.css' as css;
-    
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+
 SELECT 'text' AS component,
         content AS contents_md
 FROM blog_posts
