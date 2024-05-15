@@ -1,5 +1,6 @@
 use anyhow::Context;
 use config::Config;
+use percent_encoding::AsciiSet;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -77,6 +78,16 @@ pub struct AppConfig {
     /// whether to show error messages to the user.
     #[serde(default)]
     pub environment: DevOrProd,
+
+    /// Serve the website from a sub path. For example, if you set this to `/sqlpage/`, the website will be
+    /// served from `https://yourdomain.com/sqlpage/`. Defaults to `/`.
+    /// This is useful if you want to serve the website on the same domain as other content, and
+    /// you are using a reverse proxy to route requests to the correct server.
+    #[serde(
+        deserialize_with = "deserialize_site_prefix",
+        default = "default_site_prefix"
+    )]
+    pub site_prefix: String,
 }
 
 impl AppConfig {
@@ -108,6 +119,8 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_owned())
 }
 
+/// Parses and loads the configuration from the `sqlpage.json` file in the current directory.
+/// This should be called only once at the start of the program.
 pub fn load() -> anyhow::Result<AppConfig> {
     let configuration_directory = &configuration_directory();
     log::debug!(
@@ -138,6 +151,47 @@ fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
     host_str
         .map(|h| parse_socket_addr(&h).map_err(D::Error::custom))
         .transpose()
+}
+
+fn deserialize_site_prefix<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let prefix: String = Deserialize::deserialize(deserializer)?;
+    Ok(normalize_site_prefix(prefix.as_str()))
+}
+
+/// We standardize the site prefix to always be stored with both leading and trailing slashes.
+/// We also percent-encode special characters in the prefix, but allow it to contain slashes (to allow
+/// hosting on a sub-sub-path).
+fn normalize_site_prefix(prefix: &str) -> String {
+    const TO_ENCODE: AsciiSet = percent_encoding::NON_ALPHANUMERIC.remove(b'/');
+
+    let prefix = prefix.trim_start_matches('/').trim_end_matches('/');
+    if prefix.is_empty() {
+        return default_site_prefix();
+    }
+    let encoded_prefix = percent_encoding::percent_encode(prefix.as_bytes(), &TO_ENCODE);
+
+    std::iter::once("/")
+        .chain(encoded_prefix)
+        .chain(std::iter::once("/"))
+        .collect::<String>()
+}
+
+#[test]
+fn test_normalize_site_prefix() {
+    assert_eq!(normalize_site_prefix(""), "/");
+    assert_eq!(normalize_site_prefix("/"), "/");
+    assert_eq!(normalize_site_prefix("a"), "/a/");
+    assert_eq!(normalize_site_prefix("a/"), "/a/");
+    assert_eq!(normalize_site_prefix("/a"), "/a/");
+    assert_eq!(normalize_site_prefix("a/b"), "/a/b/");
+    assert_eq!(normalize_site_prefix("a/b/"), "/a/b/");
+    assert_eq!(normalize_site_prefix("a/b/c"), "/a/b/c/");
+    assert_eq!(normalize_site_prefix("a b"), "/a%20b/");
+    assert_eq!(normalize_site_prefix("a b/c"), "/a%20b/c/");
+}
+
+fn default_site_prefix() -> String {
+    '/'.to_string()
 }
 
 fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {

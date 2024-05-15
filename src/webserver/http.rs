@@ -344,7 +344,7 @@ impl SingleOrVec {
 
 /// Resolves the path in a query to the path to a local SQL file if there is one that matches
 fn path_to_sql_file(path: &str) -> Option<PathBuf> {
-    let mut path = PathBuf::from(path.strip_prefix('/').unwrap_or(path));
+    let mut path = PathBuf::from(path);
     match path.extension() {
         None => {
             path.push("index.sql");
@@ -385,7 +385,7 @@ async fn serve_file(
     state: &AppState,
     if_modified_since: Option<IfModifiedSince>,
 ) -> actix_web::Result<HttpResponse> {
-    let path = path.strip_prefix('/').unwrap_or(path);
+    let path = path.strip_prefix(&state.config.site_prefix).unwrap_or(path);
     if let Some(IfModifiedSince(date)) = if_modified_since {
         let since = DateTime::<Utc>::from(SystemTime::from(date));
         let modified = state
@@ -440,6 +440,10 @@ pub async fn main_handler(
 /// Extracts the path from a request and percent-decodes it
 fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
     let encoded_path = req.path();
+    let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
+    let encoded_path = encoded_path
+        .strip_prefix(&app_state.config.site_prefix)
+        .unwrap_or(encoded_path);
     percent_encoding::percent_decode_str(encoded_path).decode_utf8_lossy()
 }
 
@@ -467,6 +471,24 @@ fn redirect_missing_trailing_slash(uri: &Uri) -> Option<HttpResponse> {
     }
 }
 
+/// called when a request is made to a path outside of the sub-path we are serving the site from
+async fn default_prefix_redirect(
+    service_request: ServiceRequest,
+) -> actix_web::Result<ServiceResponse> {
+    let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+    let redirect_path = app_state
+        .config
+        .site_prefix
+        .trim_end_matches('/')
+        .to_string()
+        + service_request.path();
+    Ok(service_request.into_response(
+        HttpResponse::PermanentRedirect()
+            .insert_header((header::LOCATION, redirect_path))
+            .finish(),
+    ))
+}
+
 pub fn create_app(
     app_state: web::Data<AppState>,
 ) -> App<
@@ -480,13 +502,20 @@ pub fn create_app(
         InitError = (),
     >,
 > {
+    let encoded_scope: &str = app_state.config.site_prefix.trim_end_matches('/');
+    let decoded_scope = percent_encoding::percent_decode_str(encoded_scope).decode_utf8_lossy();
     App::new()
-        .service(static_content::js())
-        .service(static_content::apexcharts_js())
-        .service(static_content::tomselect_js())
-        .service(static_content::css())
-        .service(static_content::icons())
-        .default_service(fn_service(main_handler))
+        .service(
+            web::scope(&decoded_scope)
+                .service(static_content::js())
+                .service(static_content::apexcharts_js())
+                .service(static_content::tomselect_js())
+                .service(static_content::css())
+                .service(static_content::icons())
+                .default_service(fn_service(main_handler)),
+        )
+        // when receiving a request outside of the prefix, redirect to the prefix
+        .default_service(fn_service(default_prefix_redirect))
         .wrap(Logger::default())
         .wrap(
             middleware::DefaultHeaders::new()
