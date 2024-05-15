@@ -18,7 +18,7 @@ SELECT 'alert' as component,
     'hosted.sql' AS link,
     'Try SQLPage cloud' as link_text;
 SELECT 'alert' as component,
-    'Do you want to see my face ?' as title,
+    'Do you prefer videos ?' as title,
     'brand-youtube' as icon,
     'purple' as color,
     'I made a video to introduce you to SQLPage. You can watch it on YouTube. The video covers everything from the underlying technology to the philosophy behind SQLPage to the actual steps to create your first website.' as description_md,

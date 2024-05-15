@@ -205,3 +205,7 @@ Then, run the following command on your server:
 `./sqlpage`
 
 To access your website, enter the address of your VPS in your address bar, followed by the port on which SQLPage runs. For instance: http://123.123.123.123:8080.
+
+For production use, you should:
+ - run SQLPage as a service, using a tool like [docker](https://docs.docker.com/engine/reference/run/) or [systemd](https://linuxhandbook.com/create-systemd-services/).
+ - [use a reverse proxy like *nginx*](./nginx.sql) to improve security and performance, or to configure multiple websites on the same server.
