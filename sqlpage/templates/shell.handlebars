@@ -3,6 +3,12 @@
 <head>
     <meta charset="utf-8"/>
     <title>{{default title "SQLPage"}}</title>
+    {{#if favicon}}
+        <link rel="icon" href="{{favicon}}">
+    {{/if}}
+    {{#if manifest}}
+        <link rel="manifest" href="{{manifest}}">
+    {{/if}}
     <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
    {{#each (to_array css)}}
         {{#if this}}
