@@ -739,6 +739,10 @@ and `shell.json` would be placed at the website''s root and contain the followin
 INSERT INTO component(name, icon, description) VALUES
     ('shell', 'layout-navbar', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page.');
 
+INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'shell', * FROM (VALUES
+    ('favicon', 'The URL of the icon the web browser should display in bookmarks and tabs. This property is particularly useful if multiple sites are hosted on the same domain with different [``site_prefix``](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage).', 'URL', TRUE, TRUE),
+    ('manifest', 'The location of the [manifest.json](https://developer.mozilla.org/en-US/docs/Web/Manifest) if the site is a [PWA](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps). Among other features, serving a manifest enables your site to be "installed" as an app on most mobile devices.', 'URL', TRUE, TRUE)
+) x;
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'shell', * FROM (VALUES
     -- top level
     ('title', 'The title of your page. Will be shown in a top bar above the page contents. Also usually displayed by web browsers as the name of the web page''s tab.', 'TEXT', TRUE, TRUE),
