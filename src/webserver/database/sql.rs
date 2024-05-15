@@ -99,7 +99,10 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
         Err(err) => return Some(syntax_error(err, parser)),
     };
     log::debug!("Parsed statement: {stmt}");
-    while parser.consume_token(&SemiColon) {}
+    let mut semicolon = false;
+    while parser.consume_token(&SemiColon) {
+        semicolon = true;
+    }
     let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
     if let Some((variable, query)) = extract_set_variable(&mut stmt) {
         return Some(ParsedStatement::SetVariable {
@@ -114,7 +117,10 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
         log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
         return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
-    let query = stmt.to_string();
+    let query = format!(
+        "{stmt}{semicolon}",
+        semicolon = if semicolon { ";" } else { "" }
+    );
     log::debug!("Final transformed statement: {stmt}");
     Some(ParsedStatement::StmtWithParams(StmtWithParams {
         query,
