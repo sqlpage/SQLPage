@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.20.6 (unreleased) 
+## 0.21.0 (unreleased) 
 
  - `sqlpage.hash_password(NULL)` now returns `NULL` instead of throwing an error. This behavior was changed unintentionally in 0.20.5 and could have broken existing SQLPage websites.
  - The [dynamic](https://sql.ophir.dev/documentation.sql?component=dynamic#component) component now supports multiple `properties` attributes. The following is now possible:
@@ -15,6 +15,8 @@
  - New [`sqlpage.request_method`](https://sql.ophir.dev/functions.sql?function=request_method#function) function to get the HTTP method used to access the current page. This is useful to create pages that behave differently depending on whether they are accessed with a GET request (to display a form, for instance) or a POST request (to process the form).
  - include the trailing semicolon as a part of the SQL statement sent to the database. This doesn't change anything in most databases, but Microsoft SQL Server requires a trailing semicolon after certain statements, such as `MERGE`. Fixes [issue #318](https://github.com/lovasoa/SQLpage/issues/318)
  - New `readonly` and `disabled` attributes in the [form](https://sql.ophir.dev/documentation.sql?component=form#component) component to make form fields read-only or disabled. This is useful to prevent the user from changing some fields.
+ - 36 new icons [(tabler icons 3.4)](https://tabler.io/icons/changelog)
+ - Bug fixes in charts [(apexcharts.js v3.49.1)](https://github.com/apexcharts/apexcharts.js/releases)
 
 ## 0.20.5 (2024-05-07)
 
