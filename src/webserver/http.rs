@@ -549,22 +549,28 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         return Ok(());
     }
     let mut server = HttpServer::new(factory);
-    if let Some(domain) = &config.https_domain {
-        let mut listen_on_https = listen_on;
-        listen_on_https.set_port(443);
-        log::info!("Will start HTTPS server on {listen_on_https}");
-        let config = make_auto_rustls_config(domain, config);
-        server = server
-            .bind_rustls_0_22(listen_on_https, config)
-            .map_err(|e| bind_error(e, listen_on_https))?;
-    } else if listen_on.port() == 443 {
-        bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)");
-    }
-    if listen_on.port() != 443 {
-        log::info!("Will start HTTP server on {listen_on}");
-        server = server
-            .bind(listen_on)
-            .map_err(|e| bind_error(e, listen_on))?;
+    if let Some(unix_socket) = &config.unix_socket {
+        log::info!("Will start HTTP server on UNIX socket: {:?}", unix_socket);
+        server = server.bind_uds(unix_socket)
+            .map_err(|e| bind_uds_error(e, unix_socket))?;
+    } else {
+        if let Some(domain) = &config.https_domain {
+            let mut listen_on_https = listen_on;
+            listen_on_https.set_port(443);
+            log::info!("Will start HTTPS server on {listen_on_https}");
+            let config = make_auto_rustls_config(domain, config);
+            server = server
+                .bind_rustls_0_22(listen_on_https, config)
+                .map_err(|e| bind_error(e, listen_on_https))?;
+        } else if listen_on.port() == 443 {
+            bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)");
+        }
+        if listen_on.port() != 443 {
+            log::info!("Will start HTTP server on {listen_on}");
+            server = server
+                .bind(listen_on)
+                .map_err(|e| bind_error(e, listen_on))?;
+        }
     }
     server
         .run()
@@ -597,6 +603,28 @@ fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Err
             You can change the value of listen_on in the configuration file.",
         ),
         _ => format!("Unable to bind to {ip} on port {port}"),
+    };
+    anyhow::anyhow!(e).context(ctx)
+}
+
+fn bind_uds_error(e: std::io::Error, unix_socket: &PathBuf) -> anyhow::Error {
+    let ctx = match e.kind() {
+        std::io::ErrorKind::AddrInUse => format!(
+            "Another program is already using the UNIX socket {:?}. \
+            You can either stop that program or change the socket path in the configuration file.",
+            unix_socket,
+        ),
+        std::io::ErrorKind::PermissionDenied => format!(
+            "You do not have permission to bind to the UNIX socket {:?}. \
+            You can change the socket path in the configuration file or check the permissions.",
+            unix_socket,
+        ),
+        std::io::ErrorKind::AddrNotAvailable => format!(
+            "The UNIX socket path {:?} is not available. \
+            You can change the socket path in the configuration file.",
+            unix_socket,
+        ),
+        _ => format!("Unable to bind to UNIX socket {:?}", unix_socket),
     };
     anyhow::anyhow!(e).context(ctx)
 }

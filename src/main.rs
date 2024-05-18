@@ -26,23 +26,28 @@ async fn start() -> anyhow::Result<()> {
 }
 
 async fn log_welcome_message(config: &AppConfig) {
-    // Don't show 0.0.0.0 as the host, show the actual IP address
-    let http_addr = config.listen_on().to_string().replace(
-        "0.0.0.0",
-        std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
-            .to_string()
-            .as_str(),
-    );
-
-    log::info!(
-        "Server started successfully.
-    SQLPage is now running on {}
-    You can write your website's code in .sql files in {}.",
+    let address_message = if let Some(unix_socket) = &config.unix_socket {
+        format!("unix:{}", unix_socket.display())
+    } else {
+        // Don't show 0.0.0.0 as the host, show the actual IP address
+        let http_addr = config.listen_on().to_string().replace(
+            "0.0.0.0",
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
+                .to_string()
+                .as_str(),
+        );
         if let Some(domain) = &config.https_domain {
             format!("https://{}", domain)
         } else {
             format!("http://{}", http_addr)
-        },
+        }
+    };
+
+    log::info!(
+        "Server started successfully.
+    SQLPage is now listening on {}
+    You can write your website's code in .sql files in {}.",
+        address_message,
         config.web_root.display()
     );
 }

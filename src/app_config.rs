@@ -23,6 +23,7 @@ pub struct AppConfig {
     #[serde(default, deserialize_with = "deserialize_socket_addr")]
     pub listen_on: Option<SocketAddr>,
     pub port: Option<u16>,
+    pub unix_socket: Option<PathBuf>,
 
     /// Number of times to retry connecting to the database after a failure when the server starts
     /// up. Retries will happen every 5 seconds. The default is 6 retries, which means the server
