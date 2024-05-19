@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.21.0 (unreleased) 
+## 0.21.0 (2024-05-19) 
 
  - `sqlpage.hash_password(NULL)` now returns `NULL` instead of throwing an error. This behavior was changed unintentionally in 0.20.5 and could have broken existing SQLPage websites.
  - The [dynamic](https://sql.ophir.dev/documentation.sql?component=dynamic#component) component now supports multiple `properties` attributes. The following is now possible:
