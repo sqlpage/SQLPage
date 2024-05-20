@@ -43,7 +43,10 @@ function sqlpage_chart() {
             const series_map = {};
             data.points.forEach(([name, x, y, z]) => {
                 series_map[name] = series_map[name] || { name, data: [] }
-                if (is_timeseries) x = new Date(x);
+                if (is_timeseries) x =
+                    (typeof x === 'number')
+                        ? new Date(x * 1000) // databases use seconds; JS uses ms
+                        : new Date(x);
                 series_map[name].data.push({ x, y, z });
             })
             if (data.xmin == null) data.xmin = undefined;
@@ -111,6 +114,9 @@ function sqlpage_chart() {
                         text: data.xtitle || undefined,
                     },
                     type: is_timeseries ? 'datetime' : categories ? 'category' : undefined,
+                    labels: {
+                        datetimeUTC: false,
+                    }
                 },
                 yaxis: {
                     logarithmic: !!data.logarithmic,
