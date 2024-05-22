@@ -111,7 +111,7 @@ create table users_temp (
 	password_hash not null
 );
 
-insert into users_temp select * from users;
+insert into users_temp select id, first_name, last_name, middle_name, email, phone, rewards_level, password_hash from users;
 
 drop table users; -- backups are important!
 
