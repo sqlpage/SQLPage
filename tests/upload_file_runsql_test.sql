@@ -1,0 +1,1 @@
+select 'dynamic' as component, sqlpage.run_sql('tests/upload_file_test.sql') as properties;
