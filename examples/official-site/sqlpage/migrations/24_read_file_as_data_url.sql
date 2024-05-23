@@ -29,7 +29,7 @@ using the same logic as for serving files in response to HTTP requests.
 ## MIME type
 
 Data URLs contain the [MIME type](https://en.wikipedia.org/wiki/Media_type) of the file they represent.
-If the first argument to this function is call to the `sqlpage.uploaded_file_path` function,
+If the first argument to this function is the result of a call to the `sqlpage.uploaded_file_path` function,
 the declared MIME type of the uploaded file transmitted by the browser will be used.
 
 Otherwise, the MIME type will be guessed from the file extension, without looking at the file contents.
