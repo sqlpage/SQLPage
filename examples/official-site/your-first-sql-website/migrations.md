@@ -1,11 +1,4 @@
-select 'http_header' as component,
-	'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
-
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
-
--- Article by Matthew Larkin
-select 'text' as component,
-"# Understanding SQL Migrations: Your Database, Layer by Layer
+# Understanding SQL Migrations: Your Database, Layer by Layer
 
 Maintaining a structured and evolving database is crucial for web app development. Rarely do we get a schema 100% correct on day one. New insights about the shape of the application are discovered over time, or business needs themselves evolve. In the world of databases, we can evolve schemas using migration files. These files are just more SQL that append or amend layers of development. Think of this process like sedimentary rock layers. Each migration adds a layer, and together, these layers create a complete, functional structure along with a visible trail of historical changes.
 
@@ -150,4 +143,4 @@ Best migrations on your evolving database journey! 👋
 
 ---
 
-Article written by [Matthew Larkin](https://github.com/matthewlarkin) for [SQLPage](https://sql.ophir.dev/)." as contents_md;
+Article written by [Matthew Larkin](https://github.com/matthewlarkin) for [SQLPage](https://sql.ophir.dev/).
