@@ -18,7 +18,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('outline', 'Outline color of the button (e.g. red, purple, ...)', 'COLOR', FALSE, TRUE),
     ('space_after', 'Whether there should be extra space to the right of the button. In a line of buttons, this will put the buttons before this one on the left, and the ones after on the right.', 'BOOLEAN', FALSE, TRUE),
     ('icon', 'Name of an icon to be displayed on the left side of the button.', 'ICON', FALSE, TRUE),
-    ('form', 'Identifier (id) of the form to which the button should submit.', 'TEXT', FALSE, TRUE)
+    ('form', 'Identifier (id) of the form to which the button should submit.', 'TEXT', FALSE, TRUE),
     ('id', 'HTML Identifier to add to the button element.', 'TEXT', FALSE, TRUE)
 ) x;
 
