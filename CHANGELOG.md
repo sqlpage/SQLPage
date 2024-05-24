@@ -9,6 +9,7 @@
       - This change is particularly useful in SQLite, which generates naive datetime strings by default. You should still store and query datetimes as unix timestamps when possible, to avoid ambiguity and reduce storage size.
  - When calling a file with [`sqlpage.run_sql`](https://sql.ophir.dev/functions.sql?function=run_sql#function), the target file now has access to uploaded files.
  - New article by [Matthew Larkin](https://github.com/matthewlarkin) about [migrations](https://sql.ophir.dev/your-first-sql-website/migrations.sql).
+ - Add a row-level `id` attribute to the button component.
 
 ## 0.21.0 (2024-05-19) 
 
