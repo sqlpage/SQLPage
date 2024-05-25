@@ -47,7 +47,6 @@ impl Clone for RequestInfo {
             protocol: self.protocol.clone(),
             get_variables: self.get_variables.clone(),
             post_variables: self.post_variables.clone(),
-            // uploaded_files is not cloned, as it contains file handles
             uploaded_files: self.uploaded_files.clone(),
             headers: self.headers.clone(),
             client_ip: self.client_ip,
