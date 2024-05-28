@@ -42,7 +42,11 @@ async fn download_deps(filename: &str) {
 }
 
 async fn process_input_file(path_out: &Path, original: File) {
-    let client = awc::Client::default();
+    let client = awc::ClientBuilder::new()
+        .timeout(core::time::Duration::from_secs(3))
+        .max_http_version(awc::http::Version::HTTP_11)
+        .no_default_headers()
+        .finish();
     let mut outfile = gzip::Encoder::new(File::create(path_out).unwrap()).unwrap();
     for l in BufReader::new(original).lines() {
         let line = l.unwrap();
@@ -50,18 +54,7 @@ async fn process_input_file(path_out: &Path, original: File) {
             let url = line
                 .trim_start_matches("/* !include ")
                 .trim_end_matches(" */");
-            let mut resp = client.get(url).send().await.expect(
-                "We need to download external frontend dependencies to build the static frontend.",
-            );
-            if resp.status() != 200 {
-                panic!("Received {} status code from {}", resp.status(), url);
-            }
-            while let Some(b) = resp.next().await {
-                let chunk = b.unwrap_or_else(|_| panic!("Failed to read data from {}", url));
-                outfile
-                    .write_all(&chunk)
-                    .expect("Failed to write external frontend dependency to local file");
-            }
+            download_url_to_opened_file(&client, url, &mut outfile).await;
             outfile.write_all(b"\n").unwrap();
         } else {
             writeln!(outfile, "{}", line).unwrap();
@@ -71,6 +64,29 @@ async fn process_input_file(path_out: &Path, original: File) {
         .finish()
         .as_result()
         .expect("Unable to write compressed frontend asset");
+}
+
+async fn download_url_to_opened_file(
+    client: &awc::Client,
+    url: &str,
+    outfile: &mut impl std::io::Write,
+) {
+    let mut resp = client.get(url).send().await.unwrap_or_else(|err| {
+        panic!(
+            "We need to download external frontend dependencies to build the static frontend. \
+                Could not download {url} \
+                {err}"
+        )
+    });
+    if resp.status() != 200 {
+        panic!("Received {} status code from {}", resp.status(), url);
+    }
+    while let Some(b) = resp.next().await {
+        let chunk = b.unwrap_or_else(|err| panic!("Failed to read data from {url}: {err}"));
+        outfile
+            .write_all(&chunk)
+            .expect("Failed to write external frontend dependency to local file");
+    }
 }
 
 // Given a filename, creates a new unique filename based on the file contents
