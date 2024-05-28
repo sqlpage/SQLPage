@@ -1,5 +1,4 @@
 use actix_rt::spawn;
-use futures_util::StreamExt;
 use libflate::gzip;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
@@ -7,24 +6,34 @@ use std::hash::Hasher;
 use std::io::Read;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
+use std::time::Duration;
 
 #[actix_rt::main]
 async fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    let c = Rc::new(make_client());
 
     for h in [
-        spawn(download_deps("sqlpage.js")),
-        spawn(download_deps("sqlpage.css")),
-        spawn(download_deps("tabler-icons.svg")),
-        spawn(download_deps("apexcharts.js")),
-        spawn(download_deps("tomselect.js")),
+        spawn(download_deps(c.clone(), "sqlpage.js")),
+        spawn(download_deps(c.clone(), "sqlpage.css")),
+        spawn(download_deps(c.clone(), "tabler-icons.svg")),
+        spawn(download_deps(c.clone(), "apexcharts.js")),
+        spawn(download_deps(c.clone(), "tomselect.js")),
     ] {
         h.await.unwrap();
     }
 }
 
+fn make_client() -> awc::Client {
+    awc::ClientBuilder::new()
+        .timeout(Duration::from_secs(10))
+        .no_default_headers()
+        .finish()
+}
+
 /// Creates a file with inlined remote files included
-async fn download_deps(filename: &str) {
+async fn download_deps(client: Rc<awc::Client>, filename: &str) {
     let path_in = format!("sqlpage/{}", filename);
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let path_out: PathBuf = out_dir.join(filename);
@@ -33,7 +42,7 @@ async fn download_deps(filename: &str) {
     // the URL in the generated file.
     println!("cargo:rerun-if-changed={}", path_in);
     let original = File::open(path_in).unwrap();
-    process_input_file(&path_out, original).await;
+    process_input_file(&client, &path_out, original).await;
     std::fs::write(
         format!("{}.filename.txt", path_out.display()),
         hashed_filename(&path_out),
@@ -41,12 +50,7 @@ async fn download_deps(filename: &str) {
     .unwrap();
 }
 
-async fn process_input_file(path_out: &Path, original: File) {
-    let client = awc::ClientBuilder::new()
-        .timeout(core::time::Duration::from_secs(3))
-        .max_http_version(awc::http::Version::HTTP_11)
-        .no_default_headers()
-        .finish();
+async fn process_input_file(client: &awc::Client, path_out: &Path, original: File) {
     let mut outfile = gzip::Encoder::new(File::create(path_out).unwrap()).unwrap();
     for l in BufReader::new(original).lines() {
         let line = l.unwrap();
@@ -54,7 +58,7 @@ async fn process_input_file(path_out: &Path, original: File) {
             let url = line
                 .trim_start_matches("/* !include ")
                 .trim_end_matches(" */");
-            download_url_to_opened_file(&client, url, &mut outfile).await;
+            copy_url_to_opened_file(client, url, &mut outfile).await;
             outfile.write_all(b"\n").unwrap();
         } else {
             writeln!(outfile, "{}", line).unwrap();
@@ -66,27 +70,43 @@ async fn process_input_file(path_out: &Path, original: File) {
         .expect("Unable to write compressed frontend asset");
 }
 
-async fn download_url_to_opened_file(
+async fn copy_url_to_opened_file(
     client: &awc::Client,
     url: &str,
     outfile: &mut impl std::io::Write,
 ) {
+    // If the file has been downloaded manually, use it
+    let cached_file_path = make_url_path(url);
+    if !cached_file_path.exists() {
+        println!("cargo:warning=Downloading {url} to cache file {cached_file_path:?}.");
+        download_url_to_path(client, url, &cached_file_path).await;
+        println!("cargo:rerun-if-changed={}", cached_file_path.display());
+    }
+    copy_cached_to_opened_file(&cached_file_path, outfile);
+}
+
+fn copy_cached_to_opened_file(source: &Path, outfile: &mut impl std::io::Write) {
+    let reader = std::fs::File::open(source).unwrap();
+    let mut buf = std::io::BufReader::new(reader);
+    // Not async, but performance should not really matter here
+    std::io::copy(&mut buf, outfile).unwrap();
+}
+
+async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
     let mut resp = client.get(url).send().await.unwrap_or_else(|err| {
+        let path = make_url_path(url);
         panic!(
             "We need to download external frontend dependencies to build the static frontend. \
-                Could not download {url} \
+                Could not download {url}. You can manually download the file and place it in {path:?}\
                 {err}"
         )
     });
     if resp.status() != 200 {
         panic!("Received {} status code from {}", resp.status(), url);
     }
-    while let Some(b) = resp.next().await {
-        let chunk = b.unwrap_or_else(|err| panic!("Failed to read data from {url}: {err}"));
-        outfile
-            .write_all(&chunk)
-            .expect("Failed to write external frontend dependency to local file");
-    }
+    let bytes = resp.body().limit(128 * 1024 * 1024).await.unwrap();
+    std::fs::write(path, &bytes)
+        .expect("Failed to write external frontend dependency to local file");
 }
 
 // Given a filename, creates a new unique filename based on the file contents
@@ -110,4 +130,9 @@ fn hashed_filename(path: &Path) -> String {
         hash,
         path.extension().unwrap().to_str().unwrap()
     )
+}
+
+fn make_url_path(url: &str) -> PathBuf {
+    let filename = url.replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "_");
+    Path::new(&std::env::var("OUT_DIR").unwrap()).join(filename)
 }
