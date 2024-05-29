@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.22.0 (unreleased)
+## 0.22.0 (2024-05-29)
  -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.
      - **Security Risk:** Previously, `SET $x` could be overwritten by a POST parameter named `x`.
      - **Solution:** Upgrade to SQLPage v0.22. If not possible, then update your application to use `SET :x` instead of `SET $x`.
@@ -16,7 +16,6 @@
     -  **Reminder about GET and POST Variables:**
        - **GET Variables:** Parameters included in the URL of an HTTP GET request, used to retrieve data. Example: `https://example.com/page?x=value`, where `x` is a GET variable.
        - **POST Variables:** Parameters included in the body of an HTTP POST request, used for form submissions. Example: the value entered by the user in a form field named `x`.
-  
  - Two **backward-incompatible changes** in the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component's timeseries plotting feature (actioned with `TRUE as time`):
     -  when providing a number for the x value (time), it is now interpreted as a unix timestamp, in seconds (number of seconds since 1970-01-01 00:00:00 UTC). It used to be interpreted as milliseconds. If you were using the `TRUE as time` syntax with integer values, you will need to divide your time values by 1000 to get the same result as before.
         - This change makes it easier to work with time series plots, as most databases return timestamps in seconds. For instance, in SQLite, you can store timestamps as integers with the [`unixepoch()`](https://www.sqlite.org/lang_datefunc.html) function, and plot them directly in SQLPage.
