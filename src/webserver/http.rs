@@ -551,7 +551,8 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
     let mut server = HttpServer::new(factory);
     if let Some(unix_socket) = &config.unix_socket {
         log::info!("Will start HTTP server on UNIX socket: {:?}", unix_socket);
-        server = server.bind_uds(unix_socket)
+        server = server
+            .bind_uds(unix_socket)
             .map_err(|e| bind_uds_error(e, unix_socket))?;
     } else {
         if let Some(domain) = &config.https_domain {
@@ -610,21 +611,18 @@ fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Err
 fn bind_uds_error(e: std::io::Error, unix_socket: &PathBuf) -> anyhow::Error {
     let ctx = match e.kind() {
         std::io::ErrorKind::AddrInUse => format!(
-            "Another program is already using the UNIX socket {:?}. \
+            "Another program is already using the UNIX socket {unix_socket:?}. \
             You can either stop that program or change the socket path in the configuration file.",
-            unix_socket,
         ),
         std::io::ErrorKind::PermissionDenied => format!(
-            "You do not have permission to bind to the UNIX socket {:?}. \
+            "You do not have permission to bind to the UNIX socket {unix_socket:?}. \
             You can change the socket path in the configuration file or check the permissions.",
-            unix_socket,
         ),
         std::io::ErrorKind::AddrNotAvailable => format!(
-            "The UNIX socket path {:?} is not available. \
+            "The UNIX socket path {unix_socket:?} is not available. \
             You can change the socket path in the configuration file.",
-            unix_socket,
         ),
-        _ => format!("Unable to bind to UNIX socket {:?}", unix_socket),
+        _ => format!("Unable to bind to UNIX socket {unix_socket:?}"),
     };
     anyhow::anyhow!(e).context(ctx)
 }
