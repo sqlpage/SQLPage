@@ -27,7 +27,7 @@ async fn start() -> anyhow::Result<()> {
 
 async fn log_welcome_message(config: &AppConfig) {
     let address_message = if let Some(unix_socket) = &config.unix_socket {
-        format!("unix:{}", unix_socket.display())
+        format!("unix socket {unix_socket:?}")
     } else {
         // Don't show 0.0.0.0 as the host, show the actual IP address
         let http_addr = config.listen_on().to_string().replace(
