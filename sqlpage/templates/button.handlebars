@@ -11,11 +11,15 @@
         {{~#if outline}} btn-outline-{{outline}}{{/if}}
         {{~#if ../shape}} btn-{{../shape}}{{/if}}
         {{~#if space_after}} me-auto{{/if}}"
+        {{~#if id}} id="{{id}}"{{/if}}
         role="button">
         {{~#if icon~}}
             <span class="me-1">{{~icon_img icon~}}</span>
         {{~/if~}}
         {{~title~}}
+        {{~#if icon_after ~}}
+            <span class="ms-1">{{~icon_img icon_after~}}</span>
+        {{~/if}}
     {{#if form}}
     </button>
     {{else}}

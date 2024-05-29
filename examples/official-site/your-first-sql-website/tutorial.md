@@ -65,15 +65,6 @@ Your database schema
 The [database schema](https://en.wikipedia.org/wiki/Database_schema) for your SQLPage website
 can be defined using SQL scripts located in the
 **`sqlpage/migrations`** subdirectory of your website's root folder.
-Each script represents a [migration](https://en.wikipedia.org/wiki/Schema_migration)
-that sets up or modifies the database structure.
-
-The scripts are executed in order. You must prefix them with a number to control the order in which they are executed.
-For instance, `my_website/sqlpage/migrations/0001_create_users_table.sql`
-will be executed before `my_website/sqlpage/migrations/0002_add_email_to_users_table.sql`.
-SQLPage keeps track of which migrations have already run
-(by storing the executed migrations in a table named `_sqlx_migrations`),
-and will only execute new migrations.
 
 For our first website, let's create a file located in `sqlpage/migrations/0001_create_users_table.sql` with the following contents:
 
@@ -83,6 +74,9 @@ CREATE TABLE users (
     name TEXT NOT NULL
 );
 ```
+
+Please read our [**introduction to database migrations**](./migrations.sql) to 
+learn how to maintain your database schema in the long term.
 
 > **Note**: The migration system is not supported on Microsoft SQL Server databases.
 > If you are using a SQL Server database, you should create your tables using a different tool, such as *SQL Server Management Studio*.

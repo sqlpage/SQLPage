@@ -31,7 +31,7 @@ use anyhow::{anyhow, Context as _};
 pub(crate) enum StmtParam {
     Get(String),
     Post(String),
-    GetOrPost(String),
+    PostOrGet(String),
     Error(String),
     Literal(String),
     Null,
@@ -44,7 +44,7 @@ impl std::fmt::Display for StmtParam {
         match self {
             StmtParam::Get(name) => write!(f, "?{name}"),
             StmtParam::Post(name) => write!(f, ":{name}"),
-            StmtParam::GetOrPost(name) => write!(f, "${name}"),
+            StmtParam::PostOrGet(name) => write!(f, "${name}"),
             StmtParam::Literal(x) => write!(f, "'{}'", x.replace('\'', "''")),
             StmtParam::Null => write!(f, "NULL"),
             StmtParam::Concat(items) => {
@@ -135,11 +135,13 @@ pub(super) async fn extract_req_param<'a>(
         // sync functions
         StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),
-        StmtParam::GetOrPost(x) => request
-            .post_variables
-            .get(x)
-            .or_else(|| request.get_variables.get(x))
-            .map(SingleOrVec::as_json_str),
+        StmtParam::PostOrGet(x) => if let Some(v) = request.post_variables.get(x) {
+            log::warn!("Deprecation warning! ${x} was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :{x} instead.");
+            Some(v)
+        } else {
+            request.get_variables.get(x)
+        }
+        .map(SingleOrVec::as_json_str),
         StmtParam::Error(x) => anyhow::bail!("{}", x),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::Null => None,

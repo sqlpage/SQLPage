@@ -139,27 +139,28 @@ async fn execute_set_variable_query<'a>(
     let (vars, name) = vars_and_name(request, variable)?;
     if let Some(value) = value {
         log::debug!("Setting variable {name} to {value:?}");
-        vars.insert(name.clone(), SingleOrVec::Single(value));
+        vars.insert(name.to_owned(), SingleOrVec::Single(value));
     } else {
         log::debug!("Removing variable {name}");
-        vars.remove(&name);
+        vars.remove(name);
     }
     Ok(())
 }
 
-fn vars_and_name<'a>(
+fn vars_and_name<'a, 'b>(
     request: &'a mut RequestInfo,
-    variable: &StmtParam,
-) -> anyhow::Result<(&'a mut HashMap<String, SingleOrVec>, String)> {
+    variable: &'b StmtParam,
+) -> anyhow::Result<(&'a mut HashMap<String, SingleOrVec>, &'b str)> {
     match variable {
-        StmtParam::Get(name) | StmtParam::GetOrPost(name) => {
-            let vars = &mut request.get_variables;
-            Ok((vars, name.clone()))
+        StmtParam::PostOrGet(name) => {
+            if request.post_variables.contains_key(name) {
+                Ok((&mut request.post_variables, name))
+            } else {
+                Ok((&mut request.get_variables, name))
+            }
         }
-        StmtParam::Post(name) => {
-            let vars = &mut request.post_variables;
-            Ok((vars, name.clone()))
-        }
+        StmtParam::Get(name) => Ok((&mut request.get_variables, name)),
+        StmtParam::Post(name) => Ok((&mut request.post_variables, name)),
         _ => Err(anyhow!(
             "Only GET and POST variables can be set, not {variable:?}"
         )),

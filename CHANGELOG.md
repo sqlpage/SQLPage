@@ -1,6 +1,35 @@
 # CHANGELOG.md
 
-## 0.20.6 (unreleased) 
+## 0.22.0 (unreleased)
+ -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.
+     - **Security Risk:** Previously, `SET $x` could be overwritten by a POST parameter named `x`.
+     - **Solution:** Upgrade to SQLPage v0.22. If not possible, then update your application to use `SET :x` instead of `SET $x`.
+     - For more information, see [GitHub Issue #342](https://github.com/lovasoa/SQLpage/issues/342).
+ -  **Deprecation Notice:** Reading POST variables using `$x`.
+     - **New Standard:** Use `:x` for POST variables and `$x` for GET variables.
+     - **Current Release Warning:** Using `$x` for POST variables will display a console warning: 
+       ```
+       Deprecation warning! $x was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :x instead.
+       ```
+     - **Future Change:** `$x` will evaluate to `NULL` if no GET variable named `x` is present, regardless of any POST variables.
+    - **Detection and Update:** Use provided warnings to find and update deprecated usages in your code.
+    -  **Reminder about GET and POST Variables:**
+       - **GET Variables:** Parameters included in the URL of an HTTP GET request, used to retrieve data. Example: `https://example.com/page?x=value`, where `x` is a GET variable.
+       - **POST Variables:** Parameters included in the body of an HTTP POST request, used for form submissions. Example: the value entered by the user in a form field named `x`.
+  
+ - Two **backward-incompatible changes** in the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component's timeseries plotting feature (actioned with `TRUE as time`):
+    -  when providing a number for the x value (time), it is now interpreted as a unix timestamp, in seconds (number of seconds since 1970-01-01 00:00:00 UTC). It used to be interpreted as milliseconds. If you were using the `TRUE as time` syntax with integer values, you will need to divide your time values by 1000 to get the same result as before.
+        - This change makes it easier to work with time series plots, as most databases return timestamps in seconds. For instance, in SQLite, you can store timestamps as integers with the [`unixepoch()`](https://www.sqlite.org/lang_datefunc.html) function, and plot them directly in SQLPage.
+    - when providing an ISO datetime string for the x value (time), without an explicit timezone, it is now interpreted and displayed in the local timezone of the user. It used to be interpreted as a local time, but displayed in UTC, which [was confusing](https://github.com/lovasoa/SQLpage/issues/324). If you were using the `TRUE as time` syntax with naive datetime strings (without timezone information), you will need to convert your datetime strings to UTC on the database side if you want to keep the same behavior as before. As a side note, it is always recommended to store and query datetime strings with timezone information in the database, to avoid ambiguity.
+      - This change is particularly useful in SQLite, which generates naive datetime strings by default. You should still store and query datetimes as unix timestamps when possible, to avoid ambiguity and reduce storage size.
+ - When calling a file with [`sqlpage.run_sql`](https://sql.ophir.dev/functions.sql?function=run_sql#function), the target file now has access to uploaded files.
+ - New article by [Matthew Larkin](https://github.com/matthewlarkin) about [migrations](https://sql.ophir.dev/your-first-sql-website/migrations.sql).
+ - Add a row-level `id` attribute to the button component.
+ - Static assets (js, css, svg) needed to build SQLPage are now cached individually, and can be downloaded separately from the build process. This makes it easier to build SQLPage without internet access. If you use pre-built SQLPage binaries, this change does not affect you.
+ - New `icon_after` row-level property in the button component to display an icon on the right of a button (after the text).
+ - New demo example: [dark theme](./examples/light-dark-toggle/).
+
+## 0.21.0 (2024-05-19) 
 
  - `sqlpage.hash_password(NULL)` now returns `NULL` instead of throwing an error. This behavior was changed unintentionally in 0.20.5 and could have broken existing SQLPage websites.
  - The [dynamic](https://sql.ophir.dev/documentation.sql?component=dynamic#component) component now supports multiple `properties` attributes. The following is now possible:
@@ -14,6 +43,9 @@
  - The `dynamic` component now properly displays error messages when its properties are invalid. There used to be a bug where errors would be silently ignored, making it hard to debug invalid dynamic components.
  - New [`sqlpage.request_method`](https://sql.ophir.dev/functions.sql?function=request_method#function) function to get the HTTP method used to access the current page. This is useful to create pages that behave differently depending on whether they are accessed with a GET request (to display a form, for instance) or a POST request (to process the form).
  - include the trailing semicolon as a part of the SQL statement sent to the database. This doesn't change anything in most databases, but Microsoft SQL Server requires a trailing semicolon after certain statements, such as `MERGE`. Fixes [issue #318](https://github.com/lovasoa/SQLpage/issues/318)
+ - New `readonly` and `disabled` attributes in the [form](https://sql.ophir.dev/documentation.sql?component=form#component) component to make form fields read-only or disabled. This is useful to prevent the user from changing some fields.
+ - 36 new icons [(tabler icons 3.4)](https://tabler.io/icons/changelog)
+ - Bug fixes in charts [(apexcharts.js v3.49.1)](https://github.com/apexcharts/apexcharts.js/releases)
 
 ## 0.20.5 (2024-05-07)
 

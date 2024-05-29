@@ -19,6 +19,7 @@ use anyhow::Context;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::net::IpAddr;
+use std::rc::Rc;
 use std::sync::Arc;
 use tokio_stream::StreamExt;
 
@@ -29,7 +30,7 @@ pub struct RequestInfo {
     pub protocol: String,
     pub get_variables: ParamMap,
     pub post_variables: ParamMap,
-    pub uploaded_files: HashMap<String, TempFile>,
+    pub uploaded_files: Rc<HashMap<String, TempFile>>,
     pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
     pub cookies: ParamMap,
@@ -46,8 +47,7 @@ impl Clone for RequestInfo {
             protocol: self.protocol.clone(),
             get_variables: self.get_variables.clone(),
             post_variables: self.post_variables.clone(),
-            // uploaded_files is not cloned, as it contains file handles
-            uploaded_files: HashMap::new(),
+            uploaded_files: self.uploaded_files.clone(),
             headers: self.headers.clone(),
             client_ip: self.client_ip,
             cookies: self.cookies.clone(),
@@ -94,7 +94,7 @@ pub(crate) async fn extract_request_info(
         headers: param_map(headers),
         get_variables: param_map(get_variables),
         post_variables: param_map(post_variables),
-        uploaded_files: HashMap::from_iter(uploaded_files),
+        uploaded_files: Rc::new(HashMap::from_iter(uploaded_files)),
         client_ip,
         cookies: param_map(cookies),
         basic_auth,

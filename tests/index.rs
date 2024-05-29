@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use actix_web::{
     body::MessageBody,
     dev::{fn_service, ServerHandle, ServiceRequest, ServiceResponse},
@@ -169,8 +171,28 @@ async fn test_files() {
 }
 
 #[actix_web::test]
-async fn test_file_upload() -> actix_web::Result<()> {
-    let req = get_request_to("/tests/upload_file_test.sql")
+async fn test_overwrite_variable() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/sql_test_files/it_works_set_variable.sql")
+        .await?
+        .set_form(HashMap::<&str, &str>::from_iter([(
+            "what_does_it_do",
+            "does not overwrite variables",
+        )]))
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("It works !"),
+        "{body_str}\nexpected to contain: It works !"
+    );
+    Ok(())
+}
+
+async fn test_file_upload(target: &str) -> actix_web::Result<()> {
+    let req = get_request_to(target)
         .await?
         .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
         .set_payload(
@@ -192,6 +214,16 @@ async fn test_file_upload() -> actix_web::Result<()> {
         "{body_str}\nexpected to contain: Hello, world!"
     );
     Ok(())
+}
+
+#[actix_web::test]
+async fn test_file_upload_direct() -> actix_web::Result<()> {
+    test_file_upload("/tests/upload_file_test.sql").await
+}
+
+#[actix_web::test]
+async fn test_file_upload_through_runsql() -> actix_web::Result<()> {
+    test_file_upload("/tests/upload_file_runsql_test.sql").await
 }
 
 #[actix_web::test]

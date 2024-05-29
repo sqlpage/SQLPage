@@ -8,7 +8,7 @@ INSERT INTO
 VALUES
     (
         'request_method',
-        '0.20.6',
+        '0.21.0',
         'http-get',
         'Returns the HTTP request method (GET, POST, etc.) used to access the page.
 

@@ -241,6 +241,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('prefix_icon','Icon to display on the left side of the input field, on the same line.','ICON',FALSE,TRUE),
     ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
     ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE),
+    ('readonly','Set to true to prevent the user from modifying the value of the input field.','BOOL',FALSE,TRUE),
+    ('disabled','Set to true to prevent the user from interacting with the input field.','BOOL',FALSE,TRUE),
     ('id','A unique identifier for the input, which can then be used to select and manage the field with Javascript code. Usefull for advanced using as setting client side event listeners, interactive control of input field (disabled, visibility, read only, e.g.) and AJAX requests.','TEXT',FALSE,TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
@@ -792,6 +794,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                 {"title": "Examples", "submenu": [
                     {"link": "/examples/tabs.sql", "title": "Tabs"},
                     {"link": "/examples/layouts.sql", "title": "Layouts"},
+                    {"link": "/examples/multistep-form", "title": "Forms"},
                     {"link": "/examples/handle_picture_upload.sql", "title": "File uploads"},
                     {"link": "/examples/hash_password.sql", "title": "Password protection"},
                     {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos"}

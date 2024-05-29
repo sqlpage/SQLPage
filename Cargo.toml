@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.20.5"
+version = "0.21.0"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -55,4 +55,4 @@ awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }
 awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }
 actix-rt = "2.8"
 libflate = "2"
-futures-util = "0.3.21"
+futures-util = {version = "0.3.21" , features=["io"]}
