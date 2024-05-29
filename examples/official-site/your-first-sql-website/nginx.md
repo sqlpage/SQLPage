@@ -289,3 +289,33 @@ Obtain an SSL certificate using the following command:
 ```bash
 sudo certbot --nginx -d example.com
 ```
+
+### Binding to a UNIX socket
+
+Binding SQLPage to a Unix socket can reduce latency and enhance security by bypassing the network stack and restricting access to the socket file. Unix sockets are suitable for communication within the same host, offering lower overhead compared to TCP/IP.
+
+#### SQLPage Configuration
+
+Edit `./sqlpage/sqlpage.json`. Remove the `listen_on` and `port` configuration entries if they are present.
+
+```json
+{
+    "unix_socket": "/var/run/sqlpage.sock"
+}
+```
+
+#### NGINX Configuration
+
+In `/etc/nginx/sites-available/sqlpage`:
+
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://unix:/var/run/sqlpage.sock;
+        proxy_set_header Host $host;
+    }
+}
+```
