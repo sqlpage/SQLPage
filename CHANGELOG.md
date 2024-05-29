@@ -10,6 +10,7 @@
  - When calling a file with [`sqlpage.run_sql`](https://sql.ophir.dev/functions.sql?function=run_sql#function), the target file now has access to uploaded files.
  - New article by [Matthew Larkin](https://github.com/matthewlarkin) about [migrations](https://sql.ophir.dev/your-first-sql-website/migrations.sql).
  - Add a row-level `id` attribute to the button component.
+ - Static assets (js, css, svg) needed to build SQLPage are now cached individually, and can be downloaded separately from the build process. This makes it easier to build SQLPage without internet access. If you use pre-built SQLPage binaries, this change does not affect you.
 
 ## 0.21.0 (2024-05-19) 
 
