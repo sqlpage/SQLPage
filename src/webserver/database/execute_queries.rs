@@ -152,14 +152,15 @@ fn vars_and_name<'a, 'b>(
     variable: &'b StmtParam,
 ) -> anyhow::Result<(&'a mut HashMap<String, SingleOrVec>, &'b str)> {
     match variable {
-        StmtParam::Get(name) | StmtParam::GetOrPost(name) => {
-            let vars = &mut request.get_variables;
-            Ok((vars, name))
+        StmtParam::PostOrGet(name) => {
+            if request.post_variables.contains_key(name) {
+                Ok((&mut request.post_variables, name))
+            } else {
+                Ok((&mut request.get_variables, name))
+            }
         }
-        StmtParam::Post(name) => {
-            let vars = &mut request.post_variables;
-            Ok((vars, name))
-        }
+        StmtParam::Get(name) => Ok((&mut request.get_variables, name)),
+        StmtParam::Post(name) => Ok((&mut request.post_variables, name)),
         _ => Err(anyhow!(
             "Only GET and POST variables can be set, not {variable:?}"
         )),

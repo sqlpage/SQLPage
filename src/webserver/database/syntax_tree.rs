@@ -31,7 +31,7 @@ use anyhow::{anyhow, Context as _};
 pub(crate) enum StmtParam {
     Get(String),
     Post(String),
-    GetOrPost(String),
+    PostOrGet(String),
     Error(String),
     Literal(String),
     Null,
@@ -44,7 +44,7 @@ impl std::fmt::Display for StmtParam {
         match self {
             StmtParam::Get(name) => write!(f, "?{name}"),
             StmtParam::Post(name) => write!(f, ":{name}"),
-            StmtParam::GetOrPost(name) => write!(f, "${name}"),
+            StmtParam::PostOrGet(name) => write!(f, "${name}"),
             StmtParam::Literal(x) => write!(f, "'{}'", x.replace('\'', "''")),
             StmtParam::Null => write!(f, "NULL"),
             StmtParam::Concat(items) => {
@@ -135,7 +135,7 @@ pub(super) async fn extract_req_param<'a>(
         // sync functions
         StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),
-        StmtParam::GetOrPost(x) => request
+        StmtParam::PostOrGet(x) => request
             .post_variables
             .get(x)
             .or_else(|| request.get_variables.get(x))

@@ -2,6 +2,7 @@
 
 ## 0.22.0 (unreleased)
 
+ - **Important security fix**. The behavior of `SET $x` was changed slightly, to match the one of `SELECT $x`. Previously, it was possible for a malicious user to overwrite the value of a variable set with `SET $x` by sending a request with a POST parameter named `x`. Variables set with `SET :x` were and still are safe. If upgrading to SQLPage v0.22 is not an option, then you should update your application to use `SET :x` instead of `SET $x`. For more information, see [#342](https://github.com/lovasoa/SQLpage/issues/342).
  - Two **backward-incompatible changes** in the [chart](https://sql.ophir.dev/documentation.sql?component=chart#component) component's timeseries plotting feature (actioned with `TRUE as time`):
     -  when providing a number for the x value (time), it is now interpreted as a unix timestamp, in seconds (number of seconds since 1970-01-01 00:00:00 UTC). It used to be interpreted as milliseconds. If you were using the `TRUE as time` syntax with integer values, you will need to divide your time values by 1000 to get the same result as before.
         - This change makes it easier to work with time series plots, as most databases return timestamps in seconds. For instance, in SQLite, you can store timestamps as integers with the [`unixepoch()`](https://www.sqlite.org/lang_datefunc.html) function, and plot them directly in SQLPage.

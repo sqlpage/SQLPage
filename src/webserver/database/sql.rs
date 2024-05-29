@@ -174,11 +174,11 @@ fn kind_of_dialect(dialect: &dyn Dialect) -> AnyKind {
 
 fn map_param(mut name: String) -> StmtParam {
     if name.is_empty() {
-        return StmtParam::GetOrPost(name);
+        return StmtParam::PostOrGet(name);
     }
     let prefix = name.remove(0);
     match prefix {
-        '$' => StmtParam::GetOrPost(name),
+        '$' => StmtParam::PostOrGet(name),
         ':' => StmtParam::Post(name),
         _ => StmtParam::Get(name),
     }
@@ -282,7 +282,7 @@ fn extract_set_variable(stmt: &mut Statement) -> Option<(StmtParam, String)> {
             let variable = if let Some(variable) = extract_ident_param(ident) {
                 variable
             } else {
-                StmtParam::GetOrPost(std::mem::take(&mut ident.value))
+                StmtParam::PostOrGet(std::mem::take(&mut ident.value))
             };
             return Some((variable, format!("SELECT {value}")));
         }
@@ -599,10 +599,10 @@ mod test {
         assert_eq!(
             parameters,
             [
-                StmtParam::GetOrPost("a".to_string()),
-                StmtParam::GetOrPost("x".to_string()),
-                StmtParam::GetOrPost("a".to_string()),
-                StmtParam::GetOrPost("x".to_string()),
+                StmtParam::PostOrGet("a".to_string()),
+                StmtParam::PostOrGet("x".to_string()),
+                StmtParam::PostOrGet("a".to_string()),
+                StmtParam::PostOrGet("x".to_string()),
                 StmtParam::FunctionCall(SqlPageFunctionCall {
                     function: SqlPageFunctionName::cookie,
                     arguments: vec![StmtParam::Literal("cookoo".to_string())]
@@ -622,7 +622,7 @@ mod test {
         assert_eq!(
             parameters,
             [
-                StmtParam::GetOrPost("x".to_string()),
+                StmtParam::PostOrGet("x".to_string()),
                 StmtParam::Post("y".to_string()),
             ]
         );
@@ -644,7 +644,7 @@ mod test {
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
                     function: SqlPageFunctionName::fetch,
-                    arguments: vec![StmtParam::GetOrPost("x".to_string())]
+                    arguments: vec![StmtParam::PostOrGet("x".to_string())]
                 })],
                 "Failed for dialect {dialect:?}"
             );
@@ -664,11 +664,11 @@ mod test {
             {
                 assert_eq!(
                     variable,
-                    StmtParam::GetOrPost("x".to_string()),
+                    StmtParam::PostOrGet("x".to_string()),
                     "{dialect:?}"
                 );
                 assert!(query.starts_with("SELECT "));
-                assert_eq!(params, [StmtParam::GetOrPost("y".to_string())]);
+                assert_eq!(params, [StmtParam::PostOrGet("y".to_string())]);
             } else {
                 panic!("Failed for dialect {dialect:?}: {stmt:#?}",);
             }
@@ -719,7 +719,7 @@ mod test {
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
         );
-        assert_eq!(parameters, [StmtParam::GetOrPost("1".to_string()),]);
+        assert_eq!(parameters, [StmtParam::PostOrGet("1".to_string()),]);
     }
 
     #[test]
@@ -753,7 +753,7 @@ mod test {
         ];
         for &dialect in dialects {
             use SimpleSelectValue::{Dynamic, Static};
-            use StmtParam::GetOrPost;
+            use StmtParam::PostOrGet;
 
             let parsed: Vec<ParsedStatement> = parse_sql(dialect, sql).unwrap().collect();
             match &parsed[..] {
@@ -761,8 +761,8 @@ mod test {
                     q,
                     &[
                         ("component".into(), Static("text".into())),
-                        ("contents".into(), Dynamic(GetOrPost("x".into()))),
-                        ("title".into(), Dynamic(GetOrPost("y".into()))),
+                        ("contents".into(), Dynamic(PostOrGet("x".into()))),
+                        ("title".into(), Dynamic(PostOrGet("y".into()))),
                     ]
                 ),
                 other => panic!("failed to extract simple select in {dialect:?}: {other:?}"),
@@ -773,15 +773,15 @@ mod test {
     #[test]
     fn test_simple_select_only_extraction() {
         use SimpleSelectValue::{Dynamic, Static};
-        use StmtParam::GetOrPost;
+        use StmtParam::PostOrGet;
         assert_eq!(
             extract_static_simple_select(
                 &parse_postgres_stmt("select 'text' as component, $1 as contents"),
-                &[GetOrPost("cook".into())]
+                &[PostOrGet("cook".into())]
             ),
             Some(vec![
                 ("component".into(), Static("text".into())),
-                ("contents".into(), Dynamic(GetOrPost("cook".into()))),
+                ("contents".into(), Dynamic(PostOrGet("cook".into()))),
             ])
         );
     }
