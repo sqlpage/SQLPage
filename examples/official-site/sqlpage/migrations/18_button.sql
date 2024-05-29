@@ -17,6 +17,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('disabled', 'Whether the button is disabled or not.', 'BOOLEAN', FALSE, TRUE),
     ('outline', 'Outline color of the button (e.g. red, purple, ...)', 'COLOR', FALSE, TRUE),
     ('space_after', 'Whether there should be extra space to the right of the button. In a line of buttons, this will put the buttons before this one on the left, and the ones after on the right.', 'BOOLEAN', FALSE, TRUE),
+    ('icon_after', 'Name of an icon to display after the text in the button', 'ICON', FALSE, TRUE),
     ('icon', 'Name of an icon to be displayed on the left side of the button.', 'ICON', FALSE, TRUE),
     ('form', 'Identifier (id) of the form to which the button should submit.', 'TEXT', FALSE, TRUE),
     ('id', 'HTML Identifier to add to the button element.', 'TEXT', FALSE, TRUE)
@@ -57,9 +58,9 @@ INSERT INTO example(component, description, properties) VALUES
 INSERT INTO example(component, description, properties) VALUES
     ('button', 'A row of square buttons with spacing in between',
     json('[{"component":"button", "shape":"square"}, 
-        {"link":"#", "color":"green", "title":"Save" },
-        {"link":"#", "color":"orange", "title":"Cancel", "space_after":true},
-        {"link":"#", "outline":"indigo", "title":"Preview" }]')
+        {"link":"#", "color":"green", "title":"Save", "icon": "device-floppy" },
+        {"link":"#", "title":"Cancel", "space_after":true},
+        {"link":"#", "outline":"indigo", "title":"Preview", "icon_after": "corner-down-right" }]')
     );
 
 INSERT INTO example(component, description, properties) VALUES
