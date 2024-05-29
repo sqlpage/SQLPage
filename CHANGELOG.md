@@ -27,6 +27,7 @@
  - Add a row-level `id` attribute to the button component.
  - Static assets (js, css, svg) needed to build SQLPage are now cached individually, and can be downloaded separately from the build process. This makes it easier to build SQLPage without internet access. If you use pre-built SQLPage binaries, this change does not affect you.
  - New `icon_after` row-level property in the button component to display an icon on the right of a button (after the text).
+ - New demo example: [dark theme](./examples/light-dark-toggle/).
 
 ## 0.21.0 (2024-05-19) 
 
