@@ -14,6 +14,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('link', 'The URL to which the button should navigate when clicked. If the form attribute is specified, then this overrides the page to which the form is submitted.', 'URL', FALSE, TRUE),
     ('color', 'The color of the button (e.g., red, green, blue, but also primary, warning, danger, orange, etc.).', 'COLOR', FALSE, TRUE),
     ('title', 'The text displayed on the button.', 'TEXT', FALSE, TRUE),
+    ('tooltip', 'Text displayed when the user hovers over the button.', 'TEXT', FALSE, TRUE),
     ('disabled', 'Whether the button is disabled or not.', 'BOOLEAN', FALSE, TRUE),
     ('outline', 'Outline color of the button (e.g. red, purple, ...)', 'COLOR', FALSE, TRUE),
     ('space_after', 'Whether there should be extra space to the right of the button. In a line of buttons, this will put the buttons before this one on the left, and the ones after on the right.', 'BOOLEAN', FALSE, TRUE),
