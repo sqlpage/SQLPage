@@ -1,4 +1,3 @@
-use super::http::SingleOrVec;
 use crate::AppState;
 use actix_multipart::form::bytes::Bytes;
 use actix_multipart::form::tempfile::TempFile;
@@ -16,12 +15,14 @@ use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::anyhow;
 use anyhow::Context;
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio_stream::StreamExt;
+
+use super::request_variables::param_map;
+use super::request_variables::ParamMap;
 
 #[derive(Debug)]
 pub struct RequestInfo {
@@ -210,32 +211,9 @@ async fn extract_file(
     Ok(file)
 }
 
-pub type ParamMap = HashMap<String, SingleOrVec>;
-
-fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) -> ParamMap {
-    values
-        .into_iter()
-        .fold(HashMap::new(), |mut map, (mut k, v)| {
-            let entry = if k.ends_with("[]") {
-                k.replace_range(k.len() - 2.., "");
-                SingleOrVec::Vec(vec![v])
-            } else {
-                SingleOrVec::Single(v)
-            };
-            match map.entry(k) {
-                Entry::Occupied(mut s) => {
-                    SingleOrVec::merge(s.get_mut(), entry);
-                }
-                Entry::Vacant(v) => {
-                    v.insert(entry);
-                }
-            }
-            map
-        })
-}
-
 #[cfg(test)]
 mod test {
+    use super::super::http::SingleOrVec;
     use super::*;
     use crate::app_config::AppConfig;
     use actix_web::{http::header::ContentType, test::TestRequest};
