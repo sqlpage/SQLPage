@@ -3,6 +3,7 @@
 ## (unreleased)
 
  - fix a bug in the [csv](https://sql.ophir.dev/documentation.sql?component=csv#component) component. The `separator` parameter now works as expected. This facilitates creating excel-compatible CSVs in european countries where excel expects the separator to be `;` instead of `,`.
+ - new `tooltip` property in the button component.
 
 ## 0.22.0 (2024-05-29)
  -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.

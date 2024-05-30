@@ -12,6 +12,7 @@
         {{~#if ../shape}} btn-{{../shape}}{{/if}}
         {{~#if space_after}} me-auto{{/if}}"
         {{~#if id}} id="{{id}}"{{/if}}
+        {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
         role="button">
         {{~#if icon~}}
             <span class="me-1">{{~icon_img icon~}}</span>
