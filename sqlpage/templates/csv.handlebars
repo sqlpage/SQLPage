@@ -6,12 +6,12 @@
                 %22{{! %22 = double-quote}}
                 {{~@key~}}
                 %22
-                {{~default ../separator ","~}}
+                {{~default ../../separator ","~}}
             {{~/each~}}
         %0A{{! %0A = newline}}
         {{~/if~}}
         {{~#each this~}}
-        %22{{this}}%22{{default ../separator ","}}
+        %22{{this}}%22{{default ../../separator ","}}
         {{~/each~}}
     %0A
 {{~/each_row~}}

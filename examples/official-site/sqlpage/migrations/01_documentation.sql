@@ -641,7 +641,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('csv', 'CSV download button',
-        json('[{"component":"csv", "title": "Download my data", "filename": "people", "icon": "file-download", "color": "green"}, '||
+        json('[{"component":"csv", "title": "Download my data", "filename": "people", "icon": "file-download", "color": "green", "separator": ";"}, '||
         '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
         '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]'));
 
