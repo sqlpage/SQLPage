@@ -96,8 +96,9 @@ async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
     let mut resp = client.get(url).send().await.unwrap_or_else(|err| {
         let path = make_url_path(url);
         panic!(
-            "We need to download external frontend dependencies to build the static frontend. \
-                Could not download {url}. You can manually download the file and place it in {path:?}\
+            "We need to download external frontend dependencies to build the static frontend. \n\
+                Could not download static asset. You can manually download the file with: \n\
+                curl {url:?} > {path:?} \n\
                 {err}"
         )
     });
