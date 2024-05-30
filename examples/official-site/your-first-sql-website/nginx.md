@@ -25,7 +25,9 @@ Before you begin, you will need the following:
 
 ## Configuring the Reverse Proxy
 
-Nginx is configured using multiple files. The main configuration file is usually located at `/etc/nginx/nginx.conf`, and additional configuration files are located in the `/etc/nginx/sites-available/` directory. To host SQLPage behind a reverse proxy, you will need to create a new configuration file in the `/etc/nginx/sites-available/` directory, and then create a symbolic link to it in the `/etc/nginx/sites-enabled/` directory.
+NGINX uses a hierarchical configuration structure. The global configuration file (`/etc/nginx/nginx.conf`) contains settings that apply to the entire server, such as logging, caching, and rate limiting.Site-specific configuration files, stored in `/etc/nginx/sites-available/`, contain directives for individual websites or applications. These site-specific configurations are activated by creating symbolic links in the `/etc/nginx/sites-enabled/` directory. This setup allows for clean and organized management of multiple sites on a single server.
+
+To host SQLPage behind a reverse proxy, you will need to create a new configuration file in the `/etc/nginx/sites-available/` directory, and then create a symbolic link to it in the `/etc/nginx/sites-enabled/` directory.
 
 Create a file named `sqlpage` in the `/etc/nginx/sites-available/` directory:
 ```bash
@@ -35,19 +37,17 @@ sudo nano /etc/nginx/sites-available/sqlpage
 Add the following configuration to the file:
 
 ```nginx
-http {
-    server {
-        listen 80;
-        server_name example.com;
+server {
+    listen 80;
+    server_name example.com;
 
-        location / {
-            proxy_pass http://localhost:8080;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-        }
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
@@ -77,23 +77,21 @@ Let's say you want your users to access product details using URLs like `/produc
 Here is an example configuration:
 
 ```nginx
-http {
-    server {
-        listen 80;
-        server_name example.com;
+server {
+    listen 80;
+    server_name example.com;
 
-        location / {
-            proxy_pass http://localhost:8080;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-        }
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
 
-        location /products/ {
-            rewrite ^/products/([^/]+)$ /products.sql?id=$1 last;
-        }
+    location /products/ {
+        rewrite ^/products/([^/]+)$ /products.sql?id=$1 last;
     }
 }
 ```
@@ -110,13 +108,13 @@ When a request is made to `/products/123`, the rewrite rule is triggered, and th
 Let's say you want to remove the `.sql` extension from all URLs to make them cleaner and more user-friendly. This can be achieved using the `rewrite` directive in NGINX.
 
 ```nginx
-    location / {
-      
-      # When a request doesn't end with a '/' and doesn't have an extension, add '.sql' at the end 
-      rewrite ^/((.*/)?[^/.]+)$ /$1.sql last;
-      
-      proxy_pass      http://localhost:8080;
-    }
+location / {
+    
+    # When a request doesn't end with a '/' and doesn't have an extension, add '.sql' at the end 
+    rewrite ^/((.*/)?[^/.]+)$ /$1.sql last;
+    
+    proxy_pass      http://localhost:8080;
+}
 ```
 
 ### Hosting Multiple Applications
@@ -133,14 +131,12 @@ Create `/etc/nginx/sites-available/app1`, and `/etc/nginx/sites-available/app2` 
 and add the following configuration to each file, replacing `localhost:8080` and `app1.example.com` with the appropriate values:
 
 ```nginx
-http {
-    server {
-        listen 80;
-        server_name app1.example.com;
+server {
+    listen 80;
+    server_name app1.example.com;
 
-        location / {
-            proxy_pass http://localhost:8080;
-        }
+    location / {
+        proxy_pass http://localhost:8080;
     }
 }
 ```
@@ -153,19 +149,12 @@ You may have multiple applications to host, but a single domain name to use. In 
 To host SQLPage on a subpath, you can use a single NGINX configuration file with a `location` block that specifies the subpath:
 
 ```nginx
-http {
-    ...
-    upstream sqlpage {
-        server localhost:8080;
-    }
+server {
+    listen 80;
+    server_name example.com;
 
-    server {
-        listen 80;
-        server_name example.com;
-
-        location /sqlpage {
-            proxy_pass http://sqlpage;
-        }
+    location /sqlpage {
+        proxy_pass http://localhost:8080;
     }
 }
 ```
@@ -182,20 +171,28 @@ you can specify the base URL as `/sqlpage`:
 
 ### IP Rate Limiting
 
-To enable IP rate limiting for your SQLPage instance, you can use the `limit_req` module in NGINX:
+To enable IP rate limiting for your SQLPage instance, you can use the
+[`limit_req` module in NGINX](http://nginx.org/en/docs/http/ngx_http_limit_req_module.html).
+
+Define a global rate limiting zone in `/etc/nginx/nginx.conf`:
+
 ```nginx
 http {
     ...
     limit_req_zone $binary_remote_addr zone=myzone:10m rate=10r/m;
+}
+```
 
-    server {
+Then use it in your site's configuration in `/etc/nginx/sites-available/sqlpage`:
+
+```nginx
+server {
+    ...
+
+    location / {
+        limit_req zone=myzone;
+        proxy_pass http://localhost:8080;
         ...
-
-        location / {
-            limit_req zone=myzone;
-            proxy_pass http://localhost:8080;
-            ...
-        }
     }
 }
 ```
@@ -204,26 +201,23 @@ This configuration sets up a reverse proxy that forwards incoming requests from 
 
 ### Static File Serving
 
-The `try_files` directive in Nginx specifies the files to attempt to serve before falling back to a specified URI or passing the request to a proxy server. It's typically used within a location block to define the behavior when a request matches that location.
+The [`try_files`](https://nginx.org/en/docs/http/ngx_http_core_module.html#try_files) directive in Nginx specifies the files to attempt to serve before falling back to a specified URI or passing the request to a proxy server. It's typically used within a location block to define the behavior when a request matches that location.
 
 ```nginx
-http {
-    ...
-    server {
-        listen 80;
-        server_name example.com;
+server {
+    listen 80;
+    server_name example.com;
 
-        location ~ \.sql$ {
-            include sqlpage_proxy.conf;
-        }
+    location ~ \.sql$ {
+        include sqlpage_proxy.conf;
+    }
 
-        location / {
-            try_files $uri @reverse_proxy;
-        }
+    location / {
+        try_files $uri @reverse_proxy;
+    }
 
-        location @reverse_proxy {
-            include sqlpage_proxy.conf;
-        }
+    location @reverse_proxy {
+        include sqlpage_proxy.conf;
     }
 }
 ```
@@ -246,7 +240,13 @@ proxy_set_header X-Forwarded-Host $host;
 
 ### Caching and Buffering
 
-To enable caching and buffering for your SQLPage instance, you can use the `proxy_cache` and `proxy_buffering` directives in NGINX:
+To enable caching and buffering for your SQLPage instance, you can use the 
+[`proxy_cache`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache)
+and [`proxy_buffering`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering)
+directives in NGINX.
+
+Declare the cache in `/etc/nginx/nginx.conf` :
+
 ```nginx
 http {
     ...
@@ -254,24 +254,28 @@ http {
     # Cache settings: 1 hour for 200 and 302 responses, 1 minute for 404 responses
     proxy_cache_valid 200 302 1h;
     proxy_cache_valid 404 1m;
+}
+```
 
-    server {
-        listen 80;
-        server_name example.com;
+and then in your sqlpage nginx configuration file `/etc/nginx/sites-available/sqlpage` :
 
-        location / {
-            proxy_pass http://sqlpage;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-            proxy_cache mycache;
-            # Buffering: when a client is slow to read the response, quickly read the response from SQLPage and store it in a buffer, then send it to the slow client, while SQLPage can continue processing other requests
-            proxy_buffering on;
-            proxy_buffer_size 128k;
-            proxy_buffers 4 256k;
-        }
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://sqlpage;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_cache mycache;
+        # Buffering: when a client is slow to read the response, quickly read the response from SQLPage and store it in a buffer, then send it to the slow client, while SQLPage can continue processing other requests
+        proxy_buffering on;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
     }
 }
 ```
