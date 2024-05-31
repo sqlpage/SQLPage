@@ -10,13 +10,13 @@
         <link rel="manifest" href="{{manifest}}">
     {{/if}}
     <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
-   {{#each (to_array css)}}
+    {{#each (to_array css)}}
         {{#if this}}
             <link rel="stylesheet" href="{{this}}">
         {{/if}}
-   {{/each}}
+    {{/each}}
 
-   {{#if font}}
+    {{#if font}}
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
@@ -96,7 +96,7 @@
                     {{#if search_target}}
                         <form class="d-flex" role="search" action="{{search_target}}">
                             <input id="search-input" class="form-control me-2" type="search" placeholder="Search" aria-label="Search"
-                                   name="search">
+                                   name="search" value="{{search_value}}">
                             <button class="btn btn-outline-success" type="submit">Search</button>
                         </form>
                     {{/if}}
@@ -116,29 +116,5 @@
         Built with <a class="text-reset" href="https://sql.ophir.dev" title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
     {{/if}}
 </div>
-
-<script>
-    // Function to get query parameters from the URL
-    function getQueryParams() {
-        const params = {};
-        const queryString = window.location.search.substring(1);
-        const regex = /([^&=]+)=([^&]*)/g;
-        let m;
-        while (m = regex.exec(queryString)) {
-            params[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
-        }
-        return params;
-    }
-
-    // Set the search input value if 'search' query parameter exists
-    document.addEventListener('DOMContentLoaded', () => {
-        const params = getQueryParams();
-        const searchInput = document.getElementById('search-input');
-        if (params.search && searchInput) {
-            searchInput.value = params.search;
-        }
-    });
-</script>
-
 </body>
 </html>
