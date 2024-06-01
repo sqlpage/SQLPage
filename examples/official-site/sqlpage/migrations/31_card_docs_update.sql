@@ -22,6 +22,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('footer_md', 'Muted text to display at the bottom of the card, with rich text formatting in Markdown format.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
     ('footer_link', 'An URL to which the user should be taken when they click on the footer.', 'URL', FALSE, TRUE),
+    ('style', 'Inline style property to your iframe embed code. For example "background-color: #FFFFFF"', 'TEXT', FALSE, TRUE),
     ('icon', 'Name of an icon to display on the left side of the card.', 'ICON', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'COLOR', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
