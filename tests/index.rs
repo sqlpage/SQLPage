@@ -133,6 +133,11 @@ async fn test_files() {
         if test_file_path.extension().unwrap_or_default() != "sql" {
             continue;
         }
+        if test_file_path_string.contains(&format!("no{}", app_data.db.to_string().to_lowercase()))
+        {
+            // skipping because the test does not support the database
+            continue;
+        }
         let req_str = format!("/{}?x=1", test_file_path_string);
         let resp = req_path_with_app_data(&req_str, app_data.clone())
             .await

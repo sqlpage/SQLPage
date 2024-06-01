@@ -50,3 +50,9 @@ pub fn highlight_sql_error(
     }
     anyhow::Error::new(db_err).context(msg)
 }
+
+impl std::fmt::Display for Database {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.connection.any_kind())
+    }
+}
