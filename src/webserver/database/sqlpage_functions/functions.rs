@@ -1,5 +1,5 @@
 use super::RequestInfo;
-use crate::webserver::{http::SingleOrVec, ErrorWithStatus};
+use crate::webserver::{database::execute_queries::DbConn, http::SingleOrVec, ErrorWithStatus};
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
@@ -27,7 +27,7 @@ super::function_definition_macro::sqlpage_functions! {
     read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
     request_method((&RequestInfo));
-    run_sql((&RequestInfo), sql_file_path: Option<Cow<str>>);
+    run_sql((&RequestInfo, &mut DbConn), sql_file_path: Option<Cow<str>>);
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
@@ -347,6 +347,7 @@ async fn request_method(request: &RequestInfo) -> String {
 
 async fn run_sql<'a>(
     request: &'a RequestInfo,
+    db_connection: &mut DbConn,
     sql_file_path: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::ser::{SerializeSeq, Serializer};
@@ -373,9 +374,9 @@ async fn run_sql<'a>(
     }
     let mut results_stream =
         crate::webserver::database::execute_queries::stream_query_results_boxed(
-            &request.app_state.db,
             &sql_file,
             &mut tmp_req,
+            db_connection,
         );
     let mut json_results_bytes = Vec::new();
     let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);

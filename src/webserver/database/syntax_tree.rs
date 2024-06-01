@@ -20,7 +20,7 @@ use crate::webserver::database::sql::function_arg_to_stmt_param;
 use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::sqlpage_functions::functions::SqlPageFunctionName;
+use super::{execute_queries::DbConn, sqlpage_functions::functions::SqlPageFunctionName};
 use anyhow::{anyhow, Context as _};
 
 /// Represents a parameter to a SQL statement.
@@ -100,13 +100,16 @@ impl SqlPageFunctionCall {
         })
     }
 
-    pub async fn evaluate<'a>(
+    pub async fn evaluate<'a, 'b>(
         &self,
         request: &'a RequestInfo,
+        db_connection: &'b mut DbConn,
     ) -> anyhow::Result<Option<Cow<'a, str>>> {
-        let evaluated_args = self.arguments.iter().map(|x| extract_req_param(x, request));
-        let evaluated_args = futures_util::future::try_join_all(evaluated_args).await?;
-        self.function.evaluate(request, evaluated_args).await
+        let mut params = Vec::with_capacity(self.arguments.len());
+        for param in &self.arguments {
+            params.push(Box::pin(extract_req_param(param, request, db_connection)).await?);
+        }
+        self.function.evaluate(request, db_connection, params).await
     }
 }
 
@@ -127,9 +130,10 @@ impl std::fmt::Display for SqlPageFunctionCall {
 
 /// Extracts the value of a parameter from the request.
 /// Returns `Ok(None)` when NULL should be used as the parameter value.
-pub(super) async fn extract_req_param<'a>(
+pub(super) async fn extract_req_param<'a, 'b>(
     param: &StmtParam,
     request: &'a RequestInfo,
+    db_connection: &'b mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
         // sync functions
@@ -145,8 +149,8 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::Error(x) => anyhow::bail!("{}", x),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::Null => None,
-        StmtParam::Concat(args) => concat_params(&args[..], request).await?,
-        StmtParam::FunctionCall(func) => func.evaluate(request).await.with_context(|| {
+        StmtParam::Concat(args) => concat_params(&args[..], request, db_connection).await?,
+        StmtParam::FunctionCall(func) => func.evaluate(request, db_connection).await.with_context(|| {
             format!(
                 "Error in function call {func}.\nExpected {:#}",
                 func.function
@@ -155,13 +159,14 @@ pub(super) async fn extract_req_param<'a>(
     })
 }
 
-async fn concat_params<'a>(
+async fn concat_params<'a, 'b>(
     args: &[StmtParam],
     request: &'a RequestInfo,
+    db_connection: &'b mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     let mut result = String::new();
     for arg in args {
-        let Some(arg) = Box::pin(extract_req_param(arg, request)).await? else {
+        let Some(arg) = Box::pin(extract_req_param(arg, request, db_connection)).await? else {
             return Ok(None);
         };
         result.push_str(&arg);

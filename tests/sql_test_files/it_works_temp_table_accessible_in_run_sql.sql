@@ -1,0 +1,3 @@
+create temporary table temp_t(x text);
+insert into temp_t(x) values ('It works !');
+select 'dynamic' as component, sqlpage.run_sql('tests/select_temp_t.sql') AS properties;
