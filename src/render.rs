@@ -114,6 +114,17 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
             .with_context(|| "cookie name must be a string")?;
         let mut cookie = actix_web::cookie::Cookie::named(name);
 
+        let path = obj.get("path").and_then(JsonValue::as_str);
+        if let Some(path) = path {
+            cookie.set_path(path);
+        } else {
+            cookie.set_path("/");
+        }
+        let domain = obj.get("domain").and_then(JsonValue::as_str);
+        if let Some(domain) = domain {
+            cookie.set_domain(domain);
+        }
+
         let remove = obj.get("remove");
         if remove == Some(&json!(true)) || remove == Some(&json!(1)) {
             cookie.make_removal();
@@ -138,16 +149,6 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
         });
         let secure = obj.get("secure");
         cookie.set_secure(secure != Some(&json!(false)) && secure != Some(&json!(0)));
-        let path = obj.get("path").and_then(JsonValue::as_str);
-        if let Some(path) = path {
-            cookie.set_path(path);
-        } else {
-            cookie.set_path("/");
-        }
-        let domain = obj.get("domain").and_then(JsonValue::as_str);
-        if let Some(domain) = domain {
-            cookie.set_domain(domain);
-        }
         let expires = obj.get("expires");
         if let Some(expires) = expires {
             cookie.set_expires(actix_web::cookie::Expiration::DateTime(match expires {

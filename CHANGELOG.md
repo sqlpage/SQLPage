@@ -6,6 +6,7 @@
  - new `tooltip` property in the button component.
  - New `search_value` property in the shell component.
  - Fixed a display issue in the hero component when the button text is long and the viewport is narrow.
+ - Fixed a bug in the cookie component where removing a cookie from a subdirectory would not work.
 
 ## 0.22.0 (2024-05-29)
  -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.

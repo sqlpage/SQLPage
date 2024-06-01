@@ -12,3 +12,6 @@ SELECT 'username' as name,
 
 select 'text' as component;
 select 'log out' as contents, 'logout.sql' as link;
+
+select 'text' as component;
+select 'View the cookie from a subdirectory' as contents, 'subdirectory/read_cookies.sql' as link;
