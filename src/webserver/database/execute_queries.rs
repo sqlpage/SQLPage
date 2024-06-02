@@ -163,6 +163,7 @@ fn vars_and_name<'a, 'b>(
     match variable {
         StmtParam::PostOrGet(name) => {
             if request.post_variables.contains_key(name) {
+                log::warn!("Deprecation warning! Setting the value of ${name}, but there is already a form field named :{name}. This will stop working soon. Please rename the variable, or use :{name} directly if you intended to overwrite the posted form field value.");
                 Ok((&mut request.post_variables, name))
             } else {
                 Ok((&mut request.get_variables, name))

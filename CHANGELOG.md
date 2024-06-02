@@ -9,6 +9,7 @@
  - reuse the existing opened database connection for the current query in `sqlpage.run_sql` instead of opening a new one. This makes it possible to create a temporary table in a file, and reuse it in an included script, create a SQL transaction that spans over multiple run_sql calls, and should generally make run_sql more performant.
  - Fixed a bug in the cookie component where removing a cookie from a subdirectory would not work.
  - [Updated SQL parser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0470-2024-06-01). Fixes support for `AT TIME ZONE` in postgres. Fixes `GROUP_CONCAT()` in MySQL.
+ - Add a new warning message in the logs when trying to use `SET $x = ` when there is already a form field named `x`.
 
 ## 0.22.0 (2024-05-29)
  -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.
