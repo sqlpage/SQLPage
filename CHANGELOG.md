@@ -6,6 +6,7 @@
  - new `tooltip` property in the button component.
  - New `search_value` property in the shell component.
  - Fixed a display issue in the hero component when the button text is long and the viewport is narrow.
+ - reuse the existing opened database connection for the current query in `sqlpage.run_sql` instead of opening a new one. This makes it possible to create a temporary table in a file, and reuse it in an included script, create a SQL transaction that spans over multiple run_sql calls, and should generally make run_sql more performant.
  - Fixed a bug in the cookie component where removing a cookie from a subdirectory would not work.
 
 ## 0.22.0 (2024-05-29)

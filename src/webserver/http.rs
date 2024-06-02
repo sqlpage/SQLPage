@@ -1,5 +1,5 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
-use crate::webserver::database::{execute_queries::stream_query_results, DbItem};
+use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
 use crate::{app_config, AppConfig, AppState, ParsedSqlFile};
@@ -229,8 +229,9 @@ async fn render_sql(
         let layout_context = &LayoutContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
         };
+        let mut conn = None;
         let database_entries_stream =
-            stream_query_results(&app_state.db, &sql_file, &mut req_param);
+            stream_query_results_with_conn(&sql_file, &mut req_param, &mut conn);
         let response_with_writer = build_response_header_and_stream(
             Arc::clone(&app_state),
             database_entries_stream,
