@@ -31,6 +31,7 @@ super::function_definition_macro::sqlpage_functions! {
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
+    uploaded_file_name((&RequestInfo), upload_name: Cow<str>);
     url_encode(raw_text: Option<Cow<str>>);
 
     variables((&RequestInfo), get_or_post: Option<Cow<str>>);
@@ -425,6 +426,18 @@ async fn uploaded_file_path<'a>(
 ) -> Option<Cow<'a, str>> {
     let uploaded_file = request.uploaded_files.get(&*upload_name)?;
     Some(uploaded_file.file.path().to_string_lossy())
+}
+
+async fn uploaded_file_name<'a>(
+    request: &'a RequestInfo,
+    upload_name: Cow<'a, str>,
+) -> Option<Cow<'a, str>> {
+    let fname = request
+        .uploaded_files
+        .get(&*upload_name)?
+        .file_name
+        .as_ref()?;
+    Some(Cow::Borrowed(fname.as_str()))
 }
 
 /// escapes a string for use in a URL using percent encoding
