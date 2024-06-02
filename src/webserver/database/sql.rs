@@ -6,9 +6,7 @@ use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
-    BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
-    FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, Statement, Value,
-    VisitMut, VisitorMut,
+    BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg, FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, OneOrManyWithParens, Statement, Value, VisitMut, VisitorMut
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -272,7 +270,7 @@ fn is_simple_select_placeholder(e: &Expr) -> bool {
 
 fn extract_set_variable(stmt: &mut Statement) -> Option<(StmtParam, String)> {
     if let Statement::SetVariable {
-        variable: ObjectName(name),
+        variables: OneOrManyWithParens::One(ObjectName(name)),
         value,
         local: false,
         hivevar: false,
