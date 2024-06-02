@@ -8,6 +8,7 @@
  - Fixed a display issue in the hero component when the button text is long and the viewport is narrow.
  - Fixed a bug in the cookie component where removing a cookie from a subdirectory would not work.
  - [Updated SQL parser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0470-2024-06-01). Fixes support for `AT TIME ZONE` in postgres. Fixes `GROUP_CONCAT()` in MySQL.
+ - Add a new warning message in the logs when trying to use `SET $x = ` when there is already a form field named `x`.
 
 ## 0.22.0 (2024-05-29)
  -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.
