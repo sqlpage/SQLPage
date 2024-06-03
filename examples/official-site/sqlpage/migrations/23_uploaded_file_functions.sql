@@ -105,6 +105,108 @@ select ''redirect'' as component,
 where sqlpage.uploaded_file_mime_type(''myfile'') not in (select mime_type from allowed_mime_types);
 ```
 '
+),
+(
+    'uploaded_file_name',
+    '0.23.0',
+    'upload',
+    'Returns the `filename` value in the `content-disposition` header.
+
+## Example: saving uploaded file metadata for later download
+
+### Making a form
+
+```sql
+select ''form'' as component, ''handle_file_upload.sql'' as action;
+select ''myfile'' as name, ''file'' as type, ''File'' as label;
+```
+
+### Handling the form response
+
+### Inserting an arbitrary file as a [data URL](https://en.wikipedia.org/wiki/Data_URI_scheme) into the database
+
+In `handle_file_upload.sql`, one can process the form results like this:
+
+```sql
+insert into uploaded_files (fname, content, uploaded) values (
+  sqlpage.uploaded_file_name(''myfile''),
+  sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path(''myfile'')),
+  CURRENT_TIMESTAMP
+);
+```
+
+> *Note*: Data URLs are larger than the original file, so it is not recommended to use them for large files.
+
+There is not currently support in SQLPage to download files, but a web server with access to the database
+can provide the download with the original file name.
+
+Here is an example of a simple web server using `bottle` (`python`):
+```python
+from time import strftime, gmtime
+from sqlite3 import connect
+from datetime import datetime, timezone
+from bottle import route, abort, HTTPResponse
+from itertools import chain
+from base64 import b64decode
+
+def parse_data_uri(content):
+  _, *media, data = chain.from_iterable(map(
+      lambda x: x.split(",", 1), content.split(":", 1)
+  ))
+  media = media and media[0]
+  mimetype, *params, encoding = media.split(";")
+  if "=" in encoding:
+    params.append(encoding)
+    encoding = None
+  
+  return {
+    "mimetype": mimetype,
+    "params": dict(map(lambda x: x.split("="), params)),
+    "encoding": encoding,
+    "data": data,
+  }
+
+@route(f"/upload/<fname>", method="GET")
+def get_upload(fname):
+  con = connect("sqlpage.db")
+  content, uploaded = (None, None)
+  try:
+    content, uploaded = con.cursor().execute(f"""
+SELECT content, uploaded FROM uploaded_files WHERE fname = ''{fname}'' LIMIT 1;
+""").fetchall()[0]
+  finally:
+    con.close()
+
+  uploaded = datetime.strptime(uploaded, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+  data = parse_data_uri(content)
+  mimetype = data["mimetype"]
+  charset = data["params"].get("charset", None)
+
+  if data["encoding"] == "base64":
+    abort(500, f"""unsupported encoding: {data["encoding"]}""")
+
+  content = b64decode(data["data"] + "==")
+
+  if mimetype:
+    if mimetype[:5] == "text/" and charset and "charset" not in mimetype:
+        mimetype += "; charset=%s" % charset
+
+  headers = {
+    "Content-Length": len(content),
+    "Content-Disposition": f"attachment; filename=\"{fname}\"",
+    "Content-Encoding": "application/octet-stream",
+    "Content-Type": mimetype,
+    "Last-Modified": strftime("%a, %d %b %Y %H:%M:%S GMT", gmtime(uploaded)),
+  }
+  return HTTPResponse(content, **headers)
+```
+
+### Large files
+
+See the [`sqlpage.uploaded_file_path`](?function=uploaded_file_path#function) function.
+
+See the [`sqlpage.persist_uploaded_file`](?function=persist_uploaded_file#function) function.
+'
 );
 
 INSERT INTO sqlpage_function_parameters (
@@ -132,6 +234,13 @@ VALUES (
 ),
 (
     'uploaded_file_mime_type',
+    1,
+    'name',
+    'Name of the file input field in the form.',
+    'TEXT'
+),
+(
+    'uploaded_file_name',
     1,
     'name',
     'Name of the file input field in the form.',
