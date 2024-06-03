@@ -137,69 +137,16 @@ insert into uploaded_files (fname, content, uploaded) values (
 
 > *Note*: Data URLs are larger than the original file, so it is not recommended to use them for large files.
 
-There is not currently support in SQLPage to download files, but a web server with access to the database
-can provide the download with the original file name.
+### Downloading the uploaded files
 
-Here is an example of a simple web server using `bottle` (`python`):
-```python
-from time import strftime, gmtime
-from sqlite3 import connect
-from datetime import datetime, timezone
-from bottle import route, abort, HTTPResponse
-from itertools import chain
-from base64 import b64decode
-
-def parse_data_uri(content):
-  _, *media, data = chain.from_iterable(map(
-      lambda x: x.split(",", 1), content.split(":", 1)
-  ))
-  media = media and media[0]
-  mimetype, *params, encoding = media.split(";")
-  if "=" in encoding:
-    params.append(encoding)
-    encoding = None
-  
-  return {
-    "mimetype": mimetype,
-    "params": dict(map(lambda x: x.split("="), params)),
-    "encoding": encoding,
-    "data": data,
-  }
-
-@route(f"/upload/<fname>", method="GET")
-def get_upload(fname):
-  con = connect("sqlpage.db")
-  content, uploaded = (None, None)
-  try:
-    content, uploaded = con.cursor().execute(f"""
-SELECT content, uploaded FROM uploaded_files WHERE fname = ''{fname}'' LIMIT 1;
-""").fetchall()[0]
-  finally:
-    con.close()
-
-  uploaded = datetime.strptime(uploaded, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
-  data = parse_data_uri(content)
-  mimetype = data["mimetype"]
-  charset = data["params"].get("charset", None)
-
-  if data["encoding"] == "base64":
-    abort(500, f"""unsupported encoding: {data["encoding"]}""")
-
-  content = b64decode(data["data"] + "==")
-
-  if mimetype:
-    if mimetype[:5] == "text/" and charset and "charset" not in mimetype:
-        mimetype += "; charset=%s" % charset
-
-  headers = {
-    "Content-Length": len(content),
-    "Content-Disposition": f"attachment; filename=\"{fname}\"",
-    "Content-Encoding": "application/octet-stream",
-    "Content-Type": mimetype,
-    "Last-Modified": strftime("%a, %d %b %Y %H:%M:%S GMT", gmtime(uploaded)),
-  }
-  return HTTPResponse(content, **headers)
+The file can be downloaded by clicking a link like this:
+```sql
+select 'text' as component;
+select '<a download="'||fname||'" href="'||content||'">Click to download '||fname||'</a>' from uploaded_files
+where fname = $file_name as html;
 ```
+
+> *Note*: because the file is ecoded as a data uri, the file is transferred to the client whether or not the link is clicked
 
 ### Large files
 
