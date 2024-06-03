@@ -285,6 +285,28 @@ async fn test_upload_file_data_url() -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_uploaded_file_name() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/uploaded_file_name_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"testfile.txt\"\r\n\
+            Content-Type: text/plain\r\n\
+            \r\n\
+            Some plain text.\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert_eq!(body_str, "testfile.txt");
+    Ok(())
+}
+
+#[actix_web::test]
 async fn test_csv_upload() -> actix_web::Result<()> {
     let req = get_request_to("/tests/upload_csv_test.sql")
         .await?
