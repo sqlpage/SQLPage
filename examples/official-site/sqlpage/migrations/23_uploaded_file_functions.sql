@@ -109,7 +109,7 @@ where sqlpage.uploaded_file_mime_type(''myfile'') not in (select mime_type from 
 (
     'uploaded_file_name',
     '0.23.0',
-    'upload',
+    'file-description',
     'Returns the `filename` value in the `content-disposition` header.
 
 ## Example: saving uploaded file metadata for later download
