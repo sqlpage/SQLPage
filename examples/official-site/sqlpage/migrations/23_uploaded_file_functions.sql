@@ -141,7 +141,7 @@ insert into uploaded_files (fname, content, uploaded) values (
 
 The file can be downloaded by clicking a link like this:
 ```sql
-select 'button' as component;
+select ''button'' as component;
 select name as title, content as link from uploaded_files where name = $file_name limit 1;
 ```
 
