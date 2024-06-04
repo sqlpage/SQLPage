@@ -141,11 +141,8 @@ insert into uploaded_files (fname, content, uploaded) values (
 
 The file can be downloaded by clicking a link like this:
 ```sql
-select 'text' as component, (
-  select '<a download="'||fname||'" href="'||content||'">Click to download '||fname||'</a>' from uploaded_files
-  where fname = $file_name
-  limit 1
-) as html;
+select 'button' as component;
+select name as title, content as link from uploaded_files where name = $file_name limit 1;
 ```
 
 > *Note*: because the file is ecoded as a data uri, the file is transferred to the client whether or not the link is clicked
