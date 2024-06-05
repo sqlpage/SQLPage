@@ -242,7 +242,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
     ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE),
     ('readonly','Set to true to prevent the user from modifying the value of the input field.','BOOL',FALSE,TRUE),
-    ('disabled','Set to true to prevent the user from interacting with the input field.','BOOL',FALSE,TRUE),
+    ('disabled','Makes the field non-editable, non-focusable, and not submitted with a form. Use readonly instead for simple non-editable fields.','BOOL',FALSE,TRUE),
     ('id','A unique identifier for the input, which can then be used to select and manage the field with Javascript code. Usefull for advanced using as setting client side event listeners, interactive control of input field (disabled, visibility, read only, e.g.) and AJAX requests.','TEXT',FALSE,TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
