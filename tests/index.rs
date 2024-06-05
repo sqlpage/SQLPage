@@ -231,6 +231,33 @@ async fn test_file_upload_through_runsql() -> actix_web::Result<()> {
     test_file_upload("/tests/upload_file_runsql_test.sql").await
 }
 
+// Diabled because of
+#[actix_web::test]
+async fn test_blank_file_upload_field() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/upload_file_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"\"\r\n\
+            Content-Type: application/octet-stream\r\n\
+            \r\n\
+            \r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("No file uploaded"),
+        "{body_str}\nexpected to contain: No file uploaded"
+    );
+    Ok(())
+}
+
 #[actix_web::test]
 async fn test_file_upload_too_large() -> actix_web::Result<()> {
     // Files larger than 12345 bytes should be rejected as per the test_config

@@ -2,6 +2,7 @@ use super::RequestInfo;
 use crate::webserver::{database::execute_queries::DbConn, http::SingleOrVec, ErrorWithStatus};
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
+use mime_guess::mime;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
 
 super::function_definition_macro::sqlpage_functions! {
@@ -194,20 +195,14 @@ async fn persist_uploaded_file<'a>(
     field_name: Cow<'a, str>,
     folder: Option<Cow<'a, str>>,
     allowed_extensions: Option<Cow<'a, str>>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Option<String>> {
     let folder = folder.unwrap_or(Cow::Borrowed("uploads"));
     let allowed_extensions_str =
         allowed_extensions.unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
     let allowed_extensions = allowed_extensions_str.split(',');
-    let uploaded_file = request
-        .uploaded_files
-        .get(&field_name.to_string())
-        .ok_or_else(|| {
-            anyhow!(
-                "no file uploaded with field name {field_name}. Uploaded files: {:?}",
-                request.uploaded_files.keys()
-            )
-        })?;
+    let Some(uploaded_file) = request.uploaded_files.get(&field_name.to_string()) else {
+        return Ok(None);
+    };
     let file_name = uploaded_file.file_name.as_deref().unwrap_or_default();
     let extension = file_name.split('.').last().unwrap_or_default();
     if !allowed_extensions
@@ -239,7 +234,7 @@ async fn persist_uploaded_file<'a>(
             .strip_prefix(web_root)?
             .to_str()
             .with_context(|| format!("unable to convert path {target_path:?} to a string"))?;
-    Ok(path)
+    Ok(Some(path))
 }
 
 /// Returns the protocol of the current request (http or https).
@@ -339,7 +334,7 @@ fn mime_from_upload_path<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a
 
 fn mime_guess_from_filename(filename: &str) -> mime_guess::Mime {
     let maybe_mime = mime_guess::from_path(filename).first();
-    maybe_mime.unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM)
+    maybe_mime.unwrap_or(mime::APPLICATION_OCTET_STREAM)
 }
 
 async fn request_method(request: &RequestInfo) -> String {

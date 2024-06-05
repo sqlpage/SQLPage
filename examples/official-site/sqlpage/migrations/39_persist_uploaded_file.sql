@@ -9,6 +9,7 @@ VALUES (
         '0.20.1',
         'device-floppy',
         'Persists an uploaded file to the local filesystem, and returns its path.
+If the file input field is empty, the function returns NULL.
 
 ### Example
 
