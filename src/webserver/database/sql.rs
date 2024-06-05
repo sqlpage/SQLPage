@@ -6,9 +6,7 @@ use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
-    BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
-    FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName,
-    OneOrManyWithParens, Statement, Value, VisitMut, VisitorMut,
+    BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg, FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, OneOrManyWithParens, SelectItem, Statement, Value, VisitMut, VisitorMut
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -181,6 +179,49 @@ fn map_param(mut name: String) -> StmtParam {
         '$' => StmtParam::PostOrGet(name),
         ':' => StmtParam::Post(name),
         _ => StmtParam::Get(name),
+    }
+}
+
+fn extract_toplevel_funs(
+    stmt: &mut Statement,
+    params: &[StmtParam],
+) -> Option<Vec<(String, SimpleSelectValue)>> {
+    let set_expr = match stmt {
+        Statement::Query(q) => q.body.as_mut(),
+        _ => return None,
+    };
+    let select_items = match set_expr {
+        sqlparser::ast::SetExpr::Select(s) => &mut s.projection,
+        _ => return None,
+    };
+    let mut function_param_select_items: Vec<SelectItem> = Vec::new();
+    for select_item in select_items {
+        match select_item {
+            SelectItem::ExprWithAlias {
+                expr:
+                    Expr::Function(Function {
+                        name: ObjectName(func_name_parts),
+                        args:
+                            FunctionArguments::List(FunctionArgumentList {
+                                args,
+                                duplicate_treatment: None,
+                                ..
+                            }),
+                        ..
+                    }),
+                alias,
+            } if is_sqlpage_func(func_name_parts) => {
+                for arg in args {
+                    if let FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) = arg {
+                        let alias = todo!();
+                        function_param_select_items.push(SelectItem::ExprWithAlias { expr, alias })
+                    } else {
+                        return None
+                    }
+                }
+            }
+            _ => continue,
+        }
     }
 }
 
