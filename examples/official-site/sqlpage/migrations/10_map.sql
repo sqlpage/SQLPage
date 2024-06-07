@@ -17,7 +17,7 @@ INSERT INTO parameter (
 VALUES (
         'map',
         'latitude',
-        'Latitude of the center of the map.',
+        'Latitude of the center of the map. If omitted, the map will be centered on its markers.',
         'REAL',
         TRUE,
         TRUE
