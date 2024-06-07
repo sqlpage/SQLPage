@@ -92,7 +92,8 @@ function sqlpage_map() {
         L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
         const bounds = [];
         for (const marker_elem of m.getElementsByClassName("marker")) {
-          bounds.push(parseCoords(marker_elem.dataset.coords));
+          const marker_coords = parseCoords(marker_elem.dataset.coords);
+          if (marker_coords) bounds.push(marker_coords);
           setTimeout(addMarker, 0, marker_elem, map);
         }
         if (center == null) {
