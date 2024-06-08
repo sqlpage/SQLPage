@@ -517,6 +517,14 @@ INSERT INTO example(component, description, properties) VALUES
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
     '{"series": "Human resources", "x": 2022, "value": 55}]')),
+    ('chart', 'A line chart with multiple series.', json('[{"component":"chart", "title": "Revenue", "ymin": 0},
+    {"series": "Chicago Store", "x": 2021, "value": 35}, 
+    {"series": "Chicago Store", "x": 2022, "value": 15}, 
+    {"series": "Chicago Store", "x": 2023, "value": 45}, 
+    {"series": "New York Store", "x": 2021, "value": 30}, 
+    {"series": "New York Store", "x": 2022, "value": 55},
+    {"series": "New York Store", "x": 2023, "value": 19}
+    ]')),
     ('chart', 'A scatter plot with multiple custom options.',
     json('[
         {"component":"chart", "title": "Gross domestic product and its growth", "type": "scatter",
