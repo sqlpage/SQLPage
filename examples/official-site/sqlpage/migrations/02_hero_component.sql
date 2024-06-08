@@ -66,6 +66,13 @@ FROM (
                 TRUE,
                 TRUE
             ),
+            (
+                'poster',
+                'URL of the image to be displayed before the video starts.',
+                'URL',
+                TRUE,
+                TRUE
+            ),
             -- item level
             (
                 'title',
