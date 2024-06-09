@@ -21,6 +21,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon_after', 'Name of an icon to display after the text in the button', 'ICON', FALSE, TRUE),
     ('icon', 'Name of an icon to be displayed on the left side of the button.', 'ICON', FALSE, TRUE),
     ('form', 'Identifier (id) of the form to which the button should submit.', 'TEXT', FALSE, TRUE),
+    ('rel', '"nofollow" when the contents of the target link are not endorsed, "noopener" when the target is not trusted, and "noreferrer" to hide where the user came from when they open the link.', 'TEXT', FALSE, TRUE),
+    ('target', '"_blank" to open the link in a new tab, "_self" to open it in the same tab, "_parent" to open it in the parent frame, or "_top" to open it in the full body of the window.', 'TEXT', FALSE, TRUE),
+    ('download', 'If defined, the link will download the target instead of navigating to it. Set the value to the desired name of the downloaded file.', 'TEXT', FALSE, TRUE),
     ('id', 'HTML Identifier to add to the button element.', 'TEXT', FALSE, TRUE)
 ) x;
 
@@ -77,4 +80,15 @@ In the target page, we could then use the GET variable `$action` to determine wh
         {"component":"button"}, 
         {"link":"?action=save", "form":"poem", "color":"primary", "title":"Save" },
         {"link":"?action=preview", "form":"poem", "outline":"yellow", "title":"Preview" }]')
+    );
+
+INSERT INTO example(component, description, properties) VALUES
+    ('button', 'A button that downloads a file when clicked, and prevents search engines from following the link.',
+    json('[{"component":"button"}, 
+        {"link":"/sqlpage_introduction_video.webm",
+            "title":"Download Video",
+            "icon":"download",
+            "download":"Introduction Video.webm",
+            "rel":"nofollow"
+        }]')
     );
