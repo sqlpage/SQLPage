@@ -132,6 +132,9 @@ async fn fetch(
         Method::GET
     };
     let mut req = client.request(method, http_request.url.as_ref());
+    if let Some(timeout) = http_request.timeout_ms {
+        req = req.timeout(core::time::Duration::from_millis(timeout));
+    }
     for (k, v) in http_request.headers {
         req = req.insert_header((k.as_ref(), v.as_ref()));
     }

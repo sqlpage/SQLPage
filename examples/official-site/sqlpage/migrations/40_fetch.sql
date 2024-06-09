@@ -56,6 +56,16 @@ select
     ''json'' as language,
     $api_results as contents;
 ```
+
+# JSON parameter format
+
+The fetch function accepts either a URL string, or a JSON object with the following parameters:
+ - `method`: The HTTP method to use. Defaults to `GET`.
+ - `url`: The URL to fetch.
+ - `headers`: A JSON object with the headers to send.
+ - `body`: The body of the request. If it is a JSON object, it will be sent as JSON. If it is a string, it will be sent as is.
+ - `timeout_ms`: The maximum time to wait for the request, in milliseconds. Defaults to 5000.
+
 '
     );
 INSERT INTO sqlpage_function_parameters (
