@@ -42,9 +42,10 @@ async fn log_welcome_message(config: &AppConfig) {
     };
 
     log::info!(
-        "Server started successfully.
-    SQLPage is now listening on {}
+        "SQLPage v{} started successfully.
+    Now listening on {}
     You can write your website's code in .sql files in {}.",
+        env!("CARGO_PKG_VERSION"),
         address_message,
         config.web_root.display()
     );
