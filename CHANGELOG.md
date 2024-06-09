@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.23.0 (unreleased)
+## 0.23.0 (2024-06-09)
 
  - fix a bug in the [csv](https://sql.ophir.dev/documentation.sql?component=csv#component) component. The `separator` parameter now works as expected. This facilitates creating excel-compatible CSVs in european countries where excel expects the separator to be `;` instead of `,`.
  - new `tooltip` property in the button component.
