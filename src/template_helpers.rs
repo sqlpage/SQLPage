@@ -16,6 +16,7 @@ type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
 type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
+    let site_prefix = config.site_prefix.clone();
     register_helper(h, "stringify", stringify_helper as H);
     register_helper(h, "parse_json", parse_json_helper as EH);
     register_helper(h, "default", default_helper as HH);
@@ -39,10 +40,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     h.register_helper("array_contains", Box::new(array_contains));
 
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
-    let static_path_helper = StaticPathHelper {
-        site_prefix: config.site_prefix.clone(),
-    };
-    register_helper(h, "static_path", static_path_helper);
+    register_helper(h, "static_path", StaticPathHelper(site_prefix));
 
     // icon helper: generate an image with the specified icon
     h.register_helper("icon_img", Box::new(icon_img_helper));
@@ -133,9 +131,7 @@ fn to_array_helper(v: &JsonValue) -> JsonValue {
     .into()
 }
 
-struct StaticPathHelper {
-    site_prefix: String,
-}
+struct StaticPathHelper(String);
 
 impl CanHelp for StaticPathHelper {
     fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
@@ -153,7 +149,7 @@ impl CanHelp for StaticPathHelper {
             "tomselect.js" => static_filename!("tomselect.js"),
             other => return Err(format!("unknown static file: {other:?}")),
         };
-        Ok(format!("{}{}", self.site_prefix, path).into())
+        Ok(format!("{}{}", self.0, path).into())
     }
 }
 
