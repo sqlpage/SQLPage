@@ -14,6 +14,7 @@
  - In the [map](https://sql.ophir.dev/documentation.sql?component=map#component) component, when top-level latitude and longitude properties are omitted, the map will now center on its markers. This makes it easier to create zoomed maps with a single marker.
  - In the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component, add a `download` property to make the button download a file when clicked, a `target` property to open the link in a new tab, and a `rel` property to prevent search engines from following the link.
  - New `timeout` option in the [sqlpage.fetch](https://sql.ophir.dev/functions.sql?function=fetch#function) function to set a timeout for the request. This is useful when working with slow or unreliable APIs, large payloads, or when you want to avoid waiting too long for a response.
+ - In the [hero](https://sql.ophir.dev/documentation.sql?component=hero#component) component, add a `poster` property to display a video poster image, a `loop` property to loop the video (useful for short animations), a `muted` property to mute the video, and a `nocontrols` property to hide video controls.
 
 ## 0.22.0 (2024-05-29)
  -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.
