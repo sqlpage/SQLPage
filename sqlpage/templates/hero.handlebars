@@ -4,7 +4,7 @@
     <div class="fs-1 mx-5 text-muted">
       {{~description~}}
       {{~#if description_md~}}
-          {{{markdown description_md}}}
+        {{{markdown description_md}}}
       {{~/if~}}
     </div>
     {{#if link}}
@@ -15,7 +15,12 @@
     <img src="{{image}}" alt="{{title}}" class="hero-image img-fluid col-lg-6" />
   {{/if}}
   {{#if video}}
-    <video src="{{video}}" alt="{{title}}" class="hero-image img-fluid col-lg-6" controls />
+    <video src="{{video}}" alt="{{title}}" class="hero-image img-fluid col-lg-6" controls 
+      {{#if poster}}
+        preload="none"
+        poster="{{poster}}"
+      {{/if}}>
+    </video>
   {{/if}}
 </header>
 
@@ -28,7 +33,7 @@
       <div class="card-body text-center p-4 p-lg-5 pt-0 pt-lg-0">
         {{#if icon}}
         <div style="margin-top: -1.5rem;" class="badge bg-{{default color 'success'}} text-{{default color 'success'}}-fg fs-1 mb-4 p-2">
-            {{~icon_img icon 30~}}
+          {{~icon_img icon 30~}}
         </div>
         {{/if}}
         <h2>
@@ -39,11 +44,11 @@
           {{#if link}}
           </a>
           {{/if}}
-          </h2>
+        </h2>
         <div class="mb-0">
           {{~description~}}
           {{~#if description_md~}}
-              {{{markdown description_md}}}
+            {{{markdown description_md}}}
           {{~/if~}}
         </div>
       </div>
