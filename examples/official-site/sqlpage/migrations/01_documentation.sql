@@ -644,7 +644,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'The text displayed on the download button.', 'TEXT', TRUE, FALSE),
     ('filename', 'The name of the file that should be downloaded (without the extension).', 'TEXT', TRUE, TRUE),
     ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'ICON', TRUE, TRUE),
-    ('color', 'Color of the button', 'COLOR', TRUE, TRUE)
+    ('color', 'Color of the button', 'COLOR', TRUE, TRUE),
+    ('size', 'The size of the button (e.g., sm, lg).', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
