@@ -43,6 +43,10 @@
         <link rel="alternate" type="application/rss+xml" title="{{title}}" href="{{rss}}">
     {{/if}}
     <meta name="generator" content="SQLPage"/>
+
+    {{#if image_og}}
+        <meta property="og:image" content="{{image_og}}"/>
+    {{/if}}
 </head>
 
 <body class="layout-{{default layout 'boxed'}}" {{#if theme}}data-bs-theme="{{theme}}"{{/if}}>
