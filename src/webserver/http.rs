@@ -1,5 +1,5 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
-use crate::webserver::database::{execute_queries::stream_query_results, DbItem};
+use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
 use crate::{app_config, AppConfig, AppState, ParsedSqlFile};
@@ -229,8 +229,9 @@ async fn render_sql(
         let layout_context = &LayoutContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
         };
+        let mut conn = None;
         let database_entries_stream =
-            stream_query_results(&app_state.db, &sql_file, &mut req_param);
+            stream_query_results_with_conn(&sql_file, &mut req_param, &mut conn);
         let response_with_writer = build_response_header_and_stream(
             Arc::clone(&app_state),
             database_entries_stream,
@@ -563,7 +564,7 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         if let Some(domain) = &config.https_domain {
             let mut listen_on_https = listen_on;
             listen_on_https.set_port(443);
-            log::info!("Will start HTTPS server on {listen_on_https}");
+            log::debug!("Will start HTTPS server on {listen_on_https}");
             let config = make_auto_rustls_config(domain, config);
             server = server
                 .bind_rustls_0_22(listen_on_https, config)
@@ -572,7 +573,7 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
             bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)");
         }
         if listen_on.port() != 443 {
-            log::info!("Will start HTTP server on {listen_on}");
+            log::debug!("Will start HTTP server on {listen_on}");
             server = server
                 .bind(listen_on)
                 .map_err(|e| bind_error(e, listen_on))?;

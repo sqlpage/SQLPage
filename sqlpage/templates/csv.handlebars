@@ -17,7 +17,7 @@
 {{~/each_row~}}
 "
        download="{{default filename title}}.csv"
-       class="btn btn-{{default color "primary"}}">
+       class="btn btn-{{default color "primary"}}{{#if size}} btn-{{size}}{{/if}}">
         {{~icon_img (default icon "download")~}}
         {{default title "Download"}}
     </a>

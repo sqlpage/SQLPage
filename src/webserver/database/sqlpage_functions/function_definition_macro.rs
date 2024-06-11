@@ -1,7 +1,12 @@
 /// Defines all sqlpage functions
 #[macro_export]
 macro_rules! sqlpage_functions {
-    ($($func_name:ident($(($request:ty)$(,)?)? $($param_name:ident : $param_type:ty),*);)*) => {
+    ($($func_name:ident(
+            $(($request:ty $(, $db_conn:ty)?))?
+            $(,)?
+            $($param_name:ident : $param_type:ty),*
+        );
+    )*) => {
         #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub enum SqlPageFunctionName {
             $( #[allow(non_camel_case_types)] $func_name ),*
@@ -47,10 +52,11 @@ macro_rules! sqlpage_functions {
             }
         }
         impl SqlPageFunctionName {
-            pub(crate) async fn evaluate<'a>(
+            pub(crate) async fn evaluate<'a, 'b>(
                 &self,
                 #[allow(unused_variables)]
                 request: &'a RequestInfo,
+                db_connection: &'b mut Option<sqlx::pool::PoolConnection<sqlx::Any>>,
                 params: Vec<Option<Cow<'a, str>>>
             ) -> anyhow::Result<Option<Cow<'a, str>>> {
                 use $crate::webserver::database::sqlpage_functions::function_traits::*;
@@ -66,7 +72,10 @@ macro_rules! sqlpage_functions {
                                 anyhow::bail!("Too many arguments. Remove extra argument {}", as_sql(extraneous_param));
                             }
                             let result = $func_name(
-                                $(<$request>::from(request),)*
+                                $(
+                                    <$request>::from(request),
+                                    $(<$db_conn>::from(db_connection),)*
+                                )*
                                 $($param_name.into()),*
                             ).await;
                             result.into_cow_result()

@@ -133,6 +133,11 @@ async fn test_files() {
         if test_file_path.extension().unwrap_or_default() != "sql" {
             continue;
         }
+        if test_file_path_string.contains(&format!("no{}", app_data.db.to_string().to_lowercase()))
+        {
+            // skipping because the test does not support the database
+            continue;
+        }
         let req_str = format!("/{}?x=1", test_file_path_string);
         let resp = req_path_with_app_data(&req_str, app_data.clone())
             .await
@@ -226,6 +231,33 @@ async fn test_file_upload_through_runsql() -> actix_web::Result<()> {
     test_file_upload("/tests/upload_file_runsql_test.sql").await
 }
 
+// Diabled because of
+#[actix_web::test]
+async fn test_blank_file_upload_field() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/upload_file_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"\"\r\n\
+            Content-Type: application/octet-stream\r\n\
+            \r\n\
+            \r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("No file uploaded"),
+        "{body_str}\nexpected to contain: No file uploaded"
+    );
+    Ok(())
+}
+
 #[actix_web::test]
 async fn test_file_upload_too_large() -> actix_web::Result<()> {
     // Files larger than 12345 bytes should be rejected as per the test_config
@@ -276,6 +308,28 @@ async fn test_upload_file_data_url() -> actix_web::Result<()> {
     // The file name suffix was ".txt", but the content type was "application/json"
     // so the file should be treated as a JSON file
     assert_eq!(body_str, "data:application/json;base64,eyJhIjogMX0=");
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_uploaded_file_name() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/uploaded_file_name_test.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"testfile.txt\"\r\n\
+            Content-Type: text/plain\r\n\
+            \r\n\
+            Some plain text.\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert_eq!(body_str, "testfile.txt");
     Ok(())
 }
 

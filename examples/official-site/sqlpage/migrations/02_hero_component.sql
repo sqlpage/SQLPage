@@ -1,11 +1,15 @@
 -- Hero
-INSERT INTO component(name, icon, description)
-VALUES (
+INSERT INTO
+    component(name, icon, description)
+VALUES
+    (
         'hero',
         'home',
         'Display a large title and description for your page, with an optional large illustrative image. Useful in your home page, for instance.'
     );
-INSERT INTO parameter(
+
+INSERT INTO
+    parameter(
         component,
         name,
         description,
@@ -13,10 +17,13 @@ INSERT INTO parameter(
         top_level,
         optional
     )
-SELECT 'hero',
+SELECT
+    'hero',
     *
-FROM (
-        VALUES -- top level
+FROM
+    (
+        VALUES
+            -- top level
             (
                 'title',
                 'The title of your page. Will be shown in very large characters at the top.',
@@ -66,6 +73,23 @@ FROM (
                 TRUE,
                 TRUE
             ),
+            (
+                'poster',
+                'URL of the image to be displayed before the video starts. Ignored if no video is present.',
+                'URL',
+                TRUE,
+                TRUE
+            ),
+            (
+                'nocontrols',
+                'Hide the video controls (play, pause, volume, etc.), and autoplay the video.',
+                'BOOLEAN',
+                TRUE,
+                TRUE
+            ),
+            ('muted', 'Mute the video', 'BOOLEAN', TRUE, TRUE),
+            ('autoplay', 'Automatically start playing the video', 'BOOLEAN', TRUE, TRUE),
+            ('loop', 'Loop the video', 'BOOLEAN', TRUE, TRUE),
             -- item level
             (
                 'title',
@@ -103,8 +127,11 @@ FROM (
                 TRUE
             )
     ) x;
-INSERT INTO example(component, description, properties)
-VALUES (
+
+INSERT INTO
+    example(component, description, properties)
+VALUES
+    (
         'hero',
         'The simplest possible hero section',
         json(
@@ -125,9 +152,6 @@ VALUES (
             "description_md": "Documentation for the *SQLPage* low-code web application framework.",
             "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Lac_de_Zoug.jpg/640px-Lac_de_Zoug.jpg",
             "link": "/documentation.sql",
-            "link_text": "Read Documentation !"},' ||
-         '{"title": "Fast", "description": "Pages load instantly, even on slow mobile networks.", "icon": "car", "color": "red", "link": "/"},' ||
-         '{"title": "Beautiful", "description": "Uses pre-defined components that look professional.", "icon": "eye", "color": "green", "link": "/"},' ||
-         '{"title": "Easy", "description_md": "You can teach yourself enough SQL to use [**SQLPage**](https://sql.ophir.dev) in a weekend.", "icon": "sofa", "color": "blue", "link": "/"}' || ']'
+            "link_text": "Read Documentation !"},' || '{"title": "Fast", "description": "Pages load instantly, even on slow mobile networks.", "icon": "car", "color": "red", "link": "/"},' || '{"title": "Beautiful", "description": "Uses pre-defined components that look professional.", "icon": "eye", "color": "green", "link": "/"},' || '{"title": "Easy", "description_md": "You can teach yourself enough SQL to use [**SQLPage**](https://sql.ophir.dev) in a weekend.", "icon": "sofa", "color": "blue", "link": "/"}' || ']'
         )
     );

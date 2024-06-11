@@ -1,14 +1,21 @@
 # CHANGELOG.md
 
-## 0.23.0 (unreleased)
+## 0.23.0 (2024-06-09)
 
  - fix a bug in the [csv](https://sql.ophir.dev/documentation.sql?component=csv#component) component. The `separator` parameter now works as expected. This facilitates creating excel-compatible CSVs in european countries where excel expects the separator to be `;` instead of `,`.
  - new `tooltip` property in the button component.
  - New `search_value` property in the shell component.
  - Fixed a display issue in the hero component when the button text is long and the viewport is narrow.
+ - reuse the existing opened database connection for the current query in `sqlpage.run_sql` instead of opening a new one. This makes it possible to create a temporary table in a file, and reuse it in an included script, create a SQL transaction that spans over multiple run_sql calls, and should generally make run_sql more performant.
  - Fixed a bug in the cookie component where removing a cookie from a subdirectory would not work.
  - [Updated SQL parser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0470-2024-06-01). Fixes support for `AT TIME ZONE` in postgres. Fixes `GROUP_CONCAT()` in MySQL.
  - Add a new warning message in the logs when trying to use `SET $x = ` when there is already a form field named `x`.
+ - **Empty Uploaded files**: when a form contains an optional file upload field, and the user does not upload a file, the field used to still be accessible to SQLPage file-related functions such as `sqlpage.uploaded_file_path` and `sqlpage.uploaded_file_mime_type`. This is now fixed, and these functions will return `NULL` when the user does not upload a file. `sqlpage.persist_uploaded_file` will not create an empty file in the target directory when the user does not upload a file, instead it will do nothing and return `NULL`.
+ - In the [map](https://sql.ophir.dev/documentation.sql?component=map#component) component, when top-level latitude and longitude properties are omitted, the map will now center on its markers. This makes it easier to create zoomed maps with a single marker.
+ - In the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component, add a `download` property to make the button download a file when clicked, a `target` property to open the link in a new tab, and a `rel` property to prevent search engines from following the link.
+ - New `timeout` option in the [sqlpage.fetch](https://sql.ophir.dev/functions.sql?function=fetch#function) function to set a timeout for the request. This is useful when working with slow or unreliable APIs, large payloads, or when you want to avoid waiting too long for a response.
+ - In the [hero](https://sql.ophir.dev/documentation.sql?component=hero#component) component, add a `poster` property to display a video poster image, a `loop` property to loop the video (useful for short animations), a `muted` property to mute the video, and a `nocontrols` property to hide video controls.
+ - Fix a bug where icons would disappear when serving a SQLPage website from a subdirectory and not the root of the (sub)domain using the `site_prefix` configuration option.
 
 ## 0.22.0 (2024-05-29)
  -  **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.

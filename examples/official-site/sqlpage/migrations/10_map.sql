@@ -17,7 +17,7 @@ INSERT INTO parameter (
 VALUES (
         'map',
         'latitude',
-        'Latitude of the center of the map.',
+        'Latitude of the center of the map. If omitted, the map will be centered on its markers.',
         'REAL',
         TRUE,
         TRUE
@@ -149,7 +149,7 @@ VALUES (
         'map',
         'Basic example of a map with a marker',
         JSON(
-            '[{ "component": "map", "zoom": 1 }, { "title": "New Delhi", "latitude": 28.6139, "longitude": 77.2090 }]'
+            '[{ "component": "map" }, { "title": "New Delhi", "latitude": 28.6139, "longitude": 77.2090 }]'
         )
     ),
     (

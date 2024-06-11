@@ -5,13 +5,16 @@
     {{else}}
     <a href="{{link}}"
     {{/if}}
-        class="btn {{#if disabled}} disabled{{/if}}
+        class="btn text-wrap{{#if disabled}} disabled{{/if}}
         {{~#if color}} btn-{{color}}{{/if}}
         {{~#if ../size}} btn-{{../size}}{{/if}}
         {{~#if outline}} btn-outline-{{outline}}{{/if}}
         {{~#if ../shape}} btn-{{../shape}}{{/if}}
         {{~#if space_after}} me-auto{{/if}}"
         {{~#if id}} id="{{id}}"{{/if}}
+        {{~#if target}} target="{{target}}"{{/if}}
+        {{~#if download}} download="{{download}}"{{/if}}
+        {{~#if rel}} rel="{{rel}}"{{/if}}
         {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
         role="button">
         {{~#if icon~}}

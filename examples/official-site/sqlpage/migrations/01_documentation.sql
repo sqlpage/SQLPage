@@ -214,7 +214,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('reset', 'The text to display in the button at the bottom of the form that resets the form to its original state. Omit this property not to show a reset button at all.', 'TEXT', TRUE, TRUE),
     ('id', 'A unique identifier for the form, which can then be used to validate the form from a button outside of the form.', 'TEXT', TRUE, TRUE),
     -- item level
-    ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number for field that accepts only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter. This is set to "text" by default.', 'TEXT', FALSE, TRUE),
+    ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number to accept only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter, hidden for a value that will be submitted but not shown to the user. text by default.', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
@@ -242,7 +242,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
     ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE),
     ('readonly','Set to true to prevent the user from modifying the value of the input field.','BOOL',FALSE,TRUE),
-    ('disabled','Set to true to prevent the user from interacting with the input field.','BOOL',FALSE,TRUE),
+    ('disabled','Makes the field non-editable, non-focusable, and not submitted with the form. Use readonly instead for simple non-editable fields.','BOOL',FALSE,TRUE),
     ('id','A unique identifier for the input, which can then be used to select and manage the field with Javascript code. Usefull for advanced using as setting client side event listeners, interactive control of input field (disabled, visibility, read only, e.g.) and AJAX requests.','TEXT',FALSE,TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
@@ -517,6 +517,14 @@ INSERT INTO example(component, description, properties) VALUES
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
     '{"series": "Human resources", "x": 2022, "value": 55}]')),
+    ('chart', 'A line chart with multiple series.', json('[{"component":"chart", "title": "Revenue", "ymin": 0},
+    {"series": "Chicago Store", "x": 2021, "value": 35}, 
+    {"series": "Chicago Store", "x": 2022, "value": 15}, 
+    {"series": "Chicago Store", "x": 2023, "value": 45}, 
+    {"series": "New York Store", "x": 2021, "value": 30}, 
+    {"series": "New York Store", "x": 2022, "value": 55},
+    {"series": "New York Store", "x": 2023, "value": 19}
+    ]')),
     ('chart', 'A scatter plot with multiple custom options.',
     json('[
         {"component":"chart", "title": "Gross domestic product and its growth", "type": "scatter",
@@ -636,7 +644,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'The text displayed on the download button.', 'TEXT', TRUE, FALSE),
     ('filename', 'The name of the file that should be downloaded (without the extension).', 'TEXT', TRUE, TRUE),
     ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'ICON', TRUE, TRUE),
-    ('color', 'Color of the button', 'COLOR', TRUE, TRUE)
+    ('color', 'Color of the button', 'COLOR', TRUE, TRUE),
+    ('size', 'The size of the button (e.g., sm, lg).', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES

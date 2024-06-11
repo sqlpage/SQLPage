@@ -17,7 +17,9 @@ use super::syntax_tree::{extract_req_param, StmtParam};
 use super::{highlight_sql_error, Database, DbItem};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
-use sqlx::{Any, AnyConnection, Arguments, Either, Executor, Statement};
+use sqlx::{Any, Arguments, Either, Executor, Statement};
+
+pub type DbConn = Option<PoolConnection<sqlx::Any>>;
 
 impl Database {
     pub(crate) async fn prepare_with(
@@ -32,23 +34,23 @@ impl Database {
             .map_err(|e| highlight_sql_error("Failed to prepare SQL statement", query, e))
     }
 }
-pub fn stream_query_results<'a>(
-    db: &'a Database,
+
+pub fn stream_query_results_with_conn<'a>(
     sql_file: &'a ParsedSqlFile,
     request: &'a mut RequestInfo,
+    db_connection: &'a mut DbConn,
 ) -> impl Stream<Item = DbItem> + 'a {
     async_stream::try_stream! {
-        let mut connection_opt = None;
         for res in &sql_file.statements {
             match res {
                 ParsedStatement::CsvImport(csv_import) => {
-                    let connection = take_connection(db, &mut connection_opt).await?;
+                    let connection = take_connection(&request.app_state.db, db_connection).await?;
                     log::debug!("Executing CSV import: {:?}", csv_import);
                     run_csv_import(connection, csv_import, request).await?;
                 },
                 ParsedStatement::StmtWithParams(stmt) => {
-                    let query = bind_parameters(stmt, request).await?;
-                    let connection = take_connection(db, &mut connection_opt).await?;
+                    let query = bind_parameters(stmt, request, db_connection).await?;
+                    let connection = take_connection(&request.app_state.db, db_connection).await?;
                     log::trace!("Executing query {:?}", query.sql);
                     let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
@@ -62,13 +64,13 @@ pub fn stream_query_results<'a>(
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
-                    execute_set_variable_query(db, &mut connection_opt, request, variable, value).await
+                    execute_set_variable_query(db_connection, request, variable, value).await
                     .with_context(||
                         format!("Failed to set the {variable} variable to {value:?}")
                     )?;
                 },
                 ParsedStatement::StaticSimpleSelect(value) => {
-                    for i in parse_dynamic_rows(DbItem::Row(exec_static_simple_select(value, request).await?)) {
+                    for i in parse_dynamic_rows(DbItem::Row(exec_static_simple_select(value, request, db_connection).await?)) {
                         yield i;
                     }
                 }
@@ -83,12 +85,15 @@ pub fn stream_query_results<'a>(
 async fn exec_static_simple_select(
     columns: &[(String, SimpleSelectValue)],
     req: &RequestInfo,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<serde_json::Value> {
     let mut map = serde_json::Map::with_capacity(columns.len());
     for (name, value) in columns {
         let value = match value {
             SimpleSelectValue::Static(s) => s.clone(),
-            SimpleSelectValue::Dynamic(p) => extract_req_param_as_json(p, req).await?,
+            SimpleSelectValue::Dynamic(p) => {
+                extract_req_param_as_json(p, req, db_connection).await?
+            }
         };
         map = add_value_to_map(map, (name.clone(), value));
     }
@@ -100,8 +105,9 @@ async fn exec_static_simple_select(
 async fn extract_req_param_as_json(
     param: &StmtParam,
     request: &RequestInfo,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<serde_json::Value> {
-    if let Some(val) = extract_req_param(param, request).await? {
+    if let Some(val) = extract_req_param(param, request, db_connection).await? {
         Ok(serde_json::Value::String(val.into_owned()))
     } else {
         Ok(serde_json::Value::Null)
@@ -111,22 +117,25 @@ async fn extract_req_param_as_json(
 /// This function is used to create a pinned boxed stream of query results.
 /// This allows recursive calls.
 pub fn stream_query_results_boxed<'a>(
-    db: &'a Database,
     sql_file: &'a ParsedSqlFile,
     request: &'a mut RequestInfo,
+    db_connection: &'a mut DbConn,
 ) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>> {
-    Box::pin(stream_query_results(db, sql_file, request))
+    Box::pin(stream_query_results_with_conn(
+        sql_file,
+        request,
+        db_connection,
+    ))
 }
 
 async fn execute_set_variable_query<'a>(
-    db: &'a Database,
-    connection_opt: &mut Option<PoolConnection<sqlx::Any>>,
+    db_connection: &'a mut DbConn,
     request: &'a mut RequestInfo,
     variable: &StmtParam,
     statement: &StmtWithParams,
 ) -> anyhow::Result<()> {
-    let query = bind_parameters(statement, request).await?;
-    let connection = take_connection(db, connection_opt).await?;
+    let query = bind_parameters(statement, request, db_connection).await?;
+    let connection = take_connection(&request.app_state.db, db_connection).await?;
     log::debug!(
         "Executing query to set the {variable:?} variable: {:?}",
         query.sql
@@ -170,21 +179,21 @@ fn vars_and_name<'a, 'b>(
 
 async fn take_connection<'a, 'b>(
     db: &'a Database,
-    conn: &'b mut Option<PoolConnection<sqlx::Any>>,
-) -> anyhow::Result<&'b mut AnyConnection> {
-    match conn {
-        Some(c) => Ok(c),
-        None => match db.connection.acquire().await {
-            Ok(c) => {
-                log::debug!("Acquired a database connection");
-                *conn = Some(c);
-                Ok(conn.as_mut().unwrap())
-            }
-            Err(e) => {
-                let err_msg = format!("Unable to acquire a database connection to execute the SQL file. All of the {} {:?} connections are busy.", db.connection.size(), db.connection.any_kind());
-                Err(anyhow::Error::new(e).context(err_msg))
-            }
-        },
+    conn: &'b mut DbConn,
+) -> anyhow::Result<&'b mut PoolConnection<sqlx::Any>> {
+    if let Some(c) = conn {
+        return Ok(c);
+    }
+    match db.connection.acquire().await {
+        Ok(c) => {
+            log::debug!("Acquired a database connection");
+            *conn = Some(c);
+            Ok(conn.as_mut().unwrap())
+        }
+        Err(e) => {
+            let err_msg = format!("Unable to acquire a database connection to execute the SQL file. All of the {} {:?} connections are busy.", db.connection.size(), db.connection.any_kind());
+            Err(anyhow::Error::new(e).context(err_msg))
+        }
     }
 }
 
@@ -212,16 +221,17 @@ fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
     e
 }
 
-async fn bind_parameters<'a>(
+async fn bind_parameters<'a, 'b>(
     stmt: &'a StmtWithParams,
     request: &'a RequestInfo,
+    db_connection: &'b mut DbConn,
 ) -> anyhow::Result<StatementWithParams<'a>> {
     let sql = stmt.query.as_str();
     log::debug!("Preparing statement: {}", sql);
     let mut arguments = AnyArguments::default();
     for (param_idx, param) in stmt.params.iter().enumerate() {
         log::trace!("\tevaluating parameter {}: {}", param_idx + 1, param);
-        let argument = extract_req_param(param, request).await?;
+        let argument = extract_req_param(param, request, db_connection).await?;
         log::debug!(
             "\tparameter {}: {}",
             param_idx + 1,

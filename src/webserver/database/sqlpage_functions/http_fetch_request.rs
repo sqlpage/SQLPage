@@ -9,6 +9,7 @@ pub(super) struct HttpFetchRequest<'b> {
     pub url: Cow<'b, str>,
     #[serde(borrow)]
     pub method: Option<Cow<'b, str>>,
+    pub timeout_ms: Option<u64>,
     #[serde(borrow, deserialize_with = "deserialize_map_to_vec_pairs")]
     pub headers: HeaderVec<'b>,
     #[serde(borrow)]
@@ -50,6 +51,7 @@ impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
                 method: None,
                 headers: Vec::new(),
                 body: None,
+                timeout_ms: None,
             }
         } else {
             match s {
@@ -72,6 +74,7 @@ impl<'a> HttpFetchRequest<'a> {
                 .map(|(k, v)| (Cow::Owned(k.into_owned()), Cow::Owned(v.into_owned())))
                 .collect(),
             body: self.body.map(Cow::into_owned).map(Cow::Owned),
+            timeout_ms: self.timeout_ms,
         }
     }
 }

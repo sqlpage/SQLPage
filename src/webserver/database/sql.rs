@@ -6,7 +6,9 @@ use crate::{AppState, Database};
 use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
-    BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg, FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, OneOrManyWithParens, SelectItem, Statement, Value, VisitMut, VisitorMut
+    BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
+    FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName,
+    OneOrManyWithParens, SelectItem, Statement, Value, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -216,7 +218,7 @@ fn extract_toplevel_funs(
                         let alias = todo!();
                         function_param_select_items.push(SelectItem::ExprWithAlias { expr, alias })
                     } else {
-                        return None
+                        return None;
                     }
                 }
             }

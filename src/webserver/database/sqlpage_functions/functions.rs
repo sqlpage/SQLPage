@@ -1,7 +1,8 @@
 use super::RequestInfo;
-use crate::webserver::{http::SingleOrVec, ErrorWithStatus};
+use crate::webserver::{database::execute_queries::DbConn, http::SingleOrVec, ErrorWithStatus};
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
+use mime_guess::mime;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
 
 super::function_definition_macro::sqlpage_functions! {
@@ -27,10 +28,11 @@ super::function_definition_macro::sqlpage_functions! {
     read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
     request_method((&RequestInfo));
-    run_sql((&RequestInfo), sql_file_path: Option<Cow<str>>);
+    run_sql((&RequestInfo, &mut DbConn), sql_file_path: Option<Cow<str>>);
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
+    uploaded_file_name((&RequestInfo), upload_name: Cow<str>);
     url_encode(raw_text: Option<Cow<str>>);
 
     variables((&RequestInfo), get_or_post: Option<Cow<str>>);
@@ -130,6 +132,9 @@ async fn fetch(
         Method::GET
     };
     let mut req = client.request(method, http_request.url.as_ref());
+    if let Some(timeout) = http_request.timeout_ms {
+        req = req.timeout(core::time::Duration::from_millis(timeout));
+    }
     for (k, v) in http_request.headers {
         req = req.insert_header((k.as_ref(), v.as_ref()));
     }
@@ -193,20 +198,14 @@ async fn persist_uploaded_file<'a>(
     field_name: Cow<'a, str>,
     folder: Option<Cow<'a, str>>,
     allowed_extensions: Option<Cow<'a, str>>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Option<String>> {
     let folder = folder.unwrap_or(Cow::Borrowed("uploads"));
     let allowed_extensions_str =
         allowed_extensions.unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
     let allowed_extensions = allowed_extensions_str.split(',');
-    let uploaded_file = request
-        .uploaded_files
-        .get(&field_name.to_string())
-        .ok_or_else(|| {
-            anyhow!(
-                "no file uploaded with field name {field_name}. Uploaded files: {:?}",
-                request.uploaded_files.keys()
-            )
-        })?;
+    let Some(uploaded_file) = request.uploaded_files.get(&field_name.to_string()) else {
+        return Ok(None);
+    };
     let file_name = uploaded_file.file_name.as_deref().unwrap_or_default();
     let extension = file_name.split('.').last().unwrap_or_default();
     if !allowed_extensions
@@ -238,7 +237,7 @@ async fn persist_uploaded_file<'a>(
             .strip_prefix(web_root)?
             .to_str()
             .with_context(|| format!("unable to convert path {target_path:?} to a string"))?;
-    Ok(path)
+    Ok(Some(path))
 }
 
 /// Returns the protocol of the current request (http or https).
@@ -338,7 +337,7 @@ fn mime_from_upload_path<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a
 
 fn mime_guess_from_filename(filename: &str) -> mime_guess::Mime {
     let maybe_mime = mime_guess::from_path(filename).first();
-    maybe_mime.unwrap_or(mime_guess::mime::APPLICATION_OCTET_STREAM)
+    maybe_mime.unwrap_or(mime::APPLICATION_OCTET_STREAM)
 }
 
 async fn request_method(request: &RequestInfo) -> String {
@@ -347,6 +346,7 @@ async fn request_method(request: &RequestInfo) -> String {
 
 async fn run_sql<'a>(
     request: &'a RequestInfo,
+    db_connection: &mut DbConn,
     sql_file_path: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::ser::{SerializeSeq, Serializer};
@@ -373,9 +373,9 @@ async fn run_sql<'a>(
     }
     let mut results_stream =
         crate::webserver::database::execute_queries::stream_query_results_boxed(
-            &request.app_state.db,
             &sql_file,
             &mut tmp_req,
+            db_connection,
         );
     let mut json_results_bytes = Vec::new();
     let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
@@ -424,6 +424,18 @@ async fn uploaded_file_path<'a>(
 ) -> Option<Cow<'a, str>> {
     let uploaded_file = request.uploaded_files.get(&*upload_name)?;
     Some(uploaded_file.file.path().to_string_lossy())
+}
+
+async fn uploaded_file_name<'a>(
+    request: &'a RequestInfo,
+    upload_name: Cow<'a, str>,
+) -> Option<Cow<'a, str>> {
+    let fname = request
+        .uploaded_files
+        .get(&*upload_name)?
+        .file_name
+        .as_ref()?;
+    Some(Cow::Borrowed(fname.as_str()))
 }
 
 /// escapes a string for use in a URL using percent encoding

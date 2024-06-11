@@ -76,6 +76,9 @@ function sqlpage_map() {
     if (first_map && is_leaflet_loaded) {
       onLeafletLoad();
     }
+    function parseCoords(coords) {
+      return coords && coords.split(",").map(c => parseFloat(c));
+    }
     function onLeafletLoad() {
       is_leaflet_loaded = true;
       const maps = document.querySelectorAll("[data-pre-init=map]");
@@ -83,13 +86,20 @@ function sqlpage_map() {
         const tile_source = m.dataset.tile_source;
         const maxZoom = +m.dataset.max_zoom;
         const attribution = m.dataset.attribution;
-        const center = m.dataset.center.split(",").map(c => parseFloat(c));
         const map = L.map(m, { attributionControl: !!attribution });
-        map.setView(center, +m.dataset.zoom);
+        const zoom = m.dataset.zoom;
+        let center = parseCoords(m.dataset.center);
         L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
+        const bounds = [];
         for (const marker_elem of m.getElementsByClassName("marker")) {
+          const marker_coords = parseCoords(marker_elem.dataset.coords);
+          if (marker_coords) bounds.push(marker_coords);
           setTimeout(addMarker, 0, marker_elem, map);
         }
+        if (center == null) {
+          map.fitBounds(bounds);
+          if (zoom != null) map.setZoom(+zoom);
+        } else map.setView(center, +zoom);
         m.removeAttribute("data-pre-init");
       }
     }
@@ -107,7 +117,7 @@ function sqlpage_map() {
       else if (marker_elem.dataset.link) marker.on('click', () => window.location = marker_elem.dataset.link);
     }
     function createMarker(marker_elem, options) {
-      const coords = marker_elem.dataset.coords.split(",").map(c => parseFloat(c));
+      const coords = parseCoords(marker_elem.dataset.coords);
       const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
       if (icon_obj) {
         const size = 1.5 * +(options.size || icon_obj.firstChild?.getAttribute('width') || 24);

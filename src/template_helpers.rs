@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use crate::{app_config::AppConfig, utils::static_filename};
 use anyhow::Context as _;
 use handlebars::{
-    handlebars_helper, Context, Handlebars, PathAndJson, RenderError, RenderErrorReason,
+    handlebars_helper, Context, Handlebars, HelperDef, PathAndJson, RenderError, RenderErrorReason,
     Renderable, ScopedJson,
 };
 use serde_json::Value as JsonValue;
@@ -16,6 +16,7 @@ type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
 type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
+    let site_prefix = config.site_prefix.clone();
     register_helper(h, "stringify", stringify_helper as H);
     register_helper(h, "parse_json", parse_json_helper as EH);
     register_helper(h, "default", default_helper as HH);
@@ -39,13 +40,10 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     h.register_helper("array_contains", Box::new(array_contains));
 
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
-    let static_path_helper = StaticPathHelper {
-        site_prefix: config.site_prefix.clone(),
-    };
-    register_helper(h, "static_path", static_path_helper);
+    register_helper(h, "static_path", StaticPathHelper(site_prefix.clone()));
 
     // icon helper: generate an image with the specified icon
-    h.register_helper("icon_img", Box::new(icon_img_helper));
+    h.register_helper("icon_img", Box::new(IconImgHelper(site_prefix)));
     register_helper(h, "markdown", markdown_helper as EH);
     register_helper(h, "buildinfo", buildinfo_helper as EH);
     register_helper(h, "typeof", typeof_helper as H);
@@ -133,9 +131,8 @@ fn to_array_helper(v: &JsonValue) -> JsonValue {
     .into()
 }
 
-struct StaticPathHelper {
-    site_prefix: String,
-}
+/// Generate the full path to a builtin sqlpage asset. Struct Param is the site prefix
+struct StaticPathHelper(String);
 
 impl CanHelp for StaticPathHelper {
     fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
@@ -153,7 +150,38 @@ impl CanHelp for StaticPathHelper {
             "tomselect.js" => static_filename!("tomselect.js"),
             other => return Err(format!("unknown static file: {other:?}")),
         };
-        Ok(format!("{}{}", self.site_prefix, path).into())
+        Ok(format!("{}{}", self.0, path).into())
+    }
+}
+
+/// Generate an image with the specified icon. Struct Param is the site prefix
+struct IconImgHelper(String);
+impl HelperDef for IconImgHelper {
+    fn call<'reg: 'rc, 'rc>(
+        &self,
+        helper: &handlebars::Helper<'rc>,
+        _r: &'reg Handlebars<'reg>,
+        _ctx: &'rc Context,
+        _rc: &mut handlebars::RenderContext<'reg, 'rc>,
+        writer: &mut dyn handlebars::Output,
+    ) -> handlebars::HelperResult {
+        let null = handlebars::JsonValue::Null;
+        let params = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
+        let name = match params[0] {
+            JsonValue::String(s) => s,
+            other => {
+                log::debug!("icon_img: {other:?} is not an icon name, not rendering anything");
+                return Ok(());
+            }
+        };
+        let size = params[1].as_u64().unwrap_or(24);
+        write!(
+            writer,
+            "<svg width={size} height={size}><use href=\"{}{}#tabler-{name}\" /></svg>",
+            self.0,
+            static_filename!("tabler-icons.svg")
+        )?;
+        Ok(())
     }
 }
 
@@ -298,31 +326,6 @@ fn sum_helper<'reg, 'rc>(
             .ok_or(RenderErrorReason::InvalidParamType("number"))?;
     }
     write!(writer, "{sum}")?;
-    Ok(())
-}
-
-fn icon_img_helper<'reg, 'rc>(
-    helper: &handlebars::Helper<'rc>,
-    _r: &'reg Handlebars<'reg>,
-    _ctx: &'rc Context,
-    _rc: &mut handlebars::RenderContext<'reg, 'rc>,
-    writer: &mut dyn handlebars::Output,
-) -> handlebars::HelperResult {
-    let null = handlebars::JsonValue::Null;
-    let params = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
-    let name = match params[0] {
-        JsonValue::String(s) => s,
-        other => {
-            log::debug!("icon_img: {other:?} is not an icon name, not rendering anything");
-            return Ok(());
-        }
-    };
-    let size = params[1].as_u64().unwrap_or(24);
-    write!(
-        writer,
-        "<svg width={size} height={size}><use href=\"/{}#tabler-{name}\" /></svg>",
-        static_filename!("tabler-icons.svg")
-    )?;
     Ok(())
 }
 

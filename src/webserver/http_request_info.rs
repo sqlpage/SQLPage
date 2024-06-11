@@ -176,6 +176,10 @@ async fn extract_multipart_post_data(
                     )
                 })?;
             log::trace!("Extracted file {field_name} to {:?}", extracted.file.path());
+            if is_file_field_empty(&extracted).await? {
+                log::debug!("Ignoring empty file field: {field_name}");
+                continue;
+            }
             uploaded_files.push((field_name, extracted));
         } else {
             let text_contents = extract_text(http_req, field, &mut limits).await?;
@@ -209,6 +213,22 @@ async fn extract_file(
         .await
         .map_err(|e| anyhow!("Failed to save uploaded file: {e}"))?;
     Ok(file)
+}
+
+/// file upload form fields that are left blank result in the browser sending an empty file, with a mime type of application/octet-stream.
+/// We don't want to treat this the same as actual empty files, so we check for this case.
+async fn is_file_field_empty(
+    uploaded_file: &actix_multipart::form::tempfile::TempFile,
+) -> anyhow::Result<bool> {
+    Ok(
+        uploaded_file.content_type == Some(mime_guess::mime::APPLICATION_OCTET_STREAM)
+            && uploaded_file
+                .file_name
+                .as_ref()
+                .filter(|x| !x.is_empty())
+                .is_none()
+            && tokio::fs::metadata(&uploaded_file.file.path()).await?.len() == 0,
+    )
 }
 
 #[cfg(test)]
