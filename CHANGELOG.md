@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased
+ - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
+  - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)
+
 ## 0.23.0 (2024-06-09)
 
  - fix a bug in the [csv](https://sql.ophir.dev/documentation.sql?component=csv#component) component. The `separator` parameter now works as expected. This facilitates creating excel-compatible CSVs in european countries where excel expects the separator to be `;` instead of `,`.

@@ -7,7 +7,8 @@ function sqlpage_select_dropdown() {
         // This is a workaround to fix that
         const is_focused = s === document.activeElement;
         const tom = new TomSelect(s, {
-          create: s.dataset.create_new
+          create: s.dataset.create_new,
+          maxOptions: null,
         });
         if (is_focused) tom.focus();
     }
