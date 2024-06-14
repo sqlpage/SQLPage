@@ -3,6 +3,9 @@
 ## unreleased
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
   - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)
+ - map component
+   - automatically center the map on the contents when no top-level latitude and longitude properties are provided even when the map contains geojson data.
+   - allow using `FALSE as tile_source` to completely remove the base map. This makes the map component useful to display even non-geographical geometric data.
 
 ## 0.23.0 (2024-06-09)
 

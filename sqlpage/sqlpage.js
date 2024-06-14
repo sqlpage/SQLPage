@@ -89,20 +89,24 @@ function sqlpage_map() {
         const map = L.map(m, { attributionControl: !!attribution });
         const zoom = m.dataset.zoom;
         let center = parseCoords(m.dataset.center);
-        L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
-        const bounds = [];
+        if (tile_source) L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
+        map._sqlpage_markers = [];
         for (const marker_elem of m.getElementsByClassName("marker")) {
-          const marker_coords = parseCoords(marker_elem.dataset.coords);
-          if (marker_coords) bounds.push(marker_coords);
           setTimeout(addMarker, 0, marker_elem, map);
         }
-        if (center == null) {
-          map.fitBounds(bounds);
-          if (zoom != null) map.setZoom(+zoom);
-        } else map.setView(center, +zoom);
+        setTimeout(() => {
+          if (center == null && map._sqlpage_markers.length) {
+            map.fitBounds(map._sqlpage_markers.map(m => 
+              m.getLatLng ? m.getLatLng() : m.getBounds()
+            ));
+            if (zoom != null) map.setZoom(+zoom);
+          } else map.setView(center, +zoom);
+        }, 100);
         m.removeAttribute("data-pre-init");
+        m.getElementsByClassName("spinner-border")[0]?.remove();
       }
     }
+
     function addMarker(marker_elem, map) {
       const { dataset } = marker_elem;
       const options = {
@@ -113,6 +117,7 @@ function sqlpage_map() {
         dataset.coords ? createMarker(marker_elem, options)
                        : createGeoJSONMarker(marker_elem, options);
       marker.addTo(map);
+      map._sqlpage_markers.push(marker);
       if (options.title) marker.bindPopup(marker_elem);
       else if (marker_elem.dataset.link) marker.on('click', () => window.location = marker_elem.dataset.link);
     }
