@@ -37,7 +37,7 @@ async fn log_welcome_message(config: &AppConfig) {
         let mut msg = format!("{listen_on}");
         if listen_on.ip().is_unspecified() {
             // let the user know the service is publicly accessible
-            write!(msg, ": accessible from the network and from this computer on http://localhost:{}", listen_on.port()).unwrap();
+            write!(msg, ": accessible from the network, and locally on http://localhost:{}", listen_on.port()).unwrap();
         }
         msg
     };
