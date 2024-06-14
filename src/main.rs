@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use sqlpage::{
     app_config::{self, AppConfig},
     webserver, AppState,
@@ -32,13 +34,12 @@ async fn log_welcome_message(config: &AppConfig) {
         format!("https://{}", domain)
     } else {
         let listen_on = config.listen_on();
-        let msg = if listen_on.ip().is_unspecified() {
+        let mut msg = format!("{listen_on}");
+        if listen_on.ip().is_unspecified() {
             // let the user know the service is publicly accessible
-            " (accessible on all networks of this computer)"
-        } else {
-            ""
-        };
-        format!("http://{listen_on}{msg}")
+            write!(msg, ": accessible from the network and from this computer on http://localhost:{}", listen_on.port()).unwrap();
+        }
+        msg
     };
 
     log::info!(
