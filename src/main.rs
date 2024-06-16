@@ -37,7 +37,12 @@ async fn log_welcome_message(config: &AppConfig) {
         let mut msg = format!("{listen_on}");
         if listen_on.ip().is_unspecified() {
             // let the user know the service is publicly accessible
-            write!(msg, ": accessible from the network, and locally on http://localhost:{}", listen_on.port()).unwrap();
+            write!(
+                msg,
+                ": accessible from the network, and locally on http://localhost:{}",
+                listen_on.port()
+            )
+            .unwrap();
         }
         msg
     };
@@ -45,7 +50,7 @@ async fn log_welcome_message(config: &AppConfig) {
     log::info!(
         "SQLPage v{} started successfully.
     Now listening on {}
-    You can write your website's code in .sql files in {}.",
+    You can write your website's code in .sql files in {}",
         env!("CARGO_PKG_VERSION"),
         address_message,
         config.web_root.display()
