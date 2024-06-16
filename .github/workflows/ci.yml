@@ -59,6 +59,9 @@ jobs:
     - name: Set up cargo cache
       uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
     - run: cargo test
+    - name: Upload Windows binary
+      uses: actions/upload-artifact@v4
+      with: {path: "target/debug/sqlpage.exe"}
 
   docker_build:
     runs-on: ubuntu-latest
