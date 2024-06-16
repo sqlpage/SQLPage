@@ -61,7 +61,9 @@ jobs:
       - run: cargo test
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
-        with: { path: "target/debug/sqlpage.exe" }
+        with: 
+          name: sqlpage-windows-debug
+          path: "target/debug/sqlpage.exe"
 
   docker_build:
     runs-on: ubuntu-latest
