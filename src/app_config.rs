@@ -224,7 +224,7 @@ fn default_database_url() -> String {
         // Create the default database file if we can
         let _ = std::fs::create_dir_all(default_db_path.parent().unwrap()); // may already exist
         if let Ok(tmp_file) = std::fs::File::create(&default_db_path) {
-            log::info!("No DATABASE_URL provided, {default_db_path:?} is writable, creating a new database file.");
+            log::info!("No DATABASE_URL provided, {} is writable, creating a new database file.", default_db_path.display());
             drop(tmp_file);
             std::fs::remove_file(&default_db_path).expect("removing temp file");
             return prefix + default_db_path.to_str().unwrap() + "?mode=rwc";
