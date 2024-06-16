@@ -70,7 +70,7 @@ select
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description_md as description_md,
     type as footer,
     CASE type 
-        WHEN 'COLOR' THEN 'https://tabler.io/docs/base/colors'
+        WHEN 'COLOR' THEN '/colors.sql'
         WHEN 'ICON' THEN 'https://tabler-icons.io/'
     END AS footer_link,
     CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
@@ -87,7 +87,7 @@ select
     (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description_md as description_md,
     type as footer,
     CASE type 
-        WHEN 'COLOR' THEN 'https://tabler.io/docs/base/colors'
+        WHEN 'COLOR' THEN '/colors.sql'
         WHEN 'ICON' THEN 'https://tabler-icons.io/'
     END AS footer_link,
     CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
