@@ -556,7 +556,7 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         {
             server = server
                 .bind_uds(unix_socket)
-                .map_err(|e| bind_unix_socket(e, unix_socket))?;
+                .map_err(|e| bind_unix_socket_err(e, unix_socket))?;
         }
         #[cfg(not(target_family = "unix"))]
         anyhow::bail!("Unix sockets are not supported on your operating system. Use listen_on instead of unix_socket.");
@@ -614,7 +614,8 @@ fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Err
     anyhow::anyhow!(e).context(ctx)
 }
 
-fn bind_unix_socket(e: std::io::Error, unix_socket: &PathBuf) -> anyhow::Error {
+#[cfg(target_family = "unix")]
+fn bind_unix_socket_err(e: std::io::Error, unix_socket: &PathBuf) -> anyhow::Error {
     let ctx = if e.kind() == std::io::ErrorKind::PermissionDenied {
         format!(
             "You do not have permission to bind to the UNIX socket {unix_socket:?}. \
