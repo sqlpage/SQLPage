@@ -1,0 +1,51 @@
+# This is a basic systemd service file for SQLPage
+# For more information about systemd service files, see https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+# Put this file in /etc/systemd/system/sqlpage.service
+
+[Unit]
+Description=SQLPage website
+Documentation=https://sql.ophir.dev
+After=network.target
+
+[Service]
+# Define the user and group to run the service
+User=sqlpage
+Group=sqlpage
+
+# Set the working directory and the executable path
+WorkingDirectory=/var/www/sqlpage
+ExecStart=/usr/local/bin/sqlpage.bin
+
+# Environment variables
+Environment="RUST_LOG=info"
+Environment="LISTEN_ON=0.0.0.0:80"
+
+# Allow binding to port 80
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Restart options
+Restart=always
+RestartSec=10
+
+# Logging options
+#StandardOutput=syslog
+#StandardError=syslog
+SyslogIdentifier=sqlpage
+
+# Security options
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProtectClock=true
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
