@@ -7,6 +7,7 @@
    - automatically center the map on the contents when no top-level latitude and longitude properties are provided even when the map contains geojson data.
    - allow using `FALSE as tile_source` to completely remove the base map. This makes the map component useful to display even non-geographical geometric data.
  - Fix a bug that occured when no `database_url` was provided in the configuration file. SQLPage would generate an incorrect default SQLite database URL.
+ - Add a new `background_color` attribute to the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to set the background color of the card.
 
 ## 0.23.0 (2024-06-09)
 

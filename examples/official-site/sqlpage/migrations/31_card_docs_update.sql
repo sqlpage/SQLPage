@@ -25,6 +25,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('style', 'Inline style property to your iframe embed code. For example "background-color: #FFFFFF"', 'TEXT', FALSE, TRUE),
     ('icon', 'Name of an icon to display on the left side of the card.', 'ICON', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'COLOR', FALSE, TRUE),
+    ('background_color', 'The background color of the card.', 'COLOR', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
 ) x;
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'card', * FROM (VALUES
@@ -56,6 +57,13 @@ INSERT INTO example(component, description, properties) VALUES
             {"title": "Lynx", "description_md": "The **lynx** is a medium-sized **wild cat** native to Northern, Central and Eastern Europe to Central Asia and Siberia, the Tibetan Plateau and the Himalayas.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Lynx_lynx-4.JPG/640px-Lynx_lynx-4.JPG", "icon":"star" },
             {"title": "Squirrel", "description_md": "The **chipmunk** is a small, striped rodent of the family Sciuridae. Chipmunks are found in North America, with the exception of the Siberian chipmunk which is found primarily in Asia.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Tamias-rufus-001.jpg/640px-Tamias-rufus-001.jpg" },
             {"title": "Spider", "description_md": "The **jumping spider family** (_Salticidae_) contains more than 600 described genera and about *6000 described species*, making it the largest family of spiders with about 13% of all species.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Jumping_spiders_%28Salticidae%29.jpg/640px-Jumping_spiders_%28Salticidae%29.jpg" }
+        ]')),
+    ('card', 'Beautifully colored cards',
+        json('[
+            {"component":"card", "title":"Beautifully colored cards", "columns": 3},
+            {"title": "Red card", "color": "red", "background_color": "red-lt", "description": "Penalty! You are out!", "icon":"play-football" },
+            {"title": "Green card", "color": "green", "background_color": "green-lt", "description": "Welcome to the United States of America !", "icon":"user-dollar" },
+            {"title": "Blue card", "color": "blue", "background_color": "blue-lt", "description": "The Blue Card facilitates migration of foreigners to Europe.", "icon":"currency-euro" }
         ]')),
     ('card', 'Cards with remote content',
         json('[
