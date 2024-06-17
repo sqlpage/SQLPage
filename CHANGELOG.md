@@ -8,6 +8,7 @@
    - allow using `FALSE as tile_source` to completely remove the base map. This makes the map component useful to display even non-geographical geometric data.
  - Fix a bug that occured when no `database_url` was provided in the configuration file. SQLPage would generate an incorrect default SQLite database URL.
  - Add a new `background_color` attribute to the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to set the background color of the card.
+ - new handlebars helper for [custom components](https://sql.ophir.dev/custom_components.sql): `{{app_config 'property'}}` to access the configuration object from the handlebars template.
 
 ## 0.23.0 (2024-06-09)
 

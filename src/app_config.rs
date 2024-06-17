@@ -2,7 +2,7 @@ use anyhow::Context;
 use config::Config;
 use percent_encoding::AsciiSet;
 use serde::de::Error;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 
@@ -280,7 +280,7 @@ fn default_https_acme_directory_url() -> String {
     "https://acme-v02.api.letsencrypt.org/directory".to_string()
 }
 
-#[derive(Debug, Deserialize, PartialEq, Clone, Copy, Eq, Default)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum DevOrProd {
     #[default]

@@ -129,6 +129,8 @@ and SQLPage adds a few more:
    - if the argument is a string containing a valid json list, returns the parsed list,
    - otherwise returns a list containing only the argument
 - `array_contains`: returns true if a list contains a value
+- `static_path`: returns the path to one of the static files bundled with SQLPage. Accepts arguments like `sqlpage.js`, `sqlpage.css`, `apexcharts.js`, etc.
+- `app_config`: returns the value of a configuration parameter from sqlpage''s configuration file, such as `max_uploaded_file_size`, `site_prefix`, etc.
 - `icon_img`: generate an svg icon from a *tabler* icon name
 - `markdown`: renders markdown text
 - `each_row`: iterates over the rows of a query result
