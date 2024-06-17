@@ -32,7 +32,7 @@ using the same logic as for serving files in response to HTTP requests.
 ### Rendering a markdown file
 
 ```sql
-select ''text'' as component, sqlpage.read_file_as_text(''/path/to/file.md'') as text;
+select ''text'' as component, sqlpage.read_file_as_text(''/path/to/file.md'') as contents_md;
 ```
 ');
 
