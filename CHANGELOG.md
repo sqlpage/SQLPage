@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.24.0
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
   - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)
  - map component
