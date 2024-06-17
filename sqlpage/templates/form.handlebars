@@ -104,6 +104,9 @@
                                 {{~#if autofocus}}autofocus {{/if~}}
                                 {{~#if disabled}}disabled {{/if~}}
                                 {{~#if readonly}}readonly {{/if~}}
+                                {{~#if (eq type "file")}}
+                                    data-max-size="{{app_config "max_uploaded_file_size"}}"
+                                {{/if~}}
                             />
                             {{#if suffix}}<span class="input-group-text">{{suffix}}</span>{{/if}}
                         </div>

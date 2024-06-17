@@ -152,6 +152,23 @@ function sqlpage_map() {
     }
 }
 
+function sqlpage_form() {
+    const file_inputs = document.querySelectorAll("input[type=file][data-max-size]");
+    for (const input of file_inputs) {
+      const max_size = +input.dataset.maxSize;
+      input.addEventListener("change", function() {
+        input.classList.remove("is-invalid");
+        input.setCustomValidity("");
+        for (const {size} of this.files) {
+          if (size > max_size){
+            input.classList.add("is-invalid");
+            return input.setCustomValidity(`File size must be less than ${max_size/1000} kB.`);
+          }
+        }
+      });
+    }
+}
+
 function get_tabler_color(name) {
     return getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + name);
 }
@@ -175,5 +192,6 @@ add_init_function(function init_components() {
   sqlpage_table();
   sqlpage_map();
   sqlpage_card();
+  sqlpage_form();
   load_scripts();
 });
