@@ -300,7 +300,7 @@ async fn read_file_as_data_url<'a>(
         || Cow::Owned(mime_guess_from_filename(&file_path)),
         Cow::Borrowed,
     );
-    let mut data_url = format!("data:{}/{};base64,", mime.type_(), mime.subtype());
+    let mut data_url = format!("data:{mime};base64,");
     base64::Engine::encode_string(
         &base64::engine::general_purpose::STANDARD,
         bytes,

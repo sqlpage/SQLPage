@@ -295,9 +295,9 @@ async fn test_upload_file_data_url() -> actix_web::Result<()> {
         .set_payload(
             "--1234567890\r\n\
             Content-Disposition: form-data; name=\"my_file\"; filename=\"testfile.txt\"\r\n\
-            Content-Type: application/json\r\n\
+            Content-Type: image/svg+xml\r\n\
             \r\n\
-            {\"a\": 1}\r\n\
+            <svg></svg>\r\n\
             --1234567890--\r\n",
         )
         .to_srv_request();
@@ -307,7 +307,7 @@ async fn test_upload_file_data_url() -> actix_web::Result<()> {
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     // The file name suffix was ".txt", but the content type was "application/json"
     // so the file should be treated as a JSON file
-    assert_eq!(body_str, "data:application/json;base64,eyJhIjogMX0=");
+    assert_eq!(body_str, "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=");
     Ok(())
 }
 
