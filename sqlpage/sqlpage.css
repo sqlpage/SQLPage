@@ -33,11 +33,16 @@ td > p {
 }
 
 /* orchidjs/tom-select#712 */
-.ts-wrapper.multi .ts-control>div.active {
+.ts-wrapper.multi .ts-control > div.active {
   border: 1px solid transparent !important;
 }
 
 :root {
   /* Workaround for https://github.com/tabler/tabler/issues/1879 */
   --tblr-text-secondary-rgb: var(--tblr-secondary-rgb);
+}
+
+.page {
+  /* Leave space for the footer */
+  min-height: calc(100% - 3rem);
 }
