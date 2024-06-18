@@ -112,8 +112,8 @@ For more information about the properties that can be set in sqlpage.json, see [
 ![screenshot for the full sql website folder organisation](full-website.png)
 
 
-Use dynamic SQL queries to let users interact with your database
-=================================================================
+Use parameterized SQL queries to let users interact with your database
+======================================================================
 
 ### Displaying a form
 
