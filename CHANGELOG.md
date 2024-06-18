@@ -13,6 +13,8 @@
    - ![file upload too large](https://github.com/lovasoa/SQLpage/assets/552629/1c684d33-49bd-4e49-9ee0-ed3f0d454ced)
  - Fix a bug in [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file_as_data_url#function) where it would truncate the mime subtype of the file. This would cause the browser to refuse to display SVG files, for instance.
  - Avoid vertical scrolling caused by the footer even when the page content is short.
+ - Add a new `compact` attribute to the [list](https://sql.ophir.dev/documentation.sql?component=list#component), allowing to display more items in a list without taking up too much space. Great for displaying long lists of items.
+   - ![compact list screenshot](https://github.com/lovasoa/SQLpage/assets/552629/41302807-c6e4-40a0-9486-bfd0ceae1537)
 
 ## 0.23.0 (2024-06-09)
 

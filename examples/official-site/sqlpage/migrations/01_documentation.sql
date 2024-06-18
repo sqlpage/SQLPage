@@ -32,6 +32,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('empty_description', 'Description to display if the list is empty.', 'TEXT', TRUE, TRUE),
     ('empty_description_md', 'Description to display if the list is empty, in Markdown format.', 'TEXT', TRUE, TRUE),
     ('empty_link', 'URL to which the user should be taken if they click on the empty list.', 'URL', TRUE, TRUE),
+    ('compact', 'Whether to display the list in a more compact format, allowing more items to be displayed on the screen.', 'BOOLEAN', TRUE, TRUE),
     -- item level
     ('title', 'Name of the list item, displayed prominently.', 'TEXT', FALSE, FALSE),
     ('description', 'A description of the list item, displayed as greyed-out text.', 'TEXT', FALSE, TRUE),
@@ -47,7 +48,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
-    ('list', 'The most basic list', json('[{"component":"list"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
+    ('list', 'A basic compact list', json('[{"component":"list", "compact": true, "title": "SQLPage lists are..."},{"title":"Beautiful"},{"title":"Useful"},{"title":"Versatile"}]')),
     ('list', 'An empty list with a link to add an item', json('[{"component":"list", "empty_title": "No items yet", "empty_description": "This list is empty. Click here to create a new item !", "empty_link": "documentation.sql"}]')),
     ('list', 'A list with rich text descriptions', json('[{"component":"list"},
         {"title":"SQLPage", "image_url": "https://raw.githubusercontent.com/lovasoa/SQLpage/main/docs/favicon.png", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
@@ -55,7 +56,7 @@ INSERT INTO example(component, description, properties) VALUES
         {"title":"Tabler Icons", "image_url": "https://tabler.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
-            json('[{"component":"list", "title":"Popular websites"}, '||
+            json('[{"component":"list", "title":"Popular websites" }, '||
             '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "active": true }, '||
             '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "edit_link": "?edit=wikipedia", "delete_link": "?delete=wikipedia" }]'));
 
