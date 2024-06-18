@@ -20,6 +20,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('space_after', 'Whether there should be extra space to the right of the button. In a line of buttons, this will put the buttons before this one on the left, and the ones after on the right.', 'BOOLEAN', FALSE, TRUE),
     ('icon_after', 'Name of an icon to display after the text in the button', 'ICON', FALSE, TRUE),
     ('icon', 'Name of an icon to be displayed on the left side of the button.', 'ICON', FALSE, TRUE),
+    ('narrow', 'Whether to trim horizontal padding.', 'BOOLEAN', FALSE, TRUE),
     ('form', 'Identifier (id) of the form to which the button should submit.', 'TEXT', FALSE, TRUE),
     ('rel', '"nofollow" when the contents of the target link are not endorsed, "noopener" when the target is not trusted, and "noreferrer" to hide where the user came from when they open the link.', 'TEXT', FALSE, TRUE),
     ('target', '"_blank" to open the link in a new tab, "_self" to open it in the same tab, "_parent" to open it in the parent frame, or "_top" to open it in the full body of the window.', 'TEXT', FALSE, TRUE),
@@ -49,7 +50,8 @@ INSERT INTO example(component, description, properties) VALUES
         {"link":"#", "color":"success", "title":"Success"},
         {"link":"#", "color":"info", "title":"Info"},
         {"link":"#", "color":"dark", "title":"Dark"},
-        {"link":"#", "color":"warning", "title":"Warning"}]')
+        {"link":"#", "color":"warning", "title":"Warning"},
+        {"link":"#", "color":"danger", "title":"Narrow", "narrow":true}]')
     );
 
 INSERT INTO example(component, description, properties) VALUES
