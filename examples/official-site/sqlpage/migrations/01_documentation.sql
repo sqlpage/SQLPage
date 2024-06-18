@@ -592,6 +592,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('striped_columns', 'Whether to add zebra-striping to any table column.', 'BOOLEAN', TRUE, TRUE),
     ('hover', 'Whether to enable a hover state on table rows.', 'BOOLEAN', TRUE, TRUE),
     ('border', 'Whether to draw borders on all sides of the table and cells.', 'BOOLEAN', TRUE, TRUE),
+    ('overflow', 'Whether to to let "wide" tables overflow across the right border and enable browser-based horizontal scrolling.', 'BOOLEAN', TRUE, TRUE),
     ('small', 'Whether to use compact table.', 'BOOLEAN', TRUE, TRUE),
     ('description','Description of the table content and helps users with screen readers to find a table and understand what it’s.','TEXT',TRUE,TRUE),
     -- row level

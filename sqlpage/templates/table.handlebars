@@ -1,4 +1,4 @@
-<div class="card my-2 {{class}}" {{#if id}}id="{{id}}"{{/if}}>
+<div class="card my-2 {{class}}" {{#if overflow}}style="width: fit-content;"{{/if}} {{#if id}}id="{{id}}"{{/if}}>
     <div class="card-body">
         <div class="table-responsive" {{#if (or sort search)}}data-pre-init="table"{{/if}}>
             {{#if search}}
