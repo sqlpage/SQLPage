@@ -50,7 +50,7 @@
 </head>
 
 <body class="layout-{{default layout 'boxed'}}" {{#if theme}}data-bs-theme="{{theme}}"{{/if}}>
-<div class="page" id="sqlpage_page_wrapper">
+<div class="page">
     {{#if title}}
         <header id="sqlpage_header">
         <nav class="navbar navbar-expand-md navbar-light">
@@ -114,14 +114,12 @@
     </main>
 </div>
 <footer class="w-100 text-center fs-6 my-2 text-secondary" id="sqlpage_footer">
-    <div class="sqlpage_footer_content">
-        {{#if footer}}
-            {{{markdown footer}}}
-        {{else}}
-            <!-- You can change this footer using the 'footer' parameter of the 'shell' component -->
-            Built with <a class="text-reset" href="https://sql.ophir.dev" title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
-        {{/if}}
-    </div>
+    {{#if footer}}
+        {{{markdown footer}}}
+    {{else}}
+        <!-- You can change this footer using the 'footer' parameter of the 'shell' component -->
+        Built with <a class="text-reset" href="https://sql.ophir.dev" title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
+    {{/if}}
 </footer>
 </body>
 </html>
