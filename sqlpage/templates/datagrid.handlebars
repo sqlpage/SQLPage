@@ -24,7 +24,13 @@
                 <div class="datagrid-item">
                     <div class="datagrid-title">{{title}}</div>
                     <div class="datagrid-content {{#if active}}fw-bold{{/if}}">
-                        {{#if link}}<a href="{{link}}">{{/if}}
+                        {{~#if link}}
+                            <a href="{{link}}"
+                        {{~else~}}
+                            <span
+                        {{/if~}}
+                        {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
+                        >
                         {{#if color}}
                         <span class="status status-{{color}} {{#if active}}fw-bold{{/if}}">
                         {{/if}}
@@ -42,7 +48,11 @@
                         {{#if color}}
                         </span>
                         {{/if}}
-                        {{#if link}}</a>{{/if}}
+                        {{~#if link~}}
+                            </a>
+                        {{~else~}}
+                            </span>
+                        {{~/if~}}
                         {{#if footer}}
                             <small class="text-muted d-block">{{footer}}</small>
                         {{/if}}
