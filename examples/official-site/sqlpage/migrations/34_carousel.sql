@@ -50,7 +50,7 @@ VALUES
         'carousel',
         'width',
         'Width of the component, between 1 and 12. Default is 12.',
-        'NUMBER',
+        'INTEGER',
         TRUE,
         TRUE
     ),
