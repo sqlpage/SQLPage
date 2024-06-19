@@ -75,7 +75,19 @@
                     {{#each (to_array menu_item)}}
                         {{#if (eq (typeof this) 'object')}}
                             <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
-                            <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
+                            <a class="
+                                {{~#if this.button~}}
+                                    btn text-wrap me-1
+                                    {{~#if color}} btn-{{color}}{{/if}}
+                                    {{~#if size}} btn-{{size}}{{/if}}
+                                    {{~#if outline}} btn-outline-{{outline}}{{/if}}
+                                    {{~#if shape}} btn-{{shape}}{{/if}}
+                                    {{~#if narrow}} btn-icon{{/if}}
+                                {{~else~}}
+                                    nav-link
+                                {{~/if}}
+                                {{~#if this.submenu}} dropdown-toggle{{/if}}"
+                                href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
                                 {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
                                 role="button"
                             >
