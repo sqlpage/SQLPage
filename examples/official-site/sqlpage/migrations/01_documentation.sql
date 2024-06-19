@@ -5,13 +5,19 @@ CREATE TABLE component(
     introduced_in_version TEXT
 );
 
+CREATE TABLE parameter_type(
+    name TEXT PRIMARY KEY
+);
+INSERT INTO parameter_type(name) VALUES
+    ('BOOLEAN'), ('COLOR'), ('HTML'), ('ICON'), ('INTEGER'), ('JSON'), ('NUMBER'), ('REAL'), ('TEXT'), ('TIMESTAMP'), ('URL');
+
 CREATE TABLE parameter(
     top_level BOOLEAN DEFAULT FALSE,
     name TEXT,
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
     description TEXT,
     description_md TEXT,
-    type TEXT,
+    type TEXT REFERENCES parameter_type(name) ON DELETE CASCADE,
     optional BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (component, top_level, name)
 );
@@ -221,20 +227,20 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
     ('value', 'A default value that will already be present in the field when the user loads the page.', 'TEXT', FALSE, TRUE),
     ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select. JSON objects in the array can contain the properties "label", "value" and "selected".', 'JSON', FALSE, TRUE),
-    ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOL', FALSE, TRUE),
+    ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOLEAN', FALSE, TRUE),
     ('min', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
     ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
-    ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOL', FALSE, TRUE),
-    ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOL', FALSE, TRUE),
-    ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOL', FALSE, TRUE),
-    ('dropdown', 'An alias for "searchable".', 'BOOL', FALSE, TRUE),
-    ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOL', FALSE, TRUE),
+    ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOLEAN', FALSE, TRUE),
+    ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOLEAN', FALSE, TRUE),
+    ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOLEAN', FALSE, TRUE),
+    ('dropdown', 'An alias for "searchable".', 'BOOLEAN', FALSE, TRUE),
+    ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOLEAN', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
     ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
-    ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOL', FALSE, TRUE),
+    ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOLEAN', FALSE, TRUE),
     ('width', 'Width of the form field, between 1 and 12.', 'NUMBER', FALSE, TRUE),
-    ('autocomplete', 'Whether the browser should suggest previously entered values for this field.', 'BOOL', FALSE, TRUE),
+    ('autocomplete', 'Whether the browser should suggest previously entered values for this field.', 'BOOLEAN', FALSE, TRUE),
     ('minlength', 'Minimum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
     ('maxlength', 'Maximum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
     ('formaction', 'When type is "submit", this specifies the URL of the file that will handle the form submission. Useful when you need multiple submit buttons.', 'TEXT', FALSE, TRUE),
@@ -242,8 +248,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('prefix_icon','Icon to display on the left side of the input field, on the same line.','ICON',FALSE,TRUE),
     ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
     ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE),
-    ('readonly','Set to true to prevent the user from modifying the value of the input field.','BOOL',FALSE,TRUE),
-    ('disabled','Makes the field non-editable, non-focusable, and not submitted with the form. Use readonly instead for simple non-editable fields.','BOOL',FALSE,TRUE),
+    ('readonly','Set to true to prevent the user from modifying the value of the input field.','BOOLEAN',FALSE,TRUE),
+    ('disabled','Makes the field non-editable, non-focusable, and not submitted with the form. Use readonly instead for simple non-editable fields.','BOOLEAN',FALSE,TRUE),
     ('id','A unique identifier for the input, which can then be used to select and manage the field with Javascript code. Usefull for advanced using as setting client side event listeners, interactive control of input field (disabled, visibility, read only, e.g.) and AJAX requests.','TEXT',FALSE,TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
