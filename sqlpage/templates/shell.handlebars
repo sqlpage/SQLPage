@@ -113,6 +113,7 @@
                                                 {{~else~}}
                                                     dropdown-item
                                                 {{~/if}}" style=" min-width: inherit;"
+                                                {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
                                                 href="{{this.link}}"
                                             >
                                                 {{#if this.icon}}

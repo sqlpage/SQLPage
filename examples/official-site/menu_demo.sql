@@ -20,11 +20,13 @@ select 'dynamic' as component,
                         "button": true,
                         "shape": "pill",
                         "size": "sm",
+                        "tooltip": "User",
                         "color": "yellow"
                     },
                     {
                         "link": "/performance.sql",
                         "icon": "logout",
+                        "tooltip": "Logout",
                         "button": true,
                         "shape": "pill",
                         "size": "sm",
@@ -53,6 +55,7 @@ select 'dynamic' as component,
                     {
                         "link": "/examples/layouts.sql",
                         "button": true,
+                        "tooltip": "Layouts",
                         "title": "Layouts",
                         "color": "primary"
                     },
