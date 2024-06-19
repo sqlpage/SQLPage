@@ -24,7 +24,7 @@ INSERT INTO parameter (component,name,description,type,top_level,optional) VALUE
     'title',
     'level',
     'Set the heading level (default level is 1)',
-    'NUMBER',
+    'INTEGER',
     TRUE,
     TRUE   
 );
