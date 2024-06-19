@@ -15,6 +15,8 @@
  - Avoid vertical scrolling caused by the footer even when the page content is short.
  - Add a new `compact` attribute to the [list](https://sql.ophir.dev/documentation.sql?component=list#component), allowing to display more items in a list without taking up too much space. Great for displaying long lists of items.
    - ![compact list screenshot](https://github.com/lovasoa/SQLpage/assets/552629/41302807-c6e4-40a0-9486-bfd0ceae1537)
+ - Add property `narrow` to the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component to make the button narrower. Ideal for buttons with icons.
+   - ![icon buttons](https://github.com/lovasoa/SQLpage/assets/552629/7fcc049e-6012-40c1-a8ee-714ce70a8763)
 
 ## 0.23.0 (2024-06-09)
 

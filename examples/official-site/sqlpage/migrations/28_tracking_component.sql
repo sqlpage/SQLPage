@@ -50,7 +50,7 @@ VALUES (
         'tracking',
         'width',
         'Width of the component, between 1 and 12.',
-        'NUMBER',
+        'INTEGER',
         TRUE,
         TRUE
     ),
