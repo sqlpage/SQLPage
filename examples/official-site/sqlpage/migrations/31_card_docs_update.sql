@@ -51,6 +51,11 @@ INSERT INTO example(component, description, properties) VALUES
             {"title": "Download as spreadsheet", "link": "?component=csv#component", "description": "Using the CSV component, you can download your data as a spreadsheet.", "icon":"file-plus", "color": "green", "footer_md": "SQLPage can both [read](?component=form#component) and [write](?component=csv#component) **CSV** files."},
             {"title": "Custom components", "link": "/custom_components.sql", "description": "If you know some HTML, you can create your own components for your application.", "icon":"code", "color": "orange", "footer_md": "You can look at the [source of the official components](https://github.com/lovasoa/SQLpage/tree/main/sqlpage/templates) for inspiration."}
     ]')),
+    ('card', 'Short information notices', 
+        json('[
+            {"component": "card"},
+            {"description_md": "This post is also available in [german](?lang=de).", "active": true, "icon": "language"}
+        ]')),
     ('card', 'A gallery of images.',
         json('[
             {"component":"card", "title":"My favorite animals in pictures", "columns": 3},

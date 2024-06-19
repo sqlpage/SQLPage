@@ -17,6 +17,9 @@
    - ![compact list screenshot](https://github.com/lovasoa/SQLpage/assets/552629/41302807-c6e4-40a0-9486-bfd0ceae1537)
  - Add property `narrow` to the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component to make the button narrower. Ideal for buttons with icons.
    - ![icon buttons](https://github.com/lovasoa/SQLpage/assets/552629/7fcc049e-6012-40c1-a8ee-714ce70a8763)
+ - new `tooltip` property in the datagrid component.
+ - datagrids are now slightly more compact, with less padding and less space taken by each item.
+ - fix a bug in the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component where the icon would sometimes overflow the card's text content.
 
 ## 0.23.0 (2024-06-09)
 
