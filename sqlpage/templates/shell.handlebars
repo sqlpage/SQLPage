@@ -78,11 +78,11 @@
                             <a class="
                                 {{~#if this.button~}}
                                     btn text-wrap me-1
-                                    {{~#if color}} btn-{{color}}{{/if}}
-                                    {{~#if size}} btn-{{size}}{{/if}}
-                                    {{~#if outline}} btn-outline-{{outline}}{{/if}}
-                                    {{~#if shape}} btn-{{shape}}{{/if}}
-                                    {{~#if narrow}} btn-icon{{/if}}
+                                    {{~#if this.color}} btn-{{this.color}}{{/if}}
+                                    {{~#if this.size}} btn-{{this.size}}{{/if}}
+                                    {{~#if this.outline}} btn-outline-{{this.outline}}{{/if}}
+                                    {{~#if this.shape}} btn-{{this.shape}}{{/if}}
+                                    {{~#if this.narrow}} btn-icon{{/if}}
                                 {{~else~}}
                                     nav-link
                                 {{~/if}}
@@ -91,10 +91,10 @@
                                 {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
                                 role="button"
                             >
-                                {{#if icon}}
-                                    {{#if title}}<span class="me-1">{{/if}}
-                                        {{~icon_img icon~}}
-                                    {{#if title}}</span>{{/if}}
+                                {{#if this.icon}}
+                                    {{#if this.title}}<span class="me-1">{{/if}}
+                                        {{~icon_img this.icon~}}
+                                    {{#if this.title}}</span>{{/if}}
                                 {{/if}}
                                 {{this.title}}
                             </a>
