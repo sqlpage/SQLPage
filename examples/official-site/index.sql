@@ -1,7 +1,7 @@
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 
 -- Fetch the page title and header from the database
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' AND (properties ->> '$[0].component') = 'shell';
 
 SELECT 'hero' as component,
     'SQLPage' as title,
