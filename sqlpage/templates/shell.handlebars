@@ -99,9 +99,21 @@
                                 {{this.title}}
                             </a>
                             {{#if this.submenu}}
-                                <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
+                                <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static" {{#if this.compact}}style="min-width: inherit;"{{/if}}>
                                     {{#each this.submenu}}
-                                        <a class="dropdown-item" href="{{this.link}}">
+                                        <a class="
+                                            {{~#if this.button~}}
+                                                btn text-wrap mt-1
+                                                {{~#if this.color}} btn-{{this.color}}{{/if}}
+                                                {{~#if this.size}} btn-{{this.size}}{{/if}}
+                                                {{~#if this.outline}} btn-outline-{{this.outline}}{{/if}}
+                                                {{~#if this.shape}} btn-{{this.shape}}{{/if}}
+                                                {{~#if this.narrow}} btn-icon{{/if}}
+                                            {{~else~}}
+                                                dropdown-item
+                                            {{~/if}}"
+                                            href="{{this.link}}"
+                                        >
                                             {{#if this.icon}}
                                                 {{#if this.title}}<span class="me-1">{{/if}}
                                                     {{~icon_img this.icon~}}
