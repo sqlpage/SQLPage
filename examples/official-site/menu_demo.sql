@@ -9,7 +9,6 @@ select 'dynamic' as component,
             {
                 "icon": "settings",
                 "title": "",
-                "compact": true,
                 "button": true,
                 "shape": "pill",
                 "narrow": true,
@@ -53,8 +52,8 @@ select 'dynamic' as component,
                     },
                     {
                         "link": "/examples/layouts.sql",
-                        "title": "Layouts",
                         "button": true,
+                        "title": "Layouts",
                         "color": "primary"
                     },
                     {
@@ -65,7 +64,6 @@ select 'dynamic' as component,
             },
             {
                 "title": "Community",
-                "compact": true,
                 "submenu": [
                     {
                         "link": "blog.sql",
