@@ -9,7 +9,7 @@ CREATE TABLE parameter_type(
     name TEXT PRIMARY KEY
 );
 INSERT INTO parameter_type(name) VALUES
-    ('BOOLEAN'), ('COLOR'), ('HTML'), ('ICON'), ('INTEGER'), ('JSON'), ('NUMBER'), ('REAL'), ('TEXT'), ('TIMESTAMP'), ('URL');
+    ('BOOLEAN'), ('COLOR'), ('HTML'), ('ICON'), ('INTEGER'), ('JSON'), ('REAL'), ('TEXT'), ('TIMESTAMP'), ('URL');
 
 CREATE TABLE parameter(
     top_level BOOLEAN DEFAULT FALSE,
@@ -473,14 +473,14 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
     ('type', 'The type of chart: "line", "area", "bar", "column", "pie", "scatter", "bubble", or "heatmap".', 'TEXT', TRUE, FALSE),
     ('time', 'Whether the x-axis represents time. If set to true, the x values will be parsed and formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
-    ('ymin', 'The minimal value for the y-axis.', 'NUMBER', TRUE, TRUE),
-    ('ymax', 'The maximum value for the y-axis.', 'NUMBER', TRUE, TRUE),
+    ('ymin', 'The minimal value for the y-axis.', 'REAL', TRUE, TRUE),
+    ('ymax', 'The maximum value for the y-axis.', 'REAL', TRUE, TRUE),
     ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
     ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
     ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
-    ('xticks', 'Number of ticks on the x axis.', 'NUMBER', TRUE, TRUE),
-    ('ystep', 'Step between ticks on the y axis.', 'NUMBER', TRUE, TRUE),
-    ('marker', 'Marker size', 'NUMBER', TRUE, TRUE),
+    ('xticks', 'Number of ticks on the x axis.', 'INTEGER', TRUE, TRUE),
+    ('ystep', 'Step between ticks on the y axis.', 'REAL', TRUE, TRUE),
+    ('marker', 'Marker size', 'REAL', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'COLOR', TRUE, TRUE),
     ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
@@ -489,10 +489,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('horizontal', 'Displays a bar chart with horizontal bars instead of vertical ones.', 'BOOLEAN', TRUE, TRUE),
     ('height', 'Height of the chart, in pixels. By default: 250', 'INTEGER', TRUE, TRUE),
     -- item level
-    ('x', 'The value of the point on the horizontal axis', 'NUMBER', FALSE, FALSE),
-    ('y', 'The value of the point on the vertical axis', 'NUMBER', FALSE, FALSE),
-    ('label', 'An alias for parameter "x"', 'NUMBER', FALSE, TRUE),
-    ('value', 'An alias for parameter "y"', 'NUMBER', FALSE, TRUE),
+    ('x', 'The value of the point on the horizontal axis', 'REAL', FALSE, FALSE),
+    ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
+    ('label', 'An alias for parameter "x"', 'REAL', FALSE, TRUE),
+    ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
