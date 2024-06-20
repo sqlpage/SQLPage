@@ -85,18 +85,22 @@
                                 {{#if this.submenu}}
                                     <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
                                         {{#each this.submenu}}
-                                            <a class="dropdown-item" href="{{this.link}}">
-                                                {{this.title}}
-                                            </a>
+                                            {{#if (gt (len this) 0)}}
+                                                <a class="dropdown-item" href="{{this.link}}">
+                                                    {{this.title}}
+                                                </a>
+                                            {{/if}}
                                         {{/each}}
                                     </div>
                                 {{/if}}
                                 </li>
                             {{/with}}
                         {{else}}
-                            <li class="nav-item">
-                                <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
-                            </li>
+                            {{#if (gt (len this) 0)}}
+                                <li class="nav-item">
+                                    <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
+                                </li>
+                            {{/if}}
                         {{/if}}
                     {{/each}}
                 </ul>
