@@ -18,6 +18,15 @@
         {{~#if rel}} rel="{{rel}}"{{/if}}
         {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
         role="button">
+        {{~#if img~}}
+            <span {{~#if title}} class="me-1"{{/if}}>
+                {{~#if (eq ../size 'sm')}}
+                    <img width=16 height=16 src="{{img}}">
+                {{~else~}}
+                    <img width=24 height=24 src="{{img}}">
+                {{~/if~}}
+            </span>
+        {{~/if~}}
         {{~#if icon~}}
             <span {{~#if (not narrow)}} class="me-1"{{/if}}>{{~icon_img icon~}}</span>
         {{~/if~}}
