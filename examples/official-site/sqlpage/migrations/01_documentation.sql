@@ -83,7 +83,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('link', 'A target URL to which the user should be taken when they click on the value.', 'URL', FALSE, TRUE),
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the value.', 'ICON', FALSE, TRUE),
     ('color', 'If set to a color name, the value will be displayed in a pill of that color.', 'COLOR', FALSE, TRUE),
-    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE),
+    ('tooltip', 'A tooltip to display when the user passes their mouse over the value.', 'TEXT', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -92,8 +93,8 @@ INSERT INTO example(component, description, properties) VALUES
             json('[{"component":"datagrid", "title": "Ophir Lojkine", "image_url": "https://avatars.githubusercontent.com/u/552629", "description_md": "Member since **2021**"},
             {"title": "Pseudo", "description": "lovasoa", "image_url": "https://avatars.githubusercontent.com/u/552629" },
             {"title": "Status", "description": "Active", "color": "green"},
-            {"title": "Email Status", "description": "Validated", "icon": "check", "active": true},
-            {"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/"}
+            {"title": "Email Status", "description": "Validated", "icon": "check", "active": true, "tooltip": "Email address has been validated."},
+            {"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/", "tooltip": "About me"}
     ]')),
     ('datagrid', 'Using a picture in the data grid card header.', json('[
         {"component":"datagrid", "title": "Website Ideas", "icon": "bulb"},

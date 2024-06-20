@@ -46,3 +46,8 @@ td > p {
   /* Leave space for the footer */
   min-height: calc(100% - 3rem);
 }
+
+.datagrid {
+  --tblr-datagrid-padding: 1.25rem;
+  --tblr-datagrid-item-width: 12rem;
+}
