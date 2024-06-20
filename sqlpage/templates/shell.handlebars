@@ -75,27 +75,64 @@
                     {{#each (to_array menu_item)}}
                         {{#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
                             {{#with (parse_json this)}}
-                                <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
-                                    {{#if (gt (len this.title) 0)}}
-                                        <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
+                                {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0))}}
+                                    <li class="nav-item{{#if this.submenu}} dropdown{{/if}}{{#if this.button}} px-2{{/if}}">
+                                        <a class="
+                                            {{~#if this.button~}}
+                                                btn text-wrap me-1
+                                                {{~#if this.color}} btn-{{this.color}}{{/if}}
+                                                {{~#if this.size}} btn-{{this.size}}{{/if}}
+                                                {{~#if this.outline}} btn-outline-{{this.outline}}{{/if}}
+                                                {{~#if this.shape}} btn-{{this.shape}}{{/if}}
+                                                {{~#if this.narrow}} btn-icon{{/if}}
+                                            {{~else~}}
+                                                nav-link
+                                            {{~/if}}
+                                            {{~#if this.submenu}} dropdown-toggle{{/if}}"
+                                            href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
                                             {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
                                             role="button"
                                         >
+                                            {{#if this.icon}}
+                                                {{#if this.title}}<span class="me-1">{{/if}}
+                                                    {{~icon_img this.icon~}}
+                                                {{#if this.title}}</span>{{/if}}
+                                            {{/if}}
                                             {{this.title}}
                                         </a>
-                                    {{/if}}
-                                    {{#if this.submenu}}
-                                        <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
-                                            {{#each this.submenu}}
-                                                {{#if (gt (len this.title) 0)}}
-                                                    <a class="dropdown-item" href="{{this.link}}">
-                                                        {{this.title}}
-                                                    </a>
-                                                {{/if}}
-                                            {{/each}}
-                                        </div>
-                                    {{/if}}
-                                </li>
+                                        {{#if this.submenu}}
+                                            <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static" style="min-width: inherit;">
+                                                {{#each this.submenu}}
+                                                    {{#if (or (gt (len this.title) 0) this.icon)}}
+                                                        {{~#if this.button~}}<div class="mx-2" style="text-align: center;">{{/if}}
+                                                            <a class="
+                                                                {{~#if this.button~}}
+                                                                    btn text-wrap my-1
+                                                                    {{~#if this.color}} btn-{{this.color}}{{/if}}
+                                                                    {{~#if this.size}} btn-{{this.size}}{{/if}}
+                                                                    {{~#if this.outline}} btn-outline-{{this.outline}}{{/if}}
+                                                                    {{~#if this.shape}} btn-{{this.shape}}{{/if}}
+                                                                    {{~#if this.narrow}} btn-icon{{/if}}
+                                                                {{~else~}}
+                                                                    dropdown-item
+                                                                {{~/if}}" style=" min-width: inherit;"
+                                                                {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
+                                                                href="{{this.link}}"
+                                                            >
+                                                                {{#if this.icon}}
+                                                                    {{#if this.title}}<span class="me-1">{{/if}}
+                                                                        {{~icon_img this.icon~}}
+                                                                    {{#if this.title}}</span>{{/if}}
+                                                                {{/if}}
+                                                                {{this.title}}
+                                                            </a>
+                                                        {{~#if this.button~}}</div>{{/if}}
+                                                    {{/if}}
+                                                {{/each}}
+                                            </div>
+                                        {{/if}}
+                                    </li>
+                                {{/if}}
                             {{/with}}
                         {{else}}
                             {{#if (gt (len this) 0)}}
@@ -104,7 +141,6 @@
                                 </li>
                             {{/if}}
                         {{/if}}
-
                     {{/each}}
                 </ul>
                 {{#if search_target}}
