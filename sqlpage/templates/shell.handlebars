@@ -85,7 +85,7 @@
                                 {{#if this.submenu}}
                                     <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
                                         {{#each this.submenu}}
-                                            {{#if (gt (len this) 0)}}
+                                            {{#if (gt (len this.title) 0)}}
                                                 <a class="dropdown-item" href="{{this.link}}">
                                                     {{this.title}}
                                                 </a>
