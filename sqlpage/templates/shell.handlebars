@@ -76,12 +76,14 @@
                         {{#if (eq (typeof (parse_json this)) 'object')}}
                             {{#with (parse_json this)}}
                                 <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
-                                <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
-                                    {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
-                                    role="button"
-                                >
-                                    {{this.title}}
-                                </a>
+                                {{#if (gt (len this.title) 0)}}
+                                    <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
+                                        {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
+                                        role="button"
+                                    >
+                                        {{this.title}}
+                                    </a>
+                                {{/if}}
                                 {{#if this.submenu}}
                                     <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
                                         {{#each this.submenu}}
