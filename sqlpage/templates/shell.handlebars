@@ -73,24 +73,26 @@
             <div class="collapse navbar-collapse" id="navbar-menu">
                 <ul class="navbar-nav ms-auto">
                     {{#each (to_array menu_item)}}
-                        {{#if (eq (typeof this) 'object')}}
-                            <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
-                            <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
-                                {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
-                                role="button"
-                            >
-                                {{this.title}}
-                            </a>
-                            {{#if this.submenu}}
-                                <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
-                                    {{#each this.submenu}}
-                                        <a class="dropdown-item" href="{{this.link}}">
-                                            {{this.title}}
-                                        </a>
-                                    {{/each}}
-                                </div>
-                            {{/if}}
-                            </li>
+                        {{#if (eq (typeof (parse_json this)) 'object')}}
+                            {{#with (parse_json this)}}
+                                <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
+                                <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
+                                    {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
+                                    role="button"
+                                >
+                                    {{this.title}}
+                                </a>
+                                {{#if this.submenu}}
+                                    <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
+                                        {{#each this.submenu}}
+                                            <a class="dropdown-item" href="{{this.link}}">
+                                                {{this.title}}
+                                            </a>
+                                        {{/each}}
+                                    </div>
+                                {{/if}}
+                                </li>
+                            {{/with}}
                         {{else}}
                             <li class="nav-item">
                                 <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
