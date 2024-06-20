@@ -8,7 +8,7 @@ select 'dynamic' as component,
         "menu_item": [
             {
                 "icon": "settings",
-                "title": "",
+                "title": "Z",
                 "button": true,
                 "shape": "pill",
                 "narrow": true,
@@ -23,6 +23,7 @@ select 'dynamic' as component,
                         "tooltip": "User",
                         "color": "yellow"
                     },
+                    {},
                     {
                         "link": "/performance.sql",
                         "icon": "logout",
@@ -32,7 +33,18 @@ select 'dynamic' as component,
                         "size": "sm",
                         "outline": "warning"
 
+                    },
+                    {
+                        "link": "/performance.sql",
+                        "icon": "",
+                        "tooltip": "Logout",
+                        "button": true,
+                        "shape": "pill",
+                        "size": "sm",
+                        "outline": "warning"
+
                     }
+
                 ]
             },
             {
@@ -42,6 +54,14 @@ select 'dynamic' as component,
                 "shape": "pill",
                 "narrow": true,
                 "color": "green"
+            },
+            {
+                "icon": "",
+                "title": "",
+                "button": true,
+                "shape": "pill",
+                "narrow": true,
+                "color": "blue"
             },
             {
                 "title": "Examples",
@@ -77,7 +97,35 @@ select 'dynamic' as component,
                         "title": "Report a bug"
                     }
                 ]
+            },
+            {
+                "title": "Community",
+                "img": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg",
+                "submenu": [
+                    {
+                        "link": "blog.sql",
+                        "img": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg",
+                        "title": "Blog"
+                    },
+                    {
+                        "link": "//github.com/lovasoa/sqlpage/issues",
+                        "title": "Report a bug"
+                    }
+                ]
             }
         ]
     }
 ]' AS properties;
+
+SELECT 
+    'button'            AS component,
+    'pill'              AS shape,
+    ''                  AS size,
+    'center'            AS justify;
+SELECT                             
+    ''            AS title,
+    'browse_rec'        AS id,
+    'green'             AS outline,
+    TRUE                AS narrow,
+    '#'                 AS link,
+    'https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg' AS img;
