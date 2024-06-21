@@ -16,17 +16,17 @@
         {{/if}}
     {{/each}}
 
-    {{!-- Ensure font_custom is an array --}}
-    {{#if font_custom}}
-        {{#if (not (isArray font_custom))}}
+    {{!-- Ensure font is an array --}}
+    {{#if font}}
+        {{#if (not (isArray font))}}
             {{!-- Wrap single font string in an array --}}
-            {{#set "font_custom" (array font_custom)}}
+            {{#set "font" (array font)}}
         {{/if}}
     {{/if}}
 
-    {{#if font_custom}}
+    {{#if font}}
         <style>
-            {{#each font_custom}}
+            {{#each font}}
                 {{#if (startsWith this "/")}}
                     @font-face {
                         font-family: '{{this}}_custom';
@@ -42,7 +42,7 @@
         </style>
 
         {{!-- Handling Google Fonts --}}
-        {{#each (filter font_custom (lambda font (not (startsWith font "/"))))}}
+        {{#each (filter font (lambda font (not (startsWith font "/"))))}}
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
             <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{this}}&display=fallback">
@@ -50,7 +50,7 @@
 
         <style>
             :root {
-                {{#each font_custom}}
+                {{#each font}}
                     {{!-- Local fonts will have _custom appended to their names --}}
                     {{#if (startsWith this "/")}}
                         --tblr-font-{{replace this "/" "-"}}: '{{this}}_custom', Arial, sans;
