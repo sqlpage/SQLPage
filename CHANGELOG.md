@@ -29,8 +29,7 @@
    - allow easily creating optional menu items that are only displayed in some conditions:
       ```sql
       select 'shell' as component, 'My Website' as title, CASE WHEN $role = 'admin' THEN 'Admin' END as menu_item;
-      ```
-
+    - Add the ability to use local Woff2 fonts in the [shell](https://sql.ophir.dev/documentation.sql?component=shell#component) component. This is useful to use custom fonts in your website, without depending on google fonts (and disclosing your users' IP addresses to google).
 
 ## 0.23.0 (2024-06-09)
 
