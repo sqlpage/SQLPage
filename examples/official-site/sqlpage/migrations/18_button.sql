@@ -20,6 +20,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('space_after', 'Whether there should be extra space to the right of the button. In a line of buttons, this will put the buttons before this one on the left, and the ones after on the right.', 'BOOLEAN', FALSE, TRUE),
     ('icon_after', 'Name of an icon to display after the text in the button', 'ICON', FALSE, TRUE),
     ('icon', 'Name of an icon to be displayed on the left side of the button.', 'ICON', FALSE, TRUE),
+    ('img', 'Path to image file (relative. relative to web root or URL) to be displayed on the button.', 'TEXT', FALSE, TRUE),
     ('narrow', 'Whether to trim horizontal padding.', 'BOOLEAN', FALSE, TRUE),
     ('form', 'Identifier (id) of the form to which the button should submit.', 'TEXT', FALSE, TRUE),
     ('rel', '"nofollow" when the contents of the target link are not endorsed, "noopener" when the target is not trusted, and "noreferrer" to hide where the user came from when they open the link.', 'TEXT', FALSE, TRUE),
@@ -105,5 +106,14 @@ INSERT INTO example(component, description, properties) VALUES
             "icon":"download",
             "download":"Introduction Video.webm",
             "rel":"nofollow"
+        }]')
+    );
+
+INSERT INTO example(component, description, properties) VALUES
+    ('button', 'A button with an image-based icon.',
+    json('[{"component":"button"}, 
+        {"link":"https://en.wikipedia.org/wiki/File:Globe.svg",
+            "title":"Open an article",
+            "img":"https://upload.wikimedia.org/wikipedia/commons/f/fa/Globe.svg"
         }]')
     );
