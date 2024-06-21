@@ -10,17 +10,31 @@
         <link rel="manifest" href="{{manifest}}">
     {{/if}}
     <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
-   {{#each (to_array css)}}
+    {{#each (to_array css)}}
         {{#if this}}
             <link rel="stylesheet" href="{{this}}">
         {{/if}}
-   {{/each}}
+    {{/each}}
 
-   {{#if font}}
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
-        <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
+    {{#if font}}
+        {{#if (startsWith font "/")}}
+            <style>
+                @font-face {
+                    font-family: 'LocalFont';
+                    src: url('{{font}}') format('woff2');
+                    font-weight: normal;
+                    font-style: normal;
+                }
+                :root {
+                    --tblr-font-sans-serif: 'LocalFont', Arial, sans-serif;
+                }
+            </style>
+        {{else}}
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
+            <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans-serif;}</style>
+        {{/if}}
     {{/if}}
 
     <script src="{{static_path 'sqlpage.js'}}" defer></script>
