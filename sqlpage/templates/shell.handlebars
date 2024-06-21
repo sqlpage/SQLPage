@@ -16,6 +16,14 @@
         {{/if}}
     {{/each}}
 
+    {{!-- Ensure font_custom is an array --}}
+    {{#if font_custom}}
+        {{#if (not (isArray font_custom))}}
+            {{!-- Wrap single font string in an array --}}
+            {{#set "font_custom" (array font_custom)}}
+        {{/if}}
+    {{/if}}
+
     {{#if font_custom}}
         <style>
             {{#each font_custom}}
