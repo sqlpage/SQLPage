@@ -75,7 +75,7 @@
                     {{#each (to_array menu_item)}}
                         {{#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
                             {{#with (parse_json this)}}
-                                {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0) (gt (len this.img) 0))}}
+                                {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0) (gt (len this.image) 0))}}
                                     <li class="nav-item{{#if this.submenu}} dropdown{{/if}}{{#if this.button}} px-2{{/if}}">
                                         <a class="
                                             {{~#if this.button~}}
@@ -93,7 +93,7 @@
                                             {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
                                             role="button"
                                         >
-                                            {{~#if image~}}
+                                            {{~#if this.image~}}
                                                 <span {{~#if this.title}} class="me-1"{{/if}}>
                                                     {{~#if (eq this.size 'sm')}}
                                                         <img width=16 height=16 src="{{this.image}}">
@@ -112,7 +112,7 @@
                                         {{#if this.submenu}}
                                             <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static" style="min-width: inherit;">
                                                 {{#each this.submenu}}
-                                                    {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0) (gt (len this.img) 0))}}
+                                                    {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0) (gt (len this.image) 0))}}
                                                         {{~#if this.button~}}<div class="mx-2" style="text-align: center;">{{/if}}
                                                             <a class="
                                                                 {{~#if this.button~}}
@@ -128,7 +128,7 @@
                                                                 {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
                                                                 href="{{this.link}}"
                                                             >
-                                                                {{~#if image~}}
+                                                                {{~#if this.image~}}
                                                                     <span {{~#if this.title}} class="me-1"{{/if}}>
                                                                         {{~#if (eq this.size 'sm')}}
                                                                             <img width=16 height=16 src="{{this.image}}">
@@ -152,8 +152,8 @@
                                     </li>
                                 {{/if}}
                             {{/with}}
-                        {{else}}
-                            {{#if (gt (len this) 0)}}
+                        {{~else}}
+                            {{~#if (gt (len this) 0)~}}
                                 <li class="nav-item">
                                     <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
                                 </li>

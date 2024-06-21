@@ -18,12 +18,12 @@
         {{~#if rel}} rel="{{rel}}"{{/if}}
         {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
         role="button">
-        {{~#if img~}}
+        {{~#if image~}}
             <span {{~#if title}} class="me-1"{{/if}}>
                 {{~#if (eq ../size 'sm')}}
-                    <img width=16 height=16 src="{{img}}">
+                    <img width=16 height=16 src="{{image}}">
                 {{~else~}}
-                    <img width=24 height=24 src="{{img}}">
+                    <img width=24 height=24 src="{{image}}">
                 {{~/if~}}
             </span>
         {{~/if~}}

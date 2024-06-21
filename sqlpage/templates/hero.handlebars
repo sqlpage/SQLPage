@@ -18,10 +18,10 @@
     <video src="{{video}}" alt="{{title}}" class="hero-image img-fluid col-lg-6"
       {{~#if loop}} loop{{/if~}}
       {{~#if muted}} muted{{/if~}}
-      {{~#if nocontrols}} autoplay{{else}}
+      {{~#if nocontrols}} autoplay
+      {{~else}} controls
         {{~#if autoplay}} autoplay{{/if~}}
-        controls
-      {{/if~}}
+      {{~/if~}}
       {{~#if poster}} preload="none" poster="{{poster}}"{{/if~}}>
     </video>
   {{/if}}
