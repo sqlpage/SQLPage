@@ -108,3 +108,12 @@ INSERT INTO example(component, description, properties) VALUES
             "rel":"nofollow"
         }]')
     );
+
+INSERT INTO example(component, description, properties) VALUES
+    ('button', 'A button with an image-based icon.',
+    json('[{"component":"button"}, 
+        {"link":"https://en.wikipedia.org/wiki/File:Globe.svg",
+            "title":"Open an article",
+            "img":"https://upload.wikimedia.org/wikipedia/commons/f/fa/Globe.svg"
+        }]')
+    );
