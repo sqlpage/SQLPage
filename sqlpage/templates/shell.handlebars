@@ -10,17 +10,48 @@
         <link rel="manifest" href="{{manifest}}">
     {{/if}}
     <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
-   {{#each (to_array css)}}
+    {{#each (to_array css)}}
         {{#if this}}
             <link rel="stylesheet" href="{{this}}">
         {{/if}}
-   {{/each}}
+    {{/each}}
 
-   {{#if font}}
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
-        <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans;}</style>
+    {{#if font_custom}}
+        <style>
+            {{#each font_custom}}
+                {{#if (startsWith this "/")}}
+                    @font-face {
+                        font-family: '{{this}}_custom';
+                        src: url('{{this}}.woff2') format('woff2'),
+                             url('{{this}}.woff') format('woff'),
+                             url('{{this}}.ttf') format('truetype'),
+                             url('{{this}}.otf') format('opentype'),
+                             url('{{this}}.eot') format('embedded-opentype'),
+                             url('{{this}}.svg#{{this}}_custom') format('svg');
+                    }
+                {{/if}}
+            {{/each}}
+        </style>
+
+        {{!-- Handling Google Fonts --}}
+        {{#each (filter font_custom (lambda font (not (startsWith font "/"))))}}
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{this}}&display=fallback">
+        {{/each}}
+
+        <style>
+            :root {
+                {{#each font_custom}}
+                    {{!-- Local fonts will have _custom appended to their names --}}
+                    {{#if (startsWith this "/")}}
+                        --tblr-font-{{replace this "/" "-"}}: '{{this}}_custom', Arial, sans;
+                    {{else}}
+                        --tblr-font-{{replace this " " "-"}}: '{{this}}', Arial, sans;
+                    {{/if}}
+                {{/each}}
+            }
+        </style>
     {{/if}}
 
     <script src="{{static_path 'sqlpage.js'}}" defer></script>
