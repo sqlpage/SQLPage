@@ -779,7 +779,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('search_target', 'When this is set, a search field will appear in the top navigation bar, and load the specified sql file with an URL parameter named "search" when the user searches something.', 'TEXT', TRUE, TRUE),
     ('search_value', 'This value will be placed in the search field when "search_target" is set. Using the "$search" query parameter value will mirror the value that the user has searched for.', 'TEXT', TRUE, TRUE),
     ('norobot', 'Forbids robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE),
-    ('font', 'Name of a font to display the text in. This has to be a valid font name from fonts.google.com.', 'TEXT', TRUE, TRUE),
+    ('font', 'Specifies the font to be used for displaying text, which can be a valid font name from fonts.google.com or the path to a local WOFF2 font file starting with a slash (e.g., "/fonts/MyLocalFont.woff2").', 'TEXT', TRUE, TRUE),
     ('font_size', 'Font size on the page, in pixels. Set to 18 by default.', 'INTEGER', TRUE, TRUE),
     ('language', 'The language of the page. This can be used by search engines and screen readers to determine in which language the page is written.', 'TEXT', TRUE, TRUE),
     ('refresh', 'Number of seconds after which the page should refresh. This can be useful to display dynamic content that updates automatically.', 'INTEGER', TRUE, TRUE),
