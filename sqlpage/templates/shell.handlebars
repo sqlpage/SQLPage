@@ -98,10 +98,10 @@
                                         </a>
                                     {{~/if~}}
                                     {{~#if this.submenu~}}
-                                        <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
+                                        <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static" style="min-width: inherit;">
                                             {{~#each this.submenu~}}
                                                 {{~#if (gt (len this.title) 0)~}}
-                                                    <a class="dropdown-item" href="{{this.link}}">
+                                                    <a class="dropdown-item" href="{{this.link}}" style="min-width: inherit;">
                                                         {{~this.title~}}
                                                     </a>
                                                 {{~/if~}}
