@@ -816,7 +816,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/examples/layouts.sql", "title": "Layouts"},
                     {"link": "/examples/multistep-form", "title": "Forms"},
                     {"link": "/examples/handle_picture_upload.sql", "title": "File uploads"},
-                    {"link": "/examples/hash_password.sql", "title": "Password protection"},
+                    {"link": "/examples/authentication/", "title": "Password protection"},
                     {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos"}
                 ]},
                 {"title": "Community", "submenu": [
@@ -899,46 +899,36 @@ FROM my_menu_items
 
 (check your database documentation for the exact syntax of the `json_group_array` function).
 
-Another "dynamic" aspect is when menu items are adjusted based on the environment. For example,
-Logout/UserProfile buttons may be presented to an authenticated user and Login/SignUp, otherwise
-(such an example will presented in a separate demo). The following simple example demonstrates
-the concept by hiding one arbitrary menu when the page is loaded. Then you can select from a
-dropdown menu, which menu to hide. To hide a menu item, return NULL or empty JSON object ''{}''
-as demonstrated below.
+Another case when dynamic menus are useful is when you want to show some
+menu items only in certain conditions.
+
+For instance, you could show an "Admin panel" menu item only to users with the "admin" role,
+a "Profile" menu item only to authenticated users,
+and a "Login" menu item only to unauthenticated users:
 
 ```sql
-SET $dummy = ifnull(:menu, abs(random()) % 5);
+SET $role = (
+    SELECT role FROM users
+    INNER JOIN sessions ON users.id = sessions.user_id
+    WHERE sessions.session_id = sqlpage.cookie(''session_id'')
+); -- Read more about how to handle user sessions in the "authentication" component documentation
 
 SELECT 
-    ''shell''             AS component,
-    ''SQLPage''           AS title,
-    ''database''          AS icon,
-    ''/''                 AS link,
-    iif($dummy = 1, NULL, ''{"title":"About","submenu":[{"link":"/safety.sql","title":"Security"},{"link":"/performance.sql","title":"Performance"}]}'') AS menu_item,
-    iif($dummy = 2, ''{}'', ''{"title":"Examples","submenu":[{"link":"/examples/tabs.sql","title":"Tabs"},{"link":"/examples/layouts.sql","title":"Layouts"}]}'') AS menu_item,
-    iif($dummy = 3, NULL, ''{"title":"Community","submenu":[{"link":"blog.sql","title":"Blog"},{"link":"//github.com/lovasoa/sqlpage/issues","title":"Report a bug"}]}'') AS menu_item,
-    iif($dummy = 4, ''{}'', ''{"title":"Documentation","submenu":[{"link":"/your-first-sql-website","title":"Getting started"},{"link":"/components.sql","title":"All Components"}]}'') AS menu_item,
-    ''Official [SQLPage](https://sql.ophir.dev) documentation'' as footer;
+    ''shell'' AS component,
+    ''My authenticated website'' AS title,
 
+    -- Add an admin panel link if the user is an admin
+    CASE WHEN $role = ''admin'' THEN ''{"link": "admin.sql", "title": "Admin panel"}'' END AS menu_item,
 
-SELECT 
-    ''form''              AS component,
-    ''Hide Menu''         AS validate,
-    sqlpage.path()      AS action;
-SELECT 
-    ''select''            AS type,
-    ''menu''              AS name,
-    ''Hide Menu''         AS label,
-    2                   AS width,
-    CAST($dummy AS INT) AS value,
-    ''[{"label": "None",          "value": 0},
-      {"label": "About",         "value": 1}, 
-      {"label": "Examples",      "value": 2}, 
-      {"label": "Community",     "value": 3},
-      {"label": "Documentation", "value": 4}]'' AS options;
+    -- Add a profile page if the user is authenticated
+    CASE WHEN $role IS NOT NULL THEN ''{"link": "profile.sql", "title": "My profile"}'' END AS menu_item,
+
+    -- Add a login link if the user is not authenticated
+    CASE WHEN $role IS NULL THEN ''login'' END AS menu_item
+;
 ```
 
-Follow [this link](examples/dynamic_menu.sql) to try this code.
+More about how to handle user sessions in the [authentication component documentation](?component=authentication#component).
 ', NULL),
     ('shell', '
 ### A page without a shell

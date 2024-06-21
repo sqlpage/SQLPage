@@ -21,6 +21,16 @@
  - datagrids are now slightly more compact, with less padding and less space taken by each item.
  - fix a bug in the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component where the icon would sometimes overflow the card's text content.
  - new `image` property in the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component to display a small image inside a button.
+ - In the `shell` component
+   - allow easily creating complex menus even in SQLite:
+      ```sql
+      select 'shell' as component, 'My Website' as title, '{"title":"About","submenu":[{"link":"/x.sql","title":"X"},{"link":"/y.sql","title":"Y"}]}') as menu_item;
+        ```
+   - allow easily creating optional menu items that are only displayed in some conditions:
+      ```sql
+      select 'shell' as component, 'My Website' as title, CASE WHEN $role = 'admin' THEN 'Admin' END as menu_item;
+      ```
+
 
 ## 0.23.0 (2024-06-09)
 
