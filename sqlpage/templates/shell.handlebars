@@ -93,12 +93,12 @@
                                             {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
                                             role="button"
                                         >
-                                            {{~#if img~}}
+                                            {{~#if image~}}
                                                 <span {{~#if this.title}} class="me-1"{{/if}}>
                                                     {{~#if (eq this.size 'sm')}}
-                                                        <img width=16 height=16 src="{{this.img}}">
+                                                        <img width=16 height=16 src="{{this.image}}">
                                                     {{~else~}}
-                                                        <img width=24 height=24 src="{{this.img}}">
+                                                        <img width=24 height=24 src="{{this.image}}">
                                                     {{~/if~}}
                                                 </span>
                                             {{~/if~}}
@@ -128,12 +128,12 @@
                                                                 {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
                                                                 href="{{this.link}}"
                                                             >
-                                                                {{~#if img~}}
+                                                                {{~#if image~}}
                                                                     <span {{~#if this.title}} class="me-1"{{/if}}>
                                                                         {{~#if (eq this.size 'sm')}}
-                                                                            <img width=16 height=16 src="{{this.img}}">
+                                                                            <img width=16 height=16 src="{{this.image}}">
                                                                         {{~else~}}
-                                                                            <img width=24 height=24 src="{{this.img}}">
+                                                                            <img width=24 height=24 src="{{this.image}}">
                                                                         {{~/if~}}
                                                                     </span>
                                                                 {{~/if~}}
