@@ -898,6 +898,47 @@ FROM my_menu_items
 ```
 
 (check your database documentation for the exact syntax of the `json_group_array` function).
+
+Another "dynamic" aspect is when menu items are adjusted based on the environment. For example,
+Logout/UserProfile buttons may be presented to an authenticated user and Login/SignUp, otherwise
+(such an example will presented in a separate demo). The following simple example demonstrates
+the concept by hiding one arbitrary menu when the page is loaded. Then you can select from a
+dropdown menu, which menu to hide. To hide a menu item, return NULL or empty JSON object ''{}''
+as demonstrated below.
+
+```sql
+SET $dummy = ifnull(:menu, abs(random()) % 5);
+
+SELECT 
+    ''shell''             AS component,
+    ''SQLPage''           AS title,
+    ''database''          AS icon,
+    ''/''                 AS link,
+    iif($dummy = 1, NULL, ''{"title":"About","submenu":[{"link":"/safety.sql","title":"Security"},{"link":"/performance.sql","title":"Performance"}]}'') AS menu_item,
+    iif($dummy = 2, ''{}'', ''{"title":"Examples","submenu":[{"link":"/examples/tabs.sql","title":"Tabs"},{"link":"/examples/layouts.sql","title":"Layouts"}]}'') AS menu_item,
+    iif($dummy = 3, NULL, ''{"title":"Community","submenu":[{"link":"blog.sql","title":"Blog"},{"link":"//github.com/lovasoa/sqlpage/issues","title":"Report a bug"}]}'') AS menu_item,
+    iif($dummy = 4, ''{}'', ''{"title":"Documentation","submenu":[{"link":"/your-first-sql-website","title":"Getting started"},{"link":"/components.sql","title":"All Components"}]}'') AS menu_item,
+    ''Official [SQLPage](https://sql.ophir.dev) documentation'' as footer;
+
+
+SELECT 
+    ''form''              AS component,
+    ''Hide Menu''         AS validate,
+    sqlpage.path()      AS action;
+SELECT 
+    ''select''            AS type,
+    ''menu''              AS name,
+    ''Hide Menu''         AS label,
+    2                   AS width,
+    CAST($dummy AS INT) AS value,
+    ''[{"label": "None",          "value": 0},
+      {"label": "About",         "value": 1}, 
+      {"label": "Examples",      "value": 2}, 
+      {"label": "Community",     "value": 3},
+      {"label": "Documentation", "value": 4}]'' AS options;
+```
+
+Follow [this link](examples/dynamic_menu.sql) to try this code.
 ', NULL),
     ('shell', '
 ### A page without a shell
