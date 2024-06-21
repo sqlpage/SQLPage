@@ -16,50 +16,25 @@
         {{/if}}
     {{/each}}
 
-    {{!-- Ensure font is an array --}}
     {{#if font}}
-        {{#if (not (isArray font))}}
-            {{!-- Wrap single font string in an array --}}
-            {{#set "font" (array font)}}
-        {{/if}}
-    {{/if}}
-
-    {{#if font}}
-        <style>
-            {{#each font}}
-                {{#if (startsWith this "/")}}
-                    @font-face {
-                        font-family: '{{this}}_custom';
-                        src: url('{{this}}.woff2') format('woff2'),
-                             url('{{this}}.woff') format('woff'),
-                             url('{{this}}.ttf') format('truetype'),
-                             url('{{this}}.otf') format('opentype'),
-                             url('{{this}}.eot') format('embedded-opentype'),
-                             url('{{this}}.svg#{{this}}_custom') format('svg');
-                    }
-                {{/if}}
-            {{/each}}
-        </style>
-
-        {{!-- Handling Google Fonts --}}
-        {{#each (filter font (lambda font (not (startsWith font "/"))))}}
+        {{#if (startsWith font "/")}}
+            <style>
+                @font-face {
+                    font-family: 'LocalFont';
+                    src: url('{{font}}') format('woff2');
+                    font-weight: normal;
+                    font-style: normal;
+                }
+                :root {
+                    --tblr-font-sans-serif: 'LocalFont', Arial, sans-serif;
+                }
+            </style>
+        {{else}}
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{this}}&display=fallback">
-        {{/each}}
-
-        <style>
-            :root {
-                {{#each font}}
-                    {{!-- Local fonts will have _custom appended to their names --}}
-                    {{#if (startsWith this "/")}}
-                        --tblr-font-{{replace this "/" "-"}}: '{{this}}_custom', Arial, sans;
-                    {{else}}
-                        --tblr-font-{{replace this " " "-"}}: '{{this}}', Arial, sans;
-                    {{/if}}
-                {{/each}}
-            }
-        </style>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
+            <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans-serif;}</style>
+        {{/if}}
     {{/if}}
 
     <script src="{{static_path 'sqlpage.js'}}" defer></script>
