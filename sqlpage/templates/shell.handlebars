@@ -72,40 +72,38 @@
             </button>
             <div class="collapse navbar-collapse" id="navbar-menu">
                 <ul class="navbar-nav ms-auto">
-                    {{#each (to_array menu_item)}}
-                        {{#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
-                            {{#with (parse_json this)}}
+                    {{~#each (to_array menu_item)~}}
+                        {{~#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
+                            {{~#with (parse_json this)}}
                                 <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
                                     {{#if (gt (len this.title) 0)}}
                                         <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
-                                            {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside"{{/if}}
-                                            role="button"
-                                        >
-                                            {{this.title}}
+                                            {{~#if this.submenu}} data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if~}}
+                                            role="button">
+                                            {{~this.title~}}
                                         </a>
-                                    {{/if}}
-                                    {{#if this.submenu}}
+                                    {{~/if~}}
+                                    {{~#if this.submenu~}}
                                         <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
-                                            {{#each this.submenu}}
-                                                {{#if (gt (len this.title) 0)}}
+                                            {{~#each this.submenu~}}
+                                                {{~#if (gt (len this.title) 0)~}}
                                                     <a class="dropdown-item" href="{{this.link}}">
-                                                        {{this.title}}
+                                                        {{~this.title~}}
                                                     </a>
-                                                {{/if}}
-                                            {{/each}}
+                                                {{~/if~}}
+                                            {{~/each~}}
                                         </div>
                                     {{/if}}
                                 </li>
                             {{/with}}
-                        {{else}}
-                            {{#if (gt (len this) 0)}}
+                        {{~else}}
+                            {{~#if (gt (len this) 0)~}}
                                 <li class="nav-item">
                                     <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
                                 </li>
-                            {{/if}}
-                        {{/if}}
-
-                    {{/each}}
+                            {{~/if~}}
+                        {{~/if~}}
+                    {{~/each}}
                 </ul>
                 {{#if search_target}}
                     <form class="d-flex" role="search" action="{{search_target}}">
