@@ -26,9 +26,9 @@
                             <img src="{{image_url}}" class="avatar avatar-md rounded" width="45" height="45" alt="{{title}}" />
                         </div>
                     {{/if}}
-                    <div class="col text-truncate">
+                    <div class="col {{#if ../wrap}}text-wrap{{else}}text-truncate{{/if}}">
                         {{title}}
-                        <div class="d-block text-muted text-truncate mt-n1">
+                        <div class="d-block text-muted text-truncate mt-n1{{#if ../wrap}} text-wrap{{/if}}">
                             {{~description~}}
                             {{~#if description_md~}}
                                 <div style="margin-bottom: -1rem">{{{markdown description_md}}}</div>
