@@ -32,6 +32,7 @@
     - Add the ability to use local Woff2 fonts in the [shell](https://sql.ophir.dev/documentation.sql?component=shell#component) component. This is useful to use custom fonts in your website, without depending on google fonts (and disclosing your users' IP addresses to google).
     - Add a `fixed_top_menu` attribute to make the top menu sticky. This is useful to keep the menu visible even when the user scrolls down the page.
  - Add a `wrap` attribute to the `list` component to wrap items on multiple lines when they are too long.
+ - New `max_pending_rows` [configuration option](https://sql.ophir.dev/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
 
 ## 0.23.0 (2024-06-09)
 

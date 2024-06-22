@@ -89,6 +89,10 @@ pub struct AppConfig {
         default = "default_site_prefix"
     )]
     pub site_prefix: String,
+
+    /// Maximum number of messages that can be stored in memory before sending them to the client.
+    #[serde(default = "default_max_pending_rows")]
+    pub max_pending_rows: usize,
 }
 
 impl AppConfig {
@@ -148,7 +152,7 @@ pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
     let app_config = config
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;
-    log::debug!("Loaded configuration: {:?}", app_config);
+    log::debug!("Loaded configuration: {:#?}", app_config);
     Ok(app_config)
 }
 
@@ -292,6 +296,10 @@ fn default_https_certificate_cache_dir() -> PathBuf {
 
 fn default_https_acme_directory_url() -> String {
     "https://acme-v02.api.letsencrypt.org/directory".to_string()
+}
+
+fn default_max_pending_rows() -> usize {
+    256
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]

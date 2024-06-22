@@ -32,7 +32,6 @@ use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
 /// This prevents a single request from using up all available memory
-const MAX_PENDING_MESSAGES: usize = 128;
 
 #[derive(Clone)]
 pub struct ResponseWriter {
@@ -76,9 +75,10 @@ impl ResponseWriter {
             .await
             .map_err(|err| {
                 use std::io::{Error, ErrorKind};
+                let capacity = self.response_bytes.capacity();
                 Error::new(
                     ErrorKind::BrokenPipe,
-                    format!("The HTTP response writer with a capacity of {MAX_PENDING_MESSAGES} has already been closed: {err}"),
+                    format!("The HTTP response writer with a capacity of {capacity} has already been closed: {err}"),
                 )
             })
     }
@@ -96,7 +96,7 @@ impl Write for ResponseWriter {
             .map_err(|e|
                 std::io::Error::new(
                     std::io::ErrorKind::WouldBlock,
-                    format!("{e}: Database messages limit exceeded. The server cannot store more than {} pending messages in memory.", self.response_bytes.capacity())
+                    format!("{e}: Row limit exceeded. The server cannot store more than {} pending messages in memory. Try again later or increase max_pending_rows in the configuration.", self.response_bytes.max_capacity())
                 )
             )
     }
@@ -157,7 +157,8 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     database_entries: S,
     layout_context: &LayoutContext,
 ) -> anyhow::Result<ResponseWithWriter<S>> {
-    let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
+    let chan_size = app_state.config.max_pending_rows;
+    let (sender, receiver) = mpsc::channel(chan_size);
     let writer = ResponseWriter::new(sender);
     let mut head_context = HeaderContext::new(app_state, layout_context, writer);
     let mut stream = Box::pin(database_entries);
