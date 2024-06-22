@@ -24,7 +24,7 @@
  - In the `shell` component
    - allow easily creating complex menus even in SQLite:
       ```sql
-      select 'shell' as component, 'My Website' as title, '{"title":"About","submenu":[{"link":"/x.sql","title":"X"},{"link":"/y.sql","title":"Y"}]}') as menu_item;
+      select 'shell' as component, 'My Website' as title, '{"title":"About","submenu":[{"link":"/x.sql","title":"X"},{"link":"/y.sql","title":"Y"}]}' as menu_item;
         ```
    - allow easily creating optional menu items that are only displayed in some conditions:
       ```sql
