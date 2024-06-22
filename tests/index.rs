@@ -417,6 +417,7 @@ async fn make_app_data_for_official_website() -> actix_web::web::Data<AppState> 
     let config_path = std::path::Path::new("examples/official-site/sqlpage");
     let mut app_config = sqlpage::app_config::load_from_directory(config_path).unwrap();
     app_config.web_root = PathBuf::from("examples/official-site");
+    app_config.database_url = "sqlite::memory:".to_string(); // the official site supports only sqlite. Ignore the DATABASE_URL env var
     let app_state = make_app_data_from_config(app_config.clone()).await;
     webserver::database::migrations::apply(&app_config, &app_state.db)
         .await
