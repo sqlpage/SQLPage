@@ -93,7 +93,12 @@ impl Write for ResponseWriter {
     fn flush(&mut self) -> std::io::Result<()> {
         self.response_bytes
             .try_send(Ok(mem::take(&mut self.buffer).into()))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::WouldBlock, e.to_string()))
+            .map_err(|e|
+                std::io::Error::new(
+                    std::io::ErrorKind::WouldBlock,
+                    format!("{e}: Database messages limit exceeded. The server cannot store more than {} pending messages in memory.", self.response_bytes.capacity())
+                )
+            )
     }
 }
 
