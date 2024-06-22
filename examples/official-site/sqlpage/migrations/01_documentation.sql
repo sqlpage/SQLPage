@@ -806,31 +806,31 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "link": "/",
             "menu_item": [
                 {"title": "About", "submenu": [
-                    {"link": "/safety.sql", "title": "Security"},
-                    {"link": "/performance.sql", "title": "Performance"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License"},
-                    {"link": "/blog.sql", "title": "Articles"}
+                    {"link": "/safety.sql", "title": "Security", "icon": "lock"},
+                    {"link": "/performance.sql", "title": "Performance", "icon": "bolt"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License", "icon": "file-text"},
+                    {"link": "/blog.sql", "title": "Articles", "icon": "book"}
                 ]},
                 {"title": "Examples", "submenu": [
-                    {"link": "/examples/tabs.sql", "title": "Tabs"},
-                    {"link": "/examples/layouts.sql", "title": "Layouts"},
-                    {"link": "/examples/multistep-form", "title": "Forms"},
-                    {"link": "/examples/handle_picture_upload.sql", "title": "File uploads"},
-                    {"link": "/examples/authentication/", "title": "Password protection"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos"}
+                    {"link": "/examples/tabs.sql", "title": "Tabs", "icon": "layout-navbar"},
+                    {"link": "/examples/layouts.sql", "title": "Layouts", "icon": "layout"},
+                    {"link": "/examples/multistep-form", "title": "Forms", "icon": "edit"},
+                    {"link": "/examples/handle_picture_upload.sql", "title": "File uploads", "icon": "upload"},
+                    {"link": "/examples/authentication/", "title": "Password protection", "icon": "password-user"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos", "icon": "code"}
                 ]},
                 {"title": "Community", "submenu": [
-                    {"link": "blog.sql", "title": "Blog"},
-                    {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Report a bug"},
-                    {"link": "//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
-                    {"link": "//github.com/lovasoa/sqlpage", "title": "Github"}
+                    {"link": "blog.sql", "title": "Blog", "icon": "book"},
+                    {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Report a bug", "icon": "bug"},
+                    {"link": "//github.com/lovasoa/sqlpage/discussions", "title": "Discussions", "icon": "message"},
+                    {"link": "//github.com/lovasoa/sqlpage", "title": "Github", "icon": "brand-github"}
                 ]},
                 {"title": "Documentation", "submenu": [
-                    {"link": "/your-first-sql-website", "title": "Getting started"},
-                    {"link": "/components.sql", "title": "All Components"},
-                    {"link": "/functions.sql", "title": "SQLPage Functions"},
-                    {"link": "/custom_components.sql", "title": "Custom Components"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration"}
+                    {"link": "/your-first-sql-website", "title": "Getting started", "icon": "book"},
+                    {"link": "/components.sql", "title": "All Components", "icon": "list-details"},
+                    {"link": "/functions.sql", "title": "SQLPage Functions", "icon": "math-function"},
+                    {"link": "/custom_components.sql", "title": "Custom Components", "icon": "puzzle"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
                 ]}
             ],
             "layout": "boxed",
