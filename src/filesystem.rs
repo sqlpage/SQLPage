@@ -199,6 +199,7 @@ impl DbFsQueries {
     }
 
     async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
+        log::debug!("Reading file {} from the database", path.display());
         self.read_file
             .query_as::<(Vec<u8>,)>()
             .bind(path.display().to_string())
