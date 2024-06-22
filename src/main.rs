@@ -16,7 +16,6 @@ async fn main() {
 
 async fn start() -> anyhow::Result<()> {
     let app_config = app_config::load()?;
-    log::debug!("Starting with the following configuration: {app_config:#?}");
     let state = AppState::init(&app_config).await?;
     webserver::database::migrations::apply(&app_config, &state.db).await?;
     log::debug!("Starting server...");

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use actix_web::{
     body::MessageBody,
@@ -7,7 +7,11 @@ use actix_web::{
     test::{self, TestRequest},
     HttpResponse,
 };
-use sqlpage::{app_config::AppConfig, webserver::http::main_handler, AppState};
+use sqlpage::{
+    app_config::AppConfig,
+    webserver::{self, http::main_handler},
+    AppState,
+};
 
 #[actix_web::test]
 async fn test_index_ok() {
@@ -408,6 +412,50 @@ async fn test_with_site_prefix() {
     );
 }
 
+async fn make_app_data_for_official_website() -> actix_web::web::Data<AppState> {
+    init_log();
+    let config_path = std::path::Path::new("examples/official-site/sqlpage");
+    let mut app_config = sqlpage::app_config::load_from_directory(config_path).unwrap();
+    app_config.web_root = PathBuf::from("examples/official-site");
+    let app_state = make_app_data_from_config(app_config.clone()).await;
+    webserver::database::migrations::apply(&app_config, &app_state.db)
+        .await
+        .unwrap();
+    app_state
+}
+
+#[actix_web::test]
+async fn test_official_website_documentation() {
+    let app_data = make_app_data_for_official_website().await;
+    let resp = req_path_with_app_data("/documentation.sql?component=button", app_data)
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains(r#"<button type="submit" form="poem" formaction="?action"#),
+        "{body_str}\nexpected to contain a button with formaction"
+    );
+}
+
+#[actix_web::test]
+async fn test_official_website_basic_auth_example() {
+    let resp = req_path_with_app_data(
+        "/examples/authentication/basic_auth.sql",
+        make_app_data_for_official_website().await,
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("not authorized"),
+        "{body_str}\nexpected to contain Unauthorized"
+    );
+}
+
 async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     let data = make_app_data().await;
     Ok(test::TestRequest::get()
@@ -415,13 +463,15 @@ async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
         .insert_header(ContentType::plaintext())
         .app_data(data))
 }
+async fn make_app_data_from_config(config: AppConfig) -> actix_web::web::Data<AppState> {
+    let state = AppState::init(&config).await.unwrap();
+    actix_web::web::Data::new(state)
+}
 
 async fn make_app_data() -> actix_web::web::Data<AppState> {
     init_log();
     let config = test_config();
-    let state = AppState::init(&config).await.unwrap();
-
-    actix_web::web::Data::new(state)
+    make_app_data_from_config(config).await
 }
 
 async fn req_path(
@@ -431,16 +481,23 @@ async fn req_path(
     main_handler(req).await
 }
 
+async fn srv_req_path_with_app_data(
+    path: impl AsRef<str>,
+    app_data: actix_web::web::Data<AppState>,
+) -> actix_web::dev::ServiceRequest {
+    test::TestRequest::get()
+        .uri(path.as_ref())
+        .app_data(app_data)
+        .insert_header(("cookie", "test_cook=123"))
+        .insert_header(("authorization", "Basic dGVzdDp0ZXN0")) // test:test
+        .to_srv_request()
+}
+
 async fn req_path_with_app_data(
     path: impl AsRef<str>,
     app_data: actix_web::web::Data<AppState>,
 ) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
-    let req = test::TestRequest::get()
-        .uri(path.as_ref())
-        .insert_header(("cookie", "test_cook=123"))
-        .insert_header(("authorization", "Basic dGVzdDp0ZXN0")) // test:test
-        .app_data(app_data)
-        .to_srv_request();
+    let req = srv_req_path_with_app_data(path, app_data).await;
     main_handler(req).await
 }
 
@@ -461,5 +518,8 @@ pub fn test_config() -> AppConfig {
 }
 
 fn init_log() {
-    let _ = env_logger::builder().is_test(true).try_init();
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter(Some("sqlpage"), log::LevelFilter::Trace)
+        .try_init();
 }

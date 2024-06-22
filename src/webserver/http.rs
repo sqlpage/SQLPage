@@ -12,10 +12,11 @@ use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, HttpResponse,
     HttpServer,
 };
+use actix_web::{HttpResponseBuilder, ResponseError};
 
 use super::https::make_auto_rustls_config;
 use super::static_content;
-use actix_web::body::{BoxBody, MessageBody};
+use actix_web::body::MessageBody;
 use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
@@ -268,7 +269,7 @@ fn send_anyhow_error(
     env: app_config::DevOrProd,
 ) {
     log::error!("An error occurred before starting to send the response body: {e:#}");
-    let mut resp = HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR);
+    let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
     let mut body = "Sorry, but we were not able to process your request. \n\n".to_owned();
     if env.is_prod() {
         body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
@@ -276,34 +277,22 @@ fn send_anyhow_error(
         use std::fmt::Write;
         write!(body, "{e:?}").unwrap();
     }
-    resp = resp.set_body(BoxBody::new(body));
-    resp.headers_mut().insert(
+    resp.insert_header((
         header::CONTENT_TYPE,
         header::HeaderValue::from_static("text/plain"),
-    );
-    if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
-        *resp.status_mut() = status;
-        if status == StatusCode::UNAUTHORIZED {
-            resp.headers_mut().insert(
-                header::WWW_AUTHENTICATE,
-                header::HeaderValue::from_static(
-                    "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
-                ),
-            );
-            resp = resp.set_body(BoxBody::new(
-                "Sorry, but you are not authorized to access this page.",
-            ));
-        }
-    };
-    if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
+    ));
+    let resp = if let Some(e @ &ErrorWithStatus { .. }) = e.downcast_ref() {
+        e.error_response()
+    } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
         // People are HTTP connections faster than we can open SQL connections. Ask them to slow down politely.
         use rand::Rng;
-        *resp.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-        resp.headers_mut().insert(
+        resp.status(StatusCode::SERVICE_UNAVAILABLE).insert_header((
             header::RETRY_AFTER,
             header::HeaderValue::from(rand::thread_rng().gen_range(1..=15)),
-        );
-    }
+        )).body("The database is currently too busy to handle your request. Please try again later.\n\n".to_owned() + &body)
+    } else {
+        resp.body(body)
+    };
     resp_send
         .send(resp)
         .unwrap_or_else(|_| log::error!("could not send headers"));

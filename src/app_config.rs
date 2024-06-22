@@ -124,18 +124,32 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 /// This should be called only once at the start of the program.
 pub fn load() -> anyhow::Result<AppConfig> {
     let configuration_directory = &configuration_directory();
-    log::debug!(
-        "Loading configuration from {:?}",
-        cannonicalize_if_possible(configuration_directory)
-    );
-    let config_file = configuration_directory.join("sqlpage");
-    Config::builder()
+    load_from_directory(configuration_directory)
+}
+
+/// Parses and loads the configuration from the given directory.
+pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
+    let cannonical = cannonicalize_if_possible(directory);
+    log::debug!("Loading configuration from {:?}", cannonical);
+    let config_file = directory.join("sqlpage");
+    let mut app_config = load_from_file(&config_file)?;
+    app_config.configuration_directory = directory.into();
+    Ok(app_config)
+}
+
+/// Parses and loads the configuration from the given file.
+pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
+    let config = Config::builder()
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
         .add_source(env_config().prefix("SQLPAGE"))
-        .build()?
+        .build()?;
+    log::trace!("Configuration sources: {}", config.cache);
+    let app_config = config
         .try_deserialize::<AppConfig>()
-        .with_context(|| "Unable to load configuration")
+        .with_context(|| "Unable to load configuration")?;
+    log::debug!("Loaded configuration: {:?}", app_config);
+    Ok(app_config)
 }
 
 fn env_config() -> config::Environment {

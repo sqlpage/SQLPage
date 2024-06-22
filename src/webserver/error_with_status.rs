@@ -1,5 +1,8 @@
 use actix_web::{
-    http::{header::ContentType, StatusCode},
+    http::{
+        header::{self, ContentType},
+        StatusCode,
+    },
     ResponseError,
 };
 
@@ -19,8 +22,18 @@ impl ResponseError for ErrorWithStatus {
         self.status
     }
     fn error_response(&self) -> actix_web::HttpResponse {
-        actix_web::HttpResponse::build(self.status)
-            .content_type(ContentType::plaintext())
-            .body(self.status.to_string())
+        let mut resp_builder = actix_web::HttpResponse::build(self.status);
+        resp_builder.content_type(ContentType::plaintext());
+        if self.status == StatusCode::UNAUTHORIZED {
+            resp_builder.insert_header((
+                header::WWW_AUTHENTICATE,
+                header::HeaderValue::from_static(
+                    "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
+                ),
+            ));
+            resp_builder.body("Sorry, but you are not authorized to access this page.")
+        } else {
+            resp_builder.body(self.status.to_string())
+        }
     }
 }
