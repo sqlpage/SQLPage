@@ -19,9 +19,11 @@
  - Add property `narrow` to the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component to make the button narrower. Ideal for buttons with icons.
    - ![icon buttons](https://github.com/lovasoa/SQLpage/assets/552629/7fcc049e-6012-40c1-a8ee-714ce70a8763)
  - new `tooltip` property in the datagrid component.
+    - ![datagrid tooltip](https://github.com/lovasoa/SQLpage/assets/552629/81b94d92-1bca-4ffe-9056-c30d6845dcc6)
  - datagrids are now slightly more compact, with less padding and less space taken by each item.
  - fix a bug in the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component where the icon would sometimes overflow the card's text content.
  - new `image` property in the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component to display a small image inside a button.
+   - ![image button](https://github.com/lovasoa/SQLpage/assets/552629/cdfa0709-1b00-4779-92cb-dc6f3e78c1a8)
  - In the `shell` component
    - allow easily creating complex menus even in SQLite:
       ```sql
@@ -32,6 +34,7 @@
       select 'shell' as component, 'My Website' as title, CASE WHEN $role = 'admin' THEN 'Admin' END as menu_item;
     - Add the ability to use local Woff2 fonts in the [shell](https://sql.ophir.dev/documentation.sql?component=shell#component) component. This is useful to use custom fonts in your website, without depending on google fonts (and disclosing your users' IP addresses to google).
     - Add a `fixed_top_menu` attribute to make the top menu sticky. This is useful to keep the menu visible even when the user scrolls down the page.
+      - ![a fixed top menu](https://github.com/lovasoa/SQLpage/assets/552629/65fe3a41-faee-45e6-9dfc-d81eca043f45)
  - Add a `wrap` attribute to the `list` component to wrap items on multiple lines when they are too long.
  - New `max_pending_rows` [configuration option](https://sql.ophir.dev/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
  - Update sqlite to v3.46: https://www.sqlite.org/releaselog/3_46_0.html
