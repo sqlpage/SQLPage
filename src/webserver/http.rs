@@ -70,6 +70,10 @@ impl ResponseWriter {
         if self.buffer.is_empty() {
             return Ok(());
         }
+        log::trace!(
+            "Async flushing data to client: {}",
+            String::from_utf8_lossy(&self.buffer)
+        );
         self.response_bytes
             .send(Ok(mem::take(&mut self.buffer).into()))
             .await
@@ -91,6 +95,10 @@ impl Write for ResponseWriter {
         Ok(buf.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
+        log::trace!(
+            "Flushing data to client: {}",
+            String::from_utf8_lossy(&self.buffer)
+        );
         self.response_bytes
             .try_send(Ok(mem::take(&mut self.buffer).into()))
             .map_err(|e|
@@ -115,6 +123,12 @@ async fn stream_response(
     mut renderer: RenderContext<ResponseWriter>,
 ) {
     let mut stream = Box::pin(stream);
+
+    if let Err(e) = &renderer.writer.async_flush().await {
+        log::error!("Unable to flush initial data to client: {e}");
+        return;
+    }
+
     while let Some(item) = stream.next().await {
         log::trace!("Received item from database: {item:?}");
         let render_result = match item {

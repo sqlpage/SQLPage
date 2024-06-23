@@ -34,6 +34,7 @@
  - Add a `wrap` attribute to the `list` component to wrap items on multiple lines when they are too long.
  - New `max_pending_rows` [configuration option](https://sql.ophir.dev/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
  - Update sqlite to v3.46: https://www.sqlite.org/releaselog/3_46_0.html
+ - Faster initial page load. SQLPage used to wait for the first component to be rendered before sending the shell to the client. We now send the shell immediately, and the first component as soon as it is ready. This can make the initial page load faster, especially when the first component requires a long computation on the database side.
 
 ## 0.23.0 (2024-06-09)
 
