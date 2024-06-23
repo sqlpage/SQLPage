@@ -95,6 +95,9 @@ impl Write for ResponseWriter {
         Ok(buf.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
         log::trace!(
             "Flushing data to client: {}",
             String::from_utf8_lossy(&self.buffer)
