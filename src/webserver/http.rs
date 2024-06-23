@@ -12,10 +12,11 @@ use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, web::Bytes, App, HttpResponse,
     HttpServer,
 };
+use actix_web::{HttpResponseBuilder, ResponseError};
 
 use super::https::make_auto_rustls_config;
 use super::static_content;
-use actix_web::body::{BoxBody, MessageBody};
+use actix_web::body::MessageBody;
 use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
@@ -31,7 +32,6 @@ use tokio::sync::mpsc;
 
 /// If the sending queue exceeds this number of outgoing messages, an error will be thrown
 /// This prevents a single request from using up all available memory
-const MAX_PENDING_MESSAGES: usize = 128;
 
 #[derive(Clone)]
 pub struct ResponseWriter {
@@ -70,14 +70,19 @@ impl ResponseWriter {
         if self.buffer.is_empty() {
             return Ok(());
         }
+        log::trace!(
+            "Async flushing data to client: {}",
+            String::from_utf8_lossy(&self.buffer)
+        );
         self.response_bytes
             .send(Ok(mem::take(&mut self.buffer).into()))
             .await
             .map_err(|err| {
                 use std::io::{Error, ErrorKind};
+                let capacity = self.response_bytes.capacity();
                 Error::new(
                     ErrorKind::BrokenPipe,
-                    format!("The HTTP response writer with a capacity of {MAX_PENDING_MESSAGES} has already been closed: {err}"),
+                    format!("The HTTP response writer with a capacity of {capacity} has already been closed: {err}"),
                 )
             })
     }
@@ -90,9 +95,21 @@ impl Write for ResponseWriter {
         Ok(buf.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
+        log::trace!(
+            "Flushing data to client: {}",
+            String::from_utf8_lossy(&self.buffer)
+        );
         self.response_bytes
             .try_send(Ok(mem::take(&mut self.buffer).into()))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::WouldBlock, e.to_string()))
+            .map_err(|e|
+                std::io::Error::new(
+                    std::io::ErrorKind::WouldBlock,
+                    format!("{e}: Row limit exceeded. The server cannot store more than {} pending messages in memory. Try again later or increase max_pending_rows in the configuration.", self.response_bytes.max_capacity())
+                )
+            )
     }
 }
 
@@ -109,6 +126,12 @@ async fn stream_response(
     mut renderer: RenderContext<ResponseWriter>,
 ) {
     let mut stream = Box::pin(stream);
+
+    if let Err(e) = &renderer.writer.async_flush().await {
+        log::error!("Unable to flush initial data to client: {e}");
+        return;
+    }
+
     while let Some(item) = stream.next().await {
         log::trace!("Received item from database: {item:?}");
         let render_result = match item {
@@ -151,7 +174,8 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     database_entries: S,
     layout_context: &LayoutContext,
 ) -> anyhow::Result<ResponseWithWriter<S>> {
-    let (sender, receiver) = mpsc::channel(MAX_PENDING_MESSAGES);
+    let chan_size = app_state.config.max_pending_rows;
+    let (sender, receiver) = mpsc::channel(chan_size);
     let writer = ResponseWriter::new(sender);
     let mut head_context = HeaderContext::new(app_state, layout_context, writer);
     let mut stream = Box::pin(database_entries);
@@ -268,7 +292,7 @@ fn send_anyhow_error(
     env: app_config::DevOrProd,
 ) {
     log::error!("An error occurred before starting to send the response body: {e:#}");
-    let mut resp = HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR);
+    let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
     let mut body = "Sorry, but we were not able to process your request. \n\n".to_owned();
     if env.is_prod() {
         body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
@@ -276,34 +300,22 @@ fn send_anyhow_error(
         use std::fmt::Write;
         write!(body, "{e:?}").unwrap();
     }
-    resp = resp.set_body(BoxBody::new(body));
-    resp.headers_mut().insert(
+    resp.insert_header((
         header::CONTENT_TYPE,
         header::HeaderValue::from_static("text/plain"),
-    );
-    if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
-        *resp.status_mut() = status;
-        if status == StatusCode::UNAUTHORIZED {
-            resp.headers_mut().insert(
-                header::WWW_AUTHENTICATE,
-                header::HeaderValue::from_static(
-                    "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
-                ),
-            );
-            resp = resp.set_body(BoxBody::new(
-                "Sorry, but you are not authorized to access this page.",
-            ));
-        }
-    };
-    if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
+    ));
+    let resp = if let Some(e @ &ErrorWithStatus { .. }) = e.downcast_ref() {
+        e.error_response()
+    } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
         // People are HTTP connections faster than we can open SQL connections. Ask them to slow down politely.
         use rand::Rng;
-        *resp.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-        resp.headers_mut().insert(
+        resp.status(StatusCode::SERVICE_UNAVAILABLE).insert_header((
             header::RETRY_AFTER,
             header::HeaderValue::from(rand::thread_rng().gen_range(1..=15)),
-        );
-    }
+        )).body("The database is currently too busy to handle your request. Please try again later.\n\n".to_owned() + &body)
+    } else {
+        resp.body(body)
+    };
     resp_send
         .send(resp)
         .unwrap_or_else(|_| log::error!("could not send headers"));
@@ -513,6 +525,7 @@ pub fn create_app(
                 .service(static_content::tomselect_js())
                 .service(static_content::css())
                 .service(static_content::icons())
+                .service(static_content::favicon())
                 .default_service(fn_service(main_handler)),
         )
         // when receiving a request outside of the prefix, redirect to the prefix
@@ -529,7 +542,10 @@ pub fn create_app(
                     "script-src 'self' https://cdn.jsdelivr.net",
                 )),
         )
-        .wrap(middleware::Compress::default())
+        .wrap(middleware::Condition::new(
+            app_state.config.compress_responses,
+            middleware::Compress::default(),
+        ))
         .wrap(middleware::NormalizePath::new(
             middleware::TrailingSlash::MergeOnly,
         ))
@@ -556,7 +572,7 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         {
             server = server
                 .bind_uds(unix_socket)
-                .map_err(|e| bind_unix_socket(e, unix_socket))?;
+                .map_err(|e| bind_unix_socket_err(e, unix_socket))?;
         }
         #[cfg(not(target_family = "unix"))]
         anyhow::bail!("Unix sockets are not supported on your operating system. Use listen_on instead of unix_socket.");
@@ -614,7 +630,8 @@ fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Err
     anyhow::anyhow!(e).context(ctx)
 }
 
-fn bind_unix_socket(e: std::io::Error, unix_socket: &PathBuf) -> anyhow::Error {
+#[cfg(target_family = "unix")]
+fn bind_unix_socket_err(e: std::io::Error, unix_socket: &PathBuf) -> anyhow::Error {
     let ctx = if e.kind() == std::io::ErrorKind::PermissionDenied {
         format!(
             "You do not have permission to bind to the UNIX socket {unix_socket:?}. \

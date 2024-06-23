@@ -4,10 +4,10 @@
     <div
       class="leaflet"
       style="height: {{default height 350}}px;"
-      {{~#if latitude}} data-center="{{latitude}},{{longitude}}"{{/if~}}
+      {{~#if latitude}} data-center="{{latitude}},{{longitude}}"{{/if}}
       data-zoom="{{default zoom 5}}"
       data-attribution="{{default attribution '© OpenStreetMap'}}"
-      data-tile_source="{{default tile_source 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}}"
+      {{~#if (ne tile_source false)}} data-tile_source="{{default tile_source 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}}"{{/if}}
       data-max_zoom="{{default max_zoom 18}}"
       data-pre-init="map"
     >

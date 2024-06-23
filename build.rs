@@ -20,6 +20,7 @@ async fn main() {
         spawn(download_deps(c.clone(), "tabler-icons.svg")),
         spawn(download_deps(c.clone(), "apexcharts.js")),
         spawn(download_deps(c.clone(), "tomselect.js")),
+        spawn(download_deps(c.clone(), "favicon.svg")),
     ] {
         h.await.unwrap();
     }
@@ -134,6 +135,14 @@ fn hashed_filename(path: &Path) -> String {
 }
 
 fn make_url_path(url: &str) -> PathBuf {
-    let filename = url.replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "_");
-    Path::new(&std::env::var("OUT_DIR").unwrap()).join(filename)
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let sqlpage_artefacts = Path::new(&manifest_dir)
+        .join("target")
+        .join("sqlpage_artefacts");
+    std::fs::create_dir_all(&sqlpage_artefacts).unwrap();
+    let filename = url.replace(
+        |c: char| !c.is_ascii_alphanumeric() && !['.', '-'].contains(&c),
+        "_",
+    );
+    sqlpage_artefacts.join(filename)
 }

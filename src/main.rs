@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use sqlpage::{
     app_config::{self, AppConfig},
     webserver, AppState,
@@ -14,7 +16,6 @@ async fn main() {
 
 async fn start() -> anyhow::Result<()> {
     let app_config = app_config::load()?;
-    log::debug!("Starting with the following configuration: {app_config:#?}");
     let state = AppState::init(&app_config).await?;
     webserver::database::migrations::apply(&app_config, &state.db).await?;
     log::debug!("Starting server...");
@@ -32,19 +33,23 @@ async fn log_welcome_message(config: &AppConfig) {
         format!("https://{}", domain)
     } else {
         let listen_on = config.listen_on();
-        let msg = if listen_on.ip().is_unspecified() {
+        let mut msg = format!("{listen_on}");
+        if listen_on.ip().is_unspecified() {
             // let the user know the service is publicly accessible
-            " (accessible on all networks of this computer)"
-        } else {
-            ""
-        };
-        format!("http://{listen_on}{msg}")
+            write!(
+                msg,
+                ": accessible from the network, and locally on http://localhost:{}",
+                listen_on.port()
+            )
+            .unwrap();
+        }
+        msg
     };
 
     log::info!(
         "SQLPage v{} started successfully.
     Now listening on {}
-    You can write your website's code in .sql files in {}.",
+    You can write your website's code in .sql files in {}",
         env!("CARGO_PKG_VERSION"),
         address_message,
         config.web_root.display()

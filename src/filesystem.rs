@@ -76,6 +76,7 @@ impl FileSystem {
         priviledged: bool,
     ) -> anyhow::Result<Vec<u8>> {
         let local_path = self.safe_local_path(app_state, path, priviledged)?;
+        log::debug!("Reading file {path:?} from {local_path:?}");
         let local_result = tokio::fs::read(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
@@ -198,6 +199,7 @@ impl DbFsQueries {
     }
 
     async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
+        log::debug!("Reading file {} from the database", path.display());
         self.read_file
             .query_as::<(Vec<u8>,)>()
             .bind(path.display().to_string())

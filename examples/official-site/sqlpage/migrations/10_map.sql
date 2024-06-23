@@ -178,4 +178,20 @@ Spatialite''s [`AsGeoJSON`](https://www.gaia-gis.it/gaia-sins/spatialite-sql-5.1
             { "title": "Tower to Cathedral", "geojson": {"type": "LineString", "coordinates": [[2.2945, 48.8584], [2.3498, 48.8530]]}, "color": "teal", "description": "A nice 45 minutes walk." }
             ]'
         )
+    ),
+    (
+        'map',
+        'Geometric shapes
+
+Illustrates the use of GeoJSON to display a square and a circle, without an actual geographical base map,
+by setting the `tile_source` parameter to `false`.',
+        JSON(
+            '[
+            { "component": "map", "tile_source": false },
+            { "title": "Square", 
+                "color": "red", "description": "The litteral red square",
+                "geojson": {"type": "Polygon", "coordinates": [[[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]]}
+            }
+            ]'
+        )
     );

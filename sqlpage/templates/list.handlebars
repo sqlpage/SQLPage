@@ -1,14 +1,13 @@
 <div class="card my-2 {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     {{#if title}}
-        <div class="card-header ">
+        <div class="card-header {{#if compact}}py-2{{/if}}">
             <h2 class="card-title">{{title}}</h2>
         </div>
     {{/if}}
     <div class="list-group list-group-flush list-group-hoverable">
         {{#each_row}}
             <div {{#if id}}id="{{id}}"{{/if}}
-                class="list-group-item list-group-item-action {{#if active}}active{{/if}} {{class}}">
-
+                class="list-group-item list-group-item-action {{#if active}}active{{/if}} {{#if ../compact}}py-1{{/if}} {{class}}">
                 <div class="row align-items-center">
                     {{#if link}}
                         <a href="{{link}}" class="col text-truncate row align-items-center text-decoration-none link-body-emphasis">
@@ -27,9 +26,9 @@
                             <img src="{{image_url}}" class="avatar avatar-md rounded" width="45" height="45" alt="{{title}}" />
                         </div>
                     {{/if}}
-                    <div class="col text-truncate">
+                    <div class="col {{#if ../wrap}}text-wrap{{else}}text-truncate{{/if}}">
                         {{title}}
-                        <div class="d-block text-muted text-truncate mt-n1">
+                        <div class="d-block text-muted text-truncate mt-n1{{#if ../wrap}} text-wrap{{/if}}">
                             {{~description~}}
                             {{~#if description_md~}}
                                 <div style="margin-bottom: -1rem">{{{markdown description_md}}}</div>

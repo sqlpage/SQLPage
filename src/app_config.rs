@@ -2,9 +2,9 @@ use anyhow::Context;
 use config::Config;
 use percent_encoding::AsciiSet;
 use serde::de::Error;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
@@ -89,6 +89,14 @@ pub struct AppConfig {
         default = "default_site_prefix"
     )]
     pub site_prefix: String,
+
+    /// Maximum number of messages that can be stored in memory before sending them to the client.
+    #[serde(default = "default_max_pending_rows")]
+    pub max_pending_rows: usize,
+
+    /// Whether to compress the http response body when the client supports it.
+    #[serde(default = "default_compress_responses")]
+    pub compress_responses: bool,
 }
 
 impl AppConfig {
@@ -113,7 +121,7 @@ impl AppConfig {
 fn configuration_directory() -> PathBuf {
     std::env::var("SQLPAGE_CONFIGURATION_DIRECTORY")
         .or_else(|_| std::env::var("CONFIGURATION_DIRECTORY"))
-        .map_or_else(|_| PathBuf::from("sqlpage"), PathBuf::from)
+        .map_or_else(|_| PathBuf::from("./sqlpage"), PathBuf::from)
 }
 
 fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
@@ -124,18 +132,32 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 /// This should be called only once at the start of the program.
 pub fn load() -> anyhow::Result<AppConfig> {
     let configuration_directory = &configuration_directory();
-    log::debug!(
-        "Loading configuration from {:?}",
-        cannonicalize_if_possible(configuration_directory)
-    );
-    let config_file = configuration_directory.join("sqlpage");
-    Config::builder()
+    load_from_directory(configuration_directory)
+}
+
+/// Parses and loads the configuration from the given directory.
+pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
+    let cannonical = cannonicalize_if_possible(directory);
+    log::debug!("Loading configuration from {:?}", cannonical);
+    let config_file = directory.join("sqlpage");
+    let mut app_config = load_from_file(&config_file)?;
+    app_config.configuration_directory = directory.into();
+    Ok(app_config)
+}
+
+/// Parses and loads the configuration from the given file.
+pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
+    let config = Config::builder()
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
         .add_source(env_config().prefix("SQLPAGE"))
-        .build()?
+        .build()?;
+    log::trace!("Configuration sources: {}", config.cache);
+    let app_config = config
         .try_deserialize::<AppConfig>()
-        .with_context(|| "Unable to load configuration")
+        .with_context(|| "Unable to load configuration")?;
+    log::debug!("Loaded configuration: {:#?}", app_config);
+    Ok(app_config)
 }
 
 fn env_config() -> config::Environment {
@@ -215,24 +237,42 @@ fn default_database_url() -> String {
         let old_default_db_path = PathBuf::from(DEFAULT_DATABASE_FILE);
         let default_db_path = config_dir.join(DEFAULT_DATABASE_FILE);
         if let Ok(true) = old_default_db_path.try_exists() {
-            log::warn!("Your sqlite database in {old_default_db_path:?} is publicly accessible through your web server. Please move it to {default_db_path:?}.");
+            log::warn!("Your sqlite database in {} is publicly accessible through your web server. Please move it to {}.", old_default_db_path.display(), default_db_path.display());
             return prefix + old_default_db_path.to_str().unwrap();
         } else if let Ok(true) = default_db_path.try_exists() {
-            log::debug!("Using the default database file in {default_db_path:?}.");
-            return prefix + default_db_path.to_str().unwrap();
+            log::debug!(
+                "Using the default database file in {}",
+                default_db_path.display()
+            );
+            return prefix + &encode_uri(&default_db_path);
         }
         // Create the default database file if we can
         let _ = std::fs::create_dir_all(default_db_path.parent().unwrap()); // may already exist
         if let Ok(tmp_file) = std::fs::File::create(&default_db_path) {
-            log::info!("No DATABASE_URL provided, {default_db_path:?} is writable, creating a new database file.");
+            log::info!(
+                "No DATABASE_URL provided, {} is writable, creating a new database file.",
+                default_db_path.display()
+            );
             drop(tmp_file);
             std::fs::remove_file(&default_db_path).expect("removing temp file");
-            return prefix + default_db_path.to_str().unwrap() + "?mode=rwc";
+            return prefix + &encode_uri(&default_db_path) + "?mode=rwc";
         }
     }
 
     log::warn!("No DATABASE_URL provided, and the current directory is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
     prefix + ":memory:"
+}
+
+fn encode_uri(path: &Path) -> std::borrow::Cow<str> {
+    const ASCII_SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
+        .remove(b'-')
+        .remove(b'_')
+        .remove(b'.')
+        .remove(b':')
+        .remove(b' ')
+        .remove(b'/');
+    let path_bytes = path.as_os_str().as_encoded_bytes();
+    percent_encoding::percent_encode(path_bytes, ASCII_SET).into()
 }
 
 fn default_database_connection_retries() -> u32 {
@@ -262,7 +302,15 @@ fn default_https_acme_directory_url() -> String {
     "https://acme-v02.api.letsencrypt.org/directory".to_string()
 }
 
-#[derive(Debug, Deserialize, PartialEq, Clone, Copy, Eq, Default)]
+fn default_max_pending_rows() -> usize {
+    256
+}
+
+fn default_compress_responses() -> bool {
+    true
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum DevOrProd {
     #[default]
@@ -288,5 +336,39 @@ pub mod tests {
         }"#,
         )
         .unwrap()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_default_site_prefix() {
+        assert_eq!(default_site_prefix(), "/".to_string());
+    }
+
+    #[test]
+    fn test_encode_uri() {
+        assert_eq!(
+            encode_uri(Path::new("/hello world/xxx.db")),
+            "/hello world/xxx.db"
+        );
+        assert_eq!(encode_uri(Path::new("é")), "%C3%A9");
+        assert_eq!(encode_uri(Path::new("/a?b/c")), "/a%3Fb/c");
+    }
+
+    #[test]
+    fn test_normalize_site_prefix() {
+        assert_eq!(normalize_site_prefix(""), "/");
+        assert_eq!(normalize_site_prefix("/"), "/");
+        assert_eq!(normalize_site_prefix("a"), "/a/");
+        assert_eq!(normalize_site_prefix("a/"), "/a/");
+        assert_eq!(normalize_site_prefix("/a"), "/a/");
+        assert_eq!(normalize_site_prefix("a/b"), "/a/b/");
+        assert_eq!(normalize_site_prefix("a/b/"), "/a/b/");
+        assert_eq!(normalize_site_prefix("a/b/c"), "/a/b/c/");
+        assert_eq!(normalize_site_prefix("a b"), "/a%20b/");
+        assert_eq!(normalize_site_prefix("a b/c"), "/a%20b/c/");
     }
 }

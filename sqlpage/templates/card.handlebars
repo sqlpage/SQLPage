@@ -23,7 +23,11 @@
     mt-1 mb-3 {{class}}">
     {{#each_row}}
         <div class="col {{class}}" {{#if id}}id="{{id}}"{{/if}}>
-            <div class="card h-100 {{#if active}}card-active{{/if}}" {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
+            <div class="card h-100
+                {{~#if active}} card-active{{/if~}}
+                {{~#if background_color}} bg-{{background_color}} text-{{background_color}}-fg{{/if~}}
+                "
+                {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
@@ -35,7 +39,7 @@
                 {{/if}}
                 <div class="card-body">
                     {{#if title}}<h2 class="card-title fs-3 me-3">{{title}}</h2>{{/if}}
-                    <div class="card-content remove-bottom-margin">
+                    <div class="card-content remove-bottom-margin{{#if (and icon (not title))}} pe-4{{/if}}">
                         {{~description~}}
                         {{~#if description_md~}}
                             {{{markdown description_md}}}

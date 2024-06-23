@@ -5,13 +5,19 @@ CREATE TABLE component(
     introduced_in_version TEXT
 );
 
+CREATE TABLE parameter_type(
+    name TEXT PRIMARY KEY
+);
+INSERT INTO parameter_type(name) VALUES
+    ('BOOLEAN'), ('COLOR'), ('HTML'), ('ICON'), ('INTEGER'), ('JSON'), ('REAL'), ('TEXT'), ('TIMESTAMP'), ('URL');
+
 CREATE TABLE parameter(
     top_level BOOLEAN DEFAULT FALSE,
     name TEXT,
     component TEXT REFERENCES component(name) ON DELETE CASCADE,
     description TEXT,
     description_md TEXT,
-    type TEXT,
+    type TEXT REFERENCES parameter_type(name) ON DELETE CASCADE,
     optional BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (component, top_level, name)
 );
@@ -32,6 +38,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('empty_description', 'Description to display if the list is empty.', 'TEXT', TRUE, TRUE),
     ('empty_description_md', 'Description to display if the list is empty, in Markdown format.', 'TEXT', TRUE, TRUE),
     ('empty_link', 'URL to which the user should be taken if they click on the empty list.', 'URL', TRUE, TRUE),
+    ('compact', 'Whether to display the list in a more compact format, allowing more items to be displayed on the screen.', 'BOOLEAN', TRUE, TRUE),
+    ('wrap', 'Wrap list items onto multiple lines if they are too long', 'BOOLEAN', TRUE, TRUE),
     -- item level
     ('title', 'Name of the list item, displayed prominently.', 'TEXT', FALSE, FALSE),
     ('description', 'A description of the list item, displayed as greyed-out text.', 'TEXT', FALSE, TRUE),
@@ -47,15 +55,15 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
-    ('list', 'The most basic list', json('[{"component":"list"},{"title":"A"},{"title":"B"},{"title":"C"}]')),
+    ('list', 'A basic compact list', json('[{"component":"list", "compact": true, "title": "SQLPage lists are..."},{"title":"Beautiful"},{"title":"Useful"},{"title":"Versatile"}]')),
     ('list', 'An empty list with a link to add an item', json('[{"component":"list", "empty_title": "No items yet", "empty_description": "This list is empty. Click here to create a new item !", "empty_link": "documentation.sql"}]')),
-    ('list', 'A list with rich text descriptions', json('[{"component":"list"},
+    ('list', 'A list with rich text descriptions', json('[{"component":"list", "wrap": true},
         {"title":"SQLPage", "image_url": "https://raw.githubusercontent.com/lovasoa/SQLpage/main/docs/favicon.png", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
         {"title":"Tabler", "image_url": "https://avatars.githubusercontent.com/u/35471246", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},
         {"title":"Tabler Icons", "image_url": "https://tabler.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
-            json('[{"component":"list", "title":"Popular websites"}, '||
+            json('[{"component":"list", "title":"Popular websites" }, '||
             '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "active": true }, '||
             '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "edit_link": "?edit=wikipedia", "delete_link": "?delete=wikipedia" }]'));
 
@@ -76,7 +84,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('link', 'A target URL to which the user should be taken when they click on the value.', 'URL', FALSE, TRUE),
     ('icon', 'An icon name (from tabler-icons.io) to display on the left side of the value.', 'ICON', FALSE, TRUE),
     ('color', 'If set to a color name, the value will be displayed in a pill of that color.', 'COLOR', FALSE, TRUE),
-    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE),
+    ('tooltip', 'A tooltip to display when the user passes their mouse over the value.', 'TEXT', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -85,8 +94,8 @@ INSERT INTO example(component, description, properties) VALUES
             json('[{"component":"datagrid", "title": "Ophir Lojkine", "image_url": "https://avatars.githubusercontent.com/u/552629", "description_md": "Member since **2021**"},
             {"title": "Pseudo", "description": "lovasoa", "image_url": "https://avatars.githubusercontent.com/u/552629" },
             {"title": "Status", "description": "Active", "color": "green"},
-            {"title": "Email Status", "description": "Validated", "icon": "check", "active": true},
-            {"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/"}
+            {"title": "Email Status", "description": "Validated", "icon": "check", "active": true, "tooltip": "Email address has been validated."},
+            {"title": "Personal page", "description": "ophir.dev", "link": "https://ophir.dev/", "tooltip": "About me"}
     ]')),
     ('datagrid', 'Using a picture in the data grid card header.', json('[
         {"component":"datagrid", "title": "Website Ideas", "icon": "bulb"},
@@ -220,29 +229,29 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
     ('value', 'A default value that will already be present in the field when the user loads the page.', 'TEXT', FALSE, TRUE),
     ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select. JSON objects in the array can contain the properties "label", "value" and "selected".', 'JSON', FALSE, TRUE),
-    ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOL', FALSE, TRUE),
-    ('min', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
-    ('max', 'The minimum value to accept for an input of type number', 'NUMBER', FALSE, TRUE),
-    ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOL', FALSE, TRUE),
-    ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOL', FALSE, TRUE),
-    ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOL', FALSE, TRUE),
-    ('dropdown', 'An alias for "searchable".', 'BOOL', FALSE, TRUE),
-    ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOL', FALSE, TRUE),
-    ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'NUMBER', FALSE, TRUE),
+    ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOLEAN', FALSE, TRUE),
+    ('min', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
+    ('max', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
+    ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOLEAN', FALSE, TRUE),
+    ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOLEAN', FALSE, TRUE),
+    ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOLEAN', FALSE, TRUE),
+    ('dropdown', 'An alias for "searchable".', 'BOOLEAN', FALSE, TRUE),
+    ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOLEAN', FALSE, TRUE),
+    ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'REAL', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
     ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
-    ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOL', FALSE, TRUE),
-    ('width', 'Width of the form field, between 1 and 12.', 'NUMBER', FALSE, TRUE),
-    ('autocomplete', 'Whether the browser should suggest previously entered values for this field.', 'BOOL', FALSE, TRUE),
-    ('minlength', 'Minimum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
-    ('maxlength', 'Maximum length of text allowed in the field.', 'NUMBER', FALSE, TRUE),
+    ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOLEAN', FALSE, TRUE),
+    ('width', 'Width of the form field, between 1 and 12.', 'INTEGER', FALSE, TRUE),
+    ('autocomplete', 'Whether the browser should suggest previously entered values for this field.', 'BOOLEAN', FALSE, TRUE),
+    ('minlength', 'Minimum length of text allowed in the field.', 'INTEGER', FALSE, TRUE),
+    ('maxlength', 'Maximum length of text allowed in the field.', 'INTEGER', FALSE, TRUE),
     ('formaction', 'When type is "submit", this specifies the URL of the file that will handle the form submission. Useful when you need multiple submit buttons.', 'TEXT', FALSE, TRUE),
     ('class', 'A CSS class to apply to the form element.', 'TEXT', FALSE, TRUE),
     ('prefix_icon','Icon to display on the left side of the input field, on the same line.','ICON',FALSE,TRUE),
     ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
     ('suffix','Short text to display after th input, on the same line. Useful to add units or a currency symbol to an input.','TEXT',FALSE,TRUE),
-    ('readonly','Set to true to prevent the user from modifying the value of the input field.','BOOL',FALSE,TRUE),
-    ('disabled','Makes the field non-editable, non-focusable, and not submitted with the form. Use readonly instead for simple non-editable fields.','BOOL',FALSE,TRUE),
+    ('readonly','Set to true to prevent the user from modifying the value of the input field.','BOOLEAN',FALSE,TRUE),
+    ('disabled','Makes the field non-editable, non-focusable, and not submitted with the form. Use readonly instead for simple non-editable fields.','BOOLEAN',FALSE,TRUE),
     ('id','A unique identifier for the input, which can then be used to select and manage the field with Javascript code. Usefull for advanced using as setting client side event listeners, interactive control of input field (disabled, visibility, read only, e.g.) and AJAX requests.','TEXT',FALSE,TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
@@ -466,14 +475,14 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
     ('type', 'The type of chart: "line", "area", "bar", "column", "pie", "scatter", "bubble", or "heatmap".', 'TEXT', TRUE, FALSE),
     ('time', 'Whether the x-axis represents time. If set to true, the x values will be parsed and formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
-    ('ymin', 'The minimal value for the y-axis.', 'NUMBER', TRUE, TRUE),
-    ('ymax', 'The maximum value for the y-axis.', 'NUMBER', TRUE, TRUE),
+    ('ymin', 'The minimal value for the y-axis.', 'REAL', TRUE, TRUE),
+    ('ymax', 'The maximum value for the y-axis.', 'REAL', TRUE, TRUE),
     ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
     ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
     ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
-    ('xticks', 'Number of ticks on the x axis.', 'NUMBER', TRUE, TRUE),
-    ('ystep', 'Step between ticks on the y axis.', 'NUMBER', TRUE, TRUE),
-    ('marker', 'Marker size', 'NUMBER', TRUE, TRUE),
+    ('xticks', 'Number of ticks on the x axis.', 'INTEGER', TRUE, TRUE),
+    ('ystep', 'Step between ticks on the y axis.', 'REAL', TRUE, TRUE),
+    ('marker', 'Marker size', 'REAL', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'COLOR', TRUE, TRUE),
     ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
@@ -482,10 +491,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('horizontal', 'Displays a bar chart with horizontal bars instead of vertical ones.', 'BOOLEAN', TRUE, TRUE),
     ('height', 'Height of the chart, in pixels. By default: 250', 'INTEGER', TRUE, TRUE),
     -- item level
-    ('x', 'The value of the point on the horizontal axis', 'NUMBER', FALSE, FALSE),
-    ('y', 'The value of the point on the vertical axis', 'NUMBER', FALSE, FALSE),
-    ('label', 'An alias for parameter "x"', 'NUMBER', FALSE, TRUE),
-    ('value', 'An alias for parameter "y"', 'NUMBER', FALSE, TRUE),
+    ('x', 'The value of the point on the horizontal axis', 'REAL', FALSE, FALSE),
+    ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
+    ('label', 'An alias for parameter "x"', 'REAL', FALSE, TRUE),
+    ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
@@ -591,6 +600,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('striped_columns', 'Whether to add zebra-striping to any table column.', 'BOOLEAN', TRUE, TRUE),
     ('hover', 'Whether to enable a hover state on table rows.', 'BOOLEAN', TRUE, TRUE),
     ('border', 'Whether to draw borders on all sides of the table and cells.', 'BOOLEAN', TRUE, TRUE),
+    ('overflow', 'Whether to to let "wide" tables overflow across the right border and enable browser-based horizontal scrolling.', 'BOOLEAN', TRUE, TRUE),
     ('small', 'Whether to use compact table.', 'BOOLEAN', TRUE, TRUE),
     ('description','Description of the table content and helps users with screen readers to find a table and understand what it’s.','TEXT',TRUE,TRUE),
     -- row level
@@ -764,12 +774,14 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('javascript', 'The URL of a Javascript file to load and execute on the page.', 'URL', TRUE, TRUE),
     ('rss', 'The URL of an RSS feed to display in the top navigation bar. You can use the rss component to generate the field.', 'URL', TRUE, TRUE),
     ('image', 'The URL of an image to display next to the page title.', 'URL', TRUE, TRUE),
+    ('social_image', 'The URL of the preview image that will appear in the Open Graph metadata when the page is shared on social media.', 'URL', TRUE, TRUE),
     ('icon', 'Name of an icon (from tabler-icons.io) to display next to the title in the navigation bar.', 'ICON', TRUE, TRUE),
     ('menu_item', 'Adds a menu item in the navigation bar at the top of the page. The menu item will have the specified name, and will link to as .sql file of the same name. A dropdown can be generated by passing a json object with a `title` and `submenu` properties.', 'TEXT', TRUE, TRUE),
+    ('fixed_top_menu', 'Fixes the top bar with menu at the top (the top bar remains visible when scrolling long pages).', 'BOOLEAN', TRUE, TRUE),
     ('search_target', 'When this is set, a search field will appear in the top navigation bar, and load the specified sql file with an URL parameter named "search" when the user searches something.', 'TEXT', TRUE, TRUE),
     ('search_value', 'This value will be placed in the search field when "search_target" is set. Using the "$search" query parameter value will mirror the value that the user has searched for.', 'TEXT', TRUE, TRUE),
     ('norobot', 'Forbids robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE),
-    ('font', 'Name of a font to display the text in. This has to be a valid font name from fonts.google.com.', 'TEXT', TRUE, TRUE),
+    ('font', 'Specifies the font to be used for displaying text, which can be a valid font name from fonts.google.com or the path to a local WOFF2 font file starting with a slash (e.g., "/fonts/MyLocalFont.woff2").', 'TEXT', TRUE, TRUE),
     ('font_size', 'Font size on the page, in pixels. Set to 18 by default.', 'INTEGER', TRUE, TRUE),
     ('language', 'The language of the page. This can be used by search engines and screen readers to determine in which language the page is written.', 'TEXT', TRUE, TRUE),
     ('refresh', 'Number of seconds after which the page should refresh. This can be useful to display dynamic content that updates automatically.', 'INTEGER', TRUE, TRUE),
@@ -796,31 +808,31 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "link": "/",
             "menu_item": [
                 {"title": "About", "submenu": [
-                    {"link": "/safety.sql", "title": "Security"},
-                    {"link": "/performance.sql", "title": "Performance"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License"},
-                    {"link": "/blog.sql", "title": "Articles"}
+                    {"link": "/safety.sql", "title": "Security", "icon": "lock"},
+                    {"link": "/performance.sql", "title": "Performance", "icon": "bolt"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License", "icon": "file-text"},
+                    {"link": "/blog.sql", "title": "Articles", "icon": "book"}
                 ]},
                 {"title": "Examples", "submenu": [
-                    {"link": "/examples/tabs.sql", "title": "Tabs"},
-                    {"link": "/examples/layouts.sql", "title": "Layouts"},
-                    {"link": "/examples/multistep-form", "title": "Forms"},
-                    {"link": "/examples/handle_picture_upload.sql", "title": "File uploads"},
-                    {"link": "/examples/hash_password.sql", "title": "Password protection"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos"}
+                    {"link": "/examples/tabs.sql", "title": "Tabs", "icon": "layout-navbar"},
+                    {"link": "/examples/layouts.sql", "title": "Layouts", "icon": "layout"},
+                    {"link": "/examples/multistep-form", "title": "Forms", "icon": "edit"},
+                    {"link": "/examples/handle_picture_upload.sql", "title": "File uploads", "icon": "upload"},
+                    {"link": "/examples/authentication/", "title": "Password protection", "icon": "password-user"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos", "icon": "code"}
                 ]},
                 {"title": "Community", "submenu": [
-                    {"link": "blog.sql", "title": "Blog"},
-                    {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Report a bug"},
-                    {"link": "//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
-                    {"link": "//github.com/lovasoa/sqlpage", "title": "Github"}
+                    {"link": "blog.sql", "title": "Blog", "icon": "book"},
+                    {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Report a bug", "icon": "bug"},
+                    {"link": "//github.com/lovasoa/sqlpage/discussions", "title": "Discussions", "icon": "message"},
+                    {"link": "//github.com/lovasoa/sqlpage", "title": "Github", "icon": "brand-github"}
                 ]},
                 {"title": "Documentation", "submenu": [
-                    {"link": "/your-first-sql-website", "title": "Getting started"},
-                    {"link": "/components.sql", "title": "All Components"},
-                    {"link": "/functions.sql", "title": "SQLPage Functions"},
-                    {"link": "/custom_components.sql", "title": "Custom Components"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration"}
+                    {"link": "/your-first-sql-website", "title": "Getting started", "icon": "book"},
+                    {"link": "/components.sql", "title": "All Components", "icon": "list-details"},
+                    {"link": "/functions.sql", "title": "SQLPage Functions", "icon": "math-function"},
+                    {"link": "/custom_components.sql", "title": "Custom Components", "icon": "puzzle"},
+                    {"link": "//github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
                 ]}
             ],
             "layout": "boxed",
@@ -888,6 +900,58 @@ FROM my_menu_items
 ```
 
 (check your database documentation for the exact syntax of the `json_group_array` function).
+
+Another case when dynamic menus are useful is when you want to show some
+menu items only in certain conditions.
+
+For instance, you could show an "Admin panel" menu item only to users with the "admin" role,
+a "Profile" menu item only to authenticated users,
+and a "Login" menu item only to unauthenticated users:
+
+```sql
+SET $role = (
+    SELECT role FROM users
+    INNER JOIN sessions ON users.id = sessions.user_id
+    WHERE sessions.session_id = sqlpage.cookie(''session_id'')
+); -- Read more about how to handle user sessions in the "authentication" component documentation
+
+SELECT 
+    ''shell'' AS component,
+    ''My authenticated website'' AS title,
+
+    -- Add an admin panel link if the user is an admin
+    CASE WHEN $role = ''admin'' THEN ''{"link": "admin.sql", "title": "Admin panel"}'' END AS menu_item,
+
+    -- Add a profile page if the user is authenticated
+    CASE WHEN $role IS NOT NULL THEN ''{"link": "profile.sql", "title": "My profile"}'' END AS menu_item,
+
+    -- Add a login link if the user is not authenticated
+    CASE WHEN $role IS NULL THEN ''login'' END AS menu_item
+;
+```
+
+More about how to handle user sessions in the [authentication component documentation](?component=authentication#component).
+
+### Menu with icons
+
+The "icon" attribute may be specified for items in the top menu and submenus to display an icon
+before the title (or instead). Similarly, the "image" attribute defines a file-based icon. For
+image-based icons, the "size" attribute may be specified at the top level of menu_item only to
+reduce the size of image-based icons. The following snippet provides an example, which is also
+available [here](examples/menu_icon.sql).
+
+```sql
+SELECT 
+    ''shell''             AS component,
+    ''SQLPage''           AS title,
+    ''database''          AS icon,
+    ''/''                 AS link,
+    TRUE                AS fixed_top_menu,
+    ''{"title":"About","icon": "settings","submenu":[{"link":"/safety.sql","title":"Security","icon": "logout"},{"link":"/performance.sql","title":"Performance"}]}'' AS menu_item,
+    ''{"title":"Examples","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg","submenu":[{"link":"/examples/tabs.sql","title":"Tabs","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg"},{"link":"/examples/layouts.sql","title":"Layouts"}]}'' AS menu_item,
+    ''{"title":"Examples","size":"sm","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg","submenu":[{"link":"/examples/tabs.sql","title":"Tabs","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg"},{"link":"/examples/layouts.sql","title":"Layouts"}]}'' AS menu_item,
+    ''Official [SQLPage](https://sql.ophir.dev) documentation'' as footer;
+```
 ', NULL),
     ('shell', '
 ### A page without a shell

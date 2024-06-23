@@ -264,7 +264,7 @@ INSERT INTO sqlpage_functions (
         "description_md"
     )
 VALUES (
-        'enviroment_variable',
+        'environment_variable',
         '0.11.0',
         'variable',
         'Returns the value of the given [environment variable](https://en.wikipedia.org/wiki/Environment_variable).
@@ -285,7 +285,7 @@ INSERT INTO sqlpage_function_parameters (
         "type"
     )
 VALUES (
-        'enviroment_variable',
+        'environment_variable',
         1,
         'name',
         'The name of the environment variable to read. Must be a literal string.',

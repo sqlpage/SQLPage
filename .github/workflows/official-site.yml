@@ -1,4 +1,4 @@
-name: 'deploy website'
+name: "deploy website"
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: get_gitsha
-        name: Make a commit for the official site 
+        name: Make a commit for the official site
         run: |
           cp -r examples/official-site /tmp/
           rm -rf * .[!.]*
@@ -31,9 +31,9 @@ jobs:
       - name: Push to dokku
         uses: dokku/github-action@master
         with:
-          git_remote_url: 'dokku@${{ secrets.DEPLOY_IP }}:sqlpage'
+          git_remote_url: "dokku@${{ secrets.DEPLOY_IP }}:sqlpage"
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
           ssh_host_key: ${{ secrets.SSH_HOST_KEY }}
-          git_push_flags: '--force'
-          branch: 'main'
+          git_push_flags: "--force"
+          branch: "main"
           ci_commit: ${{ steps.get_gitsha.outputs.gitsha }}

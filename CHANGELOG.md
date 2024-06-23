@@ -1,5 +1,42 @@
 # CHANGELOG.md
 
+## 0.24.0
+ - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
+  - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)
+ - map component
+   - automatically center the map on the contents when no top-level latitude and longitude properties are provided even when the map contains geojson data.
+   - allow using `FALSE as tile_source` to completely remove the base map. This makes the map component useful to display even non-geographical geometric data.
+ - Fix a bug that occured when no `database_url` was provided in the configuration file. SQLPage would generate an incorrect default SQLite database URL.
+ - Add a new `background_color` attribute to the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to set the background color of the card.
+ - new handlebars helper for [custom components](https://sql.ophir.dev/custom_components.sql): `{{app_config 'property'}}` to access the configuration object from the handlebars template.
+ - Prevent form validation and give a helpful error message when an user tries to submit a form with a file upload field that is above the maximum file size.
+   - ![file upload too large](https://github.com/lovasoa/SQLpage/assets/552629/1c684d33-49bd-4e49-9ee0-ed3f0d454ced)
+ - Fix a bug in [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file_as_data_url#function) where it would truncate the mime subtype of the file. This would cause the browser to refuse to display SVG files, for instance.
+ - Avoid vertical scrolling caused by the footer even when the page content is short.
+ - Add a new `compact` attribute to the [list](https://sql.ophir.dev/documentation.sql?component=list#component), allowing to display more items in a list without taking up too much space. Great for displaying long lists of items.
+   - ![compact list screenshot](https://github.com/lovasoa/SQLpage/assets/552629/41302807-c6e4-40a0-9486-bfd0ceae1537)
+ - Add property `narrow` to the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component to make the button narrower. Ideal for buttons with icons.
+   - ![icon buttons](https://github.com/lovasoa/SQLpage/assets/552629/7fcc049e-6012-40c1-a8ee-714ce70a8763)
+ - new `tooltip` property in the datagrid component.
+ - datagrids are now slightly more compact, with less padding and less space taken by each item.
+ - fix a bug in the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component where the icon would sometimes overflow the card's text content.
+ - new `image` property in the [button](https://sql.ophir.dev/documentation.sql?component=button#component) component to display a small image inside a button.
+ - In the `shell` component
+   - allow easily creating complex menus even in SQLite:
+      ```sql
+      select 'shell' as component, 'My Website' as title, '{"title":"About","submenu":[{"link":"/x.sql","title":"X"},{"link":"/y.sql","title":"Y"}]}' as menu_item;
+        ```
+   - allow easily creating optional menu items that are only displayed in some conditions:
+      ```sql
+      select 'shell' as component, 'My Website' as title, CASE WHEN $role = 'admin' THEN 'Admin' END as menu_item;
+    - Add the ability to use local Woff2 fonts in the [shell](https://sql.ophir.dev/documentation.sql?component=shell#component) component. This is useful to use custom fonts in your website, without depending on google fonts (and disclosing your users' IP addresses to google).
+    - Add a `fixed_top_menu` attribute to make the top menu sticky. This is useful to keep the menu visible even when the user scrolls down the page.
+ - Add a `wrap` attribute to the `list` component to wrap items on multiple lines when they are too long.
+ - New `max_pending_rows` [configuration option](https://sql.ophir.dev/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
+ - Update sqlite to v3.46: https://www.sqlite.org/releaselog/3_46_0.html
+ - Faster initial page load. SQLPage used to wait for the first component to be rendered before sending the shell to the client. We now send the shell immediately, and the first component as soon as it is ready. This can make the initial page load faster, especially when the first component requires a long computation on the database side.
+ - Include a default favicon when none is specified in the shell component. This fixes the `Unable to read file "favicon.ico"` error message that would appear in the logs by default. 
+
 ## 0.23.0 (2024-06-09)
 
  - fix a bug in the [csv](https://sql.ophir.dev/documentation.sql?component=csv#component) component. The `separator` parameter now works as expected. This facilitates creating excel-compatible CSVs in european countries where excel expects the separator to be `;` instead of `,`.

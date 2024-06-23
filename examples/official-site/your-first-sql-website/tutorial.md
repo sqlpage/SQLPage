@@ -112,8 +112,8 @@ For more information about the properties that can be set in sqlpage.json, see [
 ![screenshot for the full sql website folder organisation](full-website.png)
 
 
-Use dynamic SQL queries to let users interact with your database
-=================================================================
+Use parameterized SQL queries to let users interact with your database
+======================================================================
 
 ### Displaying a form
 
@@ -142,7 +142,7 @@ It uses a `WHERE` clause to make sure that the `INSERT` statement is only execut
 The `:Username` parameter is set to `NULL` when you initially load the page, and then SQLPage automatically sets it to the value 
 from the text field when the user submits the form.
 
-There are three types of parameters you can use in your SQL queries:
+There are two types of parameters you can use in your SQL queries:
  - `:ParameterName` is a [POST](https://en.wikipedia.org/wiki/POST_(HTTP)) parameter. It is set to the value of the field with the corresponding `name` in a form. If no form was submitted, it is set to `NULL`.
  - `$ParameterName` works the same as `:ParameterName`, but it can also be set through a [query parameter](https://en.wikipedia.org/wiki/Query_string) in the URL.
     If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `'1'` and `$y` will be set to the string `'2'`.

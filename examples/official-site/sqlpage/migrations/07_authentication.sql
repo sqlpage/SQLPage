@@ -54,32 +54,70 @@ VALUES (
 
 ### Usage with HTTP basic authentication
 
-The most basic usage of the authentication component is to let SQLPage handle the authentication through HTTP basic authentication.
-This is the simplest way to password-protect a page, but it is not very user-friendly, because the browser will show an unstyled popup asking for the username and password.
-The username and password entered by the user will be accessible in your SQL code using the
+The most basic usage of the authentication component is with the
 [`sqlpage.basic_auth_username()`](functions.sql?function=basic_auth_username#function) and
 [`sqlpage.basic_auth_password()`](functions.sql?function=basic_auth_password#function) functions.
-
-The [`sqlpage.hash_password`](functions.sql?function=hash_password#function) function can be used to 
-[generate a secure password hash](/examples/hash_password.sql) that you need to store in your database.
+The component will check if the provided password matches the stored [password hash](/examples/hash_password.sql),
+and if not, it will prompt the user to enter a password in a browser popup:
 
 ```sql
 SELECT ''authentication'' AS component,
-    ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using sqlpage.hash_password
+    ''$argon2i$v=19$m=8,t=1,p=1$YWFhYWFhYWE$oKBq5E8XFTHO2w'' AS password_hash, -- this is a hash of the password ''password''
     sqlpage.basic_auth_password() AS password; -- this is the password that the user entered in the browser popup
 ```
 
-You can [try the hash_password function out here](/examples/hash_password.sql).
+You can [generate a password hash using the `hash_password` function](/examples/hash_password.sql).
 
-### Usage with a login form
+If you want to have multiple users with different passwords,
+you could store them with their password hashes in the database,
+or just hardcode them use a `CASE` statement:
 
-The most basic usage of the authentication component is to simply check if the user has sent the correct password, and if not, redirect them to a login page: 
+```sql
+SELECT ''authentication'' AS component,
+    case sqlpage.basic_auth_username()
+        when ''admin''
+            then ''$argon2i$v=19$m=8,t=1,p=1$YWFhYWFhYWE$oKBq5E8XFTHO2w'' -- the password is ''password''
+        when ''user''
+            then ''$argon2i$v=19$m=8,t=1,p=1$YWFhYWFhYWE$qsrWdjgl96ooYw'' -- the password is ''user''
+    end AS password_hash, -- this is a hash of the password ''password''
+    sqlpage.basic_auth_password() AS password; -- this is the password that the user entered in the browser popup
+```
+
+Try this example online: [SQL Basic Auth](/examples/authentication/basic_auth.sql).
+
+### Advanced user session management
+
+*Basic auth* is the simplest way to password-protect a page,
+but it is not very flexible nor user-friendly,
+because the browser will show an unstyled popup asking for the username and password.
+
+For more advanced authentication, you can store user information and user sessions in your database.
+You can then use the [`form`](components.sql?component=form#component) component to create a custom login form.
+When the user submits the form, you check if the password is correct using the `authentication` component.
+You then store a unique string of numbers and letters (a session token) both in the user''s browser
+using the [`cookie`](components.sql?component=cookie#component) component and in your database.
+Then, in all the pages that require authentication, you check if the cookie is present and matches the session token in your database.
+
+You can check if the user has sent the correct password in a form, and if not, redirect them to a login page.
+
+Create a login form in a file called `login.sql`:
+
+```sql
+select ''form'' as component, ''Authentication'' as title, ''Log in'' as validate, ''create_session_token.sql'' as action;
+select ''Username'' as name, ''admin'' as placeholder;
+select ''Password'' as name, ''admin'' as placeholder, ''password'' as type;
+```
+
+And then, in `create_session_token.sql` :
 
 ```sql
 SELECT ''authentication'' AS component,
     ''login.sql'' AS link,
     ''$argon2id$v=19$m=16,t=2,p=1$TERTd0lIcUpraWFTcmRQYw$+bjtag7Xjb6p1dsuYOkngw'' AS password_hash, -- generated using sqlpage.hash_password
     :password AS password; -- this is the password that the user sent through our form
+
+-- The code after this point is only executed if the user has sent the correct password
+
 ```
 
 and in `login.sql` :
@@ -117,9 +155,12 @@ RETURNING
     id AS value;
 ```
 
-### Single sign-on with OpenID Connect
+### Single sign-on with OIDC (OpenID Connect)
 
-If you don''t want to manage your own user database, you can use OpenID Connect to authenticate users.
+If you don''t want to manage your own user database,
+you can use OpenID Connect and OAuth2 to authenticate users.
 This allows users to log in with their Google, Facebook, or internal company account.
-You will find an example of how to do this in the [Single sign-on with OpenID Connect example](https://github.com/lovasoa/SQLpage/tree/main/examples/single%20sign%20on%20with%20openid%20connect).
+
+You will find an example of how to do this in the
+[Single sign-on with OIDC](https://github.com/lovasoa/SQLpage/tree/main/examples/single%20sign%20on).
 ');

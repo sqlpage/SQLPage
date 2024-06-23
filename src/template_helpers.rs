@@ -8,6 +8,8 @@ use handlebars::{
 };
 use serde_json::Value as JsonValue;
 
+/// Simple static json helper
+type H0 = fn() -> JsonValue;
 /// Simple json to json helper
 type H = fn(&JsonValue) -> JsonValue;
 /// Simple json to json helper with error handling
@@ -41,6 +43,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
 
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
     register_helper(h, "static_path", StaticPathHelper(site_prefix.clone()));
+    register_helper(h, "app_config", AppConfigHelper(config.clone()));
 
     // icon helper: generate an image with the specified icon
     h.register_helper("icon_img", Box::new(IconImgHelper(site_prefix)));
@@ -148,9 +151,31 @@ impl CanHelp for StaticPathHelper {
             "sqlpage.css" => static_filename!("sqlpage.css"),
             "apexcharts.js" => static_filename!("apexcharts.js"),
             "tomselect.js" => static_filename!("tomselect.js"),
+            "favicon.svg" => static_filename!("favicon.svg"),
             other => return Err(format!("unknown static file: {other:?}")),
         };
         Ok(format!("{}{}", self.0, path).into())
+    }
+}
+
+/// Generate the full path to a builtin sqlpage asset. Struct Param is the site prefix
+struct AppConfigHelper(AppConfig);
+
+impl CanHelp for AppConfigHelper {
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        let static_file = match args {
+            [v] => v.value(),
+            _ => return Err("expected one argument".to_string()),
+        };
+        let name = static_file
+            .as_str()
+            .ok_or_else(|| format!("app_config: not a string: {static_file}"))?;
+        match name {
+            "max_uploaded_file_size" => Ok(JsonValue::Number(self.0.max_uploaded_file_size.into())),
+            "environment" => serde_json::to_value(self.0.environment).map_err(|e| e.to_string()),
+            "site_prefix" => Ok(self.0.site_prefix.clone().into()),
+            other => Err(format!("unknown app config property: {other:?}")),
+        }
     }
 }
 
@@ -331,6 +356,15 @@ fn sum_helper<'reg, 'rc>(
 
 trait CanHelp: Send + Sync + 'static {
     fn call(&self, v: &[PathAndJson]) -> Result<JsonValue, String>;
+}
+
+impl CanHelp for H0 {
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        match args {
+            [] => Ok(self()),
+            _ => Err("expected no arguments".to_string()),
+        }
+    }
 }
 
 impl CanHelp for H {

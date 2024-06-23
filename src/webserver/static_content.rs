@@ -49,3 +49,7 @@ pub fn css() -> Resource {
 pub fn icons() -> Resource {
     static_file_endpoint!("tabler-icons", "svg", "image/svg+xml")
 }
+
+pub fn favicon() -> Resource {
+    static_file_endpoint!("favicon", "svg", "image/svg+xml")
+}

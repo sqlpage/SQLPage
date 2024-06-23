@@ -15,7 +15,7 @@ impl Database {
         let database_url = &config.database_url;
         let mut connect_options: AnyConnectOptions = database_url
             .parse()
-            .with_context(|| format!("{database_url:?} is not a valid database URL"))?;
+            .with_context(|| format!("\"{database_url}\" is not a valid database URL. Please change the \"database_url\" option in the configuration file."))?;
         connect_options.log_statements(log::LevelFilter::Trace);
         connect_options.log_slow_statements(
             log::LevelFilter::Warn,

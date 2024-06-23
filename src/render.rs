@@ -1,10 +1,11 @@
 use crate::templates::SplitTemplate;
 use crate::webserver::http::LayoutContext;
+use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::http::{header, StatusCode};
-use actix_web::{HttpResponse, HttpResponseBuilder};
+use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{bail, format_err, Context as AnyhowContext};
 use async_recursion::async_recursion;
 use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
@@ -202,18 +203,21 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
         }
         log::debug!("Authentication failed");
         // The authentication failed
-        if let Some(link) = get_object_str(&data, "link") {
-            self.response.status(StatusCode::FOUND);
-            self.response.insert_header((header::LOCATION, link));
-            self.has_status = true;
-        } else {
-            self.response.status(StatusCode::UNAUTHORIZED);
+        let http_response: HttpResponse = if let Some(link) = get_object_str(&data, "link") {
             self.response
-                .insert_header((header::WWW_AUTHENTICATE, "Basic realm=\"Auth required\""));
-            self.has_status = true;
-        }
-        // Set an empty response body
-        let http_response = self.response.body(());
+                .status(StatusCode::FOUND)
+                .insert_header((header::LOCATION, link))
+                .body(
+                    "Sorry, but you are not authorized to access this page. \
+                    Redirecting to the login page...",
+                )
+        } else {
+            ErrorWithStatus {
+                status: StatusCode::UNAUTHORIZED,
+            }
+            .error_response()
+        };
+        self.has_status = true;
         Ok(PageContext::Close(http_response))
     }
 
