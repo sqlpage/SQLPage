@@ -151,6 +151,7 @@ impl CanHelp for StaticPathHelper {
             "sqlpage.css" => static_filename!("sqlpage.css"),
             "apexcharts.js" => static_filename!("apexcharts.js"),
             "tomselect.js" => static_filename!("tomselect.js"),
+            "favicon.svg" => static_filename!("favicon.svg"),
             other => return Err(format!("unknown static file: {other:?}")),
         };
         Ok(format!("{}{}", self.0, path).into())

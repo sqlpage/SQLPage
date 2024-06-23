@@ -3,9 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <title>{{default title "SQLPage"}}</title>
-    {{#if favicon}}
-        <link rel="icon" href="{{favicon}}">
-    {{/if}}
+    <link rel="icon" href="{{#if favicon}}{{favicon}}{{else}}{{static_path 'favicon.svg'}}{{/if}}">
     {{#if manifest}}
         <link rel="manifest" href="{{manifest}}">
     {{/if}}

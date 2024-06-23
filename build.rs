@@ -20,6 +20,7 @@ async fn main() {
         spawn(download_deps(c.clone(), "tabler-icons.svg")),
         spawn(download_deps(c.clone(), "apexcharts.js")),
         spawn(download_deps(c.clone(), "tomselect.js")),
+        spawn(download_deps(c.clone(), "favicon.svg")),
     ] {
         h.await.unwrap();
     }

@@ -525,6 +525,7 @@ pub fn create_app(
                 .service(static_content::tomselect_js())
                 .service(static_content::css())
                 .service(static_content::icons())
+                .service(static_content::favicon())
                 .default_service(fn_service(main_handler)),
         )
         // when receiving a request outside of the prefix, redirect to the prefix
