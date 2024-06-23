@@ -1,5 +1,6 @@
 use super::csv_import::{extract_csv_copy_statement, CsvImport};
 use super::sqlpage_functions::func_call_to_param;
+use super::sqlpage_functions::functions::SqlPageFunctionName;
 use super::syntax_tree::StmtParam;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::{AppState, Database};
@@ -17,6 +18,7 @@ use sqlparser::tokenizer::Tokenizer;
 use sqlx::any::AnyKind;
 use std::fmt::Write;
 use std::ops::ControlFlow;
+use std::str::FromStr;
 
 #[derive(Default)]
 pub struct ParsedSqlFile {
@@ -184,20 +186,25 @@ fn map_param(mut name: String) -> StmtParam {
     }
 }
 
-fn extract_toplevel_funs(
-    stmt: &mut Statement,
-    params: &[StmtParam],
-) -> Option<Vec<(String, SimpleSelectValue)>> {
+#[derive(Debug, PartialEq)]
+pub struct DelayedFunctionCall {
+    pub function: SqlPageFunctionName,
+    pub argument_col_names: Vec<String>,
+    pub target_col_name: String,
+}
+
+fn extract_toplevel_functions(stmt: &mut Statement) -> anyhow::Result<Vec<DelayedFunctionCall>> {
+    let mut function_param_select_items: Vec<DelayedFunctionCall> = Vec::new();
     let set_expr = match stmt {
         Statement::Query(q) => q.body.as_mut(),
-        _ => return None,
+        _ => return Ok(function_param_select_items),
     };
     let select_items = match set_expr {
         sqlparser::ast::SetExpr::Select(s) => &mut s.projection,
-        _ => return None,
+        _ => return Ok(function_param_select_items),
     };
-    let mut function_param_select_items: Vec<SelectItem> = Vec::new();
-    for select_item in select_items {
+    let mut select_items_to_add = Vec::new();
+    for select_item in select_items.iter_mut() {
         match select_item {
             SelectItem::ExprWithAlias {
                 expr:
@@ -212,19 +219,49 @@ fn extract_toplevel_funs(
                         ..
                     }),
                 alias,
-            } if is_sqlpage_func(func_name_parts) => {
-                for arg in args {
-                    if let FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) = arg {
-                        let alias = todo!();
-                        function_param_select_items.push(SelectItem::ExprWithAlias { expr, alias })
-                    } else {
-                        return None;
+            } => {
+                if let Some(func_name) = extract_sqlpage_function_name(func_name_parts) {
+                    func_name_parts.clear(); // mark the function for deletion
+                    let mut argument_col_names = Vec::with_capacity(args.len());
+                    for (arg_idx, arg) in args.iter_mut().enumerate() {
+                        if let FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) = arg {
+                            let func_idx = function_param_select_items.len();
+                            let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
+                            argument_col_names.push(argument_col_name.clone());
+                            select_items_to_add.push(SelectItem::ExprWithAlias {
+                                expr: std::mem::replace(expr, Expr::Value(Value::Null)),
+                                alias: Ident::new(argument_col_name),
+                            });
+                        } else {
+                            anyhow::bail!(
+                                "Named function arguments are not supported by SQLPage functions."
+                            );
+                        }
                     }
+                    function_param_select_items.push(DelayedFunctionCall {
+                        function: func_name,
+                        argument_col_names,
+                        target_col_name: alias.value.clone(),
+                    });
                 }
             }
             _ => continue,
         }
     }
+    // Now remove the function calls from the select items
+    select_items.retain(|item| {
+        !matches!(item, SelectItem::ExprWithAlias {
+            expr:
+                Expr::Function(Function {
+                    name: ObjectName(func_name_parts),
+                    ..
+                }),
+            ..
+        } if func_name_parts.is_empty())
+    });
+    // And add the new select items
+    select_items.extend(select_items_to_add);
+    Ok(function_param_select_items)
 }
 
 fn extract_static_simple_select(
@@ -593,12 +630,26 @@ impl VisitorMut for ParameterExtractor {
     }
 }
 
+const SQLPAGE_FUNCTION_NAMESPACE: &str = "sqlpage";
+
 fn is_sqlpage_func(func_name_parts: &[Ident]) -> bool {
     if let [Ident { value, .. }, Ident { .. }] = func_name_parts {
-        value == "sqlpage"
+        value == SQLPAGE_FUNCTION_NAMESPACE
     } else {
         false
     }
+}
+
+fn extract_sqlpage_function_name(func_name_parts: &[Ident]) -> Option<SqlPageFunctionName> {
+    if let [Ident {
+        value: namespace, ..
+    }, Ident { value, .. }] = func_name_parts
+    {
+        if namespace == SQLPAGE_FUNCTION_NAMESPACE {
+            return SqlPageFunctionName::from_str(value).ok();
+        }
+    }
+    None
 }
 
 fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
@@ -677,6 +728,37 @@ mod test {
         (&MySqlDialect {}, AnyKind::MySql),
         (&SQLiteDialect {}, AnyKind::Sqlite),
     ];
+
+    #[test]
+    fn test_extract_top_level_functions() {
+        let mut ast = parse_stmt(
+            "select sqlpage.fetch($x) as x, sqlpage.persist_uploaded_file('a', 'b') as y from t",
+            &PostgreSqlDialect {},
+        );
+        let functions = extract_toplevel_functions(&mut ast).unwrap();
+        assert_eq!(
+            ast.to_string(),
+            "SELECT $x AS _sqlpage_f0_a0, 'a' AS _sqlpage_f1_a0, 'b' AS _sqlpage_f1_a1 FROM t"
+        );
+        assert_eq!(
+            functions,
+            vec![
+                DelayedFunctionCall {
+                    function: SqlPageFunctionName::fetch,
+                    argument_col_names: vec!["_sqlpage_f0_a0".to_string()],
+                    target_col_name: "x".to_string()
+                },
+                DelayedFunctionCall {
+                    function: SqlPageFunctionName::persist_uploaded_file,
+                    argument_col_names: vec![
+                        "_sqlpage_f1_a0".to_string(),
+                        "_sqlpage_f1_a1".to_string()
+                    ],
+                    target_col_name: "y".to_string()
+                }
+            ]
+        );
+    }
 
     #[test]
     fn test_sqlpage_function_with_argument() {
