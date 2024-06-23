@@ -1,12 +1,4 @@
-select 'shell' as component,
-    'SQLPage safety' as title,
-    'shield-check' as icon,
-    '/' as link,
-    'en-US' as lang,
-    'SQLPage security guarantees' as description,
-    'documentation' as menu_item,
-    20 as font_size,
-    'Poppins' as font;
+select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component,
     '
