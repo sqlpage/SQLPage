@@ -1,0 +1,7 @@
+<div class="sqlpage-spinner-progress">
+  <progress id="sqlpage-loading-{{default stage "progress"}}" value="{{percent}}" max="100"></progress>
+  {{#if stage}}
+  <br/>
+  <label for="sqlpage-loading-{{stage}}">{{stage}}</label>
+  {{/if}}
+</div>
