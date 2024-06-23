@@ -201,8 +201,8 @@ See https://github.com/tabler/tabler/issues/2404
 
 /* spinner container */
 div.sqlpage-spinner-start {
-  /* TODO: center this */
-  position: absolute;
+  position: fixed;
+  text-align: center;
   left: 50vw;
   top: 50vh;
   margin-top: -5.5em;
