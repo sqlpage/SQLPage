@@ -122,10 +122,10 @@
                                 {{~this.title~}}
                             </a>
                             {{~#if this.submenu~}}
-                                <div class="dropdown-menu dropdown-menu-end {{this.class}}" data-bs-popper="static">
+                                <div class="dropdown-menu dropdown-menu-end{{#if this.class}} {{this.class}}{{/if}}" data-bs-popper="static">
                                     {{~#each this.submenu~}}
                                         {{#if (or (or this.title this.icon) this.image)}}
-                                            <a class="dropdown-item{{#if this.active}} active{{/if}} {{../this.class}}" href="{{this.link}}" {{#if this.target}}target="{{this.target}}"{{/if}}>
+                                            <a class="dropdown-item{{#if this.active}} active{{/if}}{{#if ../this.class}} {{../this.class}}{{/if}}" href="{{this.link}}" {{#if this.target}}target="{{this.target}}"{{/if}}>
                                                 {{~#if this.image~}}
                                                     <span {{~#if this.title}} class="me-1"{{/if}}>
                                                         {{~#if (eq ../this.size 'sm')}}
