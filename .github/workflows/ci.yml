@@ -51,6 +51,7 @@ jobs:
         run: cargo test
         env:
           DATABASE_URL: ${{ matrix.database }}://root:Password123!@127.0.0.1/sqlpage
+          RUST_BACKTRACE: 1
 
   windows_test:
     runs-on: windows-latest
@@ -59,6 +60,8 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
       - run: cargo test
+        env:
+          RUST_BACKTRACE: 1
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with: 
