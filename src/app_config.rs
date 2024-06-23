@@ -93,6 +93,10 @@ pub struct AppConfig {
     /// Maximum number of messages that can be stored in memory before sending them to the client.
     #[serde(default = "default_max_pending_rows")]
     pub max_pending_rows: usize,
+
+    /// Whether to compress the http response body when the client supports it.
+    #[serde(default = "default_compress_responses")]
+    pub compress_responses: bool,
 }
 
 impl AppConfig {
@@ -300,6 +304,10 @@ fn default_https_acme_directory_url() -> String {
 
 fn default_max_pending_rows() -> usize {
     256
+}
+
+fn default_compress_responses() -> bool {
+    true
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]

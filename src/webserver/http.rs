@@ -538,7 +538,10 @@ pub fn create_app(
                     "script-src 'self' https://cdn.jsdelivr.net",
                 )),
         )
-        .wrap(middleware::Compress::default())
+        .wrap(middleware::Condition::new(
+            app_state.config.compress_responses,
+            middleware::Compress::default(),
+        ))
         .wrap(middleware::NormalizePath::new(
             middleware::TrailingSlash::MergeOnly,
         ))
