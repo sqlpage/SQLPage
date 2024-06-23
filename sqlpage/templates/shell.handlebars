@@ -110,10 +110,10 @@
                                             {{~this.title~}}
                                         </a>
                                         {{~#if this.submenu~}}
-                                            <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
+                                            <div class="dropdown-menu dropdown-menu-end {{#if this.class}} {{this.class}}{{/if}}" data-bs-popper="static">
                                                 {{~#each this.submenu~}}
                                                     {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0) (gt (len this.image) 0))}}
-                                                        <a class="dropdown-item" href="{{this.link}}">
+                                                        <a class="dropdown-item {{#if ../this.class}} {{../this.class}}{{/if}}" href="{{this.link}}">
                                                             {{~#if this.image~}}
                                                                 <span {{~#if this.title}} class="me-1"{{/if}}>
                                                                     {{~#if (eq ../this.size 'sm')}}
