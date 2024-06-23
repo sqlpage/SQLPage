@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#e7f6f8" stroke-width="75">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" fill="none" stroke="#e7f6f8" stroke-linecap="round" stroke-linejoin="round" stroke-width="75">
   <defs>
-   <path id="t" d="M170.7 263.7a341.3 122.4 0 1 0 682.6 0 341.3 122.4 0 1 0-682.6 0 M170.7 263.7v244.8a341.3 122.4 0 0 0 682.6 0V263.7M170.7 508.5v244.7a341.3 122.4 0 0 0 682.6 0V508.5"/>
-    <filter id="m" width="200%" height="200%" x="-50%" y="-50%">
+    <filter id="b" width="200%" height="200%" x="-50%" y="-50%">
       <feGaussianBlur stdDeviation="45"/>
     </filter>
+    <path id="a" d="M171 264a341 122 0 1 0 682 0 341 122 0 1 0-682 0m0 0v245a341 122 0 0 0 682 0V264M171 509v244a341 122 0 0 0 682 0V509"/>
   </defs>
-  <rect width="1024" height="1024" fill="#0f3953" stroke="none" ry="64"/>
-  <use href="#t"/>
-  <use href="#t" filter="url(#m)"/>
+  <rect width="100%" height="100%" fill="#0f3953" stroke="none" ry="64"/>
+  <use href="#a"/>
+  <use filter="url(#b)" href="#a"/>
 </svg>
