@@ -37,9 +37,15 @@
       - ![a fixed top menu](https://github.com/lovasoa/SQLpage/assets/552629/65fe3a41-faee-45e6-9dfc-d81eca043f45)
  - Add a `wrap` attribute to the `list` component to wrap items on multiple lines when they are too long.
  - New `max_pending_rows` [configuration option](https://sql.ophir.dev/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
+ - New `compress_responses` configuration option. Compression is still on by default, but can now be disabled to allow starting sending the page sooner. It's sometimes better to start displaying the shell immediateley and render components as soon as they are ready, even if that means transmitting more data over the wire.
  - Update sqlite to v3.46: https://www.sqlite.org/releaselog/3_46_0.html
+   -  major upgrades to PRAGMA optimize, making it smarter and more efficient on large databases
+   -  enhancements to [date and time functions](https://www.sqlite.org/lang_datefunc.html), including easy week-of-year calculations
+   -  support for underscores in numeric literals. Write `1_234_567` instead of `1234567` 
+   -  new [`json_pretty()`](https://www.sqlite.org/json1.html) function 
  - Faster initial page load. SQLPage used to wait for the first component to be rendered before sending the shell to the client. We now send the shell immediately, and the first component as soon as it is ready. This can make the initial page load faster, especially when the first component requires a long computation on the database side.
- - Include a default favicon when none is specified in the shell component. This fixes the `Unable to read file "favicon.ico"` error message that would appear in the logs by default. 
+ - Include a default favicon when none is specified in the shell component. This fixes the `Unable to read file "favicon.ico"` error message that would appear in the logs by default.
+   - ![favicon](https://github.com/lovasoa/SQLpage/assets/552629/cf48e271-2fe4-42da-b825-893cff3f95fb)
 
 ## 0.23.0 (2024-06-09)
 
