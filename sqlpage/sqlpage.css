@@ -74,27 +74,6 @@ div.sqlpage-spinner-start:not(:has(+ .sqlpage-spinner-stop)) {
   display: none;
 }
 
-/* default indeterminate loader */
-.sqlpage-loader {
-  width: 48px;
-  height: 48px;
-  border: 5px solid var(--tblr-body-color);
-  border-bottom-color: transparent;
-  border-radius: 50%;
-  display: inline-block;
-  box-sizing: border-box;
-  animation: sqlpage-loader-rotation 1s linear infinite;
-}
-
-@keyframes sqlpage-loader-rotation {
-  0% {
-      transform: rotate(0deg);
-  }
-  100% {
-      transform: rotate(360deg);
-  }
-}
-
 /* progress indicator container */
 div.sqlpage-spinner-progress {
   margin: 1em 0 1em;

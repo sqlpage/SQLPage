@@ -1,4 +1,6 @@
-SELECT 'spinner-start' AS component;
+SELECT 'spinner-start' AS component,
+  -- default is "spinner-border"
+  "spinner-grow text-red" AS spinner;
 SELECT 'spinner-progress' AS component,
   '0' AS percent,
   'Sleeping 1 second' AS stage;
