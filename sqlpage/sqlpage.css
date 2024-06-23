@@ -54,8 +54,8 @@ td > p {
 
 /* spinner container */
 div.sqlpage-spinner-start {
-  /* TODO: center this */
-  position: absolute;
+  position: fixed;
+  text-align: center;
   left: 50vw;
   top: 50vh;
   margin-top: -5.5em;

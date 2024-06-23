@@ -1,17 +1,30 @@
 SELECT 'spinner-start' AS component;
 SELECT 'spinner-progress' AS component,
   '0' AS percent,
-  'Sleeping 3 seconds' AS stage; 
-SELECT sqlpage.exec('sleep', '3');
+  'Sleeping 1 second' AS stage;
+SELECT sqlpage.exec('sleep', '1');
 
 SELECT 'spinner-progress' AS component,
-  '30' AS percent,
-  'Sleeping 5 seconds' AS stage; 
-SELECT sqlpage.exec('sleep', '5');
+  '20' AS percent,
+  'Sleeping 1 more second' AS stage;
+SELECT sqlpage.exec('sleep', '1');
 
 /* stage property is optional */
 SELECT 'spinner-progress' AS component,
-  '80' AS percent;
+  '40' AS percent;
 SELECT sqlpage.exec('sleep', '1');
 
+SELECT 'spinner-progress' AS component,
+  '60' AS percent,
+  'Sleeping 2 seconds' AS stage;
+SELECT sqlpage.exec('sleep', '2');
+
+SELECT 'spinner-progress' AS component,
+  '100' AS percent;
+
 SELECT 'spinner-stop' AS component;
+
+SELECT 'text' AS component,
+  'It works!' AS title,
+  TRUE AS center,
+  'Page is loaded.' AS contents;
