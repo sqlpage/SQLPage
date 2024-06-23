@@ -8,6 +8,7 @@
    - allow using `FALSE as tile_source` to completely remove the base map. This makes the map component useful to display even non-geographical geometric data.
  - Fix a bug that occured when no `database_url` was provided in the configuration file. SQLPage would generate an incorrect default SQLite database URL.
  - Add a new `background_color` attribute to the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to set the background color of the card.
+   - ![cards with color backgrounds](https://github.com/lovasoa/SQLpage/assets/552629/d925d77c-e1f6-490f-8fb4-cdcc4418233f) 
  - new handlebars helper for [custom components](https://sql.ophir.dev/custom_components.sql): `{{app_config 'property'}}` to access the configuration object from the handlebars template.
  - Prevent form validation and give a helpful error message when an user tries to submit a form with a file upload field that is above the maximum file size.
    - ![file upload too large](https://github.com/lovasoa/SQLpage/assets/552629/1c684d33-49bd-4e49-9ee0-ed3f0d454ced)
