@@ -51,3 +51,66 @@ td > p {
   --tblr-datagrid-padding: 1.25rem;
   --tblr-datagrid-item-width: 12rem;
 }
+
+/* spinner container */
+div.sqlpage-spinner-start {
+  /* TODO: center this */
+  position: absolute;
+  left: 50vw;
+  top: 50vh;
+  margin-top: -5.5em;
+  margin-left: -87.5px;
+  padding-bottom: 2em;
+  height: 9em;
+  width: 175px;
+}
+div.sqlpage-spinner-start:not(:has(+ .sqlpage-spinner-stop)) {
+  /* only display if not followed by sqlpage-spinner-stop */
+  display: block;
+}
+.sqlpage-spinner-start:not(:last-child) {
+  /* firefox doesn't support :has
+     so hide the spinner if is no longer the last element */
+  display: none;
+}
+
+/* default indeterminate loader */
+.sqlpage-loader {
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--tblr-body-color);
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: sqlpage-loader-rotation 1s linear infinite;
+}
+
+@keyframes sqlpage-loader-rotation {
+  0% {
+      transform: rotate(0deg);
+  }
+  100% {
+      transform: rotate(360deg);
+  }
+}
+
+/* progress indicator container */
+div.sqlpage-spinner-progress {
+  margin: 1em 0 1em;
+}
+div.sqlpage-spinner-progress:not(:has(+ .sqlpage-spinner-progress)) {
+  /* only display if not followed by progress update */
+  display: block;
+}
+.sqlpage-spinner-progress:not(:last-child) {
+  /* firefox doesn't support :has
+     so hide the spinner if is no longer the last element */
+  display: none;
+}
+.sqlpage-spinner-progress label {
+  text-align:left;
+}
+.sqlpage-spinner-progress label:after {
+  content: "...";
+}
