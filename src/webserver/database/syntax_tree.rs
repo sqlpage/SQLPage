@@ -109,7 +109,16 @@ impl SqlPageFunctionCall {
         for param in &self.arguments {
             params.push(Box::pin(extract_req_param(param, request, db_connection)).await?);
         }
-        self.function.evaluate(request, db_connection, params).await
+        log::trace!("Starting function call to {self}");
+        let result = self
+            .function
+            .evaluate(request, db_connection, params)
+            .await?;
+        log::trace!(
+            "Function call to {self} returned: {}",
+            result.as_deref().unwrap_or("NULL")
+        );
+        Ok(result)
     }
 }
 
