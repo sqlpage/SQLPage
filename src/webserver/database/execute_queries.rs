@@ -278,7 +278,7 @@ async fn apply_single_delayed_function(
     row: &mut serde_json::Map<String, serde_json::Value>,
 ) -> anyhow::Result<()> {
     let mut params = Vec::new();
-    for arg in f.argument_col_names.iter() {
+    for arg in &f.argument_col_names {
         let Some(arg_value) = row.remove(arg) else {
             anyhow::bail!("The column {arg} is missing in the result set, but it is required by the {} function.", f.function);
         };
@@ -287,8 +287,7 @@ async fn apply_single_delayed_function(
     let result_str = f.function.evaluate(request, db_connection, params).await?;
     let result_json = result_str
         .map(Cow::into_owned)
-        .map(serde_json::Value::String)
-        .unwrap_or(serde_json::Value::Null);
+        .map_or(serde_json::Value::Null, serde_json::Value::String);
     row.insert(f.target_col_name.clone(), result_json);
     Ok(())
 }

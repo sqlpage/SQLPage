@@ -19,7 +19,10 @@ use sqlparser::ast::FunctionArg;
 use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::{execute_queries::DbConn, sql::function_args_to_stmt_params, sqlpage_functions::functions::SqlPageFunctionName};
+use super::{
+    execute_queries::DbConn, sql::function_args_to_stmt_params,
+    sqlpage_functions::functions::SqlPageFunctionName,
+};
 use anyhow::Context as _;
 
 /// Represents a parameter to a SQL statement.
