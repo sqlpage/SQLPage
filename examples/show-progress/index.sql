@@ -1,9 +1,8 @@
-SELECT 'shell' AS component,
-  'dark' AS theme;
+SELECT 'shell' AS component, 'dark' AS theme;
 
 SELECT 'loader-start' AS component,
-  -- default is "spinner-border"
-  "spinner-grow text-red" AS spinner;
+  -- pick from the tabler spinners: https://tabler.io/docs/components/spinners
+  "spinner-border spinner-border-sm text-red" AS spinner;
 
 SELECT 'progress' AS component,
   'sm' AS size,
@@ -49,4 +48,4 @@ SELECT 'button' AS component;
 SELECT 'Go' AS title, '/go.sql' AS link;
 
 -- can use progress on it's own
-SELECT 'progress' AS component, 'Waiting for user' AS stage;
+SELECT 'progress' AS component, 'sm' AS size, 'Waiting for user' AS stage;
