@@ -611,7 +611,7 @@ impl VisitorMut for ParameterExtractor {
                 ..
             }) if is_sqlpage_func(func_name_parts) => {
                 let func_name = sqlpage_func_name(func_name_parts);
-                log::debug!("Handling builtin function: {func_name}");
+                log::trace!("Handling builtin function: {func_name}");
                 let arguments = std::mem::take(args);
                 *value = self.handle_builtin_function(func_name, arguments);
             }
