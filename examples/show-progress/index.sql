@@ -45,5 +45,8 @@ SELECT 'text' AS component,
   TRUE AS center,
   'Page is loaded.' AS contents;
 
+SELECT 'button' AS component;
+SELECT 'Go' AS title, '/go.sql' AS link;
+
 -- can use progress on it's own
 SELECT 'progress' AS component, 'Waiting for user' AS stage;
