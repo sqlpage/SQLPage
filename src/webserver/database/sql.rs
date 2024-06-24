@@ -1,6 +1,6 @@
 use super::csv_import::{extract_csv_copy_statement, CsvImport};
-use super::sqlpage_functions::func_call_to_param;
 use super::sqlpage_functions::functions::SqlPageFunctionName;
+use super::sqlpage_functions::{are_params_extractable, func_call_to_param};
 use super::syntax_tree::StmtParam;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::{AppState, Database};
@@ -484,6 +484,28 @@ pub(super) fn function_arg_to_stmt_param(arg: &mut FunctionArg) -> Option<StmtPa
     function_arg_expr(arg).and_then(expr_to_stmt_param)
 }
 
+pub(super) fn function_args_to_stmt_params(
+    arguments: &mut [FunctionArg],
+) -> anyhow::Result<Vec<StmtParam>> {
+    arguments
+        .iter_mut()
+        .map(|arg| {
+            function_arg_to_stmt_param(arg)
+                .ok_or_else(|| anyhow::anyhow!("Passing \"{arg}\" as a function argument is not supported.\n\n\
+                    The only supported sqlpage function argument types are : \n\
+                      - variables (such as $my_variable), \n\
+                      - other sqlpage function calls (such as sqlpage.cookie('my_cookie')), \n\
+                      - literal strings (such as 'my_string'), \n\
+                      - concatenations of the above (such as CONCAT(x, y)).\n\n\
+                    Arbitrary SQL expressions as function arguments are not supported.\n\
+                    Try executing the SQL expression in a separate SET expression, then passing it to the function:\n\n\
+                    SET $my_parameter = {arg}; \n\
+                    SELECT sqlpage.my_function($my_parameter);\n\n\
+                    "))
+        })
+        .collect::<anyhow::Result<Vec<_>>>()
+}
+
 fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
     match arg {
         Expr::Value(Value::Placeholder(placeholder)) => {
@@ -609,7 +631,7 @@ impl VisitorMut for ParameterExtractor {
                 null_treatment: None,
                 over: None,
                 ..
-            }) if is_sqlpage_func(func_name_parts) => {
+            }) if is_sqlpage_func(func_name_parts) && are_params_extractable(args) => {
                 let func_name = sqlpage_func_name(func_name_parts);
                 log::trace!("Handling builtin function: {func_name}");
                 let arguments = std::mem::take(args);

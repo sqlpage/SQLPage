@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
  - Allow passing data from the database to sqlpage functions. This fixes most errors like: `Arbitrary SQL expressions as function arguments are not supported.`.
+ - Better error messages in the dynamic component when properties are missing.
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
