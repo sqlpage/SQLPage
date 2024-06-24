@@ -1,12 +1,15 @@
 use anyhow::{anyhow, Context};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
+use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
-use super::sql::{ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams};
+use super::sql::{
+    DelayedFunctionCall, ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams,
+};
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
 use crate::webserver::database::sql_to_json::row_to_string;
@@ -55,7 +58,9 @@ pub fn stream_query_results_with_conn<'a>(
                     let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
-                        for i in parse_dynamic_rows(parse_single_sql_result(&stmt.query, elem)) {
+                        let mut query_result = parse_single_sql_result(&stmt.query, elem);
+                        apply_delayed_functions(&stmt.delayed_functions, &mut query_result);
+                        for i in parse_dynamic_rows(query_result) {
                             yield i;
                         }
                         if is_err {
@@ -244,6 +249,25 @@ async fn bind_parameters<'a, 'b>(
         }
     }
     Ok(StatementWithParams { sql, arguments })
+}
+
+fn apply_delayed_functions(delayed_functions: &[DelayedFunctionCall], item: &mut DbItem) {
+    if let DbItem::Row(serde_json::Value::Object(ref mut results)) = item {
+        for f in delayed_functions {
+            let res = apply_single_delayed_function(f, results);
+            if let Err(e) = res {
+                *item = DbItem::Error(e);
+                return;
+            }
+        }
+    }
+}
+
+fn apply_single_delayed_function(
+    f: &DelayedFunctionCall,
+    row: &mut serde_json::Map<String, serde_json::Value>,
+) -> anyhow::Result<()> {
+    todo!("apply function {f:?}")
 }
 
 pub struct StatementWithParams<'a> {

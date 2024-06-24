@@ -53,10 +53,18 @@ impl AsyncFromStrWithState for ParsedSqlFile {
     }
 }
 
+/// A single SQL statement that has been parsed from a SQL file.
 #[derive(Debug, PartialEq)]
 pub(super) struct StmtWithParams {
+    /// The SQL query with placeholders for parameters.
     pub query: String,
+    /// Parameters that should be bound to the query.
+    /// They can contain functions that will be called before the query is executed,
+    /// the result of which will be bound to the query.
     pub params: Vec<StmtParam>,
+    /// Functions that are called on the result set after the query has been executed,
+    /// and which can be passed the result of the query as an argument.
+    pub delayed_functions: Vec<DelayedFunctionCall>,
 }
 
 #[derive(Debug)]
@@ -105,11 +113,16 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     while parser.consume_token(&SemiColon) {
         semicolon = true;
     }
+    let delayed_functions = extract_toplevel_functions(&mut stmt);
     let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
     if let Some((variable, query)) = extract_set_variable(&mut stmt) {
         return Some(ParsedStatement::SetVariable {
             variable,
-            value: StmtWithParams { query, params },
+            value: StmtWithParams {
+                query,
+                params,
+                delayed_functions: Vec::new(),
+            },
         });
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
@@ -127,6 +140,7 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     Some(ParsedStatement::StmtWithParams(StmtWithParams {
         query,
         params,
+        delayed_functions,
     }))
 }
 
@@ -193,15 +207,19 @@ pub struct DelayedFunctionCall {
     pub target_col_name: String,
 }
 
-fn extract_toplevel_functions(stmt: &mut Statement) -> anyhow::Result<Vec<DelayedFunctionCall>> {
-    let mut function_param_select_items: Vec<DelayedFunctionCall> = Vec::new();
+/// The execution of top-level functions is delayed until after the query has been executed.
+/// For instance, `SELECT sqlpage.fetch(x) FROM t` will be executed as `SELECT x as _sqlpage_f0_a0 FROM t`
+/// and the `sqlpage.fetch` function will be called with the value of `_sqlpage_f0_a0` after the query has been executed,
+/// on each row of the result set.
+fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> {
+    let mut delayed_function_calls: Vec<DelayedFunctionCall> = Vec::new();
     let set_expr = match stmt {
         Statement::Query(q) => q.body.as_mut(),
-        _ => return Ok(function_param_select_items),
+        _ => return delayed_function_calls,
     };
     let select_items = match set_expr {
         sqlparser::ast::SetExpr::Select(s) => &mut s.projection,
-        _ => return Ok(function_param_select_items),
+        _ => return delayed_function_calls,
     };
     let mut select_items_to_add = Vec::new();
     for select_item in select_items.iter_mut() {
@@ -224,21 +242,26 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> anyhow::Result<Vec<Delaye
                     func_name_parts.clear(); // mark the function for deletion
                     let mut argument_col_names = Vec::with_capacity(args.len());
                     for (arg_idx, arg) in args.iter_mut().enumerate() {
-                        if let FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) = arg {
-                            let func_idx = function_param_select_items.len();
-                            let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
-                            argument_col_names.push(argument_col_name.clone());
-                            select_items_to_add.push(SelectItem::ExprWithAlias {
-                                expr: std::mem::replace(expr, Expr::Value(Value::Null)),
-                                alias: Ident::new(argument_col_name),
-                            });
-                        } else {
-                            anyhow::bail!(
-                                "Named function arguments are not supported by SQLPage functions."
-                            );
+                        match arg {
+                            FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))
+                            | FunctionArg::Named {
+                                arg: FunctionArgExpr::Expr(expr),
+                                ..
+                            } => {
+                                let func_idx = delayed_function_calls.len();
+                                let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
+                                argument_col_names.push(argument_col_name.clone());
+                                select_items_to_add.push(SelectItem::ExprWithAlias {
+                                    expr: std::mem::replace(expr, Expr::Value(Value::Null)),
+                                    alias: Ident::new(argument_col_name),
+                                });
+                            }
+                            other => {
+                                log::error!("Unsupported argument to {func_name}: {other}");
+                            }
                         }
                     }
-                    function_param_select_items.push(DelayedFunctionCall {
+                    delayed_function_calls.push(DelayedFunctionCall {
                         function: func_name,
                         argument_col_names,
                         target_col_name: alias.value.clone(),
@@ -261,7 +284,7 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> anyhow::Result<Vec<Delaye
     });
     // And add the new select items
     select_items.extend(select_items_to_add);
-    Ok(function_param_select_items)
+    delayed_function_calls
 }
 
 fn extract_static_simple_select(
@@ -730,12 +753,12 @@ mod test {
     ];
 
     #[test]
-    fn test_extract_top_level_functions() {
+    fn test_extract_toplevel_delayed_functions() {
         let mut ast = parse_stmt(
             "select sqlpage.fetch($x) as x, sqlpage.persist_uploaded_file('a', 'b') as y from t",
             &PostgreSqlDialect {},
         );
-        let functions = extract_toplevel_functions(&mut ast).unwrap();
+        let functions = extract_toplevel_functions(&mut ast);
         assert_eq!(
             ast.to_string(),
             "SELECT $x AS _sqlpage_f0_a0, 'a' AS _sqlpage_f1_a0, 'b' AS _sqlpage_f1_a1 FROM t"
@@ -784,7 +807,7 @@ mod test {
             let stmt = parse_single_statement(&mut parser, db_kind);
             if let Some(ParsedStatement::SetVariable {
                 variable,
-                value: StmtWithParams { query, params },
+                value: StmtWithParams { query, params, .. },
             }) = stmt
             {
                 assert_eq!(

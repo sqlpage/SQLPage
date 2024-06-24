@@ -520,7 +520,7 @@ pub fn test_config() -> AppConfig {
 
 fn init_log() {
     let _ = env_logger::builder()
+        .parse_default_env()
         .is_test(true)
-        .filter(Some("sqlpage"), log::LevelFilter::Trace)
         .try_init();
 }
