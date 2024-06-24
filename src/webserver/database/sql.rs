@@ -113,7 +113,6 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     while parser.consume_token(&SemiColon) {
         semicolon = true;
     }
-    let delayed_functions = extract_toplevel_functions(&mut stmt);
     let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
     if let Some((variable, query)) = extract_set_variable(&mut stmt) {
         return Some(ParsedStatement::SetVariable {
@@ -132,6 +131,7 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
         log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
         return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
+    let delayed_functions = extract_toplevel_functions(&mut stmt);
     let query = format!(
         "{stmt}{semicolon}",
         semicolon = if semicolon { ";" } else { "" }
