@@ -64,6 +64,8 @@
                         {{~#if id}} id="{{id}}" {{/if~}}
                         {{~#if required}} required="required" {{/if~}}
                         {{~#if autofocus}} autofocus {{/if~}}
+                        {{~#if disabled}}disabled {{/if~}}
+                        {{~#if readonly}}readonly {{/if~}}
                         {{~#if multiple}} multiple {{/if~}}
                         {{~#if (or dropdown searchable)}} 
                             data-pre-init="select-dropdown"
