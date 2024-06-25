@@ -2,6 +2,7 @@
     {{#if id}}id="{{id}}"{{/if}}
     class="my-3 {{class}}"
     method="{{default method "post"}}"
+    {{#if enctype}}enctype="{{enctype}}"{{/if}}
     {{#if action}}action="{{action}}"
     {{else}}
     {{#if id}}action="#{{id}}"{{/if}}
@@ -118,13 +119,9 @@
                 </label>
             {{/if}}
             {{/if}}
-            {{#if (eq type "file")}}
-                <!-- Change the form encoding type if this is a file input-->
+            {{#if eq type "file"}}
+                <!-- Change the form encoding type if this is a file input -->
                 {{#delay}}formenctype="multipart/form-data"{{/delay}}
-            {{else}}
-                {{#if (and formenctype (eq type "textarea"))}}
-                {{#delay}} formenctype="{{formenctype}}"{{/delay}}
-                {{/if}}
             {{/if}}
         {{/each_row}}
         </div>
