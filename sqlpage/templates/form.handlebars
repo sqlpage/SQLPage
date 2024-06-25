@@ -2,6 +2,7 @@
     {{#if id}}id="{{id}}"{{/if}}
     class="my-3 {{class}}"
     method="{{default method "post"}}"
+    {{#if formenctype}}formenctype="{{formenctype}}"{{/if}}
     {{#if action}}action="{{action}}"
     {{else}}
     {{#if id}}action="#{{id}}"{{/if}}
@@ -118,7 +119,7 @@
                 </label>
             {{/if}}
             {{/if}}
-            {{#if (eq type "file")}}
+            {{#if and (eq type "file") (not formenctype)}}
                 <!-- Change the form encoding type if this is a file input-->
                 {{#delay}}formenctype="multipart/form-data"{{/delay}}
             {{/if}}
@@ -131,6 +132,7 @@
             {{#if validate_outline}} btn-outline-{{validate_outline}} {{/if}}
             {{#if validate_size}} btn-{{validate_size}} {{/if}}"
             {{flush_delayed}}
+            {{#if formenctype}}formenctype="{{formenctype}}"{{/if}}
             type="submit"
             {{#if validate}}value="{{validate}}"{{/if}}>
         {{/if}}
