@@ -23,7 +23,6 @@ pub fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
     match raw_value_result {
         Ok(raw_value) if !raw_value.is_null() => {
             let mut raw_value = Some(raw_value);
-            log::trace!("Decoding a value of type {:?}", col.type_info().name());
             let decoded = sql_nonnull_to_json(|| {
                 raw_value
                     .take()
@@ -42,16 +41,19 @@ pub fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
 
 pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'r>) -> Value {
     let raw_value = get_ref();
-    match raw_value.type_info().name() {
+    let type_info = raw_value.type_info();
+    let type_name = type_info.name();
+    log::trace!("Decoding a value of type {:?}", type_name);
+    match type_name {
         "REAL" | "FLOAT" | "NUMERIC" | "DECIMAL" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
             <f64 as Decode<sqlx::any::Any>>::decode(raw_value)
                 .unwrap_or(f64::NAN)
                 .into()
         }
-        "INT8" | "BIGINT" | "INTEGER" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
+        "INT8" | "BIGINT" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
             .unwrap_or_default()
             .into(),
-        "INT" | "INT4" => <i32 as Decode<sqlx::any::Any>>::decode(raw_value)
+        "INT" | "INT4" | "INTEGER" => <i32 as Decode<sqlx::any::Any>>::decode(raw_value)
             .unwrap_or_default()
             .into(),
         "INT2" | "SMALLINT" => <i16 as Decode<sqlx::any::Any>>::decode(raw_value)

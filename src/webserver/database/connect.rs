@@ -133,17 +133,18 @@ fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfi
         }
         *sqlite_options = std::mem::take(sqlite_options)
             .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()))
-            .function(Function::new("upper", |ctx: &SqliteFunctionCtx| match ctx
-                .try_get_arg::<String>(0)
-            {
-                Ok(s) => ctx.set_result(s.to_uppercase()),
-                Err(e) => ctx.set_error(&e.to_string()),
-            }))
-            .function(Function::new("lower", |ctx: &SqliteFunctionCtx| match ctx
-                .try_get_arg::<String>(0)
-            {
-                Ok(s) => ctx.set_result(s.to_lowercase()),
-                Err(e) => ctx.set_error(&e.to_string()),
-            }));
+            .function(make_sqlite_fun("upper", str::to_uppercase))
+            .function(make_sqlite_fun("lower", str::to_lowercase));
     }
+}
+
+fn make_sqlite_fun(name: &str, f: fn(&str) -> String) -> Function {
+    Function::new(name, move |ctx: &SqliteFunctionCtx| {
+        let arg = ctx.try_get_arg::<Option<&str>>(0);
+        match arg {
+            Ok(Some(s)) => ctx.set_result(f(s)),
+            Ok(None) => ctx.set_result(None::<String>),
+            Err(e) => ctx.set_error(&e.to_string()),
+        }
+    })
 }

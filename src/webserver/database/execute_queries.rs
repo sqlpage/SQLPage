@@ -19,7 +19,7 @@ use super::syntax_tree::{extract_req_param, StmtParam};
 use super::{highlight_sql_error, Database, DbItem};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
-use sqlx::{Any, Arguments, Either, Executor, Statement};
+use sqlx::{Any, Arguments, Column, Either, Executor, Row as _, Statement, ValueRef};
 
 pub type DbConn = Option<PoolConnection<sqlx::Any>>;
 
@@ -204,7 +204,12 @@ async fn take_connection<'a, 'b>(
 #[inline]
 fn parse_single_sql_result(sql: &str, res: sqlx::Result<Either<AnyQueryResult, AnyRow>>) -> DbItem {
     match res {
-        Ok(Either::Right(r)) => DbItem::Row(super::sql_to_json::row_to_json(&r)),
+        Ok(Either::Right(r)) => {
+            if log::log_enabled!(log::Level::Trace) {
+                debug_row(&r);
+            }
+            DbItem::Row(super::sql_to_json::row_to_json(&r))
+        }
         Ok(Either::Left(res)) => {
             log::debug!("Finished query with result: {:?}", res);
             DbItem::FinishedQuery
@@ -215,6 +220,26 @@ fn parse_single_sql_result(sql: &str, res: sqlx::Result<Either<AnyQueryResult, A
             err,
         )),
     }
+}
+
+fn debug_row(r: &AnyRow) {
+    use std::fmt::Write;
+    let columns = r.columns();
+    let mut row_str = String::new();
+    for (i, col) in columns.iter().enumerate() {
+        if let Ok(value) = r.try_get_raw(i) {
+            write!(
+                &mut row_str,
+                "[{:?} ({}): {:?}: {:?}]",
+                col.name(),
+                if value.is_null() { "NULL" } else { "NOT NULL" },
+                col,
+                value.type_info()
+            )
+            .unwrap();
+        }
+    }
+    log::trace!("Received db row: {}", row_str);
 }
 
 fn clone_anyhow_err(err: &anyhow::Error) -> anyhow::Error {
