@@ -2,7 +2,6 @@
     {{#if id}}id="{{id}}"{{/if}}
     class="my-3 {{class}}"
     method="{{default method "post"}}"
-    {{#if formenctype}}formenctype="{{formenctype}}"{{/if}}
     {{#if action}}action="{{action}}"
     {{else}}
     {{#if id}}action="#{{id}}"{{/if}}
@@ -54,6 +53,7 @@
                             {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
                             {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
                             {{~#if required}}required="required" {{/if~}}
+                            {{~#if formenctype}}formenctype="{{formenctype}}" {{/if~}}
                             {{~#if autofocus}}autofocus {{/if~}}
                         >
                         {{~#if value}}{{value}}{{/if~}}
@@ -62,6 +62,7 @@
                         <select name="{{name}}" class="form-select"
                         {{~#if id}} id="{{id}}" {{/if~}}
                         {{~#if required}} required="required" {{/if~}}
+                        {{~#if formenctype}}formenctype="{{formenctype}}" {{/if~}}
                         {{~#if autofocus}} autofocus {{/if~}}
                         {{~#if multiple}} multiple {{/if~}}
                         {{~#if (or dropdown searchable)}} 
@@ -132,7 +133,6 @@
             {{#if validate_outline}} btn-outline-{{validate_outline}} {{/if}}
             {{#if validate_size}} btn-{{validate_size}} {{/if}}"
             {{flush_delayed}}
-            {{#if formenctype}}formenctype="{{formenctype}}"{{/if}}
             type="submit"
             {{#if validate}}value="{{validate}}"{{/if}}>
         {{/if}}
