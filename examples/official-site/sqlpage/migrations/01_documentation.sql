@@ -143,7 +143,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', TRUE, TRUE),
     -- item level
     ('contents', 'A span of text to display', 'TEXT', FALSE, FALSE),
-    ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', TRUE, TRUE),
+    ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on this span of text.', 'URL', FALSE, TRUE),
     ('color', 'The name of a color for this span of text.', 'COLOR', FALSE, TRUE),
     ('underline', 'Whether the span of text should be underlined.', 'BOOLEAN', FALSE, TRUE),
