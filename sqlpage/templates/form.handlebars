@@ -53,7 +53,6 @@
                             {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
                             {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
                             {{~#if required}}required="required" {{/if~}}
-                            {{~#if formenctype}}formenctype="{{formenctype}}" {{/if~}}
                             {{~#if autofocus}}autofocus {{/if~}}
                         >
                         {{~#if value}}{{value}}{{/if~}}
@@ -62,7 +61,6 @@
                         <select name="{{name}}" class="form-select"
                         {{~#if id}} id="{{id}}" {{/if~}}
                         {{~#if required}} required="required" {{/if~}}
-                        {{~#if formenctype}}formenctype="{{formenctype}}" {{/if~}}
                         {{~#if autofocus}} autofocus {{/if~}}
                         {{~#if multiple}} multiple {{/if~}}
                         {{~#if (or dropdown searchable)}} 
@@ -123,6 +121,10 @@
             {{#if (eq type "file")}}
                 <!-- Change the form encoding type if this is a file input-->
                 {{#delay}}formenctype="multipart/form-data"{{/delay}}
+            {{else}}
+                {{#if (and formenctype (eq type "textarea"))}}
+                {{#delay}} formenctype="{{formenctype}}"{{/delay}}
+                {{/if}}
             {{/if}}
         {{/each_row}}
         </div>
