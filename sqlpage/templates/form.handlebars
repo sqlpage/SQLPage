@@ -120,7 +120,7 @@
                 </label>
             {{/if}}
             {{/if}}
-            {{#if and (eq type "file") (not formenctype)}}
+            {{#if (eq type "file")}}
                 <!-- Change the form encoding type if this is a file input-->
                 {{#delay}}formenctype="multipart/form-data"{{/delay}}
             {{/if}}
