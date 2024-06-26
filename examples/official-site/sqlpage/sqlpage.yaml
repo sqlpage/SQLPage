@@ -3,3 +3,6 @@ database_url: "sqlite::memory:"
 
 # We have a file upload example, and would like to limit the size of the uploaded files 
 max_uploaded_file_size: 256000
+
+# For the show-progress example to work, we have to disable compression
+compress_responses: False
