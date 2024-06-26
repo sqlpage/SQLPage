@@ -2,6 +2,7 @@
 
 ## 0.24.1
 
+ - Apply migrations before initializing the on-database file system. This allows migrations to create files in the database file system.
  - Added a [new example](https://github.com/lovasoa/SQLpage/tree/main/examples/CRUD%20-%20Authentication) to the documentation
  - Bug fix: points with a latitude of 0 are now displayed correctly on the map component. 
  - Bug fix: in sqlite, lower(NULL) now returns NULL instead of an empty string. This is consistent with the standard behavior of lower() in other databases. SQLPage has its own implementation of lower() that supports unicode characters, and our implementation now matches the standard behavior of lower() in mainstream SQLite. 
