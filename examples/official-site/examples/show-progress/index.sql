@@ -1,3 +1,7 @@
+-- Disable actix-web compression middleware:
+--    https://github.com/actix/actix-web/issues/3410
+SELECT 'http_header' AS component, 'Identity' AS "Content-Encoding";
+
 SELECT 'shell' AS component, 'dark' AS theme;
 
 SELECT 'loader-start' AS component,
