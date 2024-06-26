@@ -1,0 +1,92 @@
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+	color: var(--tblr-gray-300);
+}
+
+.token.punctuation {
+	color: var(--tblr-gray-500);
+}
+
+.namespace {
+	opacity: .7;
+}
+
+.token.property,
+.token.tag {
+	color: #f92672;
+
+	/* We need to reset the 'tag' styles set by tabler */
+	border: 0;
+	display: inherit;
+	height: inherit;
+	border-radius: inherit;
+	padding: 0;
+	background: inherit;
+	box-shadow: inherit;
+}
+
+.token.number {
+    color: #ea9999;
+}
+
+.token.boolean {
+	color: #ae81ff;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string {
+	color: #97e1a3;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+	color: #f8f8f2;
+}
+
+.token.atrule,
+.token.attr-value
+{
+	color: #e6db74;
+}
+
+
+.token.keyword{
+color: #95d1ff;
+}
+
+.token.regex,
+.token.important {
+	color: var(--tblr-yellow);
+}
+
+.token.important {
+	font-weight: bold;
+}
+
+.token.entity {
+	cursor: help;
+}
+
+.token {
+	transition: .3s;
+}
+
+code::selection, code ::selection {
+	background: var(--tblr-yellow);
+	color: var(--tblr-gray-900);
+	border-radius: .1em;
+}
+
+code .token.keyword::selection, code .token.punctuation::selection {
+	color: var(--tblr-gray-800);
+}
+
+pre code {
+	padding: 0;
+}
