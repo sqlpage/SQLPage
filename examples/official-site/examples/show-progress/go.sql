@@ -1,3 +1,7 @@
+-- Disable actix-web compression middleware:
+--    https://github.com/actix/actix-web/issues/3410
+SELECT 'http_header' AS component, 'Identity' AS "Content-Encoding";
+
 SELECT 'shell' AS component, 'light' AS theme;
 
 -- can disable the spinner to show only progress bar

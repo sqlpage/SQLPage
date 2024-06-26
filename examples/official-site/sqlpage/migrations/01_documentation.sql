@@ -767,7 +767,7 @@ Default is "spinner-border".
 Set to the empty string to disable the spinner - e.g. to display only progress
 updates.
 ', 'TEXT', TRUE, TRUE),
-    ('size', 'Size of the spinner eg. sm, lg', 'TEXT', TRUE, TRUE),
+    ('size', 'Size of the spinner (e.g. sm, lg) [see here](https://tabler.io/docs/components/progress)', 'TEXT', TRUE, TRUE),
     ('color', 'Color of the spinner', 'COLOR', TRUE, TRUE)
 ) x;
 
@@ -778,6 +778,17 @@ Hide the spinner displayed by the loader-start component.
 
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
     ('progress', 'time-duration-15', 'Display a progress bar.', '0.25.0');
+
+INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'progress', * FROM (VALUES
+    -- top-level
+    ('percent', 'Number between 0 and 100.', 'INTEGER', TRUE, TRUE),
+    ('stage', 'A message to display under the progress bar to indicate which stage the process is at.', 'TEXT', TRUE, TRUE),
+    ('color', 'The fill color of the progress bar', 'COLOR', TRUE, TRUE),
+    ('size', 'The size of the progress bar (e.g. sm, lg) [see here](https://tabler.io/docs/components/progress)', 'TEXT', TRUE, TRUE),
+    -- item-level
+    ('percent', 'Number between 0 and 100.', 'INTEGER', FALSE, TRUE),
+    ('stage', 'A message to display under the progress bar to indicate which stage the process is at.', 'TEXT', FALSE, TRUE)
+) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('loader-start', '
@@ -808,17 +819,6 @@ See the [live example](/examples/show-progress/).
 Source is [here](https://github.com/lovasoa/SQLpage/tree/main/examples/official-site/examples/show-progress)
 ', NULL)
 ;
-
-INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'progress', * FROM (VALUES
-    -- top-level
-    ('percent', 'Number between 0 and 100.', 'INTEGER', TRUE, TRUE),
-    ('stage', 'A message to display under the progress bar to indicate which stage the process is at.', 'TEXT', TRUE, TRUE),
-    ('color', 'The fill color of the progress bar', 'COLOR', TRUE, TRUE),
-    ('size', 'The size of the progress bar [see here](https://tabler.io/docs/components/progress)', 'TEXT', TRUE, TRUE),
-    -- item-level
-    ('percent', 'Number between 0 and 100.', 'INTEGER', FALSE, TRUE),
-    ('stage', 'A message to display under the progress bar to indicate which stage the process is at.', 'TEXT', FALSE, TRUE)
-) x;
 
 INSERT INTO component(name, icon, description) VALUES
     ('shell', 'layout-navbar', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page.');
