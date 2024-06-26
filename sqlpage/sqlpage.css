@@ -53,7 +53,7 @@ td > p {
 }
 
 /* loader container */
-div.sqlpage-loader-start {
+.sqlpage-loader-container {
   position: fixed;
   text-align: center;
   left: 50vw;
@@ -64,13 +64,19 @@ div.sqlpage-loader-start {
   height: 9em;
   width: 175px;
 }
-div.sqlpage-loader-start:not(:has(+ .sqlpage-loader-stop)) {
-  /* only display if not followed by sqlpage-loader-stop */
-  display: block;
+.sqlpage-loader-container:has(.status) {
+  position: inherit;
+  text-align: inherit;
+  left: inherit;
+  top: inherit;
+  margin-top: inherit;
+  margin-left: inherit;
+  padding-bottom: inherit;
+  height: inherit;
+  width: inherit;
 }
-.sqlpage-loader-start:not(:last-child) {
-  /* firefox doesn't support :has
-     so hide the loader if it is no longer the last element */
+div.sqlpage-loader-start:has(+ .sqlpage-loader-stop) {
+  /* hide if followed by sqlpage-loader-stop */
   display: none;
 }
 /* end loader container */
@@ -79,13 +85,8 @@ div.sqlpage-loader-start:not(:has(+ .sqlpage-loader-stop)) {
 .sqlpage-progress-container {
   margin: 1em 0 1em;
 }
-div.sqlpage-progress-container:not(:has(+ .sqlpage-progress-container)) {
-  /* only display if not followed by sqlpage-progress-container */
-  display: block;
-}
-.sqlpage-progress-container:not(:last-child) {
-  /* firefox doesn't support :has
-     so hide the loader if it is no longer the last element */
+div.sqlpage-progress-container:has(+ .sqlpage-progress-container) {
+  /* hide if followed by sqlpage-progress-container */
   display: none;
 }
 .sqlpage-progress-container label {
