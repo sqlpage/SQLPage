@@ -418,14 +418,6 @@ But note that SQLPage cookies already have the `SameSite=strict` attribute by de
 
 You can use the `file` type to allow the user to upload a file.
 
-> NOTE: It is recommended to use ``multipart/form-data`` to encode the from
-data for file uploads. This is because the default encoding
-(``application/x-www-form-urlencoded``) applied to arbitrary binary can be up
-to 3 times the size of the file.
-For now, ``formenctype="multipart/form-data"`` is automatically applied to the
-default validate button - but this may change in the future.
-
-
 The file will be uploaded to the server, and you will be able to access it using the
 [`sqlpage.uploaded_file_path`](functions.sql?function=uploaded_file_path#function) function.
 
