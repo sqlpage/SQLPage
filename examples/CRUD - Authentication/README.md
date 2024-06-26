@@ -1,6 +1,6 @@
-This demo/template defines a basic CRUD application with authentication designed for use with SQLite. The primary goal of this demo is to explore some of the SQLPage features and figure out how to implement various aspects of a data-centric application. The template contains both public pages ([**SQLite Introspection**](intro.sql)) and pages requiring authentication. A user management GUI is not available (database migrations, included in the project, create a default login admin/admin).
+This demo/template defines a basic CRUD application with authentication designed for use with SQLite. The primary goal of this demo is to explore some of the SQLPage features and figure out how to implement various aspects of a data-centric application. The template contains both public pages ([**SQLite Introspection**](www/intro.sql)) and pages requiring authentication. A user management GUI is not available (database migrations, included in the project, create a default login admin/admin).
 
-The website root is set to _./www_, and the database is in the _./db/_ directory. The database contains one data table, "currencies", and its content is listed on a login-protected [**page**](currencies_list.sql). After successful authentication, you can see the list of records and access the form for adding/editing/deleting records.
+The website root is set to _./www_, and the database is in the _./db/_ directory. The database contains one data table, "currencies", and its content is listed on a login-protected [**page**](www/currencies_list.sql). After successful authentication, you can see the list of records and access the form for adding/editing/deleting records.
 
 ## Authentication process
 
@@ -164,7 +164,7 @@ The "detail" view also uses the "&path" GET URL parameter, if provided (e.g., by
 
 The rest of the table view module is fairly basic. It defines two alerts for displaying confirmation and error messages, a "new record" button, and the table itself. The last "actions" column is added to the table, designated as markdown, and includes shortcuts to edit/delete the corresponding record.
 
-![](https://raw.githubusercontent.com/pchemguy/SQLpage/crud_auth/examples/crud-authentication/www/img/table_view.png)
+![](https://raw.github.com/lovasoa/SQLpage/crud_auth/examples/CRUD%20-%20Authentication/www/img/table_view.png)
 
 ### Detail view
 
@@ -229,7 +229,7 @@ SET $_values = (
 
 Each of the three united SELECTs in the "fields" CTE returns a single row and only one of them is selected for any given combination of \$id/\$values using the WHERE clauses. This query returns the "final" set of fields as a JSON object.
 
-![](https://raw.githubusercontent.com/pchemguy/SQLpage/crud_auth/examples/crud-authentication/www/img/detail_view.png)
+![](https://raw.github.com/lovasoa/SQLpage/crud_auth/examples/CRUD%20-%20Authentication/www/img/detail_view.png)
 
 Now that the input parameters are validated and the "final" dataset is determined, it is the time to define the form GUI elements. First, I define the button to switch to the table view. Note that the same form is used to confirm record deletion, and when this happens, the "Browse" button is not shown.
 
@@ -274,7 +274,7 @@ The next part defines form fields via the "dynamic" component (for some reason I
  
 Also note that this single form definition actually combines two forms (the second being the record delete confirmation form).  If the $action variable is set to "DELETE" (after the delete operation is initiated from either the table or detail view), buttons are adjusted appropriately and all fields are set to read-only. Whether this is a good design is a separate question. Perhaps, defining two separate forms is a better approach.
 
-![](https://raw.githubusercontent.com/pchemguy/SQLpage/crud_auth/examples/crud-authentication/www/img/delete_confirmation.png)
+![](https://raw.github.com/lovasoa/SQLpage/crud_auth/examples/CRUD%20-%20Authentication/www/img/delete_confirmation.png)
 
 
 After the main form fields goes the delete confirmation alert, displayed after the delete operation is completed.
