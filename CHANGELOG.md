@@ -2,6 +2,7 @@
 
 ## 0.24.1
 
+ - Reduce the max item width in the datagrid component for a better and more compact display on small screens. This makes the datagrid component more mobile-friendly. If you have a datagrid with long text items, this may impact the layout of your page. You can override this behavior by manually changing the `--tblr-datagrid-item-width` CSS variable in your custom CSS.
  - Apply migrations before initializing the on-database file system. This allows migrations to create files in the database file system.
  - Added a [new example](https://github.com/lovasoa/SQLpage/tree/main/examples/CRUD%20-%20Authentication) to the documentation
  - Bug fix: points with a latitude of 0 are now displayed correctly on the map component. 

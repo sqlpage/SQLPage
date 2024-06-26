@@ -49,5 +49,5 @@ td > p {
 
 .datagrid {
   --tblr-datagrid-padding: 1.25rem;
-  --tblr-datagrid-item-width: 12rem;
+  --tblr-datagrid-item-width: 6rem;
 }
