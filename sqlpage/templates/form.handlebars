@@ -119,8 +119,8 @@
                 </label>
             {{/if}}
             {{/if}}
-            {{#if eq type "file"}}
-                <!-- Change the form encoding type if this is a file input -->
+            {{#if (eq type "file")}}
+                <!-- Change the form encoding type if this is a file input-->
                 {{#delay}}formenctype="multipart/form-data"{{/delay}}
             {{/if}}
         {{/each_row}}
