@@ -113,7 +113,7 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     while parser.consume_token(&SemiColon) {
         semicolon = true;
     }
-    let params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
+    let mut params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
     if let Some((variable, query)) = extract_set_variable(&mut stmt) {
         return Some(ParsedStatement::SetVariable {
             variable,
@@ -132,6 +132,7 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
         return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
     let delayed_functions = extract_toplevel_functions(&mut stmt);
+    remove_invalid_function_calls(&mut stmt, &mut params);
     let query = format!(
         "{stmt}{semicolon}",
         semicolon = if semicolon { ";" } else { "" }
@@ -462,6 +463,40 @@ impl ParameterExtractor {
             return false;
         }
         param == DEFAULT_PLACEHOLDER
+    }
+}
+
+struct BadFunctionRemover;
+impl VisitorMut for BadFunctionRemover {
+    type Break = StmtParam;
+    fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
+        match value {
+            Expr::Function(Function {
+                name: ObjectName(func_name_parts),
+                args:
+                    FunctionArguments::List(FunctionArgumentList {
+                        args,
+                        duplicate_treatment: None,
+                        ..
+                    }),
+                ..
+            }) if is_sqlpage_func(func_name_parts) => {
+                let func_name = sqlpage_func_name(func_name_parts);
+                log::error!("Invalid function call to sqlpage.{func_name}. SQLPage function arguments must be static if the function is not at the top level of a select statement.");
+                let mut arguments = std::mem::take(args);
+                let param = func_call_to_param(func_name, &mut arguments);
+                return ControlFlow::Break(param);
+            }
+            _ => (),
+        }
+        ControlFlow::Continue(())
+    }
+}
+
+fn remove_invalid_function_calls(stmt: &mut Statement, params: &mut Vec<StmtParam>) {
+    let mut remover = BadFunctionRemover;
+    if let ControlFlow::Break(param) = stmt.visit(&mut remover) {
+        params.push(param);
     }
 }
 
