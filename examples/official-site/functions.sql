@@ -15,6 +15,8 @@ These functions are special, because they are not executed inside your database,
 but by SQLPage itself before sending the query to your database.
 Thus, they require all the parameters to be known at the time the query is sent to your database.
 Function parameters cannot reference columns from the rest of your query.
+The only case when you can call a SQLPage function with a parameter that is not a constant is when it appears at the top level of a `SELECT` statement.
+For example, `SELECT sqlpage.url_encode(url) FROM t` is allowed because SQLPage can execute `SELECT url FROM t` and then apply the `url_encode` function to each value.
 ' as contents_md;
 
 select 'list' as component, 'SQLPage functions' as title;
