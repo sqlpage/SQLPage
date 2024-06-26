@@ -16,12 +16,14 @@ use std::str::FromStr;
 
 use sqlparser::ast::FunctionArg;
 
-use crate::webserver::database::sql::function_arg_to_stmt_param;
 use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::{execute_queries::DbConn, sqlpage_functions::functions::SqlPageFunctionName};
-use anyhow::{anyhow, Context as _};
+use super::{
+    execute_queries::DbConn, sql::function_args_to_stmt_params,
+    sqlpage_functions::functions::SqlPageFunctionName,
+};
+use anyhow::Context as _;
 
 /// Represents a parameter to a SQL statement.
 /// Objects of this type are created during SQL parsing.
@@ -77,23 +79,7 @@ pub struct SqlPageFunctionCall {
 impl SqlPageFunctionCall {
     pub fn from_func_call(func_name: &str, arguments: &mut [FunctionArg]) -> anyhow::Result<Self> {
         let function = SqlPageFunctionName::from_str(func_name)?;
-        let arguments = arguments
-            .iter_mut()
-            .map(|arg| {
-                function_arg_to_stmt_param(arg)
-                    .ok_or_else(|| anyhow!("Passing \"{arg}\" as a function argument is not supported.\n\n\
-                    The only supported sqlpage function argument types are : \n\
-                      - variables (such as $my_variable), \n\
-                      - other sqlpage function calls (such as sqlpage.cookie('my_cookie')), \n\
-                      - literal strings (such as 'my_string'), \n\
-                      - concatenations of the above (such as CONCAT(x, y)).\n\n\
-                    Arbitrary SQL expressions as function arguments are not supported.\n\
-                    Try executing the SQL expression in a separate SET expression, then passing it to the function:\n\n\
-                    SET $my_parameter = {arg}; \n\
-                    SELECT ... {function}(... $my_parameter ...) ...
-                    "))
-            })
-            .collect::<anyhow::Result<Vec<_>>>()?;
+        let arguments = function_args_to_stmt_params(arguments)?;
         Ok(Self {
             function,
             arguments,
@@ -109,7 +95,16 @@ impl SqlPageFunctionCall {
         for param in &self.arguments {
             params.push(Box::pin(extract_req_param(param, request, db_connection)).await?);
         }
-        self.function.evaluate(request, db_connection, params).await
+        log::trace!("Starting function call to {self}");
+        let result = self
+            .function
+            .evaluate(request, db_connection, params)
+            .await?;
+        log::trace!(
+            "Function call to {self} returned: {}",
+            result.as_deref().unwrap_or("NULL")
+        );
+        Ok(result)
     }
 }
 

@@ -21,11 +21,17 @@ impl Iterator for DynamicComponentIterator {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(db_item) = self.db_item.take() {
             if let DbItem::Row(mut row) = db_item {
-                if let Some(properties) = extract_dynamic_properties(&mut row) {
-                    self.stack = dynamic_properties_to_vec(properties);
-                } else {
-                    // Most common case: just a regular row. We allocated nothing.
-                    return Some(DbItem::Row(row));
+                match extract_dynamic_properties(&mut row) {
+                    Ok(None) => {
+                        // Most common case: just a regular row. We allocated nothing.
+                        return Some(DbItem::Row(row));
+                    }
+                    Ok(Some(properties)) => {
+                        self.stack = dynamic_properties_to_vec(properties);
+                    }
+                    Err(err) => {
+                        return Some(DbItem::Error(err));
+                    }
                 }
             } else {
                 return Some(db_item);
@@ -41,29 +47,47 @@ impl Iterator for DynamicComponentIterator {
 
 fn expand_dynamic_stack(stack: &mut Vec<anyhow::Result<JsonValue>>) {
     while let Some(mut next) = stack.pop() {
-        let dyn_props = next.as_mut().ok().and_then(extract_dynamic_properties);
-        if let Some(properties) = dyn_props {
-            // if the properties contain new (nested) dynamic components, push them onto the stack
-            stack.extend(dynamic_properties_to_vec(properties));
+        let next_value = next.as_mut().ok();
+        // .and_then(extract_dynamic_properties);
+        let dyn_props = if let Some(val) = next_value {
+            extract_dynamic_properties(val)
         } else {
-            // If the properties are not dynamic, push the row back onto the stack
-            stack.push(next);
-            // return at the first non-dynamic row
-            // we don't support non-dynamic rows after dynamic rows nested in the same array
-            return;
+            Ok(None)
+        };
+        match dyn_props {
+            Ok(None) => {
+                // If the properties are not dynamic, push the row back onto the stack
+                stack.push(next);
+                // return at the first non-dynamic row
+                // we don't support non-dynamic rows after dynamic rows nested in the same array
+                return;
+            }
+            Ok(Some(properties)) => {
+                // if the properties contain new (nested) dynamic components, push them onto the stack
+                stack.extend(dynamic_properties_to_vec(properties));
+            }
+            Err(err) => {
+                // if an error occurs, push it onto the stack
+                stack.push(Err(err));
+            }
         }
     }
 }
 
 /// if row.component == 'dynamic', return Some(row.properties), otherwise return None
 #[inline]
-fn extract_dynamic_properties(data: &mut JsonValue) -> Option<JsonValue> {
+fn extract_dynamic_properties(data: &mut JsonValue) -> anyhow::Result<Option<JsonValue>> {
     let component = data.get("component").and_then(|v| v.as_str());
     if component == Some("dynamic") {
-        let properties = data.get_mut("properties").map(JsonValue::take);
-        Some(properties.unwrap_or_default())
+        let Some(properties) = data.get_mut("properties").map(JsonValue::take) else {
+            anyhow::bail!(
+                "The dynamic component requires a property named \"properties\". \
+                Instead, it received the following: {data}"
+            );
+        };
+        Ok(Some(properties))
     } else {
-        None
+        Ok(None)
     }
 }
 

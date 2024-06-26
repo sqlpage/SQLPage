@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
-use super::sql::{ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams};
+use super::sql::{
+    DelayedFunctionCall, ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams,
+};
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
 use crate::webserver::database::sql_to_json::row_to_string;
@@ -55,7 +57,9 @@ pub fn stream_query_results_with_conn<'a>(
                     let mut stream = connection.fetch_many(query);
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
-                        for i in parse_dynamic_rows(parse_single_sql_result(&stmt.query, elem)) {
+                        let mut query_result = parse_single_sql_result(&stmt.query, elem);
+                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
+                        for i in parse_dynamic_rows(query_result) {
                             yield i;
                         }
                         if is_err {
@@ -269,6 +273,56 @@ async fn bind_parameters<'a, 'b>(
         }
     }
     Ok(StatementWithParams { sql, arguments })
+}
+
+async fn apply_delayed_functions(
+    request: &RequestInfo,
+    delayed_functions: &[DelayedFunctionCall],
+    item: &mut DbItem,
+) -> anyhow::Result<()> {
+    // We need to open new connections for each delayed function call, because we are still fetching the results of the current query in the main connection.
+    let mut db_conn = None;
+    if let DbItem::Row(serde_json::Value::Object(ref mut results)) = item {
+        for f in delayed_functions {
+            log::trace!("Applying delayed function {} to {:?}", f.function, results);
+            apply_single_delayed_function(request, &mut db_conn, f, results).await?;
+            log::trace!(
+                "Delayed function applied {}. Result: {:?}",
+                f.function,
+                results
+            );
+        }
+    }
+    Ok(())
+}
+
+async fn apply_single_delayed_function(
+    request: &RequestInfo,
+    db_connection: &mut DbConn,
+    f: &DelayedFunctionCall,
+    row: &mut serde_json::Map<String, serde_json::Value>,
+) -> anyhow::Result<()> {
+    let mut params = Vec::new();
+    for arg in &f.argument_col_names {
+        let Some(arg_value) = row.remove(arg) else {
+            anyhow::bail!("The column {arg} is missing in the result set, but it is required by the {} function.", f.function);
+        };
+        params.push(json_to_fn_param(arg_value));
+    }
+    let result_str = f.function.evaluate(request, db_connection, params).await?;
+    let result_json = result_str
+        .map(Cow::into_owned)
+        .map_or(serde_json::Value::Null, serde_json::Value::String);
+    row.insert(f.target_col_name.clone(), result_json);
+    Ok(())
+}
+
+fn json_to_fn_param(json: serde_json::Value) -> Option<Cow<'static, str>> {
+    match json {
+        serde_json::Value::String(s) => Some(Cow::Owned(s)),
+        serde_json::Value::Null => None,
+        _ => Some(Cow::Owned(json.to_string())),
+    }
 }
 
 pub struct StatementWithParams<'a> {
