@@ -59,6 +59,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
+      - name: Check port usage
+        run: netstat -ano
       - run: cargo test
         env:
           RUST_BACKTRACE: 1
