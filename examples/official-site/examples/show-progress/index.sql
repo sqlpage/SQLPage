@@ -2,14 +2,16 @@ SELECT 'shell' AS component, 'dark' AS theme;
 
 SELECT 'loader-start' AS component,
   -- pick from the tabler spinners: https://tabler.io/docs/components/spinners
-  "spinner-border spinner-border-sm text-red" AS spinner;
+  "spinner-border" spinner,
+  "sm" AS size,
+  "red" AS color;
 
 SELECT 'progress' AS component,
   'sm' AS size,
   'yellow' AS color,
   '0' AS percent,
-  'Sleeping 1 second' AS stage;
-SELECT sqlpage.exec('sleep', '1');
+  'Fething data' AS stage;
+SELECT sqlpage.fetch('https://example.com');
 
 /* percent property is optional */
 SELECT 'progress' AS component,
@@ -17,23 +19,23 @@ SELECT 'progress' AS component,
   'sm' AS size,
   'yellow' AS color,
   'Doing something' AS stage;
-SELECT sqlpage.exec('sleep', '1');
+SELECT sqlpage.fetch('https://example.com');
 
 /* stage property is optional */
 SELECT 'progress' AS component,
   'sm' AS size,
   'yellow' AS color,
   '40' AS percent;
-SELECT sqlpage.exec('sleep', '1');
+SELECT sqlpage.fetch('https://example.com');
 
 /* multiple rows */
 SELECT 'progress' AS component, 'sm' AS size, 'yellow' AS color;
-SELECT '70' AS percent, 'Sleeping 1 second' AS stage
-SELECT sqlpage.exec('sleep', '1');
-SELECT '80' AS percent, 'Sleeping 1 more second' AS stage;
-SELECT sqlpage.exec('sleep', '1');
-SELECT '90' AS percent, 'Sleeping 1 second again' AS stage;
-SELECT sqlpage.exec('sleep', '1');
+SELECT '70' AS percent, 'Fetching data' AS stage
+SELECT sqlpage.fetch('https://example.com');
+SELECT '80' AS percent, 'Fetching more data' AS stage;
+SELECT sqlpage.fetch('https://example.com');
+SELECT '90' AS percent, 'Fetching again' AS stage;
+SELECT sqlpage.fetch('https://example.com');
 
 SELECT '100' AS percent;
 
@@ -45,7 +47,7 @@ SELECT 'text' AS component,
   'Page is loaded.' AS contents;
 
 SELECT 'button' AS component;
-SELECT 'Go' AS title, '/go.sql' AS link;
+SELECT 'Go' AS title, './go.sql' AS link;
 
 -- can use progress on it's own
 SELECT 'progress' AS component, 'sm' AS size, 'Waiting for user' AS stage;

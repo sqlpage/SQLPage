@@ -5,3 +5,6 @@ database_url: "sqlite::memory:?cache=shared"
 max_uploaded_file_size: 256000
 
 database_connection_acquire_timeout_seconds: 30
+
+# For the show-progress example to work, we have to disable compression
+compress_responses: False

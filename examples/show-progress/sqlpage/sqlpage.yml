@@ -1,3 +1,0 @@
-allow_exec: True
-compress_responses: False
-database_url: "sqlite://:memory:"
