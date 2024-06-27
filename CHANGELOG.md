@@ -1,5 +1,19 @@
 # CHANGELOG.md
 
+## 0.24.1
+
+ - hero component: allow reversing the order of text and images. Allows hero components with the text on the right and the image on the left.
+ - Reduce the max item width in the datagrid component for a better and more compact display on small screens. This makes the datagrid component more mobile-friendly. If you have a datagrid with long text items, this may impact the layout of your page. You can override this behavior by manually changing the `--tblr-datagrid-item-width` CSS variable in your custom CSS.
+ - Apply migrations before initializing the on-database file system. This allows migrations to create files in the database file system.
+ - Added a [new example](https://github.com/lovasoa/SQLpage/tree/main/examples/CRUD%20-%20Authentication) to the documentation
+ - Bug fix: points with a latitude of 0 are now displayed correctly on the map component. 
+ - Bug fix: in sqlite, lower(NULL) now returns NULL instead of an empty string. This is consistent with the standard behavior of lower() in other databases. SQLPage has its own implementation of lower() that supports unicode characters, and our implementation now matches the standard behavior of lower() in mainstream SQLite. 
+ - Allow passing data from the database to sqlpage functions.
+    - SQLPage functions are special, because they are not executed inside your database, but by SQLPage itself before sending the query to your database. Thus, they used to require all the parameters to be known at the time the query is sent to your database.
+    - This limitation is now relaxed, and you can pass data from your database to SQLPage functions, at one condition: the function must be called at the top level of a `SELECT` statement. In this case, SQLPage will get the value of the function arguments from the database, and then execute the function after the query has been executed.
+    - This fixes most errors like: `Arbitrary SQL expressions as function arguments are not supported.`.
+ - Better error messages in the dynamic component when properties are missing.
+
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
    - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)

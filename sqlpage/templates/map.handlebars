@@ -4,7 +4,7 @@
     <div
       class="leaflet"
       style="height: {{default height 350}}px;"
-      {{~#if latitude}} data-center="{{latitude}},{{longitude}}"{{/if}}
+      {{~#if latitude includeZero=true}} data-center="{{latitude}},{{longitude}}"{{/if}}
       data-zoom="{{default zoom 5}}"
       data-attribution="{{default attribution '© OpenStreetMap'}}"
       {{~#if (ne tile_source false)}} data-tile_source="{{default tile_source 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}}"{{/if}}
@@ -22,7 +22,7 @@
         <div class="d-none" hidden>
           {{~#each_row~}}
             <div class="marker"
-              {{~#if latitude}} data-coords="{{latitude}},{{longitude}}"{{/if}}
+              {{~#if latitude includeZero=true}} data-coords="{{latitude}},{{longitude}}"{{/if}}
               {{~#if color}} data-color="{{color}}"{{/if}}
               {{~#if size}} data-size="{{size}}"{{/if}}
               {{~#if link}} data-link="{{link}}"{{/if}}

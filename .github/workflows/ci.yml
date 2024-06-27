@@ -52,6 +52,7 @@ jobs:
         env:
           DATABASE_URL: ${{ matrix.database }}://root:Password123!@127.0.0.1/sqlpage
           RUST_BACKTRACE: 1
+          RUST_LOG: sqlpage=debug
 
   windows_test:
     runs-on: windows-latest
@@ -59,6 +60,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@378c8285a4eaf12899d11bea686a763e906956af
+      - name: Check port usage
+        run: netstat -bano
       - run: cargo test
         env:
           RUST_BACKTRACE: 1

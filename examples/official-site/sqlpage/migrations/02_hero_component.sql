@@ -90,6 +90,13 @@ FROM
             ('muted', 'Mute the video', 'BOOLEAN', TRUE, TRUE),
             ('autoplay', 'Automatically start playing the video', 'BOOLEAN', TRUE, TRUE),
             ('loop', 'Loop the video', 'BOOLEAN', TRUE, TRUE),
+            (
+                'reverse',
+                'Reverse the order of the image and text: the image will be on the left, and the text on the right.',
+                'BOOLEAN',
+                TRUE,
+                TRUE
+            ),
             -- item level
             (
                 'title',
@@ -154,4 +161,17 @@ VALUES
             "link": "/documentation.sql",
             "link_text": "Read Documentation !"},' || '{"title": "Fast", "description": "Pages load instantly, even on slow mobile networks.", "icon": "car", "color": "red", "link": "/"},' || '{"title": "Beautiful", "description": "Uses pre-defined components that look professional.", "icon": "eye", "color": "green", "link": "/"},' || '{"title": "Easy", "description_md": "You can teach yourself enough SQL to use [**SQLPage**](https://sql.ophir.dev) in a weekend.", "icon": "sofa", "color": "blue", "link": "/"}' || ']'
         )
+    ),
+    (
+        'hero',
+        'A hero with a video',
+        json(
+            '[{
+            "component":"hero",
+            "title": "Databases",
+            "reverse": true,
+            "description_md": "# “The goal is to turn data into information, and information into insight.”",
+            "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Lac_de_Zoug.jpg/640px-Lac_de_Zoug.jpg",
+            "video": "/sqlpage_introduction_video.webm"
+        }]')
     );

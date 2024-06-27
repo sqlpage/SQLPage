@@ -2,7 +2,8 @@ use std::fmt::Write;
 
 use sqlpage::{
     app_config::{self, AppConfig},
-    webserver, AppState,
+    webserver::{self, Database},
+    AppState,
 };
 
 #[actix_web::main]
@@ -16,8 +17,9 @@ async fn main() {
 
 async fn start() -> anyhow::Result<()> {
     let app_config = app_config::load()?;
-    let state = AppState::init(&app_config).await?;
-    webserver::database::migrations::apply(&app_config, &state.db).await?;
+    let db = Database::init(&app_config).await?;
+    webserver::database::migrations::apply(&app_config, &db).await?;
+    let state = AppState::init_with_db(&app_config, db).await?;
     log::debug!("Starting server...");
     let (r, _) = tokio::join!(
         webserver::http::run_server(&app_config, state),

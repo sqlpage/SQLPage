@@ -1,0 +1,6 @@
+{
+  "listen_on": "localhost:8080",
+  "database_url": "sqlite://./db/Components.sqlite?mode=rwc",
+  "allow_exec": false,
+  "web_root": "./www"
+}

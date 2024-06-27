@@ -87,7 +87,7 @@
                     {{~#each (to_array menu_item)~}}
                         {{~#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
                             {{~#with (parse_json this)}}
-                                {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0) (gt (len this.image) 0))}}
+                                {{#if (or (or this.title this.icon) this.image)}}
                                     <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
                                         <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
                                             {{~#if this.submenu}} data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if~}}
@@ -112,7 +112,7 @@
                                         {{~#if this.submenu~}}
                                             <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
                                                 {{~#each this.submenu~}}
-                                                    {{#if (or (gt (len this.title) 0) (gt (len this.icon) 0) (gt (len this.image) 0))}}
+                                                    {{#if (or (or this.title this.icon) this.image)}}
                                                         <a class="dropdown-item" href="{{this.link}}">
                                                             {{~#if this.image~}}
                                                                 <span {{~#if this.title}} class="me-1"{{/if}}>

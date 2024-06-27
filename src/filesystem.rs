@@ -145,6 +145,7 @@ pub(crate) struct DbFsQueries {
 
 impl DbFsQueries {
     async fn init(db: &Database) -> anyhow::Result<Self> {
+        log::debug!("Initializing database filesystem queries");
         let db_kind = db.connection.any_kind();
         Ok(Self {
             was_modified: Self::make_was_modified_query(db, db_kind).await?,
