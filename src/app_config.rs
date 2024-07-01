@@ -119,9 +119,18 @@ impl AppConfig {
 /// The directory where the `sqlpage.json` file is located.
 /// Determined by the `SQLPAGE_CONFIGURATION_DIRECTORY` environment variable
 fn configuration_directory() -> PathBuf {
-    std::env::var("SQLPAGE_CONFIGURATION_DIRECTORY")
-        .or_else(|_| std::env::var("CONFIGURATION_DIRECTORY"))
-        .map_or_else(|_| PathBuf::from("./sqlpage"), PathBuf::from)
+    let env_var_name = "CONFIGURATION_DIRECTORY";
+    // uppercase or lowercase, with or without the "SQLPAGE_" prefix
+    for prefix in &["", "SQLPAGE_"] {
+        let var = format!("{}{}", prefix, env_var_name);
+        for t in [str::to_lowercase, str::to_uppercase].iter() {
+            let dir = t(&var);
+            if let Ok(dir) = std::env::var(dir) {
+                return PathBuf::from(dir);
+            }
+        }
+    }
+    PathBuf::from("./sqlpage")
 }
 
 fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
