@@ -122,8 +122,8 @@ fn configuration_directory() -> PathBuf {
     let env_var_name = "CONFIGURATION_DIRECTORY";
     // uppercase or lowercase, with or without the "SQLPAGE_" prefix
     for prefix in &["", "SQLPAGE_"] {
-        let var = format!("{}{}", prefix, env_var_name);
-        for t in [str::to_lowercase, str::to_uppercase].iter() {
+        let var = format!("{prefix}{env_var_name}");
+        for t in [str::to_lowercase, str::to_uppercase] {
             let dir = t(&var);
             if let Ok(dir) = std::env::var(dir) {
                 return PathBuf::from(dir);
