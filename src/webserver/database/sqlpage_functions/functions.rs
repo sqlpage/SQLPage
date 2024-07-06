@@ -21,6 +21,7 @@ super::function_definition_macro::sqlpage_functions! {
     header((&RequestInfo), name: Cow<str>);
 
     path((&RequestInfo));
+    query_string((&RequestInfo));
     persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
     protocol((&RequestInfo));
 
@@ -188,6 +189,10 @@ async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<
 /// Returns the path component of the URL of the current request.
 async fn path(request: &RequestInfo) -> &str {
     &request.path
+}
+
+async fn query_string(request: &RequestInfo) -> &str {
+    &request.query_string
 }
 
 const DEFAULT_ALLOWED_EXTENSIONS: &str =

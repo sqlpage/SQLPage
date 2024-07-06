@@ -200,6 +200,22 @@ async fn test_overwrite_variable() -> actix_web::Result<()> {
     Ok(())
 }
 
+#[actix_web::test]
+async fn test_query() -> actix_web::Result<()> {
+    let query_string = "source=web&q=sqlpage+github";
+    let url = format!("/tests/sql_test_files/it_works_query_string.sql?{}", query_string);
+    let req = get_request_to(url.as_str()).await?.to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::FOUND);
+    let redirect = resp.headers().get("Location").unwrap().to_str().unwrap();
+    assert!(
+        redirect.contains("login.sql?source=web&q=sqlpage+github"),
+        "{redirect}\nexpected to contain: [login.sql?source=web&q=sqlpage+github]"
+    );
+    Ok(())
+}
+
 async fn test_file_upload(target: &str) -> actix_web::Result<()> {
     let req = get_request_to(target)
         .await?

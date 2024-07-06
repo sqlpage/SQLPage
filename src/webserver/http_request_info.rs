@@ -28,6 +28,7 @@ use super::request_variables::ParamMap;
 pub struct RequestInfo {
     pub method: actix_web::http::Method,
     pub path: String,
+    pub query_string: String,
     pub protocol: String,
     pub get_variables: ParamMap,
     pub post_variables: ParamMap,
@@ -45,6 +46,7 @@ impl Clone for RequestInfo {
         Self {
             method: self.method.clone(),
             path: self.path.clone(),
+            query_string: self.query_string.clone(),
             protocol: self.protocol.clone(),
             get_variables: self.get_variables.clone(),
             post_variables: self.post_variables.clone(),
@@ -74,6 +76,7 @@ pub(crate) async fn extract_request_info(
             String::from_utf8_lossy(value.as_bytes()).to_string(),
         )
     });
+    let query_string = req.query_string().to_string();
     let get_variables = web::Query::<Vec<(String, String)>>::from_query(req.query_string())
         .map(web::Query::into_inner)
         .unwrap_or_default();
@@ -92,6 +95,7 @@ pub(crate) async fn extract_request_info(
     Ok(RequestInfo {
         method,
         path: req.path().to_string(),
+        query_string,
         headers: param_map(headers),
         get_variables: param_map(get_variables),
         post_variables: param_map(post_variables),
