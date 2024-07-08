@@ -13,6 +13,7 @@
     - This limitation is now relaxed, and you can pass data from your database to SQLPage functions, at one condition: the function must be called at the top level of a `SELECT` statement. In this case, SQLPage will get the value of the function arguments from the database, and then execute the function after the query has been executed.
     - This fixes most errors like: `Arbitrary SQL expressions as function arguments are not supported.`.
  - Better error messages in the dynamic component when properties are missing.
+ - Bug fix: the top bar was shown only when page title was defined. Now icon, image, and menu_item are also considered.
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
