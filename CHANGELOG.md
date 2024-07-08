@@ -14,6 +14,7 @@
     - This fixes most errors like: `Arbitrary SQL expressions as function arguments are not supported.`.
  - Better error messages in the dynamic component when properties are missing.
  - Bug fix: the top bar was shown only when page title was defined. Now icon, image, and menu_item are also considered.
+ - [54 new icons](https://tabler.io/icons/changelog) (tabler icons updated from 3.4 to 3.7)
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 

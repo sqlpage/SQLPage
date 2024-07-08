@@ -212,7 +212,23 @@ INSERT INTO component(name, icon, description) VALUES
     'The value entered by the user in a field named x will be accessible to the target SQL page as a variable named $x.
     For instance, you can create a SQL page named "create_user.sql" that would contain "INSERT INTO users(name) VALUES($name)"
     and a form with its action property set to "create_user.sql" that would contain a field named "name".');
+INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'form', * FROM (VALUES
+    -- top level
+    ('enctype', '
+When ``method="post"``, this specifies how the form-data should be encoded
+when submitting it to the server.
+', 'TEXT', TRUE, TRUE),
+    -- item level
+    ('formenctype', '
+When ``type`` is ``submit`` or ``image``, this specifies how the form-data
+should be encoded when submitting it to the server.
 
+Takes precedence over any ``enctype`` set on the ``form`` element.
+
+NOTE: when a ``file`` type input is present, then ``formenctype="multipart/form-data"``
+is automatically applied to the default validate button.
+', 'TEXT', FALSE, TRUE)
+);
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
     ('method', 'Set this to ''GET'' to pass the form contents directly as URL parameters. If the user enters a value v in a field named x, submitting the form will load target.sql?x=v. If target.sql contains SELECT $x, it will display the value v.', 'TEXT', TRUE, TRUE),
@@ -402,6 +418,7 @@ But note that SQLPage cookies already have the `SameSite=strict` attribute by de
 ## File upload
 
 You can use the `file` type to allow the user to upload a file.
+
 The file will be uploaded to the server, and you will be able to access it using the
 [`sqlpage.uploaded_file_path`](functions.sql?function=uploaded_file_path#function) function.
 
@@ -411,9 +428,54 @@ Here is how you could save the uploaded file to a table in the database:
 INSERT INTO uploaded_file(name, data) VALUES(:filename, sqlpage.uploaded_file_data_url(:filename))
 ```
 ',
-    json('[{"component":"form", "title": "Upload a picture", "validate": "Upload", "action": "examples/handle_picture_upload.sql"}, 
+    json('[{"component":"form", "enctype": "multipart/form-data", "title": "Upload a picture", "validate": "Upload", "action": "examples/handle_picture_upload.sql"}, 
     {"name": "my_file", "type": "file", "accept": "image/png, image/jpeg",  "label": "Picture", "description": "Upload a small picture", "required": true}
     ]')),
+    ('form', '
+## Form Encoding
+
+You can specify the way form data should be encoded by setting the `enctype`
+top-level property on the form.
+
+You may also specify `formenctype` on `submit` and `image` type inputs.
+This will take precedence over the `enctype` specified on the form and is
+useful in the case there are multiple `submit` buttons on the form.
+For example, an external site may have specific requirements on encoding type.
+
+As a rule of thumb, ``multipart/form-data`` is best when fields may contain
+copious non-ascii characters or for binary data such as an image or a file.
+However, ``application/x-www-form-urlencoded`` creates less overhead when
+many short ascii text values are submitted.
+',
+    json('[
+  {
+    "component": "form",
+    "method": "post",
+    "enctype": "multipart/form-data",
+    "title": "Submit with different encoding types",
+    "validate": "Submit with form encoding type",
+    "action": "examples/handle_enctype.sql"
+  },
+  {"name": "data", "type": "text", "label": "Data", "required": true},
+  {
+    "name": "percent_encoded",
+    "type": "submit",
+    "label": "Submit as",
+    "width": 4,
+    "formaction": "examples/handle_enctype.sql",
+    "formenctype": "application/x-www-form-urlencoded",
+    "value": "application/x-www-form-urlencoded"
+  },
+  {
+    "name": "multipart_form_data",
+    "type": "submit",
+    "label": "Submit as",
+    "width": 4,
+    "formaction": "examples/handle_enctype.sql",
+    "formenctype": "multipart/form-data",
+    "value": "multipart/form-data"
+  }
+]')),
     ('form', '
 ## Bulk data insertion
 
