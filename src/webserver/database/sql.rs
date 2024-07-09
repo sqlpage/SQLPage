@@ -311,7 +311,7 @@ fn extract_static_simple_select(
                 && s.distinct.is_none()
                 && s.distribute_by.is_empty()
                 && s.from.is_empty()
-                && matches!(&s.group_by, sqlparser::ast::GroupByExpr::Expressions(e) if e.is_empty())
+                && matches!(&s.group_by, sqlparser::ast::GroupByExpr::Expressions(e, _) if e.is_empty())
                 && s.having.is_none()
                 && s.into.is_none()
                 && s.lateral_views.is_empty()
@@ -690,6 +690,7 @@ impl VisitorMut for ParameterExtractor {
                         duplicate_treatment: None,
                         clauses: Vec::new(),
                     }),
+                    parameters: FunctionArguments::None,
                     over: None,
                     filter: None,
                     null_treatment: None,
