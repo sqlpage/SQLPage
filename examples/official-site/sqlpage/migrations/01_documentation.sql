@@ -425,7 +425,11 @@ The file will be uploaded to the server, and you will be able to access it using
 Here is how you could save the uploaded file to a table in the database:
 
 ```sql
-INSERT INTO uploaded_file(name, data) VALUES(:filename, sqlpage.uploaded_file_data_url(:filename))
+INSERT INTO uploaded_file(name, data)
+VALUES (
+    :filename,
+    sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path(''my_file''))
+)
 ```
 ',
     json('[{"component":"form", "enctype": "multipart/form-data", "title": "Upload a picture", "validate": "Upload", "action": "examples/handle_picture_upload.sql"}, 
