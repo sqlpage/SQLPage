@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.24.1
+## 0.25.0
 
  - hero component: allow reversing the order of text and images. Allows hero components with the text on the right and the image on the left.
  - Reduce the max item width in the datagrid component for a better and more compact display on small screens. This makes the datagrid component more mobile-friendly. If you have a datagrid with long text items, this may impact the layout of your page. You can override this behavior by manually changing the `--tblr-datagrid-item-width` CSS variable in your custom CSS.
@@ -15,6 +15,9 @@
  - Better error messages in the dynamic component when properties are missing.
  - Bug fix: the top bar was shown only when page title was defined. Now icon, image, and menu_item are also considered.
  - [54 new icons](https://tabler.io/icons/changelog) (tabler icons updated from 3.4 to 3.7)
+ - updated the SQL parser to [v0.48](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0480-2024-07-09)
+   - upport UPDATE statements that contain tuple assignments , like `UPDATE table SET (a, b) = (SELECT 1, 2)`
+   - support custom operators in postgres. Usefull when using extensions like PostGIS, PGroonga, pgtrgm, or pg_similarity, which define custom operators like `&&&`, `@>`, `<->`, `~>`, `~>=`, `~<=`, `<@`...
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
