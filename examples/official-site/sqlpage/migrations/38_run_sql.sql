@@ -47,4 +47,10 @@ VALUES (
         'Path to the SQL file to execute, can be absolute, or relative to the web root (the root folder of your website sql files).
         In-database files, from the sqlpage_files(path, contents, last_modified) table are supported.',
         'TEXT'
+    ),(
+        'run_sql',
+        2,
+        'parameters',
+        'Optional JSON object to pass as parameters to the included SQL file. The keys of the object will be available as variables in the included file. By default, the included file will have access to the same variables as the calling file.',
+        'JSON'
     );

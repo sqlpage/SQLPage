@@ -1,5 +1,5 @@
 use super::RequestInfo;
-use crate::webserver::{database::execute_queries::DbConn, http::SingleOrVec, ErrorWithStatus};
+use crate::webserver::{database::execute_queries::DbConn, request_variables::ParamMap, http::SingleOrVec, ErrorWithStatus};
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use mime_guess::mime;
@@ -28,7 +28,7 @@ super::function_definition_macro::sqlpage_functions! {
     read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
     request_method((&RequestInfo));
-    run_sql((&RequestInfo, &mut DbConn), sql_file_path: Option<Cow<str>>);
+    run_sql((&RequestInfo, &mut DbConn), sql_file_path: Option<Cow<str>>, variables: Option<Cow<str>>);
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
@@ -348,6 +348,7 @@ async fn run_sql<'a>(
     request: &'a RequestInfo,
     db_connection: &mut DbConn,
     sql_file_path: Option<Cow<'a, str>>,
+    variables: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::ser::{SerializeSeq, Serializer};
     let Some(sql_file_path) = sql_file_path else {
@@ -365,6 +366,11 @@ async fn run_sql<'a>(
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let mut tmp_req = request.clone();
+    if let Some(variables) = variables {
+        let variables: ParamMap = serde_json::from_str(&variables)?;
+        tmp_req.get_variables = variables;
+        tmp_req.post_variables = Default::default();
+    }
     if tmp_req.clone_depth > 8 {
         anyhow::bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
         Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\

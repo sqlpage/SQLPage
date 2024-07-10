@@ -18,6 +18,11 @@
  - updated the SQL parser to [v0.48](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0480-2024-07-09)
    - upport UPDATE statements that contain tuple assignments , like `UPDATE table SET (a, b) = (SELECT 1, 2)`
    - support custom operators in postgres. Usefull when using extensions like PostGIS, PGroonga, pgtrgm, or pg_similarity, which define custom operators like `&&&`, `@>`, `<->`, `~>`, `~>=`, `~<=`, `<@`...
+ - New `html` component to display raw HTML content. This component is meant to be used by advanced users who want to display HTML content that cannot be expressed with the other components. Make sure you understand the security implications before using this component, as using untrusted HTML content can expose your users to [cross-site scripting (XSS)](https://en.wikipedia.org/wiki/Cross-site_scripting) attacks.
+ - New parameter in the [`run_sql`](https://sql.ophir.dev/functions.sql?function=run_sql#function) function to pass variables to the included SQL file, instead of using the global variables. Together with the new ability to pass data from the database to SQLPage functions, this allows you to create more modular and reusable SQL files. For instance, the following is finally possible:
+   ```sql
+   select 'dynamic' as component, sqlpage.run_sql('display_product.sql', json_object('product_id', product_id)) as properties from products;
+   ```
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
