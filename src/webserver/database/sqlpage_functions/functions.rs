@@ -205,7 +205,9 @@ async fn link<'a>(
     let mut url = file.into_owned();
     if let Some(parameters) = parameters {
         url.push('?');
-        let encoded = serde_json::from_str::<URLParameters>(&parameters)?;
+        let encoded = serde_json::from_str::<URLParameters>(&parameters).with_context(|| {
+            format!("link: invalid URL parameters: not a valid json object: {parameters}")
+        })?;
         url.push_str(encoded.get());
     }
     if let Some(hash) = hash {
