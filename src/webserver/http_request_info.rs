@@ -41,6 +41,7 @@ pub struct RequestInfo {
 }
 
 impl RequestInfo {
+    #[must_use]
     pub fn clone_without_variables(&self) -> Self {
         Self {
             method: self.method.clone(),
@@ -62,8 +63,8 @@ impl RequestInfo {
 impl Clone for RequestInfo {
     fn clone(&self) -> Self {
         let mut clone = self.clone_without_variables();
-        clone.get_variables = self.get_variables.clone();
-        clone.post_variables = self.post_variables.clone();
+        clone.get_variables.clone_from(&self.get_variables);
+        clone.post_variables.clone_from(&self.post_variables);
         clone
     }
 }
