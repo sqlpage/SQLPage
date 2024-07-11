@@ -4,4 +4,4 @@ from (
     select 'It ' as html
     union all
     select 'works !'
-);
+) as t1;
