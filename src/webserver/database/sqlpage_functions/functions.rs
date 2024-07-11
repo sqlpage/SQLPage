@@ -27,7 +27,7 @@ super::function_definition_macro::sqlpage_functions! {
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
 
-    link(file: Cow<str>, parameters: Cow<str>);
+    link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
 
     path((&RequestInfo));
     persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
@@ -197,12 +197,20 @@ async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<
 /// Builds a URL from a file name and a JSON object conatining URL parameters.
 /// For instance, if the file is "index.sql" and the parameters are {"x": "hello world"},
 /// the result will be "index.sql?x=hello%20world".
-async fn link<'a>(file: Cow<'a, str>, parameters: Option<Cow<'a, str>>) -> anyhow::Result<String> {
+async fn link<'a>(
+    file: Cow<'a, str>,
+    parameters: Option<Cow<'a, str>>,
+    hash: Option<Cow<'a, str>>,
+) -> anyhow::Result<String> {
     let mut url = file.into_owned();
     if let Some(parameters) = parameters {
         url.push('?');
         let encoded = serde_json::from_str::<URLParameters>(&parameters)?;
         url.push_str(encoded.get());
+    }
+    if let Some(hash) = hash {
+        url.push('#');
+        url.push_str(&hash);
     }
     Ok(url)
 }
