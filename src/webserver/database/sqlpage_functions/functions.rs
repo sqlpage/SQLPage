@@ -368,12 +368,14 @@ async fn run_sql<'a>(
         )
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
-    let mut tmp_req = request.clone();
-    if let Some(variables) = variables {
+    let mut tmp_req = if let Some(variables) = variables {
+        let mut tmp_req = request.clone_without_variables();
         let variables: ParamMap = serde_json::from_str(&variables)?;
         tmp_req.get_variables = variables;
-        tmp_req.post_variables = Default::default();
-    }
+        tmp_req
+    } else {
+        request.clone()
+    };
     if tmp_req.clone_depth > 8 {
         anyhow::bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
         Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\

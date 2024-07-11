@@ -40,14 +40,14 @@ pub struct RequestInfo {
     pub clone_depth: u8,
 }
 
-impl Clone for RequestInfo {
-    fn clone(&self) -> Self {
+impl RequestInfo {
+    pub fn clone_without_variables(&self) -> Self {
         Self {
             method: self.method.clone(),
             path: self.path.clone(),
             protocol: self.protocol.clone(),
-            get_variables: self.get_variables.clone(),
-            post_variables: self.post_variables.clone(),
+            get_variables: ParamMap::new(),
+            post_variables: ParamMap::new(),
             uploaded_files: self.uploaded_files.clone(),
             headers: self.headers.clone(),
             client_ip: self.client_ip,
@@ -56,6 +56,15 @@ impl Clone for RequestInfo {
             app_state: self.app_state.clone(),
             clone_depth: self.clone_depth + 1,
         }
+    }
+}
+
+impl Clone for RequestInfo {
+    fn clone(&self) -> Self {
+        let mut clone = self.clone_without_variables();
+        clone.get_variables = self.get_variables.clone();
+        clone.post_variables = self.post_variables.clone();
+        clone
     }
 }
 
