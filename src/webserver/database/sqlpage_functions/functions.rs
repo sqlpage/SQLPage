@@ -1,5 +1,8 @@
 use super::RequestInfo;
-use crate::webserver::{database::execute_queries::DbConn, request_variables::ParamMap, http::SingleOrVec, ErrorWithStatus};
+use crate::webserver::{
+    database::execute_queries::DbConn, http::SingleOrVec, request_variables::ParamMap,
+    ErrorWithStatus,
+};
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use mime_guess::mime;
