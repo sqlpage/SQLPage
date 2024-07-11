@@ -24,6 +24,7 @@
    select 'dynamic' as component, sqlpage.run_sql('display_product.sql', json_object('product_id', product_id)) as properties from products;
    ```
  - New icons (see [tabler icons 3.10](https://tabler.io/changelog))
+ - Updated apexcharts.js to [v3.50.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v3.50.0)
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
