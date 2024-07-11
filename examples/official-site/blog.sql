@@ -12,7 +12,7 @@ SELECT title,
     icon,
     sqlpage.link(
         COALESCE(external_url, ''),
-        ifnull(external_url, json_object('post', title))
+        CASE WHEN external_url IS NULL THEN json_object('post', title) ELSE NULL END
     ) AS link
 FROM blog_posts
 ORDER BY created_at DESC;

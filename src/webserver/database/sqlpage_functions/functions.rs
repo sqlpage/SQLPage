@@ -206,7 +206,7 @@ async fn link<'a>(
     if let Some(parameters) = parameters {
         url.push('?');
         let encoded = serde_json::from_str::<URLParameters>(&parameters).with_context(|| {
-            format!("link: invalid URL parameters: not a valid json object: {parameters}")
+            format!("link: invalid URL parameters: not a valid json object:\n{parameters}")
         })?;
         url.push_str(encoded.get());
     }
