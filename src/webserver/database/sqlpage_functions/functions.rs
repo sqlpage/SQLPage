@@ -1,6 +1,10 @@
 use super::RequestInfo;
 use crate::webserver::{
-    database::execute_queries::DbConn, http::SingleOrVec, request_variables::ParamMap,
+    database::{
+        execute_queries::DbConn, sqlpage_functions::url_parameter_deserializer::URLParameters,
+    },
+    http::SingleOrVec,
+    request_variables::ParamMap,
     ErrorWithStatus,
 };
 use anyhow::{anyhow, Context};
@@ -22,6 +26,8 @@ super::function_definition_macro::sqlpage_functions! {
 
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
+
+    link(file: Cow<str>, parameters: Cow<str>);
 
     path((&RequestInfo));
     persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
@@ -186,6 +192,19 @@ pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Op
 
 async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
     request.headers.get(&*name).map(SingleOrVec::as_json_str)
+}
+
+/// Builds a URL from a file name and a JSON object conatining URL parameters.
+/// For instance, if the file is "index.sql" and the parameters are {"x": "hello world"},
+/// the result will be "index.sql?x=hello%20world".
+async fn link<'a>(file: Cow<'a, str>, parameters: Option<Cow<'a, str>>) -> anyhow::Result<String> {
+    let mut url = file.into_owned();
+    if let Some(parameters) = parameters {
+        url.push('?');
+        let encoded = serde_json::from_str::<URLParameters>(&parameters)?;
+        url.push_str(encoded.get());
+    }
+    Ok(url)
 }
 
 /// Returns the path component of the URL of the current request.

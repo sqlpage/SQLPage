@@ -27,6 +27,14 @@
  - Updated apexcharts.js to [v3.50.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v3.50.0)
  - Improve truncation of long page titles
    - ![screenshot long title](https://github.com/lovasoa/SQLpage/assets/552629/9859023e-c706-47b3-aa9e-1c613046fdfa)
+ - new function: [`sqlpage.link`](https://sql.ophir.dev/functions.sql?function=link#function) to easily create links with parameters between pages. For instance, you can now use
+      ```sql
+      select 'list' as component;
+      select
+        product_name as title,
+        sqlpage.link('product.sql', json_object('product_id', product_id)) as link
+      from products;
+      ```
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
