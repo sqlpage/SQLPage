@@ -25,7 +25,8 @@
    ```
  - New icons (see [tabler icons 3.10](https://tabler.io/changelog))
  - Updated apexcharts.js to [v3.50.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v3.50.0)
-
+ - Improve truncation of long page titles
+   - ![screenshot long title](https://github.com/lovasoa/SQLpage/assets/552629/9859023e-c706-47b3-aa9e-1c613046fdfa)
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 
    - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)
