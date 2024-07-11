@@ -32,9 +32,10 @@
       select 'list' as component;
       select
         product_name as title,
-        sqlpage.link('product.sql', json_object('product_id', product_id)) as link
+        sqlpage.link('product.sql', json_object('product', product_name)) as link
       from products;
       ```
+    - Before, you would usually build the link manually with `CONCAT('/product.sql?product=', product_name)`, which would fail if the product name contained special characters like '&'. The new `sqlpage.link` function takes care of encoding the parameters correctly.
 
 ## 0.24.0 (2024-06-23)
  - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options. 

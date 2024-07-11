@@ -21,7 +21,7 @@ SET $_username = (
 ```sql
 SELECT
     'redirect' AS component,
-    '/login.sql?path=' || $_curpath AS link
+    sqlpage.link('/login.sql', json_object('path', $_curpath)) AS link
 WHERE $_username IS NULL AND $_session_required;
 ```
 4. The login page renders the login form, accepts the user credentials, and redirects to create_session.sql, passing the login credentials as POST variables.
