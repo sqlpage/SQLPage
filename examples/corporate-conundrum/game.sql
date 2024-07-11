@@ -5,10 +5,17 @@ INSERT INTO players(name, game_id)
 SELECT $Player as name,
     $id::integer as game_id
 WHERE $Player IS NOT NULL;
+
 SELECT 'list' as component,
     'Players' as title;
 SELECT name as title,
-    'next-question.sql?game_id=' || game_id || '&player=' || name as link
+    sqlpage.link(
+        'next-question.sql', 
+        json_object(
+            'game_id', game_id,
+            'player', name
+        )
+     ) as link
 FROM players
 WHERE game_id = $id::integer;
 ---------------------------

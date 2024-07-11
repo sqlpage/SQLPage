@@ -8,7 +8,7 @@ SELECT 'big_button' as component,
             (SELECT bpm || ' bpm' FROM tap_bpm WHERE tapping_session = $session ORDER BY day DESC LIMIT 1),
             'Tap'
           ) AS text,
-         'taptempo.sql?session=' || $session as link;
+         sqlpage.link('taptempo.sql', json_object('session', $session)) as link;
 
 SELECT 'chart' as component, 'BPM over time' as title, 'area' as type, 'indigo' as color, 0 AS ymin, 200 AS ymax, 'BPM' as ytitle;
 SELECT * FROM (
