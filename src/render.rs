@@ -8,6 +8,7 @@ use actix_web::http::{header, StatusCode};
 use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{bail, format_err, Context as AnyhowContext};
 use async_recursion::async_recursion;
+use awc::cookie::time::Duration;
 use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -150,6 +151,12 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
         });
         let secure = obj.get("secure");
         cookie.set_secure(secure != Some(&json!(false)) && secure != Some(&json!(0)));
+        if let Some(max_age_json) = obj.get("max_age") {
+            let seconds = max_age_json
+                .as_i64()
+                .ok_or_else(|| anyhow::anyhow!("max_age must be a number, not {max_age_json}"))?;
+            cookie.set_max_age(Duration::seconds(seconds));
+        }
         let expires = obj.get("expires");
         if let Some(expires) = expires {
             cookie.set_expires(actix_web::cookie::Expiration::DateTime(match expires {
