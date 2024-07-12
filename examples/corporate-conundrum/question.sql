@@ -3,7 +3,7 @@ select * FROM sqlpage_shell;
 SELECT 'form' as component,
     question_text as title,
     'Submit your answer' as validate,
-    'wait.sql?game_id='|| $game_id ||'&question_id=' || $question_id ||'&player=' || $player as action
+    sqlpage.link('wait.sql', json_object('game_id', $game_id, 'question_id', $question_id, 'player', $player)) as action
 FROM questions
 where id = $question_id::integer;
 

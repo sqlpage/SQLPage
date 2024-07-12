@@ -11,7 +11,7 @@ SELECT 'hero' as component,
         'Tap Tempo' as title,
         'Tap Tempo is a tool to **measure a tempo in bpm** by clicking a button in rythm.' as description_md,
         'drums by Nana Yaw Otoo.jpg' as image,
-        'taptempo.sql?session=' || random() as link,
+        sqlpage.link('taptempo.sql', json_object('session', random())) as link,
         'Start tapping !' as link_text;
 
 SELECT 'text' as component,

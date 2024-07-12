@@ -10,11 +10,9 @@ SELECT 'list' AS component,
 SELECT title,
     description,
     icon,
-    CASE 
-        WHEN external_url IS NOT NULL
-        THEN external_url
-    ELSE 
-        '?post=' || title
-    END AS link
+    sqlpage.link(
+        COALESCE(external_url, ''),
+        CASE WHEN external_url IS NULL THEN json_object('post', title) ELSE NULL END
+    ) AS link
 FROM blog_posts
 ORDER BY created_at DESC;

@@ -2,7 +2,7 @@
 
 SELECT
     'authentication' AS component,
-    'login.sql?' || ifnull('path=' || $path, '') || '&error=1' AS link,
+    'login.sql?' || ifnull('path=' || sqlpage.url_encode($path), '') || '&error=1' AS link,
     :password AS password,
     (SELECT password_hash
      FROM accounts
