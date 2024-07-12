@@ -40,7 +40,6 @@ pub fn quote_source_with_highlight(source: &str, line_num: u64, col_num: u64) ->
         .unwrap_or_default()
         .saturating_sub(1);
     for line in source.lines() {
-        current_line_num += 1;
         if current_line_num + 1 == line_num || current_line_num == line_num + 1 {
             writeln!(msg, "{line}").unwrap();
         } else if current_line_num == line_num {
@@ -48,6 +47,7 @@ pub fn quote_source_with_highlight(source: &str, line_num: u64, col_num: u64) ->
         } else if current_line_num > line_num + 1 {
             break;
         }
+        current_line_num += 1;
     }
     msg
 }
