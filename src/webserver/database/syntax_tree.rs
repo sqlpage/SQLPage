@@ -38,6 +38,7 @@ pub(crate) enum StmtParam {
     Literal(String),
     Null,
     Concat(Vec<StmtParam>),
+    JsonObject(Vec<StmtParam>),
     FunctionCall(SqlPageFunctionCall),
 }
 
@@ -51,6 +52,13 @@ impl std::fmt::Display for StmtParam {
             StmtParam::Null => write!(f, "NULL"),
             StmtParam::Concat(items) => {
                 write!(f, "CONCAT(")?;
+                for item in items {
+                    write!(f, "{item}, ")?;
+                }
+                write!(f, ")")
+            }
+            StmtParam::JsonObject(items) => {
+                write!(f, "JSON_OBJECT(")?;
                 for item in items {
                     write!(f, "{item}, ")?;
                 }
@@ -145,6 +153,7 @@ pub(super) async fn extract_req_param<'a, 'b>(
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::Null => None,
         StmtParam::Concat(args) => concat_params(&args[..], request, db_connection).await?,
+        StmtParam::JsonObject(args) => json_object_params(&args[..], request, db_connection).await?,
         StmtParam::FunctionCall(func) => func.evaluate(request, db_connection).await.with_context(|| {
             format!(
                 "Error in function call {func}.\nExpected {:#}",
@@ -167,4 +176,27 @@ async fn concat_params<'a, 'b>(
         result.push_str(&arg);
     }
     Ok(Some(Cow::Owned(result)))
+}
+
+async fn json_object_params<'a, 'b>(
+    args: &[StmtParam],
+    request: &'a RequestInfo,
+    db_connection: &'b mut DbConn,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    use serde::{ser::SerializeMap, Serializer};
+    let mut result = Vec::new();
+    let mut ser = serde_json::Serializer::new(&mut result);
+    let mut map_ser = ser.serialize_map(Some(args.len()))?;
+    let mut it = args.iter();
+    while let Some(key) = it.next() {
+        let key = Box::pin(extract_req_param(key, request, db_connection)).await?;
+        map_ser.serialize_key(&key)?;
+        let val = it
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("Odd number of arguments in JSON_OBJECT"))?;
+        let val = Box::pin(extract_req_param(val, request, db_connection)).await?;
+        map_ser.serialize_value(&val)?;
+    }
+    map_ser.end()?;
+    Ok(Some(Cow::Owned(String::from_utf8(result)?)))
 }

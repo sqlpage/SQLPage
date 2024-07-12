@@ -587,14 +587,24 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
                     ..
                 }),
             ..
-        }) if func_name_parts.len() == 1
-            && func_name_parts[0].value.eq_ignore_ascii_case("concat") =>
-        {
-            let mut concat_args = Vec::with_capacity(args.len());
-            for arg in args {
-                concat_args.push(function_arg_to_stmt_param(arg)?);
+        }) if func_name_parts.len() == 1 => {
+            let func_name = func_name_parts[0].value.as_str();
+            if func_name.eq_ignore_ascii_case("concat") {
+                let mut concat_args = Vec::with_capacity(args.len());
+                for arg in args {
+                    concat_args.push(function_arg_to_stmt_param(arg)?);
+                }
+                Some(StmtParam::Concat(concat_args))
+            } else if func_name.eq_ignore_ascii_case("json_object") {
+                let mut json_obj_args = Vec::with_capacity(args.len());
+                for arg in args {
+                    json_obj_args.push(function_arg_to_stmt_param(arg)?);
+                }
+                Some(StmtParam::JsonObject(json_obj_args))
+            } else {
+                log::warn!("SQLPage cannot emulate the following function: {func_name}");
+                None
             }
-            Some(StmtParam::Concat(concat_args))
         }
         _ => {
             log::warn!("Unsupported function argument: {arg}");
