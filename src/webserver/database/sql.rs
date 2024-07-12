@@ -3,8 +3,8 @@ use super::sqlpage_functions::functions::SqlPageFunctionName;
 use super::sqlpage_functions::{are_params_extractable, func_call_to_param};
 use super::syntax_tree::StmtParam;
 use crate::file_cache::AsyncFromStrWithState;
+use crate::webserver::database::error_highlighting::quote_source_with_highlight;
 use crate::{AppState, Database};
-use anyhow::Context;
 use async_trait::async_trait;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
@@ -16,7 +16,6 @@ use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{SemiColon, EOF};
 use sqlparser::tokenizer::Tokenizer;
 use sqlx::any::AnyKind;
-use std::fmt::Write;
 use std::ops::ControlFlow;
 use std::str::FromStr;
 
@@ -92,21 +91,28 @@ fn parse_sql<'a>(
     log::trace!("Parsing SQL: {sql}");
     let tokens = Tokenizer::new(dialect, sql)
         .tokenize_with_location()
-        .with_context(|| "SQLPage's SQL parser could not tokenize the sql file")?;
+        .map_err(|err| {
+            let location = err.location;
+            anyhow::Error::new(err).context(format!("The SQLPage parser couldn't understand the SQL file. Tokenization failed. Please check for syntax errors:\n{}", quote_source_with_highlight(sql, location.line, location.column)))
+        })?;
     let mut parser = Parser::new(dialect).with_tokens_with_locations(tokens);
     let db_kind = kind_of_dialect(dialect);
     Ok(std::iter::from_fn(move || {
-        parse_single_statement(&mut parser, db_kind)
+        parse_single_statement(&mut parser, db_kind, sql)
     }))
 }
 
-fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<ParsedStatement> {
+fn parse_single_statement(
+    parser: &mut Parser<'_>,
+    db_kind: AnyKind,
+    source_sql: &str,
+) -> Option<ParsedStatement> {
     if parser.peek_token() == EOF {
         return None;
     }
     let mut stmt = match parser.parse_statement() {
         Ok(stmt) => stmt,
-        Err(err) => return Some(syntax_error(err, parser)),
+        Err(err) => return Some(syntax_error(err, parser, source_sql)),
     };
     log::debug!("Parsed statement: {stmt}");
     let mut semicolon = false;
@@ -145,25 +151,13 @@ fn parse_single_statement(parser: &mut Parser<'_>, db_kind: AnyKind) -> Option<P
     }))
 }
 
-fn syntax_error(err: ParserError, parser: &mut Parser) -> ParsedStatement {
-    let mut err_msg = String::with_capacity(128);
-    parser.prev_token(); // go back to the token that caused the error
-    for i in 0..32 {
-        let next_token = parser.next_token();
-        if i == 0 {
-            writeln!(
-                &mut err_msg,
-                "SQLPage found a syntax error on line {}, character {}:",
-                next_token.location.line, next_token.location.column
-            )
-            .unwrap();
-        }
-        if next_token == EOF {
-            break;
-        }
-        write!(&mut err_msg, "{next_token} ").unwrap();
-    }
-    ParsedStatement::Error(anyhow::Error::from(err).context(err_msg))
+fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement {
+    dbg!((&err, &parser.peek_token_no_skip(), &sql));
+    let location = parser.peek_token_no_skip().location;
+    ParsedStatement::Error(anyhow::Error::from(err).context(format!(
+        "The SQLPage parser couldn't understand the SQL file. Parsing failed. Please check for syntax errors:\n{}",
+        quote_source_with_highlight(sql, location.line, location.column)
+    )))
 }
 
 fn dialect_for_db(db_kind: AnyKind) -> Box<dyn Dialect> {
@@ -856,7 +850,8 @@ mod test {
     #[test]
     fn test_sqlpage_function_with_argument() {
         for &(dialect, kind) in ALL_DIALECTS {
-            let mut ast = parse_stmt("select sqlpage.fetch($x)", dialect);
+            let sql = "select sqlpage.fetch($x)";
+            let mut ast = parse_stmt(sql, dialect);
             let parameters = ParameterExtractor::extract_parameters(&mut ast, kind);
             assert_eq!(
                 parameters,
@@ -874,7 +869,7 @@ mod test {
         let sql = "set x = $y";
         for &(dialect, db_kind) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, db_kind);
+            let stmt = parse_single_statement(&mut parser, db_kind, sql);
             if let Some(ParsedStatement::SetVariable {
                 variable,
                 value: StmtWithParams { query, params, .. },

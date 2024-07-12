@@ -16,7 +16,7 @@ use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
 
 use super::syntax_tree::{extract_req_param, StmtParam};
-use super::{highlight_sql_error, Database, DbItem};
+use super::{error_highlighting::display_db_error, Database, DbItem};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
 use sqlx::{Any, Arguments, Column, Either, Executor, Row as _, Statement, ValueRef};
@@ -33,7 +33,7 @@ impl Database {
             .prepare_with(query, param_types)
             .await
             .map(|s| s.to_owned())
-            .map_err(|e| highlight_sql_error("Failed to prepare SQL statement", query, e))
+            .map_err(|e| display_db_error("Failed to prepare SQL statement", query, e))
     }
 }
 
@@ -214,7 +214,7 @@ fn parse_single_sql_result(sql: &str, res: sqlx::Result<Either<AnyQueryResult, A
             log::debug!("Finished query with result: {:?}", res);
             DbItem::FinishedQuery
         }
-        Err(err) => DbItem::Error(highlight_sql_error(
+        Err(err) => DbItem::Error(display_db_error(
             "Failed to execute SQL statement",
             sql,
             err,
