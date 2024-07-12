@@ -595,7 +595,9 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
                     concat_args.push(function_arg_to_stmt_param(arg)?);
                 }
                 Some(StmtParam::Concat(concat_args))
-            } else if func_name.eq_ignore_ascii_case("json_object") {
+            } else if func_name.eq_ignore_ascii_case("json_object")
+                || func_name.eq_ignore_ascii_case("json_build_object")
+            {
                 let mut json_obj_args = Vec::with_capacity(args.len());
                 for arg in args {
                     json_obj_args.push(function_arg_to_stmt_param(arg)?);
