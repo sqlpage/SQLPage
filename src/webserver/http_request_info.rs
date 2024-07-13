@@ -167,10 +167,12 @@ async fn extract_multipart_post_data(
 
     while let Some(part) = multipart.next().await {
         let field = part.map_err(|e| anyhow!("unable to read form field: {e}"))?;
-        // test if field is a file
-        let filename = field.content_disposition().get_filename();
-        let field_name = field
+        let content_disposition = field
             .content_disposition()
+            .ok_or_else(|| anyhow!("missing Content-Disposition in form field"))?;
+        // test if field is a file
+        let filename = content_disposition.get_filename();
+        let field_name = content_disposition
             .get_name()
             .unwrap_or_default()
             .to_string();
