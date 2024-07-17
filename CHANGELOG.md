@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased
+
+ - re-add a link to the website title in the shell component
+
 ## 0.25.0 (2024-07-13)
 
 - hero component: allow reversing the order of text and images. Allows hero components with the text on the right and the image on the left.
