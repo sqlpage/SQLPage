@@ -1,0 +1,21 @@
+services:
+  web:
+    image: lovasoa/sqlpage:main # main is cutting edge, use lovasoa/sqlpage:latest for the latest stable version
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www
+      - ./sqlpage:/etc/sqlpage
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://root:secret@db/sqlpage
+  db: # The DB environment variable can be set to "mariadb" or "postgres" to test the code with different databases
+    ports:
+      - "5432:5432"
+      - "3306:3306"
+    image: postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_DB: sqlpage
+      POSTGRES_PASSWORD: secret
