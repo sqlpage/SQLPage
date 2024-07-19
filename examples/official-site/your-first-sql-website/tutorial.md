@@ -148,7 +148,7 @@ Now, users are present in our database, but we can’t see them. Let’s fix tha
 
 ```sql
 SELECT 'list' AS component, 'Users' AS title;
-SELECT name AS title,  name || ' is a user on this website.' as description FROM users;
+SELECT name AS title,  CONCAT(name, ' is a user on this website.') as description FROM users;
 ```
 
 ### Your first SQLPage website is ready!
