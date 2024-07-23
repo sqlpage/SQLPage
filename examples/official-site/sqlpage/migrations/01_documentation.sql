@@ -839,6 +839,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('link', 'The target of the link in the top navigation bar.', 'URL', TRUE, TRUE),
     ('css', 'The URL of a CSS file to load and apply to the page.', 'URL', TRUE, TRUE),
     ('javascript', 'The URL of a Javascript file to load and execute on the page.', 'URL', TRUE, TRUE),
+    ('javascript_module', 'The URL of a javascript module in the ESM format (see javascript.info/modules)', 'URL', TRUE, TRUE),
     ('rss', 'The URL of an RSS feed to display in the top navigation bar. You can use the rss component to generate the field.', 'URL', TRUE, TRUE),
     ('image', 'The URL of an image to display next to the page title.', 'URL', TRUE, TRUE),
     ('social_image', 'The URL of the preview image that will appear in the Open Graph metadata when the page is shared on social media.', 'URL', TRUE, TRUE),
