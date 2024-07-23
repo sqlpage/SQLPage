@@ -97,6 +97,9 @@ pub struct AppConfig {
     /// Whether to compress the http response body when the client supports it.
     #[serde(default = "default_compress_responses")]
     pub compress_responses: bool,
+
+    /// Content-Security-Policy header to send to the client. If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
+    pub content_security_policy: Option<String>,
 }
 
 impl AppConfig {

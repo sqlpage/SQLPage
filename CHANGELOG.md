@@ -4,6 +4,8 @@
 
 - re-add a link to the website title in the shell component
 - add `text` and `post_html` properties to the [html](https://sql.ophir.dev/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
+ - allow loading javascript ESM modules in the shell component
+ - allow customizing the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy) in the configuration.
 
 ## 0.25.0 (2024-07-13)
 

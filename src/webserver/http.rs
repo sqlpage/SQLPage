@@ -539,7 +539,11 @@ pub fn create_app(
                 ))
                 .add((
                     "Content-Security-Policy",
-                    "script-src 'self' https://cdn.jsdelivr.net",
+                    app_state
+                        .config
+                        .content_security_policy
+                        .as_deref()
+                        .unwrap_or("script-src 'self' https://cdn.jsdelivr.net"),
                 )),
         )
         .wrap(middleware::Condition::new(
