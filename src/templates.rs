@@ -34,21 +34,19 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
             items_template = tpl.template;
         }
     }
+    let mut before_list = original.clone();
     let mut list_content = items_template.unwrap_or_default();
+    let mut after_list = Template::new();
     let original_name = original.name.unwrap_or_default();
+    before_list.name = Some(format!("{original_name} before each block"));
     list_content.name = Some(format!("{original_name} each block"));
+    after_list.name = Some(format!("{original_name} after each block"));
+    after_list.elements = elements_after;
+    after_list.mapping = mapping_after;
     SplitTemplate {
-        before_list: Template {
-            name: Some(format!("{original_name} before each block")),
-            elements: original.elements,
-            mapping: original.mapping,
-        },
+        before_list,
         list_content,
-        after_list: Template {
-            name: Some(format!("{original_name} after each block")),
-            elements: elements_after,
-            mapping: mapping_after,
-        },
+        after_list,
     }
 }
 

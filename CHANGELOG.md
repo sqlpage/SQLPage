@@ -8,6 +8,7 @@
  - allow customizing the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy) in the configuration.
  - update to [sqlparser v0.49.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0490-2024-07-23)
    - support [`WITH ORDINALITY`](https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-TABLEFUNCTIONS) in postgres `FROM` clauses
+ - update to [handlebars-rs v6](https://github.com/sunng87/handlebars-rust/blob/master/CHANGELOG.md#600---2024-07-20)
 
 ## 0.25.0 (2024-07-13)
 
