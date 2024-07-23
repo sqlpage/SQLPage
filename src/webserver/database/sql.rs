@@ -290,7 +290,7 @@ fn extract_static_simple_select(
         Statement::Query(q)
             if q.limit.is_none()
                 && q.fetch.is_none()
-                && q.order_by.is_empty()
+                && q.order_by.is_none()
                 && q.with.is_none()
                 && q.offset.is_none()
                 && q.locks.is_empty() =>
