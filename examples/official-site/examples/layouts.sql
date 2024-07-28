@@ -13,7 +13,7 @@ For more information on how to use layouts, see the [shell component documentati
 ' as contents_md;
 
 select 'list' as component, 'Available SQLPage shell layouts' as title;
-select column1 as title, '?layout=' || lower(column1) as link, $layout = column1 as active, column3 as icon, column2 as description
+select column1 as title, '?layout=' || lower(column1) as link, $layout = lower(column1) as active, column3 as icon, column2 as description
 from (VALUES
     ('Boxed', 'A compact layout with a fixed-width container. This is the default layout.', 'layout-distribute-vertical'),
     ('Horizontal', 'A full-width layout with a horizontal navigation bar.', 'layout-align-top'),
