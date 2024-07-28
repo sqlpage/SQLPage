@@ -66,8 +66,7 @@
     {{/if}}
 </head>
 
-<body class="{{#if sidebar}}layout-fluid{{else}}layout-{{default layout 'boxed'}}{{/if}}" {{#if
-    theme}}data-bs-theme="{{theme}}" {{/if}}>
+<body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}"{{/if}}>
     <div class="page">
         {{#if (or (or title (or icon image)) menu_item)}}
         <header id="sqlpage_header"></header>
