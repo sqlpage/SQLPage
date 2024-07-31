@@ -32,13 +32,13 @@
                         {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
                         >
                         {{#if color}}
-                        <span class="status status-{{color}} {{#if active}}fw-bold{{/if}}">
+                        <span class="status status-{{color}} h-auto rounded-3 {{#if active}}fw-bold{{/if}}">
                         {{/if}}
                         {{#if image_url}}
                             <img src="{{image_url}}" class="avatar avatar-xs me-1 rounded" width="32" height="32" alt="{{title}}" />
                         {{/if}}
                         {{#if icon}}
-                            {{~icon_img icon~}}
+                            <span class="flex-shrink-0">{{~icon_img icon~}}</span>
                         {{/if}}
                         {{#if description}}
                             {{description}}
