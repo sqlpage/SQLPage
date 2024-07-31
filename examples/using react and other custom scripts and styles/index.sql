@@ -3,5 +3,5 @@ SELECT 'shell' AS component,
     'style.css' as css,
     'settings' as icon;
 
-SELECT 'text' AS component, 'funky_text' AS id;
-SELECT 'Try my react component !' AS contents, 'react.sql' AS link;
+SELECT 'button' AS component, 'center' as justify;
+SELECT 'Try my react component !' AS title, 'react.sql' AS link, 'funky_text' AS id;
