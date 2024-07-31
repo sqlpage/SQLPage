@@ -9,6 +9,10 @@
  - update to [sqlparser v0.49.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0490-2024-07-23)
    - support [`WITH ORDINALITY`](https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-TABLEFUNCTIONS) in postgres `FROM` clauses
  - update to [handlebars-rs v6](https://github.com/sunng87/handlebars-rust/blob/master/CHANGELOG.md#600---2024-07-20)
+ - Improved handling of empty tables. Added a new `empty_description` attribute, which defaults to `No data`. This allows you to display a custom message when a table is empty.
+ - fixed a bug where a form input with a value of `0` would diplay as empty instead of showing the `0`.
+ - reduce the margin at the botton of forms to make them more compact.
+ - fix [datagrid](https://sql.ophir.dev/documentation.sql?component=datagrid#component) color pills display when they contain long text.
 
 ## 0.25.0 (2024-07-13)
 
