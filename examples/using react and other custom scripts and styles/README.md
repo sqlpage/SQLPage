@@ -11,6 +11,7 @@ It integrates a simple [react](https://reactjs.org/) component and loads it with
 
 ![example client-side reactive SQLPage application with React](screenshot-react.png)
 
+![example math equations](screenshot-math-equations.png)
 
 
 ## Notes
