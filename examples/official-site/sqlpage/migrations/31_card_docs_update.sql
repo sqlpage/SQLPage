@@ -41,20 +41,18 @@ INSERT INTO parameter(component, name, description_md, type, top_level, optional
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
-    ('card', 'The most basic card', json('[{"component":"card"},{"description":"A"},{"description":"B"},{"description":"C"}]')),
-    ('card', 'A card with a Markdown description',
-            json('[{"component":"card", "columns": 2}, {"title":"A card with a Markdown description", "description_md": "This is a card with a **Markdown** description. \n\n'||
-            'This is useful if you want to display a lot of text in the card, with many options for formatting, such as '||
-            '\n - **bold**, \n - *italics*, \n - [links](index.sql), \n - etc."}]')),
     ('card', 'A beautiful card grid with bells and whistles, showing examples of SQLPage features.',
             json('[{"component":"card", "title":"Popular SQLPage features", "columns": 2},
             {"title": "Download as spreadsheet", "link": "?component=csv#component", "description": "Using the CSV component, you can download your data as a spreadsheet.", "icon":"file-plus", "color": "green", "footer_md": "SQLPage can both [read](?component=form#component) and [write](?component=csv#component) **CSV** files."},
             {"title": "Custom components", "link": "/custom_components.sql", "description": "If you know some HTML, you can create your own components for your application.", "icon":"code", "color": "orange", "footer_md": "You can look at the [source of the official components](https://github.com/lovasoa/SQLpage/tree/main/sqlpage/templates) for inspiration."}
     ]')),
-    ('card', 'Short information notices', 
+    ('card', 'You can use cards to display a dashboard with quick access to important information. Use [markdown](https://www.markdownguide.org/basic-syntax) to format the text.',
         json('[
-            {"component": "card"},
-            {"description_md": "This post is also available in [german](?lang=de).", "active": true, "icon": "language"}
+            {"component": "card", "columns": 4},
+            {"description_md": "**152** sales today", "active": true, "icon": "currency-euro"},
+            {"description_md": "**13** new users", "icon": "user-plus", "color": "green"},
+            {"description_md": "**2** complaints", "icon": "alert-circle", "color": "danger", "link": "?view_complaints", "background_color": "red-lt"},
+            {"description_md": "**1** pending support request", "icon": "mail-question", "color": "warning"}
         ]')),
     ('card', 'A gallery of images.',
         json('[
