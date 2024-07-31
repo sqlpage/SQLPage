@@ -670,6 +670,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('overflow', 'Whether to to let "wide" tables overflow across the right border and enable browser-based horizontal scrolling.', 'BOOLEAN', TRUE, TRUE),
     ('small', 'Whether to use compact table.', 'BOOLEAN', TRUE, TRUE),
     ('description','Description of the table content and helps users with screen readers to find a table and understand what it’s.','TEXT',TRUE,TRUE),
+    ('empty_description', 'Text to display if the table does not contain any row. Defaults to "no data".', 'TEXT', TRUE, TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'TEXT', FALSE, TRUE)
@@ -708,7 +709,11 @@ INSERT INTO example(component, description, properties) VALUES
          {"name": "USS Constellation", "registry": "NCC-1974", "class":"Constellation"},
          {"name": "USS Dakota", "registry": "NCC-63892", "class":"Akira"}
         ]'
-    )
+    )),
+    (
+    'table',
+    'An empty table with a friendly message',
+    json('[{"component":"table", "empty_description": "Nothing to see here at the moment."}]')
     );
 
 
