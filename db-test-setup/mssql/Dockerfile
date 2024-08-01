@@ -1,4 +1,4 @@
-ARG VERSION=2019-latest
+ARG VERSION=2022-latest
 FROM mcr.microsoft.com/mssql/server:${VERSION}
 
 # Create a config directory
