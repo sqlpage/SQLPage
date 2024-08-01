@@ -6,6 +6,7 @@
 - add `text` and `post_html` properties to the [html](https://sql.ophir.dev/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
  - allow loading javascript ESM modules in the shell component
  - allow customizing the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy) in the configuration.
+ - the new default content-security-policy is more secure and easier to use. You can now include inline javascript in your custom components with `<script nonce="{{@csp_nonce}}">...</script>`.
  - update to [sqlparser v0.49.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0490-2024-07-23)
    - support [`WITH ORDINALITY`](https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-TABLEFUNCTIONS) in postgres `FROM` clauses
  - update to [handlebars-rs v6](https://github.com/sunng87/handlebars-rust/blob/master/CHANGELOG.md#600---2024-07-20)
