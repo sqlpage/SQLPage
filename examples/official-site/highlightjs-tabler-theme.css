@@ -9,7 +9,7 @@
 /* Punctuation */
 .hljs-template-variable,
 .hljs-punctuation {
-	color: var(--tblr-gray-500);
+	color: #e9eac7;
 }
 
 /* Namespace */
