@@ -42,7 +42,9 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
     pub fn new(app_state: Arc<AppState>, request_context: RequestContext, writer: W) -> Self {
         let mut response = HttpResponseBuilder::new(StatusCode::OK);
         response.content_type("text/html; charset=utf-8");
-        response.insert_header(&request_context.content_security_policy);
+        if app_state.config.content_security_policy.is_none() {
+            response.insert_header(&request_context.content_security_policy);
+        }
         Self {
             app_state,
             request_context,
