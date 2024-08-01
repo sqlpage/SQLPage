@@ -18,12 +18,15 @@ select
     'arrow-right'       as icon;
 select 
     'Force' as title,
-    'The force \( \overrightarrow{F} \) acting on a body is equal to the mass \( m \) of the body multiplied by the acceleration 
-\( \overrightarrow{a} = \frac{\mathrm{d}}{\mathrm{d} t} \overrightarrow{v} \) of the body.' as description,
+    'The acceleration \( \overrightarrow{a} \) of a body is directly proportional to the net force \( \overrightarrow{F_{\text{net}}} \) acting on the it, and inversely proportional to its mass \( m \):
+\( \overrightarrow{F_{\text{net}}} = m \overrightarrow{a} \), or
+\( \sum \overrightarrow F  = m \frac{\mathrm d \overrightarrow v }{\mathrm d t} \).' as description,
     'rocket'       as icon,
     'red'          as color;
 select
     'Action and reaction' as title,
-    'For every action, there is an equal and opposite reaction. If body A exerts a force \( \overrightarrow{F_{\text{A on B}}} \) on body B, then body B exerts a force \( \overrightarrow{F_{\text{B on A}}} \) on body A.' as description,
+    'For every action, there is an equal and opposite reaction.
+If body A exerts a force \( \overrightarrow{F_{\text{A on B}}} \) on body B,
+then body B exerts a force \( \overrightarrow{F_{\text{B on A}}} = -\overrightarrow{F_{\text{A on B}}} \) on body A.' as description,
     'arrows-exchange' as icon,
     'orange'         as color;
