@@ -38,12 +38,12 @@
     <script src="{{static_path 'sqlpage.js'}}" defer></script>
     {{#each (to_array javascript)}}
         {{#if this}}
-            <script src="{{this}}" defer></script>
+            <script src="{{this}}" defer nonce="{{@../csp_nonce}}"></script>
         {{/if}}
     {{/each}}
     {{#each (to_array javascript_module)}}
         {{#if this}}
-            <script src="{{this}}" type="module" defer></script>
+            <script src="{{this}}" type="module" defer nonce="{{@../csp_nonce}}"></script>
         {{/if}}
     {{/each}}
 

@@ -1,5 +1,5 @@
 use crate::templates::SplitTemplate;
-use crate::webserver::http::LayoutContext;
+use crate::webserver::http::RequestContext;
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
@@ -15,9 +15,9 @@ use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::sync::Arc;
 
-pub enum PageContext<'a, W: std::io::Write> {
+pub enum PageContext<W: std::io::Write> {
     /// Indicates that we should stay in the header context
-    Header(HeaderContext<'a, W>),
+    Header(HeaderContext<W>),
 
     /// Indicates that we should start rendering the body
     Body {
@@ -30,27 +30,28 @@ pub enum PageContext<'a, W: std::io::Write> {
 }
 
 /// Handles the first SQL statements, before the headers have been sent to
-pub struct HeaderContext<'a, W: std::io::Write> {
+pub struct HeaderContext<W: std::io::Write> {
     app_state: Arc<AppState>,
-    layout_context: &'a LayoutContext,
+    request_context: RequestContext,
     pub writer: W,
     response: HttpResponseBuilder,
     has_status: bool,
 }
 
-impl<'a, W: std::io::Write> HeaderContext<'a, W> {
-    pub fn new(app_state: Arc<AppState>, layout_context: &'a LayoutContext, writer: W) -> Self {
+impl<'a, W: std::io::Write> HeaderContext<W> {
+    pub fn new(app_state: Arc<AppState>, request_context: RequestContext, writer: W) -> Self {
         let mut response = HttpResponseBuilder::new(StatusCode::OK);
         response.content_type("text/html; charset=utf-8");
+        response.insert_header(&request_context.content_security_policy);
         Self {
             app_state,
-            layout_context,
+            request_context,
             writer,
             response,
             has_status: false,
         }
     }
-    pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext<'a, W>> {
+    pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
         log::debug!("Handling header row: {data}");
         match get_object_str(&data, "component") {
             Some("status_code") => self.status_code(&data).map(PageContext::Header),
@@ -63,7 +64,7 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
         }
     }
 
-    pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext<'a, W>> {
+    pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext<W>> {
         if self.app_state.config.environment.is_prod() {
             return Err(err);
         }
@@ -198,7 +199,7 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
         Ok(self.response.body(json_response))
     }
 
-    async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext<'a, W>> {
+    async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext<W>> {
         let password_hash = take_object_str(&mut data, "password_hash");
         let password = take_object_str(&mut data, "password");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
@@ -228,8 +229,8 @@ impl<'a, W: std::io::Write> HeaderContext<'a, W> {
         Ok(PageContext::Close(http_response))
     }
 
-    async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<'a, W>> {
-        let renderer = RenderContext::new(self.app_state, self.layout_context, self.writer, data)
+    async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
+        let renderer = RenderContext::new(self.app_state, self.request_context, self.writer, data)
             .await
             .with_context(|| "Failed to create a render context from the header context.")?;
         let http_response = self.response;
@@ -287,6 +288,7 @@ pub struct RenderContext<W: std::io::Write> {
     current_component: Option<SplitTemplateRenderer>,
     shell_renderer: SplitTemplateRenderer,
     current_statement: usize,
+    request_context: RequestContext,
 }
 
 const DEFAULT_COMPONENT: &str = "table";
@@ -296,7 +298,7 @@ const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
 impl<W: std::io::Write> RenderContext<W> {
     pub async fn new(
         app_state: Arc<AppState>,
-        layout_context: &LayoutContext,
+        request_context: RequestContext,
         mut writer: W,
         initial_row: JsonValue,
     ) -> anyhow::Result<RenderContext<W>> {
@@ -309,7 +311,7 @@ impl<W: std::io::Write> RenderContext<W> {
             .and_then(|c| get_object_str(c, "component"))
             .is_some_and(Self::is_shell_component)
         {
-            let default_shell = if layout_context.is_embedded {
+            let default_shell = if request_context.is_embedded {
                 FRAGMENT_SHELL_COMPONENT
             } else {
                 PAGE_SHELL_COMPONENT
@@ -329,6 +331,7 @@ impl<W: std::io::Write> RenderContext<W> {
             get_object_str(&shell_row, "component").expect("shell should exist"),
             Arc::clone(&app_state),
             0,
+            request_context.content_security_policy.nonce,
         )
         .await
         .with_context(|| "The shell component should always exist")?;
@@ -341,6 +344,7 @@ impl<W: std::io::Write> RenderContext<W> {
             current_component: None,
             shell_renderer,
             current_statement: 1,
+            request_context,
         };
 
         for row in rows_iter {
@@ -461,6 +465,7 @@ impl<W: std::io::Write> RenderContext<W> {
         component: &str,
         app_state: Arc<AppState>,
         component_index: usize,
+        nonce: u64,
     ) -> anyhow::Result<SplitTemplateRenderer> {
         let split_template = app_state
             .all_templates
@@ -470,6 +475,7 @@ impl<W: std::io::Write> RenderContext<W> {
             split_template,
             app_state,
             component_index,
+            nonce,
         ))
     }
 
@@ -486,6 +492,7 @@ impl<W: std::io::Write> RenderContext<W> {
             component,
             Arc::clone(&self.app_state),
             current_component_index + 1,
+            self.request_context.content_security_policy.nonce,
         )
         .await?;
         Ok(self.current_component.replace(new_component))
@@ -543,6 +550,7 @@ pub struct SplitTemplateRenderer {
     app_state: Arc<AppState>,
     row_index: usize,
     component_index: usize,
+    nonce: JsonValue,
 }
 
 impl SplitTemplateRenderer {
@@ -550,6 +558,7 @@ impl SplitTemplateRenderer {
         split_template: Arc<SplitTemplate>,
         app_state: Arc<AppState>,
         component_index: usize,
+        nonce: u64,
     ) -> Self {
         Self {
             split_template,
@@ -558,6 +567,7 @@ impl SplitTemplateRenderer {
             row_index: 0,
             ctx: Context::null(),
             component_index,
+            nonce: nonce.into(),
         }
     }
     fn name(&self) -> &str {
@@ -581,13 +591,15 @@ impl SplitTemplateRenderer {
                 .unwrap_or_default(),
         );
         let mut render_context = handlebars::RenderContext::new(None);
-        render_context
+        let blk = render_context
             .block_mut()
-            .expect("context created without block")
-            .set_local_var(
-                "component_index",
-                JsonValue::Number(self.component_index.into()),
-            );
+            .expect("context created without block");
+        blk.set_local_var(
+            "component_index",
+            JsonValue::Number(self.component_index.into()),
+        );
+        blk.set_local_var("csp_nonce", self.nonce.clone());
+
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
         self.split_template.before_list.render(
@@ -618,6 +630,7 @@ impl SplitTemplateRenderer {
             let mut blk = BlockContext::new();
             blk.set_base_value(data);
             blk.set_local_var("row_index", JsonValue::Number(self.row_index.into()));
+            blk.set_local_var("csp_nonce", self.nonce.clone());
             render_context.push_block(blk);
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.list_content.render(
@@ -646,6 +659,7 @@ impl SplitTemplateRenderer {
         if let Some(mut local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             local_vars.put("row_index", self.row_index.into());
+            local_vars.put("csp_nonce", self.nonce.clone());
             log::trace!("Rendering the after_list template with the following local variables: {local_vars:?}");
             *render_context
                 .block_mut()
@@ -681,7 +695,7 @@ mod tests {
         let mut output = Vec::new();
         let config = app_config::tests::test_config();
         let app_state = Arc::new(AppState::init(&config).await.unwrap());
-        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0);
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0, 0);
         rdr.render_start(&mut output, json!({"name": "SQL"}))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
@@ -702,7 +716,7 @@ mod tests {
         let mut output = Vec::new();
         let config = app_config::tests::test_config();
         let app_state = Arc::new(AppState::init(&config).await.unwrap());
-        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0);
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0, 0);
         rdr.render_start(&mut output, json!(null))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
         rdr.render_item(&mut output, json!({"x": 2}))?;
