@@ -41,6 +41,9 @@ function sqlpage_select_dropdown(){
   if (!window.TomSelect) {
     const script = document.createElement("script");
     script.src= src;
+    script.integrity = "sha384-aAqv9vleUwO75zAk1sGKd5VvRqXamBXwdxhtihEUPSeq1HtxwmZqQG/HxQnq7zaE";
+    script.crossOrigin = "anonymous";
+    script.nonce = document.currentScript.nonce;
     script.onload = sqlpage_select_dropdown;
     document.head.appendChild(script);
     return;
