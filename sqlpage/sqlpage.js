@@ -186,16 +186,15 @@ function load_scripts() {
   }
 }
 
-function add_init_function(f) {
+function add_init_fn(f) {
   document.addEventListener('DOMContentLoaded', f);
   document.addEventListener('fragment-loaded', f);
-  if (document.readyState !== "loading") f();
+  if (document.readyState !== "loading") setTimeout(f, 0);
 }
 
-add_init_function(function init_components() {
-  sqlpage_table();
-  sqlpage_map();
-  sqlpage_card();
-  sqlpage_form();
-  load_scripts();
-});
+
+add_init_fn(sqlpage_table);
+add_init_fn(sqlpage_map);
+add_init_fn(sqlpage_card);
+add_init_fn(sqlpage_form);
+add_init_fn(load_scripts);
