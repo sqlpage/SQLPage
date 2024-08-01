@@ -35,7 +35,7 @@
         {{/if}}
     {{/if}}
 
-    <script src="{{static_path 'sqlpage.js'}}" defer></script>
+    <script src="{{static_path 'sqlpage.js'}}" defer nonce="{{@csp_nonce}}"></script>
     {{#each (to_array javascript)}}
         {{#if this}}
             <script src="{{this}}" defer nonce="{{@../csp_nonce}}"></script>

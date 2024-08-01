@@ -69,6 +69,7 @@ function sqlpage_map() {
       leaflet_js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
       leaflet_js.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
       leaflet_js.crossOrigin = "anonymous";
+      leaflet_js.nonce = document.currentScript.nonce;
       leaflet_js.onload = onLeafletLoad;
       document.head.appendChild(leaflet_js);
       is_leaflet_injected = true;
