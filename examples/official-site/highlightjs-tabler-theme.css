@@ -1,0 +1,105 @@
+/* Comments, Prolog, Doctype, and Cdata */
+.hljs-comment,
+.hljs-prolog,
+.hljs-meta,
+.hljs-cdata {
+	color: var(--tblr-gray-300);
+}
+
+/* Punctuation */
+.hljs-template-variable,
+.hljs-punctuation {
+	color: var(--tblr-gray-500);
+}
+
+/* Namespace */
+.hljs-namespace {
+	opacity: .7;
+}
+
+/* Property and Tag */
+.hljs-property {
+	color: #de5f8f;
+}
+
+/* Number */
+.hljs-number {
+    color: #ea9999;
+}
+
+/* Boolean */
+.hljs-literal {
+	color: #ae81ff;
+}
+
+/* Selector, Attr-name, and String */
+.hljs-attr {
+	color: #fcfce5;
+}
+
+.hljs-name {
+	color: #e4faf6;
+}
+.hljs-selector-tag,
+.hljs-string {
+	color: #97e1a3;
+}
+
+/* Operator, Entity, URL, CSS String, and Style String */
+.hljs-operator,
+.hljs-symbol,
+.hljs-link,
+.language-css .hljs-string,
+.style .hljs-string {
+	color: #f8f8f2;
+}
+
+/* At-rule and Attr-value */
+.hljs-tag,
+.hljs-keyword,
+.hljs-attribute-value {
+	color: #e6db74;
+}
+
+/* Keyword */
+.hljs-template-tag,
+.hljs-keyword {
+	color: #95d1ff;
+}
+
+/* Regex and Important */
+.hljs-regexp,
+.hljs-important {
+	color: var(--tblr-yellow);
+}
+
+/* Important */
+.hljs-important {
+	font-weight: bold;
+}
+
+/* Entity */
+.hljs-symbol {
+	cursor: help;
+}
+
+/* Token transition */
+.hljs {
+	transition: .3s;
+}
+
+/* Code selection */
+code::selection, code ::selection {
+	background: var(--tblr-yellow);
+	color: var(--tblr-gray-900);
+	border-radius: .1em;
+}
+
+code .hljs-keyword::selection, code .hljs-punctuation::selection {
+	color: var(--tblr-gray-800);
+}
+
+/* Pre code padding */
+pre code {
+	padding: 0;
+}
