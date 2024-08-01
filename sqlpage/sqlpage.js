@@ -1,6 +1,8 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js */
 /* !include https://cdn.jsdelivr.net/npm/list.js-fixed@2.3.4/dist/list.min.js */
 
+const nonce = document.currentScript.nonce;
+
 function sqlpage_card() {
     for (const c of document.querySelectorAll("[data-pre-init=card]")) {
         const source = c.dataset.embed;
@@ -43,7 +45,7 @@ function sqlpage_select_dropdown(){
     script.src= src;
     script.integrity = "sha384-aAqv9vleUwO75zAk1sGKd5VvRqXamBXwdxhtihEUPSeq1HtxwmZqQG/HxQnq7zaE";
     script.crossOrigin = "anonymous";
-    script.nonce = document.currentScript.nonce;
+    script.nonce = nonce;
     script.onload = sqlpage_select_dropdown;
     document.head.appendChild(script);
     return;
@@ -72,7 +74,7 @@ function sqlpage_map() {
       leaflet_js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
       leaflet_js.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
       leaflet_js.crossOrigin = "anonymous";
-      leaflet_js.nonce = document.currentScript.nonce;
+      leaflet_js.nonce = nonce;
       leaflet_js.onload = onLeafletLoad;
       document.head.appendChild(leaflet_js);
       is_leaflet_injected = true;
