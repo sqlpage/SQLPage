@@ -534,21 +534,7 @@ pub fn create_app(
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
         .wrap(Logger::default())
-        .wrap(
-            middleware::DefaultHeaders::new()
-                .add((
-                    "Server",
-                    format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
-                ))
-                .add((
-                    "Content-Security-Policy",
-                    app_state
-                        .config
-                        .content_security_policy
-                        .as_deref()
-                        .unwrap_or("script-src 'self' https://cdn.jsdelivr.net"),
-                )),
-        )
+        .wrap(default_headers(&app_state))
         .wrap(middleware::Condition::new(
             app_state.config.compress_responses,
             middleware::Compress::default(),
@@ -558,6 +544,15 @@ pub fn create_app(
         ))
         .app_data(PayloadConfig::default().limit(app_state.config.max_uploaded_file_size * 2))
         .app_data(app_state)
+}
+
+fn default_headers(app_state: &web::Data<AppState>) -> middleware::DefaultHeaders {
+    let server_header = format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    let mut headers = middleware::DefaultHeaders::new().add(("Server", server_header));
+    if let Some(csp) = &app_state.config.content_security_policy {
+        headers = headers.add(("Content-Security-Policy", csp.as_str()));
+    }
+    headers
 }
 
 pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {
