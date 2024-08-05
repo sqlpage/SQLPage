@@ -71,7 +71,7 @@
     {{#if (or (or title (or icon image)) menu_item)}}
         <header id="sqlpage_header">
         <nav class="navbar navbar-expand-md navbar-light{{#if fixed_top_menu}} fixed-top{{/if}}">
-        <div class="container-fluid gap-2">
+        <div class="container-fluid gap-2 flex-nowrap justify-content-start" style="min-width:0">
             <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                 {{#if image}}
                     <img src="{{image}}" alt="{{title}}" width="32" height="32"
@@ -81,83 +81,83 @@
                     {{~icon_img icon~}}
                 {{/if}}
             </a>
-            {{#if title}}<h1 class="mb-0 fs-2 text-truncate"><a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a></h1>{{/if}}
+            {{#if title}}<h1 class="mb-0 fs-2 text-truncate flex-grow-1"><a href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a></h1>{{/if}}
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                 data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false"
                 aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbar-menu">
-                <ul class="navbar-nav ms-auto">
-                    {{~#each (to_array menu_item)~}}
-                        {{~#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
-                            {{~#with (parse_json this)}}
-                                {{#if (or (or this.title this.icon) this.image)}}
-                                    <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
-                                        <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
-                                            {{~#if this.submenu}} data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if~}}
-                                            role="button"
-                                        >
-                                            {{~#if this.image~}}
-                                                <span {{~#if this.title}} class="me-1"{{/if}}>
-                                                    {{~#if (eq this.size 'sm')}}
-                                                        <img width=16 height=16 src="{{this.image}}">
-                                                    {{~else~}}
-                                                        <img width=24 height=24 src="{{this.image}}">
-                                                    {{~/if~}}
-                                                </span>
-                                            {{~/if~}}
-                                            {{#if this.icon}}
-                                                {{#if this.title}}<span class="me-1">{{/if}}
-                                                    {{~icon_img this.icon~}}
-                                                {{#if this.title}}</span>{{/if}}
-                                            {{/if}}
-                                            {{~this.title~}}
-                                        </a>
-                                        {{~#if this.submenu~}}
-                                            <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
-                                                {{~#each this.submenu~}}
-                                                    {{#if (or (or this.title this.icon) this.image)}}
-                                                        <a class="dropdown-item" href="{{this.link}}">
-                                                            {{~#if this.image~}}
-                                                                <span {{~#if this.title}} class="me-1"{{/if}}>
-                                                                    {{~#if (eq ../this.size 'sm')}}
-                                                                        <img width=16 height=16 src="{{this.image}}">
-                                                                    {{~else~}}
-                                                                        <img width=24 height=24 src="{{this.image}}">
-                                                                    {{~/if~}}
-                                                                </span>
-                                                            {{~/if~}}
-                                                            {{#if this.icon}}
-                                                                {{#if this.title}}<span class="me-1">{{/if}}
-                                                                    {{~icon_img this.icon~}}
-                                                                {{#if this.title}}</span>{{/if}}
-                                                            {{/if}}
-                                                            {{~this.title~}}
-                                                        </a>
-                                                    {{~/if~}}
-                                                {{~/each~}}
-                                            </div>
+        </div>
+        <div class="collapse navbar-collapse" id="navbar-menu">
+            <ul class="navbar-nav ms-auto">
+                {{~#each (to_array menu_item)~}}
+                    {{~#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
+                        {{~#with (parse_json this)}}
+                            {{#if (or (or this.title this.icon) this.image)}}
+                                <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
+                                    <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
+                                        {{~#if this.submenu}} data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if~}}
+                                        role="button"
+                                    >
+                                        {{~#if this.image~}}
+                                            <span {{~#if this.title}} class="me-1"{{/if}}>
+                                                {{~#if (eq this.size 'sm')}}
+                                                    <img width=16 height=16 src="{{this.image}}">
+                                                {{~else~}}
+                                                    <img width=24 height=24 src="{{this.image}}">
+                                                {{~/if~}}
+                                            </span>
+                                        {{~/if~}}
+                                        {{#if this.icon}}
+                                            {{#if this.title}}<span class="me-1">{{/if}}
+                                                {{~icon_img this.icon~}}
+                                            {{#if this.title}}</span>{{/if}}
                                         {{/if}}
-                                    </li>
-                                {{/if}}
-                            {{/with}}
-                        {{~else}}
-                            {{~#if (gt (len this) 0)~}}
-                                <li class="nav-item">
-                                    <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
+                                        {{~this.title~}}
+                                    </a>
+                                    {{~#if this.submenu~}}
+                                        <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
+                                            {{~#each this.submenu~}}
+                                                {{#if (or (or this.title this.icon) this.image)}}
+                                                    <a class="dropdown-item" href="{{this.link}}">
+                                                        {{~#if this.image~}}
+                                                            <span {{~#if this.title}} class="me-1"{{/if}}>
+                                                                {{~#if (eq ../this.size 'sm')}}
+                                                                    <img width=16 height=16 src="{{this.image}}">
+                                                                {{~else~}}
+                                                                    <img width=24 height=24 src="{{this.image}}">
+                                                                {{~/if~}}
+                                                            </span>
+                                                        {{~/if~}}
+                                                        {{#if this.icon}}
+                                                            {{#if this.title}}<span class="me-1">{{/if}}
+                                                                {{~icon_img this.icon~}}
+                                                            {{#if this.title}}</span>{{/if}}
+                                                        {{/if}}
+                                                        {{~this.title~}}
+                                                    </a>
+                                                {{~/if~}}
+                                            {{~/each~}}
+                                        </div>
+                                    {{/if}}
                                 </li>
-                            {{~/if~}}
+                            {{/if}}
+                        {{/with}}
+                    {{~else}}
+                        {{~#if (gt (len this) 0)~}}
+                            <li class="nav-item">
+                                <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
+                            </li>
                         {{~/if~}}
-                    {{~/each}}
-                </ul>
-                {{#if search_target}}
-                    <form class="d-flex" role="search" action="{{search_target}}">
-                        <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" name="search" value="{{search_value}}">
-                        <button class="btn btn-outline-success" type="submit">Search</button>
-                    </form>
-                {{/if}}
-            </div>
+                    {{~/if~}}
+                {{~/each}}
+            </ul>
+            {{#if search_target}}
+                <form class="d-flex" role="search" action="{{search_target}}">
+                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" name="search" value="{{search_value}}">
+                    <button class="btn btn-outline-success" type="submit">Search</button>
+                </form>
+            {{/if}}
         </div>
         </nav>
         </header>

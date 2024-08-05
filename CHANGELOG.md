@@ -2,6 +2,7 @@
 
 ## 0.26.0
 
+- fix ugly wrapping of items in the header when the page title is long. We now have a nice text ellipsis (...) when the title is too long.
 - re-add a link to the website title in the shell component
 - add `text` and `post_html` properties to the [html](https://sql.ophir.dev/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
  - allow loading javascript ESM modules in the shell component
@@ -14,6 +15,7 @@
  - fixed a bug where a form input with a value of `0` would diplay as empty instead of showing the `0`.
  - reduce the margin at the botton of forms to make them more compact.
  - fix [datagrid](https://sql.ophir.dev/documentation.sql?component=datagrid#component) color pills display when they contain long text.
+ - fix the "started successfully" message being displayed before the error message when the server failed to start.
 
 ## 0.25.0 (2024-07-13)
 

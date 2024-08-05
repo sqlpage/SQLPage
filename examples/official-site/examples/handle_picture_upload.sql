@@ -10,7 +10,7 @@ select 'Your picture' as title,
     'Uploaded file type: ' || sqlpage.uploaded_file_mime_type('my_file') as description
 where $data_url is not null;
 
-select 'form' as component;
+select 'form' as component, 'Upload picture' as validate;
 select 'my_file' as name, 'file' as type, 'Picture' as label;
 
 select 'text' as component, '
