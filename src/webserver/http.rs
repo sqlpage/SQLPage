@@ -597,11 +597,40 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
                 .map_err(|e| bind_error(e, listen_on))?;
         }
     }
-    server
-        .run()
-        .await
-        .with_context(|| "Unable to start the application")?;
-    Ok(())
+
+    let (r, _) = tokio::join!(server.run(), log_welcome_message(&config));
+    r.with_context(|| "Unable to start the application")
+}
+
+async fn log_welcome_message(config: &AppConfig) {
+    let address_message = if let Some(unix_socket) = &config.unix_socket {
+        format!("unix socket {unix_socket:?}")
+    } else if let Some(domain) = &config.https_domain {
+        format!("https://{}", domain)
+    } else {
+        use std::fmt::Write;
+        let listen_on = config.listen_on();
+        let mut msg = format!("{listen_on}");
+        if listen_on.ip().is_unspecified() {
+            // let the user know the service is publicly accessible
+            write!(
+                msg,
+                ": accessible from the network, and locally on http://localhost:{}",
+                listen_on.port()
+            )
+            .unwrap();
+        }
+        msg
+    };
+
+    log::info!(
+        "SQLPage v{} started successfully.
+    Now listening on {}
+    You can write your website's code in .sql files in {}",
+        env!("CARGO_PKG_VERSION"),
+        address_message,
+        config.web_root.display()
+    );
 }
 
 fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Error {
