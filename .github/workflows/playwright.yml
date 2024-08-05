@@ -21,7 +21,7 @@ jobs:
         cache: 'npm'
         cache-dependency-path: ./tests/end-to-end/package-lock.json
     - name: Install dependencies
-      run: >
+      run: |
         npm ci
         npx playwright install --with-deps chromium
     - name: build sqlpage
