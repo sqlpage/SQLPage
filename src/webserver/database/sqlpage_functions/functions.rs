@@ -10,7 +10,7 @@ use crate::webserver::{
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use mime_guess::mime;
-use std::{borrow::Cow, ffi::OsStr, str::FromStr};
+use std::{borrow::Cow, ffi::OsStr, str::FromStr, sync::OnceLock};
 
 super::function_definition_macro::sqlpage_functions! {
     basic_auth_password((&RequestInfo));
@@ -133,7 +133,7 @@ async fn fetch(
     http_request: super::http_fetch_request::HttpFetchRequest<'_>,
 ) -> anyhow::Result<String> {
     use awc::http::Method;
-    let client = make_http_client(&request.app_state.config);
+    let client = make_http_client(&request.app_state.config)?;
 
     let method = if let Some(method) = http_request.method {
         Method::from_str(&method)?
@@ -174,25 +174,34 @@ async fn fetch(
     Ok(response_str)
 }
 
-fn make_http_client(config: &crate::app_config::AppConfig) -> awc::Client {
+static NATIVE_CERTS: OnceLock<std::io::Result<rustls::RootCertStore>> = OnceLock::new();
+
+fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result<awc::Client> {
     let connector = if config.system_root_ca_certificates {
-        let mut roots = rustls::RootCertStore::empty();
-        for cert in rustls_native_certs::load_native_certs().expect("could not load platform certs")
-        {
-            roots.add(cert).unwrap();
-        }
+        let roots = NATIVE_CERTS
+            .get_or_init(|| {
+                let certs = rustls_native_certs::load_native_certs()?;
+                let mut roots = rustls::RootCertStore::empty();
+                for cert in certs {
+                    roots.add(cert.clone()).unwrap();
+                }
+                Ok(roots)
+            })
+            .as_ref()?;
+
         let tls_conf = rustls::ClientConfig::builder()
-            .with_root_certificates(roots)
+            .with_root_certificates(roots.clone())
             .with_no_client_auth();
 
         awc::Connector::new().rustls_0_22(std::sync::Arc::new(tls_conf))
     } else {
         awc::Connector::new()
     };
-    awc::Client::builder()
+    let client = awc::Client::builder()
         .connector(connector)
         .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
-        .finish()
+        .finish();
+    Ok(client)
 }
 
 pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Option<String>> {

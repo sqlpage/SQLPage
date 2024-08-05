@@ -599,7 +599,10 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
     }
 
     log_welcome_message(config);
-    server.run().await.with_context(|| "Unable to start the application")
+    server
+        .run()
+        .await
+        .with_context(|| "Unable to start the application")
 }
 
 fn log_welcome_message(config: &AppConfig) {
