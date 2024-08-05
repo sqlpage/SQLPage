@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.26.0
 
 - re-add a link to the website title in the shell component
 - add `text` and `post_html` properties to the [html](https://sql.ophir.dev/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
