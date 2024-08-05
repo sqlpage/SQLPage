@@ -1000,6 +1000,30 @@ mod test {
     }
 
     #[test]
+    fn test_extract_set_variable() {
+        let sql = "set x = 42";
+        for &(dialect, db_kind) in ALL_DIALECTS {
+            let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
+            let stmt = parse_single_statement(&mut parser, db_kind, sql);
+            if let Some(ParsedStatement::SetVariable {
+                variable,
+                value: StmtWithParams { query, params, .. },
+            }) = stmt
+            {
+                assert_eq!(
+                    variable,
+                    StmtParam::PostOrGet("x".to_string()),
+                    "{dialect:?}"
+                );
+                assert_eq!(query, "SELECT 42");
+                assert!(params.is_empty());
+            } else {
+                panic!("Failed for dialect {dialect:?}: {stmt:#?}",);
+            }
+        }
+    }
+
+    #[test]
     fn test_static_extract_doesnt_match() {
         assert_eq!(
             extract_static_simple_select(
