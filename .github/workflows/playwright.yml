@@ -29,7 +29,7 @@ jobs:
       working-directory: ./examples/official-site
     - name: start official site and wait for it to be ready
       timeout-minutes: 1
-      run: >
+      run: |
         cargo run 2>/tmp/stderrlog &
         tail -f /tmp/stderrlog | grep -q "started successfully"
       working-directory: ./examples/official-site
