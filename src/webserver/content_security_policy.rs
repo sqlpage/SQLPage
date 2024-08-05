@@ -8,8 +8,8 @@ pub struct ContentSecurityPolicy {
     pub nonce: u64,
 }
 
-impl ContentSecurityPolicy {
-    pub fn new() -> Self {
+impl Default for ContentSecurityPolicy {    
+    fn default() -> Self {
         Self { nonce: random() }
     }
 }

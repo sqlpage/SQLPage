@@ -254,7 +254,7 @@ async fn render_sql(
     actix_web::rt::spawn(async move {
         let request_context = RequestContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
-            content_security_policy: ContentSecurityPolicy::new(),
+            content_security_policy: ContentSecurityPolicy::default(),
         };
         let mut conn = None;
         let database_entries_stream =
@@ -598,15 +598,15 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         }
     }
 
-    let (r, _) = tokio::join!(server.run(), log_welcome_message(&config));
-    r.with_context(|| "Unable to start the application")
+    log_welcome_message(config);
+    server.run().await.with_context(|| "Unable to start the application")
 }
 
-async fn log_welcome_message(config: &AppConfig) {
+fn log_welcome_message(config: &AppConfig) {
     let address_message = if let Some(unix_socket) = &config.unix_socket {
         format!("unix socket {unix_socket:?}")
     } else if let Some(domain) = &config.https_domain {
-        format!("https://{}", domain)
+        format!("https://{domain}")
     } else {
         use std::fmt::Write;
         let listen_on = config.listen_on();

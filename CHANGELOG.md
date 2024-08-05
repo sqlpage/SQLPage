@@ -16,6 +16,7 @@
  - reduce the margin at the botton of forms to make them more compact.
  - fix [datagrid](https://sql.ophir.dev/documentation.sql?component=datagrid#component) color pills display when they contain long text.
  - fix the "started successfully" message being displayed before the error message when the server failed to start.
+ - add support for using the system's native SSL Certificate Authority (CA) store in `sqlpage.fetch`. See the new `system_root_ca_certificates` configuration option.
 
 ## 0.25.0 (2024-07-13)
 

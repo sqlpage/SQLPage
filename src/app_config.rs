@@ -100,6 +100,12 @@ pub struct AppConfig {
 
     /// Content-Security-Policy header to send to the client. If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
     pub content_security_policy: Option<String>,
+
+    /// Whether `sqlpage.fetch` should load trusted certificates from the operating system's certificate store
+    /// By default, it loads Mozilla's root certificates that are embedded in the `SQLPage` binary, or the ones pointed to by the
+    /// `SSL_CERT_FILE` and `SSL_CERT_DIR` environment variables.
+    #[serde(default = "default_system_root_ca_certificates")]
+    pub system_root_ca_certificates: bool,
 }
 
 impl AppConfig {
@@ -320,6 +326,10 @@ fn default_max_pending_rows() -> usize {
 
 fn default_compress_responses() -> bool {
     true
+}
+
+fn default_system_root_ca_certificates() -> bool {
+    std::env::var("SSL_CERT_FILE").is_ok() || std::env::var("SSL_CERT_DIR").is_ok()
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
