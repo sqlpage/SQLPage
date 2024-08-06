@@ -1,24 +1,56 @@
 # CHANGELOG.md
 
-## 0.26.0
+## 0.26.0 (2024-08-06)
+### Components
+#### Card
+New `width` attribute in the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to set the width of the card. This finally allows you to create custom layouts, by combining the `embed` and `width` attributes of the card component! This also updates the default layout of the card component: when `columns` is not set, there is now a default of 4 columns instead of 5.
 
-- fix ugly wrapping of items in the header when the page title is long. We now have a nice text ellipsis (...) when the title is too long.
-- re-add a link to the website title in the shell component
-- add `text` and `post_html` properties to the [html](https://sql.ophir.dev/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
- - allow loading javascript ESM modules in the shell component
+![image](https://github.com/user-attachments/assets/98425bd8-c576-4628-9ae2-db3ba4650019)
+
+
+#### Datagrid
+fix [datagrid](https://sql.ophir.dev/documentation.sql?component=datagrid#component) color pills display when they contain long text.
+
+![image](https://github.com/user-attachments/assets/3b7dba27-8812-410c-a383-2b62d6a286ac)
+
+#### Table
+Fixed a bug that could cause issues with other components when a table was empty.
+Improved handling of empty tables. Added a new `empty_description` attribute, which defaults to `No data`. This allows you to display a custom message when a table is empty.
+
+![image](https://github.com/user-attachments/assets/c370f841-20c5-4cbf-8c9e-7318dce9b87c)
+
+#### Form
+ - Fixed a bug where a form input with a value of `0` would diplay as empty instead of showing the `0`.
+ - Reduced the margin at the botton of forms to fix the appearance of forms that are validated by a `button` component declared separately from the form.
+
+#### Shell
+Fixed ugly wrapping of items in the header when the page title is long. We now have a nice text ellipsis (...) when the title is too long.
+![image](https://github.com/user-attachments/assets/3ac22d98-dde5-49c2-8f72-45ee7595fe82)
+
+Fixed the link to the website title in the shell component.
+
+Allow loading javascript ESM modules in the shell component with the new `javascript_module` property.
+
+#### html
+Added `text` and `post_html` properties to the [html](https://sql.ophir.dev/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
+
+```sql
+select 
+    'html' as component;
+select 
+    '<b>Username</b>: <mark>' as html,
+    'username that will be safely escaped: <"& ' as text,
+    '</mark>' as post_html;
+```
+
+### Other
  - allow customizing the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy) in the configuration.
  - the new default *content security policy* is both more secure and easier to use. You can now include inline javascript in your custom components with `<script nonce="{{@csp_nonce}}">...</script>`.
  - update to [sqlparser v0.49.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0490-2024-07-23)
    - support [`WITH ORDINALITY`](https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-TABLEFUNCTIONS) in postgres `FROM` clauses
  - update to [handlebars-rs v6](https://github.com/sunng87/handlebars-rust/blob/master/CHANGELOG.md#600---2024-07-20)
- - Improved handling of empty tables. Added a new `empty_description` attribute, which defaults to `No data`. This allows you to display a custom message when a table is empty.
- - fixed a bug where a form input with a value of `0` would diplay as empty instead of showing the `0`.
- - reduce the margin at the botton of forms to make them more compact.
- - fix [datagrid](https://sql.ophir.dev/documentation.sql?component=datagrid#component) color pills display when they contain long text.
  - fix the "started successfully" message being displayed before the error message when the server failed to start.
  - add support for using the system's native SSL Certificate Authority (CA) store in `sqlpage.fetch`. See the new `system_root_ca_certificates` configuration option.
- - New `width` attribute in the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to set the width of the card. This finally allows you to create custom layouts, by combining the `embed` and `width` attributes of the card component.
-  - This also updates the default layout of the card component: when `columns` is not set, there is now a default of 4 columns instead of 5. 
 
 ## 0.25.0 (2024-07-13)
 
