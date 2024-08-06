@@ -7,22 +7,22 @@
 {{#if description_md}}
     {{{markdown description_md}}}
 {{/if}}
-<div class="
-    row
-    row-cols-1
-    {{#if columns}}
-        {{#if (gt columns 2)}}row-cols-sm-2{{/if}}
+<div class="row gx-2 gy-2 mt-1 mb-3 {{class}}
+    {{~#if columns~}}
+        {{#if (gt columns 2)}} row-cols-sm-2 {{/if}}
         row-cols-lg-{{columns}}
-    {{else}}
-        row-cols-sm-2
-        row-cols-md-3
-        row-cols-lg-4
-        row-cols-xl-5
-    {{/if}}
-    gx-2 gy-2
-    mt-1 mb-3 {{class}}">
+    {{/if}}">
     {{#each_row}}
-        <div class="col {{class}}" {{#if id}}id="{{id}}"{{/if}}>
+        <div class="
+        {{#unless ../columns}}
+            {{~#if width~}}
+                {{~#if (lt width 6)}} col-12 col-md-6 {{/if~}}
+                col-md-{{width~}}
+            {{~else~}}
+                col-12 col-md-6 col-lg-3
+            {{~/if~}}
+        {{/unless}} {{class}}"
+        {{~#if id}} id="{{id}}"{{/if}}>
             <div class="card h-100
                 {{~#if active}} card-active{{/if~}}
                 {{~#if background_color}} bg-{{background_color}} text-{{background_color}}-fg{{/if~}}

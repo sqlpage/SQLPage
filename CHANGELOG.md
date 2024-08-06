@@ -17,6 +17,8 @@
  - fix [datagrid](https://sql.ophir.dev/documentation.sql?component=datagrid#component) color pills display when they contain long text.
  - fix the "started successfully" message being displayed before the error message when the server failed to start.
  - add support for using the system's native SSL Certificate Authority (CA) store in `sqlpage.fetch`. See the new `system_root_ca_certificates` configuration option.
+ - New `width` attribute in the [card](https://sql.ophir.dev/documentation.sql?component=card#component) component to set the width of the card. This finally allows you to create custom layouts, by combining the `embed` and `width` attributes of the card component.
+  - This also updates the default layout of the card component: when `columns` is not set, there is now a default of 4 columns instead of 5. 
 
 ## 0.25.0 (2024-07-13)
 

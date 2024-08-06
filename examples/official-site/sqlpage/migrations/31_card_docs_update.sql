@@ -7,7 +7,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'Text header at the top of the list of cards.', 'TEXT', TRUE, TRUE),
     ('description', 'A short paragraph displayed below the title.', 'TEXT', TRUE, TRUE),
     ('description_md', 'A short paragraph displayed below the title - formatted using markdown.', 'TEXT', TRUE, TRUE),
-    ('columns', 'The number of columns in the grid of cards. This is just a hint, the grid will adjust dynamically to the user''s screen size, rendering fewer columns if needed to fit the contents.', 'INTEGER', TRUE, TRUE),
+    ('columns', 'The number of columns in the grid of cards. This is just a hint, the grid will adjust dynamically to the user''s screen size, rendering fewer columns if needed to fit the contents. To control the size of cards individually, use the `width` row-level property instead.', 'INTEGER', TRUE, TRUE),
     -- item level
     ('title', 'Name of the card, displayed at the top.', 'TEXT', FALSE, FALSE),
     ('description', 'The body of the card, where you put the main text contents of the card.
@@ -26,7 +26,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon', 'Name of an icon to display on the left side of the card.', 'ICON', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed on the left of the card to highlight it.', 'COLOR', FALSE, TRUE),
     ('background_color', 'The background color of the card.', 'COLOR', FALSE, TRUE),
-    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE)
+    ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE),
+    ('width', 'The width of the card, between 1 (smallest) and 12 (full-width). The default width is 3, resulting in 4 cards per line.', 'INTEGER', FALSE, TRUE)
 ) x;
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'card', * FROM (VALUES
     ('embed', 'A url whose contents will be fetched and injected into the body of this card.
@@ -61,12 +62,12 @@ INSERT INTO example(component, description, properties) VALUES
             {"title": "Squirrel", "description_md": "The **chipmunk** is a small, striped rodent of the family Sciuridae. Chipmunks are found in North America, with the exception of the Siberian chipmunk which is found primarily in Asia.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Tamias-rufus-001.jpg/640px-Tamias-rufus-001.jpg" },
             {"title": "Spider", "description_md": "The **jumping spider family** (_Salticidae_) contains more than 600 described genera and about *6000 described species*, making it the largest family of spiders with about 13% of all species.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Jumping_spiders_%28Salticidae%29.jpg/640px-Jumping_spiders_%28Salticidae%29.jpg" }
         ]')),
-    ('card', 'Beautifully colored cards',
+    ('card', 'Beautifully colored cards with variable width. The blue card (width 6) takes half the screen, whereas of the red and green cards have the default width of 3',
         json('[
-            {"component":"card", "title":"Beautifully colored cards", "columns": 3},
+            {"component":"card", "title":"Beautifully colored cards" },
             {"title": "Red card", "color": "red", "background_color": "red-lt", "description": "Penalty! You are out!", "icon":"play-football" },
-            {"title": "Green card", "color": "green", "background_color": "green-lt", "description": "Welcome to the United States of America !", "icon":"user-dollar" },
-            {"title": "Blue card", "color": "blue", "background_color": "blue-lt", "description": "The Blue Card facilitates migration of foreigners to Europe.", "icon":"currency-euro" }
+            {"title": "Blue card", "color": "blue", "width": 6, "background_color": "blue-lt", "description": "The Blue Card facilitates migration of foreigners to Europe.", "icon":"currency-euro" },
+            {"title": "Green card", "color": "green", "background_color": "green-lt", "description": "Welcome to the United States of America !", "icon":"user-dollar" }
         ]')),
     ('card', 'Cards with remote content',
         json('[
