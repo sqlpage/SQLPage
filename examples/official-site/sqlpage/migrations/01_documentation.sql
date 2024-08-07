@@ -738,15 +738,53 @@ INSERT INTO example(component, description, properties) VALUES
 
 
 INSERT INTO component(name, icon, description) VALUES
-    ('dynamic', 'repeat', 'A special component that can be used to render other components, the number and properties of which are not known in advance.');
+    ('dynamic', 'repeat', 'Renders other components, given their properties as JSON.
+If you are looking for a way to run FOR loops, to share similar code between pages of your site,
+or to render multiple components for every line returned by your SQL query, then this is the component to use'); 
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'dynamic', * FROM (VALUES
     -- top level
-    ('properties', 'A json object or array that contains the names and properties of other components', 'JSON', TRUE, TRUE)
+    ('properties', 'A json object or array that contains the names and properties of other components.', 'JSON', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
-    ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]')),
+    ('dynamic', 'The dynamic component has a single top-level property named `properties`, but it can render any number of other components.
+Let''s start with something simple to illustrate the logic. We''ll render a `text` component with two row-level properties: `contents` and `bold`. 
+', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]')),
+    ('dynamic', '
+## Static component data stored in `.json` files
+
+You can also store the data for a component in a `.json` file, and load it using the `dynamic` component.
+
+This can be useful to store the data for a component in a separate file,
+shared between multiple pages,
+and avoid having to escape quotes in SQL strings.
+
+For instance, the following query will load the data for a `shell` component from the file `shell.json`:
+
+```sql
+SELECT ''dynamic'' AS component, sqlpage.read_file_as_text(''shell.json'') AS properties;
+```
+
+and `shell.json` would be placed at the website''s root and contain the following:
+
+```json
+{
+    "component": "shell",
+    "title": "SQLPage documentation",
+    "link": "/",
+    "menu_item": [
+        {"link": "index.sql", "title": "Home"},
+        {"title": "Community", "submenu": [
+            {"link": "blog.sql", "title": "Blog"},
+            {"link": "https//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
+            {"link": "https//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
+            {"link": "https//github.com/lovasoa/sqlpage", "title": "Github"}
+        ]}
+    ]
+}
+```
+', NULL),
     ('dynamic', '
 ## Dynamic shell
 
@@ -793,40 +831,6 @@ SELECT ''dynamic'' AS component, json_object(
 
 [View the result of this query, as well as an example of how to generate a dynamic menu
 based on the database contents](./examples/dynamic_shell.sql).
-', NULL),
-    ('dynamic', '
-## Static component data stored in `.json` files
-
-You can also store the data for a component in a `.json` file, and load it using the `dynamic` component.
-
-This can be useful to store the data for a component in a separate file,
-shared between multiple pages,
-and avoid having to escape quotes in SQL strings.
-
-For instance, the following query will load the data for a `shell` component from the file `shell.json`:
-
-```sql
-SELECT ''dynamic'' AS component, sqlpage.read_file_as_text(''shell.json'') AS properties;
-```
-
-and `shell.json` would be placed at the website''s root and contain the following:
-
-```json
-{
-    "component": "shell",
-    "title": "SQLPage documentation",
-    "link": "/",
-    "menu_item": [
-        {"link": "index.sql", "title": "Home"},
-        {"title": "Community", "submenu": [
-            {"link": "blog.sql", "title": "Blog"},
-            {"link": "https//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
-            {"link": "https//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
-            {"link": "https//github.com/lovasoa/sqlpage", "title": "Github"}
-        ]}
-    ]
-}
-```
 ', NULL);
 
 INSERT INTO component(name, icon, description) VALUES
