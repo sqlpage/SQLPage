@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="{{language}}" style="font-size: {{default font_size 18}}px" {{#if class}}class="{{class}}"{{/if}}>
+<html lang="{{language}}" style="font-size: {{default font_size 18}}px" {{#if class}}class="{{class}}" {{/if}}>
 <head>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8" />
     <title>{{default title "SQLPage"}}</title>
     <link rel="icon" href="{{#if favicon}}{{favicon}}{{else}}{{static_path 'favicon.svg'}}{{/if}}">
     {{#if manifest}}
@@ -23,32 +23,38 @@
                     font-weight: normal;
                     font-style: normal;
                 }
+
                 :root {
                     --tblr-font-sans-serif: 'LocalFont', Arial, sans-serif;
                 }
             </style>
         {{else}}
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
-            <style>:root { --tblr-font-sans-serif: '{{font}}', Arial, sans-serif;}</style>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
+        <style>
+            :root {
+                --tblr-font-sans-serif: '{{font}}',
+                Arial,
+                sans-serif;
+            }
+        </style>
         {{/if}}
     {{/if}}
-
+    
     <script src="{{static_path 'sqlpage.js'}}" defer></script>
-    {{#each (to_array javascript)}}
-        {{#if this}}
-            <script src="{{this}}" defer></script>
-        {{/if}}
-    {{/each}}
+        {{#each (to_array javascript)}}
+            {{#if this}}
+                <script src="{{this}}" defer></script>
+            {{/if}}
+        {{/each}}
     {{#each (to_array javascript_module)}}
         {{#if this}}
             <script src="{{this}}" type="module" defer></script>
         {{/if}}
     {{/each}}
-
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="description" content="{{description}}"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="{{description}}" />
     {{#if norobot}}
         <meta name="robots" content="noindex,nofollow">
     {{/if}}
@@ -59,204 +65,122 @@
     {{#if rss}}
         <link rel="alternate" type="application/rss+xml" title="{{title}}" href="{{rss}}">
     {{/if}}
-    <meta name="generator" content="SQLPage"/>
-
+    <meta name="generator" content="SQLPage" />
     {{#if social_image}}
-        <meta property="og:image" content="{{social_image}}"/>
+        <meta property="og:image" content="{{social_image}}" />
     {{/if}}
 </head>
 
-<body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}"{{/if}}>
+{{!-- Partial for menu_items to not duplicate logic --}}
+{{#*inline "menu-items"}}
+    <ul class="navbar-nav {{#if sidebar}}pt-lg-3{{else}}ms-auto{{/if}}">
+    {{#each (to_array menu_item)}}
+        {{#if (eq (typeof this) 'object')}}
+            <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
+                <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}" {{#if this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if}} role="button">
+                    {{#if this.icon}}
+                    <span class="nav-link-icon d-md-none d-lg-inline-block">
+                        {{~icon_img this.icon~}}
+                    </span>
+                    {{/if}}
+                    <span class="nav-link-title">
+                        {{this.title}}
+                    </span>
+                </a>
+                {{#if this.submenu}}
+                <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
+                    {{#each this.submenu}}
+                    <a class="dropdown-item" href="{{this.link}}">
+                        {{#if this.icon}}
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            {{~icon_img this.icon~}}
+                        </span>
+                        {{/if}}
+                        <span class="nav-link-title">
+                            {{this.title}}
+                        </span>
+                    </a>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </li>
+            {{else}}
+            <li class="nav-item">
+                <a class="nav-link text-capitalize" href="{{this}}.sql">
+                    <span class="nav-link-title">
+                        {{this}}
+                    </span>
+                </a>
+            </li>
+            {{/if}}
+            {{/each}}
+</ul>
+{{/inline}}
+
+<body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}" {{/if}}>
     <div class="page">
         {{#if (or (or title (or icon image)) menu_item)}}
-        <header id="sqlpage_header"></header>
+            <header id="sqlpage_header"></header>
         {{#if sidebar}}
         <aside class="navbar navbar-vertical navbar-expand-lg" {{#if sidebar-theme}}data-bs-theme="dark" {{/if}}>
             <div class="container-fluid">
-                <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu"
-                    aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false"
-                    aria-label="Toggle navigation">
+                <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <h1 class="navbar-brand navbar-brand-autodark">
                     <a style="text-decoration: none" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                         {{#if image}}
-                        <img src="{{image}}" alt="{{title}}" height="32" class="navbar-brand-image">
+                            <img src="{{image}}" alt="{{title}}" height="32" class="navbar-brand-image">
                         {{/if}}
                         {{#if icon}}
-                        {{~icon_img icon~}}
+                            {{~icon_img icon~}}
                         {{/if}}
                         <span class="pe-2 pe-lg-0 align-middle">{{title}}</span>
                     </a>
                 </h1>
                 <div class="navbar-collapse collapse" id="sidebar-menu">
-                    {{#if search_target}}
-                    <form class="px-2" role="search" action="{{search_target}}">
-                        <div class="input-group">
-                            <input class="form-control" type="search" placeholder="Search" aria-label="Search"
-                                name="search">
-                            <button class="btn" type="submit">Search</button>
-                        </div>
-                    </form>
-                    {{/if}}
-                    <ul class="navbar-nav pt-lg-3">
-                        {{#each (to_array menu_item)}}
-                        {{#if (eq (typeof this) 'object')}}
-                        <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
-                            <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}"
-                                href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}" {{#if
-                                this.submenu}}data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if}}
-                                role="button">
-                                {{#if this.icon}}
-                                <span class="nav-link-icon d-md-none d-lg-inline-block">
-                                    {{~icon_img icon~}}
-                                </span>
-                                {{/if}}
-                                <span class="nav-link-title">
-                                    {{this.title}}
-                                </span>
-                            </a>
-                            {{#if this.submenu}}
-                            <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
-                                {{#each this.submenu}}
-                                <a class="dropdown-item" href="{{this.link}}">
-                                    {{#if this.icon}}
-                                    <span class="nav-link-icon d-md-none d-lg-inline-block">
-                                        {{~icon_img icon~}}
-                                    </span>
-                                    {{/if}}
-                                    <span class="nav-link-title">
-                                        {{this.title}}
-                                    </span>
-                                </a>
-                                {{/each}}
-                            </div>
-                            {{/if}}
-                        </li>
-                        {{else}}
-                        <li class="nav-item">
-                            <a class="nav-link text-capitalize" href="{{this}}.sql">
-                                <span class="nav-link-title">
-                                    {{this}}
-                                </span>
-                            </a>
-                        </li>
-                        {{/if}}
-                        {{/each}}
-                    </ul>
+                    {{> menu-items menu_item=menu_item}}
                 </div>
             </div>
         </aside>
         {{else}}
         <nav class="navbar navbar-expand-md navbar-light{{#if fixed_top_menu}} fixed-top{{/if}}">
-        <div class="container-fluid gap-2">
-            <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
-                {{#if image}}
-                    <img src="{{image}}" alt="{{title}}" width="32" height="32"
-                        class="navbar-brand-image">
+            <div class="container-fluid gap-2">
+                <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
+                    {{#if image}}
+                        <img src="{{image}}" alt="{{title}}" width="32" height="32" class="navbar-brand-image">
+                    {{/if}}
+                    {{#if icon}}
+                        {{~icon_img icon~}}
+                    {{/if}}
+                </a>
+                {{#if title}}
+                    <h1 class="mb-0 fs-2 text-truncate"><a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a></h1>
                 {{/if}}
-                {{#if icon}}
-                    {{~icon_img icon~}}
-                {{/if}}
-            </a>
-            {{#if title}}<h1 class="mb-0 fs-2 text-truncate"><a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a></h1>{{/if}}
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false"
-                aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbar-menu">
-                <ul class="navbar-nav ms-auto">
-                    {{~#each (to_array menu_item)~}}
-                        {{~#if (or (eq (typeof this) 'object') (and (eq (typeof this) 'string') (starts_with this '{')))}}
-                            {{~#with (parse_json this)}}
-                                {{#if (or (or this.title this.icon) this.image)}}
-                                    <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
-                                        <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
-                                            {{~#if this.submenu}} data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if~}}
-                                            role="button"
-                                        >
-                                            {{~#if this.image~}}
-                                                <span {{~#if this.title}} class="me-1"{{/if}}>
-                                                    {{~#if (eq this.size 'sm')}}
-                                                        <img width=16 height=16 src="{{this.image}}">
-                                                    {{~else~}}
-                                                        <img width=24 height=24 src="{{this.image}}">
-                                                    {{~/if~}}
-                                                </span>
-                                            {{~/if~}}
-                                            {{#if this.icon}}
-                                                {{#if this.title}}<span class="me-1">{{/if}}
-                                                    {{~icon_img this.icon~}}
-                                                {{#if this.title}}</span>{{/if}}
-                                            {{/if}}
-                                            {{~this.title~}}
-                                        </a>
-                                        {{~#if this.submenu~}}
-                                            <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
-                                                {{~#each this.submenu~}}
-                                                    {{#if (or (or this.title this.icon) this.image)}}
-                                                        <a class="dropdown-item" href="{{this.link}}">
-                                                            {{~#if this.image~}}
-                                                                <span {{~#if this.title}} class="me-1"{{/if}}>
-                                                                    {{~#if (eq ../this.size 'sm')}}
-                                                                        <img width=16 height=16 src="{{this.image}}">
-                                                                    {{~else~}}
-                                                                        <img width=24 height=24 src="{{this.image}}">
-                                                                    {{~/if~}}
-                                                                </span>
-                                                            {{~/if~}}
-                                                            {{#if this.icon}}
-                                                                {{#if this.title}}<span class="me-1">{{/if}}
-                                                                    {{~icon_img this.icon~}}
-                                                                {{#if this.title}}</span>{{/if}}
-                                                            {{/if}}
-                                                            {{~this.title~}}
-                                                        </a>
-                                                    {{~/if~}}
-                                                {{~/each~}}
-                                            </div>
-                                        {{/if}}
-                                    </li>
-                                {{/if}}
-                            {{/with}}
-                        {{~else}}
-                            {{~#if (gt (len this) 0)~}}
-                                <li class="nav-item">
-                                    <a class="nav-link text-capitalize" href="{{this}}.sql">{{this}}</a>
-                                </li>
-                            {{~/if~}}
-                        {{~/if~}}
-                    {{~/each}}
-                </ul>
-                {{#if search_target}}
-                    <form class="d-flex" role="search" action="{{search_target}}">
-                        <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" name="search" value="{{search_value}}">
-                        <button class="btn btn-outline-success" type="submit">Search</button>
-                    </form>
-                {{/if}}
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbar-menu">
+                        {{> menu-items menu_item=menu_item}}
+                    </div>
             </div>
-        </div>
         </nav>
-        {{/if}}
-
-        {{/if}}
+    {{/if}}
+{{/if}}
         <div class="page-wrapper">
-            <main
-                class="page-body container-xl pt-3 px-md-5 px-sm-3 {{#if fixed_top_menu}}mt-5{{#unless (eq layout 'boxed')}}pt-5{{/unless}}{{/if}}"
-                id="sqlpage_main_wrapper">
+            <main class="page-body container-xl pt-3 px-md-5 px-sm-3 {{#if fixed_top_menu}}mt-5{{#unless (eq layout 'boxed')}}pt-5{{/unless}}{{/if}}" id="sqlpage_main_wrapper">
                 {{~#each_row~}}{{~/each_row~}}
             </main>
-            <footer class="w-100 text-center fs-6 my-2 text-secondary" id="sqlpage_footer">
-                {{#if footer}}
-                {{{markdown footer}}}
-                {{else}}
-                <!-- You can change this footer using the 'footer' parameter of the 'shell' component -->
-                Built with <a class="text-reset" href="https://sql.ophir.dev"
-                    title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
-                {{/if}}
-            </footer>
         </div>
+        <footer class="w-100 text-center fs-6 my-2 text-secondary" id="sqlpage_footer">
+        {{#if footer}}
+            {{{markdown footer}}}
+        {{else}}
+            <!-- You can change this footer using the 'footer' parameter of the 'shell' component -->
+            Built with <a class="text-reset" href="https://sql.ophir.dev"
+                title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
+        {{/if}}
+        </footer>
     </div>
 </body>
 </html>
