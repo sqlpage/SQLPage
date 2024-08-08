@@ -94,6 +94,11 @@ fn copy_cached_to_opened_file(source: &Path, outfile: &mut impl std::io::Write) 
 }
 
 async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
+    if std::env::var("DOCS_RS").is_ok() {
+        println!("cargo:warning=Skipping download of {url} because we're building docs.");
+        std::fs::write(path, b"").expect("Failed to write empty file");
+        return;
+    }
     let mut resp = client.get(url).send().await.unwrap_or_else(|err| {
         let path = make_url_path(url);
         panic!(
