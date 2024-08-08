@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.26.0"
+version = "0.26.1"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -8,7 +8,7 @@ license = "MIT"
 homepage = "https://sql.ophir.dev/"
 repository = "https://github.com/lovasoa/SQLpage"
 documentation = "https://docs.rs/sqlpage"
-include = ["/src", "/README.md", "/build.rs", "/sqlpage", "/index.sql"]
+include = ["/src", "/README.md", "/build.rs", "/sqlpage", "/index.sql", "/.sqlpage_artefacts"]
 
 [profile.superoptimized]
 inherits = "release"

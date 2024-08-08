@@ -1,5 +1,10 @@
 # CHANGELOG.md
 
+## unreleased
+
+- updated Apex Charts to v3.52.0
+  - see https://github.com/apexcharts/apexcharts.js/releases
+
 ## 0.26.0 (2024-08-06)
 ### Components
 #### Card
