@@ -59,7 +59,12 @@ async fn process_input_file(client: &awc::Client, path_out: &Path, original: Fil
             let url = line
                 .trim_start_matches("/* !include ")
                 .trim_end_matches(" */");
-            copy_url_to_opened_file(client, url, &mut outfile).await;
+            if std::env::var("DOCS_RS").is_err() {
+                copy_url_to_opened_file(client, url, &mut outfile).await;
+            } else {
+                println!("cargo:warning=Skipping download of {url} because we're building docs.");
+                return;
+            }
             outfile.write_all(b"\n").unwrap();
         } else {
             writeln!(outfile, "{}", line).unwrap();
@@ -94,11 +99,6 @@ fn copy_cached_to_opened_file(source: &Path, outfile: &mut impl std::io::Write) 
 }
 
 async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
-    if std::env::var("DOCS_RS").is_ok() {
-        println!("cargo:warning=Skipping download of {url} because we're building docs.");
-        std::fs::write(path, b"").expect("Failed to write empty file");
-        return;
-    }
     let mut resp = client.get(url).send().await.unwrap_or_else(|err| {
         let path = make_url_path(url);
         panic!(
