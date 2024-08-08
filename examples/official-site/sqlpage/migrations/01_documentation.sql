@@ -749,18 +749,17 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('dynamic', 'The dynamic component has a single top-level property named `properties`, but it can render any number of other components.
-Let''s start with something simple to illustrate the logic. We''ll render a `text` component with two row-level properties: `contents` and `bold`. 
-', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]')),
+Let''s start with something simple to illustrate the logic. We''ll render a `text` component with two row-level properties: `contents` and `italics`. 
+', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Hello, I am a dynamic component !\", \"italics\":true}]"}]')),
     ('dynamic', '
 ## Static component data stored in `.json` files
 
 You can also store the data for a component in a `.json` file, and load it using the `dynamic` component.
 
-This can be useful to store the data for a component in a separate file,
-shared between multiple pages,
-and avoid having to escape quotes in SQL strings.
+This is particularly useful to create a single [shell](?component=shell#component) defining the site''s overall appearance and menus,
+and displaying it on all pages without duplicating its code.
 
-For instance, the following query will load the data for a `shell` component from the file `shell.json`:
+The following will load the data for a `shell` component from a file named `shell.json` :
 
 ```sql
 SELECT ''dynamic'' AS component, sqlpage.read_file_as_text(''shell.json'') AS properties;
@@ -795,38 +794,22 @@ json data to pass to components that expect it.
 This example generates a menu similar to the [shell example](?component=shell#component), but without using a native JSON type.
 
 ```sql
-SELECT ''dynamic'' AS component, json_object(
-    ''component'', ''shell'',
-    ''title'', ''SQLPage documentation'',
-    ''link'', ''/'',
-    ''menu_item'', json_array(
-        json_object(
-            ''link'', ''index.sql'',
-            ''title'', ''Home''
-        ),
-        json_object(
-            ''title'', ''Community'',
-            ''submenu'', json_array(
-                json_object(
-                    ''link'', ''blog.sql'',
-                    ''title'', ''Blog''
-                ),
-                json_object(
-                    ''link'', ''//github.com/lovasoa/sqlpage/issues'',
-                    ''title'', ''Issues''
-                ),
-                json_object(
-                    ''link'', ''//github.com/lovasoa/sqlpage/discussions'',
-                    ''title'', ''Discussions''
-                ),
-                json_object(
-                    ''link'', ''//github.com/lovasoa/sqlpage'',
-                    ''title'', ''Github''
-                )
-            )
-        )
-    )
-) AS properties
+SELECT ''dynamic'' AS component, ''
+{
+    "component": "shell",
+    "title": "SQLPage documentation",
+    "link": "/",
+    "menu_item": [
+        {"link": "index.sql", "title": "Home"},
+        {"title": "Community", "submenu": [
+            {"link": "blog.sql", "title": "Blog"},
+            {"link": "https//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
+            {"link": "https//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
+            {"link": "https//github.com/lovasoa/sqlpage", "title": "Github"}
+        ]}
+    ]
+}
+'' AS properties
 ```
 
 [View the result of this query, as well as an example of how to generate a dynamic menu
