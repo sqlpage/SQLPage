@@ -42,12 +42,12 @@
         {{/if}}
     {{/if}}
     
-    <script src="{{static_path 'sqlpage.js'}}" defer></script>
-        {{#each (to_array javascript)}}
-            {{#if this}}
-                <script src="{{this}}" defer></script>
-            {{/if}}
-        {{/each}}
+    <script src="{{static_path 'sqlpage.js'}}" defer nonce="{{@csp_nonce}}"></script>
+    {{#each (to_array javascript)}}
+        {{#if this}}
+            <script src="{{this}}" defer nonce="{{@../csp_nonce}}"></script>
+        {{/if}}
+    {{/each}}
     {{#each (to_array javascript_module)}}
         {{#if this}}
             <script src="{{this}}" type="module" defer></script>
@@ -145,7 +145,7 @@
         </aside>
         {{else}}
         <nav class="navbar navbar-expand-md navbar-light{{#if fixed_top_menu}} fixed-top{{/if}}">
-            <div class="container-fluid gap-2">
+            <div class="container-fluid gap-2 flex-nowrap justify-content-start" style="min-width:0">
                 <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                     {{#if image}}
                         <img src="{{image}}" alt="{{title}}" width="32" height="32" class="navbar-brand-image">
@@ -154,9 +154,7 @@
                         {{~icon_img icon~}}
                     {{/if}}
                 </a>
-                {{#if title}}
-                    <h1 class="mb-0 fs-2 text-truncate"><a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a></h1>
-                {{/if}}
+                {{#if title}}<h1 class="mb-0 fs-2 text-truncate flex-grow-1"><a href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a></h1>{{/if}}
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
