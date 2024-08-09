@@ -1,6 +1,6 @@
 <form 
     {{#if id}}id="{{id}}"{{/if}}
-    class="my-3 {{class}}"
+    class="mt-3 mb-1 {{class}}"
     method="{{default method "post"}}"
     {{#if enctype}}enctype="{{enctype}}"{{/if}}
     {{#if action}}action="{{action}}"
@@ -8,9 +8,9 @@
     {{#if id}}action="#{{id}}"{{/if}}
     {{/if}}
 >
-    <fieldset class="form-fieldset">
+    <fieldset class="form-fieldset mb-1">
         {{#if title}}
-            <h2 class="text-center mb-3">{{title}}</h2>
+            <h2 class="text-center mb-0">{{title}}</h2>
         {{/if}}
         <div class="row">
             {{#each_row}}
@@ -50,7 +50,7 @@
                             placeholder="{{placeholder}}"
                             rows="{{default rows 3}}"
                             {{#if id}}id="{{id}}" {{/if~}}
-                            {{~#if value}}value="{{value}}" {{/if~}}
+                            {{~#if value includeZero=true}}value="{{value}}" {{/if~}}
                             {{~#if minlength}}minlength="{{minlength}}" {{/if~}}
                             {{~#if maxlength}}maxlength="{{maxlength}}" {{/if~}}
                             {{~#if required}}required="required" {{/if~}}
@@ -58,7 +58,7 @@
                             {{~#if disabled}}disabled {{/if~}}
                             {{~#if readonly}}readonly {{/if~}}
                         >
-                        {{~#if value}}{{value}}{{/if~}}
+                        {{~#if value includeZero=true}}{{value}}{{/if~}}
                         </textarea>
                     {{else}}{{#if (eq type 'select')}}
                         <select name="{{name}}" class="form-select"
@@ -85,8 +85,8 @@
                             <input name="{{name}}" class="form-control {{class}}" 
                                 {{~#if id}} id="{{id}}" {{/if~}}
                                 {{~#if type}} type="{{type}}" {{/if~}}
-                                {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
-                                {{~#if value}} value="{{value}}" {{/if~}}
+                                {{~#if placeholder includeZero=true}} placeholder="{{placeholder}}" {{/if~}}
+                                {{~#if value includeZero=true}} value="{{value}}" {{/if~}}
                                 {{~#if (or max (eq max 0))}} max="{{max}}" {{/if~}}
                                 {{~#if (or min (eq min 0))}} min="{{min}}" {{/if~}}
                                 {{~#if step}} step="{{step}}" {{/if~}}

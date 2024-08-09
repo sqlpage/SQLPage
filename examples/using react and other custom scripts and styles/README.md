@@ -11,6 +11,9 @@ It integrates a simple [react](https://reactjs.org/) component and loads it with
 
 ![example client-side reactive SQLPage application with React](screenshot-react.png)
 
+![example physics equations](screenshot-latex-math-equations.png)
+
+
 ## Notes
 
 This example relies on a CDN to load the react library, and the example component is written in plain Javscript, not JSX.

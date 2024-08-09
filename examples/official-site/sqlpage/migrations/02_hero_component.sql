@@ -122,7 +122,7 @@ FROM
             (
                 'icon',
                 'Icon of the feature section.',
-                'TEXT',
+                'ICON',
                 FALSE,
                 TRUE
             ),

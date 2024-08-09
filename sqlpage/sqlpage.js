@@ -1,6 +1,8 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js */
 /* !include https://cdn.jsdelivr.net/npm/list.js-fixed@2.3.4/dist/list.min.js */
 
+const nonce = document.currentScript.nonce;
+
 function sqlpage_card() {
     for (const c of document.querySelectorAll("[data-pre-init=card]")) {
         const source = c.dataset.embed;
@@ -41,6 +43,9 @@ function sqlpage_select_dropdown(){
   if (!window.TomSelect) {
     const script = document.createElement("script");
     script.src= src;
+    script.integrity = "sha384-aAqv9vleUwO75zAk1sGKd5VvRqXamBXwdxhtihEUPSeq1HtxwmZqQG/HxQnq7zaE";
+    script.crossOrigin = "anonymous";
+    script.nonce = nonce;
     script.onload = sqlpage_select_dropdown;
     document.head.appendChild(script);
     return;
@@ -69,6 +74,7 @@ function sqlpage_map() {
       leaflet_js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
       leaflet_js.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
       leaflet_js.crossOrigin = "anonymous";
+      leaflet_js.nonce = nonce;
       leaflet_js.onload = onLeafletLoad;
       document.head.appendChild(leaflet_js);
       is_leaflet_injected = true;
@@ -182,16 +188,15 @@ function load_scripts() {
   }
 }
 
-function add_init_function(f) {
+function add_init_fn(f) {
   document.addEventListener('DOMContentLoaded', f);
   document.addEventListener('fragment-loaded', f);
-  if (document.readyState !== "loading") f();
+  if (document.readyState !== "loading") setTimeout(f, 0);
 }
 
-add_init_function(function init_components() {
-  sqlpage_table();
-  sqlpage_map();
-  sqlpage_card();
-  sqlpage_form();
-  load_scripts();
-});
+
+add_init_fn(sqlpage_table);
+add_init_fn(sqlpage_map);
+add_init_fn(sqlpage_card);
+add_init_fn(sqlpage_form);
+add_init_fn(load_scripts);

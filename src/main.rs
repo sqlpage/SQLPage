@@ -1,7 +1,5 @@
-use std::fmt::Write;
-
 use sqlpage::{
-    app_config::{self, AppConfig},
+    app_config,
     webserver::{self, Database},
     AppState,
 };
@@ -21,41 +19,7 @@ async fn start() -> anyhow::Result<()> {
     webserver::database::migrations::apply(&app_config, &db).await?;
     let state = AppState::init_with_db(&app_config, db).await?;
     log::debug!("Starting server...");
-    let (r, _) = tokio::join!(
-        webserver::http::run_server(&app_config, state),
-        log_welcome_message(&app_config)
-    );
-    r
-}
-
-async fn log_welcome_message(config: &AppConfig) {
-    let address_message = if let Some(unix_socket) = &config.unix_socket {
-        format!("unix socket {unix_socket:?}")
-    } else if let Some(domain) = &config.https_domain {
-        format!("https://{}", domain)
-    } else {
-        let listen_on = config.listen_on();
-        let mut msg = format!("{listen_on}");
-        if listen_on.ip().is_unspecified() {
-            // let the user know the service is publicly accessible
-            write!(
-                msg,
-                ": accessible from the network, and locally on http://localhost:{}",
-                listen_on.port()
-            )
-            .unwrap();
-        }
-        msg
-    };
-
-    log::info!(
-        "SQLPage v{} started successfully.
-    Now listening on {}
-    You can write your website's code in .sql files in {}",
-        env!("CARGO_PKG_VERSION"),
-        address_message,
-        config.web_root.display()
-    );
+    webserver::http::run_server(&app_config, state).await
 }
 
 fn init_logging() {

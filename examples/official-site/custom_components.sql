@@ -144,6 +144,19 @@ SQLPage adds the following attributes to the context of your components:
 
  - `@component_index` : the index of the current component in the page. Useful to generate unique ids or classes.
  - `@row_index` : the index of the current row in the current component. Useful to implement special behavior on the first row, for instance.
+ - `@csp_nonce` : a random nonce that you must use as the `nonce` attribute of your `<script>` tags if you include external scripts.
+
+## External javascript
+
+For security, by default SQLPage ships with a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) that prevents the execution of inline javascript
+and the loading of external scripts. However, you can include external scripts in your page by adding them to the `javascript` parameter of the default [`shell`](./documentation.sql?component=shell#component) component,
+or inside your own custom components using
+
+```handlebars
+<script nonce="{{@csp_nonce}}">
+// your javascript code here
+</script>
+```
 
 ## Overwriting the default components
 

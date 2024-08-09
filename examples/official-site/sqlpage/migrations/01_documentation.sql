@@ -670,6 +670,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('overflow', 'Whether to to let "wide" tables overflow across the right border and enable browser-based horizontal scrolling.', 'BOOLEAN', TRUE, TRUE),
     ('small', 'Whether to use compact table.', 'BOOLEAN', TRUE, TRUE),
     ('description','Description of the table content and helps users with screen readers to find a table and understand what it’s.','TEXT',TRUE,TRUE),
+    ('empty_description', 'Text to display if the table does not contain any row. Defaults to "no data".', 'TEXT', TRUE, TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'TEXT', FALSE, TRUE)
@@ -708,7 +709,11 @@ INSERT INTO example(component, description, properties) VALUES
          {"name": "USS Constellation", "registry": "NCC-1974", "class":"Constellation"},
          {"name": "USS Dakota", "registry": "NCC-63892", "class":"Akira"}
         ]'
-    )
+    )),
+    (
+    'table',
+    'An empty table with a friendly message',
+    json('[{"component":"table", "empty_description": "Nothing to see here at the moment."}]')
     );
 
 
@@ -733,72 +738,28 @@ INSERT INTO example(component, description, properties) VALUES
 
 
 INSERT INTO component(name, icon, description) VALUES
-    ('dynamic', 'repeat', 'A special component that can be used to render other components, the number and properties of which are not known in advance.');
+    ('dynamic', 'repeat', 'Renders other components, given their properties as JSON.
+If you are looking for a way to run FOR loops, to share similar code between pages of your site,
+or to render multiple components for every line returned by your SQL query, then this is the component to use'); 
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'dynamic', * FROM (VALUES
     -- top level
-    ('properties', 'A json object or array that contains the names and properties of other components', 'JSON', TRUE, TRUE)
+    ('properties', 'A json object or array that contains the names and properties of other components.', 'JSON', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
-    ('dynamic', 'Rendering a text paragraph dynamically.', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Blah\", \"bold\":true}]"}]')),
-    ('dynamic', '
-## Dynamic shell
-
-On databases without a native JSON type (such as the default SQLite database),
-you can use the `dynamic` component to generate
-json data to pass to components that expect it.
-
-This example generates a menu similar to the [shell example](?component=shell#component), but without using a native JSON type.
-
-```sql
-SELECT ''dynamic'' AS component, json_object(
-    ''component'', ''shell'',
-    ''title'', ''SQLPage documentation'',
-    ''link'', ''/'',
-    ''menu_item'', json_array(
-        json_object(
-            ''link'', ''index.sql'',
-            ''title'', ''Home''
-        ),
-        json_object(
-            ''title'', ''Community'',
-            ''submenu'', json_array(
-                json_object(
-                    ''link'', ''blog.sql'',
-                    ''title'', ''Blog''
-                ),
-                json_object(
-                    ''link'', ''//github.com/lovasoa/sqlpage/issues'',
-                    ''title'', ''Issues''
-                ),
-                json_object(
-                    ''link'', ''//github.com/lovasoa/sqlpage/discussions'',
-                    ''title'', ''Discussions''
-                ),
-                json_object(
-                    ''link'', ''//github.com/lovasoa/sqlpage'',
-                    ''title'', ''Github''
-                )
-            )
-        )
-    )
-) AS properties
-```
-
-[View the result of this query, as well as an example of how to generate a dynamic menu
-based on the database contents](./examples/dynamic_shell.sql).
-', NULL),
+    ('dynamic', 'The dynamic component has a single top-level property named `properties`, but it can render any number of other components.
+Let''s start with something simple to illustrate the logic. We''ll render a `text` component with two row-level properties: `contents` and `italics`. 
+', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Hello, I am a dynamic component !\", \"italics\":true}]"}]')),
     ('dynamic', '
 ## Static component data stored in `.json` files
 
 You can also store the data for a component in a `.json` file, and load it using the `dynamic` component.
 
-This can be useful to store the data for a component in a separate file,
-shared between multiple pages,
-and avoid having to escape quotes in SQL strings.
+This is particularly useful to create a single [shell](?component=shell#component) defining the site''s overall appearance and menus,
+and displaying it on all pages without duplicating its code.
 
-For instance, the following query will load the data for a `shell` component from the file `shell.json`:
+The following will load the data for a `shell` component from a file named `shell.json` :
 
 ```sql
 SELECT ''dynamic'' AS component, sqlpage.read_file_as_text(''shell.json'') AS properties;
@@ -822,6 +783,37 @@ and `shell.json` would be placed at the website''s root and contain the followin
     ]
 }
 ```
+', NULL),
+    ('dynamic', '
+## Dynamic shell
+
+On databases without a native JSON type (such as the default SQLite database),
+you can use the `dynamic` component to generate
+json data to pass to components that expect it.
+
+This example generates a menu similar to the [shell example](?component=shell#component), but without using a native JSON type.
+
+```sql
+SELECT ''dynamic'' AS component, ''
+{
+    "component": "shell",
+    "title": "SQLPage documentation",
+    "link": "/",
+    "menu_item": [
+        {"link": "index.sql", "title": "Home"},
+        {"title": "Community", "submenu": [
+            {"link": "blog.sql", "title": "Blog"},
+            {"link": "https//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
+            {"link": "https//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
+            {"link": "https//github.com/lovasoa/sqlpage", "title": "Github"}
+        ]}
+    ]
+}
+'' AS properties
+```
+
+[View the result of this query, as well as an example of how to generate a dynamic menu
+based on the database contents](./examples/dynamic_shell.sql).
 ', NULL);
 
 INSERT INTO component(name, icon, description) VALUES
@@ -907,9 +899,14 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "language": "en-US",
             "description": "Documentation for the SQLPage low-code web application framework.",
             "font": "Poppins",
-            "javascript": ["https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js", 
-                           "https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"],
-            "css": "/prism-tabler-theme.css",
+            "javascript": [
+                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
+                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/sql.min.js",
+                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/handlebars.min.js",
+                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/json.min.js",
+                "/highlightjs-launch.js"
+            ],
+            "css": "/highlightjs-tabler-theme.css",
             "footer": "Official [SQLPage](https://sql.ophir.dev) documentation"
         }]')),
     ('shell', '

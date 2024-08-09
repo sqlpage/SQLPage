@@ -14,4 +14,4 @@ function sqlpage_select_dropdown() {
     }
 }
 
-add_init_function(sqlpage_select_dropdown);
+add_init_fn(sqlpage_select_dropdown);

@@ -1,4 +1,5 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
+use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
@@ -40,8 +41,9 @@ pub struct ResponseWriter {
 }
 
 #[derive(Clone)]
-pub struct LayoutContext {
+pub struct RequestContext {
     pub is_embedded: bool,
+    pub content_security_policy: ContentSecurityPolicy,
 }
 
 impl ResponseWriter {
@@ -172,12 +174,12 @@ async fn stream_response(
 async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     app_state: Arc<AppState>,
     database_entries: S,
-    layout_context: &LayoutContext,
+    request_context: RequestContext,
 ) -> anyhow::Result<ResponseWithWriter<S>> {
     let chan_size = app_state.config.max_pending_rows;
     let (sender, receiver) = mpsc::channel(chan_size);
     let writer = ResponseWriter::new(sender);
-    let mut head_context = HeaderContext::new(app_state, layout_context, writer);
+    let mut head_context = HeaderContext::new(app_state, request_context, writer);
     let mut stream = Box::pin(database_entries);
     while let Some(item) = stream.next().await {
         let page_context = match item {
@@ -250,8 +252,9 @@ async fn render_sql(
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     actix_web::rt::spawn(async move {
-        let layout_context = &LayoutContext {
+        let request_context = RequestContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
+            content_security_policy: ContentSecurityPolicy::default(),
         };
         let mut conn = None;
         let database_entries_stream =
@@ -259,7 +262,7 @@ async fn render_sql(
         let response_with_writer = build_response_header_and_stream(
             Arc::clone(&app_state),
             database_entries_stream,
-            layout_context,
+            request_context,
         )
         .await;
         match response_with_writer {
@@ -531,21 +534,7 @@ pub fn create_app(
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
         .wrap(Logger::default())
-        .wrap(
-            middleware::DefaultHeaders::new()
-                .add((
-                    "Server",
-                    format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
-                ))
-                .add((
-                    "Content-Security-Policy",
-                    app_state
-                        .config
-                        .content_security_policy
-                        .as_deref()
-                        .unwrap_or("script-src 'self' https://cdn.jsdelivr.net"),
-                )),
-        )
+        .wrap(default_headers(&app_state))
         .wrap(middleware::Condition::new(
             app_state.config.compress_responses,
             middleware::Compress::default(),
@@ -555,6 +544,15 @@ pub fn create_app(
         ))
         .app_data(PayloadConfig::default().limit(app_state.config.max_uploaded_file_size * 2))
         .app_data(app_state)
+}
+
+fn default_headers(app_state: &web::Data<AppState>) -> middleware::DefaultHeaders {
+    let server_header = format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    let mut headers = middleware::DefaultHeaders::new().add(("Server", server_header));
+    if let Some(csp) = &app_state.config.content_security_policy {
+        headers = headers.add(("Content-Security-Policy", csp.as_str()));
+    }
+    headers
 }
 
 pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {
@@ -599,11 +597,43 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
                 .map_err(|e| bind_error(e, listen_on))?;
         }
     }
+
+    log_welcome_message(config);
     server
         .run()
         .await
-        .with_context(|| "Unable to start the application")?;
-    Ok(())
+        .with_context(|| "Unable to start the application")
+}
+
+fn log_welcome_message(config: &AppConfig) {
+    let address_message = if let Some(unix_socket) = &config.unix_socket {
+        format!("unix socket {unix_socket:?}")
+    } else if let Some(domain) = &config.https_domain {
+        format!("https://{domain}")
+    } else {
+        use std::fmt::Write;
+        let listen_on = config.listen_on();
+        let mut msg = format!("{listen_on}");
+        if listen_on.ip().is_unspecified() {
+            // let the user know the service is publicly accessible
+            write!(
+                msg,
+                ": accessible from the network, and locally on http://localhost:{}",
+                listen_on.port()
+            )
+            .unwrap();
+        }
+        msg
+    };
+
+    log::info!(
+        "SQLPage v{} started successfully.
+    Now listening on {}
+    You can write your website's code in .sql files in {}",
+        env!("CARGO_PKG_VERSION"),
+        address_message,
+        config.web_root.display()
+    );
 }
 
 fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Error {

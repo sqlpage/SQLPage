@@ -130,21 +130,6 @@ select
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 - [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server), and all compatible databases and providers such as *Azure SQL* and *Amazon RDS*.
 
-## How it works
-
-![architecture diagram](./docs/architecture-detailed.png)
-
-SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
-[rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
-and distributed as a single executable file.
-When it receives a request to a URL ending in `.sql`, it finds the corresponding
-SQL file, runs it on the database,
-passing it information from the web request as SQL statement parameters.
-When the database starts returning rows for the query,
-SQLPage maps each piece of information in the row to a parameter
-in one of its pre-defined components' templates, and streams the result back
-to the user's browser.
-
 ## Get started
 
 [Read the official *get started* guide on SQLPage's website](https://sql.ophir.dev/get_started.sql).
@@ -191,10 +176,24 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 - In a terminal, run the following commands:
   - `brew install sqlpage`
 
+## How it works
+
+![architecture diagram](./docs/architecture-detailed.png)
+
+SQLPage is a [web server](https://en.wikipedia.org/wiki/Web_server) written in
+[rust](https://en.wikipedia.org/wiki/Rust_(programming_language))
+and distributed as a single executable file.
+When it receives a request to a URL ending in `.sql`, it finds the corresponding
+SQL file, runs it on the database,
+passing it information from the web request as SQL statement parameters.
+When the database starts returning rows for the query,
+SQLPage maps each piece of information in the row to a parameter
+in one of its pre-defined components' templates, and streams the result back
+to the user's browser.
 
 ## Examples
 
- - [TODO list](./examples/todo%20application/): a simple todo list application, illustrating how to create a basic CRUD application with SQLPage.
+- [TODO list](./examples/todo%20application/): a simple todo list application, illustrating how to create a basic CRUD application with SQLPage.
 - [Plots, Tables, forms, and interactivity](./examples/plots%20tables%20and%20forms/): a short well-commented demo showing how to use plots, tables, forms, and interactivity to filter data based on an URL parameter.
 - [Tiny splitwise clone](./examples/splitwise): a shared expense tracker app
 - [Corporate Conundrum](./examples/corporate-conundrum/): a board game implemented in SQL
@@ -208,7 +207,7 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 - [Advanced authentication example using PostgreSQL stored procedures](https://github.com/mnesarco/sqlpage_auth_example)
 - [Complex web application in SQLite with user management, file uploads, plots, maps, tables, menus, ...](https://github.com/DSMejantel/Ecole_inclusive)
 - [Single sign-on](./examples/single%20sign%20on): An example of how to implement OAuth and OpenID Connect (OIDC) authentication in SQLPage. The demo also includes a CAS (Central Authentication Service) client.
- - [Dark theme](./examples/light-dark-toggle/) : demonstrates how to let the user toggle between a light theme and a dark theme, and store the user's preference.
+- [Dark theme](./examples/light-dark-toggle/) : demonstrates how to let the user toggle between a light theme and a dark theme, and store the user's preference.
 
 You can try all the examples online without installing anything on your computer using [SQLPage's online demo on replit](https://replit.com/@pimaj62145/SQLPage).
 
@@ -315,3 +314,14 @@ We provide a set of components that look decent out of the box, so that you can 
 
 However, if you really want to write your own HTML and CSS, you can do it by creating your own components.
 Just create a [`.handlebars`](https://handlebarsjs.com/guide/) file in `sqlpage/templates` and write your HTML and CSS in it. ([example](./sqlpage/templates/alert.handlebars))
+
+## Download
+
+SQLPage is available for download on the from multiple sources:
+
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/lovasoa/sqlpage/total?label=direct%20download)](https://github.com/lovasoa/SQLpage/releases/latest)
+[![Docker Pulls](https://img.shields.io/docker/pulls/lovasoa/sqlpage?label=docker%3A%20lovasoa%2Fsqlpage)](https://hub.docker.com/r/lovasoa/sqlpage)
+[![homebrew downloads](https://img.shields.io/homebrew/installs/dq/sqlpage?label=homebrew%20downloads&labelColor=%232e2a24&color=%23f9d094)](https://formulae.brew.sh/formula/sqlpage#default)
+[![Scoop Version](https://img.shields.io/scoop/v/sqlpage?labelColor=%23696573&color=%23d7d4db)](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116)
+[![Crates.io Total Downloads](https://img.shields.io/crates/d/sqlpage?label=crates.io%20download&labelColor=%23264323&color=%23f9f7ec)](https://crates.io/crates/sqlpage)
+[![](https://img.shields.io/badge/Nix-pkg-rgb(126,%20185,%20227))](https://search.nixos.org/packages?channel=unstable&show=sqlpage&from=0&size=50&sort=relevance&type=packages&query=sqlpage)

@@ -57,6 +57,13 @@
                     </tr>
                 {{/each_row}}
                 {{flush_delayed}}
+                {{#if (eq @row_index 0)}}
+                    <tbody class="table-tbody list">
+                        <tr>
+                            <td class="text-center">{{default empty_description 'No data'}}</td>
+                        </tr>
+                    </tbody>
+                {{/if}}
             </table>
         </div>
     </div>

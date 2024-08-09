@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.25.0"
+version = "0.26.0"
 edition = "2021"
 description = "A SQL-only web application framework. Takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -58,6 +58,8 @@ base64 = "0.22"
 rustls-acme = "0.9.2"
 dotenvy = "0.15.7"
 csv-async = { version = "1.2.6", features = ["tokio"] }
+rustls = { version = "0.22.0" } # keep in sync with actix-web, awc, rustls-acme, and sqlx
+rustls-native-certs = "0.7.0"
 awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }
 
 [build-dependencies]
