@@ -363,7 +363,7 @@ impl<W: std::io::Write> RenderContext<W> {
     #[async_recursion(? Send)]
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         log::debug!(
-            "<- Processing database row: {}",
+            "<- Rendering properties: {}",
             serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
         );
         let new_component = get_object_str(data, "component");

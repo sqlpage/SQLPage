@@ -4,6 +4,7 @@
 
 - updated Apex Charts to v3.52.0
   - see https://github.com/apexcharts/apexcharts.js/releases
+- Fixed a bug where in very specific conditions, sqlpage functions could mess up the order of the arguments passed to a sql query. This would happen when a sqlpage function was called with both a column from the database and a sqlpage variable in its arguments, and the query also contained references to other sqlpage variables **after** the sqlpage function call. An example would be `select sqlpage.exec('xxx', some_column = $a) as a, $b as b from t`. A test was added for this case.
 
 ## 0.26.0 (2024-08-06)
 ### Components

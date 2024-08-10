@@ -207,6 +207,10 @@ pub struct DelayedFunctionCall {
 /// and the `sqlpage.fetch` function will be called with the value of `_sqlpage_f0_a0` after the query has been executed,
 /// on each row of the result set.
 fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> {
+    struct SelectItemToAdd {
+        expr_to_insert: SelectItem,
+        position: usize,
+    }
     let mut delayed_function_calls: Vec<DelayedFunctionCall> = Vec::new();
     let set_expr = match stmt {
         Statement::Query(q) => q.body.as_mut(),
@@ -216,8 +220,9 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
         sqlparser::ast::SetExpr::Select(s) => &mut s.projection,
         _ => return delayed_function_calls,
     };
-    let mut select_items_to_add = Vec::new();
-    for select_item in select_items.iter_mut() {
+    let mut select_items_to_add: Vec<SelectItemToAdd> = Vec::new();
+
+    for (position, select_item) in select_items.iter_mut().enumerate() {
         match select_item {
             SelectItem::ExprWithAlias {
                 expr:
@@ -246,9 +251,13 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
                                 let func_idx = delayed_function_calls.len();
                                 let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
                                 argument_col_names.push(argument_col_name.clone());
-                                select_items_to_add.push(SelectItem::ExprWithAlias {
+                                let expr_to_insert = SelectItem::ExprWithAlias {
                                     expr: std::mem::replace(expr, Expr::Value(Value::Null)),
                                     alias: Ident::new(argument_col_name),
+                                };
+                                select_items_to_add.push(SelectItemToAdd {
+                                    expr_to_insert,
+                                    position,
                                 });
                             }
                             other => {
@@ -266,19 +275,22 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
             _ => continue,
         }
     }
-    // Now remove the function calls from the select items
-    select_items.retain(|item| {
-        !matches!(item, SelectItem::ExprWithAlias {
-            expr:
-                Expr::Function(Function {
-                    name: ObjectName(func_name_parts),
-                    ..
-                }),
-            ..
-        } if func_name_parts.is_empty())
-    });
-    // And add the new select items
-    select_items.extend(select_items_to_add);
+    // Insert the new select items (the function arguments) at the positions where the function calls were
+    let mut it = select_items_to_add.into_iter().peekable();
+    *select_items = std::mem::take(select_items)
+        .into_iter()
+        .enumerate()
+        .flat_map(|(position, item)| {
+            let mut items = Vec::with_capacity(1);
+            while it.peek().map_or(false, |x| x.position == position) {
+                items.push(it.next().unwrap().expr_to_insert);
+            }
+            if items.is_empty() {
+                items.push(item);
+            }
+            items
+        })
+        .collect();
     delayed_function_calls
 }
 
@@ -844,6 +856,49 @@ mod test {
                     target_col_name: "y".to_string()
                 }
             ]
+        );
+    }
+
+    #[test]
+    fn test_extract_toplevel_delayed_functions_parameter_order() {
+        // The order of the function arguments should be preserved
+        // Otherwise the statement parameters will be bound to the wrong arguments
+        let sql = "select $a as a, sqlpage.exec('xxx', x = $b) as b, $c as c from t";
+        let all = parse_sql(&PostgreSqlDialect {}, sql)
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(all.len(), 1);
+        let ParsedStatement::StmtWithParams(StmtWithParams {
+            query,
+            params,
+            delayed_functions,
+            ..
+        }) = &all[0]
+        else {
+            panic!("Failed to parse statement: {all:?}");
+        };
+        assert_eq!(
+            query,
+            "SELECT CAST($1 AS TEXT) AS a, 'xxx' AS _sqlpage_f0_a0, x = CAST($2 AS TEXT) AS _sqlpage_f0_a1, CAST($3 AS TEXT) AS c FROM t"
+        );
+        assert_eq!(
+            params,
+            &[
+                StmtParam::PostOrGet("a".to_string()),
+                StmtParam::PostOrGet("b".to_string()),
+                StmtParam::PostOrGet("c".to_string()),
+            ]
+        );
+        assert_eq!(
+            delayed_functions,
+            &[DelayedFunctionCall {
+                function: SqlPageFunctionName::exec,
+                argument_col_names: vec![
+                    "_sqlpage_f0_a0".to_string(),
+                    "_sqlpage_f0_a1".to_string()
+                ],
+                target_col_name: "b".to_string()
+            }]
         );
     }
 
