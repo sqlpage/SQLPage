@@ -1,6 +1,13 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css */
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler-vendors.min.css */
 
+:root {
+  /* Workaround for https://github.com/tabler/tabler/issues/1879 */
+  --tblr-text-secondary-rgb: var(--tblr-secondary-rgb);
+  --tblr-code-color: #073345;
+  --tblr-code-bg: #e4f1ff;
+}
+
 [data-bs-theme="dark"] .alert:not(.alert-important) {
   /* See https://github.com/tabler/tabler/issues/1607 */
   background-color: var(--tblr-bg-surface);
@@ -37,11 +44,6 @@ td > p {
   border: 1px solid transparent !important;
 }
 
-:root {
-  /* Workaround for https://github.com/tabler/tabler/issues/1879 */
-  --tblr-text-secondary-rgb: var(--tblr-secondary-rgb);
-}
-
 .page {
   /* Leave space for the footer */
   min-height: calc(100% - 3rem);
@@ -50,4 +52,8 @@ td > p {
 .datagrid {
   --tblr-datagrid-padding: 1.25rem;
   --tblr-datagrid-item-width: 6rem;
+}
+
+code {
+  font-size: 100%;
 }
