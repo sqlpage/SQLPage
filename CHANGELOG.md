@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.27.0 (unreleased)
 
 - updated Apex Charts to v3.52.0
   - see https://github.com/apexcharts/apexcharts.js/releases

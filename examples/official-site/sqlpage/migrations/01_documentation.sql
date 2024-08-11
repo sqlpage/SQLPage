@@ -845,6 +845,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('font_size', 'Font size on the page, in pixels. Set to 18 by default.', 'INTEGER', TRUE, TRUE),
     ('language', 'The language of the page. This can be used by search engines and screen readers to determine in which language the page is written.', 'TEXT', TRUE, TRUE),
     ('refresh', 'Number of seconds after which the page should refresh. This can be useful to display dynamic content that updates automatically.', 'INTEGER', TRUE, TRUE),
+    ('sidebar', 'Whether the menu defined by menu_item should be displayed on the left side of the page instead of the top. Introduced in v0.27.', 'BOOLEAN', TRUE, TRUE),
     ('theme', 'Set to "dark" to use a dark theme.', 'TEXT', TRUE, TRUE),
     ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE)
 ) x;
