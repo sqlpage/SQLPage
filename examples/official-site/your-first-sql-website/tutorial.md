@@ -1,19 +1,3 @@
-# Download SQLPage: the SQL website framework
-
-SQLPage is a small executable file that will take requests to your website, execute the SQL files you write,
-and render the database responses as nice web pages.
-
-[Download the latest SQLPage](https://github.com/lovasoa/SQLpage/releases) for your operating system.
-In the _release assets_ section, you will find files named `sqlpage-windows.zip`, `sqlpage-linux.tgz`, and `sqlpage-macos.tgz`.
-Download the one that corresponds to your operating system, and extract the executable file from the archive.
-
-> **Note**: Advanced users can alternatively install SQLPage using
-> [docker](https://hub.docker.com/repository/docker/lovasoa/sqlpage/general),
-> [brew](https://formulae.brew.sh/formula/sqlpage),
-> [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage),
-> [scoop](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116),
-> or [cargo](https://crates.io/crates/sqlpage).
-
 # Building your website locally
 
 Create a folder on your computer where you will store all contents related to your sql website.
@@ -161,38 +145,25 @@ Here is a screenshot of the final result:
 
 To go further, have a look at [the examples section of our Github repository](https://github.com/lovasoa/SQLpage/tree/main/examples).
 
+
 # Deploy your SQLPage website online
 
-If you want to make your SQLPage website accessible online for everyone to browse, you can deploy it to a VPS (Virtual Private Server). To get started, sign up for a VPS provider of your choice. Some popular options include: AWS EC2, DigitalOcean, Linode, Hetzner.
+### Using DataPage.app
+To deploy your SQLPage website online, the easiest way is to use [DataPage.app](https://datapage.app),
+a managed hosting service for SQLPage websites maintained by the same people who develop SQLPage.
+Just create an account, and follow the instructions to upload your website to our servers. It will be live in seconds!
 
-Once you have signed up with a VPS provider, create a new VPS instance. The steps may vary depending on the provider, but generally, you will need to:
+### Manually
+If you prefer to host your website yourself, you can use a cloud provider or a VPS provider. You will need to:
+- Configure domain name resolution to point to your server
+- Open the port you are using (8080 by default) in your server's firewall
+- [Setup docker](https://github.com/lovasoa/SQLpage?tab=readme-ov-file#with-docker) or another process manager such as [systemd](https://github.com/lovasoa/SQLpage/blob/main/sqlpage.service) to start SQLPage automatically when your server boots and to keep it running
+- Optionnally, [setup a reverse proxy](nginx.sql) to avoid exposing SQLPage directly to the internet
+- Optionnally, setup a TLS certificate to enable HTTPS
+- Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
 
-1. Choose the appropriate server type and specifications. SQLPage uses very few resources, so you should be fine with the cheaper options.
-2. Set up SSH access.
+# Go further
 
-Once your VPS instance is up and running, you can connect to it using SSH. The provider should provide you with the necessary instructions on how to connect via SSH.
-
-For example, if you are using a Linux or macOS terminal, you can use the following command:
-
-`ssh username@your-vps-ip-address`
-
-### Transfer your SQLPage website files to the VPS
-
-For example, if you are using SCP, you can run the following command from your local computer, replacing the placeholders with your own information:
-
-`scp -r /path/to/your/sqlpage/folder username@your-vps-ip-address:/path/to/destination`
-
-### Run SQLPage on the server
-
-Once your SQLPage website files are on the server, you can run SQLPage on the server, just like you did on your local computer. Download the SQLPage for linux binary and upload it to your server.
-
-Then, run the following command on your server:
-
-`./sqlpage`
-
-To access your website, enter the address of your VPS in your address bar, followed by the port on which SQLPage runs. For instance: http://123.123.123.123:8080.
-
-For production use, you should:
-
-- run SQLPage as a service, using a tool like [docker](https://docs.docker.com/engine/reference/run/) or [systemd](https://linuxhandbook.com/create-systemd-services/).
-- [use a reverse proxy like _nginx_](./nginx.sql) to improve security and performance, or to configure multiple websites on the same server.
+- Check out [learnsqlpage.com](https://learnsqlpage.com) by Nick Antonaccio for an in-depth tutorial with many examples
+- Read the [SQLPage documentation](/documentation.sql) to learn about all the components available in SQLPage
+- Join the [SQLPage community](https://github.com/lovasoa/SQLpage/discussions) to ask questions and share your projects
