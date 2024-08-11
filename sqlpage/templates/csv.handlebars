@@ -3,15 +3,14 @@
 {{~#each_row~}}
         {{~#if (eq @row_index 0)~}}{{! header }}
             {{~#each this~}}
-                %22{{! %22 = double-quote}}
-                {{~url_encode @key~}}
-                %22
+                {{~url_encode (csv_escape @key ../../separator)~}}
                 {{~default ../../separator ","~}}
             {{~/each~}}
         %0A{{! %0A = newline}}
         {{~/if~}}
         {{~#each this~}}
-        %22{{url_encode this}}%22{{default ../../separator ","}}
+            {{~url_encode (csv_escape this ../../separator)~}}
+            {{~default ../../separator ","~}}
         {{~/each~}}
     %0A
 {{~/each_row~}}

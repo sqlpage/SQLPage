@@ -52,6 +52,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "typeof", typeof_helper as H);
     register_helper(h, "rfc2822_date", rfc2822_date_helper as EH);
     register_helper(h, "url_encode", url_encode_helper as H);
+    register_helper(h, "csv_escape", csv_escape_helper as HH);
 }
 
 fn stringify_helper(v: &JsonValue) -> JsonValue {
@@ -280,6 +281,20 @@ fn url_encode_helper(v: &JsonValue) -> JsonValue {
     percent_encoding::percent_encode(as_str.as_bytes(), percent_encoding::NON_ALPHANUMERIC)
         .to_string()
         .into()
+}
+
+// Percent-encode a string
+fn csv_escape_helper(v: &JsonValue, separator: &JsonValue) -> JsonValue {
+    let as_str = match v {
+        JsonValue::String(s) => s,
+        other => &other.to_string(),
+    };
+    let separator = separator.as_str().unwrap_or(",");
+    if as_str.contains(separator) || as_str.contains('"') || as_str.contains('\n') {
+        format!(r#""{}""#, as_str.replace('"', r#""""#)).into()
+    } else {
+        as_str.to_owned().into()
+    }
 }
 
 fn with_each_block<'a, 'reg, 'rc>(
