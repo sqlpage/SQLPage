@@ -136,6 +136,7 @@ and SQLPage adds a few more:
 - `each_row`: iterates over the rows of a query result
 - `typeof`: returns the type of a value (`string`, `number`, `boolean`, `object`, `array`, `null`)
 - `rfc2822_date`: formats a date as a string in the [RFC 2822](https://tools.ietf.org/html/rfc2822#section-3.3) format, that is, `Thu, 21 Dec 2000 16:01:07 +0200`
+- `url_encode`: percent-encodes a string for use in a URL. For instance, `{{url_encode "hello world"}}` returns `hello%20world`.
 
 ### Attributes
 
