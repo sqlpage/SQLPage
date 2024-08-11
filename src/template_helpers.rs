@@ -51,6 +51,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "buildinfo", buildinfo_helper as EH);
     register_helper(h, "typeof", typeof_helper as H);
     register_helper(h, "rfc2822_date", rfc2822_date_helper as EH);
+    register_helper(h, "url_encode", url_encode_helper as H);
 }
 
 fn stringify_helper(v: &JsonValue) -> JsonValue {
@@ -268,6 +269,17 @@ fn rfc2822_date_helper(v: &JsonValue) -> anyhow::Result<JsonValue> {
     };
     // format: Thu, 01 Jan 1970 00:00:00 +0000
     Ok(date.format("%a, %d %b %Y %T %z").to_string().into())
+}
+
+// Percent-encode a string
+fn url_encode_helper(v: &JsonValue) -> JsonValue {
+    let as_str = match v {
+        JsonValue::String(s) => s,
+        other => &other.to_string(),
+    };
+    percent_encoding::percent_encode(as_str.as_bytes(), percent_encoding::NON_ALPHANUMERIC)
+        .to_string()
+        .into()
 }
 
 fn with_each_block<'a, 'reg, 'rc>(

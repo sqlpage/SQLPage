@@ -4,14 +4,14 @@
         {{~#if (eq @row_index 0)~}}{{! header }}
             {{~#each this~}}
                 %22{{! %22 = double-quote}}
-                {{~@key~}}
+                {{~url_encode @key~}}
                 %22
                 {{~default ../../separator ","~}}
             {{~/each~}}
         %0A{{! %0A = newline}}
         {{~/if~}}
         {{~#each this~}}
-        %22{{this}}%22{{default ../../separator ","}}
+        %22{{url_encode this}}%22{{default ../../separator ","}}
         {{~/each~}}
     %0A
 {{~/each_row~}}
