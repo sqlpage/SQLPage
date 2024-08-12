@@ -1,5 +1,8 @@
 <div class="my-2 {{class}}" {{#if id}}id="{{id}}"{{/if}}>
     <a href="data:text/csv;charset=UTF-8,
+    {{~#if bom~}}
+        %EF%BB%BF{{! Byte order mark for Excel }}
+    {{~/if~}}
 {{~#each_row~}}
         {{~#if (eq @row_index 0)~}}{{! header }}
             {{~#each this~}}

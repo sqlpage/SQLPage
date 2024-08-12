@@ -727,12 +727,13 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('filename', 'The name of the file that should be downloaded (without the extension).', 'TEXT', TRUE, TRUE),
     ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'ICON', TRUE, TRUE),
     ('color', 'Color of the button', 'COLOR', TRUE, TRUE),
-    ('size', 'The size of the button (e.g., sm, lg).', 'TEXT', TRUE, TRUE)
+    ('size', 'The size of the button (e.g., sm, lg).', 'TEXT', TRUE, TRUE),
+    ('bom', 'Whether to include a Byte Order Mark (a special character indicating the character encoding) at the beginning of the file. This is useful for Excel compatibility.', 'BOOLEAN', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('csv', 'CSV download button',
-        json('[{"component":"csv", "title": "Download my data", "filename": "people", "icon": "file-download", "color": "green", "separator": ";"}, '||
+        json('[{"component":"csv", "title": "Download my data", "filename": "people", "icon": "file-download", "color": "green", "separator": ";", "bom": true}, '||
         '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
         '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]'));
 
