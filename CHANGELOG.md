@@ -8,6 +8,9 @@
 - added a new `url_encode` helper for [custom components](https://sql.ophir.dev/custom_components.sql) to encode a string for use in a URL.
 - fixed a bug where the CSV component would break when the data contained a `#` character.
 - properly escape fields in the CSV component to avoid generating invalid CSV files.
+- Nicer inline code style in markdown.
+- Fixed `width` attribute in the card component not being respected when the specified width was < 6.
+- Fixed small inaccuracies in decimal numbers leading to unexpectedly long numbers in the output, such as `0.47000000000000003` instead of `0.47`.
 
 ## 0.26.0 (2024-08-06)
 ### Components
