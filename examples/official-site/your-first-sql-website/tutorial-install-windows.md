@@ -11,4 +11,4 @@ Download the file, and extract the executable file from the zip archive.
 > [scoop](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116),
 > or [cargo](https://crates.io/crates/sqlpage).
 
-> **Not on Windows?** See the instructions for [Mac OS](?is_macos=1#download), or for [Other Systems](?is_windows=0#download).
+> **Not on Windows?** See the instructions for [Mac OS](?os=macos#download), or for [Other Systems](?os=any#download).

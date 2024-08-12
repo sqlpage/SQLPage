@@ -3,22 +3,25 @@ select 'http_header' as component,
 
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
-set is_windows = COALESCE($is_windows, sqlpage.header('user-agent') like '%windows%');
-set is_linux = COALESCE($is_linux, sqlpage.header('user-agent') like '%x11; linux%');
-set is_macos = COALESCE($is_macos, sqlpage.header('user-agent') like '%macintosh%');
+set os = COALESCE($os, case 
+    when sqlpage.header('user-agent') like '%windows%' then 'windows'
+    when sqlpage.header('user-agent') like '%x11; linux%' then 'linux'
+    when sqlpage.header('user-agent') like '%macintosh%' then 'macos'
+    else 'any'
+end);
 
 SELECT 'hero' as component,
     'Your first SQL Website' as title,
     'Let''s create your first website in SQL together, from downloading SQLPage to connecting it to your database, to making a web app' as description,
     'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Backlit_keyboard.jpg/1024px-Backlit_keyboard.jpg' as image,
     'https://github.com/lovasoa/SQLpage/releases'|| case
-        when $is_windows then '/latest/download/sqlpage-windows.zip'
-        when $is_linux then '/latest/download/sqlpage-linux.tgz'
+        when $os = 'windows' then '/latest/download/sqlpage-windows.zip'
+        when $os = 'linux' then '/latest/download/sqlpage-linux.tgz'
         else ''
     end as link,
     'Download SQLPage' || case
-        when $is_windows then ' for Windows'
-        when $is_linux then ' for Linux'
+        when $os = 'windows' then ' for Windows'
+        when $os = 'linux' then ' for Linux'
         else ''
     end as link_text;
 
@@ -41,8 +44,8 @@ SELECT 'alert' as component,
 
 select 'text' as component, sqlpage.read_file_as_text(printf('your-first-sql-website/tutorial-install-%s.md',
     case
-        when $is_windows then 'windows'
-        when $is_macos then 'macos'
+        when $os = 'windows' then 'windows'
+        when $os = 'macos' then 'macos'
         else 'any'
     end
 )) as contents_md, 'download' as id;

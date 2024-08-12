@@ -18,4 +18,4 @@ Download the one that corresponds to your operating system, and extract the exec
 
 You can also find the source code of SQLPage on [GitHub](https://github.com/lovasoa/SQLpage), [install rust](https://www.rust-lang.org/tools/install) on your computer, and compile it yourself with `cargo install sqlpage`.
 
-See the instructions for [MacOS](?is_macos=1#download), or for [Windows](?is_windows=1#download).
+See the instructions for [MacOS](?os=macos#download), or for [Windows](?os=windows#download).

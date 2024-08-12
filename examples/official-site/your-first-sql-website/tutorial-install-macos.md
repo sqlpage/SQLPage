@@ -14,4 +14,4 @@ sqlpage
 > [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage),
 > or [cargo](https://crates.io/crates/sqlpage).
 
-> **Not on Mac OS?** See the instructions for [Windows](?is_windows=1#download), or for [Other Systems](?is_macos=0#download).
+> **Not on Mac OS?** See the instructions for [Windows](?os=windows#download), or for [Other Systems](?os=any#download).
