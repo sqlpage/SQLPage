@@ -45,11 +45,19 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     let type_name = type_info.name();
     log::trace!("Decoding a value of type {:?}", type_name);
     match type_name {
-        "REAL" | "FLOAT" | "NUMERIC" | "DECIMAL" | "FLOAT4" | "FLOAT8" | "DOUBLE" => {
+        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" =>
             <f64 as Decode<sqlx::any::Any>>::decode(raw_value)
                 .unwrap_or(f64::NAN)
-                .into()
-        }
+                .into(),
+        // Converting from decimal to f64 can lead to precision loss, so we round the result to 14 decimal places
+        "NUMERIC" | "DECIMAL" => {
+            let f: f64 = <f64 as Decode<sqlx::any::Any>>::decode(raw_value)
+            .unwrap_or(f64::NAN);
+            let int_part = f.trunc();
+            let frac_part = f.fract();
+            let frac_part = (frac_part * 1e14).round() / 1e14;
+            (int_part + frac_part).into()
+        },
         "INT8" | "BIGINT" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
             .unwrap_or_default()
             .into(),
