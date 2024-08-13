@@ -11,6 +11,7 @@ services:
       [ "${COMPOSE_PROFILES-postgres}" ]
     environment:
       DATABASE_URL: ${COMPOSE_PROFILES-postgres}://root:Password123!@${COMPOSE_PROFILES:-postgres}/sqlpage${DATABASE_URL_PARAMS:-}
+      RUST_LOG: sqlpage=trace
   postgres:
     profiles: ["postgres"]
     ports: ["5432:5432"]

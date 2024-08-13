@@ -50,7 +50,8 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
                 .unwrap_or(f64::NAN)
                 .into()
         }
-        "INT8" | "BIGINT" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
+        "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
+        | "BIGINT UNSIGNED" | "BIGINT SIGNED" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
             .unwrap_or_default()
             .into(),
         "INT" | "INT4" | "INTEGER" => <i32 as Decode<sqlx::any::Any>>::decode(raw_value)
@@ -66,7 +67,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             .as_ref()
             .map_or_else(std::string::ToString::to_string, ToString::to_string)
             .into(),
-        "TIME" => <chrono::NaiveTime as Decode<sqlx::any::Any>>::decode(raw_value)
+        "TIME" | "TIMETZ" => <chrono::NaiveTime as Decode<sqlx::any::Any>>::decode(raw_value)
             .as_ref()
             .map_or_else(ToString::to_string, ToString::to_string)
             .into(),
