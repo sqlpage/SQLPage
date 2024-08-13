@@ -167,4 +167,4 @@ If you prefer to host your website yourself, you can use a cloud provider or a V
 - Check out [learnsqlpage.com](https://learnsqlpage.com) by Nick Antonaccio for an in-depth tutorial with many examples
 - Read the [SQLPage documentation](/documentation.sql) to learn about all the components available in SQLPage
 - Join the [SQLPage community](https://github.com/lovasoa/SQLpage/discussions) to ask questions and share your projects
-- If you like videos better, check this series that shows how to build and deploy your app from scratch [SQLPage on youtube](https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_)
+- If you like videos better, check this series that shows how to build and deploy your app from scratch [SQLPage on Youtube](https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_)
