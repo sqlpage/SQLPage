@@ -583,11 +583,22 @@ INSERT INTO example(component, description, properties) VALUES
         {"x":"2023-04-01T00:00:00Z","y":106},
         {"x":"2023-07-01T00:00:00Z","y":53}
     ]')),
-    ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true}, '||
-    '{"label": "Yes", "value": 65}, '||
-    '{"label": "No", "value": 35}]')),
-    ('chart', 'A basic bar chart', json('[{"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true}, '||
-    '{"label": "Tom", "value": 35}, {"label": "Olive", "value": 15}]')),
+    ('chart', 'A pie chart.', json('[{"component":"chart", "title": "Answers", "type": "pie", "labels": true},
+    {"label": "Yes", "value": 65},
+    {"label": "No", "value": 35}]')),
+    ('chart', 'A basic bar chart', json('[
+        {"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true},
+        {"label": "Tom", "value": 35}, {"label": "Olive", "value": 15}]')),
+    ('chart', 'A TreeMap Chart allows you to display hierarchical data in a nested layout. This is useful for  visualizing the proportion of each part to the whole.',
+        json('[
+        {"component":"chart", "type": "treemap", "title": "Quarterly Results By Region (in k$)", "labels": true },
+        {"series": "North America", "label": "United States", "value": 35},
+        {"series": "North America", "label": "Canada", "value": 15},
+        {"series": "Europe", "label": "France", "value": 30},
+        {"series": "Europe", "label": "Germany", "value": 55},
+        {"series": "Asia", "label": "China", "value": 20},
+        {"series": "Asia", "label": "Japan", "value": 10}
+    ]')),
     ('chart', 'A bar chart with multiple series.', json('[{"component":"chart", "title": "Expenses", "type": "bar", "stacked": true, "toolbar": true, "ystep": 10}, '||
     '{"series": "Marketing", "x": 2021, "value": 35}, '||
     '{"series": "Marketing", "x": 2022, "value": 15}, '||

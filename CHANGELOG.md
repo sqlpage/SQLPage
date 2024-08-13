@@ -11,6 +11,7 @@
 - Nicer inline code style in markdown.
 - Fixed `width` attribute in the card component not being respected when the specified width was < 6.
 - Fixed small inaccuracies in decimal numbers leading to unexpectedly long numbers in the output, such as `0.47000000000000003` instead of `0.47`.
+- TreeMap charts in the chart component allow you to visualize hierarchical data structures.
 
 ## 0.26.0 (2024-08-06)
 ### Components

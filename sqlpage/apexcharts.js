@@ -70,7 +70,7 @@ function sqlpage_chart() {
             if (data.type === "pie") {
                 labels = data.points.map(([name, x, y]) => x || name);
                 series = data.points.map(([name, x, y]) => y);
-            } else if (categories && data.type !== 'line') series = align_categories(series);
+            } else if (categories && data.type !== 'line' && data.type !== 'treemap') series = align_categories(series);
 
             const options = {
                 chart: {
