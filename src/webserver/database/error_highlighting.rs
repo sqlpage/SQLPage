@@ -1,32 +1,52 @@
 use std::fmt::Write;
 
+#[derive(Debug)]
+struct NiceDatabaseError {
+    db_err: sqlx::error::Error,
+    query: String,
+}
+
+impl std::fmt::Display for NiceDatabaseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.db_err.fmt(f)?;
+        if let sqlx::error::Error::Database(db_err) = &self.db_err {
+            let Some(mut offset) = db_err.offset() else {
+                return Ok(());
+            };
+            write!(f, "\n\nError in query:\n")?;
+            for (line_no, line) in self.query.lines().enumerate() {
+                if offset > line.len() {
+                    offset -= line.len() + 1;
+                } else {
+                    highlight_line_offset(f, line, offset);
+                    write!(f, "line {}, character {offset}", line_no + 1)?;
+                    break;
+                }
+            }
+        } else {
+            write!(f, "{}", self.query.lines().next().unwrap_or_default())?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for NiceDatabaseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.db_err.source()
+    }
+}
+
 /// Display a database error with a highlighted line and character offset.
 #[must_use]
-pub fn display_db_error(context: &str, query: &str, db_err: sqlx::error::Error) -> anyhow::Error {
-    let mut msg = format!("{context}:\n");
-    let offset = if let sqlx::error::Error::Database(db_err) = &db_err {
-        db_err.offset()
-    } else {
-        None
-    };
-    if let Some(mut offset) = offset {
-        for (line_no, line) in query.lines().enumerate() {
-            if offset > line.len() {
-                offset -= line.len() + 1;
-            } else {
-                highlight_line_offset(&mut msg, line, offset);
-                write!(msg, "line {}, character {offset}", line_no + 1).unwrap();
-                break;
-            }
-        }
-    } else {
-        write!(msg, "{}", query.lines().next().unwrap_or_default()).unwrap();
-    }
-    anyhow::Error::new(db_err).context(msg)
+pub fn display_db_error(query: &str, db_err: sqlx::error::Error) -> anyhow::Error {
+    anyhow::Error::new(NiceDatabaseError {
+        db_err,
+        query: query.to_string(),
+    })
 }
 
 /// Highlight a line with a character offset.
-pub fn highlight_line_offset(msg: &mut String, line: &str, offset: usize) {
+pub fn highlight_line_offset<W: std::fmt::Write>(msg: &mut W, line: &str, offset: usize) {
     writeln!(msg, "{line}").unwrap();
     writeln!(msg, "{}⬆️", " ".repeat(offset)).unwrap();
 }

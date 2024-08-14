@@ -33,7 +33,7 @@ impl Database {
             .prepare_with(query, param_types)
             .await
             .map(|s| s.to_owned())
-            .map_err(|e| display_db_error("Failed to prepare SQL statement", query, e))
+            .map_err(|e| display_db_error(query, e))
     }
 }
 
@@ -83,6 +83,18 @@ pub fn stream_query_results_with_conn<'a>(
         }
     }
     .map(|res| res.unwrap_or_else(DbItem::Error))
+}
+
+pub fn stop_at_first_error(
+    results_stream: impl Stream<Item = DbItem>,
+) -> impl Stream<Item = DbItem> {
+    let mut has_error = false;
+    results_stream.take_while(move |item| {
+        // We stop the stream AFTER the first error, so that the error is still returned to the client, but the rest of the queries are not executed.
+        let should_continue = !has_error;
+        has_error |= matches!(item, DbItem::Error(_));
+        futures_util::future::ready(should_continue)
+    })
 }
 
 /// Executes the sqlpage pseudo-functions contained in a static simple select
@@ -214,11 +226,7 @@ fn parse_single_sql_result(sql: &str, res: sqlx::Result<Either<AnyQueryResult, A
             log::debug!("Finished query with result: {:?}", res);
             DbItem::FinishedQuery
         }
-        Err(err) => DbItem::Error(display_db_error(
-            "Failed to execute SQL statement",
-            sql,
-            err,
-        )),
+        Err(err) => DbItem::Error(display_db_error(sql, err)),
     }
 }
 

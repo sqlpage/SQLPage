@@ -1,5 +1,6 @@
 use crate::render::{HeaderContext, PageContext, RenderContext};
 use crate::webserver::content_security_policy::ContentSecurityPolicy;
+use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
@@ -259,6 +260,7 @@ async fn render_sql(
         let mut conn = None;
         let database_entries_stream =
             stream_query_results_with_conn(&sql_file, &mut req_param, &mut conn);
+        let database_entries_stream = stop_at_first_error(database_entries_stream);
         let response_with_writer = build_response_header_and_stream(
             Arc::clone(&app_state),
             database_entries_stream,

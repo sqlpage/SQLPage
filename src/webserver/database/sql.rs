@@ -163,7 +163,7 @@ fn parse_single_statement(
 fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement {
     let location = parser.peek_token_no_skip().location;
     ParsedStatement::Error(anyhow::Error::from(err).context(format!(
-        "The SQLPage parser couldn't understand the SQL file. Parsing failed. Please check for syntax errors:\n{}",
+        "Parsing failed: SQLPage couldn't understand the SQL file. Please check for syntax errors:\n\n{}",
         quote_source_with_highlight(sql, location.line, location.column)
     )))
 }
