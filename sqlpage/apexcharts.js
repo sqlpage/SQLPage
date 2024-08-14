@@ -43,10 +43,11 @@ function sqlpage_chart() {
             const series_map = {};
             data.points.forEach(([name, x, y, z]) => {
                 series_map[name] = series_map[name] || { name, data: [] }
-                if (is_timeseries) x =
-                    (typeof x === 'number')
-                        ? new Date(x * 1000) // databases use seconds; JS uses ms
-                        : new Date(x);
+                if (is_timeseries) {
+                    if (typeof x === 'number') x = new Date(x * 1000) // databases use seconds; JS uses ms
+                    else if (data.type === 'rangeBar' && Array.isArray(y)) y = y.map(y => new Date(y).getTime()); // timerange charts
+                    else x = new Date(x);
+                }
                 series_map[name].data.push({ x, y, z });
             })
             if (data.xmin == null) data.xmin = undefined;
@@ -70,7 +71,7 @@ function sqlpage_chart() {
             if (data.type === "pie") {
                 labels = data.points.map(([name, x, y]) => x || name);
                 series = data.points.map(([name, x, y]) => y);
-            } else if (categories && data.type !== 'line' && data.type !== 'treemap') series = align_categories(series);
+            } else if (categories && data.type === 'bar') series = align_categories(series);
 
             const options = {
                 chart: {
@@ -94,6 +95,13 @@ function sqlpage_chart() {
                 },
                 dataLabels: {
                     enabled: !!data.labels,
+                    dropShadow: {
+                        enabled: true,
+                        color: '#f6f8fb',
+                    },
+                    formatter: (data.type === 'rangeBar') ? (_val, { seriesIndex, w }) => w.config.series[seriesIndex].name : 
+                                (data.type === 'pie') ? (value, {seriesIndex, w}) => `${w.config.labels[seriesIndex]}: ${value}`
+                                : value => value.toLocaleString(),
                 },
                 fill: {
                     type: data.type === 'area' ? 'gradient' : 'solid',
@@ -143,9 +151,24 @@ function sqlpage_chart() {
                 tooltip: {
                     fillSeriesColor: false,
                     custom: (data.type === 'bubble' || data.type === 'scatter') ? bubbleTooltip : undefined,
+                    y: {
+                        formatter: function (value) {
+                            if (is_timeseries && data.type === 'rangeBar'){
+                                const d = new Date(value);
+                                if (d.getHours() === 0 && d.getMinutes() === 0) return d.toLocaleDateString();
+                                return d.toLocaleString();
+                            }
+                            const str_val = value.toLocaleString();
+                            if (str_val.length > 10 && value != value | 0) return value.toFixed(2);
+                            return str_val;
+                        }
+                    }
                 },
                 plotOptions: {
-                    bar: { horizontal: !!data.horizontal },
+                    bar: {
+                        horizontal: !!data.horizontal || data.type === 'rangeBar',
+                        borderRadius: 5,
+                    },
                     bubble: { minBubbleRadius: 5, },
                 },
                 colors,

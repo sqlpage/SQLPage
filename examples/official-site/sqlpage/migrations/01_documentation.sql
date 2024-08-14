@@ -587,7 +587,7 @@ INSERT INTO example(component, description, properties) VALUES
     {"label": "Yes", "value": 65},
     {"label": "No", "value": 35}]')),
     ('chart', 'A basic bar chart', json('[
-        {"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true},
+        {"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true, "labels": true},
         {"label": "Tom", "value": 35}, {"label": "Olive", "value": 15}]')),
     ('chart', 'A TreeMap Chart allows you to display hierarchical data in a nested layout. This is useful for  visualizing the proportion of each part to the whole.',
         json('[
@@ -638,11 +638,18 @@ where each series is represented as a line in the chart:
 The `color` property sets the color of each series separately, in order.
 ',json('[
         {"component":"chart", "title": "Survey Results", "type": "heatmap",
-        "ytitle": "Database managemet system", "xtitle": "Year", "color": ["red","orange","yellow"]},
-        { "series": "PostgreSQL", "x": "2000", "y": 48},{ "series": "SQLite", "x": "2000", "y": 14},{ "series": "MySQL", "x": "2000", "y": 78},
-        { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 22},{ "series": "MySQL", "x": "2010", "y": 83},
-        { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 28},{ "series": "MySQL", "x": "2020", "y": 87}
+        "ytitle": "Database managemet system", "xtitle": "Year", "color": ["purple","purple","purple"]},
+        { "series": "PostgreSQL", "x": "2000", "y": 48},{ "series": "SQLite", "x": "2000", "y": 44},{ "series": "MySQL", "x": "2000", "y": 78},
+        { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 62},{ "series": "MySQL", "x": "2010", "y": 83},
+        { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 38},{ "series": "MySQL", "x": "2020", "y": 87}
       ]')),
+    ('chart', 'A timeline displaying events with a start and an end date',
+    json('[
+        {"component":"chart", "title": "Project Timeline", "type": "rangeBar", "time": true, "color": ["teal", "cyan"], "labels": true },
+        {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"]},
+        {"series": "Phase 2", "label": "Operations", "value": ["2022-01-03", "2022-01-04"]},
+        {"series": "Yearly maintenance", "label": "Maintenance", "value": ["2022-01-01", "2022-01-03"]}
+    ]')),
     ('chart', '
 ## Multiple charts on the same line
 

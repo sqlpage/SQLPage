@@ -11,7 +11,10 @@
 - Nicer inline code style in markdown.
 - Fixed `width` attribute in the card component not being respected when the specified width was < 6.
 - Fixed small inaccuracies in decimal numbers leading to unexpectedly long numbers in the output, such as `0.47000000000000003` instead of `0.47`.
-- TreeMap charts in the chart component allow you to visualize hierarchical data structures.
+- [chart component](https://sql.ophir.dev/documentation.sql?component=chart#component) 
+ - TreeMap charts in the chart component allow you to visualize hierarchical data structures.
+ - Timeline charts allow you to visualize time intervals.
+ - Fixed multiple small display issues in the chart component.
 
 ## 0.26.0 (2024-08-06)
 ### Components
