@@ -97,8 +97,17 @@ fn parse_sql<'a>(
         })?;
     let mut parser = Parser::new(dialect).with_tokens_with_locations(tokens);
     let db_kind = kind_of_dialect(dialect);
+    let mut has_error = false;
     Ok(std::iter::from_fn(move || {
-        parse_single_statement(&mut parser, db_kind, sql)
+        if has_error {
+            // Return the first error and ignore the rest
+            return None;
+        }
+        let statement = parse_single_statement(&mut parser, db_kind, sql);
+        if let Some(ParsedStatement::Error(_)) = &statement {
+            has_error = true;
+        }
+        statement
     }))
 }
 

@@ -15,6 +15,8 @@
  - TreeMap charts in the chart component allow you to visualize hierarchical data structures.
  - Timeline charts allow you to visualize time intervals.
  - Fixed multiple small display issues in the chart component.
+- Better error handling: Stop parsing SQL files at the first syntax error, and display a single error message about the error.
+ - The previous behavior was to try paresing a new statement after a syntax error, leading to an avalanche of irrelevant error messages after a syntax error.
 
 ## 0.26.0 (2024-08-06)
 ### Components
