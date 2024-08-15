@@ -8,7 +8,7 @@ SELECT 'hero' as component,
     'Build **Web Apps** Effortlessly with **Only SQL Skills**
 
 Open-source *low-code* web application server' as description_md,
-    'sqlpage_introduction_video.webm' as video,
+    'sqlpage_cover_image.webp' as image,
     TRUE as rounded,
     'your-first-sql-website/' as link,
     'Build your first SQL website now !' as link_text;
