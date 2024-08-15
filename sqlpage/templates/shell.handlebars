@@ -147,14 +147,14 @@
 <body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}" {{/if}}>
     <div class="page">
         {{#if (or (or title (or icon image)) menu_item)}}
-            <header id="sqlpage_header"></header>
+        <header id="sqlpage_header">
         {{#if sidebar}}
         <aside class="navbar navbar-vertical navbar-expand-lg" {{#if sidebar-theme}}data-bs-theme="dark" {{/if}}>
             <div class="container-fluid">
                 <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <h1 class="navbar-brand navbar-brand-autodark">
+                <h1 class="navbar-brand navbar-brand-autodark d-inline">
                     <a style="text-decoration: none" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                         {{#if image}}
                             <img src="{{image}}" alt="{{title}}" height="32" class="navbar-brand-image">
@@ -172,7 +172,7 @@
         </aside>
         {{else}}
         <nav class="navbar navbar-expand-md navbar-light{{#if fixed_top_menu}} fixed-top{{/if}}">
-            <div class="container-fluid gap-2 flex-nowrap justify-content-start" style="min-width:0">
+            <div class="container-fluid gap-2 justify-content-start" style="min-width:0">
                 <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                     {{#if image}}
                         <img src="{{image}}" alt="{{title}}" width="32" height="32" class="navbar-brand-image">
@@ -181,15 +181,20 @@
                         {{~icon_img icon~}}
                     {{/if}}
                 </a>
-                {{#if title}}<h1 class="mb-0 fs-2 text-truncate flex-grow-1"><a class="text-decoration-none" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a></h1>{{/if}}
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="navbar-menu">
-                        {{> menu-items menu_item=menu_item}}
-                    </div>
+                {{#if title}}
+                    <h1 class="mb-0 fs-2 text-truncate flex-grow-1" style="flex-basis:0">
+                        <a class="text-decoration-none" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a>
+                    </h1>
+                {{/if}}
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse flex-grow-0" id="navbar-menu">
+                    {{> menu-items menu_item=menu_item}}
+                </div>
             </div>
         </nav>
+        </header>
     {{/if}}
 {{/if}}
         <div class="page-wrapper">
