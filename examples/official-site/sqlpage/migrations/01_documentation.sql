@@ -604,7 +604,9 @@ INSERT INTO example(component, description, properties) VALUES
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
     '{"series": "Human resources", "x": 2022, "value": 55}]')),
-    ('chart', 'A line chart with multiple series.', json('[{"component":"chart", "title": "Revenue", "ymin": 0},
+    ('chart', 'A line chart with multiple series. One of the most common types of charts, often used to show trends over time.
+Also demonstrates the use of the `toolbar` attribute to allow the user to download the graph as an image or the data as a CSV file.', 
+    json('[{"component":"chart", "title": "Revenue", "ymin": 0, "toolbar": true},
     {"series": "Chicago Store", "x": 2021, "value": 35}, 
     {"series": "Chicago Store", "x": 2022, "value": 15}, 
     {"series": "Chicago Store", "x": 2023, "value": 45}, 
