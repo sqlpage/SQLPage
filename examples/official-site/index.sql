@@ -4,14 +4,15 @@ select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 SELECT 'hero' as component,
-    'SQLPage' as title,
-    'Build **Web Apps** Effortlessly with **Only SQL Skills**
+    'From database to data app, fast.' as title,
+    '**SQLPage** lets you build data-driven applications in a few SQL queries.
 
-Open-source *low-code* web application server' as description_md,
+It’s free, [open-source](https://github.com/lovasoa/sqlpage), lightweight, and easy to use.
+    ' as description_md,
     'sqlpage_cover_image.webp' as image,
     TRUE as rounded,
     'your-first-sql-website/' as link,
-    'Build your first SQL website now !' as link_text;
+    'Build your first SQL website !' as link_text;
 
 -- the mantra: fast, beautiful, easy
 SELECT 'Easy' as title,
@@ -34,7 +35,7 @@ SELECT 'Fast' as title,
 SELECT 'card' as component,
     'What is SQLPage ?' as title,
     1 as columns;
-SELECT 'SQLPage transforms your SQL queries into stunning websites' as title,
+SELECT '✨ SQLPage turns your SQL queries into eye-catching websites' as title,
     '
 SQLPage is a tool that allows you to **build websites** using nothing more than **SQL queries**.
 You write simple text files containing SQL queries, SQLPage runs them on your database, and **renders the results as a website**.
@@ -44,7 +45,7 @@ lists, tables, charts, maps, forms, and many other user interface widgets.
 But you can also `INSERT`, `UPDATE` and `DELETE` data from your database using SQLPage, and build a full webapp.' as description_md,
     'paint' as icon,
     'blue' as color;
-SELECT 'Pre-built components let you construct websites Quickly and Easily' as title,
+SELECT '🧩 Pre-built components let you construct websites Quickly and Easily' as title,
     'At the core of SQLPage is [a rich library of **components**](./documentation.sql).
     These components are built using traditional web technologies, but you never have to edit them if you don''t want to.
     SQLPage populates the components with data returned by your SQL queries.
@@ -62,17 +63,16 @@ Creating a new component is as simple as creating an HTML template file.
 ' as description_md,
     'rocket' as icon,
     'green' as color;
-SELECT 'Technically, it''s just a good old web server' as title,
-    '
-The principles behind SQLPage are not too far from those that powered the early days of the internet.
-Like [PHP](https://en.wikipedia.org/wiki/PHP), SQLPage just receives a request, finds the file to execute, runs it,
+SELECT '🛡️ A secure web server written in Rust' as title,
+    'SQLPage removes a lot of the complexity and bloat of the modern web.
+It''s a **lightweight web server** that just receives a request, finds the file to execute, runs it,
 and returns a web page for the browser to display.
 
-SQLPage is a *web server* written in a fast and secure programming language: 
-[**Rust**](https://en.wikipedia.org/wiki/Rust_(programming_language)).
-It is extremely easy to use:
-you [download a single executable file](https://github.com/lovasoa/SQLpage/releases),
-write an `.sql` file, and you''re done.
+Written in a fast and secure programming language ([**Rust**](https://en.wikipedia.org/wiki/Rust_(programming_language))),
+it empowers non-developers to build secure web applications easily. You download [a single executable file](https://github.com/lovasoa/SQLpage/releases),
+write an `index.sql`, and in five minutes you turned your database into a website that you can
+[deploy on the internet easily](https://datapage.app).
+
 We made all the [optimizations](performance.sql), wrote all of the HTTP request handling code and rendering logic,
 implemented all of the security features, so that you can think about your data, and nothing else.
 
@@ -85,13 +85,15 @@ and streams the result back to the user''s browser.
 ' as description_md,
     'server' as icon,
     'purple' as color;
-SELECT 'Start Simple, Scale to Advanced' as title,
-    'SQLPage is a great starting point for building websites, especially if you''re new to coding, or want to test out a new idea quickly.
-    Then if the app becomes important, you can take the same underlying data structure and wrap it in a more established framework with a dedicated front end.
-    And if it doesn''t, you only spent a few hours on it!
+SELECT '🌱 Start Simple, Scale to Advanced' as title,
+    'SQLPage is a great starting point for building websites, internal tools, dashboards and data applications,
+especially if you don''t have a lot of time, but need something more powerful and user-friendly than a spreadsheet.
 
-    SQLPage does not impose any specific database structure, allowing for seamless integration with other tools and frameworks.
-    SQLPage is a solid foundation for your website development, because it lets you focus on what matters at the beginning, without closing the door to future improvements.' as description,
+When your app grows, you can take the same underlying data structure and queries,
+and wrap them in a more established framework with a dedicated front end if you need to.
+There is no lock-in, only simple, standard SQL queries that run directly on your database. 
+
+**Focus on what matters** first: your data and your users. Not centering boxes in CSS, not setting up a web framework.' as description_md,
     'world-cog' as icon,
     'orange' as color;
 
