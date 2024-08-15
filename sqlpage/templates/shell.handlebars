@@ -172,24 +172,26 @@
         </aside>
         {{else}}
         <nav class="navbar navbar-expand-md navbar-light{{#if fixed_top_menu}} fixed-top{{/if}}">
-            <div class="container-fluid gap-2 flex-nowrap justify-content-start" style="min-width:0">
-                <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
+            <div class="container-fluid gap-2 justify-content-start" style="min-width:0">
+                <a class="navbar-brand" href="{{#if link}}{{link}}{{else}}/{{/if}}">
+                    {{#if image}}
+                        <img src="{{image}}" alt="{{title}}" width="32" height="32" class="navbar-brand-image">
+                    {{/if}}
+                    {{#if icon}}
+                        {{~icon_img icon~}}
+                    {{/if}}
+                </a>
+                {{#if title}}
+                    <h1 class="mb-0 fs-2 text-truncate flex-grow-1" style="flex-basis:0">
+                        <a class="text-decoration-none" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{title}}</a>
+                    </h1>
+                {{/if}}
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <h1 class="navbar-brand navbar-brand-autodark" style="display:inline;">
-                    <a style="text-decoration: none" href="{{#if link}}{{link}}{{else}}/{{/if}}">
-                        {{#if image}}
-                            <img src="{{image}}" alt="{{title}}" height="32" class="navbar-brand-image">
-                        {{/if}}
-                        {{#if icon}}
-                            {{~icon_img icon~}}
-                        {{/if}}
-                        <span class="pe-2 pe-lg-0 align-middle">{{title}}</span>
-                    </a>
-                </h1>
-            </div>
-            <div class="navbar-collapse collapse" id="sidebar-menu">
-                {{> menu-items menu_item=menu_item}}
+                <div class="collapse navbar-collapse flex-grow-0" id="navbar-menu">
+                    {{> menu-items menu_item=menu_item}}
+                </div>
             </div>
         </nav>
         </header>
