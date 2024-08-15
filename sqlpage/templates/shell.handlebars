@@ -147,7 +147,7 @@
 <body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}" {{/if}}>
     <div class="page">
         {{#if (or (or title (or icon image)) menu_item)}}
-            <header id="sqlpage_header">
+        <header id="sqlpage_header">
         {{#if sidebar}}
         <aside class="navbar navbar-vertical navbar-expand-lg" {{#if sidebar-theme}}data-bs-theme="dark" {{/if}}>
             <div class="container-fluid">
@@ -189,8 +189,8 @@
                 </h1>
             </div>
             <div class="navbar-collapse collapse" id="sidebar-menu">
-                    {{> menu-items menu_item=menu_item}}
-                </div>
+                {{> menu-items menu_item=menu_item}}
+            </div>
         </nav>
         </header>
     {{/if}}
