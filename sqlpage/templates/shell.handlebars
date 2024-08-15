@@ -41,7 +41,7 @@
         </style>
         {{/if}}
     {{/if}}
-    
+
     <script src="{{static_path 'sqlpage.js'}}" defer nonce="{{@csp_nonce}}"></script>
     {{#each (to_array javascript)}}
         {{#if this}}
@@ -154,7 +154,7 @@
                 <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <h1 class="navbar-brand navbar-brand-autodark" style="display:inline;">
+                <h1 class="navbar-brand navbar-brand-autodark d-inline">
                     <a style="text-decoration: none" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                         {{#if image}}
                             <img src="{{image}}" alt="{{title}}" height="32" class="navbar-brand-image">
