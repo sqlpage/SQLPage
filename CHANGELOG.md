@@ -17,6 +17,7 @@
  - Fixed multiple small display issues in the chart component.
 - Better error handling: Stop processing the SQL file after the first error is encountered.
  - The previous behavior was to try paresing a new statement after a syntax error, leading to a cascade of irrelevant error messages after a syntax error.
+- Allow giving an id to HTML rows in the table component. This allows making links to specific rows in the table using anchor links. (`my-table.sql#myid`)
 
 ## 0.26.0 (2024-08-06)
 ### Components

@@ -34,7 +34,7 @@
                     <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
                     {{/if}}
 
-                    <tr class="{{_sqlpage_css_class}} {{#if _sqlpage_color}}bg-{{_sqlpage_color}}-lt{{/if}}">
+                    <tr class="{{_sqlpage_css_class}} {{#if _sqlpage_color}}bg-{{_sqlpage_color}}-lt{{/if}}" {{#if _sqlpage_id}}id="{{_sqlpage_id}}"{{/if}}>
                         {{~#each this~}}
                             {{~#if (not (starts_with @key '_sqlpage_'))~}}
                             <td class="

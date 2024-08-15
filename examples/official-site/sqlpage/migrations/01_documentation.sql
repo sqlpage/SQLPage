@@ -691,7 +691,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('empty_description', 'Text to display if the table does not contain any row. Defaults to "no data".', 'TEXT', TRUE, TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
-    ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'TEXT', FALSE, TRUE)
+    ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
+    ('_sqlpage_id', 'Sets the id of the html tabler row element. Allows you to make links targeting a specific row in a table.', 'TEXT', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
