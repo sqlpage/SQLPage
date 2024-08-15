@@ -6,6 +6,6 @@ SELECT 'Content' AS name, 'textarea' AS type, 'The content of the post. Write so
 SELECT 'Main Topic' AS name,
     'select' AS type,
     'The main topic of the post. This will be used to display the post in the main page.' AS description,
-    json_group_array(json_object("label", name, "value", id)) AS options
+    json_group_array(json_object('label', name, 'value', id)) AS options
 FROM topic;
 SELECT 'Topics[]' AS name, 'checkbox' AS type, 'Check if this post should also appear in the "' || topic.name || '" category.' AS description, topic.id AS value, topic.name AS label FROM topic;

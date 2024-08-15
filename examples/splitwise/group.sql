@@ -21,7 +21,7 @@ SELECT 'form' as component, 'Add an expense' as title, 'Add' as validate;
 SELECT 'Description' AS name;
 SELECT 'Amount' AS name, 'number' AS type;
 SELECT 'Spent By' AS name, 'select' as type,
-    json_group_array(json_object("label", name, "value", id)) as options
+    json_group_array(json_object('label', name, 'value', id)) as options
 FROM group_member WHERE group_id = $id;
 
 -- Insert the expense posted by the form into the database

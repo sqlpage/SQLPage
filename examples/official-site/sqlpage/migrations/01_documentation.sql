@@ -323,8 +323,8 @@ In SQLite, the query would look like
 SELECT 
     ''select'' as type,
     json_group_array(json_object(
-        "label", name,
-        "value", id
+        ''label'', name,
+        ''value'', id
     )) as options
 FROM fruits
 ```
