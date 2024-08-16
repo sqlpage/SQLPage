@@ -20,6 +20,7 @@
  - The previous behavior was to try paresing a new statement after a syntax error, leading to a cascade of irrelevant error messages after a syntax error.
 - Allow giving an id to HTML rows in the table component. This allows making links to specific rows in the table using anchor links. (`my-table.sql#myid`)
 - Fixed a bug where long menu items in the shell component's menu would wrap on multiple lines.
+- Much better error messages when a call to sqlpage.fetch fails.
 
 ## 0.26.0 (2024-08-06)
 ### Components

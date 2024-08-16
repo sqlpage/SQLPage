@@ -133,10 +133,11 @@ async fn fetch(
     http_request: super::http_fetch_request::HttpFetchRequest<'_>,
 ) -> anyhow::Result<String> {
     use awc::http::Method;
-    let client = make_http_client(&request.app_state.config)?;
+    let client = make_http_client(&request.app_state.config)
+        .with_context(|| "Unable to create an HTTP client")?;
 
     let method = if let Some(method) = http_request.method {
-        Method::from_str(&method)?
+        Method::from_str(&method).with_context(|| format!("Invalid HTTP method: {method}"))?
     } else {
         Method::GET
     };
@@ -152,7 +153,9 @@ async fn fetch(
         let val = body.get();
         // The body can be either json, or a string representing a raw body
         let body = if val.starts_with('"') {
-            serde_json::from_str::<'_, String>(val)?
+            serde_json::from_str::<'_, String>(val).with_context(|| {
+                format!("Invalid JSON string in the body of the HTTP request: {val}")
+            })?
         } else {
             req = req.content_type("application/json");
             val.to_owned()
@@ -168,26 +171,41 @@ async fn fetch(
         http_request.url,
         response.status()
     );
-    let body = response.body().await?.to_vec();
-    let response_str = String::from_utf8(body)?;
+    let body = response
+        .body()
+        .await
+        .with_context(|| {
+            format!(
+                "Unable to read the body of the response from {}",
+                http_request.url
+            )
+        })?
+        .to_vec();
+    let response_str = String::from_utf8(body).with_context(
+        || format!("Unable to convert the response from {} to a string. Only UTF-8 responses are supported.", http_request.url),
+    )?;
     log::debug!("Fetch response: {response_str}");
     Ok(response_str)
 }
 
-static NATIVE_CERTS: OnceLock<std::io::Result<rustls::RootCertStore>> = OnceLock::new();
+static NATIVE_CERTS: OnceLock<anyhow::Result<rustls::RootCertStore>> = OnceLock::new();
 
 fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result<awc::Client> {
     let connector = if config.system_root_ca_certificates {
         let roots = NATIVE_CERTS
             .get_or_init(|| {
-                let certs = rustls_native_certs::load_native_certs()?;
+                let certs = rustls_native_certs::load_native_certs()
+                    .with_context(|| "Initial native certificates load failed")?;
                 let mut roots = rustls::RootCertStore::empty();
                 for cert in certs {
-                    roots.add(cert.clone()).unwrap();
+                    roots.add(cert.clone()).with_context(|| {
+                        format!("Unable to add certificate to root store: {cert:?}")
+                    })?;
                 }
                 Ok(roots)
             })
-            .as_ref()?;
+            .as_ref()
+            .map_err(|e| anyhow!("Unable to load native certificates, make sure the system root CA certificates are available: {e}"))?;
 
         let tls_conf = rustls::ClientConfig::builder()
             .with_root_certificates(roots.clone())
