@@ -194,10 +194,13 @@ fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result<awc
     let connector = if config.system_root_ca_certificates {
         let roots = NATIVE_CERTS
             .get_or_init(|| {
+                log::debug!("Loading native certificates because system_root_ca_certificates is enabled");
                 let certs = rustls_native_certs::load_native_certs()
                     .with_context(|| "Initial native certificates load failed")?;
+                log::info!("Loaded {} native certificates", certs.len());
                 let mut roots = rustls::RootCertStore::empty();
                 for cert in certs {
+                    log::trace!("Adding native certificate to root store: {cert:?}");
                     roots.add(cert.clone()).with_context(|| {
                         format!("Unable to add certificate to root store: {cert:?}")
                     })?;
@@ -213,12 +216,14 @@ fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result<awc
 
         awc::Connector::new().rustls_0_22(std::sync::Arc::new(tls_conf))
     } else {
+        log::debug!("Using the default tls connector with builtin certs because system_root_ca_certificates is disabled");
         awc::Connector::new()
     };
     let client = awc::Client::builder()
         .connector(connector)
         .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
         .finish();
+    log::debug!("Created HTTP client");
     Ok(client)
 }
 
