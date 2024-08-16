@@ -15,6 +15,7 @@
  - TreeMap charts in the chart component allow you to visualize hierarchical data structures.
  - Timeline charts allow you to visualize time intervals.
  - Fixed multiple small display issues in the chart component.
+ - When no series name nor top-level `title` is provided, display the series anyway (with no name) instead of throwing an error in the javascript console.
 - Better error handling: Stop processing the SQL file after the first error is encountered.
  - The previous behavior was to try paresing a new statement after a syntax error, leading to a cascade of irrelevant error messages after a syntax error.
 - Allow giving an id to HTML rows in the table component. This allows making links to specific rows in the table using anchor links. (`my-table.sql#myid`)

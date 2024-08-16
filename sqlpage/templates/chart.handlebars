@@ -40,7 +40,7 @@
     {{~#each_row~}}
         {{~#if (gt @row_index 0)}},{{/if~}}
         [
-            {{~ stringify (default series ../title) ~}},
+            {{~ stringify (default series (default ../title "")) ~}},
             {{~ stringify (default x label) ~}},
             {{~ stringify (default y value) ~}}
             {{~#if z}}, {{~ stringify z ~}} {{~/if~}}
