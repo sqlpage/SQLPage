@@ -210,6 +210,10 @@ fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result<awc
             .as_ref()
             .map_err(|e| anyhow!("Unable to load native certificates, make sure the system root CA certificates are available: {e}"))?;
 
+        log::trace!("Creating HTTP client with custom TLS connector using native certificates. SSL_CERT_FILE={:?}, SSL_CERT_DIR={:?}",
+            std::env::var("SSL_CERT_FILE").unwrap_or_default(),
+            std::env::var("SSL_CERT_DIR").unwrap_or_default());
+
         let tls_conf = rustls::ClientConfig::builder()
             .with_root_certificates(roots.clone())
             .with_no_client_auth();

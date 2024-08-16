@@ -329,7 +329,8 @@ fn default_compress_responses() -> bool {
 }
 
 fn default_system_root_ca_certificates() -> bool {
-    std::env::var("SSL_CERT_FILE").is_ok() || std::env::var("SSL_CERT_DIR").is_ok()
+    std::env::var("SSL_CERT_FILE").is_ok_and(|x| !x.is_empty())
+        || std::env::var("SSL_CERT_DIR").is_ok_and(|x| !x.is_empty())
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
