@@ -31,6 +31,21 @@ SELECT 'Fast' as title,
     'mail-fast' as icon,
     'red' as color;
 
+SELECT 'hero' as component,
+    true as reverse,
+    '🧩 Batteries included' as title,
+    'At the core of SQLPage is a [rich library of components](/documentation.sql) for tables, charts, maps, tables, forms and much more.
+
+You just populate the components with data returned by your database queries.' as description_md,
+    'sqlpage_illustration_components.webp' as image;
+
+SELECT 'hero' as component,
+    '🪄 We did the hard part' as title,
+    'SQLPage handles HTTP requests, database connections, streaming rendering, styling, [security](safety.sql), and [performance](performance.sql) for you.
+
+Focus only on your data, and how you want to present it. We''ve tamed the tech, you tame the data.' as description_md,
+    'sqlpage_illustration_alien.webp' as image;
+
 -- Quick feature overview
 SELECT 'card' as component,
     'What is SQLPage ?' as title,
@@ -117,12 +132,36 @@ SELECT 'SQLPage Documentation' as title,
     'List of all available components, with examples of how to use them.' as description,
     'purple' as color,
     'book' as icon;
-SELECT 'Examples' as title,
+SELECT 'Technical documentation on Github' as title,
+    'https://github.com/lovasoa/SQLpage/blob/main/README.md#sqlpage' as link,
+    'The official README file on Github contains instructions to get started using SQLPage.' as description,
+    'yellow' as color,
+    'file-text' as icon;
+SELECT 'Youtube Video Series' as title,
+    'https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_' as link,
+    'A series of video tutorials that will guide you through the creation of an application with SQLPage.' as description,
+    'red' as color,
+    'brand-youtube' as icon;
+SELECT 'Learnsqlpage.com' as title,
+    'https://learnsqlpage.com' as link,
+    'A website dedicated to learning SQLPage, with detailed tutorials.' as description,
+    'blue' as color,
+    'globe' as icon;
+
+SELECT 'list' as component, 'Examples' as title;
+SELECT 'Github Examples' as title,
     'https://github.com/lovasoa/SQLpage/tree/main/examples/' as link,
     'SQL source code for examples and demos of websites built with SQLPage.' as description,
     'teal' as color,
     'code' as icon;
-SELECT 'Community' as title,
+SELECT 'Corporate Conundrum' as title,
+    'https://conundrum.ophir.dev' as link,
+    'A demo web application powered by SQLPage, designed for playing a fun trivia board game with friends.' as description,
+    'cyan' as color,
+    'affiliate' as icon;
+
+SELECT 'list' as component, 'Community' as title;
+SELECT 'Discussion forum' as title,
     'https://github.com/lovasoa/SQLpage/discussions' as link,
     'Come to our community page to discuss SQLPage with other users and ask questions.' as description,
     'pink' as color,
@@ -133,26 +172,11 @@ SELECT 'Source code' as title,
     'The rust source code for SQLPage itself is open and available on Github.' as description,
     'github' as color,
     'brand-github' as icon;
-SELECT 'Technical documentation on Github' as title,
-    'https://github.com/lovasoa/SQLpage/blob/main/README.md#sqlpage' as link,
-    'The official README file on Github contains instructions to get started using SQLPage.' as description,
-    'yellow' as color,
-    'file-text' as icon;
 SELECT 'Report a bug, make a suggestion' as title,
     'https://github.com/lovasoa/SQLPage/issues' as link,
     'If you have a question, a suggestion, or if you found a bug, please open an issue on Github.' as description,
     'red' as color,
     'bug' as icon;
-SELECT 'Official website' as title,
-    'https://sql.ophir.dev' as link,
-    'The project''s official home page.' as description,
-    'blue' as color,
-    'home' as icon;
-SELECT 'Corporate Conundrum' as title,
-    'https://conundrum.ophir.dev' as link,
-    'A demo web application powered by SQLPage, designed for playing a fun trivia board game with friends.' as description,
-    'cyan' as color,
-    'affiliate' as icon;
 
 -- User personas: who is SQLPage for ?
 SELECT 'card' as component,
