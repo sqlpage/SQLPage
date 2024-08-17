@@ -32,7 +32,7 @@ You can access the temporary file path with
 the new [`sqlpage.uploaded_file_path`](/functions.sql?function=uploaded_file_path#function) function.
 
 You can then persist the upload as a permanent file on the server with the
-[`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) function:
+[`sqlpage.exec`](https://sql.datapage.app/functions.sql?function=exec#function) function:
 
 ```sql
 set file_path = sqlpage.uploaded_file_path(''profile_picture'');
@@ -40,8 +40,8 @@ select sqlpage.exec(''mv'', $file_path, ''/path/to/my/file'');
 ```
 
 or you can store it directly in a database table with the new
-[`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file_as_data_url#function) and
-[`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file_as_text#function) functions:
+[`sqlpage.read_file_as_data_url`](https://sql.datapage.app/functions.sql?function=read_file_as_data_url#function) and
+[`sqlpage.read_file_as_text`](https://sql.datapage.app/functions.sql?function=read_file_as_text#function) functions:
 
 ```sql
 insert into files (url) values (sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path(''profile_picture'')))
@@ -90,8 +90,8 @@ select upper(name), date_part(''year'', CURRENT_DATE) - cast(age as int) from cs
 
 #### Handle uploaded files
 
- - [`sqlpage.uploaded_file_path`](https://sql.ophir.dev/functions.sql?function=uploaded_file_path#function) to get the temprary local path of a file uploaded by the user. This path will be valid until the end of the current request, and will be located in a temporary directory (customizable with `TMPDIR`). You can use [`sqlpage.exec`](https://sql.ophir.dev/functions.sql?function=exec#function) to operate on the file, for instance to move it to a permanent location.
- - [`sqlpage.uploaded_file_mime_type`](https://sql.ophir.dev/functions.sql?function=uploaded_file_mime_type#function) to get the type of file uploaded by the user. This is the MIME type of the file, such as `image/png` or `text/csv`. You can use this to easily check that the file is of the expected type before storing it.
+ - [`sqlpage.uploaded_file_path`](https://sql.datapage.app/functions.sql?function=uploaded_file_path#function) to get the temprary local path of a file uploaded by the user. This path will be valid until the end of the current request, and will be located in a temporary directory (customizable with `TMPDIR`). You can use [`sqlpage.exec`](https://sql.datapage.app/functions.sql?function=exec#function) to operate on the file, for instance to move it to a permanent location.
+ - [`sqlpage.uploaded_file_mime_type`](https://sql.datapage.app/functions.sql?function=uploaded_file_mime_type#function) to get the type of file uploaded by the user. This is the MIME type of the file, such as `image/png` or `text/csv`. You can use this to easily check that the file is of the expected type before storing it.
 
  The new [*Image gallery* example](https://github.com/lovasoa/SQLpage/tree/main/examples/image%20gallery%20with%20user%20uploads)
 in the official repository shows how to use these functions to create a simple image gallery with user uploads.
@@ -101,8 +101,8 @@ in the official repository shows how to use these functions to create a simple i
 These new functions are useful to read the contents of a file uploaded by the user,
 but can also be used to read any file on the computer where SQLPage is running:
 
- - [`sqlpage.read_file_as_text`](https://sql.ophir.dev/functions.sql?function=read_file_as_text#function) reads the contents of a file on the server and returns a text string.
- - [`sqlpage.read_file_as_data_url`](https://sql.ophir.dev/functions.sql?function=read_file_as_data_url#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
+ - [`sqlpage.read_file_as_text`](https://sql.datapage.app/functions.sql?function=read_file_as_text#function) reads the contents of a file on the server and returns a text string.
+ - [`sqlpage.read_file_as_data_url`](https://sql.datapage.app/functions.sql?function=read_file_as_data_url#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
 
 ## HTTPS
 

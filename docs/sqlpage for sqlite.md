@@ -6,9 +6,9 @@ I'm not sure whether announcements like this are allowed here; feel free to dele
 
 I wanted to introduce a cool piece of open source software I have been working on for a long time, and that is now ready for more general use.
 
-It's called [SQLPage](https://sql.ophir.dev), and it lets you build a full web application on top of your SQLite database using nothing more than standard SQL queries. 
+It's called [SQLPage](https://sql.datapage.app), and it lets you build a full web application on top of your SQLite database using nothing more than standard SQL queries. 
 
-# SQLPage: [build a website in SQL](https://sql.ophir.dev)
+# SQLPage: [build a website in SQL](https://sql.datapage.app)
 
 [![code-screenshots](https://github.com/lovasoa/SQLpage/assets/552629/03ed65bc-ecb1-4c01-990e-d6ab97be39c0)](https://github.com/lovasoa/SQLPage)
 
@@ -40,6 +40,6 @@ Some cool things people are building with SQLPage:
 
 ## Open-Source
 
- - [Official project page](https://sql.ophir.dev)
+ - [Official project page](https://sql.datapage.app)
  - [Source Code on Github](https://github.com/lovasoa/SQLPage)
  - [Examples](https://github.com/lovasoa/SQLpage/tree/main/examples)

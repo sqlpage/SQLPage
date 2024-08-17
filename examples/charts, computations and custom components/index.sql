@@ -5,7 +5,7 @@ SELECT 'shell' AS component,
         'A tool to measure a tempo in bpm by clicking a button in rythm.' as description,
         'Vollkorn' as font,
         'music' as icon,
-        'Proudly powered by [SQLPage](https://sql.ophir.dev)' as footer;
+        'Proudly powered by [SQLPage](https://sql.datapage.app)' as footer;
 
 SELECT 'hero' as component,
         'Tap Tempo' as title,
@@ -19,7 +19,7 @@ SELECT 'text' as component,
         '
 ## Context
 
-This tool is written in the SQL database query language, and uses the [SQLPage](https://sql.ophir.dev) framework to generate the web interface.
+This tool is written in the SQL database query language, and uses the [SQLPage](https://sql.datapage.app) framework to generate the web interface.
 
 It serves as a demo for the framework.
 

@@ -143,4 +143,4 @@ Best migrations on your evolving database journey! 👋
 
 ---
 
-Article written by [Matthew Larkin](https://github.com/matthewlarkin) for [SQLPage](https://sql.ophir.dev/).
+Article written by [Matthew Larkin](https://github.com/matthewlarkin) for [SQLPage](https://sql.datapage.app/).

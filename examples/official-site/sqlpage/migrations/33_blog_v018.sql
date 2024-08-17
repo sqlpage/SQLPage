@@ -7,7 +7,7 @@ VALUES
         'brand-youtube',
         '2024-01-29',
         '
-[SQLPage](https://sql.ophir.dev) is a small web server that renders your SQL queries as beautiful interactive websites. This release has seen significant new features and fixes from new contributors, which is great and show the health of the project ! If you feel something is missing or isn''t working quite right, all your contributions are always welcome. 
+[SQLPage](https://sql.datapage.app) is a small web server that renders your SQL queries as beautiful interactive websites. This release has seen significant new features and fixes from new contributors, which is great and show the health of the project ! If you feel something is missing or isn''t working quite right, all your contributions are always welcome. 
 
 On a side note, I [gave a talk about SQLPage last December at PGConf.eu](https://www.youtube.com/watch?v=mXdgmSdaXkg).
 It is a great detailed introduction to SQLPage, and I recommend it if you want to learn more about the project.

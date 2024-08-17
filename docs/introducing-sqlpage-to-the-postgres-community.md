@@ -2,7 +2,7 @@
 
 SQLPage is an open-source tool that empowers database people to quickly build beautiful dynamic web applications *entirely in SQL*. 
 
-Designed to seamlessly integrate with PostgreSQL, SQLPage enables data practitioners to leverage their SQL skills to create robust, data-centric web apps without the need for traditional web programming languages, thanks to its [rich library of built-in web components](https://sql.ophir.dev/documentation.sql) that can be invoked directly from basic SQL queries.
+Designed to seamlessly integrate with PostgreSQL, SQLPage enables data practitioners to leverage their SQL skills to create robust, data-centric web apps without the need for traditional web programming languages, thanks to its [rich library of built-in web components](https://sql.datapage.app/documentation.sql) that can be invoked directly from basic SQL queries.
 
 It lets you create complex dynamic webapps for data analysis, visualization, data ingestion, internal tooling, administration panels, prototyping, and more just by writing simple standard `.sql` files. 
 
@@ -29,7 +29,7 @@ SQLPage opens the world of easy web application development to database speciali
 
 ## Example
 
-Here are the exact two SQL queries that builds the list of components of the documentation page on [SQLPage's official website](https://sql.ophir.dev)
+Here are the exact two SQL queries that builds the list of components of the documentation page on [SQLPage's official website](https://sql.datapage.app)
 
 ```
 SELECT 'list' AS component, 'components' AS title;
@@ -48,7 +48,7 @@ order by name;
 
 ## Get Started
 
-To explore the possibilities and limitations of SQLPage, visit [the official website](https://sql.ophir.dev) and read the [SQL website building tutorial](https://sql.ophir.dev/get%20started.sql). Join the [SQLPage community](https://github.com/lovasoa/SQLpage/discussions) to discuss your PostgreSQL-powered web applications.
+To explore the possibilities and limitations of SQLPage, visit [the official website](https://sql.datapage.app) and read the [SQL website building tutorial](https://sql.datapage.app/get%20started.sql). Join the [SQLPage community](https://github.com/lovasoa/SQLpage/discussions) to discuss your PostgreSQL-powered web applications.
 
 ## Contributing
 

@@ -18,5 +18,5 @@ CREATE TABLE sqlpage_shell (
 INSERT INTO sqlpage_shell (
 component, title, link, menu_item, lang, description, font, font_size, icon, footer
 ) VALUES (
-'shell', 'SQL Blog', '/', 'topics', 'en-US', 'A cool SQL-only blog', 'Playfair Display', 21, 'book', 'This blog is written entirely in SQL with [SQLPage](https://sql.ophir.dev)'
+'shell', 'SQL Blog', '/', 'topics', 'en-US', 'A cool SQL-only blog', 'Playfair Display', 21, 'book', 'This blog is written entirely in SQL with [SQLPage](https://sql.datapage.app)'
 );

@@ -7,7 +7,7 @@ select 'shell' as component,
     'Welcome to SQLPage' as description;
 -- Making a web page with SQLPage works by using a set of predefined "components"
 --  and filling them with contents from the results of your SQL queries
-select 'hero' as component, -- We select a component. The documentation for each component can be found on https://sql.ophir.dev/documentation.sql
+select 'hero' as component, -- We select a component. The documentation for each component can be found on https://sql.datapage.app/documentation.sql
     'It works !' as title, -- 'title' is top-level parameter of the 'hero' component
     'If you can see this, then SQLPage v' ||
     sqlpage.version() ||
@@ -22,7 +22,7 @@ SELECT 'text' as component, -- We can switch to another component at any time ju
 -- and a property called "center" that we use to center the text
 SELECT 'In order to get started, visit ' as contents;
 select 'SQLPage''s website' as contents,
-    'https://sql.ophir.dev/your-first-sql-website/' as link,
+    'https://sql.datapage.app/your-first-sql-website/' as link,
     true as italics;
 SELECT '. You can replace this page''s contents by creating a file named ' as contents;
 SELECT 'index.sql' as contents, 1 as code;

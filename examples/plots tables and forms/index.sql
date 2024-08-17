@@ -8,7 +8,7 @@ select 'shell' as component,
 
 -- Making a web page with SQLPage works by using a set of predefined "components"
 --  and filling them with contents from the results of your SQL queries
-select 'hero' as component, -- We select a component. The documentation for each component can be found on https://sql.ophir.dev/documentation.sql
+select 'hero' as component, -- We select a component. The documentation for each component can be found on https://sql.datapage.app/documentation.sql
     'It works !' as title, -- 'title' is top-level parameter of the 'hero' component
     'If you can see this, then SQLPage is running correctly on your server. Congratulations! ' as description;
 -- Properties can be textual, numeric, or booleans
@@ -21,7 +21,7 @@ SELECT 'text' as component, -- We can switch to another component at any time ju
 -- and a property called "center" that we use to center the text
 SELECT 'In order to get started ' as contents;
 select 'visit SQLPage''s website' as contents,
-    'https://sql.ophir.dev/' as link,
+    'https://sql.datapage.app/' as link,
     true as italics;
 SELECT '. You can replace this page''s contents by creating a file named ' as contents;
 SELECT 'index.sql' as contents, true as italics;
@@ -31,7 +31,7 @@ SELECT 'Alternatively, you can create a table called sqlpage_files in your datab
 -- The text component also support rich text using the markdown syntax with the property "contents_md"
 SELECT '
 ## Rich text
-You can use markdown syntax in SQLPage to make your text **bold**, *italic*, or even [add links](https://sql.ophir.dev/).
+You can use markdown syntax in SQLPage to make your text **bold**, *italic*, or even [add links](https://sql.datapage.app/).
 ' as contents_md;
 
 select 'text' as component,
@@ -39,7 +39,7 @@ select 'text' as component,
 -- We can switch to another component at any time just with a select statement.
 -- Let's draw a chart
 select 'chart' as component, -- selecting a different component
-    'Revenue per country' as title, -- setting the component's top-level properties. The documentation for each component's properties can be found on https://sql.ophir.dev/documentation.sql
+    'Revenue per country' as title, -- setting the component's top-level properties. The documentation for each component's properties can be found on https://sql.datapage.app/documentation.sql
     'bar' as type,
     'time' as xtitle,
     'price' as ytitle,

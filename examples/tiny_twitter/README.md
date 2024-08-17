@@ -5,4 +5,4 @@ It is called tweeter because Elon Musk already has the Twitter trademark, even t
 
 It was presented at the [2023 PGConf.EU](https://2023.pgconf.eu/) conference.
 
-You can find the slides at https://sql.ophir.dev/pgconf/pgconf-2023.html.
+You can find the slides at https://sql.datapage.app/pgconf/pgconf-2023.html.

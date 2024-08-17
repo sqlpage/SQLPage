@@ -86,7 +86,7 @@ While the topographer still intervenes for taking reference points, the detailed
 ![Photogrammetric survey of a burial](https://gitlab.com/projet-r-d-bddsarcheo/tutos/-/raw/main/illustrations_diverses/photogrammetrie3.png)
 [*Photogrammetric survey of a burial*](https://sketchfab.com/3d-models/973-5d7513dd1dc941228d4a4b7b984c7af7)
 
-Data recording is ensured by the use of a relational and spatial database whose interface is accessible in QGIS, but also via a web interface directly in the field, without going through paper inventories or listings. The web interface was created using [SQLPage](https://sql.ophir.dev/), a web server that uses an SQL-based language for creating the graphical interface, without having to go through more complex programming languages classically used for creating web applications, such as PHP.
+Data recording is ensured by the use of a relational and spatial database whose interface is accessible in QGIS, but also via a web interface directly in the field, without going through paper inventories or listings. The web interface was created using [SQLPage](https://sql.datapage.app/), a web server that uses an SQL-based language for creating the graphical interface, without having to go through more complex programming languages classically used for creating web applications, such as PHP.
 
 Of course, this approach also continues in the laboratory during the site analysis stage.
 
@@ -134,7 +134,7 @@ The question of the system''s portability remained. QGIS is a resource-intensive
 
 Choosing to use a SpatiaLite or PostGIS database allowed us to consider a web interface from the start, which could then be used on any device. Initially, we considered developing in PHP/HTML/CSS with an Apache web server. However, this required having a web server and programming an entire interface. There were also some infrastructure questions to address: where to host it, how to finance it, and who would manage it all?
 
-It was on LinuxFR that one of the members of the collective discovered [SQLPage](https://sql.ophir.dev/). This open-source software, developed by [lovasoa](https://linuxfr.org/users/lovasoa), provides a very simple web server and allows for the creation of a [CRUD](https://en.wikipedia.org/wiki/CRUD) application with an interface that only requires SQL development.
+It was on LinuxFR that one of the members of the collective discovered [SQLPage](https://sql.datapage.app/). This open-source software, developed by [lovasoa](https://linuxfr.org/users/lovasoa), provides a very simple web server and allows for the creation of a [CRUD](https://en.wikipedia.org/wiki/CRUD) application with an interface that only requires SQL development.
 
 SQLPage is based on an executable file which, when launched on a computer, turns it into a web server. A configuration file allows you to define the location of the database to be queried, among other things. For each web page of the interface, you write a `.sql` file to define the data to fetch or modify in the database, and the interface components to display it (tables, forms, graphs...). The interface is accessed through a web browser. If the computer is on a network, its IP address allows remote access, with an address like `http://192.168.1.5:8080`, for example. Using a VPN allows us to use the mobile phone network, eliminating the need for setting up a local network with routers, antennas, etc.
 

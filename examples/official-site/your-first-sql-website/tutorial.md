@@ -33,7 +33,7 @@ SELECT 'Hello' AS title, 'world' AS description, 'https://wikipedia.org' AS link
 The first line of the file defines the component that will be used to display the data, and properties of that component.
 In this case, we use the [`list` component](/documentation.sql?component=list#component) to display a list of items.
 The second line defines the data that will populate the component.
-All the components you can use and their properties are documented in [SQLPage's online documentation](https://sql.ophir.dev/documentation.sql).
+All the components you can use and their properties are documented in [SQLPage's online documentation](https://sql.datapage.app/documentation.sql).
 
 # Your database schema
 
@@ -100,7 +100,7 @@ SELECT 'form' AS component, 'Add a user' AS title;
 SELECT 'Username' as name, TRUE as required;
 ```
 
-The snippet above uses the [`form` component](https://sql.ophir.dev/documentation.sql?component=form#component) to display a form on your website.
+The snippet above uses the [`form` component](https://sql.datapage.app/documentation.sql?component=form#component) to display a form on your website.
 
 ### Handling form submission
 
