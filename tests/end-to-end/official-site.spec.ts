@@ -45,7 +45,7 @@ test('form example', async ({ page }) => {
 
 test('File upload', async ({ page }) => {
   await page.goto(BASE);
-  await page.getByRole('link', { name: 'Examples', exact: true }).click();
+  await page.getByRole('button', { name: 'Examples', exact: true }).click();
   await page.getByText('File uploads').click();
   const my_svg = '<svg><text y="20">Hello World</text></svg>';
   // @ts-ignore
