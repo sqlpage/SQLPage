@@ -30,7 +30,8 @@ function sqlpage_table(){
         new List(r, {
             valueNames: [...r.getElementsByTagName("th")].map(t => t.textContent),
             searchDelay: 100,
-            indexAsync: true
+            // Hurts performance, but prevents https://github.com/lovasoa/SQLpage/issues/542
+            // indexAsync: true
         });
         r.removeAttribute("data-pre-init");
     }
