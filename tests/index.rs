@@ -511,7 +511,8 @@ pub fn test_config() -> AppConfig {
         "database_connection_acquire_timeout_seconds": 15,
         "allow_exec": true,
         "max_uploaded_file_size": 12345,
-        "listen_on": "111.111.111.111:1"
+        "listen_on": "111.111.111.111:1",
+        "system_root_ca_certificates" : false
     }}"#,
         db_url
     ))
