@@ -374,9 +374,9 @@ fn path_to_sql_file(path: &str) -> Option<PathBuf> {
 }
 
 async fn process_sql_request(
-    mut req: ServiceRequest,
+    req: &mut ServiceRequest,
     sql_path: PathBuf,
-) -> actix_web::Result<ServiceResponse> {
+) -> actix_web::Result<HttpResponse> {
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
     let sql_file = app_state
         .sql_file_cache
@@ -384,8 +384,7 @@ async fn process_sql_request(
         .await
         .with_context(|| format!("Unable to get SQL file {sql_path:?}"))
         .map_err(anyhow_err_to_actix)?;
-    let response = render_sql(&mut req, sql_file).await?;
-    Ok(req.into_response(response))
+    render_sql(req, sql_file).await
 }
 
 fn anyhow_err_to_actix(e: anyhow::Error) -> actix_web::Error {
@@ -434,25 +433,100 @@ async fn serve_file(
         })
 }
 
+/// Fallback handler for when a file could not be served
+///
+/// Recursively traverses upwards in the request's path, looking for a `404.sql` to call as the
+/// fallback handler. Fails if none is found, or if there is an issue while running the `404.sql`.
+async fn serve_fallback(
+    service_request: &mut ServiceRequest,
+    original_err: actix_web::Error,
+) -> actix_web::Result<HttpResponse> {
+    let catch_all = "404.sql";
+
+    let req_path = req_path(&service_request);
+    let mut fallback_path_candidate = req_path.clone().into_owned();
+    log::debug!("Trying to find a {catch_all:?} handler for {fallback_path_candidate:?}");
+
+    let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+
+    // Find the indeces of each char which follows a directroy separator (`/`). Also consider the 0
+    // index, as we also have to try to check the empty path, for a root dir `404.sql`.
+    for idx in req_path
+        .rmatch_indices('/')
+        .map(|(idx, _)| idx + 1)
+        .chain(std::iter::once(0))
+    {
+        // Remove the trailing substring behind the current `/`, and append `404.sql`.
+        fallback_path_candidate.truncate(idx);
+        fallback_path_candidate.push_str(&catch_all);
+
+        // Check if `maybe_fallback_path` actually exists, if not, skip to the next round (which
+        // will check `maybe_fallback_path`s parent directory for fallback handler).
+        let mabye_sql_path = PathBuf::from(&fallback_path_candidate);
+        match app_state
+            .sql_file_cache
+            .get_with_privilege(app_state, &mabye_sql_path, false)
+            .await
+        {
+            // `maybe_fallback_path` does seem to exist, lets try to run it!
+            Ok(sql_file) => {
+                log::debug!("Processing SQL request via fallback: {:?}", mabye_sql_path);
+                return render_sql(service_request, sql_file).await;
+            }
+            Err(e) => {
+                let actix_web_err = anyhow_err_to_actix(e);
+
+                // `maybe_fallback_path` does not exist, continue search in parent dir.
+                if actix_web_err.as_response_error().status_code() == StatusCode::NOT_FOUND {
+                    log::trace!("The 404 handler {mabye_sql_path:?} does not exist");
+                    continue;
+                }
+
+                // Another error occured, bubble it up!
+                return Err(actix_web_err);
+            }
+        }
+    }
+
+    log::debug!("There is no {catch_all:?} handler, this response is terminally failed");
+    Err(original_err)
+}
+
 pub async fn main_handler(
     mut service_request: ServiceRequest,
 ) -> actix_web::Result<ServiceResponse> {
     let path = req_path(&service_request);
     let sql_file_path = path_to_sql_file(&path);
-    if let Some(sql_path) = sql_file_path {
+    let maybe_response = if let Some(sql_path) = sql_file_path {
         if let Some(redirect) = redirect_missing_trailing_slash(service_request.uri()) {
-            return Ok(service_request.into_response(redirect));
+            Ok(redirect)
+        } else {
+            log::debug!("Processing SQL request: {:?}", sql_path);
+            process_sql_request(&mut service_request, sql_path).await
         }
-        log::debug!("Processing SQL request: {:?}", sql_path);
-        process_sql_request(service_request, sql_path).await
     } else {
         log::debug!("Serving file: {:?}", path);
         let app_state = service_request.extract::<web::Data<AppState>>().await?;
         let path = req_path(&service_request);
         let if_modified_since = IfModifiedSince::parse(&service_request).ok();
-        let response = serve_file(&path, &app_state, if_modified_since).await?;
-        Ok(service_request.into_response(response))
-    }
+
+        serve_file(&path, &app_state, if_modified_since).await
+    };
+
+    // On 404/NOT_FOUND error, fall back to `404.sql` handler if it exists
+    let response = match maybe_response {
+        // File could not be served due to a 404 error. Try to find a user provide 404 handler in
+        // the form of a `404.sql` in the current directory. If there is none, look in the parent
+        // directeory, and its parent directory, ...
+        Err(e) if e.as_response_error().status_code() == StatusCode::NOT_FOUND => {
+            serve_fallback(&mut service_request, e).await?
+        }
+
+        // Either a valid response, or an unrelated error that shall be bubbled up.
+        e => e?,
+    };
+
+    Ok(service_request.into_response(response))
 }
 
 /// Extracts the path from a request and percent-decodes it
