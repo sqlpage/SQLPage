@@ -34,7 +34,7 @@ SELECT 'Fast' as title,
 SELECT 'hero' as component,
     true as reverse,
     '🧩 Batteries included' as title,
-    'At the core of SQLPage is a [rich library of components](/documentation.sql) for tables, charts, maps, tables, forms and much more.
+    'At the core of SQLPage is a [rich library of components](/documentation.sql) for tables, charts, maps, timelines, forms and much more.
 
 You just populate the components with data returned by your database queries.' as description_md,
     'sqlpage_illustration_components.webp' as image;
