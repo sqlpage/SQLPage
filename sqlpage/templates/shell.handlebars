@@ -144,12 +144,12 @@
     {{/if}}
 {{/inline}}
 
-<body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if sidebar_theme}}data-bs-theme="{{sidebar_theme}}" {{/if}}>
+<body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}" {{/if}}>
     <div class="page">
         {{#if (or (or title (or icon image)) menu_item)}}
         <header id="sqlpage_header">
         {{#if sidebar}}
-        <aside class="navbar navbar-vertical navbar-expand-lg" {{#if theme}}data-bs-theme="{{theme}}" {{/if}}>
+        <aside class="navbar navbar-vertical navbar-expand-lg" {{#if sidebar_theme}}data-bs-theme="{{sidebar_theme}}" {{/if}}>
             <div class="container-fluid">
                 <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
