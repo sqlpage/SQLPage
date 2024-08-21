@@ -18,10 +18,3 @@ select
     'green' as color,
     'Add new todo'  as title,
     'circle-plus'  as icon;
-select
-    'card' as component,
-    'Accordion component showcase' as title;
-
-select
-    '/accordion.sql?_sqlpage_embed' as embed,
-    12 as width;
