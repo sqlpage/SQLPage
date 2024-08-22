@@ -443,7 +443,7 @@ async fn serve_fallback(
 ) -> actix_web::Result<HttpResponse> {
     let catch_all = "404.sql";
 
-    let req_path = req_path(&service_request);
+    let req_path = req_path(service_request);
     let mut fallback_path_candidate = req_path.clone().into_owned();
     log::debug!("Trying to find a {catch_all:?} handler for {fallback_path_candidate:?}");
 
@@ -459,7 +459,7 @@ async fn serve_fallback(
     {
         // Remove the trailing substring behind the current `/`, and append `404.sql`.
         fallback_path_candidate.truncate(idx);
-        fallback_path_candidate.push_str(&catch_all);
+        fallback_path_candidate.push_str(catch_all);
 
         // Check if `maybe_fallback_path` actually exists, if not, skip to the next round (which
         // will check `maybe_fallback_path`s parent directory for fallback handler).
