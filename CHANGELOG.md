@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## 0.28.0 (unreleased)
+- Chart component: fix the labels of pie charts displaying too many decimal places.
+
 ## 0.27.0 (2024-08-17)
 
 - updated Apex Charts to v3.52.0

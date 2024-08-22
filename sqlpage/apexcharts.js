@@ -3,7 +3,7 @@
 
 function sqlpage_chart() {
 
-    const tblrColors = Object.fromEntries(['azure', 'red', 'lime', 'purple', 'yellow', 'blue', 'gray-600', 'orange', 'black', 'pink', 'teal', 'indigo', 'cyan', 'green', 'cyan']
+    const tblrColors = Object.fromEntries(['azure', 'red', 'lime', 'purple', 'yellow', 'gray-600', 'orange', 'pink', 'teal', 'indigo', 'cyan', 'green', 'blue-lt', 'yellow-lt', 'pink-lt', 'green-lt', 'orange-lt', 'gray-500', 'gray-400', 'gray-300', 'gray-200', 'gray-100', 'gray-50', 'black']
         .map(c => [c, getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + c)]));
 
     /** @typedef { { [name:string]: {data:{x:number,y:number}[], name:string} } } Series */
@@ -100,7 +100,7 @@ function sqlpage_chart() {
                         color: '#f6f8fb',
                     },
                     formatter: (data.type === 'rangeBar') ? (_val, { seriesIndex, w }) => w.config.series[seriesIndex].name : 
-                                (data.type === 'pie') ? (value, {seriesIndex, w}) => `${w.config.labels[seriesIndex]}: ${value}`
+                                (data.type === 'pie') ? (value, {seriesIndex, w}) => `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
                                 : value => value.toLocaleString(),
                 },
                 fill: {
