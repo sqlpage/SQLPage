@@ -2,6 +2,7 @@
 
 ## 0.28.0 (unreleased)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
+- You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql.datapage.app/your-first-sql-website/nginx.sql) that don't end with `.sql`.
 
 ## 0.27.0 (2024-08-17)
 

@@ -128,3 +128,14 @@ CREATE TEMPORARY TABLE my_temporary_table(
     my_temp_column TEXT
 );
 ```
+
+## Migrations
+
+SQLPage allows you to run SQL scripts when the database schema changes, by creating a `sqlpage/migrations` directory.
+We have a guide on [how to create migrations](https://sql.datapage.app/your-first-sql-website/migrations.sql).
+
+## Custom URL routes
+
+By default, SQLPage encourages a simple mapping between the URL and the SQL file that is executed.
+You can also create custom URL routes by creating [`404.sql` files](http://localhost:8080/your-first-sql-website/custom_urls.sql).
+If you need advanced routing, you can also [add a reverse proxy in front of SQLPage](https://sql.datapage.app/reverse_proxy.sql).

@@ -454,6 +454,7 @@ async fn serve_fallback(
     for idx in req_path
         .rmatch_indices('/')
         .map(|(idx, _)| idx + 1)
+        .take(128) // Limit the number of iterations because lookups can be expensive
         .chain(std::iter::once(0))
     {
         // Remove the trailing substring behind the current `/`, and append `404.sql`.

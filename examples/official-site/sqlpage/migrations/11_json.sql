@@ -63,5 +63,10 @@ This will return a JSON response that looks like this:
 }
 ```
 
+If you want to handle custom API routes, like `POST /api/users/:id`,
+you can use 
+ - the [`404.sql` file](/your-first-sql-website/custom_urls.sql) to handle the request despite the URL not matching any file,
+ - the [`request_method` function](/functions.sql?function=request_method#function) to differentiate between GET and POST requests,
+ - and the [`path` function](/functions.sql?function=path#function) to extract the `:id` parameter from the URL.
 '
     );

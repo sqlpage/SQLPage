@@ -70,6 +70,9 @@ Your SQLPage instance is now hosted behind a reverse proxy using NGINX. You can 
 URL rewriting is a powerful feature that allows you to manipulate URLs to make them more readable, search-engine-friendly, and easy to maintain.
 In this section, we will cover how to use URL rewriting with SQLPage.
 
+Note that for basic URL rewriting, you can use a simple [`404.sql`](/your-first-sql-website/custom_urls.sql) file to handle custom URLs.
+However, for more complex rewriting rules, you can use NGINX's `rewrite` directive.
+
 #### Example: Rewriting `/products/$id` to `/products.sql?id=$id`
 
 Let's say you want your users to access product details using URLs like `/products/123` instead of `/products.sql?id=123`. This can be achieved using the `rewrite` directive in NGINX.
