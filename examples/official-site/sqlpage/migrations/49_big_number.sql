@@ -31,7 +31,7 @@ INSERT INTO example(component, description, properties) VALUES
             "description":"Conversion rate",
             "change_percent": 7,
             "progress_percent": 75,
-            "progress_color": "primary"
+            "progress_color": "blue"
         },
         {
             "title":"Revenue",
