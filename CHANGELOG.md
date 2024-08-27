@@ -6,6 +6,7 @@
 - Updated SQL parser to [v0.50.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0500-2024-08-15)
  - Support postgres String Constants with Unicode Escapes . Fixes https://github.com/lovasoa/SQLpage/discussions/511
 - New [big_number](https://sql.datapage.app/documentation.sql?component=big_number#component) component to display key statistics and indicators in a large, easy-to-read format. Useful for displaying KPIs, metrics, and other important numbers in dashboards and reports.
+- Fixed small display inconsistencies in the shell component with the new sidebar feature.
 
 ## 0.27.0 (2024-08-17)
 
