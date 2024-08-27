@@ -1,0 +1,59 @@
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 h-100">
+{{#each_row}}
+  <div class="col d-flex">
+    <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}">
+      <div class="card-body d-flex flex-column">
+        {{#if title}}
+        <div class="d-flex align-items-center">
+          <div class="subheader">{{title}}</div>
+          {{#if dropdown_item}}
+          <div class="ms-auto lh-1">
+            <div class="dropdown">
+              <a class="dropdown-toggle text-secondary" href="#" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{dropdown_item.[0].label}}</a>
+              <div class="dropdown-menu dropdown-menu-end">
+                {{#each dropdown_item}}
+                {{#if link}}
+                <a class="dropdown-item {{#if active}}active{{/if}}" href="{{link}}">{{label}}</a>
+                {{else}}
+                <span class="dropdown-item {{#if active}}active{{/if}}">{{label}}</span>
+                {{/if}}
+                {{/each}}
+              </div>
+            </div>
+          </div>
+          {{/if}}
+        </div>
+        {{/if}}
+        
+        <div class="h1 {{#if description}}mb-3{{/if}} mt-auto">{{value}}{{#if unit}} {{unit}}{{/if}}</div>
+        
+        {{#if description}}
+        <div class="d-flex mb-2">
+          <div>{{description}}</div>
+          {{#if change_percent}}
+          <div class="ms-auto">
+            <span class="text-{{#if (gte change_percent 0)}}success{{else}}danger{{/if}} d-inline-flex align-items-center lh-1">
+              {{change_percent}}%
+              {{#if (gte change_percent 0)}}
+                  {{~icon_img 'trending-up'~}}
+              {{else}}
+                  {{~icon_img 'trending-down'~}}
+              {{/if}}
+            </span>
+          </div>
+          {{/if}}
+        </div>
+        {{/if}}
+        
+        {{#if progress_percent}}
+        <div class="progress progress-sm">
+          <div class="progress-bar bg-{{progress_color}}" style="width: {{progress_percent}}%" role="progressbar" aria-valuenow="{{progress_percent}}" aria-valuemin="0" aria-valuemax="100" aria-label="{{progress_percent}}% Complete">
+            <span class="visually-hidden">{{progress_percent}}% Complete</span>
+          </div>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+{{/each_row}}
+</div>
