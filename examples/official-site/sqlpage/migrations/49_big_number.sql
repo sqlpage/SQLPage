@@ -7,7 +7,7 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 -- Inserting parameter information for the big_number component
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'big_number', * FROM (VALUES
     -- Top-level parameters (for the whole big_number list)
-    ('columns', 'The number of columns to display the big numbers in (default is 4).', 'INTEGER', TRUE, TRUE),
+    ('columns', 'The number of columns to display the big numbers in (default is one column per item).', 'INTEGER', TRUE, TRUE),
     -- Item-level parameters (for each big number)
     ('title', 'The title or label for the big number.', 'TEXT', FALSE, TRUE),
     ('value', 'The main value to be displayed prominently.', 'TEXT', FALSE, FALSE),

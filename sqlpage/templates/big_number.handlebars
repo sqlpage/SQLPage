@@ -1,4 +1,7 @@
-<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 h-100">
+<div class="row g-3 h-100
+  {{~#if columns}} row-cols-1 row-cols-sm-2 row-cols-md-{{columns~}}
+  {{~else}} row-cols-1 wrap {{/if~}}
+">
 {{#each_row}}
   <div class="col d-flex">
     <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}">
