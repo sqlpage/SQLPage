@@ -19,7 +19,9 @@ async fn start() -> anyhow::Result<()> {
     webserver::database::migrations::apply(&app_config, &db).await?;
     let state = AppState::init_with_db(&app_config, db).await?;
     log::debug!("Starting server...");
-    webserver::http::run_server(&app_config, state).await
+    webserver::http::run_server(&app_config, state).await?;
+    log::info!("Server stopped gracefully. Goodbye!");
+    Ok(())
 }
 
 fn init_logging() {

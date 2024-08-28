@@ -14,6 +14,13 @@ pub use sql::{make_placeholder, ParsedSqlFile};
 pub struct Database {
     pub(crate) connection: sqlx::AnyPool,
 }
+impl Database {
+    pub async fn close(&self) -> anyhow::Result<()> {
+        log::info!("Closing all database connections...");
+        self.connection.close().await;
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 pub enum DbItem {

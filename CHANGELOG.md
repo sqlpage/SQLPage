@@ -7,6 +7,7 @@
  - Support postgres String Constants with Unicode Escapes . Fixes https://github.com/lovasoa/SQLpage/discussions/511
 - New [big_number](https://sql.datapage.app/documentation.sql?component=big_number#component) component to display key statistics and indicators in a large, easy-to-read format. Useful for displaying KPIs, metrics, and other important numbers in dashboards and reports.
 - Fixed small display inconsistencies in the shell component with the new sidebar feature.
+- Cleanly close all opened database connections when shutting down sqlpage. Previously, when shutting down SQLPage, database connections that were opened during the session were not explicitly closed. These connections could remain open until the database closes it. Now, SQLPage ensures that all opened database connections are cleanly closed during shutdown. This guarantees that resources are freed immediately, ensuring more reliable operation, particularly in environments with limited database connections.
 
 ## 0.27.0 (2024-08-17)
 

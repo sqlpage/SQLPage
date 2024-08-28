@@ -635,6 +635,7 @@ fn default_headers(app_state: &web::Data<AppState>) -> middleware::DefaultHeader
 pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {
     let listen_on = config.listen_on();
     let state = web::Data::new(state);
+    let final_state = web::Data::clone(&state);
     let factory = move || create_app(web::Data::clone(&state));
 
     #[cfg(feature = "lambda-web")]
@@ -679,7 +680,11 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
     server
         .run()
         .await
-        .with_context(|| "Unable to start the application")
+        .with_context(|| "Unable to start the application")?;
+
+    // We are done, we can close the database connection
+    final_state.db.close().await?;
+    Ok(())
 }
 
 fn log_welcome_message(config: &AppConfig) {
