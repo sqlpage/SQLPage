@@ -870,7 +870,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('sidebar', 'Whether the menu defined by menu_item should be displayed on the left side of the page instead of the top. Introduced in v0.27.', 'BOOLEAN', TRUE, TRUE),
     ('sidebar_theme', 'Used with sidebar property, It can be set to "dark" to exclusively set the sidebar into dark theme.', 'BOOLEAN', TRUE, TRUE),
     ('theme', 'Set to "dark" to use a dark theme.', 'TEXT', TRUE, TRUE),
-    ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE)
+    ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE),
+    ('preview_image', 'The URL of an image to display as a link preview when the page is shared on social media', 'URL', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -887,7 +888,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
 ',
      json('[{
             "component": "shell",
-            "title": "SQLPage",
+            "title": "SQLPage: SQL to web pages",
             "icon": "database",
             "link": "/",
             "menu_item": [
@@ -921,7 +922,8 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             ],
             "layout": "boxed",
             "language": "en-US",
-            "description": "Documentation for the SQLPage low-code web application framework.",
+            "description": "Go from SQL queries to web applications in an instant.",
+            "preview_image": "https://sql.datapage.app/sqlpage_cover_image.webp",
             "font": "Poppins",
             "javascript": [
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",

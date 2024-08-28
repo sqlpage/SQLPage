@@ -14,34 +14,6 @@
         {{/if}}
     {{/each}}
 
-    {{#if font}}
-        {{#if (starts_with font "/")}}
-            <style>
-                @font-face {
-                    font-family: 'LocalFont';
-                    src: url('{{font}}') format('woff2');
-                    font-weight: normal;
-                    font-style: normal;
-                }
-
-                :root {
-                    --tblr-font-sans-serif: 'LocalFont', Arial, sans-serif;
-                }
-            </style>
-        {{else}}
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
-        <style>
-            :root {
-                --tblr-font-sans-serif: '{{font}}',
-                Arial,
-                sans-serif;
-            }
-        </style>
-        {{/if}}
-    {{/if}}
-
     <script src="{{static_path 'sqlpage.js'}}" defer nonce="{{@csp_nonce}}"></script>
     {{#each (to_array javascript)}}
         {{#if this}}
@@ -53,8 +25,20 @@
             <script src="{{this}}" type="module" defer nonce="{{@../csp_nonce}}"></script>
         {{/if}}
     {{/each}}
+
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="{{description}}" />
+    {{#if title}}
+        <meta property="og:title" content="{{title}}" />
+    {{/if}}
+    {{#if description}}
+        <meta name="description" content="{{description}}" />
+        <meta property="og:description" content="{{description}}" />
+    {{/if}}
+    {{#if preview_image}}
+        <meta property="og:image" content="{{preview_image}}" />
+        <meta name="twitter:image" content="{{preview_image}}" />
+    {{/if}}
+
     {{#if norobot}}
         <meta name="robots" content="noindex,nofollow">
     {{/if}}
