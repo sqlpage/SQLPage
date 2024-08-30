@@ -1,8 +1,12 @@
-<div class="row g-3 h-100
-  {{~#if columns}} row-cols-1 row-cols-sm-2 row-cols-md-{{columns~}}{{/if~}}
+<div {{#if id}} id="{{id}}" {{/if~}}
+  class="row g-3 h-100
+  {{~#if columns}} row-cols-1 row-cols-sm-2 row-cols-md-{{columns~}} {{/if~}}
+  {{~#if class}} {{class}} {{/if}}
 ">
 {{#each_row}}
-  <div class="col d-flex">
+  <div class="col d-flex {{~#if class}} {{class}}{{/if}}"
+  {{~#if id}} id="{{id}}"{{/if~}}
+  >
     <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}">
       <div class="card-body d-flex flex-column">
         {{#if title}}
@@ -43,17 +47,16 @@
               {{/if}}
             </span>
           </div>
-          {{/if}}
+          {{~/if~}}
         </div>
-        {{/if}}
-        
-        {{#if progress_percent}}
+        {{~/if~}}
+        {{~#if progress_percent~}}
         <div class="progress progress-sm">
           <div class="progress-bar bg-{{progress_color}}" style="width: {{progress_percent}}%" role="progressbar" aria-valuenow="{{progress_percent}}" aria-valuemin="0" aria-valuemax="100" aria-label="{{progress_percent}}% Complete">
             <span class="visually-hidden">{{progress_percent}}% Complete</span>
           </div>
         </div>
-        {{/if}}
+        {{~/if~}}
       </div>
     </div>
   </div>

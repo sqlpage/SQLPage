@@ -8,6 +8,8 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'big_number', * FROM (VALUES
     -- Top-level parameters (for the whole big_number list)
     ('columns', 'The number of columns to display the big numbers in (default is one column per item).', 'INTEGER', TRUE, TRUE),
+    ('id', 'An optional ID to be used as an anchor for links.', 'TEXT', TRUE, TRUE),
+    ('class', 'An optional CSS class to be added to the component for custom styling', 'TEXT', TRUE, TRUE),
     -- Item-level parameters (for each big number)
     ('title', 'The title or label for the big number.', 'TEXT', FALSE, TRUE),
     ('value', 'The main value to be displayed prominently.', 'TEXT', FALSE, FALSE),
@@ -45,12 +47,12 @@ INSERT INTO example(component, description, properties) VALUES
 INSERT INTO example(component, description, properties) VALUES
     ('big_number', 'Big numbers with dropdowns and customized layout',
     json('[
-        {"component":"big_number", "columns":3},
+        {"component":"big_number", "columns":3, "id":"colorfull_dashboard"},
         {"title":"Users", "value":"1,234", "color": "red" },
         {"title":"Orders", "value":56, "color": "green" },
         {"title":"Revenue", "value":"9,876", "unit": "€", "color": "blue", "dropdown_item": [
-            {"label":"This week", "link":"?days=7"},
-            {"label":"This month", "link":"?days=30"},
-            {"label":"This quarter", "link":"?days=90"}
+            {"label":"This week", "link":"?days=7&component=big_number#colorfull_dashboard"},
+            {"label":"This month", "link":"?days=30&component=big_number#colorfull_dashboard"},
+            {"label":"This quarter", "link":"?days=90&component=big_number#colorfull_dashboard"}
         ]}
     ]'));
