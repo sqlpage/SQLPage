@@ -271,20 +271,20 @@ SQLPage will re-parse a file from the database only when it has been modified.
 
 ## Frequently Asked Questions
 
-### **Why use SQL instead of a real programming language? SQL isn't even [Turing-complete](https://en.wikipedia.org/wiki/Turing_completeness)!**
+> **Why use SQL instead of a real programming language? SQL isn't even [Turing-complete](https://en.wikipedia.org/wiki/Turing_completeness)!**
 
 - You're focusing on the wrong issue. If you can express your application declaratively, you should—whether using SQL or another language. Declarative code is often more concise, readable, easier to reason about, and easier to debug than imperative code.
 - SQL is simpler than traditional languages, often readable by non-programmers, yet very powerful.
 - If complexity is your goal, note that [SQL is actually Turing-complete](https://stackoverflow.com/questions/900055/is-sql-or-even-tsql-turing-complete/7580013#7580013).
 - Even without recursive queries, a sequence of SQL statements driven by user interactions (like SQLPage) would still be Turing-complete, enabling you to build a SQL-powered website that functions as a Turing machine.
 
-### **Just Because You Can Doesn’t Mean You Should...**  
+> **Just Because You Can Doesn’t Mean You Should...**  
 — [someone being mean on Reddit](https://www.reddit.com/r/rust/comments/14qjskz/comment/jr506nx)
 
 It's not about "should" — it's about "why not?"
 Keep coloring inside the lines if you want, but we'll be over here having fun with our SQL websites.
 
-### **Is this the same as Microsoft Access?**
+> **Is this the same as Microsoft Access?**
 
 The goals are similar — creating simple data-centric applications — but the tools differ significantly:
 - SQLPage is a web server, not a desktop app.
@@ -292,19 +292,19 @@ The goals are similar — creating simple data-centric applications — but the 
 - Access is expensive and proprietary; SQLPage is [open-source](./LICENSE.txt).
 - SQLPage spares you from the torment of [Visual Basic for Applications](https://en.wikipedia.org/wiki/Visual_Basic_for_Applications).
 
-### **Is the name a reference to Microsoft FrontPage?**
+> **Is the name a reference to Microsoft FrontPage?**
 
 FrontPage was a visual static website builder popular in the late '90s. I hadn't heard of it until someone asked.
 
-### **I like CSS. I want to design websites, not write SQL.**
+> **I like CSS. I want to design websites, not write SQL.**
 
 If you want to write your own HTML and CSS,
-you can create custom components by adding a [`.handlebars`](https://handlebarsjs.com/guide/) file in `sqlpage/templates` and writing your HTML and CSS there. ([Example](./sqlpage/templates/alert.handlebars)).
+you can [create custom components](https://sql.datapage.app/custom_components.sql)
+by adding a [`.handlebars`](https://handlebarsjs.com/guide/) file in `sqlpage/templates` and writing your HTML and CSS there. ([Example](./sqlpage/templates/alert.handlebars)).
+You can also use the `html` component to write raw HTML, or the `shell` component to include custom scripts and styles.
 
-Are you human? [Humans hate CSS](https://uxdesign.cc/why-do-most-developers-hate-css-63c92bce36ed).
-
-SQLPage believes you shouldn't worry about button border radii until you have a working prototype.
-We provide good-looking components out of the box so you can focus on your data model.
+But SQLPage believes you shouldn't worry about button border radii until you have a working prototype.
+We provide good-looking components out of the box so you can focus on your data model, and iterate quickly.
 
 ## Download
 
