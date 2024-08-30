@@ -29,11 +29,9 @@
           </div>
           {{/if}}
         </div>
-        {{/if}}
-        
+        {{/if~}}
         <div class="h1 {{#if description}}mb-3{{/if}} mt-auto">{{value}}{{#if unit}} {{unit}}{{/if}}</div>
-        
-        {{#if description}}
+        {{~#if description}}
         <div class="d-flex mb-2">
           <div>{{description}}</div>
           {{#if change_percent}}
@@ -56,7 +54,7 @@
             <span class="visually-hidden">{{progress_percent}}% Complete</span>
           </div>
         </div>
-        {{~/if~}}
+        {{~/if}}
       </div>
     </div>
   </div>
