@@ -269,51 +269,42 @@ SQLPage will re-parse a file from the database only when it has been modified.
 - [tabler icons](https://tabler-icons.io) is a large set of icons you can select directly from your SQL,
 - [handlebars](https://handlebarsjs.com/guide/) render HTML pages from readable templates for each component.
 
-## Frequently asked questions
+## Frequently Asked Questions
 
-> Why would I want to write SQL instead of a real programming language? SQL is not even [Turing-complete](https://en.wikipedia.org/wiki/Turing_completeness)!
+### **Why use SQL instead of a real programming language? SQL isn't even [Turing-complete](https://en.wikipedia.org/wiki/Turing_completeness)!**
 
- - You are probably worrying about the wrong thing. If you can express your application in a purely declarative manner, you should propably do it,
-   even if you are using a traditional programming language. 
-  It will be much more concise, readable, easy to reason about and to debug than any imperative code you could write.
- - SQL is much more simple than traditional programming languages. It is often readable even by non-programmers, and yet it is very powerful.
- - If you really want to make your website more complicated than it needs to be, please note that [SQL is actually Turing-complete](https://stackoverflow.com/questions/900055/is-sql-or-even-tsql-turing-complete/7580013#7580013).
- - Even if it wasn't (if it didn't have recursive queries), a sequence of SQL statement executions driven by an user, like SQLPage allows you to do, would still be Turing-complete. You could build a sql website representing a Turing machine where the user would have to click "next" repeatedly to compute the next state of the machine.
+- You're focusing on the wrong issue. If you can express your application declaratively, you should—whether using SQL or another language. Declarative code is often more concise, readable, easier to reason about, and easier to debug than imperative code.
+- SQL is simpler than traditional languages, often readable by non-programmers, yet very powerful.
+- If complexity is your goal, note that [SQL is actually Turing-complete](https://stackoverflow.com/questions/900055/is-sql-or-even-tsql-turing-complete/7580013#7580013).
+- Even without recursive queries, a sequence of SQL statements driven by user interactions (like SQLPage) would still be Turing-complete, enabling you to build a SQL-powered website that functions as a Turing machine.
 
-> Just Because You Can Doesn’t Mean You Should...
-> 
-> — [someone being mean on reddit](https://www.reddit.com/r/rust/comments/14qjskz/comment/jr506nx)
+### **Just Because You Can Doesn’t Mean You Should...**  
+— [someone being mean on Reddit](https://www.reddit.com/r/rust/comments/14qjskz/comment/jr506nx)
 
-Life's too short to always play it safe. Where's the fun in *should*?
-I think SQLPage has some real value to offer, despite its unconventional approach !
-SQLPage isn't intended to replace traditional web development frameworks or discourage their usage.
-Instead, it caters to a specific group of people who want to leverage their SQL skills to rapidly build web applications, without spending months learning all of the technologies involved in traditional web development,
-and then weeks using them to build a simple CRUD application.
+It's not about "should" — it's about "why not?"
+Keep coloring inside the lines if you want, but we'll be over here having fun with our SQL websites.
 
-> Is this the same as Microsoft Access?
+### **Is this the same as Microsoft Access?**
 
-The goal is the same: make it easy to create simple data-centric applications.
-But the tools are very different:
- - SQLPage is a web server, not a desktop application.
- - SQLPage is not a database, it _connects_ to real battle-tested databases. Microsoft Access tries to be a database, and it's [not very good at it](https://www.quora.com/Is-the-Access-database-reliable-and-secure).
- - Microsoft Access is an expensive proprietary software, SQLPage is [open-source](./LICENSE.txt).
- - Microsoft Access [is a zombie that will stab you in the back](https://medium.com/young-coder/microsoft-access-the-zombie-database-software-that-wont-die-5b09e389c166), SQLPage won't.
- - SQLPage will not tortue you with [Visual Basic for Applications](https://en.wikipedia.org/wiki/Visual_Basic_for_Applications).
+The goals are similar — creating simple data-centric applications — but the tools differ significantly:
+- SQLPage is a web server, not a desktop app.
+- SQLPage connects to existing robust relational databases; Access tries to **be** a database.
+- Access is expensive and proprietary; SQLPage is [open-source](./LICENSE.txt).
+- SQLPage spares you from the torment of [Visual Basic for Applications](https://en.wikipedia.org/wiki/Visual_Basic_for_Applications).
 
-> Is the name a reference to Microsoft Frontpage ?
+### **Is the name a reference to Microsoft FrontPage?**
 
-Frontpage was a visual static website building software popular in the late 90s.
-I had never heard of it before someone asked me this question.
+FrontPage was a visual static website builder popular in the late '90s. I hadn't heard of it until someone asked.
 
-> I like CSS, I want to design websites, not write SQL.
+### **I like CSS. I want to design websites, not write SQL.**
 
-Are you human ? [Human beings hate CSS](https://uxdesign.cc/why-do-most-developers-hate-css-63c92bce36ed).
+If you want to write your own HTML and CSS,
+you can create custom components by adding a [`.handlebars`](https://handlebarsjs.com/guide/) file in `sqlpage/templates` and writing your HTML and CSS there. ([Example](./sqlpage/templates/alert.handlebars)).
 
-The take of SQLPage is that you should not spend time designing the border radius of your buttons until you have a working prototype.
-We provide a set of components that look decent out of the box, so that you can focus on your data model instead.
+Are you human? [Humans hate CSS](https://uxdesign.cc/why-do-most-developers-hate-css-63c92bce36ed).
 
-However, if you really want to write your own HTML and CSS, you can do it by creating your own components.
-Just create a [`.handlebars`](https://handlebarsjs.com/guide/) file in `sqlpage/templates` and write your HTML and CSS in it. ([example](./sqlpage/templates/alert.handlebars))
+SQLPage believes you shouldn't worry about button border radii until you have a working prototype.
+We provide good-looking components out of the box so you can focus on your data model.
 
 ## Download
 
