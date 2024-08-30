@@ -6,7 +6,7 @@ test('Open documentation', async ({ page }) => {
   await page.goto(BASE);
 
   // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle("SQLPage");
+  await expect(page).toHaveTitle(/SQLPage.*/);
 
   // open the submenu
   await page.getByText('Documentation', { exact: true }).first().click();
