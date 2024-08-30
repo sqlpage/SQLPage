@@ -2,12 +2,15 @@
 
 ## 0.28.0 (unreleased)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
-- You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql.datapage.app/your-first-sql-website/nginx.sql) that don't end with `.sql`.
+  - ![pie chart](https://github.com/user-attachments/assets/6cc4a522-b9dd-4005-92bc-dc92b16c7293)
+- You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql.datapage.app/your-first-sql-website/custom_urls.sql) that don't end with `.sql`.
+  - Create if `/folder/404.sql` exists, then it will be called for all URLs that start with `folder` and do not match an existing file. 
 - Updated SQL parser to [v0.50.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0500-2024-08-15)
- - Support postgres String Constants with Unicode Escapes . Fixes https://github.com/lovasoa/SQLpage/discussions/511
+  - Support postgres String Constants with Unicode Escapes, like `U&'\2713'`. Fixes https://github.com/lovasoa/SQLpage/discussions/511
 - New [big_number](https://sql.datapage.app/documentation.sql?component=big_number#component) component to display key statistics and indicators in a large, easy-to-read format. Useful for displaying KPIs, metrics, and other important numbers in dashboards and reports.
-- Fixed small display inconsistencies in the shell component with the new sidebar feature.
-- Cleanly close all opened database connections when shutting down sqlpage. Previously, when shutting down SQLPage, database connections that were opened during the session were not explicitly closed. These connections could remain open until the database closes it. Now, SQLPage ensures that all opened database connections are cleanly closed during shutdown. This guarantees that resources are freed immediately, ensuring more reliable operation, particularly in environments with limited database connections.
+  - ![big_number](https://github.com/user-attachments/assets/9b5bc091-afd1-4872-be55-0b2a47aff15c)
+- Fixed small display inconsistencies in the shell component with the new sidebar feature ([#556](https://github.com/lovasoa/SQLpage/issues/556)).
+- Cleanly close all open database connections when shutting down sqlpage. Previously, when shutting down SQLPage, database connections that were opened during the session were not explicitly closed. These connections could remain open until the database closes it. Now, SQLPage ensures that all opened database connections are cleanly closed during shutdown. This guarantees that resources are freed immediately, ensuring more reliable operation, particularly in environments with limited database connections.
 
 ## 0.27.0 (2024-08-17)
 
