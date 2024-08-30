@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.28.0 (unreleased)
+## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
   - ![pie chart](https://github.com/user-attachments/assets/6cc4a522-b9dd-4005-92bc-dc92b16c7293)
 - You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql.datapage.app/your-first-sql-website/custom_urls.sql) that don't end with `.sql`.
