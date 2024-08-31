@@ -28,10 +28,10 @@ INSERT INTO example(component, description, properties) VALUES
         {"component":"big_number"},
         {
             "title":"Sales",
-            "value":"75",
+            "value":75,
             "unit":"%",
             "description":"Conversion rate",
-            "change_percent": 7,
+            "change_percent": 9,
             "progress_percent": 75,
             "progress_color": "blue"
         },
