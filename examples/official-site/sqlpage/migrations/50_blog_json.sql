@@ -136,6 +136,18 @@ select json_group_array(json_object(
 from users;
 ```
 
+### Combining two JSON objects
+
+SQLite provides the `json_patch()` function to combine two JSON objects. This function takes two JSON objects as arguments and returns a new JSON object that is the result of merging the two input objects.
+
+```sql
+SELECT json_patch(''{"name": "Alice"}'', ''{"birthday": "1990-01-15"}'') AS user_json;
+```
+
+| user_json |
+|-----------|
+| {"name": "Alice", "birthday": "1990-01-15"} |
+
 ## PostgreSQL
 
 PostgreSQL has extensive support for JSON, including the `jsonb` type, which offers better performance and more functionality than the `json` type.
@@ -239,6 +251,18 @@ WHERE (user_data->>''age'')::int > 30;
 | name | age |
 |------|-----|
 | Bob | 38 |
+
+### Combining two JSON objects
+
+PostgreSQL provides the `||` operator to combine two JSON objects. 
+
+```sql
+SELECT ''{"name": "Alice"}''::jsonb || ''{"birthday": "1990-01-15"}''::jsonb AS user_json;
+```
+
+| user_json |
+|-----------|
+| {"name": "Alice", "birthday": "1990-01-15"} |
 
 ## MySQL / MariaDB
 
