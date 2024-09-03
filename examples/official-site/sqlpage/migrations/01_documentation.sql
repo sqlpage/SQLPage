@@ -311,7 +311,7 @@ When loading the page, the value for `:username` will be `NULL` if no value has 
     ']')),
     ('form', 'This example illustrates the use of the `select` type.
 In this select input, the various options are hardcoded, but they could also be loaded from a database table,
-using a function to convert the rows into a json array like 
+[using a function to convert the rows into a json array](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) like 
  - `json_group_array()` in SQLite,
  - `json_agg()` in Postgres,
  - `JSON_ARRAYAGG()` in MySQL, or
@@ -340,6 +340,8 @@ The target page will then receive the value as a JSON array of strings, which yo
  - the `json_each` function [in SQLite](https://www.sqlite.org/json1.html) and [Postgres](https://www.postgresql.org/docs/9.3/functions-json.html),
  - the [`OPENJSON`](https://learn.microsoft.com/fr-fr/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16) function in Microsoft SQL Server.
  - in MySQL, json manipulation is less straightforward: see [the SQLPage MySQL json example](https://github.com/lovasoa/SQLpage/tree/main/examples/mysql%20json%20handling)
+
+[More information on how to handle JSON in SQL](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide).
 
 The target page could then look like this:
 
@@ -749,7 +751,7 @@ you can use the `dynamic` component to generate the table columns dynamically.
 For that, you will need to return JSON objects from your SQL query, where the keys are the column names,
 and the values are the cell contents.
 
-Databases offer utilities to generate JSON objects from query results:
+Databases [offer utilities to generate JSON objects from query results](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide)
  - In PostgreSQL, you can use the [`json_build_object`](https://www.postgresql.org/docs/current/functions-json.html#FUNCTIONS-JSON-PROCESSING)
 function for a fixed number of columns, or [`json_object_agg`](https://www.postgresql.org/docs/current/functions-aggregate.html#FUNCTIONS-AGGREGATE) for a dynamic number of columns.
  - In SQLite, you can use the [`json_object`](https://www.sqlite.org/json1.html) function for a fixed number of columns,
@@ -888,6 +890,26 @@ SELECT ''dynamic'' AS component, ''
 
 [View the result of this query, as well as an example of how to generate a dynamic menu
 based on the database contents](./examples/dynamic_shell.sql).
+', NULL),
+    ('dynamic', '
+## Dynamic tables
+
+The `dynamic` component can be used to generate [tables](?component=table#component) with dynamic columns,
+using [your database''s JSON functions](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide).
+
+For instance, let''s say we have a table with three columns: user_id, name, and role.
+We want to create a table where each row is a user, and each column is a role.
+We will return a set of json objects that look like this: `{"name": "Alice", "admin": true, "editor": false, "viewer": true}`
+```sql
+SELECT ''table'' AS component;
+SELECT ''dynamic'' AS component, 
+    json_patch(
+        json_object(''name'', name),
+        json_object_agg(role, is_admin)
+    ) AS properties
+FROM users
+GROUP BY name;
+```
 ', NULL);
 
 INSERT INTO component(name, icon, description) VALUES

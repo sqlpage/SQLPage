@@ -34,7 +34,9 @@ select $user_search as title,
 In this example, we use the complex form of the function to make an
 authenticated POST request, with custom request headers and a custom request body.
 
-We use SQLite''s json functions to build the request body. 
+We use SQLite''s json functions to build the request body.
+See [the list of SQL databases and their JSON functions](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) for 
+more information on how to build JSON objects in your database.
 
 ```sql
 set request = json_object(

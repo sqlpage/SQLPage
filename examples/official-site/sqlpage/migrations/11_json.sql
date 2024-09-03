@@ -31,7 +31,7 @@ VALUES (
         '
 Creates an API endpoint that will allow developers to easily query a list of users stored in your database.
 
-You should use the json functions provided by your database to form the value you pass to the `contents` property.
+You should use [the json functions provided by your database](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) to form the value you pass to the `contents` property.
 To build a json array out of rows from the database, you can use: 
  - `json_group_array()` in SQLite,
  - `json_agg()` in Postgres, or
