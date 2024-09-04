@@ -12,16 +12,10 @@ use clap::Parser;
 pub struct Cli {
     /// web root
     #[clap(short,long,default_value=".")]
-    web_root: PathBuf,
-    /// database url
-    #[clap(short,long,default_value="sqlite::memory")]
-    database_url: String,
-    /// port
-    #[clap(short,long,default_value_t=8080)]
-    port: u16,
-    /// interface to listen on
-    #[clap(short,long,default_value="127.0.0.1")]
-    listen_on: String,
+    pub web_root: PathBuf,
+    /// configuration directory
+    #[clap(short,long,default_value="sqlpage")]
+    pub config_dir: String,
 }
 
 #[cfg(not(feature = "lambda-web"))]
@@ -169,7 +163,7 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 pub fn load() -> anyhow::Result<AppConfig> {
     let _cli = Cli::parse();
     let configuration_directory = &configuration_directory();
-    load_from_directory(configuration_directory)
+    load_from_directory(&configuration_directory)
 }
 
 /// Parses and loads the configuration from the given directory.
