@@ -163,7 +163,7 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 pub fn load() -> anyhow::Result<AppConfig> {
     let _cli = Cli::parse();
     let configuration_directory = &configuration_directory();
-    load_from_directory(&configuration_directory)
+    load_from_directory(configuration_directory)
 }
 
 /// Parses and loads the configuration from the given directory.
