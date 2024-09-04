@@ -6,11 +6,10 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 
 -- Inserting parameter information for the column component
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'columns', * FROM (VALUES
-    -- Top-level parameters (for the whole column list)
-    ('title', 'The title or label for the item.', 'TEXT', TRUE, TRUE),
-    ('value', 'The value associated with the item.', 'TEXT', TRUE, TRUE),
-    ('description', 'A brief description of the item.', 'TEXT', TRUE, TRUE),
-    ('description_md', 'A brief description of the item, formatted using markdown.', 'TEXT', TRUE, TRUE),
+    ('title', 'The title or label for the item.', 'TEXT', FALSE, TRUE),
+    ('value', 'The value associated with the item.', 'TEXT', FALSE, TRUE),
+    ('description', 'A brief description of the item.', 'TEXT', FALSE, TRUE),
+    ('description_md', 'A brief description of the item, formatted using markdown.', 'TEXT', FALSE, TRUE),
     ('item', 'A list of bullet points associated with the columns, represented as JSON.', 'JSON', FALSE, TRUE),
     ('link', 'A link associated with the item.', 'TEXT', FALSE, TRUE),
     ('button_text', 'Text for the button.', 'TEXT', FALSE, TRUE),
