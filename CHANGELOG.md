@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## 0.29
+ - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
+
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
   - ![pie chart](https://github.com/user-attachments/assets/6cc4a522-b9dd-4005-92bc-dc92b16c7293)

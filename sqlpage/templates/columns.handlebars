@@ -1,0 +1,35 @@
+<div class="row row-cards d-flex align-items-stretch justify-content-center my-3">
+    {{#each_row}}
+  <div class="col-sm-6 col-lg-{{default size 3}} d-flex">
+    <div class="card card-md flex-fill d-flex flex-column">
+    {{#if icon}}
+        <div class="ribbon ribbon-top ribbon-bookmark bg-{{default icon_color 'green'}}">
+            {{~icon_img icon~}}
+        </div>
+    {{/if}}
+      <div class="card-body d-flex flex-column justify-content-between">
+        <div>
+          <div class="text-uppercase text-secondary font-weight-medium text-center">{{title}}</div>
+          <div class="my-3 text-center"><span class="display-5 fw-bold text-{{value_color}}">{{value}}</span> {{#if small_text}}<small class="fs-6">{{small_text}}</small>{{/if}}</div> 
+          <ul class="list-unstyled lh-lg">
+            <li class="mb-3">{{description}} {{#if description_md}}<small>{{{markdown description_md}}}</small>{{/if}}</li> 
+            {{#each item}}
+            <li>
+              <span class="{{#if color}}text-{{color}}{{/if}} me-{{#if icon}}2{{else}}5{{/if}}">{{~icon_img icon~}}</span>
+              {{#if link}}
+                <a href="{{link}}" class="text-decoration-none">{{description}}</a>
+              {{else}}
+                {{description}}
+              {{/if}}
+            </li>
+            {{/each}}
+          </ul>
+        </div>
+        <div class="text-center mt-4">
+          <a href="{{link}}" class="btn w-100 {{#if button_color}}btn-{{button_color}}{{/if}}">{{button_text}}</a> 
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/each_row}}
+</div>
