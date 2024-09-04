@@ -5,6 +5,24 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use clap::Parser;
+
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+pub struct Cli {
+    /// web root
+    #[clap(short,long,default_value=".")]
+    web_root: PathBuf,
+    /// database url
+    #[clap(short,long,default_value="sqlite::memory")]
+    database_url: String,
+    /// port
+    #[clap(short,long,default_value_t=8080)]
+    port: u16,
+    /// interface to listen on
+    #[clap(short,long,default_value="127.0.0.1")]
+    listen_on: String,
+}
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
@@ -149,6 +167,7 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 /// Parses and loads the configuration from the `sqlpage.json` file in the current directory.
 /// This should be called only once at the start of the program.
 pub fn load() -> anyhow::Result<AppConfig> {
+    let _cli = Cli::parse();
     let configuration_directory = &configuration_directory();
     load_from_directory(configuration_directory)
 }
