@@ -10,16 +10,40 @@ use std::path::{Path, PathBuf};
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 pub struct Cli {
-    /// web root
-    #[clap(short, long, default_value = ".")]
-    pub web_root: PathBuf,
-    /// configuration directory
-    #[clap(short, long, default_value = "sqlpage")]
-    pub config_dir: String,
+    /// The directory where the .sql files are located.
+    #[clap(short, long)]
+    pub web_root: Option<PathBuf>,
+    /// The directory where the sqlpage.json configuration, the templates, and the migrations are located.
+    #[clap(short, long)]
+    pub config_dir: Option<PathBuf>,
 }
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
+
+impl AppConfig {
+    pub fn from_cli(cli: &Cli) -> anyhow::Result<Self> {
+        let mut config = if let Some(config_dir) = &cli.config_dir {
+            load_from_directory(config_dir)?
+        } else {
+            load_from_env()?
+        };
+        if let Some(web_root) = &cli.web_root {
+            config.web_root.clone_from(web_root);
+        }
+        Ok(config)
+    }
+}
+
+pub fn load_from_cli() -> anyhow::Result<AppConfig> {
+    let cli = Cli::parse();
+    AppConfig::from_cli(&cli)
+}
+
+pub fn load_from_env() -> anyhow::Result<AppConfig> {
+    let config_dir = configuration_directory();
+    load_from_directory(&config_dir)
+}
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct AppConfig {
@@ -160,13 +184,6 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 
 /// Parses and loads the configuration from the `sqlpage.json` file in the current directory.
 /// This should be called only once at the start of the program.
-pub fn load() -> anyhow::Result<AppConfig> {
-    let _cli = Cli::parse();
-    let configuration_directory = &configuration_directory();
-    load_from_directory(configuration_directory)
-}
-
-/// Parses and loads the configuration from the given directory.
 pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
     let cannonical = cannonicalize_if_possible(directory);
     log::debug!("Loading configuration from {:?}", cannonical);
@@ -406,5 +423,24 @@ mod test {
         assert_eq!(normalize_site_prefix("a/b/c"), "/a/b/c/");
         assert_eq!(normalize_site_prefix("a b"), "/a%20b/");
         assert_eq!(normalize_site_prefix("a b/c"), "/a%20b/c/");
+    }
+
+    #[test]
+    fn test_cli() {
+        let cli = Cli::parse_from(&[
+            "sqlpage",
+            "--web-root",
+            "/path/to/web",
+            "--config-dir",
+            "custom_config",
+        ]);
+        assert_eq!(cli.web_root, Some(PathBuf::from("/path/to/web")));
+        assert_eq!(cli.config_dir, Some(PathBuf::from("custom_config")));
+    }
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
     }
 }
