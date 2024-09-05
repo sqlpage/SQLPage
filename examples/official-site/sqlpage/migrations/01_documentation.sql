@@ -997,7 +997,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "layout": "boxed",
             "language": "en-US",
             "description": "Go from SQL queries to web applications in an instant.",
-            "preview_image": "https://sql.datapage.app/sqlpage_cover_image.webp",
+            "preview_image": "https://sql.datapage.app/sqlpage_social_preview.webp",
             "font": "Poppins",
             "javascript": [
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
