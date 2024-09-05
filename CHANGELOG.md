@@ -2,6 +2,7 @@
 
 ## 0.29
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
+ - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
