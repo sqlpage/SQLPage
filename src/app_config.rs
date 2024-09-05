@@ -14,8 +14,11 @@ pub struct Cli {
     #[clap(short, long)]
     pub web_root: Option<PathBuf>,
     /// The directory where the sqlpage.json configuration, the templates, and the migrations are located.
-    #[clap(short, long)]
+    #[clap(short = 'd', long)]
     pub config_dir: Option<PathBuf>,
+    /// The path to the configuration file.
+    #[clap(short = 'c', long)]
+    pub config_file: Option<PathBuf>,
 }
 
 #[cfg(not(feature = "lambda-web"))]
@@ -23,7 +26,9 @@ const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 
 impl AppConfig {
     pub fn from_cli(cli: &Cli) -> anyhow::Result<Self> {
-        let mut config = if let Some(config_dir) = &cli.config_dir {
+        let mut config = if let Some(config_file) = &cli.config_file {
+            load_from_file(config_file)?
+        } else if let Some(config_dir) = &cli.config_dir {
             load_from_directory(config_dir)?
         } else {
             load_from_env()?
@@ -134,7 +139,8 @@ pub struct AppConfig {
     #[serde(default = "default_compress_responses")]
     pub compress_responses: bool,
 
-    /// Content-Security-Policy header to send to the client. If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
+    /// Content-Security-Policy header to send to the client.
+    /// If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
     pub content_security_policy: Option<String>,
 
     /// Whether `sqlpage.fetch` should load trusted certificates from the operating system's certificate store
