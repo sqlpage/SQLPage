@@ -1,20 +1,20 @@
 use anyhow::Context;
+use clap::Parser;
 use config::Config;
 use percent_encoding::AsciiSet;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
-use clap::Parser;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 pub struct Cli {
     /// web root
-    #[clap(short,long,default_value=".")]
+    #[clap(short, long, default_value = ".")]
     pub web_root: PathBuf,
     /// configuration directory
-    #[clap(short,long,default_value="sqlpage")]
+    #[clap(short, long, default_value = "sqlpage")]
     pub config_dir: String,
 }
 
