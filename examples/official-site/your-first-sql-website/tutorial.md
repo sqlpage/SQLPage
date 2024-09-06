@@ -54,6 +54,9 @@ CREATE TABLE users (
 );
 ```
 
+If you need to quickly test a database schema and associated queries online,
+before making any change to your database, I can recommend [sqliteonline.com](https://sqliteonline.com/) (which actually also works with Postgres, MySQL, and SQL Server).
+
 Please read our [**introduction to database migrations**](./migrations.sql) to
 learn how to maintain your database schema in the long term.
 
