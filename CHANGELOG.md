@@ -4,6 +4,7 @@
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
  - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
  - CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
+ - New `navbar_title` property in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
