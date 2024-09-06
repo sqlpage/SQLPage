@@ -1,5 +1,10 @@
 # CHANGELOG.md
 
+## 0.29
+ - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
+ - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
+ - CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
+
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
   - ![pie chart](https://github.com/user-attachments/assets/6cc4a522-b9dd-4005-92bc-dc92b16c7293)

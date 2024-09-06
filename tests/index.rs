@@ -450,7 +450,7 @@ async fn make_app_data_for_official_website() -> actix_web::web::Data<AppState> 
 #[actix_web::test]
 async fn test_official_website_documentation() {
     let app_data = make_app_data_for_official_website().await;
-    let resp = req_path_with_app_data("/documentation.sql?component=button", app_data)
+    let resp = req_path_with_app_data("/component.sql?component=button", app_data)
         .await
         .unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);
