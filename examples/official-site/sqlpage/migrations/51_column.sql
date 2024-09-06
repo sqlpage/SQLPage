@@ -2,7 +2,7 @@
 
 -- Component Definition
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
-    ('columns', 'columns', 'A component to display various items in a card layout, allowing users to choose options. Useful for showcasing different features or services, or KPIs. See also the big_number component.', '0.28.0');
+    ('columns', 'columns', 'A component to display various items in a card layout, allowing users to choose options. Useful for showcasing different features or services, or KPIs. See also the big_number component.', '0.29.0');
 
 -- Inserting parameter information for the column component
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'columns', * FROM (VALUES
