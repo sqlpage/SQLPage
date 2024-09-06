@@ -27,6 +27,12 @@ const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
 impl AppConfig {
     pub fn from_cli(cli: &Cli) -> anyhow::Result<Self> {
         let mut config = if let Some(config_file) = &cli.config_file {
+            if !config_file.is_file() {
+                return Err(anyhow::anyhow!(
+                    "Configuration file does not exist: {:?}",
+                    config_file
+                ));
+            }
             load_from_file(config_file)?
         } else if let Some(config_dir) = &cli.config_dir {
             load_from_directory(config_dir)?
@@ -36,7 +42,53 @@ impl AppConfig {
         if let Some(web_root) = &cli.web_root {
             config.web_root.clone_from(web_root);
         }
+        if let Some(config_dir) = &cli.config_dir {
+            config.configuration_directory.clone_from(config_dir);
+        }
+        config.validate()?;
         Ok(config)
+    }
+
+    fn validate(&self) -> anyhow::Result<()> {
+        if !self.web_root.is_dir() {
+            return Err(anyhow::anyhow!(
+                "Web root is not a valid directory: {:?}",
+                self.web_root
+            ));
+        }
+        if !self.configuration_directory.is_dir() {
+            return Err(anyhow::anyhow!(
+                "Configuration directory is not a valid directory: {:?}",
+                self.configuration_directory
+            ));
+        }
+        if self.database_connection_acquire_timeout_seconds <= 0.0 {
+            return Err(anyhow::anyhow!(
+                "Database connection acquire timeout must be positive"
+            ));
+        }
+        if let Some(max_connections) = self.max_database_pool_connections {
+            if max_connections == 0 {
+                return Err(anyhow::anyhow!(
+                    "Maximum database pool connections must be greater than 0"
+                ));
+            }
+        }
+        if let Some(idle_timeout) = self.database_connection_idle_timeout_seconds {
+            if idle_timeout < 0.0 {
+                return Err(anyhow::anyhow!(
+                    "Database connection idle timeout must be non-negative"
+                ));
+            }
+        }
+        if let Some(max_lifetime) = self.database_connection_max_lifetime_seconds {
+            if max_lifetime < 0.0 {
+                return Err(anyhow::anyhow!(
+                    "Database connection max lifetime must be non-negative"
+                ));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -201,6 +253,7 @@ pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
 
 /// Parses and loads the configuration from the given file.
 pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
+    log::debug!("Loading configuration from file: {:?}", config_file);
     let config = Config::builder()
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
@@ -210,6 +263,7 @@ pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
     let app_config = config
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;
+    app_config.validate()?;
     log::debug!("Loaded configuration: {:#?}", app_config);
     Ok(app_config)
 }
