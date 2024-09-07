@@ -13,7 +13,12 @@ end);
 SELECT 'hero' as component,
     'Your first SQL Website' as title,
     'Let''s create your first website in SQL together, from downloading SQLPage to connecting it to your database, to making a web app' as description,
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Backlit_keyboard.jpg/1024px-Backlit_keyboard.jpg' as image,
+    case $os
+        when 'linux' then 'get_started_linux.webp'
+        when 'macos' then 'get_started_macos.webp'
+        when 'windows' then 'get_started_windows.webp'
+        else 'get_started.webp'
+    end as image,
     'https://github.com/lovasoa/SQLpage/releases'|| case
         when $os = 'windows' then '/latest/download/sqlpage-windows.zip'
         when $os = 'linux' then '/latest/download/sqlpage-linux.tgz'

@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.28.0"
+version = "0.29.0"
 edition = "2021"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -31,7 +31,7 @@ sqlx = { package = "sqlx-oldapi", version = "0.6.27", features = [
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls-0_22", "cookies"] }
 percent-encoding = "2.2.0"
-handlebars = "6.0.0"
+handlebars = "6.1.0"
 log = "0.4.17"
 env_logger = "0.11.1"
 mime_guess = "2.0.4"

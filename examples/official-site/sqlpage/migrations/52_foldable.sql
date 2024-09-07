@@ -1,5 +1,5 @@
-INSERT INTO component(name, icon, description) VALUES
-    ('foldable', 'chevrons-down', 'A foldable list of elements which can be expanded individually.');
+INSERT INTO component(name, icon, description, introduced_in_version) VALUES
+    ('foldable', 'chevrons-down', 'A foldable list of elements which can be expanded individually.', '0.29.0');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'foldable', * FROM (VALUES
     ('id', 'ID attribute added to the container in HTML. Used for targeting through CSS or for scrolling via links.', 'TEXT', TRUE, TRUE),

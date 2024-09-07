@@ -1,5 +1,10 @@
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
+select 'hero' as component,
+    'Performance in SQLPage' as title,
+    'SQLPage applications are fast, because they are server-side rendered, and begin streaming the page to the browser while the database is still processing the request.' as description,
+    'performance.webp' as image;
+
 select 'text' as component,
     '
 # Performance of SQLPage applications

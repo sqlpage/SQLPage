@@ -1,9 +1,12 @@
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
+select 'hero' as component,
+    'SQLPage''s security guarantees' as title,
+    'SQLPage prevents common web vulnerabilities such as SQL injections and XSS attacks by default.' as description,
+    'safety.webp' as image;
+
 select 'text' as component,
     '
-# SQLPage''s security guarantees
-
 SQLPage is a tool that allows you to create a full website using only SQL queries, and render results straight from the database to the browser.
 Most programmers, hearing this, will immediately think of the security implications of this model.
 
@@ -18,7 +21,9 @@ SQLPage websites are *server-side rendered*, which means that the SQL queries st
 where SQLPage is installed.
 
 The results of these queries are then rendered to HTML, and sent to the user''s browser.
-A malicious user cannot run arbitrary SQL queries on your database, because SQLPage does not expose your database to the internet.
+A malicious user cannot run arbitrary SQL queries on your database, because SQLPage
+does not expose your entire database to the internet, only the results of
+your prepared queries, rendered as web pages.
 
 ## Protection against SQL injections
 
