@@ -46,7 +46,7 @@
                     {{#if (eq type 'textarea')}}
                         <textarea
                             name="{{name}}"
-                            class="form-control"
+                            class="form-control {{class}}"
                             placeholder="{{placeholder}}"
                             rows="{{default rows 3}}"
                             {{#if id}}id="{{id}}" {{/if~}}
@@ -61,7 +61,8 @@
                         {{~#if value includeZero=true}}{{value}}{{/if~}}
                         </textarea>
                     {{else}}{{#if (eq type 'select')}}
-                        <select name="{{name}}" class="form-select"
+                        <select name="{{name}}" 
+                            class="form-select {{class}}"
                         {{~#if id}} id="{{id}}" {{/if~}}
                         {{~#if required}} required="required" {{/if~}}
                         {{~#if autofocus}} autofocus {{/if~}}
