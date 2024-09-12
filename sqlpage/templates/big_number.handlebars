@@ -4,7 +4,8 @@
   {{~#if class}} {{class}} {{/if}}
 ">
 {{#each_row}}
-  <div class="col d-flex {{~#if class}} {{class}}{{/if}}"
+  <div class="col {{~#if class}} {{class}}{{/if}}"
+  {{#unless ../columns}}style="min-width: 9rem;"{{/unless}}
   {{~#if id}} id="{{id}}"{{/if~}}
   >
     <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}">
@@ -32,7 +33,7 @@
         {{/if~}}
         <div class="h1 {{#if description}}mb-3{{/if}} mt-auto text-nowrap text-truncate">{{value}}{{#if unit}} {{unit}}{{/if}}</div>
         {{~#if description}}
-        <div class="d-flex flex-wrap mb-2">
+        <div class="d-flex flex-wrap mb-2" title="{{description}}">
           <div class="text-truncate me-2">{{description}}</div>
           {{#if change_percent}}
           <div class="ms-auto">
