@@ -18,6 +18,7 @@ services:
     volumes:
       - sqlpage_socket:/tmp/sqlpage:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./website:/var/www:ro
     depends_on:
       - sqlpage
     command: >

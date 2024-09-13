@@ -333,3 +333,4 @@ You can find a fully working example of an NGINX configuration for SQLPage
 illustrating all the features described in this guide
 in the [examples/nginx](https://github.com/lovasoa/sqlpage/tree/main/examples/nginx)
 directory of the SQLPage Github repository.
+The example uses Docker and docker-compose to run NGINX and SQLPage.
