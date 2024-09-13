@@ -14,6 +14,33 @@
         {{/if}}
     {{/each}}
 
+    {{#if font}}
+        {{#if (starts_with font "/")}}
+            <style>
+                @font-face {
+                    font-family: 'LocalFont';
+                    src: url('{{font}}') format('woff2');
+                    font-weight: normal;
+                    font-style: normal;
+                }
+                :root {
+                    --tblr-font-sans-serif: 'LocalFont', Arial, sans-serif;
+                }
+            </style>
+        {{else}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
+        <style>
+            :root {
+                --tblr-font-sans-serif: '{{font}}',
+                Arial,
+                sans-serif;
+            }
+        </style>
+        {{/if}}
+    {{/if}}
+
     <script src="{{static_path 'sqlpage.js'}}" defer nonce="{{@csp_nonce}}"></script>
     {{#each (to_array javascript)}}
         {{#if this}}
