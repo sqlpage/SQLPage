@@ -131,7 +131,7 @@ There are two types of parameters you can use in your SQL queries:
 
 > Note: Currently, if a `$parameter` is not present in the URL, it is first looked for in the form parameters. If it is not found there either, it is set to `NULL`. Please do not rely on this behavior, as it may change in the future.
 
-You can also set $parameters yourself at any point in your SQL files in order to reuse
+You can also set parameters yourself at any point in your SQL files in order to reuse
 their value in several places, using the `SET ParameterName = value` syntax.
 For instance, we could use the following code to save the username in uppercase:
 

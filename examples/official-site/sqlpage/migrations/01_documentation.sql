@@ -1075,7 +1075,7 @@ a "Profile" menu item only to authenticated users,
 and a "Login" menu item only to unauthenticated users:
 
 ```sql
-SET $role = (
+set role = (
     SELECT role FROM users
     INNER JOIN sessions ON users.id = sessions.user_id
     WHERE sessions.session_id = sqlpage.cookie(''session_id'')

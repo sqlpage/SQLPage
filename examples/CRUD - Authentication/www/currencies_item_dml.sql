@@ -7,8 +7,8 @@
 
 -- $_curpath and $_session_required are required for header_shell_session.sql.
 
-SET $_session_required = 1;
-SET $_shell_enabled = 0;
+set _session_required = 1;
+set _shell_enabled = 0;
 
 SELECT
     'dynamic' AS component,
@@ -18,7 +18,7 @@ SELECT
 -- Redirect target must be passed as $path
 -- =============================================================================
 
-SET $_err_msg = '&path URL GET parameter (redirect target) is not set!';
+set _err_msg = '&path URL GET parameter (redirect target) is not set!';
 
 SELECT
     'alert'          AS component,
@@ -46,18 +46,18 @@ WHERE
 -- For new records, the id (INTEGER PRIMARY KEY AUTOINCREMENT) should be set to NULL.
 -- The id field is set as hidden in the record edit form and passed as the :id POST
 -- variable. NULL, however, cannot be passed as such and is converted to blank string.
--- Check :id for '' and SET $id (:id will return the same value).
+-- Check :id for '' and set id (:id will return the same value).
 
-SET $_id = iif(typeof(:id) = 'text' AND :id = '', NULL, :id);
+set _id = iif(typeof(:id) = 'text' AND :id = '', NULL, :id);
 
-SET $_values = json_object(
+set _values = json_object(
     'id', CAST($_id AS INT),
     'name', :name,
     'to_rub', CAST(:to_rub AS NUMERIC)
 );
 
-SET $_op = iif($_id IS NULL, 'INSERT', 'UPDATE');
-SET $_err_msg = sqlpage.url_encode('New currency already in the database');
+set _op = iif($_id IS NULL, 'INSERT', 'UPDATE');
+set _err_msg = sqlpage.url_encode('New currency already in the database');
 
 SELECT
     'redirect' AS component,

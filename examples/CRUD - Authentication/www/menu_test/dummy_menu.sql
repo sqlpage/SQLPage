@@ -1,4 +1,4 @@
-SET $_get_vars = (
+set _get_vars = (
     SELECT
         json_group_object(
             "key",
@@ -10,10 +10,10 @@ SET $_get_vars = (
 );
 
 
-SET $_locale_code = $lang;                         -- 'en', 'ru', 'de', 'fr', 'zh-cn'
-SET $_theme = 'fancy'; --$theme;                              -- 'default', 'fancy'
-SET $_hide_language_names = $hide_language_names;  -- 0, 1 (BOOLEAN)
-SET $_authenticated = $authenticated;              -- 0, 1 (BOOLEAN)
+set _locale_code = $lang;                         -- 'en', 'ru', 'de', 'fr', 'zh-cn'
+set _theme = 'fancy'; --$theme;                              -- 'default', 'fancy'
+set _hide_language_names = $hide_language_names;  -- 0, 1 (BOOLEAN)
+set _authenticated = $authenticated;              -- 0, 1 (BOOLEAN)
 
 -- =============================================================================
 -- =============================================================================

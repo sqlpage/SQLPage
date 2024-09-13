@@ -21,9 +21,9 @@
 -- at the top of the page script, but AFTER setting the required variables
 --
 -- ```sql
--- SET $_curpath = sqlpage.path();
--- SET $_session_required = 1;
--- SET $_shell_enabled = 1;
+-- set _curpath = sqlpage.path();
+-- set _session_required = 1;
+-- set _shell_enabled = 1;
 -- ```
 --
 -- ## Reuired SET Variables
@@ -49,9 +49,9 @@
 -- Set default values (for now) for required variables.
 -- Probably should instead show appropriate error messages and abort rendering.
 
-SET $_curpath = ifnull($_curpath, '/');
-SET $_session_required = ifnull($_session_required, 1);
-SET $_shell_enabled = ifnull($_shell_enabled, 1);
+set _curpath = ifnull($_curpath, '/');
+set _session_required = ifnull($_session_required, 1);
+set _shell_enabled = ifnull($_shell_enabled, 1);
 
 -- =============================================================================
 -- ========================= Check active session ==============================
@@ -60,7 +60,7 @@ SET $_shell_enabled = ifnull($_shell_enabled, 1);
 -- Check if session is available.
 -- Require the user to log in again after 1 day
 
-SET $_username = (
+set _username = (
     SELECT username
     FROM sessions
     WHERE sqlpage.cookie('session_token') = id
@@ -69,7 +69,7 @@ SET $_username = (
 
 -- Redirect to the login page if the user is not logged in.
 -- Unprotected pages must
--- SET $_session_required = (SELECT FALSE);
+-- set _session_required = (SELECT FALSE);
 -- before running this script
 
 SELECT

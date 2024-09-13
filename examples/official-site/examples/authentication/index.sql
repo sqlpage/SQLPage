@@ -1,6 +1,6 @@
 -- redirect the user to the login page if they are not logged in
 -- this query should be present at the top of every page that requires authentication
-set $role = (select role from users natural join user_sessions where session_token = sqlpage.cookie('session_token'));
+set role = (select role from users natural join user_sessions where session_token = sqlpage.cookie('session_token'));
 select 'redirect' as component, 'login.sql' as link where $role is null;
 
 select 'dynamic' as component, 
