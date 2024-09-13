@@ -11,12 +11,12 @@ select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json
 )) as properties
 FROM example WHERE component = 'shell' LIMIT 1;
 
-select 'text' as component,
-    'The "'||$component||'" component' as title,
-    'component' as id;
-select description as contents from component where name = $component;
+select 'text' as component, 'component' as id,
+    format('# The **%s** component
 
-select 'text' as component;
+%s', $component, description) as contents_md
+from component where name = $component;
+
 select format('Introduced in SQLPage v%s.', introduced_in_version) as contents, 1 as size
 from component
 where name = $component and introduced_in_version IS NOT NULL;
