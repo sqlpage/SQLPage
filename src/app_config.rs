@@ -358,7 +358,7 @@ fn default_database_url() -> String {
 fn default_database_url() -> String {
     // When using a custom configuration directory, the default database URL
     // will be set later in `AppConfig::from_cli`.
-    "".to_owned()
+    String::new()
 }
 
 fn create_default_database(configuration_directory: &Path) -> String {
