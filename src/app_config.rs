@@ -46,14 +46,8 @@ impl AppConfig {
             config.configuration_directory.clone_from(config_dir);
         }
 
-        log::debug!(">>> LYDERIC'S CHANGES <<<");
         config.configuration_directory = cli.config_dir.clone().unwrap_or(PathBuf::from("./sqlpage"));
-        config.database_url = format!("sqlite://{}/{}?mode=rwc",
-            config.configuration_directory.to_string_lossy(),
-            DEFAULT_DATABASE_FILE
-        );
-
-        default_database_url();
+        config.database_url = default_database_url(&config.configuration_directory);
 
         config.validate()?;
         Ok(config)
@@ -342,7 +336,7 @@ fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {
         .with_context(|| format!("host '{host_str}' does not resolve to an IP"))
 }
 
-fn default_database_url() -> String {
+fn default_database_url(configuration_directory: &PathBuf) -> String {
     let prefix = "sqlite://".to_owned();
 
     if cfg!(test) {
@@ -351,7 +345,7 @@ fn default_database_url() -> String {
 
     #[cfg(not(feature = "lambda-web"))]
     {
-        let config_dir = cannonicalize_if_possible(&configuration_directory());
+        let config_dir = cannonicalize_if_possible(configuration_directory.as_path());
         let old_default_db_path = PathBuf::from(DEFAULT_DATABASE_FILE);
         let default_db_path = config_dir.join(DEFAULT_DATABASE_FILE);
         if let Ok(true) = old_default_db_path.try_exists() {
