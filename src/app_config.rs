@@ -45,6 +45,16 @@ impl AppConfig {
         if let Some(config_dir) = &cli.config_dir {
             config.configuration_directory.clone_from(config_dir);
         }
+
+        log::debug!(">>> LYDERIC'S CHANGES <<<");
+        config.configuration_directory = cli.config_dir.clone().unwrap_or(PathBuf::from("./sqlpage"));
+        config.database_url = format!("sqlite://{}/{}?mode=rwc",
+            config.configuration_directory.to_string_lossy(),
+            DEFAULT_DATABASE_FILE
+        );
+
+        default_database_url();
+
         config.validate()?;
         Ok(config)
     }
@@ -104,7 +114,7 @@ pub fn load_from_env() -> anyhow::Result<AppConfig> {
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct AppConfig {
-    #[serde(default = "default_database_url")]
+    #[serde(default)]
     pub database_url: String,
     pub max_database_pool_connections: Option<u32>,
     pub database_connection_idle_timeout_seconds: Option<f64>,
