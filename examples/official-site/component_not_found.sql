@@ -9,7 +9,7 @@ select
     'Back to the documentation' as link_text;
 
 -- Friendly message after an XSS or SQL injection attempt
-set $attack = CASE WHEN
+set attack = CASE WHEN
     $component LIKE '%<%' or $component LIKE '%>%' or $component LIKE '%/%' or $component LIKE '%;%'
     or $component LIKE '%--%' or $component LIKE '%''%' or $component LIKE '%(%'
 THEN 'attacked' END;

@@ -14,6 +14,33 @@
         {{/if}}
     {{/each}}
 
+    {{#if font}}
+        {{#if (starts_with font "/")}}
+            <style>
+                @font-face {
+                    font-family: 'LocalFont';
+                    src: url('{{font}}') format('woff2');
+                    font-weight: normal;
+                    font-style: normal;
+                }
+                :root {
+                    --tblr-font-sans-serif: 'LocalFont', Arial, sans-serif;
+                }
+            </style>
+        {{else}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{font}}&display=fallback">
+        <style>
+            :root {
+                --tblr-font-sans-serif: '{{font}}',
+                Arial,
+                sans-serif;
+            }
+        </style>
+        {{/if}}
+    {{/if}}
+
     <script src="{{static_path 'sqlpage.js'}}" defer nonce="{{@csp_nonce}}"></script>
     {{#each (to_array javascript)}}
         {{#if this}}
@@ -138,7 +165,7 @@
                 <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <h1 class="navbar-brand navbar-brand-autodark d-inline ps-2">
+                <h1 class="navbar-brand navbar-brand-autodark d-inline ps-2 text-truncate">
                     <a style="text-decoration: none" href="{{#if link}}{{link}}{{else}}/{{/if}}">
                         {{#if image}}
                             <img src="{{image}}" alt="{{title}}" height="32" class="navbar-brand-image">
@@ -180,7 +207,7 @@
     {{/if}}
 {{/if}}
         <div class="page-wrapper">
-            <main class="page-body container-xl pt-3 px-md-5 px-sm-3 {{#if fixed_top_menu}}mt-5{{#unless (eq layout 'boxed')}}pt-5{{/unless}}{{/if}}" id="sqlpage_main_wrapper">
+            <main class="page-body container-xl px-md-5 px-sm-3 {{#if fixed_top_menu}}mt-5{{#unless (eq layout 'boxed')}} pt-5{{/unless}}{{else}} mt-3{{/if}}" id="sqlpage_main_wrapper">
                 {{~#each_row~}}{{~/each_row~}}
             </main>
 

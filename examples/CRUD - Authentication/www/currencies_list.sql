@@ -5,8 +5,8 @@
 
 -- $_curpath and $_session_required are required for header_shell_session.sql.
 
-SET $_curpath = sqlpage.path();
-SET $_session_required = 1;
+set _curpath = sqlpage.path();
+set _session_required = 1;
 
 SELECT
     'dynamic' AS component,
@@ -16,8 +16,8 @@ SELECT
 -- =============================== Module vars =================================
 -- =============================================================================
 
-SET $_getpath = '&path=' || $_curpath;
-SET $_item_form = 'currencies_item_form.sql';
+set _getpath = '&path=' || $_curpath;
+set _item_form = 'currencies_item_form.sql';
 
 -- =============================================================================
 -- ======================== Display confirmation ===============================

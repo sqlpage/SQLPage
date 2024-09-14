@@ -2,7 +2,7 @@ select 'dynamic' as component, properties FROM example WHERE component = 'shell'
 
 select 'title' as component, 'SQLPage Image Upload Demo' as contents;
 
-set $data_url = sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path('my_file'));
+set data_url = sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path('my_file'));
 
 select 'card' as component, 1 as columns where $data_url is not null;
 select 'Your picture' as title,

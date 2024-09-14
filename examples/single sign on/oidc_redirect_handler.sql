@@ -3,7 +3,7 @@
 select 'redirect' as component, '/login.sql' as link where sqlpage.cookie('oauth_state') != $state;
 
 -- Exchange the authorization code for an access token
-set $authorization_code_request = json_object(
+set authorization_code_request = json_object(
     'url', sqlpage.environment_variable('OIDC_TOKEN_ENDPOINT'),
     'method', 'POST',
     'headers', json_object(
@@ -15,7 +15,7 @@ set $authorization_code_request = json_object(
         || '&client_id=' || sqlpage.environment_variable('OIDC_CLIENT_ID')
         || '&client_secret=' || sqlpage.environment_variable('OIDC_CLIENT_SECRET')
 );
-set $access_token = sqlpage.fetch($authorization_code_request);
+set access_token = sqlpage.fetch($authorization_code_request);
 
 -- Redirect the user to the login page if the access token could not be obtained
 select 'redirect' as component, '/login.sql' as link where $access_token->>'error' is not null;
@@ -23,14 +23,14 @@ select 'redirect' as component, '/login.sql' as link where $access_token->>'erro
 -- At this point we have $access_token which contains {"access_token":"eyJ...", "scope":"openid profile email" }
 
 -- Fetch the user's profile
-set $profile_request = json_object(
+set profile_request = json_object(
     'url', sqlpage.environment_variable('OIDC_USERINFO_ENDPOINT'),
     'method', 'GET',
     'headers', json_object(
         'Authorization', 'Bearer ' || ($access_token->>'access_token')
     )
 );
-set $user_profile = sqlpage.fetch($profile_request);
+set user_profile = sqlpage.fetch($profile_request);
 
 -- Redirect the user to the login page if the user's profile could not be obtained
 select 'redirect' as component, '/login.sql' as link where $user_profile->>'error' is not null;

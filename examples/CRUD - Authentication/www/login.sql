@@ -1,6 +1,6 @@
 -- Authentication Fence
 
-SET $username = (
+set username = (
     SELECT username
     FROM sessions
     WHERE sqlpage.cookie('session_token') = id

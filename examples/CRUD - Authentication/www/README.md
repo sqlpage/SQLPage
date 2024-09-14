@@ -10,14 +10,14 @@ Three files (login.sql, logout.sql, and create_session.sql) implement authentica
 2. Session checking code snippet at the top of the protected page checks if a valid session token (cookie) is set. In this example, the SET statement sets a local variable, `$_username`, for later use:
 ```sql
 -- Checks if a valid session token cookie is available
-SET $_username = (
+set _username = (
     SELECT username
     FROM sessions
     WHERE sqlpage.cookie('session_token') = id
       AND created_at > datetime('now', '-1 day')
 );
 ```
-3. Redirect to login page (login.sql) if no session is available (`$_username IS NULL`) and the starting page requires authentication (by setting `SET $_session_required = 1;` before executing the session checking code; see, e.g., the top of currencies_item_form.sql and currencies_list.sql):
+3. Redirect to login page (login.sql) if no session is available (`$_username IS NULL`) and the starting page requires authentication (by setting `set _session_required = 1;` before executing the session checking code; see, e.g., the top of currencies_item_form.sql and currencies_list.sql):
 ```sql
 SELECT
     'redirect' AS component,
@@ -34,8 +34,8 @@ WHERE $_username IS NULL AND $_session_required;
 Because the same code is used for session token check for all protected pages, it makes sense to place it in a separate module (header_shell_session.sql) and execute it via run_sql() at the top of protected files:
 
 ```sql
-SET $_curpath = sqlpage.path();
-SET $_session_required = 1;
+set _curpath = sqlpage.path();
+set _session_required = 1;
 
 SELECT
     'dynamic' AS component,
@@ -104,9 +104,9 @@ The `$_shell_enabled` variable controls the execution of the custom shell compon
 The header modules expects that the calling module sets several variables. The SET statement makes it possible to check if the variables are set appropriately in one place at the beginning of the module, rather then placing guards every time theses variables are used. Hence, the top section of the header file includes
 
 ```sql
-SET $_curpath = ifnull($_curpath, '/');
-SET $_session_required = ifnull($_session_required, 1);
-SET $_shell_enabled = ifnull($_shell_enabled, 1);
+set _curpath = ifnull($_curpath, '/');
+set _session_required = ifnull($_session_required, 1);
+set _shell_enabled = ifnull($_shell_enabled, 1);
 ```
 In this case, if any required variable is not set, a suitable default value is defined, so that the following code would not have to check for NULL values. Alternatively, a redirect to an error page may be used, to inform the programmer about the potential issue.
 
@@ -142,8 +142,8 @@ All three module load the footer module discussed above that produces a conditio
 All three modules provide access to the database and are treated as protected: they are only accessible to authenticated users. Hence, they start with (mostly) the same code block:
 
 ```sql
-SET $_curpath = sqlpage.path();
-SET $_session_required = 1;
+set _curpath = sqlpage.path();
+set _session_required = 1;
 
 SELECT
     'dynamic' AS component,
@@ -178,7 +178,7 @@ SELECT
     $_curpath AS link
 WHERE $id = '' OR CAST($id AS INT) = 0;
 
-SET $error_msg = sqlpage.url_encode('Bad {id = ' || $id || '} provided');
+set error_msg = sqlpage.url_encode('Bad {id = ' || $id || '} provided');
 SELECT
     'redirect' AS component,
     $_curpath || '?error=' || $error_msg AS link
@@ -190,7 +190,7 @@ The blank string and zero are considered the equivalents of NULL, so redirect to
 Another accepted GET URL parameter is $values, which may be set to a JSON representation of the record. This parameter is returned from the currencies_item_dml.sql script if the database operation fails. Then the detail view will display an error message, but the form will remain populated with the user-submitted data. If $values is set, it takes precedence. This check throws an error if $values is set, but does not represent a valid JSON.
 
 ```sql
-SET $_err_msg =
+set _err_msg =
     sqlpage.url_encode('Values is set to bad JSON: __ ') || $values || ' __';
 
 SELECT
@@ -201,7 +201,7 @@ WHERE NOT json_valid($values);
 The detail view maybe called with zero, one, or two (\$id/\$values) parameters. Invalid values are filtered out at this point, so the next step is to check provided parameters and determine the dataset that should go into the form. 
 
 ```sql
-SET $_values = (
+set _values = (
     WITH
         fields AS (
             SELECT id, name, to_rub
@@ -253,7 +253,7 @@ WHERE NOT ifnull($action = 'DELETE', FALSE);
 The following section defines the main form with record fields. First the $\_valid_ids variable is constructed as the source for the drop-down id field. The code also adds the NULL value used for defining a new record. Note that, when this form is opened from the table view via the "New Record" button, the $action variable is set to "INSERT" and the id field is set to the empty array in the first assignment via the alternative UINION and to the single NULL in the second assignment. The two queries can also be combined relatively straightforwardly using CTEs.
 
 ```sql
-SET $_valid_ids = (
+set _valid_ids = (
     SELECT json_group_array(
         json_object('label', CAST(id AS TEXT), 'value', id) ORDER BY id
     )
@@ -263,7 +263,7 @@ SET $_valid_ids = (
     SELECT '[]'
     WHERE $action = 'INSERT'
 );
-SET $_valid_ids = (
+set _valid_ids = (
     json_insert($_valid_ids, '$[#]',
         json_object('label', 'NULL', 'value', json('null'))
     )

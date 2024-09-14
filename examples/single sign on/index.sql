@@ -1,4 +1,4 @@
-set $user_email = (select email from user_sessions where session_id = sqlpage.cookie('session_id'));
+set user_email = (select email from user_sessions where session_id = sqlpage.cookie('session_id'));
 
 select 'shell' as component, 'My secure app' as title,
     (case when $user_email is null then 'login' else 'logout' end) as menu_item;

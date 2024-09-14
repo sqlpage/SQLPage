@@ -7,7 +7,7 @@ select 'redirect' as component, '/cas/' as link where $ticket is null;
 -- We must then validate the ticket with the CAS server
 -- CAS v3 specifies the following URL for ticket validation (see https://apereo.github.io/cas/6.6.x/protocol/CAS-Protocol-Specification.html#28-p3servicevalidate-cas-30)
 -- https://cas.example.org/p3/serviceValidate?ticket=ST-1856339-aA5Yuvrxzpv8Tau1cYQ7&service=http://myclient.example.org/myapp&format=JSON
-SET $ticket_url =
+set ticket_url =
     sqlpage.environment_variable('CAS_ROOT_URL') 
         || '/p3/serviceValidate'
         || '?ticket=' || sqlpage.url_encode($ticket)
@@ -15,7 +15,7 @@ SET $ticket_url =
         || '&format=JSON';
 
 -- We must then make a request to the CAS server to validate the ticket
-set $validation_response = sqlpage.fetch($ticket_url);
+set validation_response = sqlpage.fetch($ticket_url);
 
 -- If the ticket is invalid, the CAS server will return a 200 OK response with a JSON object like this:
 -- { "serviceResponse": { "authenticationFailure": { "code": "INVALID_TICKET", "description": "..." } } }

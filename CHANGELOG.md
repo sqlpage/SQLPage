@@ -4,7 +4,13 @@
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
  - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
  - CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
+ - Configuration checks: SQLPage now checks if the configuration file is valid when starting the server. This allows to display a helpful error message when the configuration is invalid, instead of crashing or behaving unexpectedly. Notable, we now ensure critical configuration values like directories, timeouts, and connection pool settings are valid.
  - New `navbar_title` property in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
+ - Fixed: The `font` property in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component was mistakingly not applied since v0.28.0. It works again.
+ - Updated SQL parser to [v0.51.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0510-2024-09-11). Improved `INTERVAL` parsing.
+  - **Important note**: this version removes support for the `SET $variable = ...` syntax in SQLite. This worked only with some databases. You should replace all occurrences of this syntax with `SET variable = ...` (without the `$` prefix).
+ - slightly reduce the margin at the top of pages to make the content appear higher on the screen.
+ - fix the display of the page title when it is long and the sidebar display is enabled.
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
@@ -190,7 +196,7 @@ select
 - reuse the existing opened database connection for the current query in `sqlpage.run_sql` instead of opening a new one. This makes it possible to create a temporary table in a file, and reuse it in an included script, create a SQL transaction that spans over multiple run_sql calls, and should generally make run_sql more performant.
 - Fixed a bug in the cookie component where removing a cookie from a subdirectory would not work.
 - [Updated SQL parser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0470-2024-06-01). Fixes support for `AT TIME ZONE` in postgres. Fixes `GROUP_CONCAT()` in MySQL.
-- Add a new warning message in the logs when trying to use `SET $x = ` when there is already a form field named `x`.
+- Add a new warning message in the logs when trying to use `set x = ` when there is already a form field named `x`.
 - **Empty Uploaded files**: when a form contains an optional file upload field, and the user does not upload a file, the field used to still be accessible to SQLPage file-related functions such as `sqlpage.uploaded_file_path` and `sqlpage.uploaded_file_mime_type`. This is now fixed, and these functions will return `NULL` when the user does not upload a file. `sqlpage.persist_uploaded_file` will not create an empty file in the target directory when the user does not upload a file, instead it will do nothing and return `NULL`.
 - In the [map](https://sql.datapage.app/documentation.sql?component=map#component) component, when top-level latitude and longitude properties are omitted, the map will now center on its markers. This makes it easier to create zoomed maps with a single marker.
 - In the [button](https://sql.datapage.app/documentation.sql?component=button#component) component, add a `download` property to make the button download a file when clicked, a `target` property to open the link in a new tab, and a `rel` property to prevent search engines from following the link.
@@ -200,9 +206,9 @@ select
 
 ## 0.22.0 (2024-05-29)
 
-- **Important Security Fix:** The behavior of `SET $x` has been modified to match `SELECT $x`.
-  - **Security Risk:** Previously, `SET $x` could be overwritten by a POST parameter named `x`.
-  - **Solution:** Upgrade to SQLPage v0.22. If not possible, then update your application to use `SET :x` instead of `SET $x`.
+- **Important Security Fix:** The behavior of `set x` has been modified to match `SELECT $x`.
+  - **Security Risk:** Previously, `set x` could be overwritten by a POST parameter named `x`.
+  - **Solution:** Upgrade to SQLPage v0.22. If not possible, then update your application to use `SET :x` instead of `set x`.
   - For more information, see [GitHub Issue #342](https://github.com/lovasoa/SQLpage/issues/342).
 - **Deprecation Notice:** Reading POST variables using `$x`.
   - **New Standard:** Use `:x` for POST variables and `$x` for GET variables.

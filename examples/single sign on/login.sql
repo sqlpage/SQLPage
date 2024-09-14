@@ -1,4 +1,4 @@
-set $oauth_state = sqlpage.random_string(32);
+set oauth_state = sqlpage.random_string(32);
 
 SELECT 'cookie' as component, 'oauth_state' as name, $oauth_state as value;
 

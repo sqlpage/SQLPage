@@ -548,7 +548,7 @@ pub(super) fn function_args_to_stmt_params(
                       - concatenations of the above (such as CONCAT(x, y)).\n\n\
                     Arbitrary SQL expressions as function arguments are not supported.\n\
                     Try executing the SQL expression in a separate SET expression, then passing it to the function:\n\n\
-                    SET $my_parameter = {arg}; \n\
+                    set my_parameter = {arg}; \n\
                     SELECT sqlpage.my_function($my_parameter);\n\n\
                     "))
         })

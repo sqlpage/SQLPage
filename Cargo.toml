@@ -42,7 +42,7 @@ anyhow = "1"
 serde = "1"
 serde_json = { version = "1.0.82", features = ["preserve_order", "raw_value"] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.50.0", features = ["visitor"] }
+sqlparser = { version = "0.51.0", features = ["visitor"] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
@@ -61,7 +61,7 @@ csv-async = { version = "1.2.6", features = ["tokio"] }
 rustls = { version = "0.22.0" } # keep in sync with actix-web, awc, rustls-acme, and sqlx
 rustls-native-certs = "0.7.0"
 awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }
-clap = { version = "3.1.18", features = ["derive"] }
+clap = { version = "4.5.17", features = ["derive"] }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }

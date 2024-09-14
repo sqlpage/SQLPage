@@ -6,7 +6,7 @@ select 'dynamic' as component,
     ) as properties
 FROM example WHERE component = 'shell' LIMIT 1;
 
-select 'text' as component, 'SQLPage built-in functions' as title;
+select 'text' as component, 'SQLPage built-in functions' as title where $function IS NULL;
 select '
 In addition to normal SQL functions supported by your database,
 SQLPage provides a few special functions to help you extract data from user requests.
@@ -17,14 +17,15 @@ Thus, they require all the parameters to be known at the time the query is sent 
 Function parameters cannot reference columns from the rest of your query.
 The only case when you can call a SQLPage function with a parameter that is not a constant is when it appears at the top level of a `SELECT` statement.
 For example, `SELECT sqlpage.url_encode(url) FROM t` is allowed because SQLPage can execute `SELECT url FROM t` and then apply the `url_encode` function to each value.
-' as contents_md;
+' as contents_md where $function IS NULL;
 
-select 'list' as component, 'SQLPage functions' as title;
+select 'list' as component, 'SQLPage functions' as title where $function IS NULL;
 select name as title,
     icon,
     '?function=' || name || '#function' as link,
     $function = name as active
 from sqlpage_functions
+where $function IS NULL
 order by name;
 
 select 'text' as component,
@@ -46,3 +47,15 @@ select
     'azure' as color
 from sqlpage_function_parameters where "function" = $function
 ORDER BY "index";
+
+select 
+    'button' as component,
+    'sm'     as size,
+    'pill'   as shape;
+select
+    name as title,
+    icon,
+    sqlpage.link('functions.sql', json_object('function', name)) as link
+from sqlpage_functions
+where $function IS NOT NULL
+order by name;
