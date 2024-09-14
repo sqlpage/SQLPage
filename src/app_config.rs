@@ -48,7 +48,21 @@ impl AppConfig {
 
         config.configuration_directory =
             cli.config_dir.clone().unwrap_or(PathBuf::from("./sqlpage"));
-        config.database_url = default_database_url(&config.configuration_directory);
+
+        config.configuration_directory = std::fs::canonicalize(&config.configuration_directory)
+            .unwrap_or_else(|_| config.configuration_directory.clone());
+
+        if !config.configuration_directory.exists() {
+            log::info!(
+                "Configuration directory does not exist, creating it: {:?}",
+                config.configuration_directory
+            );
+            std::fs::create_dir_all(&config.configuration_directory)?;
+        }
+
+        if config.database_url.is_empty() {
+            config.database_url = create_default_database(&config.configuration_directory);
+        }
 
         config.validate()?;
         Ok(config)
@@ -109,7 +123,7 @@ pub fn load_from_env() -> anyhow::Result<AppConfig> {
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct AppConfig {
-    #[serde(default)]
+    #[serde(default = "default_database_url")]
     pub database_url: String,
     pub max_database_pool_connections: Option<u32>,
     pub database_connection_idle_timeout_seconds: Option<f64>,
@@ -268,7 +282,6 @@ pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
     let app_config = config
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;
-    app_config.validate()?;
     log::debug!("Loaded configuration: {:#?}", app_config);
     Ok(app_config)
 }
@@ -337,12 +350,19 @@ fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {
         .with_context(|| format!("host '{host_str}' does not resolve to an IP"))
 }
 
-fn default_database_url(configuration_directory: &Path) -> String {
-    let prefix = "sqlite://".to_owned();
+#[cfg(test)]
+fn default_database_url() -> String {
+    "sqlite://:memory:".to_owned()
+}
+#[cfg(not(test))]
+fn default_database_url() -> String {
+    // When using a custom configuration directory, the default database URL
+    // will be set later in `AppConfig::from_cli`.
+    "".to_owned()
+}
 
-    if cfg!(test) {
-        return prefix + ":memory:";
-    }
+fn create_default_database(configuration_directory: &Path) -> String {
+    let prefix = "sqlite://".to_owned();
 
     #[cfg(not(feature = "lambda-web"))]
     {
@@ -360,7 +380,6 @@ fn default_database_url(configuration_directory: &Path) -> String {
             return prefix + &encode_uri(&default_db_path);
         }
         // Create the default database file if we can
-        let _ = std::fs::create_dir_all(default_db_path.parent().unwrap()); // may already exist
         if let Ok(tmp_file) = std::fs::File::create(&default_db_path) {
             log::info!(
                 "No DATABASE_URL provided, {} is writable, creating a new database file.",
@@ -372,7 +391,7 @@ fn default_database_url(configuration_directory: &Path) -> String {
         }
     }
 
-    log::warn!("No DATABASE_URL provided, and the current directory is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
+    log::warn!("No DATABASE_URL provided, and {:?} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory);
     prefix + ":memory:"
 }
 
