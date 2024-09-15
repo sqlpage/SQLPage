@@ -835,7 +835,8 @@ You can also store the data for a component in a `.json` file, and load it using
 This is particularly useful to create a single [shell](?component=shell#component) defining the site''s overall appearance and menus,
 and displaying it on all pages without duplicating its code.
 
-The following will load the data for a `shell` component from a file named `shell.json` :
+The following will load the data for a `shell` component from a file named `shell.json`,
+using the [`sqlpage.read_file_as_text`](/functions.sql?function=read_file_as_text) function.
 
 ```sql
 SELECT ''dynamic'' AS component, sqlpage.read_file_as_text(''shell.json'') AS properties;
@@ -859,6 +860,31 @@ and `shell.json` would be placed at the website''s root and contain the followin
     ]
 }
 ```
+', NULL),
+('dynamic', '
+## Including another SQL file
+
+To avoid repeating the same code on multiple pages, you can include another SQL file using the `dynamic` component
+together with the [`sqlpage.run_sql`](/functions.sql?function=run_sql) function.
+
+For instance, the following will include the file `shell.sql` at the top of the page,
+and pass it a `$title` variable to display the page title.
+
+```sql
+SELECT ''dynamic'' AS component,
+       sqlpage.run_sql(''shell.sql'', json_object(''title'', ''SQLPage documentation'')) AS properties;
+```
+
+And `shell.sql` could contain the following:
+
+```sql
+SELECT ''shell''     AS component,
+    COALESCE($title, ''Default title'') AS title,
+    ''/my_icon.png'' AS icon,
+    ''products''     AS menu_item,
+    ''about''        AS menu_item;
+```
+
 ', NULL),
     ('dynamic', '
 ## Dynamic shell
