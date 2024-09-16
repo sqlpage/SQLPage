@@ -14,6 +14,7 @@
  - slightly reduce the margin at the top of pages to make the content appear higher on the screen.
  - fix the display of the page title when it is long and the sidebar display is enabled.
  - Fix an issue where the color name `blue` could not be used in the chart component.
+ - Add new properties to the foldable component: `id`, `class`, and `expanded` (to control the state of the foldable item).
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
