@@ -46,8 +46,9 @@ impl AppConfig {
             config.configuration_directory.clone_from(config_dir);
         }
 
-        config.configuration_directory =
-            cli.config_dir.clone().unwrap_or(PathBuf::from("./sqlpage"));
+        if let Some(config_dir) = &cli.config_dir {
+            config.configuration_directory.clone_from(config_dir);
+        }
 
         config.configuration_directory = std::fs::canonicalize(&config.configuration_directory)
             .unwrap_or_else(|_| config.configuration_directory.clone());
@@ -65,6 +66,9 @@ impl AppConfig {
         }
 
         config.validate()?;
+
+        log::debug!("Loaded configuration: {:#?}", config);
+
         Ok(config)
     }
 
@@ -282,7 +286,6 @@ pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
     let app_config = config
         .try_deserialize::<AppConfig>()
         .with_context(|| "Unable to load configuration")?;
-    log::debug!("Loaded configuration: {:#?}", app_config);
     Ok(app_config)
 }
 
@@ -479,6 +482,10 @@ pub mod tests {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::env;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_default_site_prefix() {
@@ -510,21 +517,151 @@ mod test {
     }
 
     #[test]
-    fn test_cli() {
+    fn test_cli_argument_parsing() {
         let cli = Cli::parse_from(&[
             "sqlpage",
             "--web-root",
             "/path/to/web",
             "--config-dir",
-            "custom_config",
+            "/path/to/config",
+            "--config-file",
+            "/path/to/config.json",
         ]);
+
         assert_eq!(cli.web_root, Some(PathBuf::from("/path/to/web")));
-        assert_eq!(cli.config_dir, Some(PathBuf::from("custom_config")));
+        assert_eq!(cli.config_dir, Some(PathBuf::from("/path/to/config")));
+        assert_eq!(cli.config_file, Some(PathBuf::from("/path/to/config.json")));
     }
 
     #[test]
-    fn verify_cli() {
-        use clap::CommandFactory;
-        Cli::command().debug_assert();
+    fn test_sqlpage_prefixed_env_variable_parsing() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_CONFIGURATION_DIRECTORY", "/path/to/config");
+
+        let config = load_from_env().unwrap();
+
+        assert_eq!(
+            config.configuration_directory,
+            PathBuf::from("/path/to/config"),
+            "Configuration directory should match the SQLPAGE_CONFIGURATION_DIRECTORY env var"
+        );
+
+        env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+    }
+
+    #[test]
+    fn test_config_priority() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_WEB_ROOT", "/");
+
+        let cli = Cli {
+            web_root: Some(PathBuf::from(".")),
+            config_dir: None,
+            config_file: None,
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert_eq!(
+            config.web_root,
+            PathBuf::from("."),
+            "CLI argument should take precedence over environment variable"
+        );
+
+        env::remove_var("SQLPAGE_WEB_ROOT");
+    }
+
+    #[test]
+    fn test_config_file_priority() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        let temp_dir = std::env::temp_dir().join("sqlpage_test");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let config_file_path = temp_dir.join("sqlpage.json");
+        let config_web_dir = temp_dir.join("config/web");
+        let env_web_dir = temp_dir.join("env/web");
+        let cli_web_dir = temp_dir.join("cli/web");
+        std::fs::create_dir_all(&config_web_dir).unwrap();
+        std::fs::create_dir_all(&env_web_dir).unwrap();
+        std::fs::create_dir_all(&cli_web_dir).unwrap();
+
+        let config_content = format!(
+            r#"{{ "web_root": "{}" }}"#,
+            config_web_dir.to_str().unwrap()
+        );
+        std::fs::write(&config_file_path, config_content).unwrap();
+
+        env::set_var("SQLPAGE_WEB_ROOT", env_web_dir.to_str().unwrap());
+
+        let cli = Cli {
+            web_root: None,
+            config_dir: None,
+            config_file: Some(config_file_path.clone()),
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert_eq!(
+            config.web_root, env_web_dir,
+            "Environment variable should override config file"
+        );
+        assert_eq!(
+            config.configuration_directory,
+            cannonicalize_if_possible(&PathBuf::from("./sqlpage")),
+            "Configuration directory should be default when not overridden"
+        );
+
+        let cli_with_web_root = Cli {
+            web_root: Some(cli_web_dir.clone()),
+            config_dir: None,
+            config_file: Some(config_file_path),
+        };
+
+        let config = AppConfig::from_cli(&cli_with_web_root).unwrap();
+        assert_eq!(
+            config.web_root, cli_web_dir,
+            "CLI argument should take precedence over environment variable and config file"
+        );
+        assert_eq!(
+            config.configuration_directory,
+            cannonicalize_if_possible(&PathBuf::from("./sqlpage")),
+            "Configuration directory should remain unchanged"
+        );
+
+        env::remove_var("SQLPAGE_WEB_ROOT");
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_default_values() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+        env::remove_var("SQLPAGE_WEB_ROOT");
+
+        let cli = Cli {
+            web_root: None,
+            config_dir: None,
+            config_file: None,
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert_eq!(
+            config.web_root,
+            default_web_root(),
+            "Web root should default to current directory when not specified"
+        );
+        assert_eq!(
+            config.configuration_directory,
+            cannonicalize_if_possible(&PathBuf::from("./sqlpage")),
+            "Configuration directory should default to ./sqlpage when not specified"
+        );
     }
 }
