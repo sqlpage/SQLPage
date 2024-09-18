@@ -596,10 +596,7 @@ impl SplitTemplateRenderer {
         let blk = render_context
             .block_mut()
             .expect("context created without block");
-        blk.set_local_var(
-            "component_index",
-            JsonValue::Number(self.component_index.into()),
-        );
+        blk.set_local_var("component_index", self.component_index.into());
         blk.set_local_var("csp_nonce", self.nonce.clone());
 
         *self.ctx.data_mut() = data;
@@ -631,7 +628,8 @@ impl SplitTemplateRenderer {
             *blk.local_variables_mut() = local_vars;
             let mut blk = BlockContext::new();
             blk.set_base_value(data);
-            blk.set_local_var("row_index", JsonValue::Number(self.row_index.into()));
+            blk.set_local_var("component_index", self.component_index.into());
+            blk.set_local_var("row_index", self.row_index.into());
             blk.set_local_var("csp_nonce", self.nonce.clone());
             render_context.push_block(blk);
             let mut output = HandlebarWriterOutput(writer);
@@ -661,6 +659,7 @@ impl SplitTemplateRenderer {
         if let Some(mut local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
             local_vars.put("row_index", self.row_index.into());
+            local_vars.put("component_index", self.component_index.into());
             local_vars.put("csp_nonce", self.nonce.clone());
             log::trace!("Rendering the after_list template with the following local variables: {local_vars:?}");
             *render_context
