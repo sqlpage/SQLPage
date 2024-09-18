@@ -13,6 +13,12 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
+    ('foldable', 'A single foldable paragraph of text', json('[
+        {"component":"foldable"},
+        {"title":"The foldable component", "description": "This is a simple foldable component. It can be used to show and hide content. It is a list of items, each with a title and a description. The description is displayed when the item is expanded."},
+    ]'));
+
+INSERT INTO example(component, description, properties) VALUES
     ('foldable', 'A SQLPage-themed foldable list with Markdown', json('[
         {"component":"foldable"},
         {"title":"Quick Prototyping", "description_md": "Build a functional web app prototype in minutes using just SQL queries:\n\n- Rapid development\n- Ideal for MVPs\n- Great for internal tools\n\nLearn more about [quick prototyping](/your-first-sql-website/).", "expanded": true},
