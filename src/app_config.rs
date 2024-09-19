@@ -590,10 +590,10 @@ mod test {
         std::fs::create_dir_all(&env_web_dir).unwrap();
         std::fs::create_dir_all(&cli_web_dir).unwrap();
 
-        let config_content = format!(
-            r#"{{ "web_root": "{}" }}"#,
-            config_web_dir.to_str().unwrap()
-        );
+        let config_content = serde_json::json!({
+            "web_root": config_web_dir.to_str().unwrap()
+        })
+        .to_string();
         std::fs::write(&config_file_path, config_content).unwrap();
 
         env::set_var("SQLPAGE_WEB_ROOT", env_web_dir.to_str().unwrap());
