@@ -33,13 +33,20 @@ impl AppConfig {
                     config_file
                 ));
             }
+            log::debug!("Loading configuration from file: {:?}", config_file);
             load_from_file(config_file)?
         } else if let Some(config_dir) = &cli.config_dir {
+            log::debug!("Loading configuration from directory: {:?}", config_dir);
             load_from_directory(config_dir)?
         } else {
+            log::debug!("Loading configuration from environment");
             load_from_env()?
         };
         if let Some(web_root) = &cli.web_root {
+            log::debug!(
+                "Setting web root to value from the command line: {:?}",
+                web_root
+            );
             config.web_root.clone_from(web_root);
         }
         if let Some(config_dir) = &cli.config_dir {
@@ -58,14 +65,25 @@ impl AppConfig {
                 "Configuration directory does not exist, creating it: {:?}",
                 config.configuration_directory
             );
-            std::fs::create_dir_all(&config.configuration_directory)?;
+            std::fs::create_dir_all(&config.configuration_directory).with_context(|| {
+                format!(
+                    "Failed to create configuration directory in {}",
+                    config.configuration_directory.display()
+                )
+            })?;
         }
 
         if config.database_url.is_empty() {
+            log::debug!(
+                "Creating default database in {}",
+                config.configuration_directory.display()
+            );
             config.database_url = create_default_database(&config.configuration_directory);
         }
 
-        config.validate()?;
+        config
+            .validate()
+            .context("The provided configuration is invalid")?;
 
         log::debug!("Loaded configuration: {:#?}", config);
 
@@ -123,6 +141,7 @@ pub fn load_from_cli() -> anyhow::Result<AppConfig> {
 pub fn load_from_env() -> anyhow::Result<AppConfig> {
     let config_dir = configuration_directory();
     load_from_directory(&config_dir)
+        .with_context(|| format!("Unable to load configuration from {}", config_dir.display()))
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
@@ -281,11 +300,17 @@ pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
         .add_source(env_config().prefix("SQLPAGE"))
-        .build()?;
-    log::trace!("Configuration sources: {}", config.cache);
+        .build()
+        .with_context(|| {
+            format!(
+                "Unable to build configuration loader for {}",
+                config_file.display()
+            )
+        })?;
+    log::trace!("Configuration sources: {:#?}", config.cache);
     let app_config = config
         .try_deserialize::<AppConfig>()
-        .with_context(|| "Unable to load configuration")?;
+        .context("Failed to load the configuration")?;
     Ok(app_config)
 }
 
@@ -301,7 +326,11 @@ fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
 ) -> Result<Option<SocketAddr>, D::Error> {
     let host_str: Option<String> = Deserialize::deserialize(deserializer)?;
     host_str
-        .map(|h| parse_socket_addr(&h).map_err(D::Error::custom))
+        .map(|h| {
+            parse_socket_addr(&h).map_err(|e| {
+                D::Error::custom(anyhow::anyhow!("Failed to parse socket address {h:?}: {e}"))
+            })
+        })
         .transpose()
 }
 
@@ -350,7 +379,7 @@ fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {
     host_str
         .to_socket_addrs()?
         .next()
-        .with_context(|| format!("host '{host_str}' does not resolve to an IP"))
+        .with_context(|| format!("Resolving host '{host_str}'"))
 }
 
 #[cfg(test)]
@@ -518,7 +547,7 @@ mod test {
 
     #[test]
     fn test_cli_argument_parsing() {
-        let cli = Cli::parse_from(&[
+        let cli = Cli::parse_from([
             "sqlpage",
             "--web-root",
             "/path/to/web",
