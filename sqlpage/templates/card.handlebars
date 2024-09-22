@@ -32,8 +32,7 @@
                         bg-transparent border-0
                     {{/if}}
                 {{/if}}
-                "
-                {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
+                ">
                 {{#if link}}
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
@@ -47,11 +46,20 @@
                 {{/if}}
                 <div class="card-body {{#if (all embed (not title) (not icon))}}p-0{{/if}}">
                     {{#if title}}<h2 class="card-title fs-3 me-3">{{title}}</h2>{{/if}}
-                    <div class="card-content remove-bottom-margin{{#if (and icon (not title))}} pe-4{{/if}}">
+                    <div class="card-content remove-bottom-margin{{#if (and icon (not title))}} pe-4{{/if}}"
+                        {{#if (and embed (ne embed_mode "iframe"))}} data-embed="{{embed}}"{{/if}}
+                    >
                         {{~description~}}
                         {{~#if description_md~}}
                             {{{markdown description_md}}}
                         {{~/if~}}
+                        {{#if (and embed (ne embed_mode "iframe"))}}
+                        <div class="d-flex justify-content-center h-100 align-items-center card-loading-placeholder">
+                            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        {{/if}}
                     </div>
                     {{~#if embed ~}}
                     {{~#if (eq embed_mode "iframe")}}
@@ -63,12 +71,7 @@
                             {{~#if style}} style="{{style}}"{{/if~}}
                         >
                         </iframe>
-                    {{~else~}}
-                        <div class="d-flex justify-content-center h-100 align-items-center card-loading-placeholder">
-                            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
+
                     {{~/if~}}
                     {{~/if~}}
                 </div>

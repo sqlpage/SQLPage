@@ -13,28 +13,35 @@ const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
 
 const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
 
-function sqlpage_card() {
+function sqlpage_embed() {
   /** @type {NodeListOf<HTMLElement>} */
-  const cards = document.querySelectorAll("[data-pre-init=card]");
-  for (const c of cards) {
-    c.removeAttribute("data-pre-init");
+  const embeds = document.querySelectorAll("[data-embed]:not([aria-busy=true])");
+  for (const c of embeds) {
     if (!c.dataset.embed) continue;
-    const url = new URL(c.dataset.embed, window.location.href);
-    url.searchParams.set("_sqlpage_embed", "1");
+    c.ariaBusy = "true";
+    let url;
+    try {
+      url = new URL(c.dataset.embed, window.location.href)
+    } catch {
+      console.error(`'${c.dataset.embed}' is not a valid url`)
+      continue;
+    }
+    url.searchParams.set("_sqlpage_embed", "");
+
     fetch(url)
-      .then((res) => res.text())
-      .then((html) => {
-        const body = c.querySelector(".card-content");
-        if (body) body.innerHTML = html;
-        const spinner = c.querySelector(".card-loading-placeholder");
-        spinner?.remove();
-        const fragLoadedEvt = new CustomEvent("fragment-loaded", {
-          bubbles: true,
-        });
-        c.dispatchEvent(fragLoadedEvt);
-      });
-  }
+      .then(res => res.text())
+      .then(html => {
+        c.innerHTML = html;
+        c.ariaBusy = "false";
+        delete c.dataset.embed;
+        c.dispatchEvent(new CustomEvent("fragment-loaded", {
+          bubbles: true
+      }));
+    })
+    .catch(err => console.error("Fetch error: ", err));
+    }
 }
+
 
 /** @param {HTMLElement} root_el */
 function setup_table(root_el) {
@@ -464,7 +471,7 @@ function sqlpage_modal() {
 
 add_init_fn(sqlpage_table);
 add_init_fn(sqlpage_map);
-add_init_fn(sqlpage_card);
+add_init_fn(sqlpage_embed);
 add_init_fn(sqlpage_form);
 add_init_fn(sqlpage_modal);
 add_init_fn(load_scripts);
