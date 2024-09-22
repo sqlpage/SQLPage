@@ -4,8 +4,7 @@
 const nonce = document.currentScript.nonce;
 
 function sqlpage_embed() {
-  for (const c of document.querySelectorAll("[data-embed]")) {
-    if (c.ariaBusy === "true") continue;
+  for (const c of document.querySelectorAll("[data-embed]:not([aria-busy=true])")) {
     c.ariaBusy = true;
     let url;
     try {
