@@ -202,7 +202,7 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
         Ok(self.response.body(json_response))
     }
 
-    async fn csv_attachment(mut self, data: JsonValue) ->  anyhow::Result<PageContext<W>> {
+    async fn csv_attachment(mut self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
         let filename = data
             .get("filename")
             .and_then(JsonValue::as_str)
@@ -214,7 +214,7 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
                 header::CONTENT_DISPOSITION,
                 format!("attachment; filename=\"{}\"", filename),
             ));
-        
+
         self.request_context.is_embedded = true;
         let page_content = self.start_body(data).await?;
 
