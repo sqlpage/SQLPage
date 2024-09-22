@@ -11,7 +11,7 @@ function sqlpage_embed() {
     try {
       url = new URL(c.dataset.embed, window.location.href)
     } catch {
-      console.erreur(`'${c.dataset.embed}' is not a valid url`)
+      console.error(`'${c.dataset.embed}' is not a valid url`)
       continue;
     }
     url.searchParams.set("_sqlpage_embed", "");
