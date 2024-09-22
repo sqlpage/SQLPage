@@ -3,7 +3,7 @@
 
 function sqlpage_chart() {
 
-    const tblrColors = Object.fromEntries(['azure', 'red', 'lime', 'purple', 'yellow', 'gray-600', 'orange', 'pink', 'teal', 'indigo', 'cyan', 'green', 'blue-lt', 'yellow-lt', 'pink-lt', 'green-lt', 'orange-lt', 'gray-500', 'gray-400', 'gray-300', 'gray-200', 'gray-100', 'gray-50', 'black']
+    const tblrColors = Object.fromEntries(['azure', 'red', 'lime', 'purple', 'yellow', 'gray-600', 'orange', 'pink', 'teal', 'indigo', 'cyan', 'green', 'blue-lt', 'yellow-lt', 'pink-lt', 'green-lt', 'orange-lt', 'blue', 'gray-500', 'gray-400', 'gray-300', 'gray-200', 'gray-100', 'gray-50', 'black']
         .map(c => [c, getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + c)]));
 
     /** @typedef { { [name:string]: {data:{x:number,y:number}[], name:string} } } Series */

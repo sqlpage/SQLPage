@@ -14,7 +14,7 @@ async fn main() {
 }
 
 async fn start() -> anyhow::Result<()> {
-    let app_config = app_config::load()?;
+    let app_config = app_config::load_from_cli()?;
     let db = Database::init(&app_config).await?;
     webserver::database::migrations::apply(&app_config, &db).await?;
     let state = AppState::init_with_db(&app_config, db).await?;

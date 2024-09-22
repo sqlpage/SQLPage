@@ -5,8 +5,8 @@
 
 -- $_curpath and $_session_required are required for header_shell_session.sql.
 
-SET $_curpath = sqlpage.path();
-SET $_session_required = 0;
+set _curpath = sqlpage.path();
+set _session_required = 0;
 
 SELECT
     'dynamic' AS component,

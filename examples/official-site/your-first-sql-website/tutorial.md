@@ -54,6 +54,9 @@ CREATE TABLE users (
 );
 ```
 
+If you need to quickly test a database schema and associated queries online,
+before making any change to your database, I can recommend [sqliteonline.com](https://sqliteonline.com/) (which actually also works with Postgres, MySQL, and SQL Server).
+
 Please read our [**introduction to database migrations**](./migrations.sql) to
 learn how to maintain your database schema in the long term.
 
@@ -73,8 +76,8 @@ Here is an example `sqlpage.json` file:
 { "database_url": "sqlite://:memory:" }
 ```
 
-This will tell SQLPage to use an in-memory SQLite database instead of the default file-based database.
-All your data will be lost when you stop the SQLPage server, but it is useful for quickly testing and iterating on your database schema.
+This will tell SQLPage to use an in-memory SQLite database instead of the default file-based database. While this means all changes to the database will be lost when you stop the SQLPage server, it's useful for quickly testing and iterating on your database schema.
+If you then deploy your website online using a service like [DataPage.app](https://datapage.app), it will automatically use a persisted database instead.
 
 Later, when you want to deploy your website online, you can switch back to a persisted database like
 
@@ -119,16 +122,30 @@ It uses a `WHERE` clause to make sure that the `INSERT` statement is only execut
 The `:Username` parameter is set to `NULL` when you initially load the page, and then SQLPage automatically sets it to the value
 from the text field when the user submits the form.
 
+#### Parameters
+
 There are two types of parameters you can use in your SQL queries:
 
-- `:ParameterName` is a [POST](<https://en.wikipedia.org/wiki/POST_(HTTP)>) parameter. It is set to the value of the field with the corresponding `name` in a form. If no form was submitted, it is set to `NULL`.
-- `$ParameterName` works the same as `:ParameterName`, but it can also be set through a [query parameter](https://en.wikipedia.org/wiki/Query_string) in the URL.
-  If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `'1'` and `$y` will be set to the string `'2'`.
-  If a query parameter was not provided, it is set to `NULL`.
+- **URL parameters** like **`$ParameterName`**. If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `'1'` and `$y` will be set to the string `'2'`. This is useful to create links with parameters. For instance, if you have a database of products, you can create a link to a product page with the URL `product.sql?product_id=12`. Then, in the `product.sql` file, you can use the `$product_id` variable to get the product with the corresponding ID from your database. URL parameters are also sometimes called *query parameters*, or *GET parameters*.
+- **Form parameters** like **`:ParameterName`**. They refer to the value of the field with the corresponding `name` entered by the user in a [form](/component.sql?component=form). If no form was submitted, it is set to `NULL`. Form parameters are also sometimes called *POST parameters*.
 
-### Displaying contents from the database
+> Note: Currently, if a `$parameter` is not present in the URL, it is first looked for in the form parameters. If it is not found there either, it is set to `NULL`. Please do not rely on this behavior, as it may change in the future.
 
-Now, users are present in our database, but we can’t see them. Let’s fix that by adding the following code to our `index.sql` file:
+You can also set parameters yourself at any point in your SQL files in order to reuse
+their value in several places, using the `SET ParameterName = value` syntax.
+For instance, we could use the following code to save the username in uppercase:
+
+```sql
+SET Username = UPPER(:Username);
+INSERT INTO users (name) VALUES ($Username);
+```
+
+### Displaying data from our database
+
+Now, users are present in our database, but we can’t see them.
+Let’s see how to use data from our database to populate a [list](/component.sql?component=list) component, in order to display the list of users.
+
+Add the following code to your `index.sql` file:
 
 ```sql
 SELECT 'list' AS component, 'Users' AS title;

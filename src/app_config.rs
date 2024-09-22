@@ -1,4 +1,5 @@
 use anyhow::Context;
+use clap::Parser;
 use config::Config;
 use percent_encoding::AsciiSet;
 use serde::de::Error;
@@ -6,8 +7,142 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+pub struct Cli {
+    /// The directory where the .sql files are located.
+    #[clap(short, long)]
+    pub web_root: Option<PathBuf>,
+    /// The directory where the sqlpage.json configuration, the templates, and the migrations are located.
+    #[clap(short = 'd', long)]
+    pub config_dir: Option<PathBuf>,
+    /// The path to the configuration file.
+    #[clap(short = 'c', long)]
+    pub config_file: Option<PathBuf>,
+}
+
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
+
+impl AppConfig {
+    pub fn from_cli(cli: &Cli) -> anyhow::Result<Self> {
+        let mut config = if let Some(config_file) = &cli.config_file {
+            if !config_file.is_file() {
+                return Err(anyhow::anyhow!(
+                    "Configuration file does not exist: {:?}",
+                    config_file
+                ));
+            }
+            log::debug!("Loading configuration from file: {:?}", config_file);
+            load_from_file(config_file)?
+        } else if let Some(config_dir) = &cli.config_dir {
+            log::debug!("Loading configuration from directory: {:?}", config_dir);
+            load_from_directory(config_dir)?
+        } else {
+            log::debug!("Loading configuration from environment");
+            load_from_env()?
+        };
+        if let Some(web_root) = &cli.web_root {
+            log::debug!(
+                "Setting web root to value from the command line: {:?}",
+                web_root
+            );
+            config.web_root.clone_from(web_root);
+        }
+        if let Some(config_dir) = &cli.config_dir {
+            config.configuration_directory.clone_from(config_dir);
+        }
+
+        if let Some(config_dir) = &cli.config_dir {
+            config.configuration_directory.clone_from(config_dir);
+        }
+
+        config.configuration_directory = std::fs::canonicalize(&config.configuration_directory)
+            .unwrap_or_else(|_| config.configuration_directory.clone());
+
+        if !config.configuration_directory.exists() {
+            log::info!(
+                "Configuration directory does not exist, creating it: {:?}",
+                config.configuration_directory
+            );
+            std::fs::create_dir_all(&config.configuration_directory).with_context(|| {
+                format!(
+                    "Failed to create configuration directory in {}",
+                    config.configuration_directory.display()
+                )
+            })?;
+        }
+
+        if config.database_url.is_empty() {
+            log::debug!(
+                "Creating default database in {}",
+                config.configuration_directory.display()
+            );
+            config.database_url = create_default_database(&config.configuration_directory);
+        }
+
+        config
+            .validate()
+            .context("The provided configuration is invalid")?;
+
+        log::debug!("Loaded configuration: {:#?}", config);
+
+        Ok(config)
+    }
+
+    fn validate(&self) -> anyhow::Result<()> {
+        if !self.web_root.is_dir() {
+            return Err(anyhow::anyhow!(
+                "Web root is not a valid directory: {:?}",
+                self.web_root
+            ));
+        }
+        if !self.configuration_directory.is_dir() {
+            return Err(anyhow::anyhow!(
+                "Configuration directory is not a valid directory: {:?}",
+                self.configuration_directory
+            ));
+        }
+        if self.database_connection_acquire_timeout_seconds <= 0.0 {
+            return Err(anyhow::anyhow!(
+                "Database connection acquire timeout must be positive"
+            ));
+        }
+        if let Some(max_connections) = self.max_database_pool_connections {
+            if max_connections == 0 {
+                return Err(anyhow::anyhow!(
+                    "Maximum database pool connections must be greater than 0"
+                ));
+            }
+        }
+        if let Some(idle_timeout) = self.database_connection_idle_timeout_seconds {
+            if idle_timeout < 0.0 {
+                return Err(anyhow::anyhow!(
+                    "Database connection idle timeout must be non-negative"
+                ));
+            }
+        }
+        if let Some(max_lifetime) = self.database_connection_max_lifetime_seconds {
+            if max_lifetime < 0.0 {
+                return Err(anyhow::anyhow!(
+                    "Database connection max lifetime must be non-negative"
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+pub fn load_from_cli() -> anyhow::Result<AppConfig> {
+    let cli = Cli::parse();
+    AppConfig::from_cli(&cli)
+}
+
+pub fn load_from_env() -> anyhow::Result<AppConfig> {
+    let config_dir = configuration_directory();
+    load_from_directory(&config_dir)
+        .with_context(|| format!("Unable to load configuration from {}", config_dir.display()))
+}
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct AppConfig {
@@ -98,7 +233,8 @@ pub struct AppConfig {
     #[serde(default = "default_compress_responses")]
     pub compress_responses: bool,
 
-    /// Content-Security-Policy header to send to the client. If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
+    /// Content-Security-Policy header to send to the client.
+    /// If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
     pub content_security_policy: Option<String>,
 
     /// Whether `sqlpage.fetch` should load trusted certificates from the operating system's certificate store
@@ -148,12 +284,6 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 
 /// Parses and loads the configuration from the `sqlpage.json` file in the current directory.
 /// This should be called only once at the start of the program.
-pub fn load() -> anyhow::Result<AppConfig> {
-    let configuration_directory = &configuration_directory();
-    load_from_directory(configuration_directory)
-}
-
-/// Parses and loads the configuration from the given directory.
 pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
     let cannonical = cannonicalize_if_possible(directory);
     log::debug!("Loading configuration from {:?}", cannonical);
@@ -165,16 +295,22 @@ pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
 
 /// Parses and loads the configuration from the given file.
 pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
+    log::debug!("Loading configuration from file: {:?}", config_file);
     let config = Config::builder()
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
         .add_source(env_config().prefix("SQLPAGE"))
-        .build()?;
-    log::trace!("Configuration sources: {}", config.cache);
+        .build()
+        .with_context(|| {
+            format!(
+                "Unable to build configuration loader for {}",
+                config_file.display()
+            )
+        })?;
+    log::trace!("Configuration sources: {:#?}", config.cache);
     let app_config = config
         .try_deserialize::<AppConfig>()
-        .with_context(|| "Unable to load configuration")?;
-    log::debug!("Loaded configuration: {:#?}", app_config);
+        .context("Failed to load the configuration")?;
     Ok(app_config)
 }
 
@@ -190,7 +326,11 @@ fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
 ) -> Result<Option<SocketAddr>, D::Error> {
     let host_str: Option<String> = Deserialize::deserialize(deserializer)?;
     host_str
-        .map(|h| parse_socket_addr(&h).map_err(D::Error::custom))
+        .map(|h| {
+            parse_socket_addr(&h).map_err(|e| {
+                D::Error::custom(anyhow::anyhow!("Failed to parse socket address {h:?}: {e}"))
+            })
+        })
         .transpose()
 }
 
@@ -239,19 +379,26 @@ fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {
     host_str
         .to_socket_addrs()?
         .next()
-        .with_context(|| format!("host '{host_str}' does not resolve to an IP"))
+        .with_context(|| format!("Resolving host '{host_str}'"))
 }
 
+#[cfg(test)]
 fn default_database_url() -> String {
-    let prefix = "sqlite://".to_owned();
+    "sqlite://:memory:".to_owned()
+}
+#[cfg(not(test))]
+fn default_database_url() -> String {
+    // When using a custom configuration directory, the default database URL
+    // will be set later in `AppConfig::from_cli`.
+    String::new()
+}
 
-    if cfg!(test) {
-        return prefix + ":memory:";
-    }
+fn create_default_database(configuration_directory: &Path) -> String {
+    let prefix = "sqlite://".to_owned();
 
     #[cfg(not(feature = "lambda-web"))]
     {
-        let config_dir = cannonicalize_if_possible(&configuration_directory());
+        let config_dir = cannonicalize_if_possible(configuration_directory);
         let old_default_db_path = PathBuf::from(DEFAULT_DATABASE_FILE);
         let default_db_path = config_dir.join(DEFAULT_DATABASE_FILE);
         if let Ok(true) = old_default_db_path.try_exists() {
@@ -265,7 +412,6 @@ fn default_database_url() -> String {
             return prefix + &encode_uri(&default_db_path);
         }
         // Create the default database file if we can
-        let _ = std::fs::create_dir_all(default_db_path.parent().unwrap()); // may already exist
         if let Ok(tmp_file) = std::fs::File::create(&default_db_path) {
             log::info!(
                 "No DATABASE_URL provided, {} is writable, creating a new database file.",
@@ -277,7 +423,7 @@ fn default_database_url() -> String {
         }
     }
 
-    log::warn!("No DATABASE_URL provided, and the current directory is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
+    log::warn!("No DATABASE_URL provided, and {:?} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory);
     prefix + ":memory:"
 }
 
@@ -365,6 +511,10 @@ pub mod tests {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::env;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_default_site_prefix() {
@@ -393,5 +543,154 @@ mod test {
         assert_eq!(normalize_site_prefix("a/b/c"), "/a/b/c/");
         assert_eq!(normalize_site_prefix("a b"), "/a%20b/");
         assert_eq!(normalize_site_prefix("a b/c"), "/a%20b/c/");
+    }
+
+    #[test]
+    fn test_cli_argument_parsing() {
+        let cli = Cli::parse_from([
+            "sqlpage",
+            "--web-root",
+            "/path/to/web",
+            "--config-dir",
+            "/path/to/config",
+            "--config-file",
+            "/path/to/config.json",
+        ]);
+
+        assert_eq!(cli.web_root, Some(PathBuf::from("/path/to/web")));
+        assert_eq!(cli.config_dir, Some(PathBuf::from("/path/to/config")));
+        assert_eq!(cli.config_file, Some(PathBuf::from("/path/to/config.json")));
+    }
+
+    #[test]
+    fn test_sqlpage_prefixed_env_variable_parsing() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_CONFIGURATION_DIRECTORY", "/path/to/config");
+
+        let config = load_from_env().unwrap();
+
+        assert_eq!(
+            config.configuration_directory,
+            PathBuf::from("/path/to/config"),
+            "Configuration directory should match the SQLPAGE_CONFIGURATION_DIRECTORY env var"
+        );
+
+        env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+    }
+
+    #[test]
+    fn test_config_priority() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_WEB_ROOT", "/");
+
+        let cli = Cli {
+            web_root: Some(PathBuf::from(".")),
+            config_dir: None,
+            config_file: None,
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert_eq!(
+            config.web_root,
+            PathBuf::from("."),
+            "CLI argument should take precedence over environment variable"
+        );
+
+        env::remove_var("SQLPAGE_WEB_ROOT");
+    }
+
+    #[test]
+    fn test_config_file_priority() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        let temp_dir = std::env::temp_dir().join("sqlpage_test");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let config_file_path = temp_dir.join("sqlpage.json");
+        let config_web_dir = temp_dir.join("config/web");
+        let env_web_dir = temp_dir.join("env/web");
+        let cli_web_dir = temp_dir.join("cli/web");
+        std::fs::create_dir_all(&config_web_dir).unwrap();
+        std::fs::create_dir_all(&env_web_dir).unwrap();
+        std::fs::create_dir_all(&cli_web_dir).unwrap();
+
+        let config_content = serde_json::json!({
+            "web_root": config_web_dir.to_str().unwrap()
+        })
+        .to_string();
+        std::fs::write(&config_file_path, config_content).unwrap();
+
+        env::set_var("SQLPAGE_WEB_ROOT", env_web_dir.to_str().unwrap());
+
+        let cli = Cli {
+            web_root: None,
+            config_dir: None,
+            config_file: Some(config_file_path.clone()),
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert_eq!(
+            config.web_root, env_web_dir,
+            "Environment variable should override config file"
+        );
+        assert_eq!(
+            config.configuration_directory,
+            cannonicalize_if_possible(&PathBuf::from("./sqlpage")),
+            "Configuration directory should be default when not overridden"
+        );
+
+        let cli_with_web_root = Cli {
+            web_root: Some(cli_web_dir.clone()),
+            config_dir: None,
+            config_file: Some(config_file_path),
+        };
+
+        let config = AppConfig::from_cli(&cli_with_web_root).unwrap();
+        assert_eq!(
+            config.web_root, cli_web_dir,
+            "CLI argument should take precedence over environment variable and config file"
+        );
+        assert_eq!(
+            config.configuration_directory,
+            cannonicalize_if_possible(&PathBuf::from("./sqlpage")),
+            "Configuration directory should remain unchanged"
+        );
+
+        env::remove_var("SQLPAGE_WEB_ROOT");
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_default_values() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+        env::remove_var("SQLPAGE_WEB_ROOT");
+
+        let cli = Cli {
+            web_root: None,
+            config_dir: None,
+            config_file: None,
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert_eq!(
+            config.web_root,
+            default_web_root(),
+            "Web root should default to current directory when not specified"
+        );
+        assert_eq!(
+            config.configuration_directory,
+            cannonicalize_if_possible(&PathBuf::from("./sqlpage")),
+            "Configuration directory should default to ./sqlpage when not specified"
+        );
     }
 }

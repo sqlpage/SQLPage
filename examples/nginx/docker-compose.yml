@@ -1,0 +1,42 @@
+services:
+  sqlpage:
+    image: lovasoa/sqlpage:main
+    volumes:
+      - sqlpage_socket:/tmp/sqlpage
+      - ./sqlpage_config:/etc/sqlpage
+      - ./website:/var/www/
+    environment:
+      - DATABASE_URL=mysql://sqlpage:sqlpage_password@mysql:3306/sqlpage_db
+      - SQLPAGE_UNIX_SOCKET=/tmp/sqlpage/sqlpage.sock
+    depends_on:
+      - mysql
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - sqlpage_socket:/tmp/sqlpage:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./website:/var/www:ro
+    depends_on:
+      - sqlpage
+    command: >
+      sh -c "
+        adduser -D -u 1000 sqlpage || true &&
+        nginx -g 'daemon off;'
+      "
+
+  mysql:
+    image: mysql:8
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=sqlpage_db
+      - MYSQL_USER=sqlpage
+      - MYSQL_PASSWORD=sqlpage_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+  sqlpage_socket:

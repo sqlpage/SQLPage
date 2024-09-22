@@ -58,3 +58,22 @@ test('File upload', async ({ page }) => {
   await page.getByRole('button', { name: 'Upload picture' }).click();
   await expect(page.locator('img[src^=data]').first().getAttribute('src')).resolves.toBe('data:image/svg+xml;base64,' + buffer.toString('base64'));
 });
+
+test('Authentication example', async ({ page }) => {
+  await page.goto(BASE + '/examples/authentication/login.sql');
+  await expect(page.locator('h1', { hasText: 'Authentication' })).toBeVisible();
+
+  const usernameInput = page.getByLabel('Username');
+  const passwordInput = page.getByLabel('Password');
+  const loginButton = page.getByRole('button', { name: 'Log in' });
+
+  await expect(usernameInput).toBeVisible();
+  await expect(passwordInput).toBeVisible();
+  await expect(loginButton).toBeVisible();
+
+  await usernameInput.fill('admin');
+  await passwordInput.fill('admin');
+  await loginButton.click();
+
+  await expect(page.getByText('You are logged in as admin')).toBeVisible();
+});

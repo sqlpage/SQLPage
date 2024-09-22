@@ -8,8 +8,8 @@
 
 -- $_curpath and $_session_required are required for header_shell_session.sql.
 
-SET $_curpath = sqlpage.path();
-SET $_session_required = 1;
+set _curpath = sqlpage.path();
+set _session_required = 1;
 
 SELECT
     'dynamic' AS component,
@@ -19,9 +19,9 @@ SELECT
 -- =============================== Module vars =================================
 -- =============================================================================
 
-SET $_getpath = '?path=' || ifnull($path, $_curpath);
-SET $_action_target = 'currencies_item_dml.sql' || $_getpath;
-SET $_table_list = 'currencies_list.sql';
+set _getpath = '?path=' || ifnull($path, $_curpath);
+set _action_target = 'currencies_item_dml.sql' || $_getpath;
+set _table_list = 'currencies_list.sql';
 
 -- =============================================================================
 -- ========================== Filter invalid $id ===============================
@@ -36,7 +36,7 @@ WHERE $id = '' OR CAST($id AS INT) = 0;
 
 -- If $id is set, it must be a valid PKEY value.
 
-SET $error_msg = sqlpage.url_encode('Bad {id = ' || $id || '} provided');
+set error_msg = sqlpage.url_encode('Bad {id = ' || $id || '} provided');
 
 SELECT
     'redirect' AS component,
@@ -52,7 +52,7 @@ WHERE $id NOT IN (SELECT currencies.id FROM currencies);
 --
 -- If $values is provided, it must contain a valid JSON.
 
-SET $_err_msg =
+set _err_msg =
     sqlpage.url_encode('Values is set to bad JSON: __ ') || $values || ' __';
 
 SELECT
@@ -70,9 +70,9 @@ WHERE NOT json_valid($values);
 -- Field values may be provided via the $values GET variable formatted as JSON
 -- object. If $values contains a valid JSON, use it to populate the form.
 -- Otherwise, if $id is set to a valid value, retrieve the record from the
--- database and set $values. If not, set $values to all NULLs.
+-- database and set values. If not, set values to all NULLs.
 
-SET $_values = (
+set _values = (
     WITH
         fields AS (
             -- If valid "id" is supplied as a GET variable, retrieve the record and
@@ -136,7 +136,7 @@ WHERE NOT ifnull($action = 'DELETE', FALSE);
 -- passed back as POST variables, and the code above sets the $_values variable
 -- for proper initialization of the reloaded form.
 
-SET $_valid_ids = (
+set _valid_ids = (
     SELECT json_group_array(
         json_object('label', CAST(id AS TEXT), 'value', id) ORDER BY id
     )
@@ -146,7 +146,7 @@ SET $_valid_ids = (
     SELECT '[]'
     WHERE $action = 'INSERT'
 );
-SET $_valid_ids = (
+set _valid_ids = (
     json_insert($_valid_ids, '$[#]',
         json_object('label', 'NULL', 'value', json('null'))
     )

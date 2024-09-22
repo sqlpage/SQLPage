@@ -1,0 +1,29 @@
+<div class="accordion mb-4 {{class}}" {{#if id}}id="{{id}}"{{/if}}>
+    {{#each_row}}
+    <div class="accordion-item {{class}}" {{#if id}}id="{{id}}"{{/if}}>
+        <h2 class="accordion-header" id="heading-{{@component_index}}-{{@row_index}}">
+            <button class="accordion-button {{#if (not expanded)}}collapsed{{/if}}" type="button" data-bs-toggle="collapse"
+                data-bs-target="#collapse-{{@component_index}}-{{@row_index}}" aria-controls="collapse-{{@component_index}}-{{@row_index}}">
+                {{~#if title~}}
+                    {{title}}
+                {{~else~}}
+                    {{@row_index}}
+                {{/if}}
+            </button>
+        </h2>
+        <div id="collapse-{{@component_index}}-{{@row_index}}" class="accordion-collapse collapse {{#if expanded}}show{{/if}}"
+            aria-labelledby="heading-{{@component_index}}-{{@row_index}}"
+            data-bs-parent="#{{default id 'accordion_default'}}"
+        >
+            <div class="accordion-body">
+                {{~#if description~}}
+                    <p>{{description}}</p>
+                {{/if}}
+                {{~#if description_md~}}
+                    {{{markdown description_md}}}
+                {{/if}}
+            </div>
+        </div>
+    </div>
+    {{/each_row}}
+</div>

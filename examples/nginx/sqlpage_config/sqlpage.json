@@ -1,0 +1,7 @@
+{
+  "max_database_pool_connections": 10,
+  "database_connection_idle_timeout_seconds": 1800,
+  "max_uploaded_file_size": 10485760,
+  "compress_responses": false,
+  "environment": "production"
+}
