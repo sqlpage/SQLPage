@@ -5,15 +5,18 @@ const nonce = document.currentScript.nonce;
 
 function sqlpage_embed() {
   for (const c of document.querySelectorAll("[data-embed]")) {
-    if (c.ariaBusy === "true") return;
+    if (c.ariaBusy === "true") continue;
     c.ariaBusy = true;
-    const [source, params] = c.dataset.embed.split("?");
-    if (!source) return;
-    const search = new URLSearchParams(params);
-    if (!search.has("_sqlpage_embed")) {
-      search.set("_sqlpage_embed", "true");
+    let url;
+    try {
+      url = new URL(c.dataset.embed, window.location.href)
+    } catch {
+      console.erreur(`'${c.dataset.embed}' is not a valid url`)
+      continue;
     }
-    fetch(`${source}?${search}`)
+    url.searchParams.set("_sqlpage_embed", "");
+
+    fetch(url)
       .then(res => res.text())
       .then(html => {
         c.innerHTML = html;
