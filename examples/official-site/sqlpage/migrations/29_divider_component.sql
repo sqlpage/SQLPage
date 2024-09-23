@@ -37,10 +37,62 @@ VALUES (
         'COLOR',
         TRUE,
         TRUE
+    ),
+    (
+        'divider',
+        'size',
+        'The size of the divider text, from 1 to 6.',
+        'INTEGER',
+        TRUE,
+        TRUE
+    ),
+    (
+        'divider',
+        'bold',
+        'Whether the text is bold.',
+        'BOOLEAN',
+        TRUE,
+        TRUE
+    ),
+    (
+        'divider',
+        'italics',
+        'Whether the text is italicized.',
+        'BOOLEAN',
+        TRUE,
+        TRUE
+    ),
+    (
+        'divider',
+        'underline',
+        'Whether the text is underlined.',
+        'BOOLEAN',
+        TRUE,
+        TRUE
+    ),
+    (
+        'divider',
+        'link',
+        'URL of the link for the divider text. Available only when contents is present.',
+        'URL',
+        TRUE,
+        TRUE
     );
+
 -- Insert example(s) for the component
 INSERT INTO example(component, description, properties)
-VALUES      
+VALUES
+    (
+        'divider', 
+        'An empty divider', 
+            JSON(
+                '[
+                    {
+                        "component":"divider"
+                    }
+                ]'
+            )
+    ),
     (
         'divider', 
         'A divider with centered text', 
@@ -49,17 +101,6 @@ VALUES
                     {
                         "component":"divider",
                         "contents":"Hello"
-                    }
-                ]'
-            )
-    ),
-    (
-        'divider', 
-        'An empty divider', 
-            JSON(
-                '[
-                    {
-                        "component":"divider"
                     }
                 ]'
             )
@@ -79,14 +120,32 @@ VALUES
     ),
     (
         'divider', 
-        'A divider with blue text at right', 
+        'A divider with blue text and a link', 
             JSON(
                 '[
                     {
                         "component":"divider",
-                        "contents":"Hello",
-                        "position":"right",
+                        "contents":"SQLPage components",
+                        "link":"/documentation.sql",
                         "color":"blue"
+                    }
+                ]'
+            )
+    ),
+    (
+        'divider', 
+        'A divider with bold, italic, and underlined text', 
+            JSON(
+                '[
+                    {
+                        "component":"divider",
+                        "contents":"Important notice",
+                        "position":"left",
+                        "color":"red",
+                        "size":5,
+                        "bold":true,
+                        "italics":true,
+                        "underline":true
                     }
                 ]'
             )

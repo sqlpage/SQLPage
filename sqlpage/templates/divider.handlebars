@@ -1,5 +1,25 @@
 {{#if contents}}
-    <div class="hr-text {{#if position}}hr-text-{{position}}{{/if}} {{#if color}}text-{{color}}{{/if}} {{class}}">{{contents}}</div>
+    <div class="
+        hr-text 
+        {{~#if position}} hr-text-{{position}}{{/if}}
+        {{~#if color}} text-{{color}} {{/if~}}
+        {{~#if bold}} fw-bold {{/if~}}
+        {{~#if italics}} fst-italic {{/if~}}
+        {{~#if underline}} text-decoration-underline {{/if~}}
+        {{~#if size}} fs-{{minus 7 size}} {{/if~}}
+        {{~#if class}} {{class}}{{/if~}}
+    ">
+        {{#if link}}
+            <a
+                href="{{link}}"
+                class="{{#if color}} text-{{color}} {{/if}}"
+            >
+                {{contents}}
+            </a>
+        {{else}}
+            {{contents}}
+        {{/if}}
+    </div>
 {{else}}
     <hr class="{{class}}" />
 {{/if}}
