@@ -16,6 +16,7 @@
  - Fix an issue where the color name `blue` could not be used in the chart component.
  - Add new properties to the foldable component: `id`, `class`, and `expanded` (to control the state of the foldable item). The old behavior was having the first foldable item initially opened and the others closed. To keep the old behavior, you need to explicitly set `true as expanded` on the first foldable item.
  - **divider component**: Add new properties to the divider component: `link`, `bold`, `italics`, `underline`, `size`.
+ - **form component**: fix slight misalignment and sizing issues of checkboxes and radio buttons.
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.

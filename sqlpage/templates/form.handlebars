@@ -15,8 +15,8 @@
         <div class="row">
             {{#each_row}}
             {{#if (or (eq type "radio") (eq type "checkbox"))}}
-                <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column my-1 col-md-{{default width 12}}">
-                    <label class="form-selectgroup-item flex-fill">
+                <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column mx-0 my-1 col-md-{{default width 12}}">
+                    <label class="form-selectgroup-item flex-fill mx-0">
                         <input type="{{type}}" {{#if id}}id="{{id}}" {{/if}}name="{{name}}" value="{{value}}" {{#if required}}required{{/if}} {{#if checked}}checked{{/if}} class="form-selectgroup-input">
                         <div class="form-selectgroup-label d-flex align-items-center p-3">
                             <div class="me-3">
