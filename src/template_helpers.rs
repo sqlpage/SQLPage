@@ -48,7 +48,10 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
             other => json_eq_case_insensitive(other, element),
         }
     });
-    h.register_helper("array_contains_case_insensitive", Box::new(array_contains_case_insensitive));
+    h.register_helper(
+        "array_contains_case_insensitive",
+        Box::new(array_contains_case_insensitive),
+    );
 
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
     register_helper(h, "static_path", StaticPathHelper(site_prefix.clone()));
