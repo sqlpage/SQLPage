@@ -17,6 +17,7 @@
  - Add new properties to the foldable component: `id`, `class`, and `expanded` (to control the state of the foldable item). The old behavior was having the first foldable item initially opened and the others closed. To keep the old behavior, you need to explicitly set `true as expanded` on the first foldable item.
  - **divider component**: Add new properties to the divider component: `link`, `bold`, `italics`, `underline`, `size`.
  - **form component**: fix slight misalignment and sizing issues of checkboxes and radio buttons.
+ - **table component**: fixed a bug where markdown contents of table cells would not be rendered as markdown if the column name contained uppercase letters on Postgres. Column name matching is now case-insensitive, so `'title' as markdown` will work the same as `'Title' as markdown`. In postgres, non-double-quoted identifiers are always folded to lowercase.
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
