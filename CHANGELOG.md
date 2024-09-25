@@ -19,6 +19,11 @@
        -h, --help                       Print help
        -V, --version                    Print version
  - Configuration checks: SQLPage now checks if the configuration file is valid when starting the server. This allows to display a helpful error message when the configuration is invalid, instead of crashing or behaving unexpectedly. Notable, we now ensure critical configuration values like directories, timeouts, and connection pool settings are valid.
+   - ```
+     ./sqlpage --web-root /xyz
+     [ERROR sqlpage] The provided configuration is invalid
+     Caused by:
+        Web root is not a valid directory: "/xyz"
  - The configuration directory is now created if it does not exist. This allows to start the server without having to manually create the directory.
  - The default database URL is now computed from the configuration directory, instead of being hardcoded to `sqlite://./sqlpage/sqlpage.db`. So when using a custom configuration directory, the default SQLite database will be created inside it. When using the default `./sqlpage` configuration directory, or when using a custom database URL, the default behavior is unchanged.
  - New `navbar_title` property in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
