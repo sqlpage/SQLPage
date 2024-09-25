@@ -33,9 +33,10 @@
  - slightly reduce the margin at the top of pages to make the content appear higher on the screen.
  - fix the display of the page title when it is long and the sidebar display is enabled.
  - Fix an issue where the color name `blue` could not be used in the chart component.
- - Add new properties to the foldable component: `id`, `class`, and `expanded` (to control the state of the foldable item). The old behavior was having the first foldable item initially opened and the others closed. To keep the old behavior, you need to explicitly set `true as expanded` on the first foldable item.
  - **divider component**: Add new properties to the divider component: `link`, `bold`, `italics`, `underline`, `size`.
+   - ![image](https://github.com/user-attachments/assets/1aced068-7650-42d6-b9bf-2b4631a63c70)
  - **form component**: fix slight misalignment and sizing issues of checkboxes and radio buttons.
+   - ![image](https://github.com/user-attachments/assets/2caf6c28-b1ef-4743-8ffa-351e88c82070)
  - **table component**: fixed a bug where markdown contents of table cells would not be rendered as markdown if the column name contained uppercase letters on Postgres. Column name matching is now case-insensitive, so `'title' as markdown` will work the same as `'Title' as markdown`. In postgres, non-double-quoted identifiers are always folded to lowercase.
  - **shell component**: fixed a bug where the mobile menu would display even when no menu items were provided.
 
