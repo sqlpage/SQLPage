@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.29
+## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
  - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
  - CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
