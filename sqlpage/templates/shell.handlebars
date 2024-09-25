@@ -195,12 +195,14 @@
                 <h1 class="mb-0 fs-2 text-truncate flex-grow-1" style="flex-basis:0">
                     <a class="text-decoration-none" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{default navbar_title title}}</a>
                 </h1>
+                {{#if menu_item}}
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse flex-grow-0" id="navbar-menu">
                     {{> menu-items menu_item=menu_item}}
                 </div>
+                {{/if}}
             </div>
         </nav>
         </header>

@@ -18,6 +18,7 @@
  - **divider component**: Add new properties to the divider component: `link`, `bold`, `italics`, `underline`, `size`.
  - **form component**: fix slight misalignment and sizing issues of checkboxes and radio buttons.
  - **table component**: fixed a bug where markdown contents of table cells would not be rendered as markdown if the column name contained uppercase letters on Postgres. Column name matching is now case-insensitive, so `'title' as markdown` will work the same as `'Title' as markdown`. In postgres, non-double-quoted identifiers are always folded to lowercase.
+ - **shell component**: fixed a bug where the mobile menu would display even when no menu items were provided.
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
