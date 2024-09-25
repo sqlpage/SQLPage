@@ -2,8 +2,22 @@
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
+   - ![screenshot](https://github.com/user-attachments/assets/89e4ac34-864c-4427-a926-c38e9bed3f86)
  - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
+   - ![screenshot](https://github.com/user-attachments/assets/2274ef5d-7426-46bd-b12c-865c0308a712)
  - CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
+   - ```
+     $ sqlpage --help
+     Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components.
+     
+     Usage: sqlpage [OPTIONS]
+     
+     Options:
+       -w, --web-root <WEB_ROOT>        The directory where the .sql files are located
+       -d, --config-dir <CONFIG_DIR>    The directory where the sqlpage.json configuration, the templates, and the migrations are located
+       -c, --config-file <CONFIG_FILE>  The path to the configuration file
+       -h, --help                       Print help
+       -V, --version                    Print version
  - Configuration checks: SQLPage now checks if the configuration file is valid when starting the server. This allows to display a helpful error message when the configuration is invalid, instead of crashing or behaving unexpectedly. Notable, we now ensure critical configuration values like directories, timeouts, and connection pool settings are valid.
  - The configuration directory is now created if it does not exist. This allows to start the server without having to manually create the directory.
  - The default database URL is now computed from the configuration directory, instead of being hardcoded to `sqlite://./sqlpage/sqlpage.db`. So when using a custom configuration directory, the default SQLite database will be created inside it. When using the default `./sqlpage` configuration directory, or when using a custom database URL, the default behavior is unchanged.
