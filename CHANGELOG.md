@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 0.30.0 (unreleased)
+
+ - **Fix**: the search feature in the shell component was not working when no menu item was defined.
+
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
    - ![screenshot](https://github.com/user-attachments/assets/89e4ac34-864c-4427-a926-c38e9bed3f86)
