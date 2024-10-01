@@ -92,6 +92,7 @@
                         <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
                             <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
                                 {{~#if this.submenu}} data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if~}}
+                                {{#if this.target}}target="{{this.target}}"{{/if}}
                                 role="button"
                             >
                                 {{~#if this.image~}}
@@ -114,7 +115,7 @@
                                 <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
                                     {{~#each this.submenu~}}
                                         {{#if (or (or this.title this.icon) this.image)}}
-                                            <a class="dropdown-item" href="{{this.link}}">
+                                            <a class="dropdown-item" href="{{this.link}}" {{#if this.target}}target="{{this.target}}"{{/if}}>
                                                 {{~#if this.image~}}
                                                     <span {{~#if this.title}} class="me-1"{{/if}}>
                                                         {{~#if (eq ../this.size 'sm')}}
