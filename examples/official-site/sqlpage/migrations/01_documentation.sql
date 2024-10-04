@@ -248,7 +248,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select. JSON objects in the array can contain the properties "label", "value" and "selected".', 'JSON', FALSE, TRUE),
     ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOLEAN', FALSE, TRUE),
     ('min', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
-    ('max', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
+    ('max', 'The maximum value to accept for an input of type number', 'REAL', FALSE, TRUE),
     ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOLEAN', FALSE, TRUE),
     ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOLEAN', FALSE, TRUE),
     ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOLEAN', FALSE, TRUE),
