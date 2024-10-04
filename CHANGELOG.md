@@ -3,6 +3,7 @@
 ## 0.30.0 (unreleased)
 
  - **Fix**: the search feature in the shell component was not working when no menu item was defined.
+ - Add support for encrypted Microsoft SQL Server connections. This finally allows connecting to databases that refuse clear-text connections, such as those hosted on Azure.
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
