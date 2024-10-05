@@ -4,6 +4,7 @@
 
  - **Fix**: the search feature in the shell component was not working when no menu item was defined.
  - Add support for encrypted Microsoft SQL Server connections. This finally allows connecting to databases that refuse clear-text connections, such as those hosted on Azure.
+ - Easier json handling in databases without a native json type. SQLPage now detects when you use a json function in SQLite or MariaDB to generate a column, and automatically converts the resulting string to a json object. This allows easily using components that take json parameters (like the new columns component) in MariaDB and SQLite.
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
