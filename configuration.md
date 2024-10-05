@@ -9,7 +9,7 @@ Here are the available configuration options and their default values:
 | variable                                      | default                                                     | description                                                                                                                                                                                                                                            |
 | --------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `listen_on`                                   | 0.0.0.0:8080                                                | Interface and port on which the web server should listen                                                                                                                                                                                               |
-| `database_url`                                | sqlite://sqlpage.db?mode=rwc                                | Database connection URL, in the form `dbname://user:password@host:port/dbname`. Special characters in user and password should be [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding). |
+| `database_url`                                | sqlite://sqlpage.db?mode=rwc                                | Database connection URL, in the form `dbengine://user:password@host:port/dbname`. Special characters in user and password should be [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding). |
 | `port`                                        | 8080                                                        | Like listen_on, but specifies only the port.                                                                                                                                                                                                           |
 | `unix_socket`                                 |                                                             | Path to a UNIX socket to listen on instead of the TCP port. If specified, SQLPage will accept HTTP connections only on this socket and not on any TCP port. This option is mutually exclusive with `listen_on` and `port`.
 | `max_database_pool_connections`               | PostgreSQL: 50<BR>  MySql: 75<BR> SQLite: 16<BR> MSSQL: 100 | How many simultaneous database connections to open at most                                                                                                                                                                                             |
@@ -54,7 +54,7 @@ If you have a `.env` file in the current directory or in any of its parent direc
 
 The `database_url` parameter sets all the connection parameters for the database, including
 
- - the database type (`sqlite`, `postgres`, `mysql`, `mssql`, etc.)
+ - the database engine type (`sqlite`, `postgres`, `mysql`, `mssql`, etc.)
  - the username and password
  - the host (or ip adress) and port
  - the database name
@@ -67,7 +67,7 @@ The `database_url` parameter sets all the connection parameters for the database
     - `application_name=my_application` for PostgreSQL to set the application name, which can be useful for monitoring and logging on the database server side.
     - `collation=utf8mb4_unicode_ci` for MySQL to set the collation of the connection
 
-All the parameters need to be properly [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding) if they contain special characters.
+All the parameters need to be properly [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding) if they contain special characters like `@` (`%40`), `:` (`%3A`), `/` (`%2F`), `?` (`%3F`), `#` (`%23`).
 
 A full connection string for a PostgreSQL database might look like this:
 
