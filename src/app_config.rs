@@ -148,6 +148,9 @@ pub fn load_from_env() -> anyhow::Result<AppConfig> {
 pub struct AppConfig {
     #[serde(default = "default_database_url")]
     pub database_url: String,
+    /// A separate field for the database password. If set, this will override any password specified in the `database_url`.
+    #[serde(default)]
+    pub database_password: Option<String>,
     pub max_database_pool_connections: Option<u32>,
     pub database_connection_idle_timeout_seconds: Option<f64>,
     pub database_connection_max_lifetime_seconds: Option<f64>,

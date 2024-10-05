@@ -10,6 +10,7 @@ Here are the available configuration options and their default values:
 | --------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `listen_on`                                   | 0.0.0.0:8080                                                | Interface and port on which the web server should listen                                                                                                                                                                                               |
 | `database_url`                                | sqlite://sqlpage.db?mode=rwc                                | Database connection URL, in the form `dbengine://user:password@host:port/dbname`. Special characters in user and password should be [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding). |
+| `database_password`                            |         | Database password. If set, this will override any password specified in the `database_url`. This allows you to keep the password separate from the connection string for better security. |
 | `port`                                        | 8080                                                        | Like listen_on, but specifies only the port.                                                                                                                                                                                                           |
 | `unix_socket`                                 |                                                             | Path to a UNIX socket to listen on instead of the TCP port. If specified, SQLPage will accept HTTP connections only on this socket and not on any TCP port. This option is mutually exclusive with `listen_on` and `port`.
 | `max_database_pool_connections`               | PostgreSQL: 50<BR>  MySql: 75<BR> SQLite: 16<BR> MSSQL: 100 | How many simultaneous database connections to open at most                                                                                                                                                                                             |
@@ -75,10 +76,15 @@ A full connection string for a PostgreSQL database might look like this:
 postgres://my_user:p%40ss@localhost:5432/my_database?sslmode=verify-ca&sslrootcert=/path/to/ca.pem&sslcert=/path/to/cert.pem&sslkey=/path/to/key.pem&application_name=my_application
 ```
 
+If the `database_password` configuration parameter is set, it will override any password specified in the `database_url`.
+It does not need to be percent-encoded.
+This allows you to keep the password separate from the connection string, which can be useful for security purposes, especially when storing configurations in version control systems.
+
 ### Example `.env` file
 
 ```bash
-DATABASE_URL="sqlite:///path/to/my_database.db?mode=rwc"
+DATABASE_URL="postgres://my_user@localhost:5432/my_database?sslmode=verify-ca&sslrootcert=/path/to/ca.pem"
+DATABASE_PASSWORD="my_secure_password"
 SQLITE_EXTENSIONS="mod_spatialite crypto define regexp"
 ```
 

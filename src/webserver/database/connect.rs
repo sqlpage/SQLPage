@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{mem::take, time::Duration};
 
 use super::Database;
 use crate::{app_config::AppConfig, ON_CONNECT_FILE};
@@ -16,6 +16,9 @@ impl Database {
         let mut connect_options: AnyConnectOptions = database_url
             .parse()
             .with_context(|| format!("\"{database_url}\" is not a valid database URL. Please change the \"database_url\" option in the configuration file."))?;
+        if let Some(password) = &config.database_password {
+            set_database_password(&mut connect_options, password);
+        }
         connect_options.log_statements(log::LevelFilter::Trace);
         connect_options.log_slow_statements(
             log::LevelFilter::Warn,
@@ -147,4 +150,18 @@ fn make_sqlite_fun(name: &str, f: fn(&str) -> String) -> Function {
             Err(e) => ctx.set_error(&e.to_string()),
         }
     })
+}
+
+fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
+    if let Some(opts) = options.as_postgres_mut() {
+        *opts = take(opts).password(password);
+    } else if let Some(opts) = options.as_mysql_mut() {
+        *opts = take(opts).password(password);
+    } else if let Some(opts) = options.as_mssql_mut() {
+        *opts = take(opts).password(password);
+    } else if let Some(_opts) = options.as_sqlite_mut() {
+        log::warn!("Setting a password for a SQLite database is not supported");
+    } else {
+        unreachable!("Unsupported database type");
+    }
 }
