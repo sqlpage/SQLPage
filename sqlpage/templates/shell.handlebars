@@ -92,6 +92,7 @@
                         <li class="nav-item{{#if this.submenu}} dropdown{{/if}}">
                             <a class="nav-link {{#if this.submenu}}dropdown-toggle{{/if}}" href="{{#if this.link}}{{this.link}}{{else}}#{{/if}}"
                                 {{~#if this.submenu}} data-bs-toggle="dropdown" data-bs-auto-close="outside" {{/if~}}
+                                {{#if this.target}}target="{{this.target}}"{{/if}}
                                 role="button"
                             >
                                 {{~#if this.image~}}
@@ -114,7 +115,7 @@
                                 <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
                                     {{~#each this.submenu~}}
                                         {{#if (or (or this.title this.icon) this.image)}}
-                                            <a class="dropdown-item" href="{{this.link}}">
+                                            <a class="dropdown-item" href="{{this.link}}" {{#if this.target}}target="{{this.target}}"{{/if}}>
                                                 {{~#if this.image~}}
                                                     <span {{~#if this.title}} class="me-1"{{/if}}>
                                                         {{~#if (eq ../this.size 'sm')}}
@@ -157,7 +158,7 @@
 
 <body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}" {{/if}}>
     <div class="page">
-        {{#if (or (or title (or icon image)) menu_item)}}
+        {{#if (or (or title (or icon image)) (or menu_item search_target))}}
         <header id="sqlpage_header">
         {{#if sidebar}}
         <aside class="navbar navbar-vertical navbar-expand-lg" {{#if sidebar_theme}}data-bs-theme="{{sidebar_theme}}" {{/if}}>
@@ -195,12 +196,14 @@
                 <h1 class="mb-0 fs-2 text-truncate flex-grow-1" style="flex-basis:0">
                     <a class="text-decoration-none" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{default navbar_title title}}</a>
                 </h1>
+                {{#if (or menu_item search_target)}}
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse flex-grow-0" id="navbar-menu">
                     {{> menu-items menu_item=menu_item}}
                 </div>
+                {{/if}}
             </div>
         </nav>
         </header>

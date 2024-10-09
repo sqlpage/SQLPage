@@ -41,6 +41,18 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     });
     h.register_helper("array_contains", Box::new(array_contains));
 
+    // array_contains_case_insensitive: check if an array contains an element case-insensitively. If the first argument is not an array, it is compared to the second argument case-insensitively.
+    handlebars_helper!(array_contains_case_insensitive: |array: Json, element: Json| {
+        match array {
+            JsonValue::Array(arr) => arr.iter().any(|v| json_eq_case_insensitive(v, element)),
+            other => json_eq_case_insensitive(other, element),
+        }
+    });
+    h.register_helper(
+        "array_contains_case_insensitive",
+        Box::new(array_contains_case_insensitive),
+    );
+
     // static_path helper: generate a path to a static file. Replaces sqpage.js by sqlpage.<hash>.js
     register_helper(h, "static_path", StaticPathHelper(site_prefix.clone()));
     register_helper(h, "app_config", AppConfigHelper(config.clone()));
@@ -53,6 +65,13 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "rfc2822_date", rfc2822_date_helper as EH);
     register_helper(h, "url_encode", url_encode_helper as H);
     register_helper(h, "csv_escape", csv_escape_helper as HH);
+}
+
+fn json_eq_case_insensitive(a: &JsonValue, b: &JsonValue) -> bool {
+    match (a, b) {
+        (JsonValue::String(a), JsonValue::String(b)) => a.eq_ignore_ascii_case(b),
+        _ => a == b,
+    }
 }
 
 fn stringify_helper(v: &JsonValue) -> JsonValue {

@@ -248,7 +248,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select. JSON objects in the array can contain the properties "label", "value" and "selected".', 'JSON', FALSE, TRUE),
     ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOLEAN', FALSE, TRUE),
     ('min', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
-    ('max', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
+    ('max', 'The maximum value to accept for an input of type number', 'REAL', FALSE, TRUE),
     ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOLEAN', FALSE, TRUE),
     ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOLEAN', FALSE, TRUE),
     ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOLEAN', FALSE, TRUE),
@@ -972,7 +972,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('theme', 'Set to "dark" to use a dark theme.', 'TEXT', TRUE, TRUE),
     ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE),
     ('preview_image', 'The URL of an image to display as a link preview when the page is shared on social media', 'URL', TRUE, TRUE),
-    ('navbar_title', 'The title to display in the top navigation bar. Used to display a different title in the top menu than the one that appears in the tab of the browser.', 'TEXT', TRUE, TRUE)
+    ('navbar_title', 'The title to display in the top navigation bar. Used to display a different title in the top menu than the one that appears in the tab of the browser.', 'TEXT', TRUE, TRUE),
+    ('target', '"_blank" to open the link in a new tab, "_self" to open it in the same tab, "_parent" to open it in the parent frame, or "_top" to open it in the full body of the window', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES

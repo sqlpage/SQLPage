@@ -9,7 +9,8 @@ Here are the available configuration options and their default values:
 | variable                                      | default                                                     | description                                                                                                                                                                                                                                            |
 | --------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `listen_on`                                   | 0.0.0.0:8080                                                | Interface and port on which the web server should listen                                                                                                                                                                                               |
-| `database_url`                                | sqlite://sqlpage.db?mode=rwc                                | Database connection URL, in the form `dbname://user:password@host:port/dbname`. Special characters in user and password should be [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding). |
+| `database_url`                                | sqlite://sqlpage.db?mode=rwc                                | Database connection URL, in the form `dbengine://user:password@host:port/dbname`. Special characters in user and password should be [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding). |
+| `database_password`                            |         | Database password. If set, this will override any password specified in the `database_url`. This allows you to keep the password separate from the connection string for better security. |
 | `port`                                        | 8080                                                        | Like listen_on, but specifies only the port.                                                                                                                                                                                                           |
 | `unix_socket`                                 |                                                             | Path to a UNIX socket to listen on instead of the TCP port. If specified, SQLPage will accept HTTP connections only on this socket and not on any TCP port. This option is mutually exclusive with `listen_on` and `port`.
 | `max_database_pool_connections`               | PostgreSQL: 50<BR>  MySql: 75<BR> SQLite: 16<BR> MSSQL: 100 | How many simultaneous database connections to open at most                                                                                                                                                                                             |
@@ -54,7 +55,7 @@ If you have a `.env` file in the current directory or in any of its parent direc
 
 The `database_url` parameter sets all the connection parameters for the database, including
 
- - the database type (`sqlite`, `postgres`, `mysql`, `mssql`, etc.)
+ - the database engine type (`sqlite`, `postgres`, `mysql`, `mssql`, etc.)
  - the username and password
  - the host (or ip adress) and port
  - the database name
@@ -67,7 +68,7 @@ The `database_url` parameter sets all the connection parameters for the database
     - `application_name=my_application` for PostgreSQL to set the application name, which can be useful for monitoring and logging on the database server side.
     - `collation=utf8mb4_unicode_ci` for MySQL to set the collation of the connection
 
-All the parameters need to be properly [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding) if they contain special characters.
+All the parameters need to be properly [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding) if they contain special characters like `@` (`%40`), `:` (`%3A`), `/` (`%2F`), `?` (`%3F`), `#` (`%23`).
 
 A full connection string for a PostgreSQL database might look like this:
 
@@ -75,10 +76,15 @@ A full connection string for a PostgreSQL database might look like this:
 postgres://my_user:p%40ss@localhost:5432/my_database?sslmode=verify-ca&sslrootcert=/path/to/ca.pem&sslcert=/path/to/cert.pem&sslkey=/path/to/key.pem&application_name=my_application
 ```
 
+If the `database_password` configuration parameter is set, it will override any password specified in the `database_url`.
+It does not need to be percent-encoded.
+This allows you to keep the password separate from the connection string, which can be useful for security purposes, especially when storing configurations in version control systems.
+
 ### Example `.env` file
 
 ```bash
-DATABASE_URL="sqlite:///path/to/my_database.db?mode=rwc"
+DATABASE_URL="postgres://my_user@localhost:5432/my_database?sslmode=verify-ca&sslrootcert=/path/to/ca.pem"
+DATABASE_PASSWORD="my_secure_password"
 SQLITE_EXTENSIONS="mod_spatialite crypto define regexp"
 ```
 
@@ -137,5 +143,5 @@ We have a guide on [how to create migrations](https://sql.datapage.app/your-firs
 ## Custom URL routes
 
 By default, SQLPage encourages a simple mapping between the URL and the SQL file that is executed.
-You can also create custom URL routes by creating [`404.sql` files](http://localhost:8080/your-first-sql-website/custom_urls.sql).
-If you need advanced routing, you can also [add a reverse proxy in front of SQLPage](https://sql.datapage.app/reverse_proxy.sql).
+You can also create custom URL routes by creating [`404.sql` files](https://sql.datapage.app/your-first-sql-website/custom_urls.sql).
+If you need advanced routing, you can also [add a reverse proxy in front of SQLPage](https://sql.datapage.app/your-first-sql-website/nginx.sql).

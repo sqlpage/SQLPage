@@ -79,7 +79,7 @@ Here is an example `sqlpage.json` file:
 This will tell SQLPage to use an in-memory SQLite database instead of the default file-based database. While this means all changes to the database will be lost when you stop the SQLPage server, it's useful for quickly testing and iterating on your database schema.
 If you then deploy your website online using a service like [DataPage.app](https://datapage.app), it will automatically use a persisted database instead.
 
-Later, when you want to deploy your website online, you can switch back to a persisted database like
+Later, when you want to deploy your website online, you can switch back to a persistent database like
 
 - a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx/0.6.3/sqlx/sqlite/struct.SqliteConnectOptions.html#main-content)),
 - a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://www.postgresql.org/docs/15/libpq-connect.html#id-1.7.3.8.3.6)),
@@ -175,8 +175,8 @@ If you prefer to host your website yourself, you can use a cloud provider or a V
 - Configure domain name resolution to point to your server
 - Open the port you are using (8080 by default) in your server's firewall
 - [Setup docker](https://github.com/lovasoa/SQLpage?tab=readme-ov-file#with-docker) or another process manager such as [systemd](https://github.com/lovasoa/SQLpage/blob/main/sqlpage.service) to start SQLPage automatically when your server boots and to keep it running
-- Optionnally, [setup a reverse proxy](nginx.sql) to avoid exposing SQLPage directly to the internet
-- Optionnally, setup a TLS certificate to enable HTTPS
+- Optionally, [setup a reverse proxy](nginx.sql) to avoid exposing SQLPage directly to the internet
+- Optionally, setup a TLS certificate to enable HTTPS
 - Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
 
 # Go further

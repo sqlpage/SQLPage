@@ -3,10 +3,10 @@
 ## Introduction
 
 This is a small application that uses [PostGIS](https://postgis.net/)
-to save data associated to greographic coordinates.
+to save data associated with geographic coordinates.
 
-If you are using a SQLite database instead see [this other example instead](../make%20a%20geographic%20data%20application%20using%20sqlite%20extensions/),
-which implements the same application using the `spatialite` extension.
+If you are using a SQLite database, see [this other example instead](../make%20a%20geographic%20data%20application%20using%20sqlite%20extensions/),
+which implements the same application using the `spatialite` extension for SQLite.
 
 ### Installation
 

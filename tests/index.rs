@@ -159,6 +159,15 @@ async fn test_files() {
         if test_file_path.extension().unwrap_or_default() != "sql" {
             continue;
         }
+        if stem.contains(&format!("no{}", app_data.db.to_string().to_lowercase())) {
+            // skipping because the test does not support the database we are using
+            log::info!(
+                "Skipping test file {} on database {}",
+                test_file_path_string,
+                app_data.db
+            );
+            continue;
+        }
         if test_file_path_string.contains(&format!("no{}", app_data.db.to_string().to_lowercase()))
         {
             // skipping because the test does not support the database

@@ -1,10 +1,36 @@
 # CHANGELOG.md
 
-## 0.29
+## 0.30.0 (unreleased)
+
+ - **Fix**: the search feature in the shell component was not working when no menu item was defined.
+ - Add support for encrypted Microsoft SQL Server connections. This finally allows connecting to databases that refuse clear-text connections, such as those hosted on Azure.
+ - Easier json handling in databases without a native json type. SQLPage now detects when you use a json function in SQLite or MariaDB to generate a column, and automatically converts the resulting string to a json object. This allows easily using components that take json parameters (like the new columns component) in MariaDB and SQLite.
+ - Add a new optional `database_password` configuration option to set the password for the database connection separately from the connection string. This allows to keep the password separate from the connection string, which can be useful for security purposes, logging, and avoids having to percent-encode the password in the connection string.
+
+## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
+   - ![screenshot](https://github.com/user-attachments/assets/89e4ac34-864c-4427-a926-c38e9bed3f86)
  - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
+   - ![screenshot](https://github.com/user-attachments/assets/2274ef5d-7426-46bd-b12c-865c0308a712)
  - CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
+   - ```
+     $ sqlpage --help
+     Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components.
+     
+     Usage: sqlpage [OPTIONS]
+     
+     Options:
+       -w, --web-root <WEB_ROOT>        The directory where the .sql files are located
+       -d, --config-dir <CONFIG_DIR>    The directory where the sqlpage.json configuration, the templates, and the migrations are located
+       -c, --config-file <CONFIG_FILE>  The path to the configuration file
+       -h, --help                       Print help
+       -V, --version                    Print version
  - Configuration checks: SQLPage now checks if the configuration file is valid when starting the server. This allows to display a helpful error message when the configuration is invalid, instead of crashing or behaving unexpectedly. Notable, we now ensure critical configuration values like directories, timeouts, and connection pool settings are valid.
+   - ```
+     ./sqlpage --web-root /xyz
+     [ERROR sqlpage] The provided configuration is invalid
+     Caused by:
+        Web root is not a valid directory: "/xyz"
  - The configuration directory is now created if it does not exist. This allows to start the server without having to manually create the directory.
  - The default database URL is now computed from the configuration directory, instead of being hardcoded to `sqlite://./sqlpage/sqlpage.db`. So when using a custom configuration directory, the default SQLite database will be created inside it. When using the default `./sqlpage` configuration directory, or when using a custom database URL, the default behavior is unchanged.
  - New `navbar_title` property in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
@@ -14,7 +40,12 @@
  - slightly reduce the margin at the top of pages to make the content appear higher on the screen.
  - fix the display of the page title when it is long and the sidebar display is enabled.
  - Fix an issue where the color name `blue` could not be used in the chart component.
- - Add new properties to the foldable component: `id`, `class`, and `expanded` (to control the state of the foldable item). The old behavior was having the first foldable item initially opened and the others closed. To keep the old behavior, you need to explicitly set `true as expanded` on the first foldable item.
+ - **divider component**: Add new properties to the divider component: `link`, `bold`, `italics`, `underline`, `size`.
+   - ![image](https://github.com/user-attachments/assets/1aced068-7650-42d6-b9bf-2b4631a63c70)
+ - **form component**: fix slight misalignment and sizing issues of checkboxes and radio buttons.
+   - ![image](https://github.com/user-attachments/assets/2caf6c28-b1ef-4743-8ffa-351e88c82070)
+ - **table component**: fixed a bug where markdown contents of table cells would not be rendered as markdown if the column name contained uppercase letters on Postgres. Column name matching is now case-insensitive, so `'title' as markdown` will work the same as `'Title' as markdown`. In postgres, non-double-quoted identifiers are always folded to lowercase.
+ - **shell component**: fixed a bug where the mobile menu would display even when no menu items were provided.
 
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.

@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName,
-    OneOrManyWithParens, SelectItem, Statement, Value, VisitMut, VisitorMut,
+    OneOrManyWithParens, SelectItem, SetExpr, Statement, Value, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -64,6 +64,9 @@ pub(super) struct StmtWithParams {
     /// Functions that are called on the result set after the query has been executed,
     /// and which can be passed the result of the query as an argument.
     pub delayed_functions: Vec<DelayedFunctionCall>,
+    /// Columns that are JSON columns, and which should be converted to JSON objects after the query is executed.
+    /// Only relevant for databases that do not have a native JSON type, and which return JSON values as text.
+    pub json_columns: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -136,6 +139,7 @@ fn parse_single_statement(
                 query,
                 params,
                 delayed_functions: Vec::new(),
+                json_columns: Vec::new(),
             },
         });
     }
@@ -148,6 +152,7 @@ fn parse_single_statement(
     }
     let delayed_functions = extract_toplevel_functions(&mut stmt);
     remove_invalid_function_calls(&mut stmt, &mut params);
+    let json_columns = extract_json_columns(&stmt, db_kind);
     let query = format!(
         "{stmt}{semicolon}",
         semicolon = if semicolon { ";" } else { "" }
@@ -157,6 +162,7 @@ fn parse_single_statement(
         query,
         params,
         delayed_functions,
+        json_columns,
     }))
 }
 
@@ -771,6 +777,64 @@ fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
     }
 }
 
+fn extract_json_columns(stmt: &Statement, db_kind: AnyKind) -> Vec<String> {
+    // Only extract JSON columns for databases without native JSON support
+    if matches!(db_kind, AnyKind::Postgres | AnyKind::Mssql) {
+        return Vec::new();
+    }
+
+    let mut json_columns = Vec::new();
+
+    if let Statement::Query(query) = stmt {
+        if let SetExpr::Select(select) = query.body.as_ref() {
+            for item in &select.projection {
+                if let SelectItem::ExprWithAlias { expr, alias } = item {
+                    if is_json_function(expr) {
+                        json_columns.push(alias.value.clone());
+                        log::trace!("Found JSON column: {alias}");
+                    }
+                }
+            }
+        }
+    }
+
+    json_columns
+}
+
+fn is_json_function(expr: &Expr) -> bool {
+    match expr {
+        Expr::Function(function) => {
+            if let [Ident { value, .. }] = function.name.0.as_slice() {
+                [
+                    "json_object",
+                    "json_array",
+                    "json_build_object",
+                    "json_build_array",
+                    "to_json",
+                    "to_jsonb",
+                    "json_agg",
+                    "jsonb_agg",
+                    "json_arrayagg",
+                    "json_objectagg",
+                    "json_group_array",
+                    "json_group_object",
+                ]
+                .iter()
+                .any(|&func| value.eq_ignore_ascii_case(func))
+            } else {
+                false
+            }
+        }
+        Expr::Cast { data_type, .. } => {
+            matches!(data_type, DataType::JSON | DataType::JSONB)
+                || (matches!(data_type, DataType::Custom(ObjectName(parts), _) if
+                    (parts.len() == 1)
+                    && (parts[0].value.eq_ignore_ascii_case("json"))))
+        }
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::super::sqlpage_functions::functions::SqlPageFunctionName;
@@ -1129,6 +1193,45 @@ mod test {
                 &[]
             ),
             None
+        );
+    }
+
+    #[test]
+    fn test_extract_json_columns() {
+        let sql = r#"
+            WITH json_cte AS (
+                SELECT json_build_object('a', x, 'b', y) AS cte_json
+                FROM generate_series(1, 3) x
+                JOIN generate_series(4, 6) y ON true
+            )
+            SELECT 
+                json_object('key', 'value') AS json_col1,
+                json_array(1, 2, 3) AS json_col2,
+                (SELECT json_build_object('nested', subq.val) 
+                 FROM (SELECT AVG(x) AS val FROM generate_series(1, 5) x) subq
+                ) AS json_col3, -- not supported because of the subquery
+                CASE 
+                    WHEN EXISTS (SELECT 1 FROM json_cte WHERE cte_json->>'a' = '2')
+                    THEN to_json(ARRAY(SELECT cte_json FROM json_cte))
+                    ELSE json_build_array()
+                END AS json_col4, -- not supported because of the CASE
+                json_unknown_fn(regular_column) AS non_json_col,
+                CAST(json_col1 AS json) AS json_col6
+            FROM some_table
+            CROSS JOIN json_cte
+            WHERE json_typeof(json_col1) = 'object'
+        "#;
+
+        let stmt = parse_postgres_stmt(sql);
+        let json_columns = extract_json_columns(&stmt, AnyKind::Sqlite);
+
+        assert_eq!(
+            json_columns,
+            vec![
+                "json_col1".to_string(),
+                "json_col2".to_string(),
+                "json_col6".to_string()
+            ]
         );
     }
 }

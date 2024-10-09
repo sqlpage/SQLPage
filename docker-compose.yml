@@ -31,6 +31,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: Password123!
       MYSQL_DATABASE: sqlpage
+
   mssql:
     profiles: ["mssql"]
     ports: ["1433:1433"]
@@ -41,6 +42,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+
   mariadb:
     profiles: ["mariadb"]
     ports: ["3306:3306"]

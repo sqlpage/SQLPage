@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
+use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -59,6 +60,7 @@ pub fn stream_query_results_with_conn<'a>(
                         let is_err = elem.is_err();
                         let mut query_result = parse_single_sql_result(&stmt.query, elem);
                         apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
+                        apply_json_columns(&mut query_result, &stmt.json_columns);
                         for i in parse_dynamic_rows(query_result) {
                             yield i;
                         }
@@ -330,6 +332,34 @@ fn json_to_fn_param(json: serde_json::Value) -> Option<Cow<'static, str>> {
         serde_json::Value::String(s) => Some(Cow::Owned(s)),
         serde_json::Value::Null => None,
         _ => Some(Cow::Owned(json.to_string())),
+    }
+}
+
+fn apply_json_columns(item: &mut DbItem, json_columns: &[String]) {
+    if let DbItem::Row(Value::Object(ref mut row)) = item {
+        for column in json_columns {
+            if let Some(value) = row.get_mut(column) {
+                if let Value::String(json_str) = value {
+                    if let Ok(parsed_json) = serde_json::from_str(json_str) {
+                        log::trace!("Parsed JSON column {column}: {parsed_json}");
+                        *value = parsed_json;
+                    } else {
+                        log::warn!("The column {column} contains invalid JSON: {json_str}");
+                    }
+                } else if let Value::Array(array) = value {
+                    for item in array {
+                        if let Value::String(json_str) = item {
+                            if let Ok(parsed_json) = serde_json::from_str(json_str) {
+                                log::trace!("Parsed JSON array item: {parsed_json}");
+                                *item = parsed_json;
+                            }
+                        }
+                    }
+                }
+            } else {
+                log::warn!("The column {column} is missing from the result set, so it cannot be converted to JSON.");
+            }
+        }
     }
 }
 
