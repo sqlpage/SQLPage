@@ -20,4 +20,19 @@
     <lastmod>2024-10-10</lastmod>
     <priority>0.80</priority>
   </url>
+  <url>
+    <loc>https://beta.datapage.app/</loc>
+    <lastmod>2024-10-10</lastmod>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://sql.datapage.app/performance.sql</loc>
+    <lastmod>2024-10-10</lastmod>
+    <priority>0.60</priority>
+  </url>
+  <url>
+    <loc>https://sql.datapage.app/blog.sql</loc>
+    <lastmod>2024-10-10</lastmod>
+    <priority>0.60</priority>
+  </url>
 </urlset>
