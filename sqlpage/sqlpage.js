@@ -27,12 +27,16 @@ function sqlpage_card() {
 function sqlpage_table(){
     // Tables
     for (const r of document.querySelectorAll("[data-pre-init=table]")) {
-        new List(r, {
+        const list = new List(r, {
             valueNames: [...r.getElementsByTagName("th")].map(t => t.textContent),
             searchDelay: 100,
             // Hurts performance, but prevents https://github.com/lovasoa/SQLpage/issues/542
             // indexAsync: true
         });
+        const search_input = r.querySelector("input.search");
+        if (search_input && search_input.value) {
+            list.search(search_input.value);
+        }
         r.removeAttribute("data-pre-init");
     }
 }
