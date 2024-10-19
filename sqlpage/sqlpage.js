@@ -205,3 +205,15 @@ add_init_fn(sqlpage_map);
 add_init_fn(sqlpage_card);
 add_init_fn(sqlpage_form);
 add_init_fn(load_scripts);
+
+function init_bootstrap_components(event) {
+    if (window.bootstrap) {
+        const fragment = event.target;
+        fragment.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+        fragment.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
+        fragment.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(el => new bootstrap.Dropdown(el));
+        fragment.querySelectorAll('[data-bs-ride="carousel"]').forEach(el => new bootstrap.Carousel(el));
+    }
+}
+
+document.addEventListener('fragment-loaded', init_bootstrap_components);
