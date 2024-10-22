@@ -1,4 +1,4 @@
-use crate::render::{HeaderContext, PageContext, RenderContext};
+use crate::render::{AnyRenderBodyContext, HeaderContext, PageContext};
 use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
@@ -126,11 +126,11 @@ impl Drop for ResponseWriter {
 
 async fn stream_response(
     stream: impl Stream<Item = DbItem>,
-    mut renderer: RenderContext<ResponseWriter>,
+    mut renderer: AnyRenderBodyContext<ResponseWriter>,
 ) {
     let mut stream = Box::pin(stream);
 
-    if let Err(e) = &renderer.writer.async_flush().await {
+    if let Err(e) = &renderer.writer_mut().async_flush().await {
         log::error!("Unable to flush initial data to client: {e}");
         return;
     }
@@ -157,7 +157,7 @@ async fn stream_response(
                 return;
             }
         }
-        if let Err(e) = &renderer.writer.async_flush().await {
+        if let Err(e) = &renderer.writer_mut().async_flush().await {
             log::error!(
                 "Stopping rendering early because we were unable to flush data to client: {e:#}"
             );
@@ -228,7 +228,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
 enum ResponseWithWriter<S> {
     RenderStream {
         http_response: HttpResponse,
-        renderer: RenderContext<ResponseWriter>,
+        renderer: AnyRenderBodyContext<ResponseWriter>,
         database_entries_stream: Pin<Box<S>>,
     },
     FinishedResponse {

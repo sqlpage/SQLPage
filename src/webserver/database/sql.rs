@@ -1198,7 +1198,7 @@ mod test {
 
     #[test]
     fn test_extract_json_columns() {
-        let sql = r#"
+        let sql = r"
             WITH json_cte AS (
                 SELECT json_build_object('a', x, 'b', y) AS cte_json
                 FROM generate_series(1, 3) x
@@ -1220,7 +1220,7 @@ mod test {
             FROM some_table
             CROSS JOIN json_cte
             WHERE json_typeof(json_col1) = 'object'
-        "#;
+        ";
 
         let stmt = parse_postgres_stmt(sql);
         let json_columns = extract_json_columns(&stmt, AnyKind::Sqlite);

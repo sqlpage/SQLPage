@@ -22,7 +22,7 @@ pub enum PageContext<W: std::io::Write> {
     /// Indicates that we should start rendering the body
     Body {
         http_response: HttpResponseBuilder,
-        renderer: RenderContext<W>,
+        renderer: AnyRenderBodyContext<W>,
     },
 
     /// The response is ready, and should be sent as is. No further statements should be executed
@@ -232,9 +232,11 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
     }
 
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
-        let renderer = RenderContext::new(self.app_state, self.request_context, self.writer, data)
-            .await
-            .with_context(|| "Failed to create a render context from the header context.")?;
+        let html_renderer =
+            HtmlRenderContext::new(self.app_state, self.request_context, self.writer, data)
+                .await
+                .with_context(|| "Failed to create a render context from the header context.")?;
+        let renderer = AnyRenderBodyContext::Html(html_renderer);
         let http_response = self.response;
         Ok(PageContext::Body {
             renderer,
@@ -283,8 +285,48 @@ fn take_object_str(json: &mut JsonValue, key: &str) -> Option<String> {
     }
 }
 
+/**
+ * Can receive rows, and write them in a given format to an `io::Write`
+ */
+pub enum AnyRenderBodyContext<W: std::io::Write> {
+    Html(HtmlRenderContext<W>),
+}
+
+/**
+ * Dummy impl to dispatch method calls to the underlying renderer
+ */
+impl<W: std::io::Write> AnyRenderBodyContext<W> {
+    pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
+        match self {
+            AnyRenderBodyContext::Html(render_context) => render_context.handle_row(data).await,
+        }
+    }
+    pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+        match self {
+            AnyRenderBodyContext::Html(render_context) => render_context.handle_error(error).await,
+        }
+    }
+    pub async fn finish_query(&mut self) -> anyhow::Result<()> {
+        match self {
+            AnyRenderBodyContext::Html(render_context) => render_context.finish_query().await,
+        }
+    }
+
+    pub fn writer_mut(&mut self) -> &mut W {
+        match self {
+            AnyRenderBodyContext::Html(HtmlRenderContext { writer, .. }) => writer,
+        }
+    }
+
+    pub async fn close(self) -> W {
+        match self {
+            AnyRenderBodyContext::Html(render_context) => render_context.close().await,
+        }
+    }
+}
+
 #[allow(clippy::module_name_repetitions)]
-pub struct RenderContext<W: std::io::Write> {
+pub struct HtmlRenderContext<W: std::io::Write> {
     app_state: Arc<AppState>,
     pub writer: W,
     current_component: Option<SplitTemplateRenderer>,
@@ -297,13 +339,13 @@ const DEFAULT_COMPONENT: &str = "table";
 const PAGE_SHELL_COMPONENT: &str = "shell";
 const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
 
-impl<W: std::io::Write> RenderContext<W> {
+impl<W: std::io::Write> HtmlRenderContext<W> {
     pub async fn new(
         app_state: Arc<AppState>,
         request_context: RequestContext,
         mut writer: W,
         initial_row: JsonValue,
-    ) -> anyhow::Result<RenderContext<W>> {
+    ) -> anyhow::Result<HtmlRenderContext<W>> {
         log::debug!("Creating the shell component for the page");
 
         let mut initial_rows = vec![Cow::Borrowed(&initial_row)];
@@ -340,7 +382,7 @@ impl<W: std::io::Write> RenderContext<W> {
         log::debug!("Rendering the shell with properties: {shell_row}");
         shell_renderer.render_start(&mut writer, shell_row)?;
 
-        let mut initial_context = RenderContext {
+        let mut initial_context = HtmlRenderContext {
             app_state,
             writer,
             current_component: None,
