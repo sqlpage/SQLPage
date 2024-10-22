@@ -59,7 +59,7 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
             Some("status_code") => self.status_code(&data).map(PageContext::Header),
             Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
             Some("redirect") => self.redirect(&data).map(PageContext::Close),
-            Some("json") => self.json(&data).map(PageContext::Close),
+            Some("json") => self.json(&data),
             Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
             Some("authentication") => self.authentication(data).await,
             _ => self.start_body(data).await,
@@ -187,18 +187,37 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
     }
 
     /// Answers to the HTTP request with a single json object
-    fn json(mut self, data: &JsonValue) -> anyhow::Result<HttpResponse> {
-        let contents = data
-            .get("contents")
-            .with_context(|| "Missing 'contents' property for the json component")?;
-        let json_response = if let Some(s) = contents.as_str() {
-            s.as_bytes().to_owned()
-        } else {
-            serde_json::to_vec(contents)?
-        };
+    fn json(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
         self.response
             .insert_header((header::CONTENT_TYPE, "application/json"));
-        Ok(self.response.body(json_response))
+        if let Some(contents) = data.get("contents") {
+            let json_response = if let Some(s) = contents.as_str() {
+                s.as_bytes().to_owned()
+            } else {
+                serde_json::to_vec(contents)?
+            };
+            Ok(PageContext::Close(self.response.body(json_response)))
+        } else {
+            let body_type = get_object_str(data, "type");
+            let json_renderer = match body_type {
+                None | Some("array") => JsonBodyRenderer::new_array(self.writer),
+                Some("jsonlines") => JsonBodyRenderer::new_jsonlines(self.writer),
+                Some("sse") => {
+                    self.response
+                        .insert_header((header::CONTENT_TYPE, "text/event-stream"));
+                    JsonBodyRenderer::new_server_sent_events(self.writer)
+                }
+                _ => bail!(
+                    "Invalid value for the 'type' property of the json component: {body_type:?}"
+                ),
+            };
+            let renderer = AnyRenderBodyContext::Json(json_renderer);
+            let http_response = self.response;
+            Ok(PageContext::Body {
+                http_response,
+                renderer,
+            })
+        }
     }
 
     async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext<W>> {
@@ -290,6 +309,7 @@ fn take_object_str(json: &mut JsonValue, key: &str) -> Option<String> {
  */
 pub enum AnyRenderBodyContext<W: std::io::Write> {
     Html(HtmlRenderContext<W>),
+    Json(JsonBodyRenderer<W>),
 }
 
 /**
@@ -297,31 +317,110 @@ pub enum AnyRenderBodyContext<W: std::io::Write> {
  */
 impl<W: std::io::Write> AnyRenderBodyContext<W> {
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
+        log::debug!(
+            "<- Rendering properties: {}",
+            serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
+        );
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.handle_row(data).await,
+            AnyRenderBodyContext::Json(json_body_renderer) => json_body_renderer.handle_row(data),
         }
     }
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+        log::error!("SQL error: {:?}", error);
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.handle_error(error).await,
+            AnyRenderBodyContext::Json(json_body_renderer) => {
+                json_body_renderer.handle_error(error)
+            }
         }
     }
     pub async fn finish_query(&mut self) -> anyhow::Result<()> {
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.finish_query().await,
+            AnyRenderBodyContext::Json(_json_body_renderer) => Ok(()),
         }
     }
 
     pub fn writer_mut(&mut self) -> &mut W {
         match self {
-            AnyRenderBodyContext::Html(HtmlRenderContext { writer, .. }) => writer,
+            AnyRenderBodyContext::Html(HtmlRenderContext { writer, .. })
+            | AnyRenderBodyContext::Json(JsonBodyRenderer { writer, .. }) => writer,
         }
     }
 
     pub async fn close(self) -> W {
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.close().await,
+            AnyRenderBodyContext::Json(json_body_renderer) => json_body_renderer.close(),
         }
+    }
+}
+
+pub struct JsonBodyRenderer<W: std::io::Write> {
+    writer: W,
+    is_first: bool,
+    prefix: &'static [u8],
+    suffix: &'static [u8],
+    separator: &'static [u8],
+}
+
+impl<W: std::io::Write> JsonBodyRenderer<W> {
+    pub fn new_array(writer: W) -> JsonBodyRenderer<W> {
+        let mut renderer = Self {
+            writer,
+            is_first: true,
+            prefix: b"[\n",
+            suffix: b"\n]",
+            separator: b",\n",
+        };
+        let _ = renderer.write_prefix();
+        renderer
+    }
+    pub fn new_jsonlines(writer: W) -> JsonBodyRenderer<W> {
+        let mut renderer = Self {
+            writer,
+            is_first: true,
+            prefix: b"",
+            suffix: b"",
+            separator: b"\n",
+        };
+        renderer.write_prefix().unwrap();
+        renderer
+    }
+    pub fn new_server_sent_events(writer: W) -> JsonBodyRenderer<W> {
+        let mut renderer = Self {
+            writer,
+            is_first: true,
+            prefix: b"data: ",
+            suffix: b"",
+            separator: b"\n\ndata: ",
+        };
+        renderer.write_prefix().unwrap();
+        renderer
+    }
+    fn write_prefix(&mut self) -> anyhow::Result<()> {
+        self.writer.write_all(self.prefix)?;
+        Ok(())
+    }
+    pub fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
+        if self.is_first {
+            self.is_first = false;
+        } else {
+            let _ = self.writer.write_all(self.separator);
+        }
+        serde_json::to_writer(&mut self.writer, data)?;
+        Ok(())
+    }
+    pub fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+        self.handle_row(&json!({
+            "error": error.to_string()
+        }))
+    }
+
+    pub fn close(mut self) -> W {
+        let _ = self.writer.write_all(self.suffix);
+        self.writer
     }
 }
 
@@ -404,10 +503,6 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
 
     #[async_recursion(? Send)]
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
-        log::debug!(
-            "<- Rendering properties: {}",
-            serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
-        );
         let new_component = get_object_str(data, "component");
         let current_component = self
             .current_component
@@ -455,7 +550,6 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
     /// Handles the rendering of an error.
     /// Returns whether the error is irrecoverable and the rendering must stop
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
-        log::error!("SQL error: {:?}", error);
         self.close_component()?;
         let data = if self.app_state.config.environment.is_prod() {
             json!({

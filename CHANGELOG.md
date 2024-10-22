@@ -9,6 +9,9 @@
  - New `initial_search_value` property in the table component to pre-fill the search bar with a value. This allows to display the table rows that will initially be filtered out by the search bar.
  - Fix autoplay of carousels when embedded in a card.
  - Allow setting image width and height in carousels, in order to avoid differently sized images to cause layout janking when going through them. 
+ - Many improvements to the [json](https://sql.datapage.app/component.sql?component=json) component, making it easier and faster than ever to build REST APIs entirely in SQL.
+  - **Ease of use** : the component can now be used to automatically format any query result as a json array, without manually using your database''s json functions.
+  - **server-sent events** : the component can now be used to stream query results to the client in real-time using server-sent events.
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.

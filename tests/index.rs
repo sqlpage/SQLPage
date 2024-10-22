@@ -3,7 +3,11 @@ use std::{collections::HashMap, path::PathBuf};
 use actix_web::{
     body::MessageBody,
     dev::{fn_service, ServerHandle, ServiceRequest, ServiceResponse},
-    http::{self, header::ContentType, StatusCode},
+    http::{
+        self,
+        header::{self, ContentType},
+        StatusCode,
+    },
     test::{self, TestRequest},
     HttpResponse,
 };
@@ -227,6 +231,27 @@ async fn test_overwrite_variable() -> actix_web::Result<()> {
     assert!(
         body_str.contains("It works !"),
         "{body_str}\nexpected to contain: It works !"
+    );
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_json_body() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/json_data.sql")
+        .await?
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get(header::CONTENT_TYPE).unwrap(),
+        "application/json"
+    );
+    let body = test::read_body(resp).await;
+    let body_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        body_json,
+        serde_json::json!([{"message": "It works!"}, {"cool": "cool"}])
     );
     Ok(())
 }
