@@ -12,7 +12,7 @@
                     {{#delay}}
                         {{flush_delayed}}
                         <div class="carousel-item {{#if (eq @row_index 0)}}active{{/if}}">
-                            <img class="d-block w-100" alt="{{image}}" src="{{image}}" />
+                            <img class="d-block w-100 object-fit-cover" alt="{{image}}" src="{{image}}" {{#if width}}width="{{width}}"{{/if}} {{#if height}}height="{{height}}"{{/if}} />
                             {{#if title}}
                             <div class="carousel-caption-background d-none d-md-block"></div>
                             <div class="carousel-caption d-none d-md-block">

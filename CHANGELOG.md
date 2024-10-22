@@ -8,6 +8,7 @@
  - Add a new optional `database_password` configuration option to set the password for the database connection separately from the connection string. This allows to keep the password separate from the connection string, which can be useful for security purposes, logging, and avoids having to percent-encode the password in the connection string.
  - New `initial_search_value` property in the table component to pre-fill the search bar with a value. This allows to display the table rows that will initially be filtered out by the search bar.
  - Fix autoplay of carousels when embedded in a card.
+ - Allow setting image width and height in carousels, in order to avoid differently sized images to cause layout janking when going through them. 
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.

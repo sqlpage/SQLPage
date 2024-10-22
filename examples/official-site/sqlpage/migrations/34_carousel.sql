@@ -54,7 +54,7 @@ VALUES
         TRUE,
         TRUE
     ),
-        (
+    (
         'carousel',
         'auto',
         'Whether to automatically cycle through the carousel items. Default is false.',
@@ -109,6 +109,22 @@ VALUES
         'TEXT',
         FALSE,
         TRUE
+    ),
+    (
+        'carousel',
+        'width',
+        'The width of the image, in pixels.',
+        'INTEGER',
+        FALSE,
+        TRUE
+    ),
+    (
+        'carousel',
+        'height',
+        'The height of the image, in pixels.',
+        'INTEGER',
+        FALSE,
+        TRUE
     );
 -- Insert example(s) for the component
 INSERT INTO example(component, description, properties)
@@ -128,9 +144,9 @@ VALUES (
         'An advanced example of carousel with controls',
         JSON(
             '[
-                {"component":"carousel","title":"Cats","width":6,"center":true,"controls":true,"auto":true},
-                {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Cat_Sphynx._Kittens._img_11.jpg/1024px-Cat_Sphynx._Kittens._img_11.jpg","title":"A first cat","description":"The cat (Felis catus), commonly referred to as the domestic cat or house cat, is the only domesticated species in the family Felidae."},
-                {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Cat_close-up_2004_b.jpg/1280px-Cat_close-up_2004_b.jpg","title":"Another cat"}
+                {"component":"carousel","title":"SQL web apps","width":6, "center":true,"controls":true,"auto":true},
+                {"image":"/sqlpage_cover_image.webp","title":"SQLPage is modern","description":"Built by engineers who have built so many web applications the old way, they decided they just wouldn''t anymore.", "height": 512},
+                {"image":"/sqlpage_illustration_alien.webp","title":"SQLPage is easy", "description":"SQLPage connects to your database, then it turns your SQL queries into nice websites.", "height": 512}
                 ]'
         )
     );
