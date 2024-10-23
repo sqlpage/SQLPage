@@ -31,6 +31,18 @@ select ''dynamic'' as component, sqlpage.run_sql(''common_header.sql'') as prope
  - **variables**: the included file will have access to the same variables (URL parameters, POST variables, etc.)
    as the calling file.
    If the included file changes the value of a variable or creates a new variable, the change will not be visible in the calling file.
+
+### Parameters
+
+You can pass parameters to the included file, as if it had been with a URL parameter.
+For instance, you can use:
+
+```sql
+sqlpage.run_sql(''included_file.sql'', json_object(''param1'', ''value1'', ''param2'', ''value2''))
+```
+
+Which will make `$param1` and `$param2` available in the included file.
+[More information about building JSON objects in SQL](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide).
 '
     );
 INSERT INTO sqlpage_function_parameters (
