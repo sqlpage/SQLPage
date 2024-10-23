@@ -393,7 +393,7 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
             writer,
             is_first: true,
             prefix: b"data: ",
-            suffix: b"",
+            suffix: b"\n\n",
             separator: b"\n\ndata: ",
         };
         renderer.write_prefix().unwrap();
