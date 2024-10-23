@@ -76,6 +76,11 @@ select ''json'' AS component, ''jsonlines'' AS type;
 select * from users where id = $user_id LIMIT 1;
 ```
 
+> Note the `LIMIT 1` clause. The `jsonlines` type will send one JSON object per result row,
+> separated only by a single newline character (\n).
+> So if your query returns multiple rows, the result will not be a single valid JSON object,
+> like most JSON parsers expect.
+
 ### Result
 
 ```json
@@ -88,7 +93,8 @@ select * from users where id = $user_id LIMIT 1;
         '
 ## Create a complex API endpoint
 
-This will create an API endpoint that will allow developers to easily query a list of users stored in your database.
+You can create an API endpoint that will return a JSON value in any format you want,
+to implement a complex API.
 
 You should use [the json functions provided by your database](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) to form the value you pass to the `contents` property.
 To build a json array out of rows from the database, you can use: 
@@ -134,8 +140,11 @@ you can use
         '
 ## Access query results in real-time with server-sent events
 
-Using server-sent events, you can stream query results to the client in real-time.
-This means you can build dynamic applications that will process data as it arrives.
+Using server-sent events, you can stream large query results to the client in real-time,
+row by row.
+
+This allows building sophisticated dynamic applications that will start processing and displaying 
+the first rows of data in the browser while the database server is still processing the end of the query.
 
 ### SQL
 
