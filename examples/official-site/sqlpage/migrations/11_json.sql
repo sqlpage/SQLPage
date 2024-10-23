@@ -152,6 +152,9 @@ eventSource.onmessage = function (event) {
     const user = JSON.parse(event.data);
     console.log(user.username);
 }
+eventSource.onerror = function () {
+    eventSource.close(); // do not reconnect after reading all the data
+}
 ```
 '
     );
