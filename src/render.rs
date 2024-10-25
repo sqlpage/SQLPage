@@ -14,6 +14,7 @@ use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
+use std::io::Write;
 use std::sync::Arc;
 
 pub enum PageContext {
@@ -227,10 +228,16 @@ impl HeaderContext {
         }
     }
 
-    async fn csv(mut self, _data: &JsonValue) -> anyhow::Result<PageContext> {
+    async fn csv(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         self.response
             .insert_header((header::CONTENT_TYPE, "text/csv"));
-        let csv_renderer = CsvBodyRenderer::new(self.writer).await?;
+        if let Some(filename) = get_object_str(options, "filename") {
+            self.response.insert_header((
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename={filename}"),
+            ));
+        }
+        let csv_renderer = CsvBodyRenderer::new(self.writer, options).await?;
         let renderer = AnyRenderBodyContext::Csv(csv_renderer);
         let http_response = self.response.take();
         Ok(PageContext::Body {
@@ -458,11 +465,42 @@ pub struct CsvBodyRenderer {
 }
 
 impl CsvBodyRenderer {
-    pub async fn new(writer: ResponseWriter) -> anyhow::Result<CsvBodyRenderer> {
+    pub async fn new(
+        mut writer: ResponseWriter,
+        options: &JsonValue,
+    ) -> anyhow::Result<CsvBodyRenderer> {
+        let mut builder = csv_async::AsyncWriterBuilder::new();
+        if let Some(delimiter) = get_object_str(options, "delimiter") {
+            let &[delimiter_byte] = delimiter.as_bytes() else {
+                bail!("Invalid csv delimiter: {delimiter:?}. It must be a single byte.");
+            };
+            builder.delimiter(delimiter_byte);
+        }
+        if let Some(quote) = get_object_str(options, "quote") {
+            let &[quote_byte] = quote.as_bytes() else {
+                bail!("Invalid csv quote: {quote:?}. It must be a single byte.");
+            };
+            builder.quote(quote_byte);
+        }
+        if let Some(escape) = get_object_str(options, "escape") {
+            let &[escape_byte] = escape.as_bytes() else {
+                bail!("Invalid csv escape: {escape:?}. It must be a single byte.");
+            };
+            builder.escape(escape_byte);
+        }
+        if options
+            .get("bom")
+            .and_then(JsonValue::as_bool)
+            .unwrap_or(false)
+        {
+            let utf8_bom = b"\xEF\xBB\xBF";
+            writer.write_all(utf8_bom)?;
+        }
         let mut async_writer = AsyncResponseWriter::new(writer);
         tokio::io::AsyncWriteExt::flush(&mut async_writer).await?;
+        let writer = builder.create_writer(async_writer);
         Ok(CsvBodyRenderer {
-            writer: csv_async::AsyncWriter::from_writer(async_writer),
+            writer,
             is_first: true,
         })
     }
