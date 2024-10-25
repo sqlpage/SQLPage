@@ -15,6 +15,7 @@ use actix_web::{
     HttpServer,
 };
 use actix_web::{HttpResponseBuilder, ResponseError};
+use tokio::io::AsyncWriteExt;
 
 use super::https::make_auto_rustls_config;
 use super::static_content;
@@ -23,7 +24,8 @@ use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
-use std::borrow::Cow;
+use std::borrow::{BorrowMut, Cow};
+use std::cell::{Cell, RefCell};
 use std::io::Write;
 use std::mem;
 use std::path::PathBuf;
@@ -37,7 +39,7 @@ use tokio::sync::mpsc;
 
 #[derive(Clone)]
 pub struct ResponseWriter {
-    buffer: Vec<u8>,
+    buffer: RefCell<Vec<u8>>,
     response_bytes: mpsc::Sender<actix_web::Result<Bytes>>,
 }
 
@@ -51,7 +53,7 @@ impl ResponseWriter {
     fn new(response_bytes: mpsc::Sender<actix_web::Result<Bytes>>) -> Self {
         Self {
             response_bytes,
-            buffer: Vec::new(),
+            buffer: RefCell::new(Vec::new()),
         }
     }
     async fn close_with_error(&mut self, mut msg: String) {
@@ -69,44 +71,28 @@ impl ResponseWriter {
         }
     }
 
-    async fn async_flush(&mut self) -> std::io::Result<()> {
-        if self.buffer.is_empty() {
-            return Ok(());
-        }
-        log::trace!(
-            "Async flushing data to client: {}",
-            String::from_utf8_lossy(&self.buffer)
-        );
-        self.response_bytes
-            .send(Ok(mem::take(&mut self.buffer).into()))
-            .await
-            .map_err(|err| {
-                use std::io::{Error, ErrorKind};
-                let capacity = self.response_bytes.capacity();
-                Error::new(
-                    ErrorKind::BrokenPipe,
-                    format!("The HTTP response writer with a capacity of {capacity} has already been closed: {err}"),
-                )
-            })
+    pub async fn async_flush(&mut self) -> std::io::Result<()> {
+        tokio::io::AsyncWriteExt::flush(self).await
     }
 }
 
 impl Write for ResponseWriter {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.buffer.extend_from_slice(buf);
+        self.buffer.borrow_mut().extend_from_slice(buf);
         Ok(buf.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
-        if self.buffer.is_empty() {
+        if self.buffer.borrow().is_empty() {
             return Ok(());
         }
         log::trace!(
             "Flushing data to client: {}",
-            String::from_utf8_lossy(&self.buffer)
+            String::from_utf8_lossy(&self.buffer.borrow())
         );
+        let mut buffer = self.buffer.borrow_mut();
         self.response_bytes
-            .try_send(Ok(mem::take(&mut self.buffer).into()))
+            .try_send(Ok(mem::take(&mut *buffer).into()))
             .map_err(|e|
                 std::io::Error::new(
                     std::io::ErrorKind::WouldBlock,
@@ -116,21 +102,56 @@ impl Write for ResponseWriter {
     }
 }
 
+impl tokio::io::AsyncWrite for ResponseWriter {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
+        self.get_mut().buffer.borrow_mut().extend_from_slice(buf);
+        std::task::Poll::Ready(Ok(buf.len()))
+    }
+
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        if self.buffer.borrow().is_empty() {
+            return std::task::Poll::Ready(Ok(()));
+        }
+        log::trace!(
+            "Async flushing data to client: {}",
+            String::from_utf8_lossy(&self.buffer.borrow())
+        );
+        let mut buffer = self.buffer.borrow_mut();
+        match self.response_bytes.try_send(Ok(mem::take(&mut *buffer).into())) {
+            Ok(_) => std::task::Poll::Ready(Ok(())),
+            Err(e) => std::task::Poll::Ready(Err(std::io::Error::new(
+                std::io::ErrorKind::WouldBlock,
+                format!("{e}: Row limit exceeded. The server cannot store more than {} pending messages in memory. Try again later or increase max_pending_rows in the configuration.", self.response_bytes.max_capacity())
+            )))
+        }
+    }
+
+    fn poll_shutdown(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        self.poll_flush(cx)
+    }
+}
 impl Drop for ResponseWriter {
     fn drop(&mut self) {
-        if let Err(e) = self.flush() {
+        if let Err(e) = std::io::Write::flush(self) {
             log::error!("Could not flush data to client: {e}");
         }
     }
 }
 
-async fn stream_response(
-    stream: impl Stream<Item = DbItem>,
-    mut renderer: AnyRenderBodyContext<ResponseWriter>,
-) {
+async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRenderBodyContext) {
     let mut stream = Box::pin(stream);
 
-    if let Err(e) = &renderer.writer_mut().async_flush().await {
+    if let Err(e) = &renderer.flush().await {
         log::error!("Unable to flush initial data to client: {e}");
         return;
     }
@@ -157,7 +178,7 @@ async fn stream_response(
                 return;
             }
         }
-        if let Err(e) = &renderer.writer_mut().async_flush().await {
+        if let Err(e) = &renderer.flush().await {
             log::error!(
                 "Stopping rendering early because we were unable to flush data to client: {e:#}"
             );
@@ -228,7 +249,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
 enum ResponseWithWriter<S> {
     RenderStream {
         http_response: HttpResponse,
-        renderer: AnyRenderBodyContext<ResponseWriter>,
+        renderer: AnyRenderBodyContext,
         database_entries_stream: Pin<Box<S>>,
     },
     FinishedResponse {

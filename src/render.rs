@@ -1,5 +1,5 @@
 use crate::templates::SplitTemplate;
-use crate::webserver::http::RequestContext;
+use crate::webserver::http::{RequestContext, ResponseWriter};
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
@@ -15,14 +15,14 @@ use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::sync::Arc;
 
-pub enum PageContext<W: std::io::Write> {
+pub enum PageContext {
     /// Indicates that we should stay in the header context
-    Header(HeaderContext<W>),
+    Header(HeaderContext),
 
     /// Indicates that we should start rendering the body
     Body {
         http_response: HttpResponseBuilder,
-        renderer: AnyRenderBodyContext<W>,
+        renderer: AnyRenderBodyContext,
     },
 
     /// The response is ready, and should be sent as is. No further statements should be executed
@@ -30,16 +30,20 @@ pub enum PageContext<W: std::io::Write> {
 }
 
 /// Handles the first SQL statements, before the headers have been sent to
-pub struct HeaderContext<W: std::io::Write> {
+pub struct HeaderContext {
     app_state: Arc<AppState>,
     request_context: RequestContext,
-    pub writer: W,
+    pub writer: ResponseWriter,
     response: HttpResponseBuilder,
     has_status: bool,
 }
 
-impl<'a, W: std::io::Write> HeaderContext<W> {
-    pub fn new(app_state: Arc<AppState>, request_context: RequestContext, writer: W) -> Self {
+impl HeaderContext {
+    pub fn new(
+        app_state: Arc<AppState>,
+        request_context: RequestContext,
+        writer: ResponseWriter,
+    ) -> Self {
         let mut response = HttpResponseBuilder::new(StatusCode::OK);
         response.content_type("text/html; charset=utf-8");
         if app_state.config.content_security_policy.is_none() {
@@ -53,20 +57,21 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
             has_status: false,
         }
     }
-    pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
+    pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext> {
         log::debug!("Handling header row: {data}");
         match get_object_str(&data, "component") {
             Some("status_code") => self.status_code(&data).map(PageContext::Header),
             Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
             Some("redirect") => self.redirect(&data).map(PageContext::Close),
             Some("json") => self.json(&data),
+            Some("csv") => self.csv(&data),
             Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
             Some("authentication") => self.authentication(data).await,
             _ => self.start_body(data).await,
         }
     }
 
-    pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext<W>> {
+    pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext> {
         if self.app_state.config.environment.is_prod() {
             return Err(err);
         }
@@ -187,7 +192,7 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
     }
 
     /// Answers to the HTTP request with a single json object
-    fn json(mut self, data: &JsonValue) -> anyhow::Result<PageContext<W>> {
+    fn json(mut self, data: &JsonValue) -> anyhow::Result<PageContext> {
         self.response
             .insert_header((header::CONTENT_TYPE, "application/json"));
         if let Some(contents) = data.get("contents") {
@@ -220,7 +225,19 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
         }
     }
 
-    async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext<W>> {
+    fn csv(mut self, data: &JsonValue) -> anyhow::Result<PageContext> {
+        self.response
+            .insert_header((header::CONTENT_TYPE, "text/csv"));
+        let csv_renderer = CsvBodyRenderer::new(self.writer);
+        let renderer = AnyRenderBodyContext::Csv(csv_renderer);
+        let http_response = self.response.take();
+        Ok(PageContext::Body {
+            renderer,
+            http_response,
+        })
+    }
+
+    async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext> {
         let password_hash = take_object_str(&mut data, "password_hash");
         let password = take_object_str(&mut data, "password");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
@@ -250,7 +267,7 @@ impl<'a, W: std::io::Write> HeaderContext<W> {
         Ok(PageContext::Close(http_response))
     }
 
-    async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext<W>> {
+    async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext> {
         let html_renderer =
             HtmlRenderContext::new(self.app_state, self.request_context, self.writer, data)
                 .await
@@ -307,15 +324,16 @@ fn take_object_str(json: &mut JsonValue, key: &str) -> Option<String> {
 /**
  * Can receive rows, and write them in a given format to an `io::Write`
  */
-pub enum AnyRenderBodyContext<W: std::io::Write> {
-    Html(HtmlRenderContext<W>),
-    Json(JsonBodyRenderer<W>),
+pub enum AnyRenderBodyContext {
+    Html(HtmlRenderContext<ResponseWriter>),
+    Json(JsonBodyRenderer<ResponseWriter>),
+    Csv(CsvBodyRenderer),
 }
 
 /**
  * Dummy impl to dispatch method calls to the underlying renderer
  */
-impl<W: std::io::Write> AnyRenderBodyContext<W> {
+impl AnyRenderBodyContext {
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         log::debug!(
             "<- Rendering properties: {}",
@@ -324,6 +342,7 @@ impl<W: std::io::Write> AnyRenderBodyContext<W> {
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.handle_row(data).await,
             AnyRenderBodyContext::Json(json_body_renderer) => json_body_renderer.handle_row(data),
+            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.handle_row(data).await,
         }
     }
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
@@ -333,26 +352,33 @@ impl<W: std::io::Write> AnyRenderBodyContext<W> {
             AnyRenderBodyContext::Json(json_body_renderer) => {
                 json_body_renderer.handle_error(error)
             }
+            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.handle_error(error).await,
         }
     }
     pub async fn finish_query(&mut self) -> anyhow::Result<()> {
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.finish_query().await,
             AnyRenderBodyContext::Json(_json_body_renderer) => Ok(()),
+            AnyRenderBodyContext::Csv(_csv_renderer) => Ok(()),
         }
     }
 
-    pub fn writer_mut(&mut self) -> &mut W {
+    pub async fn flush(&mut self) -> anyhow::Result<()> {
         match self {
             AnyRenderBodyContext::Html(HtmlRenderContext { writer, .. })
-            | AnyRenderBodyContext::Json(JsonBodyRenderer { writer, .. }) => writer,
+            | AnyRenderBodyContext::Json(JsonBodyRenderer { writer, .. }) => {
+                writer.async_flush().await?
+            }
+            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.flush().await?,
         }
+        Ok(())
     }
 
-    pub async fn close(self) -> W {
+    pub async fn close(self) -> ResponseWriter {
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.close().await,
             AnyRenderBodyContext::Json(json_body_renderer) => json_body_renderer.close(),
+            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.close().await,
         }
     }
 }
@@ -421,6 +447,54 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
     pub fn close(mut self) -> W {
         let _ = self.writer.write_all(self.suffix);
         self.writer
+    }
+}
+
+pub struct CsvBodyRenderer {
+    writer: csv_async::AsyncWriter<ResponseWriter>,
+    is_first: bool,
+}
+
+impl CsvBodyRenderer {
+    pub fn new(writer: ResponseWriter) -> CsvBodyRenderer {
+        CsvBodyRenderer {
+            writer: csv_async::AsyncWriter::from_writer(writer),
+            is_first: true,
+        }
+    }
+
+    pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
+        if self.is_first {
+            self.is_first = false;
+            if let Some(obj) = data.as_object() {
+                let headers: Vec<_> = obj.keys().collect();
+                self.writer.write_record(&headers).await?;
+            }
+        }
+
+        if let Some(obj) = data.as_object() {
+            let values: Vec<_> = obj.values().map(|v| v.to_string()).collect();
+            self.writer.write_record(&values).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+        self.writer.write_record(&[error.to_string()]).await?;
+        Ok(())
+    }
+
+    pub async fn flush(&mut self) -> anyhow::Result<()> {
+        self.writer.flush().await?;
+        Ok(())
+    }
+
+    pub async fn close(self) -> ResponseWriter {
+        self.writer
+            .into_inner()
+            .await
+            .expect("Failed to get inner writer")
     }
 }
 
