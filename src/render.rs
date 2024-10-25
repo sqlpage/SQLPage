@@ -230,7 +230,7 @@ impl HeaderContext {
 
     async fn csv(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         self.response
-            .insert_header((header::CONTENT_TYPE, "text/csv"));
+            .insert_header((header::CONTENT_TYPE, "text/csv; charset=utf-8"));
         if let Some(filename) = get_object_str(options, "filename") {
             self.response.insert_header((
                 header::CONTENT_DISPOSITION,
@@ -461,7 +461,7 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
 
 pub struct CsvBodyRenderer {
     writer: csv_async::AsyncWriter<AsyncResponseWriter>,
-    is_first: bool,
+    columns: Vec<String>,
 }
 
 impl CsvBodyRenderer {
@@ -501,29 +501,55 @@ impl CsvBodyRenderer {
         let writer = builder.create_writer(async_writer);
         Ok(CsvBodyRenderer {
             writer,
-            is_first: true,
+            columns: vec![],
         })
     }
 
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
-        if self.is_first {
-            self.is_first = false;
+        if self.columns.is_empty() {
             if let Some(obj) = data.as_object() {
-                let headers: Vec<_> = obj.keys().collect();
-                self.writer.write_record(&headers).await?;
+                let headers: Vec<String> = obj.keys().map(String::to_owned).collect();
+                self.columns = headers;
+                self.writer.write_record(&self.columns).await?;
             }
         }
 
         if let Some(obj) = data.as_object() {
-            let values: Vec<_> = obj.values().map(std::string::ToString::to_string).collect();
-            self.writer.write_record(&values).await?;
+            self.writer
+                .write_record(
+                    self.columns
+                        .iter()
+                        .map(|s| {
+                            let val = obj.get(s);
+                            if let Some(val) = val {
+                                if let Some(s) = val.as_str() {
+                                    Cow::Borrowed(s.as_bytes())
+                                } else {
+                                    Cow::Owned(val.to_string().into_bytes())
+                                }
+                            } else {
+                                Cow::Borrowed(&b""[..])
+                            }
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .await?;
         }
 
         Ok(())
     }
 
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
-        self.writer.write_record(&[error.to_string()]).await?;
+        let err_str = error.to_string();
+        self.writer
+            .write_record(
+                self.columns
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| if i == 0 { &err_str } else { "" })
+                    .collect::<Vec<_>>(),
+            )
+            .await?;
         Ok(())
     }
 

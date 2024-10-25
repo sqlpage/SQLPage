@@ -256,6 +256,24 @@ async fn test_json_body() -> actix_web::Result<()> {
     Ok(())
 }
 
+#[actix_web::test]
+async fn test_csv_body() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/csv_data.sql")
+        .await?
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get(header::CONTENT_TYPE).unwrap(),
+        "text/csv; charset=utf-8"
+    );
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert_eq!(body_str, "id,msg\n0,Hello World 😊!\n1,Goodbye World 😔!\n");
+    Ok(())
+}
+
 async fn test_file_upload(target: &str) -> actix_web::Result<()> {
     let req = get_request_to(target)
         .await?
