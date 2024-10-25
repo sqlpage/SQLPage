@@ -123,10 +123,10 @@ impl tokio::io::AsyncWrite for ResponseWriter {
         let capacity = self.response_bytes.max_capacity();
         let buffer = mem::take(&mut self.buffer);
         match self.get_mut().response_bytes.try_send(Ok(buffer.into())) {
-            Ok(_) => std::task::Poll::Ready(Ok(())),
+            Ok(()) => std::task::Poll::Ready(Ok(())),
             Err(e) => std::task::Poll::Ready(Err(std::io::Error::new(
                 std::io::ErrorKind::WouldBlock,
-                format!("{e}: Row limit exceeded. The server cannot store more than {} pending messages in memory. Try again later or increase max_pending_rows in the configuration.", capacity)
+                format!("{e}: Row limit exceeded. The server cannot store more than {capacity} pending messages in memory. Try again later or increase max_pending_rows in the configuration.")
             )))
         }
     }

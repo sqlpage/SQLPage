@@ -39,6 +39,7 @@ pub struct HeaderContext {
 }
 
 impl HeaderContext {
+    #[must_use]
     pub fn new(
         app_state: Arc<AppState>,
         request_context: RequestContext,
@@ -64,7 +65,7 @@ impl HeaderContext {
             Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
             Some("redirect") => self.redirect(&data).map(PageContext::Close),
             Some("json") => self.json(&data),
-            Some("csv") => self.csv(&data),
+            Some("csv") => self.csv(&data).await,
             Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
             Some("authentication") => self.authentication(data).await,
             _ => self.start_body(data).await,
@@ -225,10 +226,10 @@ impl HeaderContext {
         }
     }
 
-    fn csv(mut self, data: &JsonValue) -> anyhow::Result<PageContext> {
+    async fn csv(mut self, _data: &JsonValue) -> anyhow::Result<PageContext> {
         self.response
             .insert_header((header::CONTENT_TYPE, "text/csv"));
-        let csv_renderer = CsvBodyRenderer::new(self.writer);
+        let csv_renderer = CsvBodyRenderer::new(self.writer).await?;
         let renderer = AnyRenderBodyContext::Csv(csv_renderer);
         let http_response = self.response.take();
         Ok(PageContext::Body {
@@ -367,7 +368,7 @@ impl AnyRenderBodyContext {
         match self {
             AnyRenderBodyContext::Html(HtmlRenderContext { writer, .. })
             | AnyRenderBodyContext::Json(JsonBodyRenderer { writer, .. }) => {
-                writer.async_flush().await?
+                writer.async_flush().await?;
             }
             AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.flush().await?,
         }
@@ -456,11 +457,12 @@ pub struct CsvBodyRenderer {
 }
 
 impl CsvBodyRenderer {
-    pub fn new(writer: ResponseWriter) -> CsvBodyRenderer {
-        CsvBodyRenderer {
+    pub async fn new(mut writer: ResponseWriter) -> anyhow::Result<CsvBodyRenderer> {
+        tokio::io::AsyncWriteExt::flush(&mut writer).await?;
+        Ok(CsvBodyRenderer {
             writer: csv_async::AsyncWriter::from_writer(writer),
             is_first: true,
-        }
+        })
     }
 
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
@@ -473,7 +475,7 @@ impl CsvBodyRenderer {
         }
 
         if let Some(obj) = data.as_object() {
-            let values: Vec<_> = obj.values().map(|v| v.to_string()).collect();
+            let values: Vec<_> = obj.values().map(std::string::ToString::to_string).collect();
             self.writer.write_record(&values).await?;
         }
 
