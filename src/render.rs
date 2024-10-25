@@ -1,5 +1,6 @@
 use crate::templates::SplitTemplate;
-use crate::webserver::http::{AsyncResponseWriter, RequestContext, ResponseWriter};
+use crate::webserver::http::RequestContext;
+use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;

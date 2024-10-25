@@ -230,6 +230,7 @@ pub struct AppConfig {
     pub site_prefix: String,
 
     /// Maximum number of messages that can be stored in memory before sending them to the client.
+    /// This prevents a single request from using up all available memory.
     #[serde(default = "default_max_pending_rows")]
     pub max_pending_rows: usize,
 
@@ -470,6 +471,8 @@ fn default_https_acme_directory_url() -> String {
     "https://acme-v02.api.letsencrypt.org/directory".to_string()
 }
 
+/// If the sending queue exceeds this number of outgoing messages, an error will be thrown
+/// This prevents a single request from using up all available memory
 fn default_max_pending_rows() -> usize {
     256
 }
