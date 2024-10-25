@@ -794,7 +794,16 @@ This will generate a table with the stores in the first column, and the items in
 
 
 INSERT INTO component(name, icon, description) VALUES
-    ('csv', 'download', 'A button that lets the user download data as a CSV file. Each column from the items in the component will map to a column in the resulting CSV.');
+    ('csv', 'download', 'Lets the user download data as a CSV file.
+Each column from the items in the component will map to a column in the resulting CSV.
+
+When `csv` is used as a **header component** (without a [shell](?component=shell)), it will trigger a download of the CSV file directly on page load.
+If the csv file to download is large, we recommend using this approach.
+
+When used inside a page (after calling the shell component), this will add a button to the page that lets the user download the CSV file.
+The button will need to load the entire contents of the CSV file in memory, inside the browser, even if the user does not click on it.
+If the csv file to download is large, we recommend using this component without a shell component in order to efficiently stream the data to the browser.
+');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'csv', * FROM (VALUES
     -- top level
