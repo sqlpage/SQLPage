@@ -62,6 +62,7 @@ rustls = { version = "0.22.0" } # keep in sync with actix-web, awc, rustls-acme,
 rustls-native-certs = "0.7.0"
 awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }
 clap = { version = "4.5.17", features = ["derive"] }
+tokio-util = "0.7.12"
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }

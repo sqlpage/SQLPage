@@ -1,5 +1,5 @@
 use crate::templates::SplitTemplate;
-use crate::webserver::http::{RequestContext, ResponseWriter};
+use crate::webserver::http::{AsyncResponseWriter, RequestContext, ResponseWriter};
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
@@ -452,15 +452,16 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
 }
 
 pub struct CsvBodyRenderer {
-    writer: csv_async::AsyncWriter<ResponseWriter>,
+    writer: csv_async::AsyncWriter<AsyncResponseWriter>,
     is_first: bool,
 }
 
 impl CsvBodyRenderer {
-    pub async fn new(mut writer: ResponseWriter) -> anyhow::Result<CsvBodyRenderer> {
-        tokio::io::AsyncWriteExt::flush(&mut writer).await?;
+    pub async fn new(writer: ResponseWriter) -> anyhow::Result<CsvBodyRenderer> {
+        let mut async_writer = AsyncResponseWriter::new(writer);
+        tokio::io::AsyncWriteExt::flush(&mut async_writer).await?;
         Ok(CsvBodyRenderer {
-            writer: csv_async::AsyncWriter::from_writer(writer),
+            writer: csv_async::AsyncWriter::from_writer(async_writer),
             is_first: true,
         })
     }
@@ -497,6 +498,7 @@ impl CsvBodyRenderer {
             .into_inner()
             .await
             .expect("Failed to get inner writer")
+            .into_inner()
     }
 }
 

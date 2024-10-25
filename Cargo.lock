@@ -2948,6 +2948,7 @@ dependencies = [
  "sqlx-oldapi",
  "tokio",
  "tokio-stream",
+ "tokio-util",
 ]
 
 [[package]]

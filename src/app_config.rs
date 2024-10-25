@@ -129,6 +129,7 @@ impl AppConfig {
                 ));
             }
         }
+        anyhow::ensure!(self.max_pending_rows > 0, "max_pending_rows cannot be null");
         Ok(())
     }
 }
@@ -470,7 +471,7 @@ fn default_https_acme_directory_url() -> String {
 }
 
 fn default_max_pending_rows() -> usize {
-    256
+    1
 }
 
 fn default_compress_responses() -> bool {

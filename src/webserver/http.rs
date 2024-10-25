@@ -29,6 +29,7 @@ use std::mem;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::task::Poll;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
@@ -38,7 +39,7 @@ use tokio::sync::mpsc;
 #[derive(Clone)]
 pub struct ResponseWriter {
     buffer: Vec<u8>,
-    response_bytes: mpsc::Sender<actix_web::Result<Bytes>>,
+    response_bytes: mpsc::Sender<Bytes>,
 }
 
 #[derive(Clone)]
@@ -48,7 +49,7 @@ pub struct RequestContext {
 }
 
 impl ResponseWriter {
-    fn new(response_bytes: mpsc::Sender<actix_web::Result<Bytes>>) -> Self {
+    fn new(response_bytes: mpsc::Sender<Bytes>) -> Self {
         Self {
             response_bytes,
             buffer: Vec::new(),
@@ -57,20 +58,30 @@ impl ResponseWriter {
     async fn close_with_error(&mut self, mut msg: String) {
         if !self.response_bytes.is_closed() {
             if let Err(e) = self.async_flush().await {
-                msg.push_str(&format!("Unable to flush data: {e}"));
+                use std::fmt::Write;
+                write!(&mut msg, "Unable to flush data: {e}").unwrap();
             }
-            if let Err(e) = self
-                .response_bytes
-                .send(Err(ErrorInternalServerError(msg)))
-                .await
-            {
+            if let Err(e) = self.response_bytes.send(msg.into()).await {
                 log::error!("Unable to send error back to client: {e}");
             }
         }
     }
 
     pub async fn async_flush(&mut self) -> std::io::Result<()> {
-        tokio::io::AsyncWriteExt::flush(self).await
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
+        log::trace!(
+            "Flushing data to client: {}",
+            String::from_utf8_lossy(&self.buffer)
+        );
+        let sender = self
+            .response_bytes
+            .reserve()
+            .await
+            .map_err(|_| std::io::ErrorKind::WouldBlock)?;
+        sender.send(std::mem::take(&mut self.buffer).into());
+        Ok(())
     }
 }
 
@@ -89,7 +100,7 @@ impl Write for ResponseWriter {
             String::from_utf8_lossy(&self.buffer)
         );
         self.response_bytes
-            .try_send(Ok(mem::take(&mut self.buffer).into()))
+            .try_send(mem::take(&mut self.buffer).into())
             .map_err(|e|
                 std::io::Error::new(
                     std::io::ErrorKind::WouldBlock,
@@ -99,35 +110,49 @@ impl Write for ResponseWriter {
     }
 }
 
-impl tokio::io::AsyncWrite for ResponseWriter {
+pub struct AsyncResponseWriter {
+    poll_sender: tokio_util::sync::PollSender<Bytes>,
+    writer: ResponseWriter,
+}
+
+impl AsyncResponseWriter {
+    #[must_use]
+    pub fn new(writer: ResponseWriter) -> Self {
+        let sender = writer.response_bytes.clone();
+        Self {
+            poll_sender: tokio_util::sync::PollSender::new(sender),
+            writer,
+        }
+    }
+    #[must_use]
+    pub fn into_inner(self) -> ResponseWriter {
+        self.writer
+    }
+}
+impl tokio::io::AsyncWrite for AsyncResponseWriter {
     fn poll_write(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
         buf: &[u8],
-    ) -> std::task::Poll<Result<usize, std::io::Error>> {
-        self.get_mut().buffer.extend_from_slice(buf);
-        std::task::Poll::Ready(Ok(buf.len()))
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        Poll::Ready(self.as_mut().writer.write(buf))
     }
 
     fn poll_flush(
-        mut self: Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), std::io::Error>> {
-        if self.buffer.is_empty() {
-            return std::task::Poll::Ready(Ok(()));
-        }
-        log::trace!(
-            "Async flushing data to client: {}",
-            String::from_utf8_lossy(&self.buffer)
-        );
-        let capacity = self.response_bytes.max_capacity();
-        let buffer = mem::take(&mut self.buffer);
-        match self.get_mut().response_bytes.try_send(Ok(buffer.into())) {
-            Ok(()) => std::task::Poll::Ready(Ok(())),
-            Err(e) => std::task::Poll::Ready(Err(std::io::Error::new(
-                std::io::ErrorKind::WouldBlock,
-                format!("{e}: Row limit exceeded. The server cannot store more than {capacity} pending messages in memory. Try again later or increase max_pending_rows in the configuration.")
-            )))
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        let Self {
+            poll_sender,
+            writer,
+        } = self.get_mut();
+        match poll_sender.poll_reserve(cx) {
+            Poll::Ready(Ok(())) => {
+                let res = poll_sender.send_item(std::mem::take(&mut writer.buffer).into());
+                Poll::Ready(res.map_err(|_| std::io::ErrorKind::BrokenPipe.into()))
+            }
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(Err(_e)) => Poll::Ready(Err(std::io::ErrorKind::BrokenPipe.into())),
         }
     }
 
@@ -227,7 +252,8 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
                 renderer,
             } => {
                 let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
-                let http_response = http_response.streaming(body_stream);
+                let result_stream = body_stream.map(Ok::<_, actix_web::Error>);
+                let http_response = http_response.streaming(result_stream);
                 return Ok(ResponseWithWriter::RenderStream {
                     http_response,
                     renderer,
