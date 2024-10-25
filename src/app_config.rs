@@ -471,7 +471,7 @@ fn default_https_acme_directory_url() -> String {
 }
 
 fn default_max_pending_rows() -> usize {
-    1
+    256
 }
 
 fn default_compress_responses() -> bool {

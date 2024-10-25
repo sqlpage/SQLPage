@@ -163,6 +163,7 @@ impl tokio::io::AsyncWrite for AsyncResponseWriter {
         self.poll_flush(cx)
     }
 }
+
 impl Drop for ResponseWriter {
     fn drop(&mut self) {
         if let Err(e) = std::io::Write::flush(self) {
