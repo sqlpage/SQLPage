@@ -7,13 +7,17 @@
         {{~#if (eq @row_index 0)~}}{{! header }}
             {{~#each this~}}
                 {{~url_encode (csv_escape @key ../../separator)~}}
-                {{~default ../../separator ","~}}
+                {{~#if (not @last)~}}
+                    {{default ../../separator ","}}
+                {{~/if~}}
             {{~/each~}}
         %0A{{! %0A = newline}}
         {{~/if~}}
         {{~#each this~}}
             {{~url_encode (csv_escape this ../../separator)~}}
-            {{~default ../../separator ","~}}
+            {{~#if (not @last)~}}
+                {{default ../../separator ","}}
+            {{~/if~}}
         {{~/each~}}
     %0A
 {{~/each_row~}}
