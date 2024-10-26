@@ -270,7 +270,7 @@ async fn test_csv_body() -> actix_web::Result<()> {
     );
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
-    assert_eq!(body_str, "id;msg\n0;Hello World 😊!\n1;Goodbye World 😔!\n");
+    assert_eq!(body_str, "id;msg\n0;Hello World !\n1;\"Tu gères ';' et '\"\"' ?\"\n");
     Ok(())
 }
 
