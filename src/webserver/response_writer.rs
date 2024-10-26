@@ -143,7 +143,7 @@ impl tokio::io::AsyncWrite for AsyncResponseWriter {
 impl Drop for ResponseWriter {
     fn drop(&mut self) {
         if let Err(e) = std::io::Write::flush(self) {
-            log::error!("Could not flush data to client: {e}");
+            log::debug!("Could not flush data to client: {e}");
         }
     }
 }

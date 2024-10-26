@@ -69,7 +69,8 @@ async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRe
         }
         if let Err(e) = &renderer.flush().await {
             log::error!(
-                "Stopping rendering early because we were unable to flush data to client: {e:#}"
+                "Stopping rendering early because we were unable to flush data to client. \
+                The user has probably closed the connection before we finished rendering the page: {e:#}"
             );
             // If we cannot write to the client anymore, there is nothing we can do, so we just stop rendering
             return;
