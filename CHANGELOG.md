@@ -13,6 +13,7 @@
   - **Ease of use** : the component can now be used to automatically format any query result as a json array, without manually using your database''s json functions.
   - **server-sent events** : the component can now be used to stream query results to the client in real-time using server-sent events.
  - The [csv](https://sql.datapage.app/component.sql?component=csv) component can now be used as a header component to trigger a download of the CSV file directly on page load. Just select the `csv` as a component without a shell before it, and the CSV will be efficiently streamed to the user''s browser. This finally allows efficiently serving large datasets as CSV.
+ - In the shell component, the site title is no longer wrapped in a `<h1>` tag, which should help search engines better understand the content of the page, and potentially improve SEO.
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
