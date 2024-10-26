@@ -473,11 +473,11 @@ impl CsvBodyRenderer {
         options: &JsonValue,
     ) -> anyhow::Result<CsvBodyRenderer> {
         let mut builder = csv_async::AsyncWriterBuilder::new();
-        if let Some(delimiter) = get_object_str(options, "delimiter") {
-            let &[delimiter_byte] = delimiter.as_bytes() else {
-                bail!("Invalid csv delimiter: {delimiter:?}. It must be a single byte.");
+        if let Some(separator) = get_object_str(options, "separator") {
+            let &[separator_byte] = separator.as_bytes() else {
+                bail!("Invalid csv separator: {separator:?}. It must be a single byte.");
             };
-            builder.delimiter(delimiter_byte);
+            builder.delimiter(separator_byte);
         }
         if let Some(quote) = get_object_str(options, "quote") {
             let &[quote_byte] = quote.as_bytes() else {
