@@ -231,10 +231,13 @@ impl HeaderContext {
     async fn csv(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         self.response
             .insert_header((header::CONTENT_TYPE, "text/csv; charset=utf-8"));
-        if let Some(filename) = get_object_str(options, "filename") {
+        if let Some(filename) =
+            get_object_str(options, "filename").or_else(|| get_object_str(options, "title"))
+        {
+            let extension = if filename.contains('.') { "" } else { ".csv" };
             self.response.insert_header((
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename={filename}"),
+                format!("attachment; filename={filename}{extension}"),
             ));
         }
         let csv_renderer = CsvBodyRenderer::new(self.writer, options).await?;
