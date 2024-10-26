@@ -516,23 +516,18 @@ impl CsvBodyRenderer {
 
         if let Some(obj) = data.as_object() {
             self.writer
-                .write_record(
-                    self.columns
-                        .iter()
-                        .map(|s| {
-                            let val = obj.get(s);
-                            if let Some(val) = val {
-                                if let Some(s) = val.as_str() {
-                                    Cow::Borrowed(s.as_bytes())
-                                } else {
-                                    Cow::Owned(val.to_string().into_bytes())
-                                }
-                            } else {
-                                Cow::Borrowed(&b""[..])
-                            }
-                        })
-                        .collect::<Vec<_>>(),
-                )
+                .write_record(self.columns.iter().map(|s| {
+                    let val = obj.get(s);
+                    if let Some(val) = val {
+                        if let Some(s) = val.as_str() {
+                            Cow::Borrowed(s.as_bytes())
+                        } else {
+                            Cow::Owned(val.to_string().into_bytes())
+                        }
+                    } else {
+                        Cow::Borrowed(&b""[..])
+                    }
+                }))
                 .await?;
         }
 
