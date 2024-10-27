@@ -14,6 +14,9 @@
   - **server-sent events** : the component can now be used to stream query results to the client in real-time using server-sent events.
  - The [csv](https://sql.datapage.app/component.sql?component=csv) component can now be used as a header component to trigger a download of the CSV file directly on page load. Just select the `csv` as a component without a shell before it, and the CSV will be efficiently streamed to the user''s browser. This finally allows efficiently serving large datasets as CSV.
  - In the shell component, the site title is no longer wrapped in a `<h1>` tag, which should help search engines better understand the content of the page, and potentially improve SEO.
+ - Improve table search and sort:
+  - sorting and searching should now be faster on large tables. Searching (filtering) is now especially fast, and should not take more than a few milliseconds even on tables with thousands of rows.
+  - sorting should now work correctly on markdown columns. Markdown links used to be sorted according to the link URL, which was not intuitive. Now, only the displayed text is used for sorting.
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.

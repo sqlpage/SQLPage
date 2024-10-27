@@ -708,9 +708,9 @@ INSERT INTO example(component, description, properties) VALUES
         '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
         '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]')),
     ('table', 'A table that uses markdown to display links',
-        json('[{"component":"table", "markdown": "Documentation", "icon": "icon", "sort": true, "search": true}, '||
-        '{"icon": "table", "name": "Table", "description": "Displays SQL results as a searchable table.", "Documentation": "[docs](documentation.sql?component=table)", "_sqlpage_color": "red"},
-        {"icon": "timeline", "name": "Chart", "description": "Show graphs based on numeric data.", "Documentation": "[docs](documentation.sql?component=chart)"}
+        json('[{"component":"table", "markdown": "Name", "icon": "icon", "sort": true, "search": true}, '||
+        '{"icon": "table", "name": "[Table](?component=table)", "description": "Displays SQL results as a searchable table.", "_sqlpage_color": "red"},
+        {"icon": "timeline", "name": "[Chart](?component=chart)", "description": "Show graphs based on numeric data."}
         ]')),
     (
     'table',

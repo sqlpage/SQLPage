@@ -1,53 +1,80 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js */
-/* !include https://cdn.jsdelivr.net/npm/list.js-fixed@2.3.4/dist/list.min.js */
-
 const nonce = document.currentScript.nonce;
 
 function sqlpage_card() {
-    for (const c of document.querySelectorAll("[data-pre-init=card]")) {
-        const source = c.dataset.embed;
-        fetch(c.dataset.embed)
-            .then(res => res.text())
-            .then(html => {
-                const body = c.querySelector(".card-content");
-                body.innerHTML = html;
-                c.removeAttribute("data-pre-init");
-                const spinner = c.querySelector(".card-loading-placeholder");
-                if (spinner) {
-                    spinner.parentNode.removeChild(spinner);
-                }
-                const fragLoadedEvt = new CustomEvent("fragment-loaded", {
-                    bubbles: true
-                });
-                c.dispatchEvent(fragLoadedEvt);
-            })
-    }
-}
-
-function sqlpage_table(){
-    // Tables
-    for (const r of document.querySelectorAll("[data-pre-init=table]")) {
-        const list = new List(r, {
-            valueNames: [...r.getElementsByTagName("th")].map(t => t.textContent),
-            searchDelay: 100,
-            // Hurts performance, but prevents https://github.com/lovasoa/SQLpage/issues/542
-            // indexAsync: true
-        });
-        const search_input = r.querySelector("input.search");
-        if (search_input && search_input.value) {
-            list.search(search_input.value);
+  for (const c of document.querySelectorAll("[data-pre-init=card]")) {
+    const source = c.dataset.embed;
+    fetch(c.dataset.embed)
+      .then(res => res.text())
+      .then(html => {
+        const body = c.querySelector(".card-content");
+        body.innerHTML = html;
+        c.removeAttribute("data-pre-init");
+        const spinner = c.querySelector(".card-loading-placeholder");
+        if (spinner) {
+          spinner.parentNode.removeChild(spinner);
         }
-        r.removeAttribute("data-pre-init");
-    }
+        const fragLoadedEvt = new CustomEvent("fragment-loaded", {
+          bubbles: true
+        });
+        c.dispatchEvent(fragLoadedEvt);
+      })
+  }
 }
 
-function sqlpage_select_dropdown(){
+/** @param {HTMLElement} el */
+function table_search_sort(el) {
+  /** @type {HTMLInputElement} */
+  const search_input = el.querySelector("input.search");
+  const sort_buttons = [...el.querySelectorAll("button.sort[data-sort]")];
+  const item_parent = el.querySelector("tbody");
+  const items = [...item_parent.querySelectorAll("tr")].map(el => ({
+    el,
+    sort_keys: sort_buttons.map(b => {
+      const sort_key = el.getElementsByClassName(b.dataset.sort)[0]?.textContent;
+      return { num: parseFloat(sort_key), str: sort_key };
+    })
+  }));
+  function onSearch() {
+    const lower_search = search_input.value.toLowerCase().split(/\s+/).filter(s => s);
+    items.forEach(item => {
+      const show = lower_search.every(s => item.el.textContent.toLowerCase().includes(s));
+      item.el.style.display = show ? "" : "none";
+    });
+  }
+  search_input.addEventListener("input", onSearch);
+  onSearch();
+  sort_buttons.forEach((button, button_index) => {
+    button.addEventListener("click", function sort_items() {
+      const sort_desc = button.classList.contains("asc");
+      sort_buttons.forEach(b => b.classList.remove("asc", "desc"));
+      button.classList.add(sort_desc ? "desc" : "asc");
+      const multiplier = sort_desc ? -1 : 1;
+      items.sort((a, b) => {
+        const a_key = a.sort_keys[button_index];
+        const b_key = b.sort_keys[button_index];
+        return multiplier * ((isNaN(a_key.num) || isNaN(b_key.num)) ? a_key.str.localeCompare(b_key.str) : a_key.num - b_key.num);
+      });
+      item_parent.append(...items.map(item => item.el));
+    });
+  });
+}
+
+function sqlpage_table() {
+  // Tables
+  for (const r of document.querySelectorAll("[data-pre-init=table]")) {
+    table_search_sort(r);
+    r.removeAttribute("data-pre-init");
+  }
+}
+
+function sqlpage_select_dropdown() {
   const selects = document.querySelectorAll("[data-pre-init=select-dropdown]");
   if (!selects.length) return;
   const src = "https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.popular.min.js";
   if (!window.TomSelect) {
     const script = document.createElement("script");
-    script.src= src;
+    script.src = src;
     script.integrity = "sha384-aAqv9vleUwO75zAk1sGKd5VvRqXamBXwdxhtihEUPSeq1HtxwmZqQG/HxQnq7zaE";
     script.crossOrigin = "anonymous";
     script.nonce = nonce;
@@ -56,9 +83,9 @@ function sqlpage_select_dropdown(){
     return;
   }
   for (const s of selects) {
-      new TomSelect(s, {
-        create: s.dataset.create_new
-      });
+    new TomSelect(s, {
+      create: s.dataset.create_new
+    });
   }
 }
 
@@ -66,127 +93,127 @@ let is_leaflet_injected = false;
 let is_leaflet_loaded = false;
 
 function sqlpage_map() {
-    const first_map = document.querySelector("[data-pre-init=map]");
-    if (first_map && !is_leaflet_injected) {
-      // Add the leaflet js and css to the page
-      const leaflet_css = document.createElement("link");
-      leaflet_css.rel = "stylesheet";
-      leaflet_css.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
-      leaflet_css.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
-      leaflet_css.crossOrigin = "anonymous";
-      document.head.appendChild(leaflet_css);
-      const leaflet_js = document.createElement("script");
-      leaflet_js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
-      leaflet_js.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
-      leaflet_js.crossOrigin = "anonymous";
-      leaflet_js.nonce = nonce;
-      leaflet_js.onload = onLeafletLoad;
-      document.head.appendChild(leaflet_js);
-      is_leaflet_injected = true;
-    }
-    if (first_map && is_leaflet_loaded) {
-      onLeafletLoad();
-    }
-    function parseCoords(coords) {
-      return coords && coords.split(",").map(c => parseFloat(c));
-    }
-    function onLeafletLoad() {
-      is_leaflet_loaded = true;
-      const maps = document.querySelectorAll("[data-pre-init=map]");
-      for (const m of maps) {
-        const tile_source = m.dataset.tile_source;
-        const maxZoom = +m.dataset.max_zoom;
-        const attribution = m.dataset.attribution;
-        const map = L.map(m, { attributionControl: !!attribution });
-        const zoom = m.dataset.zoom;
-        let center = parseCoords(m.dataset.center);
-        if (tile_source) L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
-        map._sqlpage_markers = [];
-        for (const marker_elem of m.getElementsByClassName("marker")) {
-          setTimeout(addMarker, 0, marker_elem, map);
-        }
-        setTimeout(() => {
-          if (center == null && map._sqlpage_markers.length) {
-            map.fitBounds(map._sqlpage_markers.map(m => 
-              m.getLatLng ? m.getLatLng() : m.getBounds()
-            ));
-            if (zoom != null) map.setZoom(+zoom);
-          } else map.setView(center, +zoom);
-        }, 100);
-        m.removeAttribute("data-pre-init");
-        m.getElementsByClassName("spinner-border")[0]?.remove();
+  const first_map = document.querySelector("[data-pre-init=map]");
+  if (first_map && !is_leaflet_injected) {
+    // Add the leaflet js and css to the page
+    const leaflet_css = document.createElement("link");
+    leaflet_css.rel = "stylesheet";
+    leaflet_css.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
+    leaflet_css.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
+    leaflet_css.crossOrigin = "anonymous";
+    document.head.appendChild(leaflet_css);
+    const leaflet_js = document.createElement("script");
+    leaflet_js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
+    leaflet_js.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
+    leaflet_js.crossOrigin = "anonymous";
+    leaflet_js.nonce = nonce;
+    leaflet_js.onload = onLeafletLoad;
+    document.head.appendChild(leaflet_js);
+    is_leaflet_injected = true;
+  }
+  if (first_map && is_leaflet_loaded) {
+    onLeafletLoad();
+  }
+  function parseCoords(coords) {
+    return coords && coords.split(",").map(c => parseFloat(c));
+  }
+  function onLeafletLoad() {
+    is_leaflet_loaded = true;
+    const maps = document.querySelectorAll("[data-pre-init=map]");
+    for (const m of maps) {
+      const tile_source = m.dataset.tile_source;
+      const maxZoom = +m.dataset.max_zoom;
+      const attribution = m.dataset.attribution;
+      const map = L.map(m, { attributionControl: !!attribution });
+      const zoom = m.dataset.zoom;
+      let center = parseCoords(m.dataset.center);
+      if (tile_source) L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
+      map._sqlpage_markers = [];
+      for (const marker_elem of m.getElementsByClassName("marker")) {
+        setTimeout(addMarker, 0, marker_elem, map);
       }
+      setTimeout(() => {
+        if (center == null && map._sqlpage_markers.length) {
+          map.fitBounds(map._sqlpage_markers.map(m =>
+            m.getLatLng ? m.getLatLng() : m.getBounds()
+          ));
+          if (zoom != null) map.setZoom(+zoom);
+        } else map.setView(center, +zoom);
+      }, 100);
+      m.removeAttribute("data-pre-init");
+      m.getElementsByClassName("spinner-border")[0]?.remove();
     }
+  }
 
-    function addMarker(marker_elem, map) {
-      const { dataset } = marker_elem;
-      const options = {
-        color: marker_elem.dataset.color,
-        title: marker_elem.getElementsByTagName("h3")[0].textContent.trim(),
-      };
-      const marker = 
-        dataset.coords ? createMarker(marker_elem, options)
-                       : createGeoJSONMarker(marker_elem, options);
-      marker.addTo(map);
-      map._sqlpage_markers.push(marker);
-      if (options.title) marker.bindPopup(marker_elem);
-      else if (marker_elem.dataset.link) marker.on('click', () => window.location = marker_elem.dataset.link);
+  function addMarker(marker_elem, map) {
+    const { dataset } = marker_elem;
+    const options = {
+      color: marker_elem.dataset.color,
+      title: marker_elem.getElementsByTagName("h3")[0].textContent.trim(),
+    };
+    const marker =
+      dataset.coords ? createMarker(marker_elem, options)
+        : createGeoJSONMarker(marker_elem, options);
+    marker.addTo(map);
+    map._sqlpage_markers.push(marker);
+    if (options.title) marker.bindPopup(marker_elem);
+    else if (marker_elem.dataset.link) marker.on('click', () => window.location = marker_elem.dataset.link);
+  }
+  function createMarker(marker_elem, options) {
+    const coords = parseCoords(marker_elem.dataset.coords);
+    const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
+    if (icon_obj) {
+      const size = 1.5 * +(options.size || icon_obj.firstChild?.getAttribute('width') || 24);
+      options.icon = L.divIcon({
+        html: icon_obj,
+        className: `border-0 bg-${options.color || 'primary'} bg-gradient text-white rounded-circle shadow d-flex justify-content-center align-items-center`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      });
     }
-    function createMarker(marker_elem, options) {
-      const coords = parseCoords(marker_elem.dataset.coords);
-      const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
-      if (icon_obj) {
-        const size = 1.5 * +(options.size || icon_obj.firstChild?.getAttribute('width') || 24);
-        options.icon = L.divIcon({
-          html: icon_obj,
-          className: `border-0 bg-${options.color || 'primary'} bg-gradient text-white rounded-circle shadow d-flex justify-content-center align-items-center`,
-          iconSize: [size, size],
-          iconAnchor: [size/2, size/2],
-        });
-      }
-      return L.marker(coords, options);
+    return L.marker(coords, options);
+  }
+  function createGeoJSONMarker(marker_elem, options) {
+    let geojson = JSON.parse(marker_elem.dataset.geojson);
+    if (options.color) {
+      options.color = get_tabler_color(options.color) || options.color;
     }
-    function createGeoJSONMarker(marker_elem, options) {
-      let geojson = JSON.parse(marker_elem.dataset.geojson);
-      if (options.color) {
-        options.color = get_tabler_color(options.color) || options.color;
-      }
-      function style({ properties }) {
-        if (typeof properties !== "object") return options;
-        return {...options, ...properties};
-      }
-      function pointToLayer(feature, latlng) {
-        marker_elem.dataset.coords = latlng.lat + "," + latlng.lng;
-        return createMarker(marker_elem, { ...options, ...feature.properties });
-      }
-      return L.geoJSON(geojson, { style, pointToLayer });
+    function style({ properties }) {
+      if (typeof properties !== "object") return options;
+      return { ...options, ...properties };
     }
+    function pointToLayer(feature, latlng) {
+      marker_elem.dataset.coords = latlng.lat + "," + latlng.lng;
+      return createMarker(marker_elem, { ...options, ...feature.properties });
+    }
+    return L.geoJSON(geojson, { style, pointToLayer });
+  }
 }
 
 function sqlpage_form() {
-    const file_inputs = document.querySelectorAll("input[type=file][data-max-size]");
-    for (const input of file_inputs) {
-      const max_size = +input.dataset.maxSize;
-      input.addEventListener("change", function() {
-        input.classList.remove("is-invalid");
-        input.setCustomValidity("");
-        for (const {size} of this.files) {
-          if (size > max_size){
-            input.classList.add("is-invalid");
-            return input.setCustomValidity(`File size must be less than ${max_size/1000} kB.`);
-          }
+  const file_inputs = document.querySelectorAll("input[type=file][data-max-size]");
+  for (const input of file_inputs) {
+    const max_size = +input.dataset.maxSize;
+    input.addEventListener("change", function () {
+      input.classList.remove("is-invalid");
+      input.setCustomValidity("");
+      for (const { size } of this.files) {
+        if (size > max_size) {
+          input.classList.add("is-invalid");
+          return input.setCustomValidity(`File size must be less than ${max_size / 1000} kB.`);
         }
-      });
-    }
+      }
+    });
+  }
 }
 
 function get_tabler_color(name) {
-    return getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + name);
+  return getComputedStyle(document.documentElement).getPropertyValue('--tblr-' + name);
 }
 
 function load_scripts() {
   let addjs = document.querySelectorAll("[data-sqlpage-js]");
-  for (const js of new Set([...addjs].map(({dataset}) => dataset.sqlpageJs))) {
+  for (const js of new Set([...addjs].map(({ dataset }) => dataset.sqlpageJs))) {
     const script = document.createElement("script");
     script.src = js;
     document.head.appendChild(script);
@@ -207,13 +234,13 @@ add_init_fn(sqlpage_form);
 add_init_fn(load_scripts);
 
 function init_bootstrap_components(event) {
-    if (window.bootstrap) {
-        const fragment = event.target;
-        fragment.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-        fragment.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
-        fragment.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(el => new bootstrap.Dropdown(el));
-        fragment.querySelectorAll('[data-bs-ride="carousel"]').forEach(el => new bootstrap.Carousel(el));
-    }
+  if (window.bootstrap) {
+    const fragment = event.target;
+    fragment.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+    fragment.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
+    fragment.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(el => new bootstrap.Dropdown(el));
+    fragment.querySelectorAll('[data-bs-ride="carousel"]').forEach(el => new bootstrap.Carousel(el));
+  }
 }
 
 document.addEventListener('fragment-loaded', init_bootstrap_components);
