@@ -810,14 +810,38 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('separator', 'How individual values should be separated in the CSV. "," by default, set it to "\t" for tab-separated values.', 'TEXT', TRUE, TRUE),
     ('title', 'The text displayed on the download button.', 'TEXT', TRUE, FALSE),
     ('filename', 'The name of the file that should be downloaded (without the extension).', 'TEXT', TRUE, TRUE),
-    ('icon', 'Name of the icon (from tabler-icons.io) to display in the button.', 'ICON', TRUE, TRUE),
-    ('color', 'Color of the button', 'COLOR', TRUE, TRUE),
-    ('size', 'The size of the button (e.g., sm, lg).', 'TEXT', TRUE, TRUE),
+    ('icon', 'Name of the icon (from tabler-icons.io) to display in the button. Ignored when used as a header component.', 'ICON', TRUE, TRUE),
+    ('color', 'Color of the button. Ignored when used as a header component.', 'COLOR', TRUE, TRUE),
+    ('size', 'The size of the button (e.g., sm, lg). Ignored when used as a header component.', 'TEXT', TRUE, TRUE),
     ('bom', 'Whether to include a Byte Order Mark (a special character indicating the character encoding) at the beginning of the file. This is useful for Excel compatibility.', 'BOOLEAN', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
-    ('csv', 'CSV download button',
+    ('csv', '
+### Header component: creating a CSV download URL
+
+You can create a page that will trigger a download of the CSV file when the user visits it.
+The contents will be streamed efficiently from the database to the browser, without being fully loaded in memory.
+This makes it possible to download even very large files without overloading the database server, the web server, or the client''s browser.
+
+#### `csv_download.sql`
+
+```sql
+select ''csv'' as component, ''example.csv'' as filename;
+SELECT * FROM my_large_table;
+```
+
+#### `index.sql`
+',
+        json('[{"component":"button"}, {"title": "Download my data", "link": "/examples/csv_download.sql"}]')),
+    ('csv', '
+### CSV download button
+
+This will generate a button to download the CSV file.
+The button element itself will embed the entire contents of the CSV file, so it should not be used for large files.
+The file will be entirely loaded in memory on the user''s browser, even if the user does not click on the button.
+For smaller files, this is easier and faster to use than creating a separate SQL file to generate the CSV.
+',
         json('[{"component":"csv", "title": "Download my data", "filename": "people", "icon": "file-download", "color": "green", "separator": ";", "bom": true}, '||
         '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
         '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]'));
