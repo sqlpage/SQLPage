@@ -324,28 +324,24 @@ MySQL provides the JSON_TABLE() function to iterate over JSON arrays. This power
 Here''s an example of how to use JSON_TABLE() to iterate over a JSON array:
 
 ```sql
-SELECT jt.*
+SELECT jt.name
 FROM JSON_TABLE(
   ''["Alice", "Bob", "Charlie"]'',
-  ''$[*]'' COLUMNS(
-    row_num FOR ORDINALITY,
-    name VARCHAR(50) PATH ''$''
-  )
+  ''$[*]'' COLUMNS( name VARCHAR(50) PATH ''$'' )
 ) AS jt;
 ```
 
-| row_num | name    |
-|---------|---------|
-| 1       | Alice   |
-| 2       | Bob     |
-| 3       | Charlie |
+| name    |
+|---------|
+| Alice   |
+| Bob     |
+| Charlie |
 
 In this example:
 - The first argument to JSON_TABLE() is the JSON array.
 - `''$[*]''` is the path expression that selects all elements of the array.
-- COLUMNS clause defines the structure of the output table:
-  - `row_num FOR ORDINALITY` creates a column that numbers the rows.
-  - `name VARCHAR(50) PATH ''$''` creates a column that contains the value of each array element.
+- The `COLUMNS` clause defines the structure of the output table. In our case, we want a single column named `name`:
+  - `name VARCHAR(50) PATH ''$''` creates a text column that contains the raw value of each array element in its entirety (`$` is the current element).
 
 You can also use JSON_TABLE() with more complex JSON structures:
 
@@ -354,24 +350,23 @@ SELECT jt.*
 FROM JSON_TABLE(
   ''[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}, {"id": 3, "name": "Charlie"}]'',
   ''$[*]'' COLUMNS(
-    row_num FOR ORDINALITY,
-    id INT PATH ''$.id'',
-    name VARCHAR(50) PATH ''$.name''
+      id INT PATH ''$.id'',
+      name VARCHAR(50) PATH ''$.name''
   )
 ) AS jt;
 ```
 
-| row_num | id | name    |
-|---------|------|---------|
-| 1       | 1    | Alice   |
-| 2       | 2    | Bob     |
-| 3       | 3    | Charlie |
+| id | name    |
+|----|---------|
+| 1  | Alice   |
+| 2  | Bob     |
+| 3  | Charlie |
 
 This approach allows you to easily iterate over JSON arrays and access their elements in a tabular format, which can be very useful for further processing or joining with other tables in your database.
 
 ### Iterating over a JSON object
 
-MySQL provides the `JSON_TABLE` function to iterate over JSON objects:
+The `JSON_TABLE` function can also be used to iterate over JSON objects:
 
 ```sql
 SELECT jt.*
@@ -387,6 +382,23 @@ FROM JSON_TABLE(
 |-------|
 | "Alice" |
 | "1990-01-15" |
+
+#### Iterating over key-value pairs
+
+You can use the `JSON_KEYS()` function to retrieve the list of keys in a JSON object as a JSON array,
+then use that array to iterate over the keys of a JSON object:
+
+```sql
+SELECT json_key, json_extract(json_str, CONCAT(''$.'', json_key)) as json_value
+FROM
+    (select ''{"name": "Alice", "birthday": "1990-01-15"}'' as json_str) AS my_json,
+    JSON_TABLE(json_keys(json_str), ''$[*]'' COLUMNS (json_key JSON PATH ''$'')) AS json_keys;
+```
+
+| json_key | json_value |
+|----------|------------|
+| name     | Alice      |
+| birthday | 1990-01-15 |
 
 ### Querying JSON data
 
