@@ -1,23 +1,58 @@
 # CHANGELOG.md
 
-## 0.30.0 (unreleased)
+## 0.30.0 (2024-10-30)
 
- - **Fix**: the search feature in the shell component was not working when no menu item was defined.
- - Add support for encrypted Microsoft SQL Server connections. This finally allows connecting to databases that refuse clear-text connections, such as those hosted on Azure.
- - Easier json handling in databases without a native json type. SQLPage now detects when you use a json function in SQLite or MariaDB to generate a column, and automatically converts the resulting string to a json object. This allows easily using components that take json parameters (like the new columns component) in MariaDB and SQLite.
- - Add a new optional `database_password` configuration option to set the password for the database connection separately from the connection string. This allows to keep the password separate from the connection string, which can be useful for security purposes, logging, and avoids having to percent-encode the password in the connection string.
- - New `initial_search_value` property in the table component to pre-fill the search bar with a value. This allows to display the table rows that will initially be filtered out by the search bar.
- - Fix autoplay of carousels when embedded in a card.
- - Allow setting image width and height in carousels, in order to avoid differently sized images to cause layout janking when going through them. 
- - Many improvements to the [json](https://sql.datapage.app/component.sql?component=json) component, making it easier and faster than ever to build REST APIs entirely in SQL.
-  - **Ease of use** : the component can now be used to automatically format any query result as a json array, without manually using your database''s json functions.
-  - **server-sent events** : the component can now be used to stream query results to the client in real-time using server-sent events.
- - The [csv](https://sql.datapage.app/component.sql?component=csv) component can now be used as a header component to trigger a download of the CSV file directly on page load. Just select the `csv` as a component without a shell before it, and the CSV will be efficiently streamed to the user''s browser. This finally allows efficiently serving large datasets as CSV.
- - In the shell component, the site title is no longer wrapped in a `<h1>` tag, which should help search engines better understand the content of the page, and potentially improve SEO.
- - Improve table search and sort:
-  - sorting and searching should now be faster on large tables. Searching (filtering) is now especially fast, and should not take more than a few milliseconds even on tables with thousands of rows.
-  - sorting should now work correctly on markdown columns. Markdown links used to be sorted according to the link URL, which was not intuitive. Now, only the displayed text is used for sorting.
- - Updated tabler icons to v3.21.0, making many new icons available: https://tabler.io/changelog
+### 🤖 Easy APIs
+- **Enhanced CSV Support**: The [CSV component](https://sql.datapage.app/component.sql?component=csv) can now create URLs that trigger a CSV download directly on page load.
+  - This finally makes it possible to allow the download of large datasets as CSV
+  - This makes it possible to create an API that returns data as CSV and can be easily exposed to other software for interoperabily. 
+ - **Easy [json](https://sql.datapage.app/component.sql?component=json) APIs**
+   - The json component now accepts a second sql query, and will return the results as a json array in a very resource-efficient manner. This makes it easier and faster than ever to build REST APIs entirely in SQL.
+      - ```sql
+        select 'json' as component;
+        select * from users;
+        ```
+      - ```json
+        [ { "id": 0, "name": "Jon Snow" }, { "id": 1, "name": "Tyrion Lannister" } ]
+        ```
+   - **Ease of use** : the component can now be used to automatically format any query result as a json array, without manually using your database''s json functions.
+   - **server-sent events** : the component can now be used to stream query results to the client in real-time using server-sent events.
+
+### 🔒 Database Connectivity
+- **Encrypted Microsoft SQL Server Connections**: SQLPage now supports encrypted connections to SQL Server databases, enabling connections to secure databases (e.g., those hosted on Azure).
+- **Separate Database Password Setting**: Added `database_password` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md) to store passwords securely outside the connection string. This is useful for security purposes, to avoid accidentally leaking the password in logs. This also allows setting the database password as an environment variable directly, without having to URL-encode it inside the connection string.
+
+### 😎 Developer experience improvements
+- **Improved JSON Handling**: SQLPage now automatically converts JSON strings to JSON objects in databases like SQLite and MariaDB, making it easier to use JSON-based components.
+  - ```sql
+    -- Now works out of the box in SQLite
+    select 'big_number' as component;
+    select 'Daily performance' as title, perf as value;
+        json_object(
+          'label', 'Monthly',
+          'link', 'monthly.sql'
+        ) as dropdown_item
+    from performance;
+    ```
+ 
+### 📈 Table & Search Improvements
+- **Initial Search Value**: Pre-fill the search bar with a default value in tables with `initial_search_value`, making it easier to set starting filters.
+- **Faster Sorting and Searching**: Table filtering and sorting has been entirely rewritten.
+  - filtering is much faster for large datasets
+  - sorting columns that contain images and links now works as expected
+  - Since the new code is smaller, initial page loads should be slightly faster, even on pages that do not use tables
+
+### 🖼️ UI & UX Improvements
+
+- **[Carousel](https://sql.datapage.app/component.sql?component=carousel) Updates**:
+  - Autoplay works as expected when embedded in a card.
+  - Set image width and height to prevent layout shifts due to varying image sizes.
+- **Improved Site SEO**: The site title in the shell component is no longer in `<h1>` tags, which should aid search engines in understanding content better, and avoid confusing between the site name and the page's title.
+
+### 🛠️ Fixes and improvements
+
+- **Shell Component Search**: Fixed search feature when no menu item is defined.
+- **Updated Icons**: The Tabler icon set has been refreshed with the latest update.
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
