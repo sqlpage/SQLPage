@@ -52,7 +52,7 @@
 ### 🛠️ Fixes and improvements
 
 - **Shell Component Search**: Fixed search feature when no menu item is defined.
-- **Updated Icons**: The Tabler icon set has been refreshed with the latest update.
+- **Updated Icons**: The Tabler icon set has been refreshed from 3.10 to 3.21, making many new icons available: https://tabler.io/changelog
 
 ## 0.29.0 (2024-09-25)
  - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
