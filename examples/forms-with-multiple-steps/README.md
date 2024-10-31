@@ -15,6 +15,21 @@ This example illustrates the main ones.
 All the examples will implement the same simple form:
 a form that asks for a person's name, email, and age.
 
+## [Storing the state in hidden fields](./hidden/)
+
+![schema](./hidden/illustration.png)
+
+You can store the state of the partially filled form in hidden fields,
+using `'hidden' as type` in the [form component](https://sql.datapage.app/component.sql?component=form#component).
+
+ - **advantages**
+   - simple to implement
+   - the form state is not sent to the server when the user navigates to other pages
+ - **disadvantages**
+   - the entire state is re-sent to the server on each step
+   - you need to reference all the previous answers in each step
+   - no *backwards navigation*: the user has to fill in the steps in order. If they go back to a previous step, you cannot prefill the form with the previous answers, or save the data they have already entered.
+
 ## [Storing the state in the database](./database/)
 
 You can store the state of the partially filled form in the database,
@@ -47,16 +62,3 @@ and retrieve it on the next step using the
    - the entire state is re-sent to the server on each step
    - the user needs to have cookies enabled to fill in the form
    - if the user leaves the form before submitting it, the form state will keep being sent to all the pages he visits until he submits the form.
-
-## [Storing the state in hidden fields](./hidden/)
-
-You can store the state of the partially filled form in hidden fields,
-using `'hidden' as type` in the [form component](https://sql.datapage.app/component.sql?component=form#component).
-
- - **advantages**
-   - simple to implement
-   - the form state is not sent to the server when the user navigates to other pages
- - **disadvantages**
-   - the entire state is re-sent to the server on each step
-   - you need to reference all the previous answers in each step
-   - no *backwards navigation*: the user has to fill in the steps in order. If they go back to a previous step, you cannot prefill the form with the previous answers, or save the data they have already entered.
