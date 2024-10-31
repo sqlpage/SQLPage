@@ -708,15 +708,15 @@ INSERT INTO example(component, description, properties) VALUES
         '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
         '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]')),
     ('table', 'A table that uses markdown to display links',
-        json('[{"component":"table", "markdown": "Name", "icon": "icon", "sort": true, "search": true}, '||
+        json('[{"component":"table", "markdown": "Name", "icon": "icon", "search": true}, '||
         '{"icon": "table", "name": "[Table](?component=table)", "description": "Displays SQL results as a searchable table.", "_sqlpage_color": "red"},
         {"icon": "timeline", "name": "[Chart](?component=chart)", "description": "Show graphs based on numeric data."}
         ]')),
     (
     'table',
-    'A table with numbers',
+    'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.',
     json(
-        '[{"component":"table", "initial_search_value": "F-24", "sort": true, "align_right": ["Price ($)", "Amount in stock"]}, ' ||
+        '[{"component":"table", "sort": true, "align_right": ["Price ($)", "Amount in stock"]}, ' ||
          '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C", "Price ($)": 12, "Amount in stock": 5},
           {"id": 996, "part_no": "MIC-ROCC-F-24-206-A", "Price ($)": 1, "Amount in stock": 15},
           {"id": 131456, "part_no": "KIB-ROCC-F-24-205-B", "Price ($)": 127, "Amount in stock": 9}
@@ -726,12 +726,13 @@ INSERT INTO example(component, description, properties) VALUES
     'table',
     'A table with some presentation options',
     json(
-        '[{"component":"table", "hover": true, "striped_rows": true, "description": "Some Star Trek Starfleet starships", "small": true},'||
+        '[{"component":"table", "hover": true, "striped_rows": true, "description": "Some Star Trek Starfleet starships", "small": true, "initial_search_value": "NCC-" },'||
         '{"name": "USS Enterprise", "registry": "NCC-1701-C", "class":"Ambassador"},
          {"name": "USS Archer", "registry": "NCC-44278", "class":"Archer"},
          {"name": "USS Endeavour", "registry": "NCC-06", "class":"Columbia"},
          {"name": "USS Constellation", "registry": "NCC-1974", "class":"Constellation"},
-         {"name": "USS Dakota", "registry": "NCC-63892", "class":"Akira"}
+         {"name": "USS Dakota", "registry": "NCC-63892", "class":"Akira"},
+         {"name": "USS Defiant", "registry": "IX-74205", "class":"Defiant"}
         ]'
     )),
     (

@@ -24,7 +24,7 @@ function sqlpage_card() {
 
 /** @param {HTMLElement} el */
 function table_search_sort(el) {
-  /** @type {HTMLInputElement} */
+  /** @type {HTMLInputElement | null} */
   const search_input = el.querySelector("input.search");
   const sort_buttons = [...el.querySelectorAll("button.sort[data-sort]")];
   const item_parent = el.querySelector("tbody");
@@ -42,8 +42,10 @@ function table_search_sort(el) {
       item.el.style.display = show ? "" : "none";
     });
   }
-  search_input.addEventListener("input", onSearch);
-  onSearch();
+  if (search_input) {
+    search_input.addEventListener("input", onSearch);
+    onSearch();
+  }
   sort_buttons.forEach((button, button_index) => {
     button.addEventListener("click", function sort_items() {
       const sort_desc = button.classList.contains("asc");

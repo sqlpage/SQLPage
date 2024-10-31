@@ -78,33 +78,57 @@ test('Authentication example', async ({ page }) => {
   await expect(page.getByText('You are logged in as admin')).toBeVisible();
 });
 
-test('table filtering and sorting', async ({ page }) => {
-  await page.goto(BASE + '/documentation.sql?component=table#component');
-  await expect(page.getByText('Loading...')).not.toBeVisible();
-
-  // Find the specific table section containing "Table" and "Chart"
+test('table filtering', async ({ page }) => {
+  await page.goto(BASE + '/documentation.sql?component=table');
   const tableSection = page.locator('.table-responsive', {
     has: page.getByRole('cell', { name: 'Chart' })
   });
 
-  // Test search filtering
   const searchInput = tableSection.getByPlaceholder('Search…');
   await searchInput.fill('chart');
   await expect(tableSection.getByRole('cell', { name: 'Chart' })).toBeVisible();
   await expect(tableSection.getByRole('cell', { name: 'Table' })).not.toBeVisible();
+});
 
-  // Clear search
-  await searchInput.clear();
+test('table sorting', async ({ page }) => {
+  await page.goto(BASE + '/documentation.sql?component=table');
+  const tableSection = page.locator('.table-responsive', {
+    has: page.getByRole('cell', { name: '31456' })
+  });
 
-  // Test sorting by name
-  await tableSection.getByRole('button', { name: 'name' }).click();
-  let names = await tableSection.locator('td.name').allInnerTexts();
-  const sortedNames = [...names].sort();
-  expect(names).toEqual(sortedNames);
+  // Test numeric sorting on id column
+  await tableSection.getByRole('button', { name: 'id' }).click();
+  let ids = await tableSection.locator('td.id').allInnerTexts();
+  let numericIds = ids.map(id => parseInt(id));
+  const sortedIds = [...numericIds].sort((a, b) => a - b);
+  expect(numericIds).toEqual(sortedIds);
 
   // Test reverse sorting
-  await tableSection.getByRole('button', { name: 'name' }).click();
-  names = await tableSection.locator('td.name').allInnerTexts();
-  const reverseSortedNames = [...names].sort().reverse();
-  expect(names).toEqual(reverseSortedNames);
+  await tableSection.getByRole('button', { name: 'id' }).click();
+  ids = await tableSection.locator('td.id').allInnerTexts();
+  numericIds = ids.map(id => parseInt(id));
+  const reverseSortedIds = [...numericIds].sort((a, b) => b - a);
+  expect(numericIds).toEqual(reverseSortedIds);
+
+  // Test amount in stock column sorting
+  await tableSection.getByRole('button', { name: 'Amount in stock' }).click();
+  let amounts = await tableSection.locator('td.Amount').allInnerTexts();
+  let numericAmounts = amounts.map(amount => parseInt(amount));
+  const sortedAmounts = [...numericAmounts].sort((a, b) => a - b);
+  expect(numericAmounts).toEqual(sortedAmounts);
+});
+
+
+test('no console errors on table page', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('console', msg => {
+    if (msg.type() === 'error') {
+      errors.push(msg.text());
+    }
+  });
+
+  await page.goto(BASE + '/documentation.sql?component=table');
+  await page.waitForLoadState('networkidle');
+  
+  expect(errors).toHaveLength(0);
 });

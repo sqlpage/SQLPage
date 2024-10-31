@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## 0.30.1 (2024-10-31)
+- fix a bug where table sorting would break if table search was not also enabled.
+
 ## 0.30.0 (2024-10-30)
 
 ### 🤖 Easy APIs

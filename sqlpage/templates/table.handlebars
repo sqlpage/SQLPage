@@ -1,6 +1,6 @@
 <div class="card my-2 {{class}}" {{#if overflow}}style="width: fit-content;"{{/if}} {{#if id}}id="{{id}}"{{/if}}>
     <div class="card-body">
-        <div class="table-responsive" {{#if (or sort search)}}data-pre-init="table"{{/if}}>
+        <div class="table-responsive" {{#if (or sort (or search initial_search_value))}}data-pre-init="table"{{/if}}>
             {{#if (or search initial_search_value)}}
                 <div class="p-2">
                     <input type="search" class="form-control form-control-rounded fs-6 search" placeholder="Search…"
