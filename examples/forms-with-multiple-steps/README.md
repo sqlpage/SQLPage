@@ -15,7 +15,7 @@ This example illustrates the main ones.
 All the examples will implement the same simple form:
 a form that asks for a person's name, email, and age.
 
-## Storing the state in the database
+## [Storing the state in the database](./database/)
 
 You can store the state of the partially filled form in the database,
 either in the final table where you want to store the data,
@@ -30,7 +30,7 @@ allowing you to have more relaxed column constraints in the partially filled dat
    - the website administrator needs to manage a dedicated table for the form state
    - old partially filled forms may pile up in the database
 
-## Storing the state in cookies
+## [Storing the state in cookies](./cookies/)
 
 You can store each answer of the user in a cookie,
 using the 
@@ -48,7 +48,7 @@ and retrieve it on the next step using the
    - the user needs to have cookies enabled to fill in the form
    - if the user leaves the form before submitting it, the form state will keep being sent to all the pages he visits until he submits the form.
 
-## Storing the state in hidden fields
+## [Storing the state in hidden fields](./hidden/)
 
 You can store the state of the partially filled form in hidden fields,
 using `'hidden' as type` in the [form component](https://sql.datapage.app/component.sql?component=form#component).
