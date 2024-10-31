@@ -77,3 +77,34 @@ test('Authentication example', async ({ page }) => {
 
   await expect(page.getByText('You are logged in as admin')).toBeVisible();
 });
+
+test('table filtering and sorting', async ({ page }) => {
+  await page.goto(BASE + '/documentation.sql?component=table#component');
+  await expect(page.getByText('Loading...')).not.toBeVisible();
+
+  // Find the specific table section containing "Table" and "Chart"
+  const tableSection = page.locator('.table-responsive', {
+    has: page.getByRole('cell', { name: 'Chart' })
+  });
+
+  // Test search filtering
+  const searchInput = tableSection.getByPlaceholder('Search…');
+  await searchInput.fill('chart');
+  await expect(tableSection.getByRole('cell', { name: 'Chart' })).toBeVisible();
+  await expect(tableSection.getByRole('cell', { name: 'Table' })).not.toBeVisible();
+
+  // Clear search
+  await searchInput.clear();
+
+  // Test sorting by name
+  await tableSection.getByRole('button', { name: 'name' }).click();
+  let names = await tableSection.locator('td.name').allInnerTexts();
+  const sortedNames = [...names].sort();
+  expect(names).toEqual(sortedNames);
+
+  // Test reverse sorting
+  await tableSection.getByRole('button', { name: 'name' }).click();
+  names = await tableSection.locator('td.name').allInnerTexts();
+  const reverseSortedNames = [...names].sort().reverse();
+  expect(names).toEqual(reverseSortedNames);
+});
