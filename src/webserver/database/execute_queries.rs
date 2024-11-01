@@ -59,8 +59,8 @@ pub fn stream_query_results_with_conn<'a>(
                     while let Some(elem) = stream.next().await {
                         let is_err = elem.is_err();
                         let mut query_result = parse_single_sql_result(&stmt.query, elem);
-                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
                         apply_json_columns(&mut query_result, &stmt.json_columns);
+                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
                         for i in parse_dynamic_rows(query_result) {
                             yield i;
                         }

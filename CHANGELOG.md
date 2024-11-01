@@ -2,8 +2,9 @@
 
 ## unreleased
 - [update apexcharts.js to v4.0.0](https://github.com/apexcharts/apexcharts.js/releases)
-- Fix a bug where the chart library would be loaded multiple times when the page contained multiple charts. This made the page load slower and could cause issues with the chart library.
-- Fix a bug where [timeline chart tooltips displayed the wrong labels](https://github.com/sqlpage/SQLPage/issues/659).
+- Fixed a bug where the chart library would be loaded multiple times when the page contained multiple charts. This made the page load slower and could cause issues with the chart library.
+- Fixed a bug where [timeline chart tooltips displayed the wrong labels](https://github.com/sqlpage/SQLPage/issues/659).
+- Fixed an incorrect warning polluting logs when using sqlpage functions with json arguments in sqlite: `WARN  sqlpage::webserver::database::execute_queries] The column _sqlpage_f0_a1 is missing from the result set, so it cannot be converted to JSON.`.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.
