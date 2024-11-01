@@ -215,7 +215,11 @@ function get_tabler_color(name) {
 
 function load_scripts() {
   let addjs = document.querySelectorAll("[data-sqlpage-js]");
-  for (const js of new Set([...addjs].map(({ dataset }) => dataset.sqlpageJs))) {
+  const existing_scripts = new Set([...document.querySelectorAll("script")].map(s => s.src));
+  for (const el of addjs) {
+    const js = new URL(el.dataset.sqlpageJs, window.location.href).href;
+    if (existing_scripts.has(js)) continue;
+    existing_scripts.add(js);
     const script = document.createElement("script");
     script.src = js;
     document.head.appendChild(script);

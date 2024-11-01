@@ -542,7 +542,7 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'chart', * FROM (VALUES
     -- top level
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
-    ('type', 'The type of chart: "line", "area", "bar", "column", "pie", "scatter", "bubble", or "heatmap".', 'TEXT', TRUE, FALSE),
+    ('type', 'The type of chart. One of: "line", "area", "bar", "column", "pie", "scatter", "bubble", "heatmap", "rangeBar"', 'TEXT', TRUE, FALSE),
     ('time', 'Whether the x-axis represents time. If set to true, the x values will be parsed and formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
     ('ymin', 'The minimal value for the y-axis.', 'REAL', TRUE, TRUE),
     ('ymax', 'The maximum value for the y-axis.', 'REAL', TRUE, TRUE),
@@ -649,7 +649,7 @@ The `color` property sets the color of each series separately, in order.
       ]')),
     ('chart', 'A timeline displaying events with a start and an end date',
     json('[
-        {"component":"chart", "title": "Project Timeline", "type": "rangeBar", "time": true, "color": ["teal", "cyan"], "labels": true },
+        {"component":"chart", "title": "Project Timeline", "type": "rangeBar", "time": true, "color": ["teal", "cyan"], "labels": true, "xmin": "2021-12-28", "xmax": "2022-01-04" },
         {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"]},
         {"series": "Phase 2", "label": "Operations", "value": ["2022-01-03", "2022-01-04"]},
         {"series": "Yearly maintenance", "label": "Maintenance", "value": ["2022-01-01", "2022-01-03"]}
