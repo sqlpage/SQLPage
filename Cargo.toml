@@ -18,7 +18,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.28", features = [
+sqlx = { package = "sqlx-oldapi", version = "0.6.29", features = [
     "any",
     "runtime-actix-rustls",
     "sqlite",
