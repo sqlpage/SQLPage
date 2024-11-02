@@ -106,7 +106,8 @@ pub fn row_to_string(row: &AnyRow) -> Option<String> {
 #[actix_web::test]
 async fn test_row_to_json() -> anyhow::Result<()> {
     use sqlx::Connection;
-    let mut c = sqlx::AnyConnection::connect("sqlite://:memory:").await?;
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://:memory:".to_string());
+    let mut c = sqlx::AnyConnection::connect(&db_url).await?;
     let row = sqlx::query(
         "SELECT \
         123.456 as one_value, \
