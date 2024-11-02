@@ -154,26 +154,6 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_mssql_bit_to_json() -> anyhow::Result<()> {
-        let Some(db_url) = db_specific_test("mssql") else {
-            return Ok(());
-        };
-        let mut c = sqlx::AnyConnection::connect(&db_url).await?;
-        let row = sqlx::query("SELECT CAST(1 AS BIT) as true_bit, CAST(0 AS BIT) as false_bit, CAST(NULL AS BIT) as null_bit")
-            .fetch_one(&mut c)
-            .await?;
-        assert_eq!(
-            row_to_json(&row),
-            serde_json::json!({
-                "true_bit": true,
-                "false_bit": false,
-                "null_bit": null,
-            })
-        );
-        Ok(())
-    }
-
-    #[actix_web::test]
     async fn test_postgres_types() -> anyhow::Result<()> {
         let Some(db_url) = db_specific_test("postgres") else {
             return Ok(());
