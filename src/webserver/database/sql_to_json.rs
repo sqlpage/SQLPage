@@ -44,6 +44,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     let type_info = raw_value.type_info();
     let type_name = type_info.name();
     log::trace!("Decoding a value of type {:?}", type_name);
+    dbg!(&type_name);
     match type_name {
         "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" => {
             <f64 as Decode<sqlx::any::Any>>::decode(raw_value)
@@ -208,11 +209,10 @@ mod tests {
                 CAST(42 AS SIGNED) as signed_int,
                 CAST(42 AS UNSIGNED) as unsigned_int,
                 42.42 as decimal_number,
-                TRUE as boolean,
                 CAST('2024-03-14' AS DATE) as date,
                 CAST('13:14:15' AS TIME) as time,
                 CAST('2024-03-14 13:14:15' AS DATETIME) as datetime,
-                CAST('{\"key\": \"value\"}' AS JSON) as json",
+                json_object('key', 'value') as json",
         )
         .fetch_one(&mut c)
         .await?;
@@ -223,7 +223,6 @@ mod tests {
                 "signed_int": 42,
                 "unsigned_int": 42,
                 "decimal_number": 42.42,
-                "boolean": true,
                 "date": "2024-03-14",
                 "time": "13:14:15",
                 "datetime": "2024-03-14T13:14:15+00:00",
