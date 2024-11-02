@@ -7,6 +7,7 @@
 - Fixed an incorrect warning polluting logs when using sqlpage functions with json arguments in sqlite: `WARN  sqlpage::webserver::database::execute_queries] The column _sqlpage_f0_a1 is missing from the result set, so it cannot be converted to JSON.`.
 - Fixed Microsoft SQL Server driver not being able to read VARCHAR columns from databases with non-european collations.
 - Added support for `BIT` columns in Microsoft SQL Server.
+- Avoid generating file names that contain spaces in `sqlpage.persist_uploaded_file`. This makes it easier to use the file name in URLs without URL-encoding it.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

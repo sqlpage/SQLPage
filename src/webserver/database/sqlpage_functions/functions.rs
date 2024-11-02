@@ -311,9 +311,9 @@ async fn persist_uploaded_file<'a>(
     tokio::fs::create_dir_all(&target_folder)
         .await
         .with_context(|| format!("unable to create folder {target_folder:?}"))?;
-    let date = chrono::Utc::now().format("%Y-%m-%d %Hh%Mm%Ss");
+    let date = chrono::Utc::now().format("%Y-%m-%d_%Hh%Mm%Ss");
     let random_part = random_string_sync(8);
-    let random_target_name = format!("{date} {random_part}.{extension}");
+    let random_target_name = format!("{date}_{random_part}.{extension}");
     let target_path = target_folder.join(&random_target_name);
     tokio::fs::copy(&uploaded_file.file.path(), &target_path)
         .await
