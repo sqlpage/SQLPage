@@ -1,4 +1,9 @@
 # You can easily switch between different databases by changing the value of COMPOSE_PROFILES in the .env file.
+
+# possible database connection strings:
+# DATABASE_URL='postgres://root:Password123!@localhost/sqlpage'
+# DATABASE_URL='mssql://root:Password123!@localhost/sqlpage'
+# DATABASE_URL='mysql://root:Password123!@localhost/sqlpage'
 services:
   web:
     build: { context: "." }
