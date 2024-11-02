@@ -1,5 +1,5 @@
 use crate::utils::add_value_to_map;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde_json::{self, Map, Value};
 use sqlx::any::{AnyRow, AnyTypeInfo, AnyTypeInfoKind};
 use sqlx::Decode;
@@ -39,6 +39,19 @@ pub fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
     }
 }
 
+fn decode_raw<'a, T: Decode<'a, sqlx::any::Any> + Default>(
+    raw_value: sqlx::any::AnyValueRef<'a>,
+) -> T {
+    match T::decode(raw_value) {
+        Ok(v) => v,
+        Err(e) => {
+            let type_name = std::any::type_name::<T>();
+            log::error!("Failed to decode {type_name} value: {e}");
+            T::default()
+        }
+    }
+}
+
 pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'r>) -> Value {
     let raw_value = get_ref();
     let type_info = raw_value.type_info();
@@ -46,55 +59,34 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     log::trace!("Decoding a value of type {:?}", type_name);
     match type_name {
         "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" => {
-            <f64 as Decode<sqlx::any::Any>>::decode(raw_value)
-                .unwrap_or(f64::NAN)
-                .into()
+            decode_raw::<f64>(raw_value).into()
         }
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
-        | "BIGINT UNSIGNED" | "BIGINT SIGNED" => <i64 as Decode<sqlx::any::Any>>::decode(raw_value)
-            .unwrap_or_default()
-            .into(),
-        "INT" | "INT4" | "INTEGER" => <i32 as Decode<sqlx::any::Any>>::decode(raw_value)
-            .unwrap_or_default()
-            .into(),
-        "INT2" | "SMALLINT" => <i16 as Decode<sqlx::any::Any>>::decode(raw_value)
-            .unwrap_or_default()
-            .into(),
-        "BOOL" | "BOOLEAN" => <bool as Decode<sqlx::any::Any>>::decode(raw_value)
-            .unwrap_or_default()
-            .into(),
+        | "BIGINT UNSIGNED" | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
+        "INT" | "INT4" | "INTEGER" => decode_raw::<i32>(raw_value).into(),
+        "INT2" | "SMALLINT" => decode_raw::<i16>(raw_value).into(),
+        "BOOL" | "BOOLEAN" => decode_raw::<bool>(raw_value).into(),
         "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::Mssql(_))) => {
-            <bool as Decode<sqlx::any::Any>>::decode(raw_value)
-                .unwrap_or_default()
+            decode_raw::<bool>(raw_value).into()
+        }
+        "DATE" => decode_raw::<chrono::NaiveDate>(raw_value)
+            .to_string()
+            .into(),
+        "TIME" | "TIMETZ" => decode_raw::<chrono::NaiveTime>(raw_value)
+            .to_string()
+            .into(),
+        "DATETIMEOFFSET" | "TIMESTAMP" | "TIMESTAMPTZ" => {
+            decode_raw::<DateTime<FixedOffset>>(raw_value)
+                .to_rfc3339()
                 .into()
         }
-        "DATE" => <chrono::NaiveDate as Decode<sqlx::any::Any>>::decode(raw_value)
-            .as_ref()
-            .map_or_else(std::string::ToString::to_string, ToString::to_string)
+        "DATETIME" | "DATETIME2" => decode_raw::<NaiveDateTime>(raw_value)
+            .format("%FT%T%.f")
+            .to_string()
             .into(),
-        "TIME" | "TIMETZ" => <chrono::NaiveTime as Decode<sqlx::any::Any>>::decode(raw_value)
-            .as_ref()
-            .map_or_else(ToString::to_string, ToString::to_string)
-            .into(),
-        "DATETIME" | "DATETIME2" | "DATETIMEOFFSET" | "TIMESTAMP" | "TIMESTAMPTZ" => {
-            let mut date_time = <DateTime<Utc> as Decode<sqlx::any::Any>>::decode(get_ref());
-            if date_time.is_err() {
-                date_time = <chrono::NaiveDateTime as Decode<sqlx::any::Any>>::decode(raw_value)
-                    .map(|d| d.and_utc());
-            }
-            Value::String(
-                date_time
-                    .as_ref()
-                    .map_or_else(ToString::to_string, DateTime::to_rfc3339),
-            )
-        }
-        "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => {
-            <Value as Decode<sqlx::any::Any>>::decode(raw_value).unwrap_or_default()
-        }
+        "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode_raw::<Value>(raw_value),
         // Deserialize as a string by default
-        _ => <String as Decode<sqlx::any::Any>>::decode(raw_value)
-            .unwrap_or_default()
-            .into(),
+        _ => decode_raw::<String>(raw_value).into(),
     }
 }
 
@@ -170,7 +162,8 @@ mod tests {
                 '2024-03-14'::DATE as date,
                 '13:14:15'::TIME as time,
                 '2024-03-14 13:14:15'::TIMESTAMP as timestamp,
-                '2024-03-14 13:14:15+00'::TIMESTAMPTZ as timestamptz,
+                '2024-03-14 13:14:15+02:00'::TIMESTAMPTZ as timestamptz,
+                INTERVAL '1 day' as interval,
                 '{\"key\": \"value\"}'::JSON as json,
                 '{\"key\": \"value\"}'::JSONB as jsonb",
         )
@@ -189,7 +182,8 @@ mod tests {
                 "date": "2024-03-14",
                 "time": "13:14:15",
                 "timestamp": "2024-03-14T13:14:15+00:00",
-                "timestamptz": "2024-03-14T13:14:15+00:00",
+                "timestamptz": "2024-03-14T11:14:15+00:00", // Postgres stores all timestamps in UTC
+                "interval": "1 day",
                 "json": {"key": "value"},
                 "jsonb": {"key": "value"},
             })
@@ -225,7 +219,7 @@ mod tests {
                 "decimal_number": 42.25,
                 "date": "2024-03-14",
                 "time": "13:14:15",
-                "datetime": "2024-03-14T13:14:15+00:00",
+                "datetime": "2024-03-14T13:14:15",
                 "hex_value": "hello world",
                 "json": {"key": "value"},
             })
@@ -282,7 +276,7 @@ mod tests {
                 CAST('13:14:15' AS TIME) as time,
                 CAST('2024-03-14 13:14:15' AS DATETIME) as datetime,
                 CAST('2024-03-14 13:14:15' AS DATETIME2) as datetime2,
-                CAST('2024-03-14 13:14:15 +00:00' AS DATETIMEOFFSET) as datetimeoffset,
+                CAST('2024-03-14 13:14:15 +02:00' AS DATETIMEOFFSET) as datetimeoffset,
                 N'Unicode String' as nvarchar,
                 'ASCII String' as varchar",
         )
@@ -303,9 +297,9 @@ mod tests {
                 "decimal": 42.25,
                 "date": "2024-03-14",
                 "time": "13:14:15",
-                "datetime": "2024-03-14T13:14:15+00:00",
-                "datetime2": "2024-03-14T13:14:15+00:00",
-                "datetimeoffset": "2024-03-14T13:14:15+00:00",
+                "datetime": "2024-03-14T13:14:15",
+                "datetime2": "2024-03-14T13:14:15",
+                "datetimeoffset": "2024-03-14T13:14:15+02:00",
                 "nvarchar": "Unicode String",
                 "varchar": "ASCII String",
             })
