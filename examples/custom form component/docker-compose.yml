@@ -1,0 +1,19 @@
+services:
+  web:
+    image: lovasoa/sqlpage:main # main is cutting edge, use lovasoa/sqlpage:latest for the latest stable version
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www
+      - ./sqlpage:/etc/sqlpage
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: mysql://root:secret@db/sqlpage
+  db: # The DB environment variable can be set to "mariadb" or "postgres" to test the code with different databases
+    ports:
+      - "3306:3306"
+    image: mysql:9 # support for json_table was added in mariadb 10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: sqlpage

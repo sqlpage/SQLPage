@@ -1,0 +1,120 @@
+{{!-- This is a form that will submit data using POST method to the URL specified in the top-level 'action' property coming from the SQL query--}}
+<form method="POST" action="{{action}}">
+  {{!-- Create a row with centered content and spacing between items --}}
+  <div class="row justify-content-center align-items-center g-4">
+    {{!-- Left List Box (5 columns wide) --}}
+    <div class="col-5">
+      {{!-- Card with no border and subtle shadow --}}
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom fw-semibold text-secondary py-3">
+          Available Items
+        </div>
+        <div class="card-body p-3">
+          {{!-- Multiple-select dropdown list, 300px tall --}}
+          <select class="form-select" id="leftList" multiple style="height: 300px">
+            {{!-- Loop through each row of data returned by the second SQL query (row-level properties are available as variables) --}}
+            {{#each_row}}
+            {{!-- Create an option for each item, marking it selected if the 'selected' property is true --}}
+            <option class="py-2 px-3 rounded-1 my-1" value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+            {{/each_row}}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    {{!-- Middle section with transfer buttons (auto-sized column) --}}
+    <div class="col-auto d-flex flex-column gap-2">
+      {{!-- Right arrow button (→) to move items to selected list --}}
+      <button type="button" class="btn btn-outline-primary rounded-circle p-0 d-flex align-items-center justify-content-center" 
+              id="moveRight"
+              title="Move to selected"
+              style="width: 40px; height: 40px">
+        →
+      </button>
+      {{!-- Left arrow button (←) to remove items from selected list --}}
+      <button type="button" class="btn btn-outline-primary rounded-circle p-0 d-flex align-items-center justify-content-center" 
+              id="moveLeft"
+              title="Remove from selected"
+              style="width: 40px; height: 40px">
+        ←
+      </button>
+    </div>
+
+    {{!-- Right List Box (5 columns wide) --}}
+    <div class="col-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom fw-semibold text-secondary py-3">
+          Selected Items
+        </div>
+        <div class="card-body p-3">
+          {{!-- Multiple-select dropdown that will contain selected items. The name attribute makes it submit as an array --}}
+          <select class="form-select" id="rightList" name="selected_items[]" multiple style="height: 300px"></select>
+        </div>
+      </div>
+    </div>
+
+    {{!-- Submit Button Section (full width) --}}
+    <div class="col-12 text-center mt-4">
+      <input type="submit" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm" 
+             id="submitBtn" 
+             disabled
+             value="Submit Selection">
+    </div>
+  </div>
+</form>
+
+{{!-- JavaScript code with CSP (Content Security Policy) nonce for security --}}
+<script nonce="{{@csp_nonce}}">
+  // Get references to both list elements
+  const rightList = document.getElementById('rightList');
+  const leftList = document.getElementById('leftList');
+
+  /**
+   * Moves selected items from one list to another while maintaining alphabetical order
+   * @param {HTMLSelectElement} fromList - The list to take items from
+   * @param {HTMLSelectElement} toList - The list to add items to
+   */
+  function transferItems(fromList, toList) {
+    // Deselect all items in the destination list
+    for (const option of toList.options) option.selected = false;
+    
+    // Combine existing options with newly selected ones
+    const newOptions = [...toList.options, ...fromList.selectedOptions];
+    
+    // Sort the combined options alphabetically
+    newOptions.sort((a, b) => a.text.localeCompare(b.text));
+    
+    // Add all options to the destination list
+    toList.append(...newOptions);
+
+    // Focus the destination list and update submit button state
+    toList.focus();
+    updateSubmitButton();
+  }
+
+  /**
+   * Enable/disable submit button based on whether there are items in the right list
+   */
+  function updateSubmitButton() {
+    submitBtn.disabled = rightList.options.length === 0;
+  }
+
+  /**
+   * Ensure all items in right list are selected before form submission
+   * This is necessary because unselected options aren't included in form data
+   */
+  function handleSubmit(e) {
+    for (const option of rightList.options) option.selected = true;
+  }
+
+  // Set initial state of submit button
+  updateSubmitButton();
+
+  // Move any pre-selected items to the right list when page loads
+  transferItems(leftList, rightList);
+
+  // Set up click handlers for the transfer buttons and form submission
+  document.getElementById('moveRight').addEventListener('click', transferItems.bind(null, leftList, rightList));
+  document.getElementById('moveLeft').addEventListener('click', transferItems.bind(null, rightList, leftList));
+  document.querySelector('form').addEventListener('submit', handleSubmit);
+</script>
