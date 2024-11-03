@@ -3,8 +3,8 @@
 This example shows how to create a simple custom component in handlebars, and call it from SQL.
 
 It uses MySQL, but it should be easy to adapt to other databases.
-The only MySQL-specific features used here are 
- - `json_table`, which is supported by MariaDB and MySQL 8.0 and later.
+The only MySQL-specific features used here are:
+ - `json_table`, which is supported by MariaDB and MySQL 8.0 and later,
  - MySQL's `json_merge` function.
 
 Both [have analogs in other databases](https://sql.datapage.app/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide).
