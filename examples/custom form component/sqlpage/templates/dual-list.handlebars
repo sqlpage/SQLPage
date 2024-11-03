@@ -1,11 +1,12 @@
-{{!-- This is a form that will submit data using POST method to the URL specified in the top-level 'action' property coming from the SQL query--}}
+{{!-- This is a form that will post data to the URL specified in the top-level 'action' property coming from the SQL query --}}
 <form method="POST" action="{{action}}">
   {{!-- Create a row with centered content and spacing between items --}}
   <div class="row justify-content-center align-items-center g-4">
-    {{!-- Left List Box (5 columns wide) --}}
+    {{!-- Left List Box: 5 columns wide (out of the 12 made available by bootstrap) --}}
     <div class="col-5">
       {{!-- Card with no border and subtle shadow --}}
       <div class="card border-0 shadow-sm">
+        {{!-- Card header with white background, no border, semibold font, and secondary text color --}}
         <div class="card-header bg-white border-bottom fw-semibold text-secondary py-3">
           Available Items
         </div>
@@ -66,6 +67,8 @@
 {{!-- JavaScript code with CSP (Content Security Policy) nonce for security --}}
 <script nonce="{{@csp_nonce}}">
   // Get references to both list elements
+  // If we wanted to be able to include this component multiple times on the same page,
+  // we would need to generate IDs like "rightList1", "leftList1", etc. using a template string.like "rightList{{@component_index}}"
   const rightList = document.getElementById('rightList');
   const leftList = document.getElementById('leftList');
 
@@ -85,6 +88,8 @@
     newOptions.sort((a, b) => a.text.localeCompare(b.text));
     
     // Add all options to the destination list
+    // Since an element can only exist once in the page,
+    // this will automatically remove the options from the source list
     toList.append(...newOptions);
 
     // Focus the destination list and update submit button state
@@ -103,7 +108,7 @@
    * Ensure all items in right list are selected before form submission
    * This is necessary because unselected options aren't included in form data
    */
-  function handleSubmit(e) {
+  function handleSubmit() {
     for (const option of rightList.options) option.selected = true;
   }
 
