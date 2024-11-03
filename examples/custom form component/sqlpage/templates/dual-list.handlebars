@@ -30,14 +30,15 @@
               id="moveRight"
               title="Move to selected"
               style="width: 40px; height: 40px">
-        →
+        {{!-- icon_img is a helper that renders an icon image from tabler.io/icons --}}
+        {{~icon_img 'arrow-narrow-right' 20~}}
       </button>
       {{!-- Left arrow button (←) to remove items from selected list --}}
       <button type="button" class="btn btn-outline-primary rounded-circle p-0 d-flex align-items-center justify-content-center" 
               id="moveLeft"
               title="Remove from selected"
               style="width: 40px; height: 40px">
-        ←
+        {{~icon_img 'arrow-narrow-left' 20~}}
       </button>
     </div>
 
