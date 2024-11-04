@@ -1,3 +1,5 @@
+select 'http_header' as component, 'nofollow' as "X-Robots-Tag"; -- nofollow to avoid duplicate content
+
 set layout = coalesce($layout, 'boxed');
 set sidebar = coalesce($sidebar, 0);
 

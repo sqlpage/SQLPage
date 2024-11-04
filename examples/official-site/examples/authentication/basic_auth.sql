@@ -1,3 +1,5 @@
+select 'http_header' as component, 'noindex' as "X-Robots-Tag";
+
 SELECT 'authentication' AS component,
     case sqlpage.basic_auth_username()
         when 'admin'
