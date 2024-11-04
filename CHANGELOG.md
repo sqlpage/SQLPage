@@ -10,6 +10,7 @@
 - Avoid generating file names that contain spaces in `sqlpage.persist_uploaded_file`. This makes it easier to use the file name in URLs without URL-encoding it.
 - Fixed a bug with REAL value decoding in Microsoft SQL Server.
 - Support preserving the timezone of `DATETIMEOFFSET` columns in Microsoft SQL Server and `TIMESTAMPTZ` columns in Postgres. Previously, all datetime columns were converted to UTC.
+- Fixed a bug where select dropdown fields would retain their state when their form is reset.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

@@ -70,27 +70,6 @@ function sqlpage_table() {
   }
 }
 
-function sqlpage_select_dropdown() {
-  const selects = document.querySelectorAll("[data-pre-init=select-dropdown]");
-  if (!selects.length) return;
-  const src = "https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.popular.min.js";
-  if (!window.TomSelect) {
-    const script = document.createElement("script");
-    script.src = src;
-    script.integrity = "sha384-aAqv9vleUwO75zAk1sGKd5VvRqXamBXwdxhtihEUPSeq1HtxwmZqQG/HxQnq7zaE";
-    script.crossOrigin = "anonymous";
-    script.nonce = nonce;
-    script.onload = sqlpage_select_dropdown;
-    document.head.appendChild(script);
-    return;
-  }
-  for (const s of selects) {
-    new TomSelect(s, {
-      create: s.dataset.create_new
-    });
-  }
-}
-
 let is_leaflet_injected = false;
 let is_leaflet_loaded = false;
 

@@ -368,7 +368,7 @@ left join my_user_options
     on  my_options.id = my_user_options.option_id
     and my_user_options.user_id = $user_id
 ```
-', json('[{"component":"form", "action":"examples/show_variables.sql"}, 
+', json('[{"component":"form", "action":"examples/show_variables.sql", "reset": "Reset"}, 
     {"label": "Fruits", "name": "fruits[]", "type": "select", "multiple": true, "create_new":true, "placeholder": "Good fruits...", "searchable": true, "description": "press ctrl to select multiple values", "options":
         "[{\"label\": \"Orange\", \"value\": 0, \"selected\": true}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3, \"selected\": true}]"}
     ]')),
