@@ -4,7 +4,9 @@ select 'redirect' as component,
 where not exists (select 1 from component where name = $component);
 
 -- This line, at the top of the page, tells web browsers to keep the page locally in cache once they have it.
-select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
+select 'http_header' as component, 
+    'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
+    printf('<%s>; rel="canonical"', sqlpage.link('component.sql', json_object('component', $component))) as "Link";
 
 select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
     'title', coalesce($component || ' - ', '') || 'SQLPage Documentation'
