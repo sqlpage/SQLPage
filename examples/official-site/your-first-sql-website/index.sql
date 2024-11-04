@@ -1,5 +1,6 @@
 select 'http_header' as component,
-    'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
+    'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
+    '<https://sql.datapage.app/your-first-sql-website/>; rel="canonical"' as "Link";
 
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
