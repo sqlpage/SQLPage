@@ -2,24 +2,25 @@
 INSERT INTO component (name, description, icon)
 VALUES (
         'http_header',
-        'An advanced component to set arbitrary HTTP headers: can be used to set a custom caching policy to your pages, or implement custom redirections, for example.
-        If you are a beginner, you probably don''t need this component.
+        '
+An advanced component to set arbitrary HTTP headers: can be used to set a custom caching policy to your pages, or implement custom redirections, for example.
+If you are a beginner, you probably don''t need this component.
 
-        When used, this component has to be the first component in the page, because once the page is sent to the browser, it is too late to change the headers.
+When used, this component has to be the first component in the page, because once the page is sent to the browser, it is too late to change the headers.
 
-        HTTP headers are additional pieces of information sent with responses to web requests that provide instructions
-        or metadata about the data being sent — for example,
-        setting cache control directives to control caching behavior
-        or specifying the content type of a response.
-        
-        Any valid HTTP header name can be used as a top-level parameter for this component.
-        The examples shown here are just that, examples; and you can create any custom header
-        if needed simply by declaring it.
-        
-        If your header''s name contains a dash or any other special character,
-        you will have to use your database''s quoting mechanism to declare it.
-        In standard SQL, you can use double quotes to quote identifiers (like "X-My-Header"),
-        in Microsoft SQL Server, you can use square brackets (like [X-My-Header]).
+HTTP headers are additional pieces of information sent with responses to web requests that provide instructions
+or metadata about the data being sent — for example,
+setting cache control directives to control caching behavior
+or specifying the content type of a response.
+
+Any valid HTTP header name can be used as a top-level parameter for this component.
+The examples shown here are just that, examples; and you can create any custom header
+if needed simply by declaring it.
+
+If your header''s name contains a dash or any other special character,
+you will have to use your database''s quoting mechanism to declare it.
+In standard SQL, you can use double quotes to quote identifiers (like "X-My-Header"),
+in Microsoft SQL Server, you can use square brackets (like [X-My-Header]).
         ',
         'world-www'
     );
