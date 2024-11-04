@@ -1,4 +1,5 @@
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
+select 'redirect' as component, '/' as link where sqlpage.path() <> '/';
 
 -- Fetch the page title and header from the database
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
