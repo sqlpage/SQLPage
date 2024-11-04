@@ -63,9 +63,9 @@ INSERT INTO example(component, description, properties) VALUES
         {"title":"Tabler Icons", "image_url": "https://tabler.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
-            json('[{"component":"list", "title":"Popular websites" }, '||
-            '{"title":"Google", "link":"https://google.com", "description": "A search engine", "color": "red", "icon":"brand-google", "active": true }, '||
-            '{"title":"Wikipedia", "link":"https://wikipedia.org", "description": "An encyclopedia", "color": "blue", "icon":"world", "edit_link": "?edit=wikipedia", "delete_link": "?delete=wikipedia" }]'));
+            json('[{"component":"list", "title":"Top SQLPage features" }, '||
+            '{"title":"Authentication", "link":"?component=authentication", "description": "Authenticate users with a login form or HTTP basic authentication", "color": "red", "icon":"lock", "active": true }, '||
+            '{"title":"Editing data", "description": "SQLPage makes it easy to UPDATE, INSERT and DELETE data in your database tables", "color": "blue", "icon":"database", "edit_link": "?component=form", "delete_link": "?component=alert" }]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('datagrid', 'grid-dots', 'Display small pieces of information in a clear and readable way. Each item has a name and is associated with a value.');
