@@ -11,8 +11,7 @@ select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json
 )) as properties
 FROM example WHERE component = 'shell' LIMIT 1;
 
-select 
-    'breadcrumb' as component;
+select 'breadcrumb' as component;
 select 'SQLPage' as title, '/' as link, 'Home page' as description;
 select 'Components' as title, '/documentation.sql' as link, 'List of all components' as description;
 select $component as title, '/component.sql?component=' || sqlpage.url_encode($component) as link;

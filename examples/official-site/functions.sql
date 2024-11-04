@@ -1,10 +1,10 @@
-select 'dynamic' as component,
-    json_set(
-        properties,
-        '$[0].title',
-        'SQLPage functions' || COALESCE(': ' || $function, ' documentation')
-    ) as properties
+select 'dynamic' as component, properties
 FROM example WHERE component = 'shell' LIMIT 1;
+
+select 'breadcrumb' as component;
+select 'SQLPage' as title, '/' as link, 'Home page' as description;
+select 'Functions' as title, '/functions.sql' as link, 'List of all functions' as description;
+select $function as title, sqlpage.link('functions.sql', json_object('function', $function)) as link where $function IS NOT NULL;
 
 select 'text' as component, 'SQLPage built-in functions' as title where $function IS NULL;
 select '
@@ -28,10 +28,8 @@ from sqlpage_functions
 where $function IS NULL
 order by name;
 
-select 'text' as component,
-        'The sqlpage.' || $function || ' function' as title,
-        'function' as id
-    where $function IS NOT NULL;
+select 'text' as component, 'sqlpage.' || $function || '(' || string_agg(name, ', ') || ')' as title, 'function' as id
+from sqlpage_function_parameters where $function IS NOT NULL and "function" = $function;
 
 select 'text' as component;
 select 'Introduced in SQLPage ' || introduced_in_version || '.' as contents, 1 as size from sqlpage_functions where name = $function;
