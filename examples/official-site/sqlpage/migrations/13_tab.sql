@@ -88,9 +88,9 @@ View the [dynamic tabs example](examples/tabs.sql).
         JSON(
             '[
             { "component": "tab" },
-            { "title": "My First tab", "active": true },
-            { "title": "This is tab two" },
-            { "title": "Third tab is crazy" }
+            { "title": "This tab does not exist", "active": true },
+            { "title": "I am not a true tab" },
+            { "title": "Do not click here" }
         ]'
         )
     ),
