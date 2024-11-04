@@ -1044,7 +1044,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos", "icon": "code"}
                 ]},
                 {"title": "Community", "submenu": [
-                    {"link": "blog.sql", "title": "Blog", "icon": "book"},
+                    {"link": "/blog.sql", "title": "Blog", "icon": "book"},
                     {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Report a bug", "icon": "bug"},
                     {"link": "//github.com/lovasoa/sqlpage/discussions", "title": "Discussions", "icon": "message"},
                     {"link": "//github.com/lovasoa/sqlpage", "title": "Github", "icon": "brand-github"}
@@ -1098,7 +1098,7 @@ and in `shell.json`:
     "menu_item": [
         {"link": "index.sql", "title": "Home"},
         {"title": "Community", "submenu": [
-            {"link": "blog.sql", "title": "Blog"},
+            {"link": "/blog.sql", "title": "Blog"},
             {"link": "//github.com/lovasoa/sqlpage", "title": "Github"}
         ]}
     ]
