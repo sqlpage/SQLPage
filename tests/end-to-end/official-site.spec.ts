@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const BASE = "http://localhost:8080/";
 
@@ -124,7 +124,7 @@ test("table sorting", async ({ page }) => {
   expect(numericAmounts).toEqual(sortedAmounts);
 });
 
-test("no console errors on table page", async ({ page }) => {
+async function checkNoConsoleErrors(page: Page, component: string) {
   const errors: string[] = [];
   page.on("console", (msg) => {
     if (msg.type() === "error") {
@@ -132,8 +132,24 @@ test("no console errors on table page", async ({ page }) => {
     }
   });
 
-  await page.goto(`${BASE}/documentation.sql?component=table`);
+  await page.goto(`${BASE}/documentation.sql?component=${component}`);
   await page.waitForLoadState("networkidle");
 
   expect(errors).toHaveLength(0);
+}
+
+test("no console errors on table page", async ({ page }) => {
+  await checkNoConsoleErrors(page, "table");
+});
+
+test("no console errors on chart page", async ({ page }) => {
+  await checkNoConsoleErrors(page, "chart");
+});
+
+test("no console errors on map page", async ({ page }) => {
+  await checkNoConsoleErrors(page, "map");
+});
+
+test("no console errors on card page", async ({ page }) => {
+  await checkNoConsoleErrors(page, "card");
 });

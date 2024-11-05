@@ -6,7 +6,7 @@ sqlpage_chart = (() => {
       try {
         build_sqlpage_chart(c);
       } catch (e) {
-        console.log(e);
+        console.error(e);
       }
     }
   }
