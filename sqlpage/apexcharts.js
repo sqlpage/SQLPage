@@ -53,8 +53,9 @@ sqlpage_chart = (() => {
    * @returns {Series} */
   function align_categories(series) {
     const new_series = series.map((s) => ({ name: s.name, data: [] }));
+    let category = null;
     do {
-      let category = null;
+      category = null;
       series.forEach((s, s_i) => {
         const point = s.data[0];
         let new_point = { x: category, y: 0 };
