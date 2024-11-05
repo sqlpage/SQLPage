@@ -316,3 +316,10 @@ SQLPage is available for download on the from multiple sources:
 [![Scoop Version](https://img.shields.io/scoop/v/sqlpage?labelColor=%23696573&color=%23d7d4db)](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116)
 [![Crates.io Total Downloads](https://img.shields.io/crates/d/sqlpage?label=crates.io%20download&labelColor=%23264323&color=%23f9f7ec)](https://crates.io/crates/sqlpage)
 [![](https://img.shields.io/badge/Nix-pkg-rgb(126,%20185,%20227))](https://search.nixos.org/packages?channel=unstable&show=sqlpage&from=0&size=50&sort=relevance&type=packages&query=sqlpage)
+
+## Contributing
+
+We welcome contributions! SQLPage is built with Rust and uses
+vanilla javascript for its frontend parts.
+
+Check out our [Contributing Guide](./CONTRIBUTING.md) for detailed instructions on development setup, testing, and pull request process.
