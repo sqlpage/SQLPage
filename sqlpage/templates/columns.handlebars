@@ -14,19 +14,25 @@
           <ul class="list-unstyled lh-lg">
             <li class="mb-3">{{description}} {{#if description_md}}<small>{{{markdown description_md}}}</small>{{/if}}</li> 
             {{#each item}}
-            <li>
+            {{#if (eq (typeof this) 'string')}}
+            <li><span class="text-indigo me-2">{{icon_img 'arrow-narrow-right'}}</span> {{this}}</li>
+            {{/if}}
+            {{#if (eq (typeof this) 'object')}}
+            <li class="d-flex">
               <span class="{{#if color}}text-{{color}}{{/if}} me-{{#if icon}}2{{else}}5{{/if}}">{{~icon_img icon~}}</span>
               {{#if link}}
-                <a href="{{link}}" class="text-decoration-none">{{description}}</a>
+                <p><a href="{{link}}" class="text-decoration-none">{{description}}</a></p>
               {{else}}
-                {{description}}
+                <p>{{description}}</p>
               {{/if}}
+              {{#if description_md}}{{{markdown description_md}}}{{/if}}
             </li>
+            {{/if}}
             {{/each}}
           </ul>
         </div>
-        <div class="text-center mt-4">
-          <a href="{{link}}" class="btn w-100 {{#if button_color}}btn-{{button_color}}{{/if}}">{{button_text}}</a> 
+        <div class="text-center">
+          <a href="{{link}}" {{#if target}}target="{{target}}"{{/if}} class="btn w-100 {{#if button_color}}btn-{{button_color}}{{/if}}">{{button_text}}</a> 
         </div>
       </div>
     </div>

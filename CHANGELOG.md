@@ -11,6 +11,10 @@
 - Fixed a bug with REAL value decoding in Microsoft SQL Server.
 - Support preserving the timezone of `DATETIMEOFFSET` columns in Microsoft SQL Server and `TIMESTAMPTZ` columns in Postgres. Previously, all datetime columns were converted to UTC.
 - Fixed a bug where select dropdown fields would retain their state when their form is reset.
+- Add support for `null as item` in the columns component to skip the display of an item.
+- Add support for `description_md` in the columns component to display markdown text in an item's description.
+- Add support for simple text item in the columns component. This avoids having to deal with json functions to display a simple textual column item description.
+- Increase spacing between items in the columns component for improved readability.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

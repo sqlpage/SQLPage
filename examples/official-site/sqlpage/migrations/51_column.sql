@@ -10,10 +10,11 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('value', 'The value associated with the item.', 'TEXT', FALSE, TRUE),
     ('description', 'A brief description of the item.', 'TEXT', FALSE, TRUE),
     ('description_md', 'A brief description of the item, formatted using markdown.', 'TEXT', FALSE, TRUE),
-    ('item', 'A list of bullet points associated with the columns, represented as JSON.', 'JSON', FALSE, TRUE),
+    ('item', 'A list of bullet points associated with the columns, represented either as text, or as a json object with "icon", "color", and "description" or "description_md" fields.', 'JSON', FALSE, TRUE),
     ('link', 'A link associated with the item.', 'TEXT', FALSE, TRUE),
     ('button_text', 'Text for the button.', 'TEXT', FALSE, TRUE),
     ('button_color', 'Optional color for the button.', 'TEXT', FALSE, TRUE),
+    ('target', 'Optional target for the button. Set to "_blank" to open links in a new tab.', 'TEXT', FALSE, TRUE),
     ('value_color', 'Color for the value text.', 'TEXT', FALSE, TRUE),
     ('small_text', 'Optional small text to display after the value.', 'TEXT', FALSE, TRUE),
     ('icon', 'Optional icon to display in a ribbon.', 'ICON', FALSE, TRUE),
@@ -26,45 +27,49 @@ INSERT INTO example(component, description, properties) VALUES
     json('[
         {"component":"columns"},
         {
-            "title":"Basic Plan",
-            "value":"$0",
-            "description":"A basic plan for individuals.",
+            "title":"Start Plan",
+            "value":"€18",
+            "description":"Perfect for testing and small-scale projects",
             "item": [
-                {"description":"Creation & Edition"},
-                {"description":"Limited Customization"}
+                "128MB Database",
+                "SQLPage hosting",
+                "Community support"
             ],
-            "link":"#",
-            "button_text":"Select",
+            "link":"https://datapage.app",
+            "button_text":"Start Free Trial",
             "small_text":"/month"
         },
         {
-            "title":"Standard Plan",
-            "value":"$49",
-            "icon":"star",
-            "description":"A standard plan for small teams.",
+            "title":"Pro Plan",
+            "value":"€40",
+            "icon":"rocket",
+            "description":"For growing projects needing enhanced features",
             "item": [
-                {"icon":"check", "color": "green", "description":"Collaboration Tools"},
-                {"icon":"check", "color": "green", "description":"Custom data sources"},
-                {"icon":"x", "color": "red", "description":"Priority support"}
+                {"icon":"database", "color": "blue", "description":"1GB Database"},
+                {"icon":"headset", "color": "green", "description":"Priority Support"},
+                {"icon":"world", "color": "purple", "description":"Custom Domain"}
             ],
-            "link":"#",
-            "button_text":"Select",
-            "button_color":"success",
-            "value_color":"green",
+            "link":"https://datapage.app",
+            "button_text":"Start Free Trial",
+            "button_color":"indigo",
+            "value_color":"indigo",
             "small_text":"/month"
         },
         {
-            "title":"Premium Plan",
-            "value":"$99",
-            "description":"A premium plan for larger teams.",
+            "title":"Enterprise Plan",
+            "value":"€600",
+            "icon":"building-skyscraper",
+            "description":"For large-scale operations with custom needs",
             "item": [
-                {"icon":"check", "color": "green", "description":"Collaboration Tools"},
-                {"icon":"check", "color": "green", "description":"Custom data sources"},
-                {"icon":"check", "color": "green", "description":"Priority support"}
+                {"icon":"database-plus", "description_md":"**Custom Database Scaling**"},
+                {"icon":"shield-lock", "description_md":"**Enterprise Auth** with Single Sign-On"},
+                {"icon":"headset", "description_md":"**Monthly** Expert Support time"},
+                {"icon":"file-certificate", "description_md":"**SLA** with guaranteed uptime"}
             ],
-            "link":"#",
-            "button_text":"Select",
-            "small_text":"/month"
+            "link":"mailto:contact@datapage.app",
+            "button_text":"Contact Us",
+            "small_text":"/month",
+            "target":"_blank"
         }
     ]')),
     
