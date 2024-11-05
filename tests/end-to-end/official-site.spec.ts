@@ -99,21 +99,21 @@ test('table sorting', async ({ page }) => {
   // Test numeric sorting on id column
   await tableSection.getByRole('button', { name: 'id' }).click();
   let ids = await tableSection.locator('td.id').allInnerTexts();
-  let numericIds = ids.map(id => parseInt(id));
+  let numericIds = ids.map(id => Number.parseInt(id));
   const sortedIds = [...numericIds].sort((a, b) => a - b);
   expect(numericIds).toEqual(sortedIds);
 
   // Test reverse sorting
   await tableSection.getByRole('button', { name: 'id' }).click();
   ids = await tableSection.locator('td.id').allInnerTexts();
-  numericIds = ids.map(id => parseInt(id));
+  numericIds = ids.map(id => Number.parseInt(id));
   const reverseSortedIds = [...numericIds].sort((a, b) => b - a);
   expect(numericIds).toEqual(reverseSortedIds);
 
   // Test amount in stock column sorting
   await tableSection.getByRole('button', { name: 'Amount in stock' }).click();
-  let amounts = await tableSection.locator('td.Amount').allInnerTexts();
-  let numericAmounts = amounts.map(amount => parseInt(amount));
+  const amounts = await tableSection.locator('td.Amount').allInnerTexts();
+  const numericAmounts = amounts.map(amount => Number.parseInt(amount));
   const sortedAmounts = [...numericAmounts].sort((a, b) => a - b);
   expect(numericAmounts).toEqual(sortedAmounts);
 });

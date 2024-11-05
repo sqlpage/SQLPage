@@ -32,7 +32,7 @@ function table_search_sort(el) {
     el,
     sort_keys: sort_buttons.map(b => {
       const sort_key = el.getElementsByClassName(b.dataset.sort)[0]?.textContent;
-      return { num: parseFloat(sort_key), str: sort_key };
+      return { num: Number.parseFloat(sort_key), str: sort_key };
     })
   }));
   function onSearch() {
@@ -96,7 +96,7 @@ function sqlpage_map() {
     onLeafletLoad();
   }
   function parseCoords(coords) {
-    return coords && coords.split(",").map(c => parseFloat(c));
+    return coords && coords.split(",").map(c => Number.parseFloat(c));
   }
   function onLeafletLoad() {
     is_leaflet_loaded = true;
@@ -107,7 +107,7 @@ function sqlpage_map() {
       const attribution = m.dataset.attribution;
       const map = L.map(m, { attributionControl: !!attribution });
       const zoom = m.dataset.zoom;
-      let center = parseCoords(m.dataset.center);
+      const center = parseCoords(m.dataset.center);
       if (tile_source) L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
       map._sqlpage_markers = [];
       for (const marker_elem of m.getElementsByClassName("marker")) {
@@ -155,7 +155,7 @@ function sqlpage_map() {
     return L.marker(coords, options);
   }
   function createGeoJSONMarker(marker_elem, options) {
-    let geojson = JSON.parse(marker_elem.dataset.geojson);
+    const geojson = JSON.parse(marker_elem.dataset.geojson);
     if (options.color) {
       options.color = get_tabler_color(options.color) || options.color;
     }
@@ -193,7 +193,7 @@ function get_tabler_color(name) {
 }
 
 function load_scripts() {
-  let addjs = document.querySelectorAll("[data-sqlpage-js]");
+  const addjs = document.querySelectorAll("[data-sqlpage-js]");
   const existing_scripts = new Set([...document.querySelectorAll("script")].map(s => s.src));
   for (const el of addjs) {
     const js = new URL(el.dataset.sqlpageJs, window.location.href).href;

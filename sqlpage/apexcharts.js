@@ -1,6 +1,6 @@
 /* !include https://cdn.jsdelivr.net/npm/apexcharts@4.0.0/dist/apexcharts.min.js */
 
-sqlpage_chart = (function () {
+sqlpage_chart = (() => {
 
     function sqlpage_chart() {
         for (const c of document.querySelectorAll("[data-pre-init=chart]")) {
@@ -160,7 +160,7 @@ sqlpage_chart = (function () {
                 fillSeriesColor: false,
                 custom: (data.type === 'bubble' || data.type === 'scatter') ? bubbleTooltip : undefined,
                 y: {
-                    formatter: function (value) {
+                    formatter: (value) => {
                         if (is_timeseries && data.type === 'rangeBar') {
                             const d = new Date(value);
                             if (d.getHours() === 0 && d.getMinutes() === 0) return d.toLocaleDateString();
