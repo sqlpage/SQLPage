@@ -1,7 +1,9 @@
 /* !include https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.popular.min.js */
 
 function sqlpage_select_dropdown() {
-  for (const s of document.querySelectorAll("[data-pre-init=select-dropdown]")) {
+  for (const s of document.querySelectorAll(
+    "[data-pre-init=select-dropdown]",
+  )) {
     // See: https://github.com/orchidjs/tom-select/issues/716
     // By default, TomSelect will not retain the focus if s is already focused
     // This is a workaround to fix that

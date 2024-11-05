@@ -1,11 +1,7 @@
 {
-    "component": "shell",
-    "title": "SQLPage Questions",
-    "icon": "help-hexagon",
-    "link": "/index.sql",
-    "menu_item": [
-        "index",
-        "results",
-        "admin"
-    ]
+  "component": "shell",
+  "title": "SQLPage Questions",
+  "icon": "help-hexagon",
+  "link": "/index.sql",
+  "menu_item": ["index", "results", "admin"]
 }

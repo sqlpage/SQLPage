@@ -1,16 +1,17 @@
 /* Ensure all unordered and ordered lists are left-aligned */
-ul, ol {
-    text-align: left; /* Aligns bullet points to the left */
-    margin-left: 20px; /* Adds indentation for better readability */
-    padding-left: 20px; /* Adds space between bullet and text */
+ul,
+ol {
+  text-align: left; /* Aligns bullet points to the left */
+  margin-left: 20px; /* Adds indentation for better readability */
+  padding-left: 20px; /* Adds space between bullet and text */
 }
 
 /* Optional: Style for the individual list items */
 li {
-    margin-bottom: 10px; /* Adds space between list items */
+  margin-bottom: 10px; /* Adds space between list items */
 }
 
 /* Optional: Ensure the body text is also left-aligned */
 body {
-    text-align: left; /* Makes sure the overall page is left-aligned */
+  text-align: left; /* Makes sure the overall page is left-aligned */
 }

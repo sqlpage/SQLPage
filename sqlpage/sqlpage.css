@@ -58,7 +58,8 @@ code {
   font-size: 100%;
 }
 
-.apexcharts-text, .apexcharts-datalabel {
+.apexcharts-text,
+.apexcharts-datalabel {
   fill: var(--tblr-body-color) !important;
   font-weight: var(--tblr-body-font-weight);
 }

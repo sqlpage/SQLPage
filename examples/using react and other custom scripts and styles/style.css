@@ -16,7 +16,8 @@
 }
 
 @keyframes neon-glow {
-  0%, 100% {
+  0%,
+  100% {
     text-shadow: 0 0 10px #fa2dd1, 0 0 20px #b30890, 2px 3px 30px #ff00cc;
   }
   50% {
@@ -29,5 +30,5 @@
 }
 
 #funky_text * {
-    color: inherit;
+  color: inherit;
 }
