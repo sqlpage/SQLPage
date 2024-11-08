@@ -83,7 +83,7 @@ You could then for instance display contents coming from the database based on t
 For instance: `SELECT ''text'' AS component, contents_md FROM my_page_contents WHERE tab = $tab`
 
 Note that the example below is completely static, and does not use the `tab` parameter to actually switch between tabs.
-View the [dynamic tabs example](examples/tabs.sql).
+View the [dynamic tabs example](/examples/tabs/).
 ',
         JSON(
             '[
