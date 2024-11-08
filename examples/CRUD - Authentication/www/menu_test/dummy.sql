@@ -6,7 +6,7 @@ select
     'Top'                     as menu_item,
     '{"title":"About","submenu":[{"link":"/safety.sql","title":"Security"},{"link":"/performance.sql","title":"Performance"},{"link":"//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt","title":"License"},{"link":"/blog.sql","title":"Articles"}]}' as menu_item,
     NULL                      as menu_item,
-    '{"title":"Examples","submenu":[{"link":"/examples/tabs.sql","title":"Tabs"},{"link":"/examples/layouts.sql","title":"Layouts"},{"link":"/examples/multistep-form","title":"Forms"},{"link":"/examples/handle_picture_upload.sql","title":"File uploads"},{"link":"/examples/hash_password.sql","title":"Password protection"},{"link":"//github.com/lovasoa/SQLpage/blob/main/examples/","title":"All examples & demos"}]}' as menu_item,
+    '{"title":"Examples","submenu":[{"link":"/examples/tabs/","title":"Tabs"},{"link":"/examples/layouts.sql","title":"Layouts"},{"link":"/examples/multistep-form","title":"Forms"},{"link":"/examples/handle_picture_upload.sql","title":"File uploads"},{"link":"/examples/hash_password.sql","title":"Password protection"},{"link":"//github.com/lovasoa/SQLpage/blob/main/examples/","title":"All examples & demos"}]}' as menu_item,
     '{"title":"z", "icon": "settings"}'       as menu_item, 
     '{"title":"", "icon": ""}'       as menu_item, 
     '{"title":"Community","submenu":[{"link":"blog.sql","title":"Blog"},{"link":"//github.com/lovasoa/sqlpage/issues","title":"Report a bug"},{"link":"//github.com/lovasoa/sqlpage/discussions","title":"Discussions"},{"link":"//github.com/lovasoa/sqlpage","title":"Github"}]}' as menu_item,

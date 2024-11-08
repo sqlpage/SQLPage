@@ -68,7 +68,7 @@ select 'dynamic' as component,
                 "icon": "trash",
                 "submenu": [
                     {
-                        "link": "/examples/tabs.sql",
+                        "link": "/examples/tabs/",
                         "icon": "device-floppy",
                         "title": "Tabs"
                     },
