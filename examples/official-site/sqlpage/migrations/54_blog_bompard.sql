@@ -7,7 +7,7 @@ VALUES
         'shirt',
         '2024-10-26',
         '
-# How I Built And Deployed An Exhaustive Performance Monitoring Tool Using Only SQL Queries
+# How I Built And Deployed An Exhaustive Performance Monitoring Tool For a 100M€/year Company Using SQL Queries Only
 
 ### What is SQLPage ?
 
@@ -27,7 +27,7 @@ The struggle intensifies when teams are small and lack coding skills or experien
 
 ![](https://cdn-images-1.medium.com/max/800/1*1IoXc8-07rqXO3yvKC13nQ.png)
 
-Typical Data Flow of digital native companies.
+*Typical Data Flow of digital native companies.
 
 SQLPage changes this by allowing data professionals to use the same language — SQL — across the entire process, from building data pipelines to creating fully functional digital tools. Data analysts, scientists, business analysts, DBAs, and IT teams already have the expertise to craft their own custom data applications from the ground up.
 
@@ -48,11 +48,13 @@ I am using SQLPage to build a 360° Performance tool for my company, integrating
 
 Here are some pages I built using only SQL queries, allowing everyone in the company to instantly access any level of information, from the fiscal year 2024 revenue trends to the top-selling products in Marseille in October 2022.
 
-![](https://cdn-images-1.medium.com/max/800/1*MkORbAC7oGEG-8I1mthu6A.png)
-*Performance of different channels vs last year and best sellers.*
+![](https://cdn-images-1.medium.com/max/800/1*MkORbAC7oGEG-8I1mthu6A.png)  
+    
+*Performance of different channels vs last year and best sellers.
 
-![](https://cdn-images-1.medium.com/max/800/1*_3-g1om_p9ghXhdcw0zHmw.png)
-*Examples of views built with SQLPage to provide a 360° tool for the company.*
+![](https://cdn-images-1.medium.com/max/800/1*_3-g1om_p9ghXhdcw0zHmw.png)  
+    
+*Examples of views built with SQLPage to provide a 360° tool for the company.
 
 ### How Does It Work ?
 
