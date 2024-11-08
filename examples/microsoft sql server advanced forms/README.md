@@ -16,7 +16,7 @@ The result of these multi-selects is a JSON array, which also needs to be read b
 This example demonstrates how to consume [JSON](https://en.wikipedia.org/wiki/JSON) data from a SQL Server database,
 using the [`OPENJSON`](https://docs.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql)
 function to parse the JSON data into a table,
-and [`FOR JSON PATH`](https://docs.microsoft.com/en-us/sql/t-sql/functions/for-json-sql-server)
+and [`FOR JSON PATH`](https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server)
 to format query results as a JSON array.
 
 
