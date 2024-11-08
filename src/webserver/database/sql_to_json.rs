@@ -56,18 +56,26 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     let raw_value = get_ref();
     let type_info = raw_value.type_info();
     let type_name = type_info.name();
-    log::trace!("Decoding a value of type {:?}", type_name);
+    log::trace!("Decoding a value of type {type_name:?} (type info: {type_info:?})");
     match type_name {
         "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" => {
             decode_raw::<f64>(raw_value).into()
         }
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
         | "BIGINT UNSIGNED" | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
-        "INT" | "INT4" | "INTEGER" => decode_raw::<i32>(raw_value).into(),
-        "INT2" | "SMALLINT" => decode_raw::<i16>(raw_value).into(),
+        "INT" | "INT4" | "INTEGER" | "MEDIUMINT" | "YEAR" | "INT UNSIGNED" => {
+            decode_raw::<i32>(raw_value).into()
+        }
+        "INT2" | "SMALLINT" | "TINYINT" => decode_raw::<i16>(raw_value).into(),
         "BOOL" | "BOOLEAN" => decode_raw::<bool>(raw_value).into(),
         "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::Mssql(_))) => {
             decode_raw::<bool>(raw_value).into()
+        }
+        "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::MySql(ref mysql_type)) if mysql_type.max_size() == Some(1)) => {
+            decode_raw::<bool>(raw_value).into()
+        }
+        "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::MySql(_))) => {
+            decode_raw::<u64>(raw_value).into()
         }
         "DATE" => decode_raw::<chrono::NaiveDate>(raw_value)
             .to_string()
@@ -105,7 +113,15 @@ mod tests {
     use super::*;
     use sqlx::Connection;
 
+    fn setup_logging() {
+        let _ = env_logger::builder()
+            .filter_level(log::LevelFilter::Trace)
+            .is_test(true)
+            .try_init();
+    }
+
     fn db_specific_test(db_type: &str) -> Option<String> {
+        setup_logging();
         let db_url =
             std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://:memory:".to_string());
         if db_url.starts_with(db_type) {
@@ -170,7 +186,7 @@ mod tests {
         .fetch_one(&mut c)
         .await?;
 
-        assert_eq!(
+        expect_json_object_equal(
             row_to_json(&row),
             serde_json::json!({
                 "small_int": 42,
@@ -182,48 +198,97 @@ mod tests {
                 "date": "2024-03-14",
                 "time": "13:14:15",
                 "timestamp": "2024-03-14T13:14:15+00:00",
-                "timestamptz": "2024-03-14T11:14:15+00:00", // Postgres stores all timestamps in UTC
+                "timestamptz": "2024-03-14T11:14:15+00:00",
                 "interval": "1 day",
                 "json": {"key": "value"},
                 "jsonb": {"key": "value"},
-            })
+            }),
         );
         Ok(())
     }
 
     #[actix_web::test]
     async fn test_mysql_types() -> anyhow::Result<()> {
-        let Some(db_url) = db_specific_test("mysql") else {
+        let db_url = db_specific_test("mysql").or_else(|| db_specific_test("mariadb"));
+        let Some(db_url) = db_url else {
             return Ok(());
         };
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
-        let row = sqlx::query(
-            "SELECT 
-                CAST(42 AS SIGNED) as signed_int,
-                CAST(42 AS UNSIGNED) as unsigned_int,
-                42.25 as decimal_number,
-                CAST('2024-03-14' AS DATE) as date,
-                CAST('13:14:15' AS TIME) as time,
-                CAST('2024-03-14 13:14:15' AS DATETIME) as datetime,
-                x'68656c6c6f20776f726c64' as hex_value,
-                json_object('key', 'value') as json",
+
+        sqlx::query(
+            "CREATE TEMPORARY TABLE _sqlp_t (
+                tiny_int TINYINT,
+                small_int SMALLINT,
+                medium_int MEDIUMINT,
+                signed_int INTEGER,
+                big_int BIGINT,
+                unsigned_int INTEGER UNSIGNED,
+                decimal_num DECIMAL(10,2),
+                float_num FLOAT,
+                double_num DOUBLE,
+                bit_val BIT(1),
+                date_val DATE,
+                time_val TIME,
+                datetime_val DATETIME,
+                timestamp_val TIMESTAMP,
+                year_val YEAR,
+                char_val CHAR(10),
+                varchar_val VARCHAR(50),
+                text_val TEXT
+            ) AS 
+            SELECT 
+                127 as tiny_int,
+                32767 as small_int,
+                8388607 as medium_int,
+                -1000000 as signed_int,
+                9223372036854775807 as big_int,
+                1000000 as unsigned_int,
+                123.45 as decimal_num,
+                42.25 as float_num,
+                42.25 as double_num,
+                1 as bit_val,
+                '2024-03-14' as date_val,
+                '13:14:15' as time_val,
+                '2024-03-14 13:14:15' as datetime_val,
+                '2024-03-14 13:14:15' as timestamp_val,
+                2024 as year_val,
+                'CHAR' as char_val,
+                'VARCHAR' as varchar_val,
+                'TEXT' as text_val",
         )
-        .fetch_one(&mut c)
+        .execute(&mut c)
         .await?;
 
-        assert_eq!(
+        let row = sqlx::query("SELECT * FROM _sqlp_t")
+            .fetch_one(&mut c)
+            .await?;
+
+        expect_json_object_equal(
             row_to_json(&row),
             serde_json::json!({
-                "signed_int": 42,
-                "unsigned_int": 42,
-                "decimal_number": 42.25,
-                "date": "2024-03-14",
-                "time": "13:14:15",
-                "datetime": "2024-03-14T13:14:15",
-                "hex_value": "hello world",
-                "json": {"key": "value"},
-            })
+                "tiny_int": 127,
+                "small_int": 32767,
+                "medium_int": 8388607,
+                "signed_int": -1000000,
+                "big_int": 9223372036854775807u64,
+                "unsigned_int": 1000000,
+                "decimal_num": 123.45,
+                "float_num": 42.25,
+                "double_num": 42.25,
+                "bit_val": true,
+                "date_val": "2024-03-14",
+                "time_val": "13:14:15",
+                "datetime_val": "2024-03-14T13:14:15",
+                "timestamp_val": "2024-03-14T13:14:15+00:00",
+                "year_val": 2024,
+                "char_val": "CHAR",
+                "varchar_val": "VARCHAR",
+                "text_val": "TEXT"
+            }),
         );
+
+        sqlx::query("DROP TABLE _sqlp_t").execute(&mut c).await?;
+
         Ok(())
     }
 
@@ -243,14 +308,14 @@ mod tests {
         .fetch_one(&mut c)
         .await?;
 
-        assert_eq!(
+        expect_json_object_equal(
             row_to_json(&row),
             serde_json::json!({
                 "integer": 42,
                 "real": 42.25,
                 "string": "xxx",
                 "blob": "hello world",
-            })
+            }),
         );
         Ok(())
     }
@@ -283,7 +348,7 @@ mod tests {
         .fetch_one(&mut c)
         .await?;
 
-        assert_eq!(
+        expect_json_object_equal(
             row_to_json(&row),
             serde_json::json!({
                 "true_bit": true,
@@ -302,8 +367,42 @@ mod tests {
                 "datetimeoffset": "2024-03-14T13:14:15+02:00",
                 "nvarchar": "Unicode String",
                 "varchar": "ASCII String",
-            })
+            }),
         );
         Ok(())
+    }
+
+    fn expect_json_object_equal(actual: Value, expected: Value) {
+        use std::fmt::Write;
+
+        if actual == expected {
+            return;
+        }
+        let actual = actual.as_object().unwrap();
+        let expected = expected.as_object().unwrap();
+
+        let all_keys: std::collections::BTreeSet<_> =
+            actual.keys().chain(expected.keys()).collect();
+        let max_key_len = all_keys.iter().map(|k| k.len()).max().unwrap_or(0);
+
+        let mut comparison_string = String::new();
+        for key in all_keys {
+            let actual_value = actual.get(key).unwrap_or(&Value::Null);
+            let expected_value = expected.get(key).unwrap_or(&Value::Null);
+            if actual_value == expected_value {
+                continue;
+            }
+            writeln!(
+                &mut comparison_string,
+                "{key:<width$}  actual  : {actual_value:?}\n{key:width$}  expected: {expected_value:?}\n",
+                width = max_key_len
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            actual, expected,
+            "JSON objects are not equal:\n\n{}",
+            comparison_string
+        );
     }
 }

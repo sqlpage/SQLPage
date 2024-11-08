@@ -15,6 +15,7 @@
 - Add support for `description_md` in the columns component to display markdown text in an item's description.
 - Add support for simple text item in the columns component. This avoids having to deal with json functions to display a simple textual column item description.
 - Increase spacing between items in the columns component for improved readability.
+- Fixed invalid decoding of some less common data types in Microsoft SQL Server and MySQL.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.
