@@ -13,7 +13,8 @@ select 'MySQL & JSON', 'mysql json handling', 'mysql', 'Learn advanced JSON mani
 select 'Simple Website', 'simple-website-example', 'sqlite', 'Basic website example with navigation and data management.' union all
 select 'Geographic App', 'PostGIS - using sqlpage with geographic data', 'postgres', 'Use SQLPage to create and manage geodata.' union all
 select 'Multi-step form', 'forms-with-multiple-steps', 'sqlite', 'Guide to the implementation of forms that spread over multiple pages.' union all
-select 'Custom HTML & JS', 'custom form component', 'mysql', 'Building a custom form component with a dynamic widget using HTML and javascript.';
+select 'Custom HTML & JS', 'custom form component', 'mysql', 'Building a custom form component with a dynamic widget using HTML and javascript.' union all
+select 'Advanced Forms with MS SQL Server', 'microsoft sql server advanced forms', 'sql server', 'Forms with multi-value dropdowns, using SQL Server and its JSON functions.';
 
 select 'tab' as component, true as center;
 select 'Show all examples' as title, 'All database examples' as description, '?' as link, $db is null as active;
