@@ -62,11 +62,13 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             decode_raw::<f64>(raw_value).into()
         }
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
-        | "BIGINT UNSIGNED" | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
-        "INT" | "INT4" | "INTEGER" | "MEDIUMINT" | "YEAR" | "INT UNSIGNED" => {
-            decode_raw::<i32>(raw_value).into()
-        }
+        | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
+        "INT" | "INT4" | "INTEGER" | "MEDIUMINT" | "YEAR" => decode_raw::<i32>(raw_value).into(),
         "INT2" | "SMALLINT" | "TINYINT" => decode_raw::<i16>(raw_value).into(),
+        "BIGINT UNSIGNED" => decode_raw::<u64>(raw_value).into(),
+        "INT UNSIGNED" | "MEDIUMINT UNSIGNED" | "SMALLINT UNSIGNED" | "TINYINT UNSIGNED" => {
+            decode_raw::<u32>(raw_value).into()
+        }
         "BOOL" | "BOOLEAN" => decode_raw::<bool>(raw_value).into(),
         "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::Mssql(_))) => {
             decode_raw::<bool>(raw_value).into()
@@ -223,6 +225,10 @@ mod tests {
                 signed_int INTEGER,
                 big_int BIGINT,
                 unsigned_int INTEGER UNSIGNED,
+                tiny_int_unsigned TINYINT UNSIGNED,
+                small_int_unsigned SMALLINT UNSIGNED,
+                medium_int_unsigned MEDIUMINT UNSIGNED,
+                big_int_unsigned BIGINT UNSIGNED,
                 decimal_num DECIMAL(10,2),
                 float_num FLOAT,
                 double_num DOUBLE,
@@ -243,6 +249,10 @@ mod tests {
                 -1000000 as signed_int,
                 9223372036854775807 as big_int,
                 1000000 as unsigned_int,
+                255 as tiny_int_unsigned,
+                65535 as small_int_unsigned,
+                16777215 as medium_int_unsigned,
+                18446744073709551615 as big_int_unsigned,
                 123.45 as decimal_num,
                 42.25 as float_num,
                 42.25 as double_num,
@@ -272,6 +282,10 @@ mod tests {
                 "signed_int": -1000000,
                 "big_int": 9223372036854775807u64,
                 "unsigned_int": 1000000,
+                "tiny_int_unsigned": 255,
+                "small_int_unsigned": 65535,
+                "medium_int_unsigned": 16777215,
+                "big_int_unsigned": 18446744073709551615u64,
                 "decimal_num": 123.45,
                 "float_num": 42.25,
                 "double_num": 42.25,
