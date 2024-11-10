@@ -38,7 +38,7 @@
                         </tr>
                         </thead>
                     <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
-                    {{/if}}
+                    {{~/if~}}
 
                     <tr class="{{_sqlpage_css_class}} {{#if _sqlpage_color}}bg-{{_sqlpage_color}}-lt{{/if}}" {{#if _sqlpage_id}}id="{{_sqlpage_id}}"{{/if}}>
                         {{~#each this~}}
@@ -58,7 +58,7 @@
                                 {{~/if~}}
                                 {{~/if~}}
                             </td>
-                            {{~/if~}}
+                            {{/if~}}
                         {{~/each~}}
                     </tr>
                 {{/each_row}}
