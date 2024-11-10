@@ -17,6 +17,7 @@
 - Increase spacing between items in the columns component for improved readability.
 - Fixed invalid decoding of some less common data types in Microsoft SQL Server and MySQL.
 - Fixed a display bug where the table search box would disappear when scrolling horizontally in a large table.
+- Remove small blank padding around tables in the table component
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

@@ -1,12 +1,15 @@
 <div class="card my-2 {{class}}" {{#if overflow}}style="width: fit-content;"{{/if}} {{#if id}}id="{{id}}"{{/if}}>
-    <div class="card-body" {{#if (or sort (or search initial_search_value))}}data-pre-init="table"{{/if}}>
+    <div class="card-body p-0" {{#if (or sort (or search initial_search_value))}}data-pre-init="table"{{/if}}>
         {{#if (or search initial_search_value)}}
-            <div class="p-2">
-                <input type="search" class="form-control form-control-rounded fs-6 search" placeholder="Search…"
-                    value="{{initial_search_value}}"
+        <div class="p-3">
+            <input
+                type="search"
+                class="form-control form-control-rounded fs-6 search"
+                placeholder="Search…"
+                value="{{initial_search_value}}"
                 {{#if initial_search_value}}autocomplete="off"{{/if}}
-                >
-            </div>
+            >
+        </div>
         {{/if}}
         <div class="table-responsive">
             <table class="table {{#if striped_rows}}table-striped {{/if}}{{#if
