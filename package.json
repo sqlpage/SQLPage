@@ -1,0 +1,16 @@
+{
+  "name": "sqlpage",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "biome check .",
+    "format": "biome format --write ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sqlpage/SQLPage.git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4"
+  }
+}
