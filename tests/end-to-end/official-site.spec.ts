@@ -84,7 +84,7 @@ test("Authentication example", async ({ page }) => {
 
 test("table filtering", async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=table`);
-  const tableSection = page.locator(".table-responsive", {
+  const tableSection = page.locator(".card", {
     has: page.getByRole("cell", { name: "Chart" }),
   });
 
