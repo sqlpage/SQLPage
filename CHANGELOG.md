@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.31.0 (unreleased)
 - [update apexcharts.js to v4.0.0](https://github.com/apexcharts/apexcharts.js/releases)
 - Fixed a bug where the chart library would be loaded multiple times when the page contained multiple charts. This made the page load slower and could cause issues with the chart library.
 - Fixed a bug where [timeline chart tooltips displayed the wrong labels](https://github.com/sqlpage/SQLPage/issues/659).
@@ -21,6 +21,14 @@
 - Fixed a bug in the table component where searching for "xy" would match a row with a cell that contains "x" followed by a cell that contains "y". This should match "x y" but not "xy".
 - Fixed a bug where embedded card contents would be initialized multiple times, potentially causing issues with some components (such as the chart component) when embedded in a card.
 - Fixed misaligned loading spinner in the card component when the card is loading embedded content.
+- Updated the SQL parser to [v0.52.0](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.52.0.md).
+  - This fixes a bug where the parser would fail parse a `SET` clause for a variable named `role`.
+  - Better support for the `JSON_TABLE` function, for manipulating json arrays in MySQL.
+  - Adds support for `EXECUTE` statements with parameters in mssql, to run stored procedures.
+  - Adds support for `TRY_CONVERT` in mssql, to convert data types.
+  - Adds support for setting column names with an `=` sign, like `SELECT some_property = (a*b) FROM some_table` in mssql
+  - Adds support for the `LIMIT max_rows, offset` syntax in SQLite. https://www.sqlite.org/lang_select.html#limitoffset
+  - Adds support for `ANY`, `ALL`, and `SOME` subqueries, like `SELECT * FROM t WHERE a = ANY (SELECT b FROM t2)` 
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.
