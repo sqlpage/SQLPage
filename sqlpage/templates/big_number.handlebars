@@ -31,7 +31,23 @@
           {{/if}}
         </div>
         {{/if~}}
-        <div class="h1 {{#if description}}mb-3{{/if}} mt-auto text-nowrap text-truncate">{{value}}{{#if unit}} {{unit}}{{/if}}</div>
+        <div class="d-flex align-items-center mt-1">
+          <div class="h1 {{#if description}}mb-3{{else}}mb-0{{/if}} mt-auto text-nowrap text-truncate">{{value}}{{#if unit}} {{unit}}{{/if}}</div>
+          {{#if (and change_percent (not description))}}
+          <div class="ms-auto">
+            {{#if change_percent}}
+            <span class="text-{{#if (gte change_percent 0)}}success{{else}}danger{{/if}} d-inline-flex align-items-center lh-1">
+              {{change_percent}}%
+              {{#if (gte change_percent 0)}}
+                  {{~icon_img 'trending-up'~}}
+              {{else}}
+                  {{~icon_img 'trending-down'~}}
+              {{/if}}
+            </span>
+            {{/if}}
+          </div>
+          {{/if}}
+        </div>
         {{~#if description}}
         <div class="d-flex flex-wrap mb-2" title="{{description}}">
           <div class="text-truncate me-2">{{description}}</div>
