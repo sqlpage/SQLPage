@@ -63,3 +63,27 @@ code {
   fill: var(--tblr-body-color) !important;
   font-weight: var(--tblr-body-font-weight);
 }
+
+/** table **/
+.table-freeze-headers thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.table-freeze-headers {
+  max-height: 50vh;
+}
+
+.table-freeze-columns th:first-child {
+  position: sticky;
+  left:0;
+  z-index: 2;
+}
+
+.table-freeze-columns td:first-child{
+  position: sticky;
+  left:0;
+  background: var(--tblr-bg-surface-secondary);
+  box-shadow: 3px 0 3px var(--tblr-border-color);
+}

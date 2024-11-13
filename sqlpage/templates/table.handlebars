@@ -11,11 +11,17 @@
             >
         </div>
         {{/if}}
-        <div class="table-responsive">
-            <table class="table {{#if striped_rows}}table-striped {{/if}}{{#if
-            striped_columns}}table-striped-columns {{/if}}{{#if
-            hover}}table-hover {{/if}}{{#if border}}table-bordered {{/if}}
-            {{#if small}}table-sm {{/if}}">
+        <div class="table-responsive
+            {{~#if freeze_columns}} table-freeze-columns text-nowrap {{/if~}}
+            {{~#if freeze_headers}} table-freeze-headers text-nowrap {{/if~}}
+        ">
+            <table class="table
+            {{~#if striped_rows}} table-striped {{/if~}}
+            {{~#if striped_columns}} table-striped-columns {{/if~}}
+            {{~#if hover}} table-hover {{/if~}}
+            {{~#if border}} table-bordered {{/if~}}
+            {{~#if small}} table-sm {{/if~}}
+            ">
             {{#if description}}<caption>{{description}}</caption>{{/if}}
                 {{#each_row}}
                     {{#if (eq @row_index 0)}}

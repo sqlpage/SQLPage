@@ -30,6 +30,7 @@
   - Adds support for the `LIMIT max_rows, offset` syntax in SQLite. https://www.sqlite.org/lang_select.html#limitoffset
   - Adds support for `ANY`, `ALL`, and `SOME` subqueries, like `SELECT * FROM t WHERE a = ANY (SELECT b FROM t2)` 
 - Add support for `change_percent` without `description` in the big_number component to display the percentage change of a value.
+- Add support for `freeze_columns` and `freeze_headers` in the table component to freeze columns and headers.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.
