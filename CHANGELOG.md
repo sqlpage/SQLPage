@@ -19,6 +19,7 @@
 - Fixed a display bug where the table search box would disappear when scrolling horizontally in a large table.
 - Remove small blank padding around tables in the table component
 - Fixed a bug in the table component where searching for "xy" would match a row with a cell that contains "x" followed by a cell that contains "y". This should match "x y" but not "xy".
+- Fixed a bug where embedded card contents would be initialized multiple times, potentially causing issues with some components (such as the chart component) when embedded in a card.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

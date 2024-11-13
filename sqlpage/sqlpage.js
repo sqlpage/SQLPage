@@ -3,13 +3,12 @@ const nonce = document.currentScript.nonce;
 
 function sqlpage_card() {
   for (const c of document.querySelectorAll("[data-pre-init=card]")) {
-    const source = c.dataset.embed;
+    c.removeAttribute("data-pre-init");
     fetch(c.dataset.embed)
       .then((res) => res.text())
       .then((html) => {
         const body = c.querySelector(".card-content");
         body.innerHTML = html;
-        c.removeAttribute("data-pre-init");
         const spinner = c.querySelector(".card-loading-placeholder");
         if (spinner) {
           spinner.parentNode.removeChild(spinner);

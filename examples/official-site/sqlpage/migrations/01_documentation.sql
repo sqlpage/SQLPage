@@ -667,7 +667,7 @@ to the path of the file you want to include, followed by `?_sqlpage_embed`.
         json('[
             {"component":"card", "title":"A dashboard with multiple graphs on the same line", "columns": 2},
             {"embed": "/examples/chart.sql?color=green&n=42&_sqlpage_embed", "footer_md": "You can find the sql file that generates the chart [here](https://github.com/lovasoa/SQLpage/tree/main/examples/official-site/examples/chart.sql)" },
-            {"embed": "/examples/chart.sql?_sqlpage_embed" },
+            {"embed": "/examples/chart.sql?_sqlpage_embed" }
         ]'));
 
 INSERT INTO component(name, icon, description) VALUES
