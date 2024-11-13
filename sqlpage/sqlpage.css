@@ -77,13 +77,13 @@ code {
 
 .table-freeze-columns th:first-child {
   position: sticky;
-  left:0;
+  left: 0;
   z-index: 2;
 }
 
-.table-freeze-columns td:first-child{
+.table-freeze-columns td:first-child {
   position: sticky;
-  left:0;
+  left: 0;
   background: var(--tblr-bg-surface-secondary);
   box-shadow: 3px 0 3px var(--tblr-border-color);
 }
