@@ -44,7 +44,10 @@ impl ParsedSqlFile {
 
     fn from_err(e: impl Into<anyhow::Error>, source_path: &Path) -> Self {
         Self {
-            statements: vec![ParsedStatement::Error(e.into().context(format!("While parsing file {source_path:?}")))],
+            statements: vec![ParsedStatement::Error(
+                e.into()
+                    .context(format!("While parsing file {source_path:?}")),
+            )],
             source_path: source_path.to_path_buf(),
         }
     }
@@ -52,7 +55,11 @@ impl ParsedSqlFile {
 
 #[async_trait(? Send)]
 impl AsyncFromStrWithState for ParsedSqlFile {
-    async fn from_str_with_state(app_state: &AppState, source: &str, source_path: &Path) -> anyhow::Result<Self> {
+    async fn from_str_with_state(
+        app_state: &AppState,
+        source: &str,
+        source_path: &Path,
+    ) -> anyhow::Result<Self> {
         Ok(ParsedSqlFile::new(&app_state.db, source, source_path))
     }
 }

@@ -185,5 +185,9 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
 #[async_trait(? Send)]
 pub trait AsyncFromStrWithState: Sized {
     /// Parses the string into an object.
-    async fn from_str_with_state(app_state: &AppState, source: &str, source_path: &Path) -> anyhow::Result<Self>;
+    async fn from_str_with_state(
+        app_state: &AppState,
+        source: &str,
+        source_path: &Path,
+    ) -> anyhow::Result<Self>;
 }
