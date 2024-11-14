@@ -5,7 +5,8 @@ select
     'Syracuse Sequence'        as title,
     coalesce($type, 'area')    as type,
     coalesce($color, 'indigo')  as color,
-    5                          as marker;
+    5                          as marker,
+    0                          as ymin;
 with recursive seq(x, y) as (
     select 0, CAST($n as integer)
     union all

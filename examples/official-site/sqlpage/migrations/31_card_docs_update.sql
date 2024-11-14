@@ -72,6 +72,6 @@ INSERT INTO example(component, description, properties) VALUES
     ('card', 'Cards with remote content',
         json('[
             {"component":"card", "title":"Card with embedded remote content", "columns": 2},
-            {"title": "Embedded Chart", "embed": "/examples/chart.sql?_sqlpage_embed", "footer_md": "You can find the sql file that generates the chart [here](https://github.com/lovasoa/SQLpage/tree/main/examples/official-site/examples/chart.sql)"  },
+            {"title": "Embedded Chart", "embed": "/examples/chart.sql?_sqlpage_embed" },
             {"title": "Embedded Video", "embed": "https://www.youtube.com/embed/mXdgmSdaXkg", "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share", "embed_mode": "iframe", "height": "350" }
         ]'));
