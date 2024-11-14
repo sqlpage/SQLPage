@@ -348,7 +348,13 @@ fn deserialize_site_prefix<'de, D: Deserializer<'de>>(deserializer: D) -> Result
 /// We also percent-encode special characters in the prefix, but allow it to contain slashes (to allow
 /// hosting on a sub-sub-path).
 fn normalize_site_prefix(prefix: &str) -> String {
-    const TO_ENCODE: AsciiSet = percent_encoding::NON_ALPHANUMERIC.remove(b'/');
+    const TO_ENCODE: AsciiSet = percent_encoding::CONTROLS
+        .add(b' ')
+        .add(b'"')
+        .add(b'#')
+        .add(b'<')
+        .add(b'>')
+        .add(b'?');
 
     let prefix = prefix.trim_start_matches('/').trim_end_matches('/');
     if prefix.is_empty() {
@@ -356,8 +362,10 @@ fn normalize_site_prefix(prefix: &str) -> String {
     }
     let encoded_prefix = percent_encoding::percent_encode(prefix.as_bytes(), &TO_ENCODE);
 
+    let invalid_chars = ["%09", "%0A", "%0D"];
+
     std::iter::once("/")
-        .chain(encoded_prefix)
+        .chain(encoded_prefix.filter(|c| !invalid_chars.contains(c)))
         .chain(std::iter::once("/"))
         .collect::<String>()
 }
@@ -550,6 +558,13 @@ mod test {
         assert_eq!(normalize_site_prefix("a/b/c"), "/a/b/c/");
         assert_eq!(normalize_site_prefix("a b"), "/a%20b/");
         assert_eq!(normalize_site_prefix("a b/c"), "/a%20b/c/");
+        assert_eq!(normalize_site_prefix("*-+/:;,?%\"'{"), "/*-+/:;,%3F%%22'{/");
+        assert_eq!(
+            normalize_site_prefix(
+                &(0..=0x7F).map(|b| char::from(b)).collect::<String>()
+            ),
+            "/%00%01%02%03%04%05%06%07%08%0B%0C%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%20!%22%23$%&'()*+,-./0123456789:;%3C=%3E%3F@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~%7F/"
+        );
     }
 
     #[test]

@@ -314,7 +314,7 @@ async fn serve_file(
     state: &AppState,
     if_modified_since: Option<IfModifiedSince>,
 ) -> actix_web::Result<HttpResponse> {
-    let path = path.strip_prefix(&state.config.site_prefix).unwrap_or(path);
+    let path = strip_site_prefix(path, state);
     if let Some(IfModifiedSince(date)) = if_modified_since {
         let since = DateTime::<Utc>::from(SystemTime::from(date));
         let modified = state
@@ -345,6 +345,11 @@ async fn serve_file(
         })
 }
 
+/// Strips the site prefix from a path
+fn strip_site_prefix<'a>(path: &'a str, state: &AppState) -> &'a str {
+    path.strip_prefix(&state.config.site_prefix).unwrap_or(path)
+}
+
 /// Fallback handler for when a file could not be served
 ///
 /// Recursively traverses upwards in the request's path, looking for a `404.sql` to call as the
@@ -361,7 +366,7 @@ async fn serve_fallback(
 
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
 
-    // Find the indeces of each char which follows a directroy separator (`/`). Also consider the 0
+    // Find the indices of each char which follows a directroy separator (`/`). Also consider the 0
     // index, as we also have to try to check the empty path, for a root dir `404.sql`.
     for idx in req_path
         .rmatch_indices('/')
@@ -408,6 +413,10 @@ async fn serve_fallback(
 pub async fn main_handler(
     mut service_request: ServiceRequest,
 ) -> actix_web::Result<ServiceResponse> {
+    if let Some(redirect) = redirect_missing_prefix(&service_request) {
+        return Ok(service_request.into_response(redirect));
+    }
+
     let path = req_path(&service_request);
     let sql_file_path = path_to_sql_file(&path);
     let maybe_response = if let Some(sql_path) = sql_file_path {
@@ -419,11 +428,10 @@ pub async fn main_handler(
         }
     } else {
         log::debug!("Serving file: {:?}", path);
-        let app_state = service_request.extract::<web::Data<AppState>>().await?;
         let path = req_path(&service_request);
         let if_modified_since = IfModifiedSince::parse(&service_request).ok();
-
-        serve_file(&path, &app_state, if_modified_since).await
+        let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+        serve_file(&path, app_state, if_modified_since).await
     };
 
     // On 404/NOT_FOUND error, fall back to `404.sql` handler if it exists
@@ -442,13 +450,27 @@ pub async fn main_handler(
     Ok(service_request.into_response(response))
 }
 
+fn redirect_missing_prefix(service_request: &ServiceRequest) -> Option<HttpResponse> {
+    let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+    if !service_request
+        .path()
+        .starts_with(&app_state.config.site_prefix)
+    {
+        let header = (header::LOCATION, app_state.config.site_prefix.clone());
+        return Some(
+            HttpResponse::PermanentRedirect()
+                .insert_header(header)
+                .finish(),
+        );
+    }
+    None
+}
+
 /// Extracts the path from a request and percent-decodes it
 fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
     let encoded_path = req.path();
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-    let encoded_path = encoded_path
-        .strip_prefix(&app_state.config.site_prefix)
-        .unwrap_or(encoded_path);
+    let encoded_path = strip_site_prefix(encoded_path, app_state);
     percent_encoding::percent_decode_str(encoded_path).decode_utf8_lossy()
 }
 
@@ -481,12 +503,12 @@ async fn default_prefix_redirect(
     service_request: ServiceRequest,
 ) -> actix_web::Result<ServiceResponse> {
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-    let redirect_path = app_state
-        .config
-        .site_prefix
-        .trim_end_matches('/')
-        .to_string()
-        + service_request.path();
+    let original_path = service_request.path();
+    let site_prefix = &app_state.config.site_prefix;
+    let redirect_path = site_prefix.trim_end_matches('/').to_string() + original_path;
+    log::info!(
+        "Received request to {original_path} (outside of site prefix {site_prefix}), redirecting to {redirect_path}"
+    );
     Ok(service_request.into_response(
         HttpResponse::PermanentRedirect()
             .insert_header((header::LOCATION, redirect_path))
