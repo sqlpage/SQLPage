@@ -189,8 +189,8 @@ mod tests {
         .await?;
 
         expect_json_object_equal(
-            row_to_json(&row),
-            serde_json::json!({
+            &row_to_json(&row),
+            &serde_json::json!({
                 "small_int": 42,
                 "integer": 42,
                 "big_int": 42,
@@ -274,18 +274,18 @@ mod tests {
             .await?;
 
         expect_json_object_equal(
-            row_to_json(&row),
-            serde_json::json!({
+            &row_to_json(&row),
+            &serde_json::json!({
                 "tiny_int": 127,
                 "small_int": 32767,
-                "medium_int": 8388607,
-                "signed_int": -1000000,
-                "big_int": 9223372036854775807u64,
-                "unsigned_int": 1000000,
+                "medium_int": 8_388_607,
+                "signed_int": -1_000_000,
+                "big_int": 9_223_372_036_854_775_807_u64,
+                "unsigned_int": 1_000_000,
                 "tiny_int_unsigned": 255,
-                "small_int_unsigned": 65535,
-                "medium_int_unsigned": 16777215,
-                "big_int_unsigned": 18446744073709551615u64,
+                "small_int_unsigned": 65_535,
+                "medium_int_unsigned": 16_777_215,
+                "big_int_unsigned": 18_446_744_073_709_551_615_u64,
                 "decimal_num": 123.45,
                 "float_num": 42.25,
                 "double_num": 42.25,
@@ -323,8 +323,8 @@ mod tests {
         .await?;
 
         expect_json_object_equal(
-            row_to_json(&row),
-            serde_json::json!({
+            &row_to_json(&row),
+            &serde_json::json!({
                 "integer": 42,
                 "real": 42.25,
                 "string": "xxx",
@@ -363,8 +363,8 @@ mod tests {
         .await?;
 
         expect_json_object_equal(
-            row_to_json(&row),
-            serde_json::json!({
+            &row_to_json(&row),
+            &serde_json::json!({
                 "true_bit": true,
                 "false_bit": false,
                 "null_bit": null,
@@ -386,7 +386,7 @@ mod tests {
         Ok(())
     }
 
-    fn expect_json_object_equal(actual: Value, expected: Value) {
+    fn expect_json_object_equal(actual: &Value, expected: &Value) {
         use std::fmt::Write;
 
         if actual == expected {
