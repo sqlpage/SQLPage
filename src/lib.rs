@@ -17,7 +17,7 @@ use crate::app_config::AppConfig;
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
 use file_cache::FileCache;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use templates::AllTemplates;
 use webserver::Database;
 
@@ -47,7 +47,7 @@ impl AppState {
         let file_system = FileSystem::init(&config.web_root, &db).await;
         sql_file_cache.add_static(
             PathBuf::from("index.sql"),
-            ParsedSqlFile::new(&db, include_str!("../index.sql")),
+            ParsedSqlFile::new(&db, include_str!("../index.sql"), Path::new("index.sql")),
         );
         Ok(AppState {
             db,

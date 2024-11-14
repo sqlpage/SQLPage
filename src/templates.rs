@@ -5,7 +5,7 @@ use crate::{AppState, FileCache, TEMPLATES_DIR};
 use async_trait::async_trait;
 use handlebars::{template::TemplateElement, Handlebars, Template};
 use include_dir::{include_dir, Dir};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub struct SplitTemplate {
@@ -52,7 +52,8 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
 
 #[async_trait(? Send)]
 impl AsyncFromStrWithState for SplitTemplate {
-    async fn from_str_with_state(_app_state: &AppState, source: &str) -> anyhow::Result<Self> {
+    async fn from_str_with_state(_app_state: &AppState, source: &str, source_path: &Path) -> anyhow::Result<Self> {
+        log::debug!("Compiling template {:?}", source_path);
         let tpl = Template::compile_with_name(source, "SQLPage component".to_string())?;
         Ok(split_template(tpl))
     }

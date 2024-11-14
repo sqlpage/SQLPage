@@ -561,7 +561,7 @@ mod test {
         assert_eq!(normalize_site_prefix("*-+/:;,?%\"'{"), "/*-+/:;,%3F%%22'{/");
         assert_eq!(
             normalize_site_prefix(
-                &(0..=0x7F).map(|b| char::from(b)).collect::<String>()
+                &(0..=0x7F).map(char::from).collect::<String>()
             ),
             "/%00%01%02%03%04%05%06%07%08%0B%0C%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%20!%22%23$%&'()*+,-./0123456789:;%3C=%3E%3F@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~%7F/"
         );

@@ -32,6 +32,10 @@
 - Add support for `change_percent` without `description` in the big_number component to display the percentage change of a value.
 - Add support for `freeze_columns` and `freeze_headers` in the table component to freeze columns and headers.
 - Fix an error that occured when the site_prefix configuration option was set to a value containing special characters like `-` and a request was made directly to the server without url-encoding the site prefix.
+- Improve error messages:
+  - The error message now always includes the name of the file where the error occurred, which is useful when embedding SQLPage pages using `sqlpage.run_sql`, or the card component.
+  - When an error occurs while executing a SQL statement, the error message now always includes the (potentially transformed) SQL statement that was sent to the database.
+  - Fixed a problem where database errors would be displayed twice in the error message.
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

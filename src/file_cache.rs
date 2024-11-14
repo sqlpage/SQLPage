@@ -139,7 +139,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
 
         let parsed = match file_contents {
             Ok(contents) => {
-                let value = T::from_str_with_state(app_state, &contents).await?;
+                let value = T::from_str_with_state(app_state, &contents, path).await?;
                 Ok(Cached::new(value))
             }
             // If a file is not found, we try to load it from the static files
@@ -184,5 +184,6 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
 
 #[async_trait(? Send)]
 pub trait AsyncFromStrWithState: Sized {
-    async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self>;
+    /// Parses the string into an object.
+    async fn from_str_with_state(app_state: &AppState, source: &str, source_path: &Path) -> anyhow::Result<Self>;
 }

@@ -408,15 +408,13 @@ mod tests {
             }
             writeln!(
                 &mut comparison_string,
-                "{key:<width$}  actual  : {actual_value:?}\n{key:width$}  expected: {expected_value:?}\n",
-                width = max_key_len
+                "{key:<max_key_len$}  actual  : {actual_value:?}\n{key:max_key_len$}  expected: {expected_value:?}\n"
             )
             .unwrap();
         }
         assert_eq!(
             actual, expected,
-            "JSON objects are not equal:\n\n{}",
-            comparison_string
+            "JSON objects are not equal:\n\n{comparison_string}"
         );
     }
 }

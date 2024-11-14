@@ -17,38 +17,43 @@ use sqlparser::tokenizer::Token::{SemiColon, EOF};
 use sqlparser::tokenizer::Tokenizer;
 use sqlx::any::AnyKind;
 use std::ops::ControlFlow;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Default)]
 pub struct ParsedSqlFile {
     pub(super) statements: Vec<ParsedStatement>,
+    pub(super) source_path: PathBuf,
 }
 
 impl ParsedSqlFile {
     #[must_use]
-    pub fn new(db: &Database, sql: &str) -> ParsedSqlFile {
+    pub fn new(db: &Database, sql: &str, source_path: &Path) -> ParsedSqlFile {
         let dialect = dialect_for_db(db.connection.any_kind());
+        log::debug!("Parsing SQL file {:?}", source_path);
         let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
-            Err(err) => return Self::from_err(err),
+            Err(err) => return Self::from_err(err, source_path),
         };
         let statements = parsed_statements.collect();
-        ParsedSqlFile { statements }
+        ParsedSqlFile {
+            statements,
+            source_path: source_path.to_path_buf(),
+        }
     }
 
-    fn from_err(e: impl Into<anyhow::Error>) -> Self {
+    fn from_err(e: impl Into<anyhow::Error>, source_path: &Path) -> Self {
         Self {
-            statements: vec![ParsedStatement::Error(
-                e.into().context("SQLPage could not parse the SQL file"),
-            )],
+            statements: vec![ParsedStatement::Error(e.into().context(format!("While parsing file {source_path:?}")))],
+            source_path: source_path.to_path_buf(),
         }
     }
 }
 
 #[async_trait(? Send)]
 impl AsyncFromStrWithState for ParsedSqlFile {
-    async fn from_str_with_state(app_state: &AppState, source: &str) -> anyhow::Result<Self> {
-        Ok(ParsedSqlFile::new(&app_state.db, source))
+    async fn from_str_with_state(app_state: &AppState, source: &str, source_path: &Path) -> anyhow::Result<Self> {
+        Ok(ParsedSqlFile::new(&app_state.db, source, source_path))
     }
 }
 
@@ -96,7 +101,7 @@ fn parse_sql<'a>(
         .tokenize_with_location()
         .map_err(|err| {
             let location = err.location;
-            anyhow::Error::new(err).context(format!("The SQLPage parser couldn't understand the SQL file. Tokenization failed. Please check for syntax errors:\n{}", quote_source_with_highlight(sql, location.line, location.column)))
+            anyhow::Error::new(err).context(format!("The SQLPage parser could not understand the SQL file. Tokenization failed. Please check for syntax errors:\n{}", quote_source_with_highlight(sql, location.line, location.column)))
         })?;
     let mut parser = Parser::new(dialect).with_tokens_with_locations(tokens);
     let db_kind = kind_of_dialect(dialect);

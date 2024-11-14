@@ -35,7 +35,9 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
         match err {
             MigrateError::Execute(n, source) => {
                 let migration = migrator.iter().find(|&m| m.version == n).unwrap();
-                display_db_error(&migration.sql, source).context(format!(
+                let source_file =
+                    migrations_dir.join(format!("{:04}_{}.sql", n, migration.description));
+                display_db_error(&source_file, &migration.sql, source).context(format!(
                     "Failed to apply migration {}",
                     DisplayMigration(migration)
                 ))

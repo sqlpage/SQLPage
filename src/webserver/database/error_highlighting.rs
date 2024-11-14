@@ -1,19 +1,27 @@
-use std::fmt::Write;
+use std::{
+    fmt::Write,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug)]
 struct NiceDatabaseError {
+    source_file: PathBuf,
     db_err: sqlx::error::Error,
     query: String,
 }
 
 impl std::fmt::Display for NiceDatabaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.db_err.fmt(f)?;
+        write!(
+            f,
+            "In \"{}\": The following error occurred while executing an SQL statement:\n{}\n\nThe SQL statement sent by SQLPage was:\n",
+            self.source_file.display(),
+            self.db_err
+        )?;
         if let sqlx::error::Error::Database(db_err) = &self.db_err {
             let Some(mut offset) = db_err.offset() else {
-                return Ok(());
+                return write!(f, "{}", self.query);
             };
-            write!(f, "\n\nError in query:\n")?;
             for (line_no, line) in self.query.lines().enumerate() {
                 if offset > line.len() {
                     offset -= line.len() + 1;
@@ -23,23 +31,24 @@ impl std::fmt::Display for NiceDatabaseError {
                     break;
                 }
             }
+            Ok(())
         } else {
-            write!(f, "{}", self.query.lines().next().unwrap_or_default())?;
+            write!(f, "{}", self.query)
         }
-        Ok(())
     }
 }
 
-impl std::error::Error for NiceDatabaseError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.db_err.source()
-    }
-}
+impl std::error::Error for NiceDatabaseError {}
 
 /// Display a database error with a highlighted line and character offset.
 #[must_use]
-pub fn display_db_error(query: &str, db_err: sqlx::error::Error) -> anyhow::Error {
+pub fn display_db_error(
+    source_file: &Path,
+    query: &str,
+    db_err: sqlx::error::Error,
+) -> anyhow::Error {
     anyhow::Error::new(NiceDatabaseError {
+        source_file: source_file.to_path_buf(),
         db_err,
         query: query.to_string(),
     })
