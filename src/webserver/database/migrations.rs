@@ -38,7 +38,8 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
                 let source_file =
                     migrations_dir.join(format!("{:04}_{}.sql", n, migration.description));
                 display_db_error(&source_file, &migration.sql, source).context(format!(
-                    "Failed to apply migration {}",
+                    "Failed to apply {} migration {}",
+                    db,
                     DisplayMigration(migration)
                 ))
             }
