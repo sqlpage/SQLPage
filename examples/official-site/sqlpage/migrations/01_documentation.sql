@@ -251,7 +251,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('max', 'The maximum value to accept for an input of type number', 'REAL', FALSE, TRUE),
     ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOLEAN', FALSE, TRUE),
     ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOLEAN', FALSE, TRUE),
-    ('empty_option', 'Only for inputs of type `select`. Adds an empty option before the ones defined in `options`.', 'BOOLEAN', FALSE, TRUE),
+    ('empty_option', 'Only for inputs of type `select`. Adds an empty option with the given label before the ones defined in `options`. Useful when generating other options from a database table.', 'TEXT', FALSE, TRUE),
     ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOLEAN', FALSE, TRUE),
     ('dropdown', 'An alias for "searchable".', 'BOOLEAN', FALSE, TRUE),
     ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOLEAN', FALSE, TRUE),
@@ -323,6 +323,7 @@ In SQLite, the query would look like
 ```sql
 SELECT 
     ''select'' as type,
+    ''Select a fruit...'' as empty_option,
     json_group_array(json_object(
         ''label'', name,
         ''value'', id
@@ -330,8 +331,10 @@ SELECT
 FROM fruits
 ```
 ', json('[{"component":"form", "action":"examples/show_variables.sql"},
-    {"name": "Fruit", "type": "select", "searchable": true, "value": 1, "options":
-        "[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
+    {"name": "Fruit", "type": "select",
+        "empty_option": "Select a fruit...",
+        "options":
+            "[{\"label\": \"Orange\", \"value\": 0}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3}]"}
     ]')),
     ('form', '### Multi-select
 You can authorize the user to select multiple options by setting the `multiple` property to `true`.
