@@ -1,0 +1,39 @@
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
+  </head>
+  <body class="d-flex flex-column min-vh-100 bg-dark text-white border-top border-info">
+    <header class="py-3 px-4">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-baseline">
+          <a href="/" class="text-decoration-none text-white">
+            <h1 class="fw-bold fs-2 mb-0">
+              round<span class="text-info">est</span>
+              <span class="text-secondary fw-light ms-2 fs-3">
+                (SQLPage Version)
+              </span>
+            </h1>
+          </a>
+        </div>
+        <nav class="d-flex gap-4">
+          <a href="/results.sql" class="text-white text-decoration-none fs-5 hover-underline">
+            Results
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-grow-1">{{~#each_row~}}{{~/each_row~}}</main>
+
+    <footer class="text-center py-2 text-secondary fw-light">
+      <a
+        href="https://github.com/t3dotgg/1app5stacks"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-secondary"
+      >
+        GitHub
+      </a>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+<div class="container py-4">
+  <div class="row g-4">
+    {{#each_row}}
+      <div class="col-12">
+        <div class="d-flex align-items-center gap-4 p-4 bg-dark bg-opacity-40 rounded shadow">
+          <div class="fs-3 fw-bold text-secondary" style="width: 2rem">
+            #{{rank}}
+          </div>
+
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{{dex_id}}.png" alt="{{name}}" class="img-fluid" style="width: 5rem; height: 5rem" />
+
+          <div class="flex-grow-1">
+            <div class="text-secondary small">#{{dex_id}}</div>
+            <h2 class="fs-4 fw-semibold text-capitalize text-white">{{name}}</h2>
+          </div>
+
+          <div class="text-end">
+            <div class="fs-3 fw-bold text-info">
+              {{win_percentage}}%
+            </div>
+            <div class="small text-secondary">
+              {{up_votes}}W - {{down_votes}}L
+            </div>
+          </div>
+        </div>
+      </div>
+    {{/each_row}}
+  </div>
+</div>

@@ -8,6 +8,7 @@ select 'Authenticated CRUD', 'CRUD - Authentication', 'sqlite', 'Complete Create
 select 'Image Gallery', 'image gallery with user uploads', 'sqlite', 'Create an image gallery with user uploads and session management.' union all
 select 'Developer UI', 'SQLPage developer user interface', 'postgres', 'A web-based interface for managing SQLPage files and database tables.' union all
 select 'Corporate Game', 'corporate-conundrum', 'sqlite', 'An interactive multiplayer board game with real-time updates.' union all
+select 'Roundest Pokemon', 'roundest_pokemon_rating', 'sqlite', 'Demo app with a distinct non-default design, using custom HTML templates for everything.' union all
 select 'Todo Application', 'todo application (PostgreSQL)', 'sqlite', 'A full-featured todo list application with PostgreSQL backend.' union all
 select 'MySQL & JSON', 'mysql json handling', 'mysql', 'Learn advanced JSON manipulation in MySQL to build advanced SQLPage applications.' union all
 select 'Simple Website', 'simple-website-example', 'sqlite', 'Basic website example with navigation and data management.' union all
