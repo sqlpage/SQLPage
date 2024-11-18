@@ -234,7 +234,11 @@ fn parse_single_sql_result(
             log::debug!("Finished query with result: {:?}", res);
             DbItem::FinishedQuery
         }
-        Err(err) => DbItem::Error(display_db_error(source_file, sql, err)),
+        Err(err) => {
+            let nice_err = display_db_error(source_file, sql, err);
+            log::error!("{:?}", nice_err);
+            DbItem::Error(nice_err)
+        }
     }
 }
 

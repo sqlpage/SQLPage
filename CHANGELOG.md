@@ -36,6 +36,7 @@
   - The error message now always includes the name of the file where the error occurred, which is useful when embedding SQLPage pages using `sqlpage.run_sql`, or the card component.
   - When an error occurs while executing a SQL statement, the error message now always includes the (potentially transformed) SQL statement that was sent to the database.
   - Fixed a problem where database errors would be displayed twice in the error message.
+  - Database errors now always trigger warning messages in the console, in addition to the error message displayed in the browser. This allows the application's administrator to be alerted and fix errors faster, without having to wait for a user to report the error.
 - Fixed layout issues in the card component when embedding content with `embed`: remove double border and padding.
   - ![embedded card screenshot](https://github.com/user-attachments/assets/ea85438d-5fcb-4eed-b90b-a4385675355d)
 - Added support for `empty_option` in the form component to add an empty option before the options defined in `options`. Useful when generating other options from a database table.
