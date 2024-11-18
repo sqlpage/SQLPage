@@ -39,6 +39,7 @@ pub(crate) enum StmtParam {
     Null,
     Concat(Vec<StmtParam>),
     JsonObject(Vec<StmtParam>),
+    JsonArray(Vec<StmtParam>),
     FunctionCall(SqlPageFunctionCall),
 }
 
@@ -59,6 +60,13 @@ impl std::fmt::Display for StmtParam {
             }
             StmtParam::JsonObject(items) => {
                 write!(f, "JSON_OBJECT(")?;
+                for item in items {
+                    write!(f, "{item}, ")?;
+                }
+                write!(f, ")")
+            }
+            StmtParam::JsonArray(items) => {
+                write!(f, "JSON_ARRAY(")?;
                 for item in items {
                     write!(f, "{item}, ")?;
                 }
@@ -154,6 +162,7 @@ pub(super) async fn extract_req_param<'a, 'b>(
         StmtParam::Null => None,
         StmtParam::Concat(args) => concat_params(&args[..], request, db_connection).await?,
         StmtParam::JsonObject(args) => json_object_params(&args[..], request, db_connection).await?,
+        StmtParam::JsonArray(args) => json_array_params(&args[..], request, db_connection).await?,
         StmtParam::FunctionCall(func) => func.evaluate(request, db_connection).await.with_context(|| {
             format!(
                 "Error in function call {func}.\nExpected {:#}",
@@ -198,5 +207,22 @@ async fn json_object_params<'a, 'b>(
         map_ser.serialize_value(&val)?;
     }
     map_ser.end()?;
+    Ok(Some(Cow::Owned(String::from_utf8(result)?)))
+}
+
+async fn json_array_params<'a, 'b>(
+    args: &[StmtParam],
+    request: &'a RequestInfo,
+    db_connection: &'b mut DbConn,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    use serde::{ser::SerializeSeq, Serializer};
+    let mut result = Vec::new();
+    let mut ser = serde_json::Serializer::new(&mut result);
+    let mut seq_ser = ser.serialize_seq(Some(args.len()))?;
+    for element in args {
+        let element = Box::pin(extract_req_param(element, request, db_connection)).await?;
+        seq_ser.serialize_element(&element)?;
+    }
+    seq_ser.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(result)?)))
 }

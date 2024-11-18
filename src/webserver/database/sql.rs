@@ -609,7 +609,10 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
             let right = expr_to_stmt_param(right)?;
             Some(StmtParam::Concat(vec![left, right]))
         }
+        // SQLPage can evaluate some functions natively without sending them to the database:
         // CONCAT('str1', 'str2', ...)
+        // json_object('key1', 'value1', 'key2', 'value2', ...)
+        // json_array('value1', 'value2', ...)
         Expr::Function(Function {
             name: ObjectName(func_name_parts),
             args:
@@ -628,13 +631,25 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
                 }
                 Some(StmtParam::Concat(concat_args))
             } else if func_name.eq_ignore_ascii_case("json_object")
+                || func_name.eq_ignore_ascii_case("jsonb_object")
                 || func_name.eq_ignore_ascii_case("json_build_object")
+                || func_name.eq_ignore_ascii_case("jsonb_build_object")
             {
                 let mut json_obj_args = Vec::with_capacity(args.len());
                 for arg in args {
                     json_obj_args.push(function_arg_to_stmt_param(arg)?);
                 }
                 Some(StmtParam::JsonObject(json_obj_args))
+            } else if func_name.eq_ignore_ascii_case("json_array")
+                || func_name.eq_ignore_ascii_case("jsonb_array")
+                || func_name.eq_ignore_ascii_case("json_build_array")
+                || func_name.eq_ignore_ascii_case("jsonb_build_array")
+            {
+                let mut json_obj_args = Vec::with_capacity(args.len());
+                for arg in args {
+                    json_obj_args.push(function_arg_to_stmt_param(arg)?);
+                }
+                Some(StmtParam::JsonArray(json_obj_args))
             } else {
                 log::warn!("SQLPage cannot emulate the following function: {func_name}");
                 None
