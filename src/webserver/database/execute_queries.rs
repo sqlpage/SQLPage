@@ -72,7 +72,7 @@ pub fn stream_query_results_with_conn<'a>(
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
-                    execute_set_variable_query(db_connection, request, variable, value).await
+                    execute_set_variable_query(db_connection, request, variable, value, source_file).await
                     .with_context(||
                         format!("Failed to set the {variable} variable to {value:?}")
                     )?;
@@ -153,6 +153,7 @@ async fn execute_set_variable_query<'a>(
     request: &'a mut RequestInfo,
     variable: &StmtParam,
     statement: &StmtWithParams,
+    source_file: &Path,
 ) -> anyhow::Result<()> {
     let query = bind_parameters(statement, request, db_connection).await?;
     let connection = take_connection(&request.app_state.db, db_connection).await?;
@@ -160,12 +161,19 @@ async fn execute_set_variable_query<'a>(
         "Executing query to set the {variable:?} variable: {:?}",
         query.sql
     );
-    let value: Option<String> = connection
-        .fetch_optional(query)
-        .await?
-        .as_ref()
-        .and_then(row_to_string);
+
+    let value = match connection.fetch_optional(query).await {
+        Ok(Some(row)) => row_to_string(&row),
+        Ok(None) => None,
+        Err(e) => {
+            let err = display_db_error(source_file, &statement.query, e);
+            log::error!("{err}");
+            return Err(err);
+        }
+    };
+
     let (vars, name) = vars_and_name(request, variable)?;
+
     if let Some(value) = value {
         log::debug!("Setting variable {name} to {value:?}");
         vars.insert(name.to_owned(), SingleOrVec::Single(value));
