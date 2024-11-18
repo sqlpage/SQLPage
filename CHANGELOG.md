@@ -40,6 +40,7 @@
 - Fixed layout issues in the card component when embedding content with `embed`: remove double border and padding.
   - ![embedded card screenshot](https://github.com/user-attachments/assets/ea85438d-5fcb-4eed-b90b-a4385675355d)
 - Added support for `empty_option` in the form component to add an empty option before the options defined in `options`. Useful when generating other options from a database table.
+- Allow nested json objects and arrays as sqlpage function parameters (useful in `sqlpage.fetch`).
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

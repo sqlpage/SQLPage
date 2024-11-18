@@ -96,7 +96,10 @@ pub fn stop_at_first_error(
     results_stream.take_while(move |item| {
         // We stop the stream AFTER the first error, so that the error is still returned to the client, but the rest of the queries are not executed.
         let should_continue = !has_error;
-        has_error |= matches!(item, DbItem::Error(_));
+        if let DbItem::Error(err) = item {
+            log::error!("{err:?}");
+            has_error = true;
+        }
         futures_util::future::ready(should_continue)
     })
 }
@@ -167,7 +170,6 @@ async fn execute_set_variable_query<'a>(
         Ok(None) => None,
         Err(e) => {
             let err = display_db_error(source_file, &statement.query, e);
-            log::error!("{err}");
             return Err(err);
         }
     };
@@ -244,7 +246,6 @@ fn parse_single_sql_result(
         }
         Err(err) => {
             let nice_err = display_db_error(source_file, sql, err);
-            log::error!("{:?}", nice_err);
             DbItem::Error(nice_err)
         }
     }

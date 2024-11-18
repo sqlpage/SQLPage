@@ -1,3 +1,5 @@
+use anyhow::Context;
+
 use super::function_traits::BorrowFromStr;
 use std::borrow::Cow;
 
@@ -55,10 +57,11 @@ impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
             }
         } else {
             match s {
-                Cow::Borrowed(s) => serde_json::from_str(s)?,
-                Cow::Owned(s) => serde_json::from_str::<HttpFetchRequest<'_>>(&s)
-                    .map(HttpFetchRequest::into_owned)?,
+                Cow::Borrowed(s) => serde_json::from_str(s),
+                Cow::Owned(ref s) => serde_json::from_str::<HttpFetchRequest<'_>>(s)
+                    .map(HttpFetchRequest::into_owned),
             }
+            .with_context(|| format!("Invalid http fetch request definition: {s}"))?
         })
     }
 }

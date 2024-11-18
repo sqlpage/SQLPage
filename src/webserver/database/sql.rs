@@ -144,16 +144,8 @@ fn parse_single_statement(
         semicolon = true;
     }
     let mut params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
-    if let Some((variable, query)) = extract_set_variable(&mut stmt) {
-        return Some(ParsedStatement::SetVariable {
-            variable,
-            value: StmtWithParams {
-                query,
-                params,
-                delayed_functions: Vec::new(),
-                json_columns: Vec::new(),
-            },
-        });
+    if let Some((variable, value)) = extract_set_variable(&mut stmt, &mut params, db_kind) {
+        return Some(ParsedStatement::SetVariable { variable, value });
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
         return Some(ParsedStatement::CsvImport(csv_import));
@@ -406,7 +398,11 @@ fn is_simple_select_placeholder(e: &Expr) -> bool {
     }
 }
 
-fn extract_set_variable(stmt: &mut Statement) -> Option<(StmtParam, String)> {
+fn extract_set_variable(
+    stmt: &mut Statement,
+    params: &mut Vec<StmtParam>,
+    db_kind: AnyKind,
+) -> Option<(StmtParam, StmtWithParams)> {
     if let Statement::SetVariable {
         variables: OneOrManyWithParens::One(ObjectName(name)),
         value,
@@ -420,7 +416,20 @@ fn extract_set_variable(stmt: &mut Statement) -> Option<(StmtParam, String)> {
             } else {
                 StmtParam::PostOrGet(std::mem::take(&mut ident.value))
             };
-            return Some((variable, format!("SELECT {value}")));
+            let owned_expr = std::mem::replace(value, Expr::Value(Value::Null));
+            let mut select_stmt: Statement = expr_to_statement(owned_expr);
+            let delayed_functions = extract_toplevel_functions(&mut select_stmt);
+            remove_invalid_function_calls(&mut select_stmt, params);
+            let json_columns = extract_json_columns(&select_stmt, db_kind);
+            return Some((
+                variable,
+                StmtWithParams {
+                    query: select_stmt.to_string(),
+                    params: std::mem::take(params),
+                    delayed_functions,
+                    json_columns,
+                },
+            ));
         }
     }
     None
@@ -862,6 +871,47 @@ fn is_json_function(expr: &Expr) -> bool {
     }
 }
 
+fn expr_to_statement(expr: Expr) -> Statement {
+    Statement::Query(Box::new(sqlparser::ast::Query {
+        with: None,
+        body: Box::new(sqlparser::ast::SetExpr::Select(Box::new(
+            sqlparser::ast::Select {
+                distinct: None,
+                top: None,
+                projection: vec![SelectItem::ExprWithAlias {
+                    expr,
+                    alias: Ident::new("sqlpage_set_expr"),
+                }],
+                into: None,
+                from: vec![],
+                lateral_views: vec![],
+                selection: None,
+                group_by: sqlparser::ast::GroupByExpr::Expressions(vec![], vec![]),
+                cluster_by: vec![],
+                distribute_by: vec![],
+                sort_by: vec![],
+                having: None,
+                named_window: vec![],
+                qualify: None,
+                top_before_distinct: false,
+                prewhere: None,
+                window_before_qualify: false,
+                value_table_mode: None,
+                connect_by: None,
+            },
+        ))),
+        order_by: None,
+        limit: None,
+        offset: None,
+        fetch: None,
+        locks: vec![],
+        limit_by: vec![],
+        for_clause: None,
+        settings: None,
+        format_clause: None,
+    }))
+}
+
 #[cfg(test)]
 mod test {
     use super::super::sqlpage_functions::functions::SqlPageFunctionName;
@@ -1169,7 +1219,7 @@ mod test {
                     StmtParam::PostOrGet("x".to_string()),
                     "{dialect:?}"
                 );
-                assert_eq!(query, "SELECT 42");
+                assert_eq!(query, "SELECT 42 AS sqlpage_set_expr");
                 assert!(params.is_empty());
             } else {
                 panic!("Failed for dialect {dialect:?}: {stmt:#?}",);
@@ -1260,5 +1310,44 @@ mod test {
                 "json_col6".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn test_set_variable_with_sqlpage_function() {
+        let sql = "set x = sqlpage.url_encode(some_db_function())";
+        for &(dialect, db_kind) in ALL_DIALECTS {
+            let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
+            let stmt = parse_single_statement(&mut parser, db_kind, sql);
+            let Some(ParsedStatement::SetVariable {
+                variable,
+                value:
+                    StmtWithParams {
+                        query,
+                        params,
+                        delayed_functions,
+                        json_columns,
+                        ..
+                    },
+            }) = stmt
+            else {
+                panic!("for dialect {dialect:?}: {stmt:#?} instead of SetVariable");
+            };
+            assert_eq!(
+                variable,
+                StmtParam::PostOrGet("x".to_string()),
+                "{dialect:?}"
+            );
+            assert_eq!(
+                delayed_functions,
+                [DelayedFunctionCall {
+                    function: SqlPageFunctionName::url_encode,
+                    argument_col_names: vec!["_sqlpage_f0_a0".to_string()],
+                    target_col_name: "sqlpage_set_expr".to_string()
+                }]
+            );
+            assert_eq!(query, "SELECT some_db_function() AS _sqlpage_f0_a0");
+            assert_eq!(params, []);
+            assert_eq!(json_columns, Vec::<String>::new());
+        }
     }
 }

@@ -203,8 +203,23 @@ async fn json_object_params<'a, 'b>(
         let val = it
             .next()
             .ok_or_else(|| anyhow::anyhow!("Odd number of arguments in JSON_OBJECT"))?;
-        let val = Box::pin(extract_req_param(val, request, db_connection)).await?;
-        map_ser.serialize_value(&val)?;
+
+        match val {
+            StmtParam::JsonObject(args) => {
+                let raw_json = Box::pin(json_object_params(args, request, db_connection)).await?;
+                let obj = cow_to_raw_json(&raw_json);
+                map_ser.serialize_value(&obj)?;
+            }
+            StmtParam::JsonArray(args) => {
+                let raw_json = Box::pin(json_array_params(args, request, db_connection)).await?;
+                let obj = cow_to_raw_json(&raw_json);
+                map_ser.serialize_value(&obj)?;
+            }
+            val => {
+                let evaluated = Box::pin(extract_req_param(val, request, db_connection)).await?;
+                map_ser.serialize_value(&evaluated)?;
+            }
+        };
     }
     map_ser.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(result)?)))
@@ -220,9 +235,33 @@ async fn json_array_params<'a, 'b>(
     let mut ser = serde_json::Serializer::new(&mut result);
     let mut seq_ser = ser.serialize_seq(Some(args.len()))?;
     for element in args {
-        let element = Box::pin(extract_req_param(element, request, db_connection)).await?;
-        seq_ser.serialize_element(&element)?;
+        match element {
+            StmtParam::JsonObject(args) => {
+                let raw_json = json_object_params(args, request, db_connection).await?;
+                let obj = cow_to_raw_json(&raw_json);
+                seq_ser.serialize_element(&obj)?;
+            }
+            StmtParam::JsonArray(args) => {
+                let raw_json = Box::pin(json_array_params(args, request, db_connection)).await?;
+                let obj = cow_to_raw_json(&raw_json);
+                seq_ser.serialize_element(&obj)?;
+            }
+            element => {
+                let evaluated =
+                    Box::pin(extract_req_param(element, request, db_connection)).await?;
+                seq_ser.serialize_element(&evaluated)?;
+            }
+        };
     }
     seq_ser.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(result)?)))
+}
+
+fn cow_to_raw_json<'a>(
+    raw_json: &'a Option<Cow<'a, str>>,
+) -> Option<&'a serde_json::value::RawValue> {
+    raw_json
+        .as_deref()
+        .map(serde_json::from_str::<&'a serde_json::value::RawValue>)
+        .map(Result::unwrap)
 }
