@@ -53,10 +53,6 @@ impl AppConfig {
             config.configuration_directory.clone_from(config_dir);
         }
 
-        if let Some(config_dir) = &cli.config_dir {
-            config.configuration_directory.clone_from(config_dir);
-        }
-
         config.configuration_directory = std::fs::canonicalize(&config.configuration_directory)
             .unwrap_or_else(|_| config.configuration_directory.clone());
 
@@ -507,17 +503,24 @@ impl DevOrProd {
     }
 }
 
+#[must_use]
+pub fn test_database_url() -> String {
+    std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string())
+}
+
 #[cfg(test)]
 pub mod tests {
+    pub use super::test_database_url;
     use super::AppConfig;
 
     #[must_use]
     pub fn test_config() -> AppConfig {
         serde_json::from_str::<AppConfig>(
-            r#"{
-            "database_url": "sqlite::memory:",
-            "listen_on": "localhost:8080"
-        }"#,
+            &serde_json::json!({
+                "database_url": test_database_url(),
+                "listen_on": "localhost:8080"
+            })
+            .to_string(),
         )
         .unwrap()
     }

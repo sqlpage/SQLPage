@@ -112,6 +112,8 @@ pub fn row_to_string(row: &AnyRow) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::app_config::tests::test_database_url;
+
     use super::*;
     use sqlx::Connection;
 
@@ -124,8 +126,7 @@ mod tests {
 
     fn db_specific_test(db_type: &str) -> Option<String> {
         setup_logging();
-        let db_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://:memory:".to_string());
+        let db_url = test_database_url();
         if db_url.starts_with(db_type) {
             Some(db_url)
         } else {
@@ -137,8 +138,7 @@ mod tests {
     #[actix_web::test]
     async fn test_row_to_json() -> anyhow::Result<()> {
         use sqlx::Connection;
-        let db_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://:memory:".to_string());
+        let db_url = test_database_url();
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
         let row = sqlx::query(
             "SELECT \

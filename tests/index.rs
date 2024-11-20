@@ -12,7 +12,7 @@ use actix_web::{
     HttpResponse,
 };
 use sqlpage::{
-    app_config::AppConfig,
+    app_config::{test_database_url, AppConfig},
     webserver::{self, http::main_handler},
     AppState,
 };
@@ -580,7 +580,7 @@ async fn req_path_with_app_data(
 }
 
 pub fn test_config() -> AppConfig {
-    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string());
+    let db_url = test_database_url();
     serde_json::from_str::<AppConfig>(&format!(
         r#"{{
         "database_url": "{}",
