@@ -148,7 +148,7 @@ pub(crate) struct DbFsQueries {
 impl DbFsQueries {
     fn get_create_table_sql(db_kind: AnyKind) -> &'static str {
         match db_kind {
-            AnyKind::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents TEXT, last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
+            AnyKind::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
             _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
         }
     }
@@ -183,7 +183,7 @@ impl DbFsQueries {
         db_kind: AnyKind,
     ) -> anyhow::Result<AnyStatement<'static>> {
         let was_modified_query = format!(
-            "SELECT contents from sqlpage_files WHERE path = {} LIMIT 1",
+            "SELECT contents from sqlpage_files WHERE path = {}",
             make_placeholder(db_kind, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
@@ -240,11 +240,21 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     state
         .db
         .connection
-        .execute(format!(
-            "{create_table_sql}
-            INSERT INTO sqlpage_files(path, contents) VALUES ('unit test file.txt', 'Héllö world! 😀');
-        ").as_str())
+        .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_str())
         .await?;
+
+    let db_kind = state.db.connection.any_kind();
+    let insert_sql = format!(
+        "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
+        make_placeholder(db_kind, 1),
+        make_placeholder(db_kind, 2)
+    );
+    sqlx::query(&insert_sql)
+        .bind("unit test file.txt")
+        .bind("Héllö world! 😀".as_bytes())
+        .execute(&state.db.connection)
+        .await?;
+
     let fs = FileSystem::init("/", &state.db).await;
     let actual = fs
         .read_to_string(&state, "unit test file.txt".as_ref(), false)
