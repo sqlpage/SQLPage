@@ -427,7 +427,7 @@ dependencies = [
  "nom",
  "num-traits",
  "rusticata-macros",
- "thiserror",
+ "thiserror 1.0.69",
  "time",
 ]
 
@@ -586,7 +586,7 @@ dependencies = [
  "lazy_static",
  "log",
  "rustls-pki-types",
- "thiserror",
+ "thiserror 1.0.69",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1507,7 +1507,7 @@ checksum = "9902a044653b26b99f7e3693a42f171312d9be8b26b5697bd1e43ad1f8a35e10"
 dependencies = [
  "gloo-utils",
  "js-sys",
- "thiserror",
+ "thiserror 1.0.69",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1555,7 +1555,7 @@ dependencies = [
  "pest_derive",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2412,7 +2412,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879952a81a83930934cbf1786752d6dedc3b1f29e8f8fb2ad1d0a36f377cf442"
 dependencies = [
  "memchr",
- "thiserror",
+ "thiserror 1.0.69",
  "ucd-trie",
 ]
 
@@ -2627,7 +2627,7 @@ checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
  "getrandom",
  "libredox",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2800,7 +2800,7 @@ dependencies = [
  "ring",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.69",
  "webpki-roots",
  "x509-parser",
 ]
@@ -3125,9 +3125,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.36"
+version = "0.6.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebf0e4781b8b369a50420f999648fa0f4baf0ab68f1db88626b4c31751e06ddd"
+checksum = "eccdaf0f14844ebc945cbc93d376c663caf140843202fda6605c49e05066cb6c"
 dependencies = [
  "ahash",
  "atoi",
@@ -3178,7 +3178,7 @@ dependencies = [
  "sqlformat",
  "sqlx-rt-oldapi",
  "stringprep",
- "thiserror",
+ "thiserror 2.0.3",
  "tokio-stream",
  "tokio-util",
  "url",
@@ -3189,9 +3189,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.36"
+version = "0.6.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c3720b9ab6d157201a1f061577f7bcd0329d569a80f38a416c84c574c61f531"
+checksum = "213d83c9fdf668b02e3cb80c865d8e8bbb2fb9ee59990f7cae501eebd60e6109"
 dependencies = [
  "dotenvy",
  "either",
@@ -3209,9 +3209,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.36"
+version = "0.6.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edcb9fdafbac123f1ddf466052d6c27ad782eabca7b90b6b87d3f5131ea824a1"
+checksum = "1adffa5fa5f7bcf68de46ff52bf82d6ab7a28959a26c07c5a13451e25f66d6bf"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -3219,9 +3219,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt-oldapi"
-version = "0.6.36"
+version = "0.6.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41f741b76fcb5dacba1ba9aea7ecdf6a5d3d31cab0cc80152ab4b1d774a3ef2d"
+checksum = "4867985d0f4fc1e7140f58a261087b579a795cc2e342d8ade5b66989ea218ea7"
 dependencies = [
  "once_cell",
  "tokio",
@@ -3321,7 +3321,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c006c85c7651b3cf2ada4584faa36773bd07bac24acfb39f3c431b36d7e667aa"
+dependencies = [
+ "thiserror-impl 2.0.3",
 ]
 
 [[package]]
@@ -3329,6 +3338,17 @@ name = "thiserror-impl"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f077553d607adc1caf65430528a576c757a71ed73944b66ebb58ef2bbd243568"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3995,7 +4015,7 @@ dependencies = [
  "nom",
  "oid-registry",
  "rusticata-macros",
- "thiserror",
+ "thiserror 1.0.69",
  "time",
 ]
 

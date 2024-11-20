@@ -197,10 +197,19 @@ impl DbFsQueries {
         path: &Path,
         since: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
-        self.was_modified
+        let query = self
+            .was_modified
             .query_as::<(bool,)>()
             .bind(since)
-            .bind(path.display().to_string())
+            .bind(path.display().to_string());
+        log::trace!(
+            "Checking if file {path:?} was modified since {since} by executing query: \n\
+            {}\n\
+            with parameters: {:?}",
+            self.was_modified.sql(),
+            (since, path)
+        );
+        query
             .fetch_optional(&app_state.db.connection)
             .await
             .map(|modified| modified.is_some())
@@ -261,5 +270,27 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         .read_to_string(&state, "unit test file.txt".as_ref(), false)
         .await?;
     assert_eq!(actual, "Héllö world! 😀");
+
+    let one_hour_ago = Utc::now() - chrono::Duration::hours(1);
+    let one_hour_future = Utc::now() + chrono::Duration::hours(1);
+
+    let was_modified = fs
+        .modified_since(&state, "unit test file.txt".as_ref(), one_hour_ago, false)
+        .await?;
+    assert!(was_modified, "File should be modified since one hour ago");
+
+    let was_modified = fs
+        .modified_since(
+            &state,
+            "unit test file.txt".as_ref(),
+            one_hour_future,
+            false,
+        )
+        .await?;
+    assert!(
+        !was_modified,
+        "File should not be modified since one hour in the future"
+    );
+
     Ok(())
 }
