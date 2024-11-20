@@ -23,9 +23,11 @@ impl FileSystem {
                 Err(e) => {
                     log::debug!(
                         "Using local filesystem only, could not initialize on-database filesystem. \
-                        You can host sql files directly in your database by creating the following table: \
-                        CREATE TABLE sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents TEXT, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-                        The error while trying to use the database file system is: {e:#}");
+                        You can host sql files directly in your database by creating the following table: \n\
+                        {} \n\
+                        The error while trying to use the database file system is: {e:#}",
+                        DbFsQueries::get_create_table_sql(db.connection.any_kind())
+                    );
                     None
                 }
             },
@@ -144,6 +146,13 @@ pub(crate) struct DbFsQueries {
 }
 
 impl DbFsQueries {
+    fn get_create_table_sql(db_kind: AnyKind) -> &'static str {
+        match db_kind {
+            AnyKind::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents TEXT, last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
+            _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        }
+    }
+
     async fn init(db: &Database) -> anyhow::Result<Self> {
         log::debug!("Initializing database filesystem queries");
         let db_kind = db.connection.any_kind();
@@ -158,7 +167,7 @@ impl DbFsQueries {
         db_kind: AnyKind,
     ) -> anyhow::Result<AnyStatement<'static>> {
         let was_modified_query = format!(
-            "SELECT last_modified >= {} from sqlpage_files WHERE path = {} LIMIT 1",
+            "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
             make_placeholder(db_kind, 1),
             make_placeholder(db_kind, 2)
         );
@@ -191,9 +200,9 @@ impl DbFsQueries {
             .query_as::<(bool,)>()
             .bind(since)
             .bind(path.display().to_string())
-            .fetch_one(&app_state.db.connection)
+            .fetch_optional(&app_state.db.connection)
             .await
-            .map(|(modified,)| modified)
+            .map(|modified| modified.is_some())
             .with_context(|| {
                 format!("Unable to check when {path:?} was last modified in the database")
             })
@@ -227,19 +236,14 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use sqlx::Executor;
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
+    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.connection.any_kind());
     state
         .db
         .connection
-        .execute(
-            r"
-        CREATE TABLE sqlpage_files(
-          path VARCHAR(255) NOT NULL PRIMARY KEY,
-          contents BLOB,
-          last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        INSERT INTO sqlpage_files(path, contents) VALUES ('unit test file.txt', 'Héllö world! 😀');
-    ",
-        )
+        .execute(format!(
+            "{create_table_sql}
+            INSERT INTO sqlpage_files(path, contents) VALUES ('unit test file.txt', 'Héllö world! 😀');
+        ").as_str())
         .await?;
     let fs = FileSystem::init("/", &state.db).await;
     let actual = fs
