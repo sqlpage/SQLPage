@@ -199,7 +199,7 @@ impl DbFsQueries {
     ) -> anyhow::Result<bool> {
         let query = self
             .was_modified
-            .query_as::<(bool,)>()
+            .query_as::<(i32,)>()
             .bind(since)
             .bind(path.display().to_string());
         log::trace!(
@@ -212,7 +212,7 @@ impl DbFsQueries {
         query
             .fetch_optional(&app_state.db.connection)
             .await
-            .map(|modified| modified.is_some())
+            .map(|modified| modified == Some((1,)))
             .with_context(|| {
                 format!("Unable to check when {path:?} was last modified in the database")
             })
