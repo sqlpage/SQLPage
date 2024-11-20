@@ -41,6 +41,12 @@
   - ![embedded card screenshot](https://github.com/user-attachments/assets/ea85438d-5fcb-4eed-b90b-a4385675355d)
 - Added support for `empty_option` in the form component to add an empty option before the options defined in `options`. Useful when generating other options from a database table.
 - Allow nested json objects and arrays as sqlpage function parameters (useful in `sqlpage.fetch`).
+- Implement *Login packet encryption* in mssql:
+  - SQL Server has three levels of encryption support, which are now all supported by this library:
+    - No encryption, where all data including the password is sent in plaintext. Used only when either client or server declare missing encryption capabilities. You can enable this mode in this library by setting `encrypt=not_supported` in the connection string.
+    - Encryption is supported on both sides, but disabled on either side. You can enable this mode in this library by setting `encrypt=off` in the connection string. In this mode, the login phase will be encrypted, but data packets will be sent in plaintext.
+    - Encryption is supported and enabled on both sides. You can enable this mode in this library by setting `encrypt=strict` in the connection string. In this mode, both the login phase and data packets will be encrypted.
+- Improved logging in the mssql driver login phase
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.
