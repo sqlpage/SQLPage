@@ -47,6 +47,10 @@
     - Encryption is supported on both sides, but disabled on either side. You can enable this mode in this library by setting `encrypt=off` in the connection string. In this mode, the login phase will be encrypted, but data packets will be sent in plaintext.
     - Encryption is supported and enabled on both sides. You can enable this mode in this library by setting `encrypt=strict` in the connection string. In this mode, both the login phase and data packets will be encrypted.
 - Improved logging in the mssql driver login phase
+- Improved handling of very large form submissions
+  - The was a fixed 16kB limit on the size of form submissions.
+  - The size is now limited by the `max_uploaded_file_size` configuration option, which defaults to 5MB.
+  - 
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.

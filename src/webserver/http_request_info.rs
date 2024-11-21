@@ -144,7 +144,14 @@ async fn extract_urlencoded_post_variables(
     Form::<Vec<(String, String)>>::from_request(http_req, payload)
         .await
         .map(Form::into_inner)
-        .map_err(|e| anyhow!("could not parse request as urlencoded form data: {e}"))
+        .map_err(|e| {
+            anyhow!(super::ErrorWithStatus {
+                status: actix_web::http::StatusCode::BAD_REQUEST,
+            })
+            .context(format!(
+                "could not parse request as urlencoded form data: {e}"
+            ))
+        })
 }
 
 async fn extract_multipart_post_data(

@@ -13,7 +13,10 @@ use actix_web::{
 };
 use sqlpage::{
     app_config::{test_database_url, AppConfig},
-    webserver::{self, http::main_handler},
+    webserver::{
+        self,
+        http::{form_config, main_handler, payload_config},
+    },
     AppState,
 };
 
@@ -341,7 +344,7 @@ async fn test_blank_file_upload_field() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_file_upload_too_large() -> actix_web::Result<()> {
-    // Files larger than 12345 bytes should be rejected as per the test_config
+    // Files larger than 123456 bytes should be rejected as per the test_config
     let req = get_request_to("/tests/upload_file_test.sql")
         .await?
         .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
@@ -352,7 +355,7 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
             \r\n\
             "
             .to_string()
-                + "a".repeat(12346).as_str()
+                + "a".repeat(123457).as_str()
                 + "\r\n\
             --1234567890--\r\n",
         )
@@ -364,6 +367,30 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
     assert!(
         err_str.to_ascii_lowercase().contains("max file size"),
         "{err_str}\nexpected to contain: File too large"
+    );
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
+    // POST payloads smaller than 123456 bytes should be accepted
+    let long_string = "a".repeat(123454);
+    let req = get_request_to("/tests/display_form_field.sql")
+        .await?
+        .insert_header(("content-type", "application/x-www-form-urlencoded"))
+        .set_payload(["x=", &long_string].concat()) // total size is 123454 + 2 = 123456 bytes
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        !body_str.contains("error"),
+        "{body_str}\nshouldn't have errors"
+    );
+    assert!(
+        body_str.contains(&long_string),
+        "{body_str}\nexpected to contain long string submitted"
     );
     Ok(())
 }
@@ -539,8 +566,11 @@ async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     Ok(test::TestRequest::get()
         .uri(path)
         .insert_header(ContentType::plaintext())
+        .app_data(payload_config(&data))
+        .app_data(form_config(&data))
         .app_data(data))
 }
+
 async fn make_app_data_from_config(config: AppConfig) -> actix_web::web::Data<AppState> {
     let state = AppState::init(&config).await.unwrap();
     actix_web::web::Data::new(state)
@@ -587,7 +617,7 @@ pub fn test_config() -> AppConfig {
         "database_connection_retries": 3,
         "database_connection_acquire_timeout_seconds": 15,
         "allow_exec": true,
-        "max_uploaded_file_size": 12345,
+        "max_uploaded_file_size": 123456,
         "listen_on": "111.111.111.111:1",
         "system_root_ca_certificates" : false
     }}"#,

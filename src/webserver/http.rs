@@ -160,7 +160,7 @@ async fn render_sql(
 
     let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state))
         .await
-        .map_err(anyhow_err_to_actix)?;
+        .map_err(|e| anyhow_err_to_actix(e, app_state.config.environment))?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
@@ -203,14 +203,12 @@ async fn render_sql(
     resp_recv.await.map_err(ErrorInternalServerError)
 }
 
-fn send_anyhow_error(
-    e: &anyhow::Error,
-    resp_send: tokio::sync::oneshot::Sender<HttpResponse>,
-    env: app_config::DevOrProd,
-) {
-    log::error!("An error occurred before starting to send the response body: {e:#}");
+fn anyhow_err_to_actix_resp(e: &anyhow::Error, env: app_config::DevOrProd) -> HttpResponse {
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
-    let mut body = "Sorry, but we were not able to process your request. \n\n".to_owned();
+    let mut body = "Sorry, but we were not able to process your request. \n\n\
+        Below are detailed debugging information which may contain sensitive data. \
+        Set environment to \"prod\" in the configuration file to hide this information. \n\n"
+        .to_owned();
     if env.is_prod() {
         body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
     } else {
@@ -221,21 +219,39 @@ fn send_anyhow_error(
         header::CONTENT_TYPE,
         header::HeaderValue::from_static("text/plain"),
     ));
-    let resp = if let Some(e @ &ErrorWithStatus { .. }) = e.downcast_ref() {
-        e.error_response()
+
+    if let Some(status_err @ &ErrorWithStatus { .. }) = e.downcast_ref() {
+        status_err
+            .error_response()
+            .set_body(actix_web::body::BoxBody::new(body))
     } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
-        // People are HTTP connections faster than we can open SQL connections. Ask them to slow down politely.
         use rand::Rng;
-        resp.status(StatusCode::SERVICE_UNAVAILABLE).insert_header((
-            header::RETRY_AFTER,
-            header::HeaderValue::from(rand::thread_rng().gen_range(1..=15)),
-        )).body("The database is currently too busy to handle your request. Please try again later.\n\n".to_owned() + &body)
+        resp.status(StatusCode::TOO_MANY_REQUESTS)
+            .insert_header((
+                header::RETRY_AFTER,
+                header::HeaderValue::from(rand::thread_rng().gen_range(1..=15)),
+            ))
+            .body("The database is currently too busy to handle your request. Please try again later.\n\n".to_owned() + &body)
     } else {
         resp.body(body)
-    };
+    }
+}
+
+fn send_anyhow_error(
+    e: &anyhow::Error,
+    resp_send: tokio::sync::oneshot::Sender<HttpResponse>,
+    env: app_config::DevOrProd,
+) {
+    log::error!("An error occurred before starting to send the response body: {e:#}");
     resp_send
-        .send(resp)
+        .send(anyhow_err_to_actix_resp(e, env))
         .unwrap_or_else(|_| log::error!("could not send headers"));
+}
+
+fn anyhow_err_to_actix(e: anyhow::Error, env: app_config::DevOrProd) -> actix_web::Error {
+    log::error!("{e:#}");
+    let resp = anyhow_err_to_actix_resp(&e, env);
+    actix_web::error::InternalError::from_response(e, resp).into()
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
@@ -295,18 +311,8 @@ async fn process_sql_request(
         .get_with_privilege(app_state, &sql_path, false)
         .await
         .with_context(|| format!("Unable to get SQL file {sql_path:?}"))
-        .map_err(anyhow_err_to_actix)?;
+        .map_err(|e| anyhow_err_to_actix(e, app_state.config.environment))?;
     render_sql(req, sql_file).await
-}
-
-fn anyhow_err_to_actix(e: anyhow::Error) -> actix_web::Error {
-    log::error!("{e:#}");
-    match e.downcast::<ErrorWithStatus>() {
-        Ok(err) => actix_web::Error::from(err),
-        Err(e) => ErrorInternalServerError(format!(
-            "An error occurred while trying to handle your request: {e:#}"
-        )),
-    }
 }
 
 async fn serve_file(
@@ -322,7 +328,7 @@ async fn serve_file(
             .modified_since(state, path.as_ref(), since, false)
             .await
             .with_context(|| format!("Unable to get modification time of file {path:?}"))
-            .map_err(anyhow_err_to_actix)?;
+            .map_err(|e| anyhow_err_to_actix(e, state.config.environment))?;
         if !modified {
             return Ok(HttpResponse::NotModified().finish());
         }
@@ -332,7 +338,7 @@ async fn serve_file(
         .read_file(state, path.as_ref(), false)
         .await
         .with_context(|| format!("Unable to read file {path:?}"))
-        .map_err(anyhow_err_to_actix)
+        .map_err(|e| anyhow_err_to_actix(e, state.config.environment))
         .map(|b| {
             HttpResponse::Ok()
                 .insert_header(
@@ -392,7 +398,7 @@ async fn serve_fallback(
                 return render_sql(service_request, sql_file).await;
             }
             Err(e) => {
-                let actix_web_err = anyhow_err_to_actix(e);
+                let actix_web_err = anyhow_err_to_actix(e, app_state.config.environment);
 
                 // `maybe_fallback_path` does not exist, continue search in parent dir.
                 if actix_web_err.as_response_error().status_code() == StatusCode::NOT_FOUND {
@@ -553,8 +559,33 @@ pub fn create_app(
         .wrap(middleware::NormalizePath::new(
             middleware::TrailingSlash::MergeOnly,
         ))
-        .app_data(PayloadConfig::default().limit(app_state.config.max_uploaded_file_size * 2))
+        .app_data(payload_config(&app_state))
+        .app_data(form_config(&app_state))
         .app_data(app_state)
+}
+
+#[must_use]
+pub fn form_config(app_state: &web::Data<AppState>) -> web::FormConfig {
+    web::FormConfig::default()
+        .limit(app_state.config.max_uploaded_file_size)
+        .error_handler(|decode_err, _req| {
+            match decode_err {
+                actix_web::error::UrlencodedError::Overflow { size, limit } => {
+                    actix_web::error::ErrorPayloadTooLarge(
+                        format!(
+                            "The submitted form data size ({size} bytes) exceeds the maximum allowed upload size ({limit} bytes). \
+                            You can increase this limit by setting max_uploaded_file_size in the configuration file.",
+                        ),
+                    )
+                }
+                _ => actix_web::Error::from(decode_err),
+            }
+        })
+}
+
+#[must_use]
+pub fn payload_config(app_state: &web::Data<AppState>) -> PayloadConfig {
+    PayloadConfig::default().limit(app_state.config.max_uploaded_file_size * 2)
 }
 
 fn default_headers(app_state: &web::Data<AppState>) -> middleware::DefaultHeaders {
