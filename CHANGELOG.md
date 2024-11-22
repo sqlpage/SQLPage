@@ -50,7 +50,7 @@
 - Improved handling of very large form submissions
   - The was a fixed 16kB limit on the size of form submissions.
   - The size is now limited by the `max_uploaded_file_size` configuration option, which defaults to 5MB.
-  - 
+- In forms with a searchable select dropdown, the search field now resets itself after an item is selected, to let the user easily select another item. Fixes https://github.com/sqlpage/SQLPage/issues/706
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.
