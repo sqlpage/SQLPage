@@ -1,56 +1,96 @@
 # CHANGELOG.md
 
-## 0.31.0 (unreleased)
-- [update apexcharts.js to v4.0.0](https://github.com/apexcharts/apexcharts.js/releases)
-- Fixed a bug where the chart library would be loaded multiple times when the page contained multiple charts. This made the page load slower and could cause issues with the chart library.
-- Fixed a bug where [timeline chart tooltips displayed the wrong labels](https://github.com/sqlpage/SQLPage/issues/659).
-- Fixed an incorrect warning polluting logs when using sqlpage functions with json arguments in sqlite: `WARN  sqlpage::webserver::database::execute_queries] The column _sqlpage_f0_a1 is missing from the result set, so it cannot be converted to JSON.`.
-- Fixed Microsoft SQL Server driver not being able to read VARCHAR columns from databases with non-european collations.
-- Added support for `BIT` columns in Microsoft SQL Server.
-- Avoid generating file names that contain spaces in `sqlpage.persist_uploaded_file`. This makes it easier to use the file name in URLs without URL-encoding it.
-- Fixed a bug with REAL value decoding in Microsoft SQL Server.
-- Support preserving the timezone of `DATETIMEOFFSET` columns in Microsoft SQL Server and `TIMESTAMPTZ` columns in Postgres. Previously, all datetime columns were converted to UTC.
-- Fixed a bug where select dropdown fields would retain their state when their form is reset.
-- Add support for `null as item` in the columns component to skip the display of an item.
-- Add support for `description_md` in the columns component to display markdown text in an item's description.
-- Add support for simple text item in the columns component. This avoids having to deal with json functions to display a simple textual column item description.
-- Increase spacing between items in the columns component for improved readability.
-- Fixed invalid decoding of some less common data types in Microsoft SQL Server and MySQL.
-- Fixed a display bug where the table search box would disappear when scrolling horizontally in a large table.
-- Remove small blank padding around tables in the table component
-- Fixed a bug in the table component where searching for "xy" would match a row with a cell that contains "x" followed by a cell that contains "y". This should match "x y" but not "xy".
-- Fixed a bug where embedded card contents would be initialized multiple times, potentially causing issues with some components (such as the chart component) when embedded in a card.
-- Fixed misaligned loading spinner in the card component when the card is loading embedded content.
-- Updated the SQL parser to [v0.52.0](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.52.0.md).
-  - This fixes a bug where the parser would fail parse a `SET` clause for a variable named `role`.
-  - Better support for the `JSON_TABLE` function, for manipulating json arrays in MySQL.
-  - Adds support for `EXECUTE` statements with parameters in mssql, to run stored procedures.
-  - Adds support for `TRY_CONVERT` in mssql, to convert data types.
-  - Adds support for setting column names with an `=` sign, like `SELECT some_property = (a*b) FROM some_table` in mssql
-  - Adds support for the `LIMIT max_rows, offset` syntax in SQLite. https://www.sqlite.org/lang_select.html#limitoffset
-  - Adds support for `ANY`, `ALL`, and `SOME` subqueries, like `SELECT * FROM t WHERE a = ANY (SELECT b FROM t2)` 
-- Add support for `change_percent` without `description` in the big_number component to display the percentage change of a value.
-- Add support for `freeze_columns` and `freeze_headers` in the table component to freeze columns and headers.
-- Fix an error that occured when the site_prefix configuration option was set to a value containing special characters like `-` and a request was made directly to the server without url-encoding the site prefix.
-- Improve error messages:
-  - The error message now always includes the name of the file where the error occurred, which is useful when embedding SQLPage pages using `sqlpage.run_sql`, or the card component.
-  - When an error occurs while executing a SQL statement, the error message now always includes the (potentially transformed) SQL statement that was sent to the database.
-  - Fixed a problem where database errors would be displayed twice in the error message.
-  - Database errors now always trigger warning messages in the console, in addition to the error message displayed in the browser. This allows the application's administrator to be alerted and fix errors faster, without having to wait for a user to report the error.
-- Fixed layout issues in the card component when embedding content with `embed`: remove double border and padding.
-  - ![embedded card screenshot](https://github.com/user-attachments/assets/ea85438d-5fcb-4eed-b90b-a4385675355d)
-- Added support for `empty_option` in the form component to add an empty option before the options defined in `options`. Useful when generating other options from a database table.
-- Allow nested json objects and arrays as sqlpage function parameters (useful in `sqlpage.fetch`).
-- Implement *Login packet encryption* in mssql:
-  - SQL Server has three levels of encryption support, which are now all supported by this library:
-    - No encryption, where all data including the password is sent in plaintext. Used only when either client or server declare missing encryption capabilities. You can enable this mode in this library by setting `encrypt=not_supported` in the connection string.
-    - Encryption is supported on both sides, but disabled on either side. You can enable this mode in this library by setting `encrypt=off` in the connection string. In this mode, the login phase will be encrypted, but data packets will be sent in plaintext.
-    - Encryption is supported and enabled on both sides. You can enable this mode in this library by setting `encrypt=strict` in the connection string. In this mode, both the login phase and data packets will be encrypted.
-- Improved logging in the mssql driver login phase
-- Improved handling of very large form submissions
-  - The was a fixed 16kB limit on the size of form submissions.
-  - The size is now limited by the `max_uploaded_file_size` configuration option, which defaults to 5MB.
-- In forms with a searchable select dropdown, the search field now resets itself after an item is selected, to let the user easily select another item. Fixes https://github.com/sqlpage/SQLPage/issues/706
+## 0.31.0 (2024-11-24)
+
+### 🚀 **New Features**
+
+#### **Improved Components**
+- [**Columns Component**](https://sql.datapage.app/component.sql?component=columns)
+  - Markdown-supported descriptions (`description_md`) allow richer formatting.
+  - Add simple text items without needing JSON handling.
+  - Optionally skip displaying items (`null as item`).
+  - ![columns component screenshot](https://github.com/user-attachments/assets/dd5e1ba7-e12f-4119-a201-0583cf765000)
+
+- [**Table Component**](https://sql.datapage.app/component.sql?component=table)
+  - New **freeze headers and columns** feature improves usability with large tables.
+  - Enhanced search logic ensures more precise matches (e.g., `"xy"` no longer matches separate `x` and `y` cells in adjacent columns).
+  - Search box visibility is retained during horizontal scrolling.
+    *Technical:* Adds `freeze_headers`, `freeze_columns`, and improves the internal search algorithm.
+  - ![scroll table](https://github.com/user-attachments/assets/546f36fb-b590-487d-8817-47eeed8f1835)
+
+- [**Form Component**](https://sql.datapage.app/component.sql?component=form)
+  - Added an empty option (`empty_option`) to dropdowns, enabling placeholder-like behavior.
+    - ![form](https://github.com/user-attachments/assets/40a230da-9b1b-49ed-9759-5e21fe812957)
+  - Improved handling of large form submissions with configurable size limits (`max_uploaded_file_size`, default 5MB).
+    *Technical:* There used to be a hardcoded limit to 16kB for all forms.
+---
+
+
+#### **Database Enhancements**
+- **Support for New Data Types**:
+  - Microsoft SQL Server now supports `BIT` columns.
+  - Improved handling of `DATETIMEOFFSET` in MSSQL and `TIMESTAMPTZ` in PostgreSQL, preserving their timezones instead of converting them to UTC.
+
+- **Better JSON Handling**:
+  - Accept nested JSON objects and arrays as function parameters.
+    Useful for advanced usage like calling external APIs using `sqlpage.fetch` with complex data structures.
+
+- **SQL Parser Update**:
+  - Upgraded to [v0.52.0](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.52.0.md) with new features:
+    - Added support for:
+      - advanced `JSON_TABLE` usage in MySQL for working with JSON arrays.
+      - `EXECUTE` statements with parameters in MSSQL for running stored procedures.
+      - MSSQL’s `TRY_CONVERT` function for type conversion.
+      - `ANY`, `ALL`, and `SOME` subqueries (e.g., `SELECT * FROM t WHERE a = ANY (SELECT b FROM t2)`).
+      - `LIMIT max_rows, offset` syntax in SQLite.
+      - Assigning column names aliases using `=` in MSSQL (e.g., `SELECT col_name = value`).
+  - Fixes a bug where the parser would fail parse a `SET` clause for a variable named `role`.
+
+---
+
+#### **Security and Performance**
+- **Encrypted Login Support for MSSQL**:
+  - Ensures secure connections with flexible encryption modes:
+    - No encryption (`?encrypt=not_supported`): For legacy systems and environments where SSL is blocked
+    - Partial encryption (`?encrypt=off`): Protects login credentials but not data packets.
+    - Full encryption (`?encrypt=on`): Secures both login and data.
+    *Technical:* Controlled using the `encrypt` parameter (`not_supported`, `off`, or `strict`) in mssql connection strings.
+
+- **Chart Library Optimization**:
+  - Updated ApexCharts to v4.0.0.
+  - Fixed duplicate library loads, speeding up pages with multiple charts.
+  - Fixed a bug where [timeline chart tooltips displayed the wrong labels](https://github.com/sqlpage/SQLPage/issues/659).
+
+---
+
+### 🛠 **Bug Fixes**
+#### Database and Compatibility Fixes
+- **Microsoft SQL Server**:
+  - Fixed decoding issues for less common data types.
+  - Resolved bugs in reading `VARCHAR` columns from non-European collations.
+  - Correctly handles `REAL` values.
+
+- **SQLite**:
+  - Eliminated spurious warnings when using SQLPage functions with JSON arguments.
+    *Technical:* Avoids warnings like `The column _sqlpage_f0_a1 is missing`.
+
+#### Component Fixes
+- **Card Component**:
+  - Fixed layout issues with embedded content (e.g., removed double borders).
+    - ![Example Screenshot](https://github.com/user-attachments/assets/ea85438d-5fcb-4eed-b90b-a4385675355d)
+  - Corrected misaligned loading spinners.
+
+- **Form Dropdowns**:
+  - Resolved state retention after form resets, ensuring dropdowns reset correctly.
+
+#### Usability Enhancements
+- Removed unnecessary padding around tables for cleaner layouts.
+- Increased spacing between items in the columns component for improved readability.
+- Database errors are now consistently logged and displayed with more actionable details.
+  - ![better errors](https://github.com/user-attachments/assets/f0d2f9ef-9a30-4ff2-af3c-b33a375f2e9b)
+    *Technical:* Ensures warnings in the browser and console for faster debugging.
+
+---
 
 ## 0.30.1 (2024-10-31)
 - fix a bug where table sorting would break if table search was not also enabled.
