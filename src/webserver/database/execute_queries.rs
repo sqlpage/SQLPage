@@ -320,7 +320,12 @@ async fn bind_parameters<'a, 'b>(
             Some(Cow::Borrowed(v)) => arguments.add(v),
         }
     }
-    Ok(StatementWithParams { sql, arguments })
+    let has_arguments = !stmt.params.is_empty();
+    Ok(StatementWithParams {
+        sql,
+        arguments,
+        has_arguments,
+    })
 }
 
 async fn apply_delayed_functions(
@@ -404,6 +409,7 @@ fn apply_json_columns(item: &mut DbItem, json_columns: &[String]) {
 pub struct StatementWithParams<'a> {
     sql: &'a str,
     arguments: AnyArguments<'a>,
+    has_arguments: bool,
 }
 
 impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
@@ -416,7 +422,11 @@ impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
     }
 
     fn take_arguments(&mut self) -> Option<<Any as sqlx::database::HasArguments<'q>>::Arguments> {
-        Some(std::mem::take(&mut self.arguments))
+        if self.has_arguments {
+            Some(std::mem::take(&mut self.arguments))
+        } else {
+            None
+        }
     }
 
     fn persistent(&self) -> bool {

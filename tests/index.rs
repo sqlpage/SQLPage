@@ -476,18 +476,25 @@ async fn test_transaction_error() -> actix_web::Result<()> {
     // But then, when we request again with a parameter, we should not see any side
     // effect coming from the first transaction, and it should succeed
     let data = make_app_data().await;
-    let req = get_request_to_with_data("/tests/failed_transaction.sql", data.clone())
+    let path = match data.db.to_string().to_lowercase().as_str() {
+        "mysql" => "/tests/failed_transaction_mysql.sql",
+        _ => "/tests/failed_transaction.sql",
+    };
+    let req = get_request_to_with_data(path, data.clone())
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;
     let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap().to_ascii_lowercase();
+    let body_str = String::from_utf8(body.to_vec())
+        .unwrap()
+        .to_ascii_lowercase();
     assert!(
         body_str.contains("error") && body_str.contains("null"),
         "{body_str}\nexpected to contain: constraint failed"
     );
     // Now query again, with ?x=1447
-    let req = get_request_to_with_data("/tests/failed_transaction.sql?x=1447", data)
+    let path_with_param = path.to_string() + "?x=1447";
+    let req = get_request_to_with_data(&path_with_param, data.clone())
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;
