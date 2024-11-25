@@ -3,16 +3,17 @@
 Create a folder on your computer where you will store all contents related to your sql website.
 In the rest of this tutorial, we will call this folder the **root folder** of your website.
 
-Open the file you downloaded above, and place `sqlpage.bin` (if you are on linux or Mac OS)
-or `sqlpage.exe` at the root of the folder.
+- On **Windows**, place the `sqlpage.exe` you downloaded above at the root of the folder. Then double-click the `sqlpage.exe` file to start the server.
+- On **Linux**, place `sqlpage.bin` at the root of the folder. Then open a terminal, cd to the root folder of your website, and run `./sqlpage.bin` to start the server.
+- On **Mac OS**, if you installed SQLPage using Homebrew, then you do not need to place anything at the root of the folder. Open Terminal, cd to the root folder of your website, and type `sqlpage` to start the server.
 
-Then launch the `sqlpage.bin` executable file you just downloaded in a terminal from this folder.
-
-![screenshot for the sql website setup](first-sql-website-launch.png)
+![screenshot for the sql website setup on linux](first-sql-website-launch.png)
 
 You should see a message in your terminal that includes the sentence `accessible from the network, and locally on http://localhost:8080`
 
 You can open your website locally by visiting [`http://localhost:8080`](http://localhost:8080)
+
+SQLPage should have automatically created a folder called `sqlpage` with a SQLite database file named `sqlpage.db`. This is your website's default database - don't worry, we'll learn how to connect to other databases like PostgreSQL, MySQL, or SQL Server later!
 
 # Your website’s first SQL file
 
@@ -81,13 +82,16 @@ If you then deploy your website online using a service like [DataPage.app](https
 
 Later, when you want to deploy your website online, you can switch back to a persistent database like
 
-- a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx/0.6.3/sqlx/sqlite/struct.SqliteConnectOptions.html#main-content)),
-- a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://www.postgresql.org/docs/15/libpq-connect.html#id-1.7.3.8.3.6)),
-- a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://dev.mysql.com/doc/refman/8.0/en/connecting-using-uri-or-key-value-pairs.html)),
-- a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html), [note about named instances](https://github.com/lovasoa/SQLpage/issues/92)),
+- a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/sqlite/struct.SqliteConnectOptions.html)),
+- a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/postgres/struct.PgConnectOptions.html)),
+- a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mysql/struct.MySqlConnectOptions.html)),
+- a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html#method.from_str), [note about named instances](https://github.com/lovasoa/SQLpage/issues/92)),
 
-If `user` or `password` contains special characters, you should [percent-encode](https://en.wikipedia.org/wiki/Percent-encoding) them.
-For instance, a SQL Server database named `db` running on `localhost` port `1433` with the username `funny:user` and the password `p@ssw0rd` would be represented as `mssql://funny%3Auser:p%40ssw0rd@localhost:1433/db`.
+> If `user` or `password` **contains special characters**, you should [**percent-encode**](https://en.wikipedia.org/wiki/Percent-encoding) them.
+>
+> For instance, a SQL Server database named `db` running on `localhost` port `1433` with the username `funny:user` and the password `p@ssw0rd` would be represented as 
+> `mssql://funny%3Auser:p%40ssw0rd@localhost:1433/db`.
+
 For more information about the properties that can be set in sqlpage.json, see [SQLPage's configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
 
 ![screenshot for the full sql website folder organisation](full-website.png)
@@ -103,7 +107,8 @@ SELECT 'form' AS component, 'Add a user' AS title;
 SELECT 'Username' as name, TRUE as required;
 ```
 
-The snippet above uses the [`form` component](https://sql.datapage.app/documentation.sql?component=form#component) to display a form on your website.
+The first SELECT statement opens the [`form` component](https://sql.datapage.app/component.sql?component=form).
+The second SELECT statement adds a field to the form. Since we do not specify a `type`, it will be a text field. The label displayed above the field will be the same as its name by default.
 
 ### Handling form submission
 
@@ -160,7 +165,7 @@ Here is a screenshot of the final result:
 
 ![final result](final-result.png)
 
-To go further, have a look at [the examples section of our Github repository](https://github.com/lovasoa/SQLpage/tree/main/examples).
+To go further, have a look at [the examples](../examples/).
 
 
 # Deploy your SQLPage website online

@@ -20,16 +20,18 @@ SELECT 'hero' as component,
         when 'windows' then 'get_started_windows.webp'
         else 'get_started.webp'
     end as image,
-    'https://github.com/lovasoa/SQLpage/releases'|| case
-        when $os = 'windows' then '/latest/download/sqlpage-windows.zip'
-        when $os = 'linux' then '/latest/download/sqlpage-linux.tgz'
-        else ''
-    end as link,
-    'Download SQLPage' || case
-        when $os = 'windows' then ' for Windows'
-        when $os = 'linux' then ' for Linux'
-        else ''
-    end as link_text;
+    CASE $os
+        WHEN 'macos' THEN '#download'
+        WHEN 'windows' THEN 'https://github.com/lovasoa/SQLpage/releases/latest/download/sqlpage-windows.zip'
+        WHEN 'linux' THEN 'https://github.com/lovasoa/SQLpage/releases/latest/download/sqlpage-linux.tgz'
+        ELSE 'https://github.com/lovasoa/SQLpage/releases'
+    END AS link,
+    CASE $os
+        WHEN 'macos' THEN 'Install SQLPage using Homebrew'
+        WHEN 'windows' THEN 'Download SQLPage for Windows'
+        WHEN 'linux' THEN 'Download SQLPage for Linux'
+        ELSE 'Download SQLPage'
+    END AS link_text;
 
 SELECT 'alert' as component,
     'Afraid of the setup ? Do it the easy way !' as title,
