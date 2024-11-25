@@ -1,3 +1,4 @@
 {
-  "database_url": "sqlite://:memory:"
+  "database_url": "sqlite://:memory:",
+  "database_connection_acquire_timeout_seconds": 86400
 }
