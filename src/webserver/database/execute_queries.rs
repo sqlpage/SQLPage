@@ -112,17 +112,6 @@ pub fn stop_at_first_error(
         .take_until(error_rx)
 }
 
-pub(crate) async fn rollback_transaction(db_connection: &mut DbConn) {
-    if let Some(conn) = db_connection.as_mut() {
-        match conn.execute("ROLLBACK").await {
-            Ok(r) => log::debug!("Rolled back transaction with result: {:?}", r),
-            Err(e) => log::debug!("Failed to rollback transaction: {e:?}"),
-        }
-    } else {
-        log::debug!("No connection to rollback a transaction");
-    }
-}
-
 /// Executes the sqlpage pseudo-functions contained in a static simple select
 async fn exec_static_simple_select(
     columns: &[(String, SimpleSelectValue)],

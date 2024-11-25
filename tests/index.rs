@@ -478,6 +478,7 @@ async fn test_transaction_error() -> actix_web::Result<()> {
     let data = make_app_data().await;
     let path = match data.db.to_string().to_lowercase().as_str() {
         "mysql" => "/tests/failed_transaction_mysql.sql",
+        "mssql" => "/tests/failed_transaction_mssql.sql",
         _ => "/tests/failed_transaction.sql",
     };
     let req = get_request_to_with_data(path, data.clone())
