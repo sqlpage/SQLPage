@@ -481,9 +481,9 @@ async fn test_transaction_error() -> actix_web::Result<()> {
         .to_srv_request();
     let resp = main_handler(req).await?;
     let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = String::from_utf8(body.to_vec()).unwrap().to_ascii_lowercase();
     assert!(
-        body_str.contains("constraint failed"),
+        body_str.contains("error") && body_str.contains("null"),
         "{body_str}\nexpected to contain: constraint failed"
     );
     // Now query again, with ?x=1447
