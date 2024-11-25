@@ -89,19 +89,38 @@ pub fn stream_query_results_with_conn<'a>(
     .map(|res| res.unwrap_or_else(DbItem::Error))
 }
 
+/// Transforms a stream of database items to stop processing after encountering the first error.
+/// The error item itself is still emitted before stopping.
 pub fn stop_at_first_error(
     results_stream: impl Stream<Item = DbItem>,
 ) -> impl Stream<Item = DbItem> {
-    let mut has_error = false;
-    results_stream.take_while(move |item| {
-        // We stop the stream AFTER the first error, so that the error is still returned to the client, but the rest of the queries are not executed.
-        let should_continue = !has_error;
-        if let DbItem::Error(err) = item {
-            log::error!("{err:?}");
-            has_error = true;
+    // We need a oneshot channel rather than a simple boolean flag because
+    // take_while would poll the stream one extra time after the error,
+    // while take_until stops immediately when the future completes
+    let (error_tx, error_rx) = tokio::sync::oneshot::channel();
+    let mut error_tx = Some(error_tx);
+
+    results_stream
+        .inspect(move |item| {
+            if let DbItem::Error(err) = item {
+                log::error!("{err:?}");
+                if let Some(tx) = error_tx.take() {
+                    let _ = tx.send(());
+                }
+            }
+        })
+        .take_until(error_rx)
+}
+
+pub(crate) async fn rollback_transaction(db_connection: &mut DbConn) {
+    if let Some(conn) = db_connection.as_mut() {
+        match conn.execute("ROLLBACK").await {
+            Ok(r) => log::debug!("Rolled back transaction with result: {:?}", r),
+            Err(e) => log::debug!("Failed to rollback transaction: {e:?}"),
         }
-        futures_util::future::ready(should_continue)
-    })
+    } else {
+        log::debug!("No connection to rollback a transaction");
+    }
 }
 
 /// Executes the sqlpage pseudo-functions contained in a static simple select

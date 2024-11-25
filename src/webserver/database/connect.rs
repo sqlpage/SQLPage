@@ -3,6 +3,7 @@ use std::{mem::take, time::Duration};
 use super::Database;
 use crate::{app_config::AppConfig, ON_CONNECT_FILE};
 use anyhow::Context;
+use futures_util::future::BoxFuture;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
@@ -93,10 +94,30 @@ impl Database {
             )
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
-            ));
+            ))
+            .after_release(on_return_to_pool);
         pool_options = add_on_connection_handler(config, pool_options);
         pool_options
     }
+}
+
+fn on_return_to_pool(
+    conn: &mut sqlx::AnyConnection,
+    meta: sqlx::pool::PoolConnectionMetadata,
+) -> BoxFuture<'_, Result<bool, sqlx::Error>> {
+    Box::pin(async move {
+        match conn.execute("ROLLBACK").await {
+            Ok(r) => log::info!(
+                "Rolled back a transaction that was left open before returning a connection to the pool. Result: {:?}",
+                r
+            ),
+            Err(e) => log::trace!(
+                "Failed to rollback before returning a connection to the pool. There was probably no transaction left open: {e:?}"
+            ),
+        }
+        log::trace!("Releasing connection: {meta:#?}");
+        Ok(true)
+    })
 }
 
 fn add_on_connection_handler(

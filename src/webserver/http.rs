@@ -1,6 +1,6 @@
 use crate::render::{AnyRenderBodyContext, HeaderContext, PageContext};
 use crate::webserver::content_security_policy::ContentSecurityPolicy;
-use crate::webserver::database::execute_queries::stop_at_first_error;
+use crate::webserver::database::execute_queries::{rollback_transaction, stop_at_first_error};
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
@@ -173,32 +173,35 @@ async fn render_sql(
         let database_entries_stream =
             stream_query_results_with_conn(&sql_file, &mut req_param, &mut conn);
         let database_entries_stream = stop_at_first_error(database_entries_stream);
-        let response_with_writer = build_response_header_and_stream(
-            Arc::clone(&app_state),
-            database_entries_stream,
-            request_context,
-        )
-        .await;
-        match response_with_writer {
-            Ok(ResponseWithWriter::RenderStream {
-                http_response,
-                renderer,
+        {
+            let response_with_writer = build_response_header_and_stream(
+                Arc::clone(&app_state),
                 database_entries_stream,
-            }) => {
-                resp_send
-                    .send(http_response)
-                    .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
-                stream_response(database_entries_stream, renderer).await;
-            }
-            Ok(ResponseWithWriter::FinishedResponse { http_response }) => {
-                resp_send
-                    .send(http_response)
-                    .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
-            }
-            Err(err) => {
-                send_anyhow_error(&err, resp_send, app_state.config.environment);
+                request_context,
+            )
+            .await;
+            match response_with_writer {
+                Ok(ResponseWithWriter::RenderStream {
+                    http_response,
+                    renderer,
+                    database_entries_stream,
+                }) => {
+                    resp_send
+                        .send(http_response)
+                        .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
+                    stream_response(database_entries_stream, renderer).await;
+                }
+                Ok(ResponseWithWriter::FinishedResponse { http_response }) => {
+                    resp_send
+                        .send(http_response)
+                        .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
+                }
+                Err(err) => {
+                    send_anyhow_error(&err, resp_send, app_state.config.environment);
+                }
             }
         }
+        rollback_transaction(&mut conn).await;
     });
     resp_recv.await.map_err(ErrorInternalServerError)
 }

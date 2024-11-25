@@ -1,5 +1,25 @@
 # CHANGELOG.md
 
+## 0.32.0 (unreleased)
+
+- Rollback any open transactions when returning a connection to the pool.
+  - Previously, if an error occurred in the middle of a transaction, the transaction would be left open, and the connection would be returned to the pool. The next request could get a connection with an open half-completed transaction, which could lead to hard to debug issues.
+  - This allows safely using features that require a transaction, like
+    - ```sql
+      BEGIN;
+      CREATE TEMPORARY TABLE t (x int) ON COMMIT DROP; -- postgres syntax
+      -- do something with t
+      -- previously, if an error occurred, the transaction would be left open, and the connection returned to the pool.
+      -- the next request could get a connection where the table `t` still exists, leading to a new error.
+      COMMIT;
+      ```
+    - This will now automatically rollback the transaction, even if an error occurs in the middle of it.
+- Fix a bug where one additional SQL statement was executed after an error occurred in a SQL file. This could cause surprising unexpected behavior.
+  - ```sql
+    insert into t values ($invalid_value); -- if this statement fails, ...
+    insert into t values (42); -- this next statement should not be executed
+    ```
+
 ## 0.31.0 (2024-11-24)
 
 ### 🚀 **New Features**

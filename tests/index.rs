@@ -470,6 +470,37 @@ async fn test_csv_upload() -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_transaction_error() -> actix_web::Result<()> {
+    // First, request the page without any parameter. It should fail because
+    // of the not null constraint.
+    // But then, when we request again with a parameter, we should not see any side
+    // effect coming from the first transaction, and it should succeed
+    let data = make_app_data().await;
+    let req = get_request_to_with_data("/tests/failed_transaction.sql", data.clone())
+        .await?
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("constraint failed"),
+        "{body_str}\nexpected to contain: constraint failed"
+    );
+    // Now query again, with ?x=1447
+    let req = get_request_to_with_data("/tests/failed_transaction.sql?x=1447", data)
+        .await?
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("1447"),
+        "{body_str}\nexpected to contain: 1447"
+    );
+    Ok(())
+}
+
+#[actix_web::test]
 /// `/sqlpage/migrations/0001_init.sql` should return a 403 Forbidden
 async fn privileged_paths_are_not_accessible() {
     let resp_result = req_path("/sqlpage/migrations/0001_init.sql").await;
@@ -561,14 +592,21 @@ async fn test_official_website_basic_auth_example() {
     );
 }
 
-async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
-    let data = make_app_data().await;
+async fn get_request_to_with_data(
+    path: &str,
+    data: actix_web::web::Data<AppState>,
+) -> actix_web::Result<TestRequest> {
     Ok(test::TestRequest::get()
         .uri(path)
         .insert_header(ContentType::plaintext())
         .app_data(payload_config(&data))
         .app_data(form_config(&data))
         .app_data(data))
+}
+
+async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
+    let data = make_app_data().await;
+    get_request_to_with_data(path, data).await
 }
 
 async fn make_app_data_from_config(config: AppConfig) -> actix_web::web::Data<AppState> {
@@ -614,6 +652,7 @@ pub fn test_config() -> AppConfig {
     serde_json::from_str::<AppConfig>(&format!(
         r#"{{
         "database_url": "{}",
+        "max_database_pool_connections": 1,
         "database_connection_retries": 3,
         "database_connection_acquire_timeout_seconds": 15,
         "allow_exec": true,
