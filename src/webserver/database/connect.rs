@@ -65,8 +65,7 @@ impl Database {
                     AnyKind::MySql => 75,
                     AnyKind::Sqlite => {
                         if config.database_url.contains(":memory:") {
-                            // Create no more than a single in-memory database connection
-                            1
+                            128
                         } else {
                             16
                         }

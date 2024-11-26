@@ -393,7 +393,7 @@ fn parse_socket_addr(host_str: &str) -> anyhow::Result<SocketAddr> {
 
 #[cfg(test)]
 fn default_database_url() -> String {
-    "sqlite://:memory:".to_owned()
+    "sqlite://:memory:?cache=shared".to_owned()
 }
 #[cfg(not(test))]
 fn default_database_url() -> String {
@@ -433,7 +433,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
     }
 
     log::warn!("No DATABASE_URL provided, and {:?} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory);
-    prefix + ":memory:"
+    prefix + ":memory:?cache=shared"
 }
 
 fn encode_uri(path: &Path) -> std::borrow::Cow<str> {
