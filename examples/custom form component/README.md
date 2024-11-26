@@ -7,7 +7,7 @@ The only MySQL-specific features used here are:
  - `json_table`, which is supported by MariaDB and MySQL 8.0 and later,
  - MySQL's `json_merge` function.
 
-Both [have analogs in other databases](https://sql.datapage.app/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide).
+Both [have analogs in other databases](https://sql-page.com/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide).
 
 ![screenshot](screenshot.png)
 

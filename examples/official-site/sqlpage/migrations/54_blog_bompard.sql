@@ -11,7 +11,7 @@ VALUES
 
 ### What is SQLPage ?
 
-> [SQLPage](http://sql.datapage.app) allows anyone with SQL skills to build and deploy digital tools (websites, data applications, dashboards, user forms…) using only **SQL queries**. Official website: [https://sql.datapage.app/](https://sql.datapage.app/)
+> [SQLPage](http://sql-page.com) allows anyone with SQL skills to build and deploy digital tools (websites, data applications, dashboards, user forms…) using only **SQL queries**. Official website: [https://sql-page.com/](https://sql-page.com/)
 
 SQLPage eliminates the need to learn server languages, HTML, CSS, JavaScript, or front-end frameworks, and instead uses SQL to generate modern UI layouts populated with database query results. You get native SQL interactions with the database, without all the other layers that typically get in the way.
 
@@ -64,7 +64,7 @@ The process in SQLPage follows a simple pattern:
 
 > 2) Write a query to populate the selected component with data
 
-You can find the full list of components: [https://sql.datapage.app/documentation.sql](https://sql.datapage.app/documentation.sql)
+You can find the full list of components: [https://sql-page.com/documentation.sql](https://sql-page.com/documentation.sql)
 
 Here’s an example of a parameterized SQL query that uses the “chart” component, along with the query to feed data into it:
 
@@ -133,7 +133,7 @@ What all these projects have in common is that they were built by a single perso
 
 ### Useful links
 
--   🏡Official website [https://sql.datapage.app](https://sql.datapage.app/)
+-   🏡Official website [https://sql-page.com](https://sql-page.com/)
 -   🔰Quick start (written by [Nick Antonaccio](https://medium.com/u/b6a791990395)): [https://learnsqlpage.com/sqlpage_quickstart.html](https://learnsqlpage.com/sqlpage_quickstart.html)
 -   📹Youtube tutorial videos on SQLPage channel: [https://www.youtube.com/@SQLPage/playlists](https://www.youtube.com/@SQLPage/playlists)
 -   🤓github: [https://github.com/sqlpage/SQLPage/](https://github.com/sqlpage/SQLPage/)

@@ -53,7 +53,7 @@ You could restrict user creation to existing administrators and create an initia
 
 The [login form](./signin.sql) is a simple form that is handled by [`login.sql`](./login.sql).
 
-`login.sql` checks that the username exists and that the password is correct using the [authentication component](https://sql.datapage.app/documentation.sql?component=authentication#component) extension with
+`login.sql` checks that the username exists and that the password is correct using the [authentication component](https://sql-page.com/documentation.sql?component=authentication#component) extension with
 
 ```sql
 SELECT 'authentication' AS component,
@@ -75,10 +75,10 @@ The user is then redirected to [`./protected_page.sql`](./protected_page.sql) wh
 Protected pages are pages that can only be accessed by logged-in users.
 
 There is an example in [`protected_page.sql`](./protected_page.sql) that uses
-the [`redirect`](https://sql.datapage.app/documentation.sql?component=redirect#component)
+the [`redirect`](https://sql-page.com/documentation.sql?component=redirect#component)
 component to redirect the user to the login page if they are not logged in.
 
-Checking whether the user is logged in is as simple as checking that session id returned by [`sqlpage.cookie('session')`](https://sql.datapage.app/functions.sql?function=cookie#function) exists in the [`login_session`](./sqlpage/migrations/0000_init.sql) table.
+Checking whether the user is logged in is as simple as checking that session id returned by [`sqlpage.cookie('session')`](https://sql-page.com/functions.sql?function=cookie#function) exists in the [`login_session`](./sqlpage/migrations/0000_init.sql) table.
 
 
 ### User logout

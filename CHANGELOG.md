@@ -26,20 +26,20 @@
 ### 🚀 **New Features**
 
 #### **Improved Components**
-- [**Columns Component**](https://sql.datapage.app/component.sql?component=columns)
+- [**Columns Component**](https://sql-page.com/component.sql?component=columns)
   - Markdown-supported descriptions (`description_md`) allow richer formatting.
   - Add simple text items without needing JSON handling.
   - Optionally skip displaying items (`null as item`).
   - ![columns component screenshot](https://github.com/user-attachments/assets/dd5e1ba7-e12f-4119-a201-0583cf765000)
 
-- [**Table Component**](https://sql.datapage.app/component.sql?component=table)
+- [**Table Component**](https://sql-page.com/component.sql?component=table)
   - New **freeze headers and columns** feature improves usability with large tables.
   - Enhanced search logic ensures more precise matches (e.g., `"xy"` no longer matches separate `x` and `y` cells in adjacent columns).
   - Search box visibility is retained during horizontal scrolling.
     *Technical:* Adds `freeze_headers`, `freeze_columns`, and improves the internal search algorithm.
   - ![scroll table](https://github.com/user-attachments/assets/546f36fb-b590-487d-8817-47eeed8f1835)
 
-- [**Form Component**](https://sql.datapage.app/component.sql?component=form)
+- [**Form Component**](https://sql-page.com/component.sql?component=form)
   - Added an empty option (`empty_option`) to dropdowns, enabling placeholder-like behavior.
     - ![form](https://github.com/user-attachments/assets/40a230da-9b1b-49ed-9759-5e21fe812957)
   - Improved handling of large form submissions with configurable size limits (`max_uploaded_file_size`, default 5MB).
@@ -119,10 +119,10 @@
 ## 0.30.0 (2024-10-30)
 
 ### 🤖 Easy APIs
-- **Enhanced CSV Support**: The [CSV component](https://sql.datapage.app/component.sql?component=csv) can now create URLs that trigger a CSV download directly on page load.
+- **Enhanced CSV Support**: The [CSV component](https://sql-page.com/component.sql?component=csv) can now create URLs that trigger a CSV download directly on page load.
   - This finally makes it possible to allow the download of large datasets as CSV
   - This makes it possible to create an API that returns data as CSV and can be easily exposed to other software for interoperabily. 
- - **Easy [json](https://sql.datapage.app/component.sql?component=json) APIs**
+ - **Easy [json](https://sql-page.com/component.sql?component=json) APIs**
    - The json component now accepts a second sql query, and will return the results as a json array in a very resource-efficient manner. This makes it easier and faster than ever to build REST APIs entirely in SQL.
       - ```sql
         select 'json' as component;
@@ -160,7 +160,7 @@
 
 ### 🖼️ UI & UX Improvements
 
-- **[Carousel](https://sql.datapage.app/component.sql?component=carousel) Updates**:
+- **[Carousel](https://sql-page.com/component.sql?component=carousel) Updates**:
   - Autoplay works as expected when embedded in a card.
   - Set image width and height to prevent layout shifts due to varying image sizes.
 - **Improved Site SEO**: The site title in the shell component is no longer in `<h1>` tags, which should aid search engines in understanding content better, and avoid confusing between the site name and the page's title.
@@ -196,8 +196,8 @@
         Web root is not a valid directory: "/xyz"
  - The configuration directory is now created if it does not exist. This allows to start the server without having to manually create the directory.
  - The default database URL is now computed from the configuration directory, instead of being hardcoded to `sqlite://./sqlpage/sqlpage.db`. So when using a custom configuration directory, the default SQLite database will be created inside it. When using the default `./sqlpage` configuration directory, or when using a custom database URL, the default behavior is unchanged.
- - New `navbar_title` property in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
- - Fixed: The `font` property in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component was mistakingly not applied since v0.28.0. It works again.
+ - New `navbar_title` property in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
+ - Fixed: The `font` property in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component was mistakingly not applied since v0.28.0. It works again.
  - Updated SQL parser to [v0.51.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0510-2024-09-11). Improved `INTERVAL` parsing.
   - **Important note**: this version removes support for the `SET $variable = ...` syntax in SQLite. This worked only with some databases. You should replace all occurrences of this syntax with `SET variable = ...` (without the `$` prefix).
  - slightly reduce the margin at the top of pages to make the content appear higher on the screen.
@@ -213,11 +213,11 @@
 ## 0.28.0 (2024-08-31)
 - Chart component: fix the labels of pie charts displaying too many decimal places.
   - ![pie chart](https://github.com/user-attachments/assets/6cc4a522-b9dd-4005-92bc-dc92b16c7293)
-- You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql.datapage.app/your-first-sql-website/custom_urls.sql) that don't end with `.sql`.
+- You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql-page.com/your-first-sql-website/custom_urls.sql) that don't end with `.sql`.
   - Create if `/folder/404.sql` exists, then it will be called for all URLs that start with `folder` and do not match an existing file. 
 - Updated SQL parser to [v0.50.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0500-2024-08-15)
   - Support postgres String Constants with Unicode Escapes, like `U&'\2713'`. Fixes https://github.com/lovasoa/SQLpage/discussions/511
-- New [big_number](https://sql.datapage.app/documentation.sql?component=big_number#component) component to display key statistics and indicators in a large, easy-to-read format. Useful for displaying KPIs, metrics, and other important numbers in dashboards and reports.
+- New [big_number](https://sql-page.com/documentation.sql?component=big_number#component) component to display key statistics and indicators in a large, easy-to-read format. Useful for displaying KPIs, metrics, and other important numbers in dashboards and reports.
   - ![big_number](https://github.com/user-attachments/assets/9b5bc091-afd1-4872-be55-0b2a47aff15c)
 - Fixed small display inconsistencies in the shell component with the new sidebar feature ([#556](https://github.com/lovasoa/SQLpage/issues/556)).
 - Cleanly close all open database connections when shutting down sqlpage. Previously, when shutting down SQLPage, database connections that were opened during the session were not explicitly closed. These connections could remain open until the database closes it. Now, SQLPage ensures that all opened database connections are cleanly closed during shutdown. This guarantees that resources are freed immediately, ensuring more reliable operation, particularly in environments with limited database connections.
@@ -227,13 +227,13 @@
 - updated Apex Charts to v3.52.0
   - see https://github.com/apexcharts/apexcharts.js/releases
 - Fixed a bug where in very specific conditions, sqlpage functions could mess up the order of the arguments passed to a sql query. This would happen when a sqlpage function was called with both a column from the database and a sqlpage variable in its arguments, and the query also contained references to other sqlpage variables **after** the sqlpage function call. An example would be `select sqlpage.exec('xxx', some_column = $a) as a, $b as b from t`. A test was added for this case.
-- added a new `url_encode` helper for [custom components](https://sql.datapage.app/custom_components.sql) to encode a string for use in a URL.
+- added a new `url_encode` helper for [custom components](https://sql-page.com/custom_components.sql) to encode a string for use in a URL.
 - fixed a bug where the CSV component would break when the data contained a `#` character.
 - properly escape fields in the CSV component to avoid generating invalid CSV files.
 - Nicer inline code style in markdown.
 - Fixed `width` attribute in the card component not being respected when the specified width was < 6.
 - Fixed small inaccuracies in decimal numbers leading to unexpectedly long numbers in the output, such as `0.47000000000000003` instead of `0.47`.
-- [chart component](https://sql.datapage.app/documentation.sql?component=chart#component) 
+- [chart component](https://sql-page.com/documentation.sql?component=chart#component) 
  - TreeMap charts in the chart component allow you to visualize hierarchical data structures.
  - Timeline charts allow you to visualize time intervals.
  - Fixed multiple small display issues in the chart component.
@@ -247,13 +247,13 @@
 ## 0.26.0 (2024-08-06)
 ### Components
 #### Card
-New `width` attribute in the [card](https://sql.datapage.app/documentation.sql?component=card#component) component to set the width of the card. This finally allows you to create custom layouts, by combining the `embed` and `width` attributes of the card component! This also updates the default layout of the card component: when `columns` is not set, there is now a default of 4 columns instead of 5.
+New `width` attribute in the [card](https://sql-page.com/documentation.sql?component=card#component) component to set the width of the card. This finally allows you to create custom layouts, by combining the `embed` and `width` attributes of the card component! This also updates the default layout of the card component: when `columns` is not set, there is now a default of 4 columns instead of 5.
 
 ![image](https://github.com/user-attachments/assets/98425bd8-c576-4628-9ae2-db3ba4650019)
 
 
 #### Datagrid
-fix [datagrid](https://sql.datapage.app/documentation.sql?component=datagrid#component) color pills display when they contain long text.
+fix [datagrid](https://sql-page.com/documentation.sql?component=datagrid#component) color pills display when they contain long text.
 
 ![image](https://github.com/user-attachments/assets/3b7dba27-8812-410c-a383-2b62d6a286ac)
 
@@ -276,7 +276,7 @@ Fixed the link to the website title in the shell component.
 Allow loading javascript ESM modules in the shell component with the new `javascript_module` property.
 
 #### html
-Added `text` and `post_html` properties to the [html](https://sql.datapage.app/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
+Added `text` and `post_html` properties to the [html](https://sql-page.com/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
 
 ```sql
 select 
@@ -315,7 +315,7 @@ select
   - upport UPDATE statements that contain tuple assignments , like `UPDATE table SET (a, b) = (SELECT 1, 2)`
   - support custom operators in postgres. Usefull when using extensions like PostGIS, PGroonga, pgtrgm, or pg_similarity, which define custom operators like `&&&`, `@>`, `<->`, `~>`, `~>=`, `~<=`, `<@`...
 - New `html` component to display raw HTML content. This component is meant to be used by advanced users who want to display HTML content that cannot be expressed with the other components. Make sure you understand the security implications before using this component, as using untrusted HTML content can expose your users to [cross-site scripting (XSS)](https://en.wikipedia.org/wiki/Cross-site_scripting) attacks.
-- New parameter in the [`run_sql`](https://sql.datapage.app/functions.sql?function=run_sql#function) function to pass variables to the included SQL file, instead of using the global variables. Together with the new ability to pass data from the database to SQLPage functions, this allows you to create more modular and reusable SQL files. For instance, the following is finally possible:
+- New parameter in the [`run_sql`](https://sql-page.com/functions.sql?function=run_sql#function) function to pass variables to the included SQL file, instead of using the global variables. Together with the new ability to pass data from the database to SQLPage functions, this allows you to create more modular and reusable SQL files. For instance, the following is finally possible:
   ```sql
   select 'dynamic' as component, sqlpage.run_sql('display_product.sql', json_object('product_id', product_id)) as properties from products;
   ```
@@ -323,7 +323,7 @@ select
 - Updated apexcharts.js to [v3.50.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v3.50.0)
 - Improve truncation of long page titles
   - ![screenshot long title](https://github.com/lovasoa/SQLpage/assets/552629/9859023e-c706-47b3-aa9e-1c613046fdfa)
-- new function: [`sqlpage.link`](https://sql.datapage.app/functions.sql?function=link#function) to easily create links with parameters between pages. For instance, you can now use
+- new function: [`sqlpage.link`](https://sql-page.com/functions.sql?function=link#function) to easily create links with parameters between pages. For instance, you can now use
   ```sql
   select 'list' as component;
   select
@@ -344,22 +344,22 @@ select
   - automatically center the map on the contents when no top-level latitude and longitude properties are provided even when the map contains geojson data.
   - allow using `FALSE as tile_source` to completely remove the base map. This makes the map component useful to display even non-geographical geometric data.
 - Fix a bug that occured when no `database_url` was provided in the configuration file. SQLPage would generate an incorrect default SQLite database URL.
-- Add a new `background_color` attribute to the [card](https://sql.datapage.app/documentation.sql?component=card#component) component to set the background color of the card.
+- Add a new `background_color` attribute to the [card](https://sql-page.com/documentation.sql?component=card#component) component to set the background color of the card.
   - ![cards with color backgrounds](https://github.com/lovasoa/SQLpage/assets/552629/d925d77c-e1f6-490f-8fb4-cdcc4418233f)
-- new handlebars helper for [custom components](https://sql.datapage.app/custom_components.sql): `{{app_config 'property'}}` to access the configuration object from the handlebars template.
+- new handlebars helper for [custom components](https://sql-page.com/custom_components.sql): `{{app_config 'property'}}` to access the configuration object from the handlebars template.
 - Prevent form validation and give a helpful error message when an user tries to submit a form with a file upload field that is above the maximum file size.
   - ![file upload too large](https://github.com/lovasoa/SQLpage/assets/552629/1c684d33-49bd-4e49-9ee0-ed3f0d454ced)
-- Fix a bug in [`sqlpage.read_file_as_data_url`](https://sql.datapage.app/functions.sql?function=read_file_as_data_url#function) where it would truncate the mime subtype of the file. This would cause the browser to refuse to display SVG files, for instance.
+- Fix a bug in [`sqlpage.read_file_as_data_url`](https://sql-page.com/functions.sql?function=read_file_as_data_url#function) where it would truncate the mime subtype of the file. This would cause the browser to refuse to display SVG files, for instance.
 - Avoid vertical scrolling caused by the footer even when the page content is short.
-- Add a new `compact` attribute to the [list](https://sql.datapage.app/documentation.sql?component=list#component), allowing to display more items in a list without taking up too much space. Great for displaying long lists of items.
+- Add a new `compact` attribute to the [list](https://sql-page.com/documentation.sql?component=list#component), allowing to display more items in a list without taking up too much space. Great for displaying long lists of items.
   - ![compact list screenshot](https://github.com/lovasoa/SQLpage/assets/552629/41302807-c6e4-40a0-9486-bfd0ceae1537)
-- Add property `narrow` to the [button](https://sql.datapage.app/documentation.sql?component=button#component) component to make the button narrower. Ideal for buttons with icons.
+- Add property `narrow` to the [button](https://sql-page.com/documentation.sql?component=button#component) component to make the button narrower. Ideal for buttons with icons.
   - ![icon buttons](https://github.com/lovasoa/SQLpage/assets/552629/7fcc049e-6012-40c1-a8ee-714ce70a8763)
 - new `tooltip` property in the datagrid component.
   - ![datagrid tooltip](https://github.com/lovasoa/SQLpage/assets/552629/81b94d92-1bca-4ffe-9056-c30d6845dcc6)
 - datagrids are now slightly more compact, with less padding and less space taken by each item.
-- fix a bug in the [card](https://sql.datapage.app/documentation.sql?component=card#component) component where the icon would sometimes overflow the card's text content.
-- new `image` property in the [button](https://sql.datapage.app/documentation.sql?component=button#component) component to display a small image inside a button.
+- fix a bug in the [card](https://sql-page.com/documentation.sql?component=card#component) component where the icon would sometimes overflow the card's text content.
+- new `image` property in the [button](https://sql-page.com/documentation.sql?component=button#component) component to display a small image inside a button.
   - ![image button](https://github.com/lovasoa/SQLpage/assets/552629/cdfa0709-1b00-4779-92cb-dc6f3e78c1a8)
 - In the `shell` component
   - allow easily creating complex menus even in SQLite:
@@ -370,11 +370,11 @@ select
     ```sql
     select 'shell' as component, 'My Website' as title, CASE WHEN $role = 'admin' THEN 'Admin' END as menu_item;
     ```
-  - Add the ability to use local Woff2 fonts in the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component. This is useful to use custom fonts in your website, without depending on google fonts (and disclosing your users' IP addresses to google).
+  - Add the ability to use local Woff2 fonts in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component. This is useful to use custom fonts in your website, without depending on google fonts (and disclosing your users' IP addresses to google).
   - Add a `fixed_top_menu` attribute to make the top menu sticky. This is useful to keep the menu visible even when the user scrolls down the page.
     - ![a fixed top menu](https://github.com/lovasoa/SQLpage/assets/552629/65fe3a41-faee-45e6-9dfc-d81eca043f45)
 - Add a `wrap` attribute to the `list` component to wrap items on multiple lines when they are too long.
-- New `max_pending_rows` [configuration option](https://sql.datapage.app/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
+- New `max_pending_rows` [configuration option](https://sql-page.com/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
 - New `compress_responses` configuration option. Compression is still on by default, but can now be disabled to allow starting sending the page sooner. It's sometimes better to start displaying the shell immediateley and render components as soon as they are ready, even if that means transmitting more data over the wire.
 - Update sqlite to v3.46: https://www.sqlite.org/releaselog/3_46_0.html
   - major upgrades to PRAGMA optimize, making it smarter and more efficient on large databases
@@ -387,7 +387,7 @@ select
 
 ## 0.23.0 (2024-06-09)
 
-- fix a bug in the [csv](https://sql.datapage.app/documentation.sql?component=csv#component) component. The `separator` parameter now works as expected. This facilitates creating excel-compatible CSVs in european countries where excel expects the separator to be `;` instead of `,`.
+- fix a bug in the [csv](https://sql-page.com/documentation.sql?component=csv#component) component. The `separator` parameter now works as expected. This facilitates creating excel-compatible CSVs in european countries where excel expects the separator to be `;` instead of `,`.
 - new `tooltip` property in the button component.
 - New `search_value` property in the shell component.
 - Fixed a display issue in the hero component when the button text is long and the viewport is narrow.
@@ -396,10 +396,10 @@ select
 - [Updated SQL parser](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0470-2024-06-01). Fixes support for `AT TIME ZONE` in postgres. Fixes `GROUP_CONCAT()` in MySQL.
 - Add a new warning message in the logs when trying to use `set x = ` when there is already a form field named `x`.
 - **Empty Uploaded files**: when a form contains an optional file upload field, and the user does not upload a file, the field used to still be accessible to SQLPage file-related functions such as `sqlpage.uploaded_file_path` and `sqlpage.uploaded_file_mime_type`. This is now fixed, and these functions will return `NULL` when the user does not upload a file. `sqlpage.persist_uploaded_file` will not create an empty file in the target directory when the user does not upload a file, instead it will do nothing and return `NULL`.
-- In the [map](https://sql.datapage.app/documentation.sql?component=map#component) component, when top-level latitude and longitude properties are omitted, the map will now center on its markers. This makes it easier to create zoomed maps with a single marker.
-- In the [button](https://sql.datapage.app/documentation.sql?component=button#component) component, add a `download` property to make the button download a file when clicked, a `target` property to open the link in a new tab, and a `rel` property to prevent search engines from following the link.
-- New `timeout` option in the [sqlpage.fetch](https://sql.datapage.app/functions.sql?function=fetch#function) function to set a timeout for the request. This is useful when working with slow or unreliable APIs, large payloads, or when you want to avoid waiting too long for a response.
-- In the [hero](https://sql.datapage.app/documentation.sql?component=hero#component) component, add a `poster` property to display a video poster image, a `loop` property to loop the video (useful for short animations), a `muted` property to mute the video, and a `nocontrols` property to hide video controls.
+- In the [map](https://sql-page.com/documentation.sql?component=map#component) component, when top-level latitude and longitude properties are omitted, the map will now center on its markers. This makes it easier to create zoomed maps with a single marker.
+- In the [button](https://sql-page.com/documentation.sql?component=button#component) component, add a `download` property to make the button download a file when clicked, a `target` property to open the link in a new tab, and a `rel` property to prevent search engines from following the link.
+- New `timeout` option in the [sqlpage.fetch](https://sql-page.com/functions.sql?function=fetch#function) function to set a timeout for the request. This is useful when working with slow or unreliable APIs, large payloads, or when you want to avoid waiting too long for a response.
+- In the [hero](https://sql-page.com/documentation.sql?component=hero#component) component, add a `poster` property to display a video poster image, a `loop` property to loop the video (useful for short animations), a `muted` property to mute the video, and a `nocontrols` property to hide video controls.
 - Fix a bug where icons would disappear when serving a SQLPage website from a subdirectory and not the root of the (sub)domain using the `site_prefix` configuration option.
 
 ## 0.22.0 (2024-05-29)
@@ -419,23 +419,23 @@ select
   - **Reminder about GET and POST Variables:**
     - **GET Variables:** Parameters included in the URL of an HTTP GET request, used to retrieve data. Example: `https://example.com/page?x=value`, where `x` is a GET variable.
     - **POST Variables:** Parameters included in the body of an HTTP POST request, used for form submissions. Example: the value entered by the user in a form field named `x`.
-- Two **backward-incompatible changes** in the [chart](https://sql.datapage.app/documentation.sql?component=chart#component) component's timeseries plotting feature (actioned with `TRUE as time`):
+- Two **backward-incompatible changes** in the [chart](https://sql-page.com/documentation.sql?component=chart#component) component's timeseries plotting feature (actioned with `TRUE as time`):
   - when providing a number for the x value (time), it is now interpreted as a unix timestamp, in seconds (number of seconds since 1970-01-01 00:00:00 UTC). It used to be interpreted as milliseconds. If you were using the `TRUE as time` syntax with integer values, you will need to divide your time values by 1000 to get the same result as before.
     - This change makes it easier to work with time series plots, as most databases return timestamps in seconds. For instance, in SQLite, you can store timestamps as integers with the [`unixepoch()`](https://www.sqlite.org/lang_datefunc.html) function, and plot them directly in SQLPage.
   - when providing an ISO datetime string for the x value (time), without an explicit timezone, it is now interpreted and displayed in the local timezone of the user. It used to be interpreted as a local time, but displayed in UTC, which [was confusing](https://github.com/lovasoa/SQLpage/issues/324). If you were using the `TRUE as time` syntax with naive datetime strings (without timezone information), you will need to convert your datetime strings to UTC on the database side if you want to keep the same behavior as before. As a side note, it is always recommended to store and query datetime strings with timezone information in the database, to avoid ambiguity.
     - This change is particularly useful in SQLite, which generates naive datetime strings by default. You should still store and query datetimes as unix timestamps when possible, to avoid ambiguity and reduce storage size.
-- When calling a file with [`sqlpage.run_sql`](https://sql.datapage.app/functions.sql?function=run_sql#function), the target file now has access to uploaded files.
-- New article by [Matthew Larkin](https://github.com/matthewlarkin) about [migrations](https://sql.datapage.app/your-first-sql-website/migrations.sql).
+- When calling a file with [`sqlpage.run_sql`](https://sql-page.com/functions.sql?function=run_sql#function), the target file now has access to uploaded files.
+- New article by [Matthew Larkin](https://github.com/matthewlarkin) about [migrations](https://sql-page.com/your-first-sql-website/migrations.sql).
 - Add a row-level `id` attribute to the button component.
 - Static assets (js, css, svg) needed to build SQLPage are now cached individually, and can be downloaded separately from the build process. This makes it easier to build SQLPage without internet access. If you use pre-built SQLPage binaries, this change does not affect you.
 - New `icon_after` row-level property in the button component to display an icon on the right of a button (after the text). Contributed by @amrutadotorg.
 - New demo example: [dark theme](./examples/light-dark-toggle/). Contributed by @lyderic.
-- Add the ability to [bind to a unix socket instead of a TCP port](https://sql.datapage.app/your-first-sql-website/nginx.sql) for better performance on linux. Contributed by @vlasky.
+- Add the ability to [bind to a unix socket instead of a TCP port](https://sql-page.com/your-first-sql-website/nginx.sql) for better performance on linux. Contributed by @vlasky.
 
 ## 0.21.0 (2024-05-19)
 
 - `sqlpage.hash_password(NULL)` now returns `NULL` instead of throwing an error. This behavior was changed unintentionally in 0.20.5 and could have broken existing SQLPage websites.
-- The [dynamic](https://sql.datapage.app/documentation.sql?component=dynamic#component) component now supports multiple `properties` attributes. The following is now possible:
+- The [dynamic](https://sql-page.com/documentation.sql?component=dynamic#component) component now supports multiple `properties` attributes. The following is now possible:
   ```sql
   select 'dynamic' as component,
          '{ "component": "card", "title": "Hello" }' as properties,
@@ -444,9 +444,9 @@ select
 - Casting values from one type to another using the `::` operator is only supported by PostgreSQL. SQLPage versions before 0.20.5 would silently convert all casts to the `CAST(... AS ...)` syntax, which is supported by all databases. Since 0.20.5, SQLPage started to respect the original `::` syntax, and pass it as-is to the database. This broke existing SQLPage websites that used the `::` syntax with databases other than PostgreSQL. For backward compatibility, this version of SQLPage re-establishes the previous behavior, converts `::` casts on non-PostgreSQL databases to the `CAST(... AS ...)` syntax, but will display a warning in the logs.
   - In short, if you saw an error like `Error: unrecognized token ":"` after upgrading to 0.20.5, this version should fix it.
 - The `dynamic` component now properly displays error messages when its properties are invalid. There used to be a bug where errors would be silently ignored, making it hard to debug invalid dynamic components.
-- New [`sqlpage.request_method`](https://sql.datapage.app/functions.sql?function=request_method#function) function to get the HTTP method used to access the current page. This is useful to create pages that behave differently depending on whether they are accessed with a GET request (to display a form, for instance) or a POST request (to process the form).
+- New [`sqlpage.request_method`](https://sql-page.com/functions.sql?function=request_method#function) function to get the HTTP method used to access the current page. This is useful to create pages that behave differently depending on whether they are accessed with a GET request (to display a form, for instance) or a POST request (to process the form).
 - include the trailing semicolon as a part of the SQL statement sent to the database. This doesn't change anything in most databases, but Microsoft SQL Server requires a trailing semicolon after certain statements, such as `MERGE`. Fixes [issue #318](https://github.com/lovasoa/SQLpage/issues/318)
-- New `readonly` and `disabled` attributes in the [form](https://sql.datapage.app/documentation.sql?component=form#component) component to make form fields read-only or disabled. This is useful to prevent the user from changing some fields.
+- New `readonly` and `disabled` attributes in the [form](https://sql-page.com/documentation.sql?component=form#component) component to make form fields read-only or disabled. This is useful to prevent the user from changing some fields.
 - 36 new icons [(tabler icons 3.4)](https://tabler.io/icons/changelog)
 - Bug fixes in charts [(apexcharts.js v3.49.1)](https://github.com/apexcharts/apexcharts.js/releases)
 
@@ -477,10 +477,10 @@ select
 
 ## 0.20.3 (2024-04-22)
 
-- New `dropdown` row-level property in the [`form` component](https://sql.datapage.app/documentation.sql?component=form#component)
+- New `dropdown` row-level property in the [`form` component](https://sql-page.com/documentation.sql?component=form#component)
   - ![select dropdown in form](https://github.com/lovasoa/SQLpage/assets/552629/5a2268d3-4996-49c9-9fb5-d310e753f844)
   - ![multiselect input](https://github.com/lovasoa/SQLpage/assets/552629/e8d62d1a-c851-4fef-8c5c-a22991ffadcf)
-- Adds a new [`sqlpage.fetch`](https://sql.datapage.app/functions.sql?function=fetch#function) function that allows sending http requests from SQLPage. This is useful to query external APIs. This avoids having to resort to `sqlpage.exec`.
+- Adds a new [`sqlpage.fetch`](https://sql-page.com/functions.sql?function=fetch#function) function that allows sending http requests from SQLPage. This is useful to query external APIs. This avoids having to resort to `sqlpage.exec`.
 - Fixed a bug that occured when using both HTTP and HTTPS in the same SQLPage instance. SQLPage tried to bind to the same (HTTP)
   port twice instead of binding to the HTTPS port. This is now fixed, and SQLPage can now be used with both a non-443 `port` and
   an `https_domain` set in the configuration file.
@@ -493,8 +493,8 @@ select
 
 ## 0.20.2 (2024-04-01)
 
-- the **default component**, used when no `select '...' as component` is present, is now [table](https://sql.datapage.app/documentation.sql?component=table#component). It used to be the `debug` component instead. `table` makes it extremely easy to display the results of any SQL query in a readable manner. Just write any query in a `.sql` file open it in your browser, and you will see the results displayed in a table, without having to use any SQLPage-specific column names or attributes.
-- Better error messages when a [custom component](https://sql.datapage.app/custom_components.sql) contains a syntax error. [Fix contributed upstream](https://github.com/sunng87/handlebars-rust/pull/638)
+- the **default component**, used when no `select '...' as component` is present, is now [table](https://sql-page.com/documentation.sql?component=table#component). It used to be the `debug` component instead. `table` makes it extremely easy to display the results of any SQL query in a readable manner. Just write any query in a `.sql` file open it in your browser, and you will see the results displayed in a table, without having to use any SQLPage-specific column names or attributes.
+- Better error messages when a [custom component](https://sql-page.com/custom_components.sql) contains a syntax error. [Fix contributed upstream](https://github.com/sunng87/handlebars-rust/pull/638)
 - Lift a limitation on **sqlpage function nesting**. In previous versions, some sqlpage functions could not be used inside other sqlpage functions. For instance, `sqlpage.url_encode(sqlpage.exec('my_program'))` used to throw an error saying `Nested exec() function not allowed`. This limitation is now lifted, and you can nest any sqlpage function inside any other sqlpage function.
 - Allow **string concatenation in inside sqlpage function parameters**. For instance, `sqlpage.exec('echo', 'Hello ' || 'world')` is now supported, whereas it used to throw an error saying `exec('echo', 'Hello ' || 'world') is not a valid call. Only variables (such as $my_variable) and sqlpage function calls (such as sqlpage.header('my_header')) are supported as arguments to sqlpage functions.`.
 - Bump the minimal supported rust version to 1.77 (this is what allows us to easily handle nested sqlpage functions)
@@ -502,21 +502,21 @@ select
 ## 0.20.1 (2024-03-23)
 
 - More than 200 new icons, with [tabler icons v3](https://tabler.io/icons/changelog#3.0)
-- New [`sqlpage.persist_uploaded_file`](https://sql.datapage.app/functions.sql?function=persist_uploaded_file#function) function to save uploaded files to a permanent location on the local filesystem (where SQLPage is running). This is useful to store files uploaded by users in a safe location, and to serve them back to users later.
+- New [`sqlpage.persist_uploaded_file`](https://sql-page.com/functions.sql?function=persist_uploaded_file#function) function to save uploaded files to a permanent location on the local filesystem (where SQLPage is running). This is useful to store files uploaded by users in a safe location, and to serve them back to users later.
 - Correct error handling for file uploads. SQLPage used to silently ignore file uploads that failed (because they exceeded [max_uploaded_file_size](./configuration.md), for instance), but now it displays a clear error message to the user.
 
 ## 0.20.0 (2024-03-12)
 
-- **file inclusion**. This is a long awaited feature that allows you to include the contents of one file in another. This is useful to factorize common parts of your website, such as the header, or the authentication logic. There is a new [`sqlpage.run_sql`](https://sql.datapage.app/functions.sql?function=run_sql#function) function that runs a given SQL file and returns its result as a JSON array. Combined with the existing [`dynamic`](https://sql.datapage.app/documentation.sql?component=dynamic#component) component, this allows you to include the content of a file in another, like this:
+- **file inclusion**. This is a long awaited feature that allows you to include the contents of one file in another. This is useful to factorize common parts of your website, such as the header, or the authentication logic. There is a new [`sqlpage.run_sql`](https://sql-page.com/functions.sql?function=run_sql#function) function that runs a given SQL file and returns its result as a JSON array. Combined with the existing [`dynamic`](https://sql-page.com/documentation.sql?component=dynamic#component) component, this allows you to include the content of a file in another, like this:
 
 ```sql
 select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
 ```
 
-- **more powerful _dynamic_ component**: the [`dynamic`](https://sql.datapage.app/documentation.sql?component=dynamic#component) component can now be used to generate the special _header_ components too, such as the `redirect`, `cookie`, `authentication`, `http_header` and `json` components. The _shell_ component used to be allowed in dynamic components, but only if they were not nested (a dynamic component inside another one). This limitation is now lifted. This is particularly useful in combination with the new file inclusion feature, to factorize common parts of your website. There used to be a limited to how deeply nested dynamic components could be, but this limitation is now lifted too.
-- Add an `id` attribute to form fields in the [form](https://sql.datapage.app/documentation.sql?component=form#component) component. This allows you to easily reference form fields in custom javascript code.
-- New [`rss`](https://sql.datapage.app/documentation.sql?component=rss#component) component to create RSS feeds, including **podcast feeds**. You can now create and manage your podcast feed entirely in SQL, and distribute it to all podcast directories such as Apple Podcasts, Spotify, and Google Podcasts.
-- Better error handling in template rendering. Many template helpers now display a more precise error message when they fail to execute. This makes it easier to debug errors when you [develop your own custom components](https://sql.datapage.app/custom_components.sql).
+- **more powerful _dynamic_ component**: the [`dynamic`](https://sql-page.com/documentation.sql?component=dynamic#component) component can now be used to generate the special _header_ components too, such as the `redirect`, `cookie`, `authentication`, `http_header` and `json` components. The _shell_ component used to be allowed in dynamic components, but only if they were not nested (a dynamic component inside another one). This limitation is now lifted. This is particularly useful in combination with the new file inclusion feature, to factorize common parts of your website. There used to be a limited to how deeply nested dynamic components could be, but this limitation is now lifted too.
+- Add an `id` attribute to form fields in the [form](https://sql-page.com/documentation.sql?component=form#component) component. This allows you to easily reference form fields in custom javascript code.
+- New [`rss`](https://sql-page.com/documentation.sql?component=rss#component) component to create RSS feeds, including **podcast feeds**. You can now create and manage your podcast feed entirely in SQL, and distribute it to all podcast directories such as Apple Podcasts, Spotify, and Google Podcasts.
+- Better error handling in template rendering. Many template helpers now display a more precise error message when they fail to execute. This makes it easier to debug errors when you [develop your own custom components](https://sql-page.com/custom_components.sql).
 - better error messages when an error occurs when defining a variable with `SET`. SQLPage now displays the query that caused the error, and the name of the variable that was being defined.
 - Updated SQL parser to [v0.44](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0440-2024-03-02)
   - support [EXECUTE ... USING](https://www.postgresql.org/docs/current/plpgsql-statements.html#PLPGSQL-STATEMENTS-EXECUTING-DYN) in PostgreSQL
@@ -542,16 +542,16 @@ select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
 - Updated Tabler Icon library to v2.47 with new icons
   - see: https://tabler.io/icons/changelog ![](https://pbs.twimg.com/media/GFUiJa_WsAAd0Td?format=jpg&name=medium)
 - Added `prefix`, `prefix_icon` and `suffix` attributes to the `form` component to create input groups. Useful to add a currency symbol or a unit to a form input, or to visually illustrate the type of input expected.
-- Added `striped_rows`, `striped_columns`, `hover`,`border`, and `small` attributes to the [table component](https://sql.datapage.app/documentation.sql?component=table#component).
+- Added `striped_rows`, `striped_columns`, `hover`,`border`, and `small` attributes to the [table component](https://sql-page.com/documentation.sql?component=table#component).
 - In the cookie component, set cookies for the entire website by default. The old behavior was to set the cookie
   only for files inside the current folder by default, which did not match the documentation, that says "If not specified, the cookie will be sent for all paths".
 - Dynamic components at the top of sql files.
   - If you have seen _Dynamic components at the top level are not supported, except for setting the shell component properties_ in the past, you can now forget about it. You can now use dynamic components at the top level of your sql files, and they will be interpreted as expected.
-- [Custom shells](https://sql.datapage.app/custom_components.sql):
+- [Custom shells](https://sql-page.com/custom_components.sql):
   - It has always been possible to change the default shell of a SQLPage website by writing a `sqlpage/shell.handlebars` file. But that forced you to have a single shell for the whole website. It is now possible to have multiple shells, just by creating multiple `shell-*.handlebars` files in the `sqlpage` directory. A `shell-empty` file is also provided by default, to create pages without a shell (useful for returning non-html content, such as an RSS feed).
 - New `edit_link`, `delete_link`, and `view_link` row-level attributes in the list component to add icons and links to each row.
   - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/df085592-8359-4fed-9aeb-27a2416ab6b8)
-- **Multiple page layouts** : The page layout is now configurable from the [shell component](https://sql.datapage.app/documentation.sql?component=shell#component). 3 layouts are available: `boxed` (the default), `fluid` (full width), and `horizontal` (with boxed contents but a full-width header).
+- **Multiple page layouts** : The page layout is now configurable from the [shell component](https://sql-page.com/documentation.sql?component=shell#component). 3 layouts are available: `boxed` (the default), `fluid` (full width), and `horizontal` (with boxed contents but a full-width header).
   - ![horizontal layout screenshot](https://github.com/lovasoa/SQLpage/assets/552629/3c0fde36-7bf6-414e-b96f-c8880a2fc786)
 
 ## 0.18.3 (2024-02-03)
@@ -561,8 +561,8 @@ select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
     - MySQL's [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html) table-valued function, that allows easily iterating over json structures
     - MySQL's [`CALL`](https://dev.mysql.com/doc/refman/8.0/en/call.html) statements, to call stored procedures.
     - PostgreSQL `^@` starts-with operator
-- New [carousel](https://sql.datapage.app/documentation.sql?component=carousel#component) component to display a carousel of images.
-- For those who write [custom components](https://sql.datapage.app/custom_components.sql), a new `@component_index` variable is available in templates to get the index of the current component in the page. This makes it easy to generate unique ids for components.
+- New [carousel](https://sql-page.com/documentation.sql?component=carousel#component) component to display a carousel of images.
+- For those who write [custom components](https://sql-page.com/custom_components.sql), a new `@component_index` variable is available in templates to get the index of the current component in the page. This makes it easy to generate unique ids for components.
 
 ## 0.18.2 (2024-01-29)
 
@@ -575,16 +575,16 @@ select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
 ## 0.18.0 (2024-01-28)
 
 - Fix small display issue on cards without a title.
-- New component: [`tracking`](https://sql.datapage.app/documentation.sql?component=tracking#component) for beautiful and compact status reports.
-- New component: [`divider`](https://sql.datapage.app/documentation.sql?component=divider#component) to add a horizontal line between other components.
-- New component: [`breadcrumb`](https://sql.datapage.app/documentation.sql?component=breadcrumb#component) to display a breadcrumb navigation bar.
+- New component: [`tracking`](https://sql-page.com/documentation.sql?component=tracking#component) for beautiful and compact status reports.
+- New component: [`divider`](https://sql-page.com/documentation.sql?component=divider#component) to add a horizontal line between other components.
+- New component: [`breadcrumb`](https://sql-page.com/documentation.sql?component=breadcrumb#component) to display a breadcrumb navigation bar.
 - fixed a small visual bug in the `card` component, where the margin below footer text was too large.
 - new `ystep` top-level attribute in the `chart` component to customize the y-axis step size.
 - Updated default graph colors so that all series are easily distinguishable even when a large number of series are displayed.
 - New `embed` attribute in the `card` component that lets you build multi-column layouts of various components with cards.
 - ![](./examples/cards-with-remote-content/screenshot.png)
 - Added `id` and `class` attributes to all components, to make it easier to style them with custom CSS and to reference them in intra-page links and custom javascript code.
-- Implemented [uploaded_file_mime_type](https://sql.datapage.app/functions.sql?function=uploaded_file_mime_type#function)
+- Implemented [uploaded_file_mime_type](https://sql-page.com/functions.sql?function=uploaded_file_mime_type#function)
 - Update the built-in SQLite database to version 3.45.0: https://www.sqlite.org/releaselog/3_45_0.html
 - Add support for unicode in the built-in SQLite database. This includes the `lower` and `upper` functions, and the `NOCASE` collation.
 
@@ -594,18 +594,18 @@ select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
   This is now fixed, and you can see the HTTP requests again. Logging is still less verbose than before, but you can enable debug logs by setting the `RUST_LOG` environment variable to `debug`, or to `sqlpage=debug` to only see SQLPage debug logs.
 - Better error message when failing to bind to a low port (<1024) on Linux. SQLPage now displays a message explaining how to allow SQLPage to bind to a low port.
 - When https_domain is set, but a port number different from 443 is set, SQLPage now starts both an HTTP and an HTTPS server.
-- Better error message when component order is invalid. SQLPage has "header" components, such as [redirect](https://sql.datapage.app/documentation.sql?component=redirect#component) and [cookie](https://sql.datapage.app/documentation.sql?component=cookie#component), that must be executed before the rest of the page. SQLPage now displays a clear error message when you try to use them after other components.
+- Better error message when component order is invalid. SQLPage has "header" components, such as [redirect](https://sql-page.com/documentation.sql?component=redirect#component) and [cookie](https://sql-page.com/documentation.sql?component=cookie#component), that must be executed before the rest of the page. SQLPage now displays a clear error message when you try to use them after other components.
 - Fix 404 error not displaying. 404 responses were missing a content-type header, which made them invisible in the browser.
-- Add an `image_url` row-level attribute to the [datagrid](https://sql.datapage.app/documentation.sql?component=datagrid#component) component to display tiny avatar images in data grids.
-- change breakpoints in the [hero](https://sql.datapage.app/documentation.sql?component=hero#component) component to make it more responsive on middle-sized screens such as tablets or small laptops. This avoids the hero image taking up the whole screen on these devices.
-- add an `image_url` row-level attribute to the [list](https://sql.datapage.app/documentation.sql?component=list#component) component to display small images in lists.
+- Add an `image_url` row-level attribute to the [datagrid](https://sql-page.com/documentation.sql?component=datagrid#component) component to display tiny avatar images in data grids.
+- change breakpoints in the [hero](https://sql-page.com/documentation.sql?component=hero#component) component to make it more responsive on middle-sized screens such as tablets or small laptops. This avoids the hero image taking up the whole screen on these devices.
+- add an `image_url` row-level attribute to the [list](https://sql-page.com/documentation.sql?component=list#component) component to display small images in lists.
 - Fix bad contrast in links in custom page footers.
 - Add a new [configuration option](./configuration.md): `environment`. This allows you to set the environment in which SQLPage is running. It can be either `development` or `production`. In `production` mode, SQLPage will hide error messages and stack traces from the user, and will cache sql files in memory to avoid reloading them from disk when under heavy load.
-- Add support for `selected` in multi-select inputs in the [form](https://sql.datapage.app/documentation.sql?component=form#component) component. This allows you to pre-select some options in a multi-select input.
-- New function: [`sqlpage.protocol`](https://sql.datapage.app/functions.sql?function=protocol#function) to get the protocol used to access the current page. This is useful to build links that point to your own site, and work both in http and https.
-- Add an example to the documentation showing how to create heatmaps with the [chart](https://sql.datapage.app/documentation.sql?component=chart#component) component.
+- Add support for `selected` in multi-select inputs in the [form](https://sql-page.com/documentation.sql?component=form#component) component. This allows you to pre-select some options in a multi-select input.
+- New function: [`sqlpage.protocol`](https://sql-page.com/functions.sql?function=protocol#function) to get the protocol used to access the current page. This is useful to build links that point to your own site, and work both in http and https.
+- Add an example to the documentation showing how to create heatmaps with the [chart](https://sql-page.com/documentation.sql?component=chart#component) component.
 - 18 new icons available: https://tabler.io/icons/changelog#2.43
-- New top-level attributes for the [`datagrid`](https://sql.datapage.app/documentation.sql?component=datagrid#component) component: `description`, `description_md` , `icon` , `image_url`.
+- New top-level attributes for the [`datagrid`](https://sql-page.com/documentation.sql?component=datagrid#component) component: `description`, `description_md` , `icon` , `image_url`.
 
 ## 0.17.0 (2023-11-28)
 
@@ -621,16 +621,16 @@ select 'form' as component;
 select 'user_file' as name, 'file' as type;
 ```
 
-when received by the server, the file will be saved in a temporary directory (customizable with `TMPDIR` on linux). You can access the temporary file path with the new [`sqlpage.uploaded_file_path`](https://sql.datapage.app/functions.sql?function=uploaded_file_path#function) function.
+when received by the server, the file will be saved in a temporary directory (customizable with `TMPDIR` on linux). You can access the temporary file path with the new [`sqlpage.uploaded_file_path`](https://sql-page.com/functions.sql?function=uploaded_file_path#function) function.
 
-You can then persist the upload as a permanent file on the server with the [`sqlpage.exec`](https://sql.datapage.app/functions.sql?function=exec#function) function:
+You can then persist the upload as a permanent file on the server with the [`sqlpage.exec`](https://sql-page.com/functions.sql?function=exec#function) function:
 
 ```sql
 set file_path = sqlpage.uploaded_file_path('user_file');
 select sqlpage.exec('mv', $file_path, '/path/to/my/file');
 ```
 
-or you can store it directly in a database table with the new [`sqlpage.read_file_as_data_url`](https://sql.datapage.app/functions.sql?function=read_file#function) and [`sqlpage.read_file_as_text`](https://sql.datapage.app/functions.sql?function=read_file#function) functions:
+or you can store it directly in a database table with the new [`sqlpage.read_file_as_data_url`](https://sql-page.com/functions.sql?function=read_file#function) and [`sqlpage.read_file_as_text`](https://sql-page.com/functions.sql?function=read_file#function) functions:
 
 ```sql
 insert into files (content) values (sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path('user_file')))
@@ -680,8 +680,8 @@ select upper(name), cast(email as int) from csv_import;
 
 ##### Handle uploaded files
 
-- [`sqlpage.uploaded_file_path`](https://sql.datapage.app/functions.sql?function=uploaded_file_path#function) to get the temprary local path of a file uploaded by the user. This path will be valid until the end of the current request, and will be located in a temporary directory (customizable with `TMPDIR`). You can use [`sqlpage.exec`](https://sql.datapage.app/functions.sql?function=exec#function) to operate on the file, for instance to move it to a permanent location.
-- [`sqlpage.uploaded_file_mime_type`](https://sql.datapage.app/functions.sql?function=uploaded_file_name#function) to get the type of file uploaded by the user. This is the MIME type of the file, such as `image/png` or `text/csv`. You can use this to easily check that the file is of the expected type before storing it.
+- [`sqlpage.uploaded_file_path`](https://sql-page.com/functions.sql?function=uploaded_file_path#function) to get the temprary local path of a file uploaded by the user. This path will be valid until the end of the current request, and will be located in a temporary directory (customizable with `TMPDIR`). You can use [`sqlpage.exec`](https://sql-page.com/functions.sql?function=exec#function) to operate on the file, for instance to move it to a permanent location.
+- [`sqlpage.uploaded_file_mime_type`](https://sql-page.com/functions.sql?function=uploaded_file_name#function) to get the type of file uploaded by the user. This is the MIME type of the file, such as `image/png` or `text/csv`. You can use this to easily check that the file is of the expected type before storing it.
 
 The new _Image gallery_ example in the official repository shows how to use these functions to create a simple image gallery with user uploads.
 
@@ -690,8 +690,8 @@ The new _Image gallery_ example in the official repository shows how to use thes
 These new functions are useful to read the content of a file uploaded by the user,
 but can also be used to read any file on the server.
 
-- [`sqlpage.read_file_as_text`](https://sql.datapage.app/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a text string.
-- [`sqlpage.read_file_as_data_url`](https://sql.datapage.app/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
+- [`sqlpage.read_file_as_text`](https://sql-page.com/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a text string.
+- [`sqlpage.read_file_as_data_url`](https://sql-page.com/functions.sql?function=read_file#function) reads the contents of a file on the server and returns a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs). This is useful to embed images directly in web pages, or make link
 
 ### HTTPS
 
@@ -763,7 +763,7 @@ and to create JSON APIs.
 
 ## 0.16.0 (2023-11-19)
 
-- Add special handling of hidden inputs in [forms](https://sql.datapage.app/documentation.sql?component=form#component). Hidden inputs are now completely invisible to the end user, facilitating the implementation of multi-step forms, csrf protaction, and other complex forms.
+- Add special handling of hidden inputs in [forms](https://sql-page.com/documentation.sql?component=form#component). Hidden inputs are now completely invisible to the end user, facilitating the implementation of multi-step forms, csrf protaction, and other complex forms.
 - 36 new icons available
   - https://github.com/tabler/tabler-icons/releases/tag/v2.40.0
   - https://github.com/tabler/tabler-icons/releases/tag/v2.41.0
@@ -819,24 +819,24 @@ and to create JSON APIs.
 
 ## 0.15.1 (2023-11-07)
 
-- Many improvements in the [`form`](https://sql.datapage.app/documentation.sql?component=form#component) component
+- Many improvements in the [`form`](https://sql-page.com/documentation.sql?component=form#component) component
   - Multiple form fields can now be aligned on the same line using the `width` attribute.
   - A _reset_ button can now be added to the form using the `reset` top-level attribute.
   - The _submit_ button can now be customized, and can be removed completely, which is useful to create multiple submit buttons that submit the form to different targets.
 - Support non-string values in markdown fields. `NULL` values are now displayed as empty strings, numeric values are displayed as strings, booleans as `true` or `false`, and arrays as lines of text. This avoids the need to cast values to strings in SQL queries.
 - Revert a change introduced in v0.15.0:
   - Re-add the systematic `CAST(? AS TEXT)` around variables, which helps the database know which type it is dealing with in advance. This fixes a regression in 0.15 where some SQLite websites were broken because of missing affinity information. In SQLite `SELECT '1' = 1` returns `false` but `SELECT CAST('1' AS TEXT) = 1` returns `true`. This also fixes error messages like `could not determine data type of parameter $1` in PostgreSQL.
-- Fix a bug where [cookie](https://sql.datapage.app/documentation.sql?component=cookie#component) removal set the cookie value to the empty string instead of removing the cookie completely.
-- Support form submission using the [button](https://sql.datapage.app/documentation.sql?component=button#component) component using its new `form` property. This allows you to create a form with multiple submit buttons that submit the form to different targets.
-- Custom icons and colors for markers in the [map](https://sql.datapage.app/documentation.sql?component=map#component) component.
-- Add support for GeoJSON in the [map](https://sql.datapage.app/documentation.sql?component=map#component) component. This makes it much more generic and allows you to display any kind of geographic data, including areas, on a map very easily. This plays nicely with PostGIS and Spatialite which can return GeoJSON directly from SQL queries.
+- Fix a bug where [cookie](https://sql-page.com/documentation.sql?component=cookie#component) removal set the cookie value to the empty string instead of removing the cookie completely.
+- Support form submission using the [button](https://sql-page.com/documentation.sql?component=button#component) component using its new `form` property. This allows you to create a form with multiple submit buttons that submit the form to different targets.
+- Custom icons and colors for markers in the [map](https://sql-page.com/documentation.sql?component=map#component) component.
+- Add support for GeoJSON in the [map](https://sql-page.com/documentation.sql?component=map#component) component. This makes it much more generic and allows you to display any kind of geographic data, including areas, on a map very easily. This plays nicely with PostGIS and Spatialite which can return GeoJSON directly from SQL queries.
 
 ## 0.15.0 (2023-10-29)
 
-- New function: [`sqlpage.path`](https://sql.datapage.app/functions.sql?function=path#function) to get the path of the current page.
-- Add a new `align_right` attribute to the [table](https://sql.datapage.app/documentation.sql?component=table#component) component to align a column to the right.
+- New function: [`sqlpage.path`](https://sql-page.com/functions.sql?function=path#function) to get the path of the current page.
+- Add a new `align_right` attribute to the [table](https://sql-page.com/documentation.sql?component=table#component) component to align a column to the right.
 - Fix display of long titles in the shell component.
-- New [`sqlpage.variables`](https://sql.datapage.app/functions.sql?function=variables#function) function for easy handling of complex forms
+- New [`sqlpage.variables`](https://sql-page.com/functions.sql?function=variables#function) function for easy handling of complex forms
   - `sqlpage.variables('get')` returns a json object containing all url parameters. Inside `/my_page.sql?x=1&y=2`, it returns the string `'{"x":"1","y":"2"}'`
   - `sqlpage.variables('post')` returns a json object containg all variables passed through a form. This makes it much easier to handle a form with a variable number of fields.
 - Remove systematic casting in SQL of all parameters to `TEXT`. The supported databases understand the type of the parameters natively.
@@ -844,12 +844,12 @@ and to create JSON APIs.
 
 ## 0.14.0 (2023-10-19)
 
-- Better support for time series in the [chart](https://sql.datapage.app/documentation.sql?component=chart#component) component. You can now use the `time` top-attribute to display a time series chart
+- Better support for time series in the [chart](https://sql-page.com/documentation.sql?component=chart#component) component. You can now use the `time` top-attribute to display a time series chart
   with smart x-axis labels.
-- **New component**: [button](https://sql.datapage.app/documentation.sql?component=button#component). This allows you to create rows of buttons that allow navigation between pages.
+- **New component**: [button](https://sql-page.com/documentation.sql?component=button#component). This allows you to create rows of buttons that allow navigation between pages.
 - Better error messages for Microsoft SQL Server. SQLPage now displays the line number of the error, which is especially useful for debugging long migration scripts.
 - Many improvements in the official website and the documentation.
-  - Most notably, the documentation now has syntax highlighting on code blocks (using [prism](https://prismjs.com/) with a custom theme made for tabler). This also illustrates the usage of external javascript and css libraries in SQLPage. See [the shell component documentation](https://sql.datapage.app/documentation.sql?component=shell#component).
+  - Most notably, the documentation now has syntax highlighting on code blocks (using [prism](https://prismjs.com/) with a custom theme made for tabler). This also illustrates the usage of external javascript and css libraries in SQLPage. See [the shell component documentation](https://sql-page.com/documentation.sql?component=shell#component).
   - Better display of example queries in the documentation, with smart indentation that makes it easier to read.
 - Clarify some ambiguous error messages:
   - make it clearer whether the error comes from SQLPage or from the database
@@ -857,11 +857,11 @@ and to create JSON APIs.
 
 ## 0.13.0 (2023-10-16)
 
-- New [timeline](https://sql.datapage.app/documentation.sql?component=timeline#component) component to display a timeline of events.
-- Add support for scatter and bubble plots in the chart component. See [the chart documentation](https://sql.datapage.app/documentation.sql?component=chart#component).
+- New [timeline](https://sql-page.com/documentation.sql?component=timeline#component) component to display a timeline of events.
+- Add support for scatter and bubble plots in the chart component. See [the chart documentation](https://sql-page.com/documentation.sql?component=chart#component).
 - further improve debuggability with more precise error messages. In particular, it usd to be hard to debug errors in long migration scripts, because the line number and position was not displayed. This is now fixed.
 - Better logs on 404 errors. SQLPage used to log a message without the path of the file that was not found. This made it hard to debug 404 errors. This is now fixed.
-- Add a new `top_image` attribute to the [card](https://sql.datapage.app/documentation.sql?component=card#component) component to display an image at the top of the card. This makes it possible to create beautiful image galleries with SQLPage.
+- Add a new `top_image` attribute to the [card](https://sql-page.com/documentation.sql?component=card#component) component to display an image at the top of the card. This makes it possible to create beautiful image galleries with SQLPage.
 - Updated dependencies, for bug fixes and performance improvements.
 - New icons (see https://tabler-icons.io/changelog)
 - When `NULL` is passed as an icon name, display no icon instead of raising an error.
@@ -910,7 +910,7 @@ This function is disabled by default for security reasons. To enable it, set the
 - Better error messages. SQLPage displays a more precise and useful message when an error occurs, and displays the position in the SQL statement where the error occured. Incorrect error messages on invalid migrations are also fixed.
 - We now distribute docker images from ARM too. Say hello to SQLPage on your Raspberry Pi and your Mac M1 !
 - Create the default SQLite database file in the "sqlpage" config directory instead of at the root of the web server by default. This makes it inaccessible from the web, which is a more secure default. If you want to keep the old behavior, set the `database_url` configuration parameter to `sqlite://sqlpage.db` in your [configuration](./configuration.md).
-- New `empty_title`, `empty_description`, and `empty_link` top-level attributes on the [`list`](https://sql.datapage.app/documentation.sql?component=list#component) component to customize the text displayed when the list is empty.
+- New `empty_title`, `empty_description`, and `empty_link` top-level attributes on the [`list`](https://sql-page.com/documentation.sql?component=list#component) component to customize the text displayed when the list is empty.
 
 ## 0.11.0 (2023-09-17)
 
@@ -983,7 +983,7 @@ This function is disabled by default for security reasons. To enable it, set the
 
 ## 0.9.5 (2023-08-12)
 
-- New `tab` component to create tabbed interfaces. See [the documentation](https://sql.datapage.app/documentation.sql?component=tab#component).
+- New `tab` component to create tabbed interfaces. See [the documentation](https://sql-page.com/documentation.sql?component=tab#component).
 - Many improvements in database drivers.
   - performance and numeric precision improvements,
   - multiple fixes around passing NUMERIC, DECIMAL, and JSON values to SQLPage.
@@ -1043,32 +1043,32 @@ Small bugfix release
   - or building a search engine for your data with [FTS5](https://www.sqlite.org/fts5.html).
 - Breaking: change the order of priority for loading configuration parameters: the environment variables have priority over the configuration file. This makes it easier to tweak the configuration of a SQLPage website when deploying it.
 - Fix the default index page in MySQL. Fixes [#23](https://github.com/lovasoa/SQLpage/issues/23).
-- Add a new [map](https://sql.datapage.app/documentation.sql?component=map#component) component to display a map with markers on it. Useful to display geographic data from PostGIS or Spatialite.
-- Add a new `icon` attribute to the [table](https://sql.datapage.app/documentation.sql?component=table#component) component to display icons in the table.
-- Fix `textarea` fields in the [form](https://sql.datapage.app/documentation.sql?component=table#component) component to display the provided `value` attribute. Thanks Frank for the contribution !
+- Add a new [map](https://sql-page.com/documentation.sql?component=map#component) component to display a map with markers on it. Useful to display geographic data from PostGIS or Spatialite.
+- Add a new `icon` attribute to the [table](https://sql-page.com/documentation.sql?component=table#component) component to display icons in the table.
+- Fix `textarea` fields in the [form](https://sql-page.com/documentation.sql?component=table#component) component to display the provided `value` attribute. Thanks Frank for the contribution !
 - SQLPage now guarantees that a single web request will be handled by a single database connection. Previously, connections were repeatedly taken and put back to the connection pool between each statement, preventing the use of temporary tables, transactions, and other connection-specific features such as [`last_insert_rowid`](https://www.sqlite.org/lang_corefunc.html#last_insert_rowid). This makes it much easier to keep state between SQL statements in a single `.sql` file. Please report any performance regression you might encounter. See [the many-to-many relationship example](./examples/modeling%20a%20many%20to%20many%20relationship%20with%20a%20form/).
-- The [table](https://sql.datapage.app/documentation.sql?component=table#component) component now supports setting a custom background color, and a custom CSS class on a given table line.
+- The [table](https://sql-page.com/documentation.sql?component=table#component) component now supports setting a custom background color, and a custom CSS class on a given table line.
 - New `checked` attribute for checkboxes and radio buttons.
 
 ## 0.7.2 (2023-07-10)
 
-### [SQL components](https://sql.datapage.app/documentation.sql)
+### [SQL components](https://sql-page.com/documentation.sql)
 
-- New [authentication](https://sql.datapage.app/documentation.sql?component=authentication#component) component to handle user authentication, and password checking
-- New [redirect](https://sql.datapage.app/documentation.sql?component=redirect#component) component to stop rendering the current page and redirect the user to another page.
-- The [debug](https://sql.datapage.app/documentation.sql?component=debug#component) component is now documented
-- Added properties to the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) component:
+- New [authentication](https://sql-page.com/documentation.sql?component=authentication#component) component to handle user authentication, and password checking
+- New [redirect](https://sql-page.com/documentation.sql?component=redirect#component) component to stop rendering the current page and redirect the user to another page.
+- The [debug](https://sql-page.com/documentation.sql?component=debug#component) component is now documented
+- Added properties to the [shell](https://sql-page.com/documentation.sql?component=shell#component) component:
   - `css` to add custom CSS to the page
   - `javascript` to add custom Javascript to the page. An example of [how to use it to integrate a react component](https://github.com/lovasoa/SQLpage/tree/main/examples/using%20react%20and%20other%20custom%20scripts%20and%20styles) is available.
   - `footer` to set a message in the footer of the page
 
-### [SQLPage functions](https://sql.datapage.app/functions.sql)
+### [SQLPage functions](https://sql-page.com/functions.sql)
 
-- New [`sqlpage.basic_auth_username`](https://sql.datapage.app/functions.sql?function=basic_auth_username#function) function to get the name of the user logged in with HTTP basic authentication
-- New [`sqlpage.basic_auth_password`](https://sql.datapage.app/functions.sql?function=basic_auth_password#function) function to get the password of the user logged in with HTTP basic authentication.
-- New [`sqlpage.hash_password`](https://sql.datapage.app/functions.sql?function=hash_password#function) function to hash a password with the same algorithm as the [authentication](https://sql.datapage.app/documentation.sql?component=authentication#component) component uses.
-- New [`sqlpage.header`](https://sql.datapage.app/functions.sql?function=header#function) function to read an HTTP header from the request.
-- New [`sqlpage.random_string`](https://sql.datapage.app/functions.sql?function=random_string#function) function to generate a random string. Useful to generate session ids.
+- New [`sqlpage.basic_auth_username`](https://sql-page.com/functions.sql?function=basic_auth_username#function) function to get the name of the user logged in with HTTP basic authentication
+- New [`sqlpage.basic_auth_password`](https://sql-page.com/functions.sql?function=basic_auth_password#function) function to get the password of the user logged in with HTTP basic authentication.
+- New [`sqlpage.hash_password`](https://sql-page.com/functions.sql?function=hash_password#function) function to hash a password with the same algorithm as the [authentication](https://sql-page.com/documentation.sql?component=authentication#component) component uses.
+- New [`sqlpage.header`](https://sql-page.com/functions.sql?function=header#function) function to read an HTTP header from the request.
+- New [`sqlpage.random_string`](https://sql-page.com/functions.sql?function=random_string#function) function to generate a random string. Useful to generate session ids.
 
 ### Bug fixes
 

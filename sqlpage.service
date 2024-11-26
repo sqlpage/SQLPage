@@ -4,7 +4,7 @@
 
 [Unit]
 Description=SQLPage website
-Documentation=https://sql.datapage.app
+Documentation=https://sql-page.com
 After=network.target
 
 [Service]

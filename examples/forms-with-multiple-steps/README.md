@@ -20,7 +20,7 @@ a form that asks for a person's name, email, and age.
 ![schema](./hidden/illustration.png)
 
 You can store the state of the partially filled form in hidden fields,
-using `'hidden' as type` in the [form component](https://sql.datapage.app/component.sql?component=form#component).
+using `'hidden' as type` in the [form component](https://sql-page.com/component.sql?component=form#component).
 
  - **advantages**
    - simple to implement
@@ -49,9 +49,9 @@ allowing you to have more relaxed column constraints in the partially filled dat
 
 You can store each answer of the user in a cookie,
 using the 
-[`cookie` component](https://sql.datapage.app/component.sql?component=cookie#component).
+[`cookie` component](https://sql-page.com/component.sql?component=cookie#component).
 and retrieve it on the next step using the
-[`sqlpage.cookie` function](https://sql.datapage.app/functions.sql?function=cookie#function).
+[`sqlpage.cookie` function](https://sql-page.com/functions.sql?function=cookie#function).
 
  - **advantages**
    - simple to implement

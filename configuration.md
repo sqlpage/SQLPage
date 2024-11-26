@@ -21,7 +21,7 @@ Here are the available configuration options and their default values:
 | `sqlite_extensions`                           |                                                             | An array of SQLite extensions to load, such as `mod_spatialite`                                                                                                                                                                                        |
 | `web_root`                                    | `.`                                                         | The root directory of the web server, where the `index.sql` file is located.                                                                                                                                                                           |
 | `site_prefix`                                 | `/`                                                         | Base path of the site. If you want to host SQLPage at `https://example.com/sqlpage/`, set this to `/sqlpage/`. When using a reverse proxy, this allows hosting SQLPage together with other applications on the same subdomain. |
-| `configuration_directory`                     | `./sqlpage/`                                                | The directory where the `sqlpage.json` file is located. This is used to find the path to [`templates/`](https://sql.datapage.app/custom_components.sql), [`migrations/`](https://sql.datapage.app/your-first-sql-website/migrations.sql), and `on_connect.sql`. Obviously, this configuration parameter can be set only through environment variables, not through the `sqlpage.json` file itself in order to find the `sqlpage.json` file. Be careful not to use a path that is accessible from the public WEB_ROOT |
+| `configuration_directory`                     | `./sqlpage/`                                                | The directory where the `sqlpage.json` file is located. This is used to find the path to [`templates/`](https://sql-page.com/custom_components.sql), [`migrations/`](https://sql-page.com/your-first-sql-website/migrations.sql), and `on_connect.sql`. Obviously, this configuration parameter can be set only through environment variables, not through the `sqlpage.json` file itself in order to find the `sqlpage.json` file. Be careful not to use a path that is accessible from the public WEB_ROOT |
 | `allow_exec`                                  | false                                                       | Allow usage of the `sqlpage.exec` function. Do this only if all users with write access to sqlpage query files and to the optional `sqlpage_files` table on the database are trusted.                                                                  |
 | `max_uploaded_file_size`                      | 5242880                                                     | Maximum size of forms and uploaded files in bytes. Defaults to 5 MiB.                                                                                                                                                                                            |
 | `max_pending_rows`                            | 256                                                         | Maximum number of rendered rows that can be queued up in memory when a client is slow to receive them. |
@@ -104,7 +104,7 @@ For instance, if you want to create a custom `my_component` component, that disp
 </ul>
 ```
 
-[See the full custom component documentation](https://sql.datapage.app/custom_components.sql).
+[See the full custom component documentation](https://sql-page.com/custom_components.sql).
 
 ## Connection initialization scripts
 
@@ -138,10 +138,10 @@ CREATE TEMPORARY TABLE my_temporary_table(
 ## Migrations
 
 SQLPage allows you to run SQL scripts when the database schema changes, by creating a `sqlpage/migrations` directory.
-We have a guide on [how to create migrations](https://sql.datapage.app/your-first-sql-website/migrations.sql).
+We have a guide on [how to create migrations](https://sql-page.com/your-first-sql-website/migrations.sql).
 
 ## Custom URL routes
 
 By default, SQLPage encourages a simple mapping between the URL and the SQL file that is executed.
-You can also create custom URL routes by creating [`404.sql` files](https://sql.datapage.app/your-first-sql-website/custom_urls.sql).
-If you need advanced routing, you can also [add a reverse proxy in front of SQLPage](https://sql.datapage.app/your-first-sql-website/nginx.sql).
+You can also create custom URL routes by creating [`404.sql` files](https://sql-page.com/your-first-sql-website/custom_urls.sql).
+If you need advanced routing, you can also [add a reverse proxy in front of SQLPage](https://sql-page.com/your-first-sql-website/nginx.sql).

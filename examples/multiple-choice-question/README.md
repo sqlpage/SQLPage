@@ -19,6 +19,6 @@ Just run the sqlpage binary (`./sqlpage.bin`) from this folder.
 
 ## Interesting files
 
-[admin.sql](admin.sql) uses the [dynamic component](https://sql.datapage.app/documentation.sql?component=dynamic#component) to create a single page with one form per MCQ option.
+[admin.sql](admin.sql) uses the [dynamic component](https://sql-page.com/documentation.sql?component=dynamic#component) to create a single page with one form per MCQ option.
 
-[website_header.json](website_header.json) contains the [shell](https://sql.datapage.app/documentation.sql?component=shell#component) that is then used in all pages using the `dynamic` component to create a consistent look and feel between pages.
+[website_header.json](website_header.json) contains the [shell](https://sql-page.com/documentation.sql?component=shell#component) that is then used in all pages using the `dynamic` component to create a consistent look and feel between pages.

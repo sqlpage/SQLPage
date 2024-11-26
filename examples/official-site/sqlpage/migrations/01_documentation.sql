@@ -125,7 +125,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('steps', 'A progress indicator with custom color, auto-generated step numbers, icons, and description tooltips.',
             json('[{"component":"steps", "counter": true, "color":"purple"}, '||
             '{"title": "Registration form", "icon":"forms", "link": "https://github.com/lovasoa/sqlpage", "description": "Initial account data creation."},' ||
-            '{"title": "Email confirmation", "icon": "mail", "link": "https://sql.datapage.app", "description": "Confirm your email by clicking on a link in a validation email."},' ||
+            '{"title": "Email confirmation", "icon": "mail", "link": "https://sql-page.com", "description": "Confirm your email by clicking on a link in a validation email."},' ||
             '{"title": "ID verification", "description": "Checking personal information", "icon": "user", "link": "#"},' ||
             '{"title": "Final account approval", "description": "ophir.dev", "link": "https://ophir.dev/", "icon":"eye-check", "active": true},' ||
             '{"title":"Account creation", "icon":"check"}]'));
@@ -177,15 +177,15 @@ INSERT INTO example(component, description, properties) VALUES
     '## Tables\n\n' ||
     '| SQLPage component | Description  | Documentation link  |\n' ||
     '| --- | --- | --- |\n' ||
-    '| text | A paragraph of text. | [Documentation](https://sql.datapage.app/documentation.sql?component=text) |\n' ||
-    '| list | A list of items. | [Documentation](https://sql.datapage.app/documentation.sql?component=list) |\n' ||
-    '| steps | A progress indicator. | [Documentation](https://sql.datapage.app/documentation.sql?component=steps) |\n' ||
-    '| form | A series of input fields. | [Documentation](https://sql.datapage.app/documentation.sql?component=form) |\n\n' ||
+    '| text | A paragraph of text. | [Documentation](https://sql-page.com/documentation.sql?component=text) |\n' ||
+    '| list | A list of items. | [Documentation](https://sql-page.com/documentation.sql?component=list) |\n' ||
+    '| steps | A progress indicator. | [Documentation](https://sql-page.com/documentation.sql?component=steps) |\n' ||
+    '| form | A series of input fields. | [Documentation](https://sql-page.com/documentation.sql?component=form) |\n\n' ||
     '## Quotes\n' ||
     '> Fantastic.\n>\n' ||
     '> — [HackerNews User](https://news.ycombinator.com/item?id=36194473#36209061) about SQLPage\n\n' ||
     '## Images\n' ||
-    '![SQLPage logo](https://sql.datapage.app/favicon.ico)\n\n' ||
+    '![SQLPage logo](https://sql-page.com/favicon.ico)\n\n' ||
     '## Horizontal rules\n' ||
     '---\n\n' ||
     '"}]')),
@@ -1128,7 +1128,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "layout": "boxed",
             "language": "en-US",
             "description": "Go from SQL queries to web applications in an instant.",
-            "preview_image": "https://sql.datapage.app/sqlpage_social_preview.webp",
+            "preview_image": "https://sql-page.com/sqlpage_social_preview.webp",
             "font": "Poppins",
             "javascript": [
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
@@ -1138,7 +1138,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                 "/highlightjs-launch.js"
             ],
             "css": "/highlightjs-tabler-theme.css",
-            "footer": "Official [SQLPage](https://sql.datapage.app) documentation"
+            "footer": "Official [SQLPage](https://sql-page.com) documentation"
         }]')),
     ('shell', '
 ### Sharing the shell between multiple pages
@@ -1246,7 +1246,7 @@ SELECT
     ''{"title":"About","icon": "settings","submenu":[{"link":"/safety.sql","title":"Security","icon": "logout"},{"link":"/performance.sql","title":"Performance"}]}'' AS menu_item,
     ''{"title":"Examples","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg","submenu":[{"link":"/examples/tabs/","title":"Tabs","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg"},{"link":"/examples/layouts.sql","title":"Layouts"}]}'' AS menu_item,
     ''{"title":"Examples","size":"sm","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg","submenu":[{"link":"/examples/tabs/","title":"Tabs","image": "https://upload.wikimedia.org/wikipedia/en/6/6b/Terrestrial_globe.svg"},{"link":"/examples/layouts.sql","title":"Layouts"}]}'' AS menu_item,
-    ''Official [SQLPage](https://sql.datapage.app) documentation'' as footer;
+    ''Official [SQLPage](https://sql-page.com) documentation'' as footer;
 ```
 ', NULL),
     ('shell', '

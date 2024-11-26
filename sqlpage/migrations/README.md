@@ -3,7 +3,7 @@
 SQLPage migrations are SQL scripts that you can use to create or update the database schema.
 They are entirely optional: you can use SQLPage without them, and manage the database schema yourself with other tools.
 
-If you are new to SQL migrations, please read our [**introduction to database migrations**](https://sql.datapage.app/your-first-sql-website/migrations.sql).
+If you are new to SQL migrations, please read our [**introduction to database migrations**](https://sql-page.com/your-first-sql-website/migrations.sql).
 
 ## Creating a migration
 

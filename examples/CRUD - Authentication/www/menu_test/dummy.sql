@@ -19,4 +19,4 @@ select
     'https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js' as javascript,
     'https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js' as javascript,
     '/prism-tabler-theme.css' as css,
-    'Official [SQLPage](https://sql.datapage.app) documentation' as footer;
+    'Official [SQLPage](https://sql-page.com) documentation' as footer;

@@ -7,13 +7,13 @@ SELECT 'title' AS component,
 	TRUE AS center;
 
 SELECT 'text' AS component;
-SELECT 'This is a demo of a light/dark background toggle mecanism for websites built with [SQLpage](https://sql.datapage.app/), Ophir Lojkine''s fantastic tool
+SELECT 'This is a demo of a light/dark background toggle mecanism for websites built with [SQLpage](https://sql-page.com/), Ophir Lojkine''s fantastic tool
 
 ## Installation
 
 The SQL backend to this is SQLite, so the installation is easy:
 
-1. [Install SQLpage](https://sql.datapage.app/your-first-sql-website/)
+1. [Install SQLpage](https://sql-page.com/your-first-sql-website/)
 
 1. Clone SQLpage''s repository: `git clone https://github.com/lovasoa/SQLpage.git`
 

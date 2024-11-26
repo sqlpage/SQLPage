@@ -4,7 +4,7 @@ SQLpage
 
 [![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
 
-[SQLpage](https://sql.datapage.app) is an **SQL**-only webapp builder.
+[SQLpage](https://sql-page.com) is an **SQL**-only webapp builder.
 It is meant for data scientists, analysts, and business intelligence teams
 to build powerful data-centric applications quickly,
 without worrying about any of the traditional web programming languages and concepts.
@@ -132,7 +132,7 @@ select
 
 ## Get started
 
-[Read the official *get started* guide on SQLPage's website](https://sql.datapage.app/get_started.sql).
+[Read the official *get started* guide on SQLPage's website](https://sql-page.com/get_started.sql).
 
 ### Using executables
 
@@ -198,7 +198,7 @@ to the user's browser.
 - [Tiny splitwise clone](./examples/splitwise): a shared expense tracker app
 - [Corporate Conundrum](./examples/corporate-conundrum/): a board game implemented in SQL
 - [Master-Detail Forms](./examples/master-detail-forms/): shows how to implement a simple set of forms to insert data into database tables that have a one-to-many relationship.
-- [SQLPage's own official website and documentation](./examples/official-site/): The SQL source code for the project's official site, https://sql.datapage.app
+- [SQLPage's own official website and documentation](./examples/official-site/): The SQL source code for the project's official site, https://sql-page.com
 - [Image gallery](./examples/image%20gallery%20with%20user%20uploads/): An image gallery where users can log in and upload images. Illustrates the implementation of a user authentication system using session cookies, and the handling of file uploads.
 - [User Management](./examples/user-authentication/): An authentication demo with user registration, log in, log out, and confidential pages. Uses PostgreSQL.
 - [Making a JSON API and integrating React components in the frontend](./examples/using%20react%20and%20other%20custom%20scripts%20and%20styles/): Shows how to integrate a react component in a SQLPage website, and how to easily build a REST API with SQLPage.
@@ -299,7 +299,7 @@ FrontPage was a visual static website builder popular in the late '90s. I hadn't
 > **I like CSS. I want to design websites, not write SQL.**
 
 If you want to write your own HTML and CSS,
-you can [create custom components](https://sql.datapage.app/custom_components.sql)
+you can [create custom components](https://sql-page.com/custom_components.sql)
 by adding a [`.handlebars`](https://handlebarsjs.com/guide/) file in `sqlpage/templates` and writing your HTML and CSS there. ([Example](./sqlpage/templates/alert.handlebars)).
 You can also use the `html` component to write raw HTML, or the `shell` component to include custom scripts and styles.
 

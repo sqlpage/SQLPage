@@ -17,10 +17,10 @@ It will be loaded when the user visits the root of the application
 
 In order, it uses:
 
-- the [`dynamic`](https://sql.datapage.app/documentation.sql?component=dynamic#component) component to load the [`shell.sql`](#shellsql) file that will be used at the top of every page
+- the [`dynamic`](https://sql-page.com/documentation.sql?component=dynamic#component) component to load the [`shell.sql`](#shellsql) file that will be used at the top of every page
   in the application to create a consistent layout and top bar.
-- the [`list`](https://sql.datapage.app/documentation.sql?component=list#component) component to display the list of todo items.
-- the [`button`](https://sql.datapage.app/documentation.sql?component=button#component) component to create a button that will redirect the user to the [`todo_form.sql`](#todo_formsql) page to create a new todo item when clicked.
+- the [`list`](https://sql-page.com/documentation.sql?component=list#component) component to display the list of todo items.
+- the [`button`](https://sql-page.com/documentation.sql?component=button#component) component to create a button that will redirect the user to the [`todo_form.sql`](#todo_formsql) page to create a new todo item when clicked.
 
 ### [`todo_form.sql`](./todo_form.sql)
 
@@ -28,9 +28,9 @@ This file is used to create a new todo item or edit an existing one.
 
 It uses:
 
-1.  the [`redirect`](https://sql.datapage.app/documentation.sql?component=redirect#component) component to redirect the user back to the [`index.sql`](#indexsql) page after the form is submitted.
-1.  the [`dynamic`](https://sql.datapage.app/documentation.sql?component=dynamic#component) component to load [`shell.sql`](#shellsql) to create a consistent layout and top bar.
-1.  the [`form`](https://sql.datapage.app/documentation.sql?component=form#component) component to create a form with fields for the title and description of the todo item.
+1.  the [`redirect`](https://sql-page.com/documentation.sql?component=redirect#component) component to redirect the user back to the [`index.sql`](#indexsql) page after the form is submitted.
+1.  the [`dynamic`](https://sql-page.com/documentation.sql?component=dynamic#component) component to load [`shell.sql`](#shellsql) to create a consistent layout and top bar.
+1.  the [`form`](https://sql-page.com/documentation.sql?component=form#component) component to create a form with fields for the title and description of the todo item.
 
 The order of the components is important, as the `redirect` component cannot be used after the page has been displayed. It is called first to ensure that the user is redirected immediately after submitting the form. It is guarded by a `WHERE :todo_id IS NOT NULL` clause to ensure that it only redirects when
 the form was submitted, not when the page is
@@ -80,9 +80,9 @@ The detailed step by step explanation of the delete process is as follows:
 This file is not meant to be accessed directly by the user (it would display an empty page with only the top bar).
 
 But it is included from all the other pages to
-call the [`shell`](https://sql.datapage.app/documentation.sql?component=shell#component) component with the exact same parameters on every page.
+call the [`shell`](https://sql-page.com/documentation.sql?component=shell#component) component with the exact same parameters on every page.
 
-It is included everywhere using the [`dynamic`](https://sql.datapage.app/documentation.sql?component=dynamic#component) component and the [`sqlpage.run_sql`](https://sql.datapage.app/functions.sql?function=run_sql#function) function.
+It is included everywhere using the [`dynamic`](https://sql-page.com/documentation.sql?component=dynamic#component) component and the [`sqlpage.run_sql`](https://sql-page.com/functions.sql?function=run_sql#function) function.
 
 ## Running the example
 
@@ -95,14 +95,14 @@ of the common features of SQLPage.
 
 ### Components
 
-- [list](https://sql.datapage.app/documentation.sql?component=list#component)
-- [button](https://sql.datapage.app/documentation.sql?component=button#component)
-- [form](https://sql.datapage.app/documentation.sql?component=form#component)
-- [redirect](https://sql.datapage.app/documentation.sql?component=redirect#component)
-- [shell](https://sql.datapage.app/documentation.sql?component=shell#component)
-- [timeline](https://sql.datapage.app/documentation.sql?component=timeline#component)
-- [dynamic](https://sql.datapage.app/documentation.sql?component=timeline#component)
+- [list](https://sql-page.com/documentation.sql?component=list#component)
+- [button](https://sql-page.com/documentation.sql?component=button#component)
+- [form](https://sql-page.com/documentation.sql?component=form#component)
+- [redirect](https://sql-page.com/documentation.sql?component=redirect#component)
+- [shell](https://sql-page.com/documentation.sql?component=shell#component)
+- [timeline](https://sql-page.com/documentation.sql?component=timeline#component)
+- [dynamic](https://sql-page.com/documentation.sql?component=timeline#component)
 
 ### Functions
 
-- [sqlpage.run_sql](https://sql.datapage.app/functions.sql?function=run_sql#function)
+- [sqlpage.run_sql](https://sql-page.com/functions.sql?function=run_sql#function)
