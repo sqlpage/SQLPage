@@ -176,6 +176,10 @@ impl DbFsQueries {
             PgTimeTz::type_info().into(),
             <str as Type<Postgres>>::type_info().into(),
         ];
+        log::debug!(
+            "Preparing the database filesystem was_modified_query: {}",
+            was_modified_query
+        );
         db.prepare_with(&was_modified_query, param_types).await
     }
 
@@ -183,12 +187,16 @@ impl DbFsQueries {
         db: &Database,
         db_kind: AnyKind,
     ) -> anyhow::Result<AnyStatement<'static>> {
-        let was_modified_query = format!(
+        let read_file_query = format!(
             "SELECT contents from sqlpage_files WHERE path = {}",
             make_placeholder(db_kind, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
-        db.prepare_with(&was_modified_query, param_types).await
+        log::debug!(
+            "Preparing the database filesystem read_file_query: {}",
+            read_file_query
+        );
+        db.prepare_with(&read_file_query, param_types).await
     }
 
     async fn file_modified_since_in_db(
