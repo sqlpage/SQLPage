@@ -105,3 +105,11 @@ code .hljs-punctuation::selection {
 pre code {
   padding: 0;
 }
+
+/* Limit height and add inset shadow to code blocks */
+pre:has(code) {
+  max-height: 33vh; /* Limit height */
+  overflow: auto;
+  box-shadow: inset -10px -10px 30px #000000af; /* Inset shadow */
+  border-radius: .5rem;
+}

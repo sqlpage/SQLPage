@@ -1,3 +1,7 @@
+//! This module handles HTTP requests and responses for the web server,
+//! including rendering SQL files, serving static content, and managing
+//! request contexts and response headers.
+
 use crate::render::{AnyRenderBodyContext, HeaderContext, PageContext};
 use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::webserver::database::execute_queries::stop_at_first_error;

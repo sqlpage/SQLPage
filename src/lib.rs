@@ -1,6 +1,73 @@
 #![deny(clippy::pedantic)]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
+//! [SQLPage](https://sql-page.com) is a high-performance web server that converts SQL queries
+//! into dynamic web applications by rendering [handlebars templates](https://sql-page.com/custom_components.sql)
+//! with data coming from SQL queries declared in `.sql` files.
+//! 
+//! # Overview
+//!
+//! SQLPage is a web server that lets you build data-centric applications using only SQL queries.
+//! It automatically converts database queries into professional-looking web pages using pre-built components
+//! for common UI patterns like [tables](https://sql-page.com/component.sql?component=table),
+//! [charts](https://sql-page.com/component.sql?component=chart),
+//! [forms](https://sql-page.com/component.sql?component=form), and more.
+//!
+//! # Key Features
+//!
+//! - **SQL-Only Development**: Build full web applications without HTML, CSS, or JavaScript
+//! - **Built-in Components**: Rich library of [pre-made UI components](https://sql-page.com/documentation.sql)
+//! - **Security**: Protection against [SQL injection, XSS and other vulnerabilities](https://sql-page.com/safety.sql)
+//! - **Performance**: [Optimized request handling and rendering](https://sql-page.com/performance.sql)
+//! - **Database Support**: Works with SQLite, PostgreSQL, MySQL, and MS SQL Server
+//!
+//! # Architecture
+//!
+//! The crate is organized into several key modules:
+//!
+//! - [`webserver`]: Core HTTP server implementation using actix-web
+//! - [`render`]: Component rendering system, streaming rendering of the handlebars templates with data
+//! - [`templates`]: Pre-defined UI component definitions
+//! - [`file_cache`]: Caching layer for SQL file parsing
+//! - [`filesystem`]: Abstract interface for disk and DB-stored files
+//! - [`app_config`]: Configuration and environment handling
+//!
+//! # Query Processing Pipeline
+//!
+//! When processing a request, SQLPage:
+//!
+//! 1. Parses the SQL using sqlparser-rs. Once a SQL file is parsed, it is cached for later reuse.
+//! 2. Executes queries through sqlx.
+//! 3. Finds the requested component's handlebars template in the database or in the filesystem.
+//! 4. Maps results to the component template, using handlebars-rs.
+//! 5. Streams rendered HTML to the client.
+//!
+//! # Extended Functionality
+//!
+//! - [Custom SQL Functions](https://sql-page.com/functions.sql)
+//! - [Custom Components](https://sql-page.com/custom_components.sql)
+//! - [Authentication & Sessions](https://sql-page.com/examples/authentication)
+//! - [File Uploads](https://sql-page.com/examples/handle_picture_upload.sql)
+//! 
+//! # Example
+//!
+//! ```sql
+//! -- Open a data list component
+//! SELECT 'list' as component, 'Users' as title;
+//! 
+//! -- Populate it with data
+//! SELECT 
+//!     name as title,
+//!     email as description
+//! FROM users
+//! ORDER BY created_at DESC;
+//! ```
+//!
+//! For more examples and documentation, visit:
+//! - [Getting Started Guide](https://sql-page.com/get%20started.sql)
+//! - [Component Reference](https://sql-page.com/components.sql)
+//! - [Example Gallery](https://sql-page.com/examples/tabs)
+
 extern crate core;
 
 pub mod app_config;

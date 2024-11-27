@@ -1,3 +1,46 @@
+//! Handles the rendering of SQL query results into HTTP responses using components.
+//!
+//! This module is responsible for transforming database query results into formatted HTTP responses
+//! by utilizing a component-based rendering system. It supports multiple output formats including HTML,
+//! JSON, and CSV.
+//!
+//! # Components
+//!
+//! Components are small user interface elements that display data in specific ways. The rendering
+//! system supports two types of parameters for components:
+//!
+//! * **Top-level parameters**: Properties that customize the component's appearance and behavior
+//! * **Row-level parameters**: The actual data to be displayed within the component
+//!
+//! # Page Context States
+//!
+//! The rendering process moves through different states represented by [`PageContext`]:
+//!
+//! * `Header`: Initial state for processing HTTP headers and response setup
+//! * `Body`: Active rendering state where component output is generated
+//! * `Close`: Final state indicating the response is complete
+//!
+//! # Header Components
+//!
+//! Some components must be processed before any response body is sent:
+//!
+//! * [`status_code`](https://sql-page.com/component.sql?component=status_code): Sets the HTTP response status
+//! * [`http_header`](https://sql-page.com/component.sql?component=http_header): Sets custom HTTP headers
+//! * [`redirect`](https://sql-page.com/component.sql?component=redirect): Performs HTTP redirects
+//! * `authentication`: Handles password-protected access
+//! * `cookie`: Manages browser cookies
+//!
+//! # Body Components
+//!
+//! The module supports multiple output formats through different renderers:
+//!
+//! * HTML: Renders templated HTML output using components
+//! * JSON: Generates JSON responses for API endpoints
+//! * CSV: Creates downloadable CSV files
+//!
+//! For more details on available components and their usage, see the
+//! [SQLPage documentation](https://sql-page.com/documentation.sql).
+
 use crate::templates::SplitTemplate;
 use crate::webserver::http::RequestContext;
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
