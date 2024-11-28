@@ -20,6 +20,7 @@
     insert into t values (42); -- this next statement should not be executed
     ```
 - Fix `error returned from database: 1295 (HY000): This command is not supported in the prepared statement protocol yet` when trying to use transactions with MySQL. `START TRANSACTION` now works as expected in MySQL.
+- Fix a bug where a multi-select dropdown would unexpectedly open when the form was reset.
 
 ## 0.31.0 (2024-11-24)
 

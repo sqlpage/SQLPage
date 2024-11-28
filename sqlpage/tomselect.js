@@ -18,7 +18,17 @@ function sqlpage_select_dropdown() {
       },
     });
     if (is_focused) tom.focus();
-    s.form?.addEventListener("reset", () => setTimeout(tom.sync.bind(tom), 0));
+    s.form?.addEventListener("reset", async () => {
+      // The reset event is fired before the form is reset, so we need to wait for the next event loop
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      // Sync the options with the new reset value
+      tom.sync();
+      // Wait for the options to be updated
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      // "sync" also focuses the input, so we need to blur it to remove the focus
+      tom.blur();
+      tom.close();
+    });
   }
 }
 
