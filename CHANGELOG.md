@@ -2,7 +2,7 @@
 
 ## 0.32.0 (unreleased)
 
-- Rollback any open transactions when returning a connection to the pool.
+- Rollback any open transactions when an error occurs in a SQL file.
   - Previously, if an error occurred in the middle of a transaction, the transaction would be left open, and the connection would be returned to the pool. The next request could get a connection with an open half-completed transaction, which could lead to hard to debug issues.
   - This allows safely using features that require a transaction, like
     - ```sql
@@ -21,6 +21,8 @@
     ```
 - Fix `error returned from database: 1295 (HY000): This command is not supported in the prepared statement protocol yet` when trying to use transactions with MySQL. `START TRANSACTION` now works as expected in MySQL.
 - Fix a bug where a multi-select dropdown would unexpectedly open when the form was reset.
+- Add a new optional `sqlpage/on_reset.sql` file that can be used to execute some SQL code after the end of each page execution.
+   - Useful to reset a connection to the database after each request.
 
 ## 0.31.0 (2024-11-24)
 

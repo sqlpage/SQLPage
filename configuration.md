@@ -106,7 +106,9 @@ For instance, if you want to create a custom `my_component` component, that disp
 
 [See the full custom component documentation](https://sql-page.com/custom_components.sql).
 
-## Connection initialization scripts
+## Connection management
+
+### Connection initialization scripts
 
 SQLPage allows you to run a SQL script when a new database connection is opened,
 by simply creating a `sqlpage/on_connect.sql` file.
@@ -133,6 +135,52 @@ You can also use this to create *temporary tables* to store intermediate results
 CREATE TEMPORARY TABLE my_temporary_table(
     my_temp_column TEXT
 );
+```
+
+### Connection cleanup scripts: `on_reset.sql`
+
+SQLPage allows you to run a SQL script after a request has been processed,
+by simply creating a `sqlpage/on_reset.sql` file.
+
+This can be useful to clean up temporary tables,
+rollback transactions that were left open,
+or other resources that were created during the request.
+
+You can also use this script to close database connections that are 
+in an undesirable state, such as being in a transaction that was left open.
+To close a connection, write a select statement that returns a single row
+with a single boolean column named `is_healthy`, and set it to false.
+
+#### Rollback transactions
+
+You can automatically rollback any open transactions
+when a connection is returned to the pool,
+so that a new request is never executed in the context of an open transaction from a previous request.
+
+For this to work, you need to create a `sqlpage/on_reset.sql` containing the following line:
+
+```sql
+ROLLBACK;
+```
+
+#### Cleaning up all connection state
+
+Some databases allow you to clean up all the state associatPed with a connection.
+
+##### PostgreSQL
+
+By creating a `sqlpage/on_disconnect.sql` file containing a [`DISCARD ALL`](https://www.postgresql.org/docs/current/sql-discard.html) statement.
+
+```sql
+DISCARD ALL;
+```
+
+##### SQL Server
+
+By creating a `sqlpage/on_disconnect.sql` file containing a call to the [`sp_reset_connection`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/system-stored-procedures-transact-sql?view=sql-server-ver16#api-system-stored-procedures) stored procedure.
+
+```sql
+EXEC sp_reset_connection;
 ```
 
 ## Migrations

@@ -21,7 +21,9 @@ use super::syntax_tree::{extract_req_param, StmtParam};
 use super::{error_highlighting::display_db_error, Database, DbItem};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
-use sqlx::{Any, Arguments, Column, Either, Executor, Row as _, Statement, ValueRef};
+use sqlx::{
+    Any, AnyConnection, Arguments, Column, Either, Executor, Row as _, Statement, ValueRef,
+};
 
 pub type DbConn = Option<PoolConnection<sqlx::Any>>;
 
@@ -58,17 +60,23 @@ pub fn stream_query_results_with_conn<'a>(
                     let connection = take_connection(&request.app_state.db, db_connection).await?;
                     log::trace!("Executing query {:?}", query.sql);
                     let mut stream = connection.fetch_many(query);
+                    let mut error = None;
                     while let Some(elem) = stream.next().await {
-                        let is_err = elem.is_err();
                         let mut query_result = parse_single_sql_result(source_file, &stmt.query, elem);
-                        apply_json_columns(&mut query_result, &stmt.json_columns);
-                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
-                        for i in parse_dynamic_rows(query_result) {
-                            yield i;
-                        }
-                        if is_err {
+                        if let DbItem::Error(e) = query_result {
+                            error = Some(e);
                             break;
                         }
+                        apply_json_columns(&mut query_result, &stmt.json_columns);
+                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
+                        for db_item in parse_dynamic_rows(query_result) {
+                            yield db_item;
+                        }
+                    }
+                    drop(stream);
+                    if let Some(error) = error {
+                        try_rollback_transaction(connection).await;
+                        yield DbItem::Error(error);
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
@@ -131,6 +139,16 @@ async fn exec_static_simple_select(
     Ok(serde_json::Value::Object(map))
 }
 
+async fn try_rollback_transaction(db_connection: &mut AnyConnection) {
+    log::debug!("Attempting to rollback transaction");
+    match db_connection.execute("ROLLBACK").await {
+        Ok(_) => log::debug!("Rolled back transaction"),
+        Err(e) => {
+            log::debug!("There was probably no transaction in progress when this happened: {e:?}");
+        }
+    }
+}
+
 /// Extracts the value of a parameter from the request.
 /// Returns `Ok(None)` when NULL should be used as the parameter value.
 async fn extract_req_param_as_json(
@@ -177,6 +195,7 @@ async fn execute_set_variable_query<'a>(
         Ok(Some(row)) => row_to_string(&row),
         Ok(None) => None,
         Err(e) => {
+            try_rollback_transaction(connection).await;
             let err = display_db_error(source_file, &statement.query, e);
             return Err(err);
         }

@@ -1,7 +1,7 @@
 use std::{mem::take, time::Duration};
 
 use super::Database;
-use crate::{app_config::AppConfig, ON_CONNECT_FILE};
+use crate::{app_config::AppConfig, ON_CONNECT_FILE, ON_RESET_FILE};
 use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::{
@@ -93,37 +93,50 @@ impl Database {
             )
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
-            ))
-            .after_release(on_return_to_pool);
+            ));
+        pool_options = add_on_return_to_pool(config, pool_options);
         pool_options = add_on_connection_handler(config, pool_options);
         pool_options
     }
 }
 
+fn add_on_return_to_pool(config: &AppConfig, pool_options: PoolOptions<Any>) -> PoolOptions<Any> {
+    let on_disconnect_file = config.configuration_directory.join(ON_RESET_FILE);
+    if !on_disconnect_file.exists() {
+        log::debug!("Not creating a custom SQL connection cleanup handler because {on_disconnect_file:?} does not exist");
+        return pool_options;
+    }
+    log::info!("Creating a custom SQL connection cleanup handler from {on_disconnect_file:?}");
+    let sql = match std::fs::read_to_string(&on_disconnect_file) {
+        Ok(sql) => std::sync::Arc::new(sql),
+        Err(e) => {
+            log::error!("Unable to read the file {on_disconnect_file:?}: {e}");
+            return pool_options;
+        }
+    };
+    log::trace!("The custom SQL connection cleanup handler is:\n{sql}");
+    let sql = sql.clone();
+    pool_options
+        .after_release(move |conn, meta| on_return_to_pool(conn, meta, std::sync::Arc::clone(&sql)))
+}
+
 fn on_return_to_pool(
     conn: &mut sqlx::AnyConnection,
     meta: sqlx::pool::PoolConnectionMetadata,
+    sql: std::sync::Arc<String>,
 ) -> BoxFuture<'_, Result<bool, sqlx::Error>> {
+    use sqlx::Row;
     Box::pin(async move {
-        match conn.execute("ROLLBACK").await {
-            Ok(query_result) => {
-                if query_result.rows_affected() > 0 {
-                    log::warn!(
-                        "Rolled back a transaction, because it was left open after a page was rendered, and it affected {} rows",
-                        query_result.rows_affected()
-                    );
-                } else {
-                    log::trace!(
-                        "Rolled back a transaction before returning a connection to the pool"
-                    );
-                }
-            }
-            Err(e) => log::trace!(
-                "Failed to rollback before returning a connection to the pool. There was probably no transaction left open: {e:?}"
-            ),
+        log::trace!("Running the custom SQL connection cleanup handler. {meta:?}");
+        let query_result = conn.fetch_optional(sql.as_str()).await?;
+        if let Some(query_result) = query_result {
+            let is_healthy = query_result.try_get::<bool, _>(0);
+            log::debug!("Is the connection healthy? {is_healthy:?}");
+            is_healthy
+        } else {
+            log::debug!("No result from the custom SQL connection cleanup handler");
+            Ok(true)
         }
-        log::trace!("Releasing connection: {meta:#?}");
-        Ok(true)
     })
 }
 
