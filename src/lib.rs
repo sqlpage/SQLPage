@@ -4,7 +4,7 @@
 //! [SQLPage](https://sql-page.com) is a high-performance web server that converts SQL queries
 //! into dynamic web applications by rendering [handlebars templates](https://sql-page.com/custom_components.sql)
 //! with data coming from SQL queries declared in `.sql` files.
-//! 
+//!
 //! # Overview
 //!
 //! SQLPage is a web server that lets you build data-centric applications using only SQL queries.
@@ -48,15 +48,15 @@
 //! - [Custom Components](https://sql-page.com/custom_components.sql)
 //! - [Authentication & Sessions](https://sql-page.com/examples/authentication)
 //! - [File Uploads](https://sql-page.com/examples/handle_picture_upload.sql)
-//! 
+//!
 //! # Example
 //!
 //! ```sql
 //! -- Open a data list component
 //! SELECT 'list' as component, 'Users' as title;
-//! 
+//!
 //! -- Populate it with data
-//! SELECT 
+//! SELECT
 //!     name as title,
 //!     email as description
 //! FROM users
