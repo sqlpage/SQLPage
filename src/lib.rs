@@ -7,7 +7,7 @@
 //!
 //! # Overview
 //!
-//! SQLPage is a web server that lets you build data-centric applications using only SQL queries.
+//! `SQLPage` is a web server that lets you build data-centric applications using only SQL queries.
 //! It automatically converts database queries into professional-looking web pages using pre-built components
 //! for common UI patterns like [tables](https://sql-page.com/component.sql?component=table),
 //! [charts](https://sql-page.com/component.sql?component=chart),
@@ -19,7 +19,7 @@
 //! - **Built-in Components**: Rich library of [pre-made UI components](https://sql-page.com/documentation.sql)
 //! - **Security**: Protection against [SQL injection, XSS and other vulnerabilities](https://sql-page.com/safety.sql)
 //! - **Performance**: [Optimized request handling and rendering](https://sql-page.com/performance.sql)
-//! - **Database Support**: Works with SQLite, PostgreSQL, MySQL, and MS SQL Server
+//! - **Database Support**: Works with `SQLite`, `PostgreSQL`, `MySQL`, and MS SQL Server
 //!
 //! # Architecture
 //!
@@ -34,7 +34,7 @@
 //!
 //! # Query Processing Pipeline
 //!
-//! When processing a request, SQLPage:
+//! When processing a request, `SQLPage`:
 //!
 //! 1. Parses the SQL using sqlparser-rs. Once a SQL file is parsed, it is cached for later reuse.
 //! 2. Executes queries through sqlx.
