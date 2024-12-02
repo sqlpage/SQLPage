@@ -106,10 +106,18 @@ fn on_return_to_pool(
 ) -> BoxFuture<'_, Result<bool, sqlx::Error>> {
     Box::pin(async move {
         match conn.execute("ROLLBACK").await {
-            Ok(r) => log::info!(
-                "Rolled back a transaction that was left open before returning a connection to the pool. Result: {:?}",
-                r
-            ),
+            Ok(query_result) => {
+                if query_result.rows_affected() > 0 {
+                    log::warn!(
+                        "Rolled back a transaction, because it was left open after a page was rendered, and it affected {} rows",
+                        query_result.rows_affected()
+                    );
+                } else {
+                    log::trace!(
+                        "Rolled back a transaction before returning a connection to the pool"
+                    );
+                }
+            }
             Err(e) => log::trace!(
                 "Failed to rollback before returning a connection to the pool. There was probably no transaction left open: {e:?}"
             ),
