@@ -207,11 +207,36 @@ INSERT INTO example(component, description, properties) VALUES
 ;
 
 INSERT INTO component(name, icon, description) VALUES
-    ('form', 'cursor-text', 'A series of input fields that can be filled in by the user. ' ||
-    'The form contents can be posted and handled by another sql file in your site. ' ||
-    'The value entered by the user in a field named x will be accessible to the target SQL page as a variable named $x.
-    For instance, you can create a SQL page named "create_user.sql" that would contain "INSERT INTO users(name) VALUES($name)"
-    and a form with its action property set to "create_user.sql" that would contain a field named "name".');
+    ('form', 'cursor-text', '
+# Building forms in SQL
+
+So, you have an SQL database, and would like to let users input data into it?
+The `form` component is what you are looking for.
+
+## Collecting data from users to your database
+
+The form component will display a series of input fields of various types, that can be filled in by the user.
+When the user submits the form, the data is posted to an SQL file specified in the `action` property.
+
+## Handle Data with SQL
+
+User-entered data is posted to an SQL file, that will handle the data,
+and will be able to insert it into the database, search for it, format it, etc.
+
+For example, a value in a field named "x" 
+can be referenced as `:x` in the SQL query of the target page.
+
+## Examples
+
+- **Data Entry Automation**: Forms for tasks like inventory management.
+- **Custom Report Builder**: Generate reports based on user-specified criteria.
+- **Database Management**: Update records or query data.
+- **Admin Panel**: Manage user roles and permissions.
+- **Data Analytics with SQL**: Collect data for analytics.
+- **SQL Query Parametrization**: Build and execute complex SQL queries that depend on user input.
+- **SQL CRUD Operations**: Perform Create, Read, Update, and Delete operations.
+- **Web SQL**: Integrate forms into web applications.
+');
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
     ('enctype', '
