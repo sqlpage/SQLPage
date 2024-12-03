@@ -29,34 +29,36 @@ from component
 where name = $component and introduced_in_version IS NOT NULL;
 
 select 'title' as component, 3 as level, 'Top-level parameters' as contents where $component IS NOT NULL;
-select 'card' as component, 3 AS columns where $component IS NOT NULL;
+select 'table' as component, true as striped, true as hoverable, true as freeze_columns,
+    'type' as markdown
+    where $component IS NOT NULL;
 select
-    name as title,
-    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
-    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description_md as description_md,
-    type as footer,
+    name,
+    CASE WHEN optional THEN '' ELSE 'REQUIRED' END as required,
     CASE type 
-        WHEN 'COLOR' THEN '/colors.sql'
-        WHEN 'ICON' THEN 'https://tabler-icons.io/'
-    END AS footer_link,
-    CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
+        WHEN 'COLOR' THEN printf('[%s](/colors.sql)', type)
+        WHEN 'ICON' THEN printf('[%s](https://tabler-icons.io/?ref=sqlpage)', type)
+        ELSE type
+    END AS type,
+    description
 from parameter where component = $component AND top_level
 ORDER BY optional, name;
 
 
 select 'title' as component, 3 as level, 'Row-level parameters' as contents
 WHERE $component IS NOT NULL AND EXISTS (SELECT 1 from parameter where component = $component AND NOT top_level);
-select 'card' as component, 3 AS columns where $component IS NOT NULL;
+select 'table' as component, true as striped, true as hoverable, true as freeze_columns,
+    'type' as markdown
+    where $component IS NOT NULL;
 select
-    name as title,
-    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description as description,
-    (CASE WHEN optional THEN '' ELSE 'REQUIRED. ' END) || description_md as description_md,
-    type as footer,
+    name,
+    CASE WHEN optional THEN '' ELSE 'REQUIRED' END as required,
     CASE type 
-        WHEN 'COLOR' THEN '/colors.sql'
-        WHEN 'ICON' THEN 'https://tabler-icons.io/'
-    END AS footer_link,
-    CASE WHEN optional THEN 'lime' ELSE 'azure' END as color
+        WHEN 'COLOR' THEN printf('[%s](/colors.sql)', type)
+        WHEN 'ICON' THEN printf('[%s](https://tabler-icons.io/?ref=sqlpage)', type)
+        ELSE type
+    END AS type,
+    description
 from parameter where component = $component AND NOT top_level
 ORDER BY optional, name;
 
