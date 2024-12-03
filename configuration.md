@@ -169,7 +169,7 @@ Some databases allow you to clean up all the state associatPed with a connection
 
 ##### PostgreSQL
 
-By creating a `sqlpage/on_disconnect.sql` file containing a [`DISCARD ALL`](https://www.postgresql.org/docs/current/sql-discard.html) statement.
+By creating a `sqlpage/on_reset.sql` file containing a [`DISCARD ALL`](https://www.postgresql.org/docs/current/sql-discard.html) statement.
 
 ```sql
 DISCARD ALL;
@@ -177,7 +177,7 @@ DISCARD ALL;
 
 ##### SQL Server
 
-By creating a `sqlpage/on_disconnect.sql` file containing a call to the [`sp_reset_connection`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/system-stored-procedures-transact-sql?view=sql-server-ver16#api-system-stored-procedures) stored procedure.
+By creating a `sqlpage/on_reset.sql` file containing a call to the [`sp_reset_connection`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/system-stored-procedures-transact-sql?view=sql-server-ver16#api-system-stored-procedures) stored procedure.
 
 ```sql
 EXEC sp_reset_connection;
