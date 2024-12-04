@@ -249,7 +249,10 @@ pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Op
 
 async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
     let lower_name = name.to_ascii_lowercase();
-    request.headers.get(&lower_name).map(SingleOrVec::as_json_str)
+    request
+        .headers
+        .get(&lower_name)
+        .map(SingleOrVec::as_json_str)
 }
 
 /// Builds a URL from a file name and a JSON object conatining URL parameters.
