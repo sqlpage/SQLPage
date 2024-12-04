@@ -23,6 +23,7 @@
 - Fix a bug where a multi-select dropdown would unexpectedly open when the form was reset.
 - Add a new optional `sqlpage/on_reset.sql` file that can be used to execute some SQL code after the end of each page execution.
    - Useful to reset a connection to the database after each request.
+- Fix a bug where the `sqlpage.header` function would not work with headers containing uppercase letters.
 
 ## 0.31.0 (2024-11-24)
 
