@@ -207,12 +207,12 @@ async fn json_object_params<'a, 'b>(
         match val {
             StmtParam::JsonObject(args) => {
                 let raw_json = Box::pin(json_object_params(args, request, db_connection)).await?;
-                let obj = cow_to_raw_json(&raw_json);
+                let obj = cow_to_raw_json(raw_json.as_ref());
                 map_ser.serialize_value(&obj)?;
             }
             StmtParam::JsonArray(args) => {
                 let raw_json = Box::pin(json_array_params(args, request, db_connection)).await?;
-                let obj = cow_to_raw_json(&raw_json);
+                let obj = cow_to_raw_json(raw_json.as_ref());
                 map_ser.serialize_value(&obj)?;
             }
             val => {
@@ -238,12 +238,12 @@ async fn json_array_params<'a, 'b>(
         match element {
             StmtParam::JsonObject(args) => {
                 let raw_json = json_object_params(args, request, db_connection).await?;
-                let obj = cow_to_raw_json(&raw_json);
+                let obj = cow_to_raw_json(raw_json.as_ref());
                 seq_ser.serialize_element(&obj)?;
             }
             StmtParam::JsonArray(args) => {
                 let raw_json = Box::pin(json_array_params(args, request, db_connection)).await?;
-                let obj = cow_to_raw_json(&raw_json);
+                let obj = cow_to_raw_json(raw_json.as_ref());
                 seq_ser.serialize_element(&obj)?;
             }
             element => {
@@ -258,10 +258,10 @@ async fn json_array_params<'a, 'b>(
 }
 
 fn cow_to_raw_json<'a>(
-    raw_json: &'a Option<Cow<'a, str>>,
+    raw_json: Option<&'a impl AsRef<str>>,
 ) -> Option<&'a serde_json::value::RawValue> {
     raw_json
-        .as_deref()
+        .map(AsRef::as_ref)
         .map(serde_json::from_str::<&'a serde_json::value::RawValue>)
         .map(Result::unwrap)
 }

@@ -39,7 +39,7 @@ enum CopyCsvOption<'a> {
     New(&'a sqlparser::ast::CopyOption),
 }
 
-impl<'a> CopyCsvOption<'a> {
+impl CopyCsvOption<'_> {
     fn delimiter(&self) -> Option<char> {
         match self {
             CopyCsvOption::Legacy(CopyLegacyOption::Delimiter(c))

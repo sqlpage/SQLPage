@@ -54,7 +54,7 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
 
 struct DisplayMigration<'a>(&'a Migration);
 
-impl<'a> std::fmt::Display for DisplayMigration<'a> {
+impl std::fmt::Display for DisplayMigration<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Migration {
             version,

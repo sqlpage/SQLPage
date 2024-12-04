@@ -66,7 +66,7 @@ impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
     }
 }
 
-impl<'a> HttpFetchRequest<'a> {
+impl HttpFetchRequest<'_> {
     fn into_owned(self) -> HttpFetchRequest<'static> {
         HttpFetchRequest {
             url: Cow::Owned(self.url.into_owned()),
