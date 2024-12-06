@@ -27,14 +27,16 @@ function table_search_sort(el) {
   const search_input = el.querySelector("input.search");
   const sort_buttons = [...el.querySelectorAll("button.sort[data-sort]")];
   const item_parent = el.querySelector("tbody");
-  const items = [...item_parent.querySelectorAll("tr")].map((el) => ({
-    el,
-    sort_keys: sort_buttons.map((b) => {
-      const sort_key = el.getElementsByClassName(b.dataset.sort)[0]
-        ?.textContent;
-      return { num: Number.parseFloat(sort_key), str: sort_key };
-    }),
-  }));
+  const items = [...item_parent.querySelectorAll("tr")].map((el) => {
+    const cells = el.getElementsByTagName("td");
+    return {
+      el,
+      sort_keys: sort_buttons.map((b, idx) => {
+        const sort_key = cells[idx]?.textContent;
+        return { num: Number.parseFloat(sort_key), str: sort_key };
+      }),
+    };
+  });
   function onSearch() {
     const lower_search = search_input.value
       .toLowerCase()

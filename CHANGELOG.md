@@ -10,7 +10,7 @@
       CREATE TEMPORARY TABLE t (x int) ON COMMIT DROP; -- postgres syntax
       -- do something with t
       -- previously, if an error occurred, the transaction would be left open, and the connection returned to the pool.
-      -- the next request could get a connection where the table `t` still exists, leading to a new error.
+      -- the next request could get a connection where the table `t` still exists, leading to a new hard to debug error.
       COMMIT;
       ```
     - This will now automatically rollback the transaction, even if an error occurs in the middle of it.
@@ -24,6 +24,7 @@
 - Add a new optional `sqlpage/on_reset.sql` file that can be used to execute some SQL code after the end of each page execution.
    - Useful to reset a connection to the database after each request.
 - Fix a bug where the `sqlpage.header` function would not work with headers containing uppercase letters.
+- Fix a bug where the table component would not sort columns that contained a space in their name.
 
 ## 0.31.0 (2024-11-24)
 

@@ -736,8 +736,8 @@ INSERT INTO example(component, description, properties) VALUES
         json('[{"component":"table"}, {"a": 1, "b": 2}, {"a": 3, "b": 4}]')),
     ('table', 'A table of users with filtering and sorting.',
         json('[{"component":"table", "sort":true, "search":true}, '||
-        '{"Forename": "Ophir", "Surname": "Lojkine", "Pseudonym": "lovasoa"},' ||
-        '{"Forename": "Linus", "Surname": "Torvalds", "Pseudonym": "torvalds"}]')),
+        '{"First Name": "Ophir", "Last Name": "Lojkine", "Pseudonym": "lovasoa"},' ||
+        '{"First Name": "Linus", "Last Name": "Torvalds", "Pseudonym": "torvalds"}]')),
     ('table', 'A table that uses markdown to display links',
         json('[{"component":"table", "markdown": "Name", "icon": "icon", "search": true}, '||
         '{"icon": "table", "name": "[Table](?component=table)", "description": "Displays SQL results as a searchable table.", "_sqlpage_color": "red"},
