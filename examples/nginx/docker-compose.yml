@@ -1,6 +1,6 @@
 services:
   sqlpage:
-    image: lovasoa/sqlpage:main
+    image: sqlpage/SQLPage:main
     volumes:
       - sqlpage_socket:/tmp/sqlpage
       - ./sqlpage_config:/etc/sqlpage

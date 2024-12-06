@@ -29,8 +29,8 @@ you can store their session identifier on their browser using the
 
 ## Example
 
- - [Source code for this page](https://github.com/lovasoa/SQLpage/blob/main/examples/official-site/examples/hash_password.sql)
- - [Full user authentication and session management example](https://github.com/lovasoa/SQLpage/blob/main/examples/user-authentication)
+ - [Source code for this page](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/hash_password.sql)
+ - [Full user authentication and session management example](https://github.com/sqlpage/SQLPage/blob/main/examples/user-authentication)
 
 # Try it out
 

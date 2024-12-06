@@ -221,10 +221,10 @@
 - You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql-page.com/your-first-sql-website/custom_urls.sql) that don't end with `.sql`.
   - Create if `/folder/404.sql` exists, then it will be called for all URLs that start with `folder` and do not match an existing file. 
 - Updated SQL parser to [v0.50.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0500-2024-08-15)
-  - Support postgres String Constants with Unicode Escapes, like `U&'\2713'`. Fixes https://github.com/lovasoa/SQLpage/discussions/511
+  - Support postgres String Constants with Unicode Escapes, like `U&'\2713'`. Fixes https://github.com/sqlpage/SQLPage/discussions/511
 - New [big_number](https://sql-page.com/documentation.sql?component=big_number#component) component to display key statistics and indicators in a large, easy-to-read format. Useful for displaying KPIs, metrics, and other important numbers in dashboards and reports.
   - ![big_number](https://github.com/user-attachments/assets/9b5bc091-afd1-4872-be55-0b2a47aff15c)
-- Fixed small display inconsistencies in the shell component with the new sidebar feature ([#556](https://github.com/lovasoa/SQLpage/issues/556)).
+- Fixed small display inconsistencies in the shell component with the new sidebar feature ([#556](https://github.com/sqlpage/SQLPage/issues/556)).
 - Cleanly close all open database connections when shutting down sqlpage. Previously, when shutting down SQLPage, database connections that were opened during the session were not explicitly closed. These connections could remain open until the database closes it. Now, SQLPage ensures that all opened database connections are cleanly closed during shutdown. This guarantees that resources are freed immediately, ensuring more reliable operation, particularly in environments with limited database connections.
 
 ## 0.27.0 (2024-08-17)
@@ -306,7 +306,7 @@ select
 - hero component: allow reversing the order of text and images. Allows hero components with the text on the right and the image on the left.
 - Reduce the max item width in the datagrid component for a better and more compact display on small screens. This makes the datagrid component more mobile-friendly. If you have a datagrid with long text items, this may impact the layout of your page. You can override this behavior by manually changing the `--tblr-datagrid-item-width` CSS variable in your custom CSS.
 - Apply migrations before initializing the on-database file system. This allows migrations to create files in the database file system.
-- Added a [new example](https://github.com/lovasoa/SQLpage/tree/main/examples/CRUD%20-%20Authentication) to the documentation
+- Added a [new example](https://github.com/sqlpage/SQLPage/tree/main/examples/CRUD%20-%20Authentication) to the documentation
 - Bug fix: points with a latitude of 0 are now displayed correctly on the map component.
 - Bug fix: in sqlite, lower(NULL) now returns NULL instead of an empty string. This is consistent with the standard behavior of lower() in other databases. SQLPage has its own implementation of lower() that supports unicode characters, and our implementation now matches the standard behavior of lower() in mainstream SQLite.
 - Allow passing data from the database to sqlpage functions.
@@ -327,7 +327,7 @@ select
 - New icons (see [tabler icons 3.10](https://tabler.io/changelog))
 - Updated apexcharts.js to [v3.50.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v3.50.0)
 - Improve truncation of long page titles
-  - ![screenshot long title](https://github.com/lovasoa/SQLpage/assets/552629/9859023e-c706-47b3-aa9e-1c613046fdfa)
+  - ![screenshot long title](https://github.com/sqlpage/SQLPage/assets/552629/9859023e-c706-47b3-aa9e-1c613046fdfa)
 - new function: [`sqlpage.link`](https://sql-page.com/functions.sql?function=link#function) to easily create links with parameters between pages. For instance, you can now use
   ```sql
   select 'list' as component;
@@ -344,28 +344,28 @@ select
 ## 0.24.0 (2024-06-23)
 
 - in the form component, searchable `select` fields now support more than 50 options. They used to display only the first 50 options.
-  - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)
+  - ![screenshot](https://github.com/sqlpage/SQLPage/assets/552629/40571d08-d058-45a8-83ef-91fa134f7ce2)
 - map component
   - automatically center the map on the contents when no top-level latitude and longitude properties are provided even when the map contains geojson data.
   - allow using `FALSE as tile_source` to completely remove the base map. This makes the map component useful to display even non-geographical geometric data.
 - Fix a bug that occured when no `database_url` was provided in the configuration file. SQLPage would generate an incorrect default SQLite database URL.
 - Add a new `background_color` attribute to the [card](https://sql-page.com/documentation.sql?component=card#component) component to set the background color of the card.
-  - ![cards with color backgrounds](https://github.com/lovasoa/SQLpage/assets/552629/d925d77c-e1f6-490f-8fb4-cdcc4418233f)
+  - ![cards with color backgrounds](https://github.com/sqlpage/SQLPage/assets/552629/d925d77c-e1f6-490f-8fb4-cdcc4418233f)
 - new handlebars helper for [custom components](https://sql-page.com/custom_components.sql): `{{app_config 'property'}}` to access the configuration object from the handlebars template.
 - Prevent form validation and give a helpful error message when an user tries to submit a form with a file upload field that is above the maximum file size.
-  - ![file upload too large](https://github.com/lovasoa/SQLpage/assets/552629/1c684d33-49bd-4e49-9ee0-ed3f0d454ced)
+  - ![file upload too large](https://github.com/sqlpage/SQLPage/assets/552629/1c684d33-49bd-4e49-9ee0-ed3f0d454ced)
 - Fix a bug in [`sqlpage.read_file_as_data_url`](https://sql-page.com/functions.sql?function=read_file_as_data_url#function) where it would truncate the mime subtype of the file. This would cause the browser to refuse to display SVG files, for instance.
 - Avoid vertical scrolling caused by the footer even when the page content is short.
 - Add a new `compact` attribute to the [list](https://sql-page.com/documentation.sql?component=list#component), allowing to display more items in a list without taking up too much space. Great for displaying long lists of items.
-  - ![compact list screenshot](https://github.com/lovasoa/SQLpage/assets/552629/41302807-c6e4-40a0-9486-bfd0ceae1537)
+  - ![compact list screenshot](https://github.com/sqlpage/SQLPage/assets/552629/41302807-c6e4-40a0-9486-bfd0ceae1537)
 - Add property `narrow` to the [button](https://sql-page.com/documentation.sql?component=button#component) component to make the button narrower. Ideal for buttons with icons.
-  - ![icon buttons](https://github.com/lovasoa/SQLpage/assets/552629/7fcc049e-6012-40c1-a8ee-714ce70a8763)
+  - ![icon buttons](https://github.com/sqlpage/SQLPage/assets/552629/7fcc049e-6012-40c1-a8ee-714ce70a8763)
 - new `tooltip` property in the datagrid component.
-  - ![datagrid tooltip](https://github.com/lovasoa/SQLpage/assets/552629/81b94d92-1bca-4ffe-9056-c30d6845dcc6)
+  - ![datagrid tooltip](https://github.com/sqlpage/SQLPage/assets/552629/81b94d92-1bca-4ffe-9056-c30d6845dcc6)
 - datagrids are now slightly more compact, with less padding and less space taken by each item.
 - fix a bug in the [card](https://sql-page.com/documentation.sql?component=card#component) component where the icon would sometimes overflow the card's text content.
 - new `image` property in the [button](https://sql-page.com/documentation.sql?component=button#component) component to display a small image inside a button.
-  - ![image button](https://github.com/lovasoa/SQLpage/assets/552629/cdfa0709-1b00-4779-92cb-dc6f3e78c1a8)
+  - ![image button](https://github.com/sqlpage/SQLPage/assets/552629/cdfa0709-1b00-4779-92cb-dc6f3e78c1a8)
 - In the `shell` component
   - allow easily creating complex menus even in SQLite:
     ```sql
@@ -377,7 +377,7 @@ select
     ```
   - Add the ability to use local Woff2 fonts in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component. This is useful to use custom fonts in your website, without depending on google fonts (and disclosing your users' IP addresses to google).
   - Add a `fixed_top_menu` attribute to make the top menu sticky. This is useful to keep the menu visible even when the user scrolls down the page.
-    - ![a fixed top menu](https://github.com/lovasoa/SQLpage/assets/552629/65fe3a41-faee-45e6-9dfc-d81eca043f45)
+    - ![a fixed top menu](https://github.com/sqlpage/SQLPage/assets/552629/65fe3a41-faee-45e6-9dfc-d81eca043f45)
 - Add a `wrap` attribute to the `list` component to wrap items on multiple lines when they are too long.
 - New `max_pending_rows` [configuration option](https://sql-page.com/configuration.md) to limit the number of messages that can be sent to the client before they are read. Usefule when sending large amounts of data to slow clients.
 - New `compress_responses` configuration option. Compression is still on by default, but can now be disabled to allow starting sending the page sooner. It's sometimes better to start displaying the shell immediateley and render components as soon as they are ready, even if that means transmitting more data over the wire.
@@ -388,7 +388,7 @@ select
   - new [`json_pretty()`](https://www.sqlite.org/json1.html) function
 - Faster initial page load. SQLPage used to wait for the first component to be rendered before sending the shell to the client. We now send the shell immediately, and the first component as soon as it is ready. This can make the initial page load faster, especially when the first component requires a long computation on the database side.
 - Include a default favicon when none is specified in the shell component. This fixes the `Unable to read file "favicon.ico"` error message that would appear in the logs by default.
-  - ![favicon](https://github.com/lovasoa/SQLpage/assets/552629/cf48e271-2fe4-42da-b825-893cff3f95fb)
+  - ![favicon](https://github.com/sqlpage/SQLPage/assets/552629/cf48e271-2fe4-42da-b825-893cff3f95fb)
 
 ## 0.23.0 (2024-06-09)
 
@@ -412,7 +412,7 @@ select
 - **Important Security Fix:** The behavior of `set x` has been modified to match `SELECT $x`.
   - **Security Risk:** Previously, `set x` could be overwritten by a POST parameter named `x`.
   - **Solution:** Upgrade to SQLPage v0.22. If not possible, then update your application to use `SET :x` instead of `set x`.
-  - For more information, see [GitHub Issue #342](https://github.com/lovasoa/SQLpage/issues/342).
+  - For more information, see [GitHub Issue #342](https://github.com/sqlpage/SQLPage/issues/342).
 - **Deprecation Notice:** Reading POST variables using `$x`.
   - **New Standard:** Use `:x` for POST variables and `$x` for GET variables.
   - **Current Release Warning:** Using `$x` for POST variables will display a console warning:
@@ -427,7 +427,7 @@ select
 - Two **backward-incompatible changes** in the [chart](https://sql-page.com/documentation.sql?component=chart#component) component's timeseries plotting feature (actioned with `TRUE as time`):
   - when providing a number for the x value (time), it is now interpreted as a unix timestamp, in seconds (number of seconds since 1970-01-01 00:00:00 UTC). It used to be interpreted as milliseconds. If you were using the `TRUE as time` syntax with integer values, you will need to divide your time values by 1000 to get the same result as before.
     - This change makes it easier to work with time series plots, as most databases return timestamps in seconds. For instance, in SQLite, you can store timestamps as integers with the [`unixepoch()`](https://www.sqlite.org/lang_datefunc.html) function, and plot them directly in SQLPage.
-  - when providing an ISO datetime string for the x value (time), without an explicit timezone, it is now interpreted and displayed in the local timezone of the user. It used to be interpreted as a local time, but displayed in UTC, which [was confusing](https://github.com/lovasoa/SQLpage/issues/324). If you were using the `TRUE as time` syntax with naive datetime strings (without timezone information), you will need to convert your datetime strings to UTC on the database side if you want to keep the same behavior as before. As a side note, it is always recommended to store and query datetime strings with timezone information in the database, to avoid ambiguity.
+  - when providing an ISO datetime string for the x value (time), without an explicit timezone, it is now interpreted and displayed in the local timezone of the user. It used to be interpreted as a local time, but displayed in UTC, which [was confusing](https://github.com/sqlpage/SQLPage/issues/324). If you were using the `TRUE as time` syntax with naive datetime strings (without timezone information), you will need to convert your datetime strings to UTC on the database side if you want to keep the same behavior as before. As a side note, it is always recommended to store and query datetime strings with timezone information in the database, to avoid ambiguity.
     - This change is particularly useful in SQLite, which generates naive datetime strings by default. You should still store and query datetimes as unix timestamps when possible, to avoid ambiguity and reduce storage size.
 - When calling a file with [`sqlpage.run_sql`](https://sql-page.com/functions.sql?function=run_sql#function), the target file now has access to uploaded files.
 - New article by [Matthew Larkin](https://github.com/matthewlarkin) about [migrations](https://sql-page.com/your-first-sql-website/migrations.sql).
@@ -450,7 +450,7 @@ select
   - In short, if you saw an error like `Error: unrecognized token ":"` after upgrading to 0.20.5, this version should fix it.
 - The `dynamic` component now properly displays error messages when its properties are invalid. There used to be a bug where errors would be silently ignored, making it hard to debug invalid dynamic components.
 - New [`sqlpage.request_method`](https://sql-page.com/functions.sql?function=request_method#function) function to get the HTTP method used to access the current page. This is useful to create pages that behave differently depending on whether they are accessed with a GET request (to display a form, for instance) or a POST request (to process the form).
-- include the trailing semicolon as a part of the SQL statement sent to the database. This doesn't change anything in most databases, but Microsoft SQL Server requires a trailing semicolon after certain statements, such as `MERGE`. Fixes [issue #318](https://github.com/lovasoa/SQLpage/issues/318)
+- include the trailing semicolon as a part of the SQL statement sent to the database. This doesn't change anything in most databases, but Microsoft SQL Server requires a trailing semicolon after certain statements, such as `MERGE`. Fixes [issue #318](https://github.com/sqlpage/SQLPage/issues/318)
 - New `readonly` and `disabled` attributes in the [form](https://sql-page.com/documentation.sql?component=form#component) component to make form fields read-only or disabled. This is useful to prevent the user from changing some fields.
 - 36 new icons [(tabler icons 3.4)](https://tabler.io/icons/changelog)
 - Bug fixes in charts [(apexcharts.js v3.49.1)](https://github.com/apexcharts/apexcharts.js/releases)
@@ -467,7 +467,7 @@ select
 - The SQLPage function system was greatly improved
   - All the functions can now be freely combined and nested, without any limitation. No more `Expected a literal single quoted string.` errors when trying to nest functions.
   - The error messages when a function call is invalid were rewritten, to include more context, and provide suggestions on how to fix the error. This should make it easier get started with SQLPage functions.
-    Error messages should always be clear and actionnable. If you encounter an error message you don't understand, please [open an issue](https://github.com/lovasoa/SQLpage/issues) on the SQLPage repository.
+    Error messages should always be clear and actionnable. If you encounter an error message you don't understand, please [open an issue](https://github.com/sqlpage/SQLPage/issues) on the SQLPage repository.
   - Adding new functions is now easier, and the code is more maintainable. This should make it easier to contribute new functions to SQLPage. If you have an idea for a new function, feel free to open an issue or a pull request on the SQLPage repository. All sqlpage functions are defined in [`functions.rs`](./src/webserver/database/sqlpage_functions/functions.rs).
 - The `shell-empty` component (used to create pages without a shell) now supports the `html` attribute, to directly set the raw contents of the page. This is useful to advanced users who want to generate the page content directly in SQL, without using the SQLPage components.
 - Updated sqlparser to [v0.46](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0460-2024-05-03)
@@ -483,8 +483,8 @@ select
 ## 0.20.3 (2024-04-22)
 
 - New `dropdown` row-level property in the [`form` component](https://sql-page.com/documentation.sql?component=form#component)
-  - ![select dropdown in form](https://github.com/lovasoa/SQLpage/assets/552629/5a2268d3-4996-49c9-9fb5-d310e753f844)
-  - ![multiselect input](https://github.com/lovasoa/SQLpage/assets/552629/e8d62d1a-c851-4fef-8c5c-a22991ffadcf)
+  - ![select dropdown in form](https://github.com/sqlpage/SQLPage/assets/552629/5a2268d3-4996-49c9-9fb5-d310e753f844)
+  - ![multiselect input](https://github.com/sqlpage/SQLPage/assets/552629/e8d62d1a-c851-4fef-8c5c-a22991ffadcf)
 - Adds a new [`sqlpage.fetch`](https://sql-page.com/functions.sql?function=fetch#function) function that allows sending http requests from SQLPage. This is useful to query external APIs. This avoids having to resort to `sqlpage.exec`.
 - Fixed a bug that occured when using both HTTP and HTTPS in the same SQLPage instance. SQLPage tried to bind to the same (HTTP)
   port twice instead of binding to the HTTPS port. This is now fixed, and SQLPage can now be used with both a non-443 `port` and
@@ -540,7 +540,7 @@ select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
   The configuration directory is where SQLPage looks for the `sqlpage.json` configuration file, for the `migrations` and `templates` directories, and the `on_connect.sql` file. It used to be hardcoded to `./sqlpage/`, which made each SQLPage invokation dependent on the [current working directory](https://en.wikipedia.org/wiki/Working_directory).
   Now you can, for instance, set `SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage/` in your environment, and SQLPage will look for its configuration files in `/etc/sqlpage`, which is a more standard location for configuration files in a Unix environment.
   - The official docker image now sets `SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage/` by default, and changes the working directory to `/var/www/` by default.
-    - **⚠️ WARNING**: This change can break your docker image if you relied on setting the working directory to `/var/www` and putting the configuration in `/var/www/sqlpage`. In this case, the recommended setup is to store your sqlpage configuration directory and sql files in different directory. For more information see [this issue](https://github.com/lovasoa/SQLpage/issues/246).
+    - **⚠️ WARNING**: This change can break your docker image if you relied on setting the working directory to `/var/www` and putting the configuration in `/var/www/sqlpage`. In this case, the recommended setup is to store your sqlpage configuration directory and sql files in different directory. For more information see [this issue](https://github.com/sqlpage/SQLPage/issues/246).
 - Updated the chart component to use the latest version of the charting library
   - https://github.com/apexcharts/apexcharts.js/releases/tag/v3.45.2
   - https://github.com/apexcharts/apexcharts.js/releases/tag/v3.46.0
@@ -555,9 +555,9 @@ select 'dynamic' as component, sqlpage.run_sql('header.sql') as properties;
 - [Custom shells](https://sql-page.com/custom_components.sql):
   - It has always been possible to change the default shell of a SQLPage website by writing a `sqlpage/shell.handlebars` file. But that forced you to have a single shell for the whole website. It is now possible to have multiple shells, just by creating multiple `shell-*.handlebars` files in the `sqlpage` directory. A `shell-empty` file is also provided by default, to create pages without a shell (useful for returning non-html content, such as an RSS feed).
 - New `edit_link`, `delete_link`, and `view_link` row-level attributes in the list component to add icons and links to each row.
-  - ![screenshot](https://github.com/lovasoa/SQLpage/assets/552629/df085592-8359-4fed-9aeb-27a2416ab6b8)
+  - ![screenshot](https://github.com/sqlpage/SQLPage/assets/552629/df085592-8359-4fed-9aeb-27a2416ab6b8)
 - **Multiple page layouts** : The page layout is now configurable from the [shell component](https://sql-page.com/documentation.sql?component=shell#component). 3 layouts are available: `boxed` (the default), `fluid` (full width), and `horizontal` (with boxed contents but a full-width header).
-  - ![horizontal layout screenshot](https://github.com/lovasoa/SQLpage/assets/552629/3c0fde36-7bf6-414e-b96f-c8880a2fc786)
+  - ![horizontal layout screenshot](https://github.com/sqlpage/SQLPage/assets/552629/3c0fde36-7bf6-414e-b96f-c8880a2fc786)
 
 ## 0.18.3 (2024-02-03)
 
@@ -890,7 +890,7 @@ and to create JSON APIs.
 - _asynchronous password hashing_ . SQLPage used to block a request processing thread while hashing passwords. This could cause a denial of service if an attacker sent many requests to a page that used `sqlpage.hash_password()`
   (typically, the account creation page of your website).
   SQLPage now launches password hashing operations on a separate thread pool, and can continue processing other requests while waiting for passwords to be hashed.
-- Easier configuration for multiple menu items. Syntax like `SELECT 'shell' as component, '["page 1", "page 2"]' as menu_item'` now works as expected. See the new `sqlpage_shell` definition in [the small sql game example](./examples/corporate-conundrum/) and [this discussion](https://github.com/lovasoa/SQLpage/discussions/91).
+- Easier configuration for multiple menu items. Syntax like `SELECT 'shell' as component, '["page 1", "page 2"]' as menu_item'` now works as expected. See the new `sqlpage_shell` definition in [the small sql game example](./examples/corporate-conundrum/) and [this discussion](https://github.com/sqlpage/SQLPage/discussions/91).
 - New `sqlpage.exec` function to execute a command on the server. This allows you to run arbitrary code on the server, and use the result in your SQL queries. This can be used to make external API calls, send emails, or run any other code on the server.
 
 ```sql
@@ -949,7 +949,7 @@ This function is disabled by default for security reasons. To enable it, set the
 - Update dashmap for better file lookup performance.
 - Fix table sorting.
 - Fix a bug with Basic Authentication.
-  See [#72](https://github.com/lovasoa/SQLpage/pull/72). Thanks to @edgrip for the contribution !
+  See [#72](https://github.com/sqlpage/SQLPage/pull/72). Thanks to @edgrip for the contribution !
 
 ## 0.10.0 (2023-08-20)
 
@@ -970,11 +970,11 @@ This function is disabled by default for security reasons. To enable it, set the
   ```sql
   SELECT 'shell' AS component, 'dark' AS theme;
   ```
-  See https://github.com/lovasoa/SQLpage/issues/50
+  See https://github.com/sqlpage/SQLPage/issues/50
 - Fixed a bug where the default index page would be displayed when `index.sql` could not be loaded,
   instead of displaying an error page explaining the issue.
 - Improved the appearance of scrollbars. (Workaround for https://github.com/tabler/tabler/issues/1648).
-  See https://github.com/lovasoa/SQLpage/discussions/17
+  See https://github.com/sqlpage/SQLPage/discussions/17
 - Create a single database connection by default when using `sqlite://:memory:` as the database URL.
   This makes it easier to use temporary tables and other connection-specific features.
 - When no component is selected, display data with the `debug` component by default.
@@ -1009,12 +1009,12 @@ Small bugfix release
 - Icons are now loaded directly from the sqlpage binary instead of loading them from a CDN.
   This allows pages to load faster, and to get a better score on google's performance audits, potentially improving your position in search results.
   - This also makes it possible to host a SQLPage website on an intranet without access to the internet.
-  - Fixes https://github.com/lovasoa/SQLpage/issues/37
+  - Fixes https://github.com/sqlpage/SQLPage/issues/37
 - store compressed frontend assets in the SQLPage binary:
   - smaller SQLPage binary
   - Faster page loads, less work on the server
 - Fix a bug where table search would fail to find a row if the search term contained some special characters.
-  - Fixes https://github.com/lovasoa/SQLpage/issues/46
+  - Fixes https://github.com/sqlpage/SQLPage/issues/46
 - Split the charts javascript code from the rest of the frontend code, and load it only when necessary.
   This greatly diminishes the amount of js loaded by default, and achieves very good performance scores by default.
   SQLPage websites now load even faster, een on slow mobile connections.
@@ -1022,7 +1022,7 @@ Small bugfix release
 ## 0.9.2 (2023-08-01)
 
 - Added support for more SQL data types. This notably fixes an issue with the display of datetime columns in tables.
-  - See: https://github.com/lovasoa/SQLpage/issues/41
+  - See: https://github.com/sqlpage/SQLPage/issues/41
 - Updated dependencies, better SQL drivers
 
 ## 0.9.1 (2023-07-30)
@@ -1047,7 +1047,7 @@ Small bugfix release
   - querying CSV data from SQLPage with [vsv](https://github.com/nalgeon/sqlean/blob/main/docs/vsv.md),
   - or building a search engine for your data with [FTS5](https://www.sqlite.org/fts5.html).
 - Breaking: change the order of priority for loading configuration parameters: the environment variables have priority over the configuration file. This makes it easier to tweak the configuration of a SQLPage website when deploying it.
-- Fix the default index page in MySQL. Fixes [#23](https://github.com/lovasoa/SQLpage/issues/23).
+- Fix the default index page in MySQL. Fixes [#23](https://github.com/sqlpage/SQLPage/issues/23).
 - Add a new [map](https://sql-page.com/documentation.sql?component=map#component) component to display a map with markers on it. Useful to display geographic data from PostGIS or Spatialite.
 - Add a new `icon` attribute to the [table](https://sql-page.com/documentation.sql?component=table#component) component to display icons in the table.
 - Fix `textarea` fields in the [form](https://sql-page.com/documentation.sql?component=table#component) component to display the provided `value` attribute. Thanks Frank for the contribution !
@@ -1064,7 +1064,7 @@ Small bugfix release
 - The [debug](https://sql-page.com/documentation.sql?component=debug#component) component is now documented
 - Added properties to the [shell](https://sql-page.com/documentation.sql?component=shell#component) component:
   - `css` to add custom CSS to the page
-  - `javascript` to add custom Javascript to the page. An example of [how to use it to integrate a react component](https://github.com/lovasoa/SQLpage/tree/main/examples/using%20react%20and%20other%20custom%20scripts%20and%20styles) is available.
+  - `javascript` to add custom Javascript to the page. An example of [how to use it to integrate a react component](https://github.com/sqlpage/SQLPage/tree/main/examples/using%20react%20and%20other%20custom%20scripts%20and%20styles) is available.
   - `footer` to set a message in the footer of the page
 
 ### [SQLPage functions](https://sql-page.com/functions.sql)
@@ -1077,7 +1077,7 @@ Small bugfix release
 
 ### Bug fixes
 
-- Fix a bug where the page style would not load in pages that were not in the root directory: https://github.com/lovasoa/SQLpage/issues/19
+- Fix a bug where the page style would not load in pages that were not in the root directory: https://github.com/sqlpage/SQLPage/issues/19
 - Fix resources being served with the wrong content type
 - Fix compilation of SQLPage as an AWS lambda function
 - Fixed logging and display of errors, to make them more useful

@@ -14,7 +14,7 @@ This demonstrates how to implement:
  - [a logout button](./logout.sql)
  - [secured pages](./protected_page.sql) that can only be accessed by logged-in users
 
-User authentication is a complex topic, and you can follow the work on implementing differenet authentication methods in [this issue](https://github.com/lovasoa/SQLpage/issues/12).
+User authentication is a complex topic, and you can follow the work on implementing differenet authentication methods in [this issue](https://github.com/sqlpage/SQLPage/issues/12).
 
 ## How to run
 

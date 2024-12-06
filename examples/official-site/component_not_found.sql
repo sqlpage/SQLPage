@@ -31,4 +31,4 @@ report it and we will fix it as soon as possible.
 ' as description
 where $attack = 'attacked';
 select 'safety.sql' as link, 'More about SQLPage security' as title where $attack='attacked';
-select 'https://github.com/lovasoa/SQLpage/security' as link, 'Report a vulnerability' as title where $attack='attacked';
+select 'https://github.com/sqlpage/SQLPage/security' as link, 'Report a vulnerability' as title where $attack='attacked';

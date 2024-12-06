@@ -21,7 +21,7 @@ to record a video introduction to SQLPage, which I did.
 
 The video is a 5 minute introduction to the philosophy behind SQLPage,
 followed by a 25 minute live demonstration of how to create
-[this todo list application](https://github.com/lovasoa/SQLpage/tree/main/examples/todo%20application)
+[this todo list application](https://github.com/sqlpage/SQLPage/tree/main/examples/todo%20application)
 from scratch.
 
 Watch it on youtube: 

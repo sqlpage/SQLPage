@@ -254,7 +254,7 @@ Currently running from `/home/user/my_sqlpage_website`
 
 The current working directory is the directory from which the SQLPage server process was started.
 By default, this is also the directory from which `.sql` files are loaded and served.
-However, this can be changed by setting the `web_root` [configuration option](https://github.com/lovasoa/SQLpage/blob/main/configuration.md).
+However, this can be changed by setting the `web_root` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md).
 '
     );
 INSERT INTO sqlpage_functions (

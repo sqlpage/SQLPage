@@ -24,7 +24,7 @@ It explains why and how SQLPage applications are often faster than equivalent ap
 Since SQLPage v0.20.3, SQLPage can natively make requests to external HTTP APIs with [the `fetch` function](/documentation.sql#fetch),
 which opens the door to many new possibilities.
 
-An example of this is the [**SSO demo**](https://github.com/lovasoa/SQLpage/tree/main/examples/single%20sign%20on),
+An example of this is the [**SSO demo**](https://github.com/sqlpage/SQLPage/tree/main/examples/single%20sign%20on),
 which demonstrates how to use SQLPage to authenticate users on a website using a third-party authentication service,
 such as Google, Facebook, an enterprise identity provider using [OIDC](https://openid.net/connect/),
 or an academic institution using [CAS](https://apereo.github.io/cas/).
@@ -32,6 +32,6 @@ or an academic institution using [CAS](https://apereo.github.io/cas/).
 ## New architecture diagram
 
 The README of the SQLPage repository now includes a
-[clear yet detailed architecture diagram](https://github.com/lovasoa/SQLpage?tab=readme-ov-file#how-it-works).
+[clear yet detailed architecture diagram](https://github.com/sqlpage/SQLPage?tab=readme-ov-file#how-it-works).
 '
     );

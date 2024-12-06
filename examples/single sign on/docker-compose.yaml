@@ -8,7 +8,7 @@
 
 services:
   sqlpage:
-    image: lovasoa/sqlpage:main # Use the latest development version of SQLPage
+    image: sqlpage/SQLPage:main # Use the latest development version of SQLPage
     volumes:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage

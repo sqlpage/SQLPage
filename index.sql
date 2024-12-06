@@ -29,7 +29,7 @@ SELECT 'index.sql' as contents, 1 as code;
 SELECT ' in the folder where sqlpage is running (current working directory: ' as contents;
 SELECT sqlpage.current_working_directory() as contents, 1 as code;
 SELECT ').' as contents;
-SELECT 'You can customize your server''s [configuration](https://github.com/lovasoa/SQLpage/blob/main/configuration.md)
+SELECT 'You can customize your server''s [configuration](https://github.com/sqlpage/SQLPage/blob/main/configuration.md)
 by creating a file in `' || sqlpage.current_working_directory() || '/sqlpage/sqlpage.json`.' as contents_md;
 
 SELECT '

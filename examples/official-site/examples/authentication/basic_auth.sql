@@ -14,7 +14,7 @@ select 'dynamic' as component, properties FROM example WHERE component = 'shell'
 select 'text' as component, '
 # Authentication
 
-Read the [source code](//github.com/lovasoa/SQLpage/blob/main/examples/official-site/examples/authentication/basic_auth.sql) for this demo.
+Read the [source code](//github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/authentication/basic_auth.sql) for this demo.
 ' as contents_md;
 
 select 'alert' as component, 'info' as color, CONCAT('You are logged in as ', sqlpage.basic_auth_username()) as title;

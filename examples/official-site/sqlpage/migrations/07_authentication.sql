@@ -162,5 +162,5 @@ you can use OpenID Connect and OAuth2 to authenticate users.
 This allows users to log in with their Google, Facebook, or internal company account.
 
 You will find an example of how to do this in the
-[Single sign-on with OIDC](https://github.com/lovasoa/SQLpage/tree/main/examples/single%20sign%20on).
+[Single sign-on with OIDC](https://github.com/sqlpage/SQLPage/tree/main/examples/single%20sign%20on).
 ');

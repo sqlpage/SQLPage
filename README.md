@@ -137,7 +137,7 @@ select
 ### Using executables
 
 The easiest way to get started is to download the latest release from the
-[releases page](https://github.com/lovasoa/SQLpage/releases).
+[releases page](https://github.com/sqlpage/SQLPage/releases).
 
 - Download the binary that corresponds to your operating system (linux, macos, or windows).
 - Uncompress it: `tar -xzf sqlpage-*.tgz`
@@ -145,11 +145,11 @@ The easiest way to get started is to download the latest release from the
 
 ### With docker
 
-To run on a server, you can use [the docker image](https://hub.docker.com/r/lovasoa/sqlpage):
+To run on a server, you can use [the docker image](https://hub.docker.com/r/sqlpage/SQLPage):
 
 - [Install docker](https://docs.docker.com/get-docker/)
 - In a terminal, run the following command:
-  - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/sqlpage`
+  - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm sqlpage/SQLPage`
   - (`"$(pwd):/var/www"` allows sqlpage to run sql files from your current working directory)
 - Create a file called index.sql with the contents from [this example](./index.sql)
 - Open https://localhost:8080 in your browser
@@ -157,12 +157,12 @@ To run on a server, you can use [the docker image](https://hub.docker.com/r/lova
   custom components, and migrations
   (see [configuration.md](./configuration.md)) to `/etc/sqlpage` in the container.
      - For instance, you can use:
-       - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd)/source:/var/www" --volume "$(pwd)/configuration:/etc/sqlpage:ro" --rm lovasoa/sqlpage`
+       - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd)/source:/var/www" --volume "$(pwd)/configuration:/etc/sqlpage:ro" --rm sqlpage/SQLPage`
      - And place your website in a folder named `source` and your `sqlpage.json` in a folder named `configuration`.
 - If you want to build your own docker image, taking the raw sqlpage image as a base is not recommended, since it is extremely stripped down and probably won't contain the dependencies you need. Instead, you can take debian as a base and simply copy the sqlpage binary from the official image to your own image:
   - ```Dockerfile
     FROM debian:stable-slim
-    COPY --from=lovasoa/sqlpage:main /usr/local/bin/sqlpage /usr/local/bin/sqlpage
+    COPY --from=sqlpage/SQLPage:main /usr/local/bin/sqlpage /usr/local/bin/sqlpage
     ``` 
 
 We provide compiled binaries only for the x86_64 architecture, but provide docker images for other architectures, including arm64 and armv7. If you want to run SQLPage on a Raspberry Pi or 
@@ -310,8 +310,8 @@ We provide good-looking components out of the box so you can focus on your data 
 
 SQLPage is available for download on the from multiple sources:
 
-[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/lovasoa/sqlpage/total?label=direct%20download)](https://github.com/lovasoa/SQLpage/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/lovasoa/sqlpage?label=docker%3A%20lovasoa%2Fsqlpage)](https://hub.docker.com/r/lovasoa/sqlpage)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/sqlpage/SQLPage/total?label=direct%20download)](https://github.com/sqlpage/SQLPage/releases/latest)
+[![Docker Pulls](https://img.shields.io/docker/pulls/sqlpage/SQLPage?label=docker%3A%20lovasoa%2Fsqlpage)](https://hub.docker.com/r/sqlpage/SQLPage)
 [![homebrew downloads](https://img.shields.io/homebrew/installs/dq/sqlpage?label=homebrew%20downloads&labelColor=%232e2a24&color=%23f9d094)](https://formulae.brew.sh/formula/sqlpage#default)
 [![Scoop Version](https://img.shields.io/scoop/v/sqlpage?labelColor=%23696573&color=%23d7d4db)](https://scoop.sh/#/apps?q=sqlpage&id=305b3437817cd197058954a2f76ac1cf0e444116)
 [![Crates.io Total Downloads](https://img.shields.io/crates/d/sqlpage?label=crates.io%20download&labelColor=%23264323&color=%23f9f7ec)](https://crates.io/crates/sqlpage)

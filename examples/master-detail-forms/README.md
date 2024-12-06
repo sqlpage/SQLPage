@@ -18,7 +18,7 @@ and a second form to create their addresses.
 
 Once a user has been added, multiple addresses can be added to it.
 
-See https://github.com/lovasoa/SQLpage/discussions/16 for more details.
+See https://github.com/sqlpage/SQLPage/discussions/16 for more details.
 
 The main idea is to create two separate forms.
 In this example, we put both forms on the same page, in [`edit-user.sql`](./edit-user.sql).

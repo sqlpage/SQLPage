@@ -58,7 +58,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('list', 'A basic compact list', json('[{"component":"list", "compact": true, "title": "SQLPage lists are..."},{"title":"Beautiful"},{"title":"Useful"},{"title":"Versatile"}]')),
     ('list', 'An empty list with a link to add an item', json('[{"component":"list", "empty_title": "No items yet", "empty_description": "This list is empty. Click here to create a new item !", "empty_link": "documentation.sql"}]')),
     ('list', 'A list with rich text descriptions', json('[{"component":"list", "wrap": true},
-        {"title":"SQLPage", "image_url": "https://raw.githubusercontent.com/lovasoa/SQLpage/main/docs/favicon.png", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**. [Free on Github](https://github.com/lovasoa/sqlpage)"},
+        {"title":"SQLPage", "image_url": "https://raw.githubusercontent.com/sqlpage/SQLPage/main/docs/favicon.png", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**. [Free on Github](https://github.com/sqlpage/SQLPage)"},
         {"title":"Tabler", "image_url": "https://avatars.githubusercontent.com/u/35471246", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},
         {"title":"Tabler Icons", "image_url": "https://tabler.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
     ]')),
@@ -124,7 +124,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('steps', 'Online store checkout steps.', json('[{"component":"steps"},{"title":"Shopping"},{"title":"Store pickup"}, {"title":"Payment","active":true},{"title":"Review & Order"}]')),
     ('steps', 'A progress indicator with custom color, auto-generated step numbers, icons, and description tooltips.',
             json('[{"component":"steps", "counter": true, "color":"purple"}, '||
-            '{"title": "Registration form", "icon":"forms", "link": "https://github.com/lovasoa/sqlpage", "description": "Initial account data creation."},' ||
+            '{"title": "Registration form", "icon":"forms", "link": "https://github.com/sqlpage/SQLPage", "description": "Initial account data creation."},' ||
             '{"title": "Email confirmation", "icon": "mail", "link": "https://sql-page.com", "description": "Confirm your email by clicking on a link in a validation email."},' ||
             '{"title": "ID verification", "description": "Checking personal information", "icon": "user", "link": "#"},' ||
             '{"title": "Final account approval", "description": "ophir.dev", "link": "https://ophir.dev/", "icon":"eye-check", "active": true},' ||
@@ -159,7 +159,7 @@ INSERT INTO example(component, description, properties) VALUES
     ('text', 'Rendering rich text using markdown', json('[{"component":"text", "contents_md":"\n'||
     '# Markdown in SQLPage\n\n' ||
     '## Simple formatting\n\n' ||
-    'SQLPage supports only plain text as column values, but markdown allows easily adding **bold**, *italics*, [external links](https://github.com/lovasoa/sqlpage), [links to other pages](/index.sql) and [intra-page links](#my-paragraph). \n\n' ||
+    'SQLPage supports only plain text as column values, but markdown allows easily adding **bold**, *italics*, [external links](https://github.com/sqlpage/SQLPage), [links to other pages](/index.sql) and [intra-page links](#my-paragraph). \n\n' ||
     '## Lists\n' ||
     '### Unordered lists\n' ||
     '* SQLPage is easy\n' ||
@@ -368,7 +368,7 @@ In this case, you should add square brackets to the name of the field.
 The target page will then receive the value as a JSON array of strings, which you can iterate over using 
  - the `json_each` function [in SQLite](https://www.sqlite.org/json1.html) and [Postgres](https://www.postgresql.org/docs/9.3/functions-json.html),
  - the [`OPENJSON`](https://learn.microsoft.com/fr-fr/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16) function in Microsoft SQL Server.
- - in MySQL, json manipulation is less straightforward: see [the SQLPage MySQL json example](https://github.com/lovasoa/SQLpage/tree/main/examples/mysql%20json%20handling)
+ - in MySQL, json manipulation is less straightforward: see [the SQLPage MySQL json example](https://github.com/sqlpage/SQLPage/tree/main/examples/mysql%20json%20handling)
 
 [More information on how to handle JSON in SQL](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide).
 
@@ -981,9 +981,9 @@ and `shell.json` would be placed at the website''s root and contain the followin
         {"link": "index.sql", "title": "Home"},
         {"title": "Community", "submenu": [
             {"link": "blog.sql", "title": "Blog"},
-            {"link": "https//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
-            {"link": "https//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
-            {"link": "https//github.com/lovasoa/sqlpage", "title": "Github"}
+            {"link": "https//github.com/sqlpage/SQLPage/issues", "title": "Issues"},
+            {"link": "https//github.com/sqlpage/SQLPage/discussions", "title": "Discussions"},
+            {"link": "https//github.com/sqlpage/SQLPage", "title": "Github"}
         ]}
     ]
 }
@@ -1033,9 +1033,9 @@ SELECT ''dynamic'' AS component, ''
         {"link": "index.sql", "title": "Home"},
         {"title": "Community", "submenu": [
             {"link": "blog.sql", "title": "Blog"},
-            {"link": "https//github.com/lovasoa/sqlpage/issues", "title": "Issues"},
-            {"link": "https//github.com/lovasoa/sqlpage/discussions", "title": "Discussions"},
-            {"link": "https//github.com/lovasoa/sqlpage", "title": "Github"}
+            {"link": "https//github.com/sqlpage/SQLPage/issues", "title": "Issues"},
+            {"link": "https//github.com/sqlpage/SQLPage/discussions", "title": "Discussions"},
+            {"link": "https//github.com/sqlpage/SQLPage", "title": "Github"}
         ]}
     ]
 }
@@ -1070,7 +1070,7 @@ INSERT INTO component(name, icon, description) VALUES
     ('shell', 'layout-navbar', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page.');
 
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'shell', * FROM (VALUES
-    ('favicon', 'The URL of the icon the web browser should display in bookmarks and tabs. This property is particularly useful if multiple sites are hosted on the same domain with different [``site_prefix``](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage).', 'URL', TRUE, TRUE),
+    ('favicon', 'The URL of the icon the web browser should display in bookmarks and tabs. This property is particularly useful if multiple sites are hosted on the same domain with different [``site_prefix``](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage).', 'URL', TRUE, TRUE),
     ('manifest', 'The location of the [manifest.json](https://developer.mozilla.org/en-US/docs/Web/Manifest) if the site is a [PWA](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps). Among other features, serving a manifest enables your site to be "installed" as an app on most mobile devices.', 'URL', TRUE, TRUE)
 ) x;
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'shell', * FROM (VALUES
@@ -1125,7 +1125,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                 {"title": "About", "submenu": [
                     {"link": "/safety.sql", "title": "Security", "icon": "lock"},
                     {"link": "/performance.sql", "title": "Performance", "icon": "bolt"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/LICENSE.txt", "title": "License", "icon": "file-text"},
+                    {"link": "//github.com/sqlpage/SQLPage/blob/main/LICENSE.txt", "title": "License", "icon": "file-text"},
                     {"link": "/blog.sql", "title": "Articles", "icon": "book"}
                 ]},
                 {"title": "Examples", "submenu": [
@@ -1134,20 +1134,20 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/examples/multistep-form", "title": "Forms", "icon": "edit"},
                     {"link": "/examples/handle_picture_upload.sql", "title": "File uploads", "icon": "upload"},
                     {"link": "/examples/authentication/", "title": "Password protection", "icon": "password-user"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/examples/", "title": "All examples & demos", "icon": "code"}
+                    {"link": "//github.com/sqlpage/SQLPage/blob/main/examples/", "title": "All examples & demos", "icon": "code"}
                 ]},
                 {"title": "Community", "submenu": [
                     {"link": "/blog.sql", "title": "Blog", "icon": "book"},
-                    {"link": "//github.com/lovasoa/sqlpage/issues", "title": "Report a bug", "icon": "bug"},
-                    {"link": "//github.com/lovasoa/sqlpage/discussions", "title": "Discussions", "icon": "message"},
-                    {"link": "//github.com/lovasoa/sqlpage", "title": "Github", "icon": "brand-github"}
+                    {"link": "//github.com/sqlpage/SQLPage/issues", "title": "Report a bug", "icon": "bug"},
+                    {"link": "//github.com/sqlpage/SQLPage/discussions", "title": "Discussions", "icon": "message"},
+                    {"link": "//github.com/sqlpage/SQLPage", "title": "Github", "icon": "brand-github"}
                 ]},
                 {"title": "Documentation", "submenu": [
                     {"link": "/your-first-sql-website", "title": "Getting started", "icon": "book"},
                     {"link": "/components.sql", "title": "All Components", "icon": "list-details"},
                     {"link": "/functions.sql", "title": "SQLPage Functions", "icon": "math-function"},
                     {"link": "/custom_components.sql", "title": "Custom Components", "icon": "puzzle"},
-                    {"link": "//github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
+                    {"link": "//github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
                 ]}
             ],
             "layout": "boxed",
@@ -1192,7 +1192,7 @@ and in `shell.json`:
         {"link": "index.sql", "title": "Home"},
         {"title": "Community", "submenu": [
             {"link": "/blog.sql", "title": "Blog"},
-            {"link": "//github.com/lovasoa/sqlpage", "title": "Github"}
+            {"link": "//github.com/sqlpage/SQLPage", "title": "Github"}
         ]}
     ]
 }

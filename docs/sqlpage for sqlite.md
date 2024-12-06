@@ -10,7 +10,7 @@ It's called [SQLPage](https://sql-page.com), and it lets you build a full web ap
 
 # SQLPage: [build a website in SQL](https://sql-page.com)
 
-[![code-screenshots](https://github.com/lovasoa/SQLpage/assets/552629/03ed65bc-ecb1-4c01-990e-d6ab97be39c0)](https://github.com/lovasoa/SQLPage)
+[![code-screenshots](https://github.com/sqlpage/SQLPage/assets/552629/03ed65bc-ecb1-4c01-990e-d6ab97be39c0)](https://github.com/sqlpage/SQLPage)
 
 
 ## ❓ What is it ?
@@ -41,5 +41,5 @@ Some cool things people are building with SQLPage:
 ## Open-Source
 
  - [Official project page](https://sql-page.com)
- - [Source Code on Github](https://github.com/lovasoa/SQLPage)
- - [Examples](https://github.com/lovasoa/SQLpage/tree/main/examples)
+ - [Source Code on Github](https://github.com/sqlpage/SQLPage)
+ - [Examples](https://github.com/sqlpage/SQLPage/tree/main/examples)

@@ -93,7 +93,7 @@ select 'dynamic' as component,
                         "title": "Blog"
                     },
                     {
-                        "link": "//github.com/lovasoa/sqlpage/issues",
+                        "link": "//github.com/sqlpage/SQLPage/issues",
                         "title": "Report a bug"
                     }
                 ]

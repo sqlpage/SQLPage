@@ -38,7 +38,7 @@ SELECT my_column_1 AS row_level_parameter_1, my_column_2 AS row_level_parameter_
 
 This page documents all the components provided by default in SQLPage and their parameters.
 Use this as a reference when building your SQL application.
-If at any point you need help, you can ask for it on the [SQLPage forum](https://github.com/lovasoa/SQLpage/discussions).
+If at any point you need help, you can ask for it on the [SQLPage forum](https://github.com/sqlpage/SQLPage/discussions).
 
 If you know some [HTML](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/HTML_basics),
 you can also easily [create your own components for your application](./custom_components.sql).

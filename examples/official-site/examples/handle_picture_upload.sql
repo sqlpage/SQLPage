@@ -32,5 +32,5 @@ select ''card'' as component, 1 as columns;
 select ''Your picture'' as title, sqlpage.read_file_as_data_url(sqlpage.uploaded_file_path(''my_file'')) as top_image;
 ```
 
-[See the source code of this page](https://github.com/lovasoa/SQLpage/blob/main/examples/official-site/examples/handle_picture_upload.sql).
+[See the source code of this page](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/handle_picture_upload.sql).
 ' as contents_md;

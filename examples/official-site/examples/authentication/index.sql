@@ -12,7 +12,7 @@ select 'alert' as component, 'info' as color, CONCAT('You are logged in as ', $u
 select 'text' as component, '
 # Authentication
 
-Read the [source code](//github.com/lovasoa/SQLpage/blob/main/examples/official-site/examples/authentication/) for this demo.
+Read the [source code](//github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/authentication/) for this demo.
 
 [Log out](logout.sql)
 ' as contents_md;

@@ -36,4 +36,4 @@ select title, description,
 from example_cards
 where $db is null or $db = db_engine;
 
-select 'text' as component, 'See [source code on GitHub](https://github.com/lovasoa/SQLpage/blob/main/examples/official-site/examples/tabs/)' as contents_md;
+select 'text' as component, 'See [source code on GitHub](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/tabs/)' as contents_md;

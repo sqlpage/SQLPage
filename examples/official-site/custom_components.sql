@@ -167,18 +167,18 @@ You can overwrite the default components, including the `shell` component,
 For example, if you want to change the appearance of the `shell` component,
 you can create a file called `sqlpage/templates/shell.handlebars` and write your own HTML in it.
 If you don''t want to start from scratch, you can copy the default `shell` component
-[from the SQLPage source code](https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates/shell.handlebars).
+[from the SQLPage source code](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/shell.handlebars).
 
 ## Examples
 
 All the default components are written in handlebars, and you can read their source code to learn how to write your own.
-[See the default components source code](https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates).
+[See the default components source code](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates).
 
 Some interesting examples are:
 
- - [The `shell` component](https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates/shell.handlebars)
- - [The `card` component](https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates/card.handlebars): simple yet complete example of a component that displays a list of items.
- - [The `table` component](https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates/table.handlebars): more complex example of a component that uses 
+ - [The `shell` component](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/shell.handlebars)
+ - [The `card` component](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/card.handlebars): simple yet complete example of a component that displays a list of items.
+ - [The `table` component](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/table.handlebars): more complex example of a component that uses 
     - the `eq`, `or`, and `sort` handlebars helpers,
     - the `../` syntax to access the parent context,
     - and the `@key` to work with objects whose keys are not known in advance.

@@ -1,4 +1,4 @@
--- https://github.com/lovasoa/SQLpage/discussions/600
+-- https://github.com/sqlpage/SQLPage/discussions/600
 select 'table' as component, 'Link' AS markdown; -- uppercase Link
 select '[It works !](https://example.com)
 

@@ -23,7 +23,7 @@ For the archaeologist, excavation is a tool, not an end in itself. What the arch
 
 To be exploited, archaeological information must be organized according to well-established principles. The first key concept is the sedimentary layer (*Stratigraphic Unit* - SU), which testifies to a human action or a natural phenomenon. The study of the arrangement of these layers reveals the chronology of the site, the succession of events that took place there. These layers can be grouped into archaeological *facts*: ditches, cellars, burials, are indeed groupings of layers that define a specific element. Finally, the objects found in these layers, or *artifacts*, are cataloged and identified by their layer of origin, providing crucial chronological and cultural indications.
 
-![mastraits site](https://github.com/lovasoa/SQLpage/assets/552629/3dbdf81e-b9d3-4268-a8e3-99e568feb695)
+![mastraits site](https://github.com/sqlpage/SQLPage/assets/552629/3dbdf81e-b9d3-4268-a8e3-99e568feb695)
 
 *The excavation site of the Necropolis of Mastraits, in Noisy-le-Grand (93).*
 
@@ -46,7 +46,7 @@ The use of electronic tacheometers, then differential GPS, has made it possible 
 
 The documentary collection obtained at the end of an excavation is particularly precious. These are the only elements that will allow reconstructing the history of the site, by crossing these data with the result of the studies carried out. The fear of the disappearance of this data, or its use by others due to a remarkable discovery, is a feeling often shared within the archaeological community. The archaeologist may feel like a custodian of this information, even expressing a feeling of possession that goes completely against the idea of shared and open science. The idea that opening up data is the best way to protect it is far from obvious.
 
-![conservation sheet, illustrating manual coloring of found skeleton parts](https://github.com/lovasoa/SQLpage/assets/552629/ca9c0f99-a520-4f2b-9826-ae49a89f844b)
+![conservation sheet, illustrating manual coloring of found skeleton parts](https://github.com/sqlpage/SQLPage/assets/552629/ca9c0f99-a520-4f2b-9826-ae49a89f844b)
 > *Conservation sheet, illustrating manual coloring of found skeleton parts*
 
 ![Example of a descriptive sheet of an archaeological layer](https://gitlab.com/projet-r-d-bddsarcheo/tutos/-/raw/main/illustrations_diverses/fiche_us.svg)
@@ -145,7 +145,7 @@ Thus, the installation of the entire system is very simple and relies only on a 
 
 By relying on the documentation (and occasionally asking questions to the software''s author), we were able to develop a very comprehensive interface on our own that meets our needs in the field. Named Bad''Mobil, the web interface provides access to all the attribute data recorded by archaeologists and now allows, thanks to the constant development of SQLPage, **to visualize spatial data**. Documentation produced during the excavation can also be consulted if the files (photos, scanned drawings, etc.) are placed in the right location in the file structure. The pages mainly consist of creation or modification forms, as well as tables listing already recorded elements. The visualization of geometry allows for spatial orientation in the field, particularly in complex excavation sites, and interaction with attribute data.
 
-[![The BadMobil interface, with SQLPage](https://github.com/lovasoa/SQLpage/assets/552629/b421eebd-1d7a-446a-90d4-f360300453d5)](https://gitlab.com/projet-r-d-bddsarcheo/tutos/-/raw/main/illustrations_diverses/interface_badmobil.webp?ref_type=heads)
+[![The BadMobil interface, with SQLPage](https://github.com/sqlpage/SQLPage/assets/552629/b421eebd-1d7a-446a-90d4-f360300453d5)](https://gitlab.com/projet-r-d-bddsarcheo/tutos/-/raw/main/illustrations_diverses/interface_badmobil.webp?ref_type=heads)
 *The BadMobil interface, with SQLPage*
 
 # Use Cases and Concrete Benefits

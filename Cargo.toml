@@ -6,7 +6,7 @@ description = "Build data user interfaces entirely in SQL. A web server that tak
 keywords = ["web", "sql", "framework"]
 license = "MIT"
 homepage = "https://sql-page.com/"
-repository = "https://github.com/lovasoa/SQLpage"
+repository = "https://github.com/sqlpage/SQLPage"
 documentation = "https://docs.rs/sqlpage"
 include = ["/src", "/README.md", "/build.rs", "/sqlpage", "/index.sql", "/.sqlpage_artefacts"]
 

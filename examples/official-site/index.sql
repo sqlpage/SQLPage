@@ -9,7 +9,7 @@ SELECT 'hero' as component,
     'From database to data app, fast.' as title,
     '**SQLPage** lets you build data-driven applications in a few SQL queries.
 
-It’s free, [open-source](https://github.com/lovasoa/sqlpage), lightweight, and easy to use.
+It’s free, [open-source](https://github.com/sqlpage/SQLPage), lightweight, and easy to use.
     ' as description_md,
     'sqlpage_cover_image.webp' as image,
     TRUE as rounded,
@@ -86,7 +86,7 @@ It''s a **lightweight web server** that just receives a request, finds the file 
 and returns a web page for the browser to display.
 
 Written in a fast and secure programming language ([**Rust**](https://en.wikipedia.org/wiki/Rust_(programming_language))),
-it empowers non-developers to build secure web applications easily. You download [a single executable file](https://github.com/lovasoa/SQLpage/releases),
+it empowers non-developers to build secure web applications easily. You download [a single executable file](https://github.com/sqlpage/SQLPage/releases),
 write an `index.sql`, and in five minutes you turned your database into a website that you can
 [deploy on the internet easily](https://datapage.app).
 
@@ -119,7 +119,7 @@ SELECT 'list' as component,
     'Get started: where to go from here ?' as title,
     'Here are some useful links to get you started with SQLPage.' as description;
 SELECT 'Download' as title,
-    'https://github.com/lovasoa/SQLpage/releases' as link,
+    'https://github.com/sqlpage/SQLPage/releases' as link,
     'SQLPage is distributed as a single binary that you can execute locally or on a web server to get started quickly.' as description,
     'green' as color,
     'download' as icon;
@@ -135,7 +135,7 @@ SELECT 'SQLPage Documentation' as title,
     'purple' as color,
     'book' as icon;
 SELECT 'Technical documentation on Github' as title,
-    'https://github.com/lovasoa/SQLpage/blob/main/README.md#sqlpage' as link,
+    'https://github.com/sqlpage/SQLPage/blob/main/README.md#sqlpage' as link,
     'The official README file on Github contains instructions to get started using SQLPage.' as description,
     'yellow' as color,
     'file-text' as icon;
@@ -152,7 +152,7 @@ SELECT 'Learnsqlpage.com' as title,
 
 SELECT 'list' as component, 'Examples' as title;
 SELECT 'Github Examples' as title,
-    'https://github.com/lovasoa/SQLpage/tree/main/examples/' as link,
+    'https://github.com/sqlpage/SQLPage/tree/main/examples/' as link,
     'SQL source code for examples and demos of websites built with SQLPage.' as description,
     'teal' as color,
     'code' as icon;
@@ -164,18 +164,18 @@ SELECT 'Corporate Conundrum' as title,
 
 SELECT 'list' as component, 'Community' as title;
 SELECT 'Discussion forum' as title,
-    'https://github.com/lovasoa/SQLpage/discussions' as link,
+    'https://github.com/sqlpage/SQLPage/discussions' as link,
     'Come to our community page to discuss SQLPage with other users and ask questions.' as description,
     'pink' as color,
     'user-heart' as icon;
 -- github link
 SELECT 'Source code' as title,
-    'https://github.com/lovasoa/SQLPage' as link,
+    'https://github.com/sqlpage/SQLPage' as link,
     'The rust source code for SQLPage itself is open and available on Github.' as description,
     'github' as color,
     'brand-github' as icon;
 SELECT 'Report a bug, make a suggestion' as title,
-    'https://github.com/lovasoa/SQLPage/issues' as link,
+    'https://github.com/sqlpage/SQLPage/issues' as link,
     'If you have a question, a suggestion, or if you found a bug, please open an issue on Github.' as description,
     'red' as color,
     'bug' as icon;

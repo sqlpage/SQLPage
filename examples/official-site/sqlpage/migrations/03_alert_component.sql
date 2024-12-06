@@ -167,7 +167,7 @@ VALUES (
                 "important": true,
                 "dismissible": true,
                 "description":"SQLPage is entirely free and open source.",
-                "link":"https://github.com/lovasoa/SQLPage",
+                "link":"https://github.com/sqlpage/SQLPage",
                 "link_text":"See source code"
             }]'
         )
@@ -182,7 +182,7 @@ VALUES (
             "title":"Free and open source",
             "icon": "free-rights",
             "color": "info",
-            "description_md":"*SQLPage* is entirely free and open source. You can **contribute** to it on [GitHub](https://github.com/lovasoa/SQLPage)."
+            "description_md":"*SQLPage* is entirely free and open source. You can **contribute** to it on [GitHub](https://github.com/sqlpage/SQLPage)."
         }]'
         )
     );

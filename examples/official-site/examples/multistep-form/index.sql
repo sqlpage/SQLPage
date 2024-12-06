@@ -10,7 +10,7 @@ and each step of the form is shown conditionally based on the previous step.
 The form has a variable number of fields: after the number of adults and children are selected,
 a field is shown for each passenger to enter their name.
 
-See [the SQL source on GitHub](https://github.com/lovasoa/SQLpage/blob/main/examples/official-site/examples/multistep-form) for the full code.
+See [the SQL source on GitHub](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/multistep-form) for the full code.
 ' as contents_md;
 
 create temporary table if not exists cities as

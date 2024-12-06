@@ -123,12 +123,12 @@ Advanced users who may want to implement their own csrf protection system can do
 using the [`sqlpage.random_string()`](/functions.sql?function=random_string#function) function,
 and the `hidden` input type of the [`form`](/documentation.sql?component=form#component) component.
 
-For more information, see the [this discussion](https://github.com/lovasoa/SQLpage/discussions/148).
+For more information, see the [this discussion](https://github.com/sqlpage/SQLPage/discussions/148).
 
 ## Database connections
 
 SQLPage uses a fixed pool of database connections, and will never open more connections than the ones you
-[configured](https://github.com/lovasoa/SQLpage/blob/main/configuration.md). So even under heavy load, your database
+[configured](https://github.com/sqlpage/SQLPage/blob/main/configuration.md). So even under heavy load, your database
 connection limit will never be saturated by SQLPage.
 
 And SQLPage will accept any restriction you put on the database user you use to connect to your database, so you can

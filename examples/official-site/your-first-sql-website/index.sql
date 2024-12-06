@@ -22,9 +22,9 @@ SELECT 'hero' as component,
     end as image,
     CASE $os
         WHEN 'macos' THEN '#download'
-        WHEN 'windows' THEN 'https://github.com/lovasoa/SQLpage/releases/latest/download/sqlpage-windows.zip'
-        WHEN 'linux' THEN 'https://github.com/lovasoa/SQLpage/releases/latest/download/sqlpage-linux.tgz'
-        ELSE 'https://github.com/lovasoa/SQLpage/releases'
+        WHEN 'windows' THEN 'https://github.com/sqlpage/SQLPage/releases/latest/download/sqlpage-windows.zip'
+        WHEN 'linux' THEN 'https://github.com/sqlpage/SQLPage/releases/latest/download/sqlpage-linux.tgz'
+        ELSE 'https://github.com/sqlpage/SQLPage/releases'
     END AS link,
     CASE $os
         WHEN 'macos' THEN 'Install SQLPage using Homebrew'

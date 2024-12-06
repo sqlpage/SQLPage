@@ -1,3 +1,3 @@
-FROM lovasoa/sqlpage
+FROM sqlpage/SQLPage
 
 COPY *.sql sqlpage ./

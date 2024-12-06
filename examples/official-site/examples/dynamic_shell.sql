@@ -15,15 +15,15 @@ SELECT 'dynamic' AS component, json_object(
                     'title', 'Blog'
                 ),
                 json_object(
-                    'link', 'https://github.com/lovasoa/sqlpage/issues',
+                    'link', 'https://github.com/sqlpage/SQLPage/issues',
                     'title', 'Issues'
                 ),
                 json_object(
-                    'link', 'https://github.com/lovasoa/sqlpage/discussions',
+                    'link', 'https://github.com/sqlpage/SQLPage/discussions',
                     'title', 'Discussions'
                 ),
                 json_object(
-                    'link', 'https://github.com/lovasoa/sqlpage',
+                    'link', 'https://github.com/sqlpage/SQLPage',
                     'title', 'Github'
                 )
             )
@@ -59,15 +59,15 @@ SELECT ''dynamic'' AS component, json_object(
                     ''title'', ''Blog''
                 ),
                 json_object(
-                    ''link'', ''https://github.com/lovasoa/sqlpage/issues'',
+                    ''link'', ''https://github.com/sqlpage/SQLPage/issues'',
                     ''title'', ''Issues''
                 ),
                 json_object(
-                    ''link'', ''https://github.com/lovasoa/sqlpage/discussions'',
+                    ''link'', ''https://github.com/sqlpage/SQLPage/discussions'',
                     ''title'', ''Discussions''
                 ),
                 json_object(
-                    ''link'', ''https://github.com/lovasoa/sqlpage'',
+                    ''link'', ''https://github.com/sqlpage/SQLPage'',
                     ''title'', ''Github''
                 )
             )
@@ -93,9 +93,9 @@ INSERT INTO menu_items (id, title, link, parent_id) VALUES
     (1, ''Home'', ''/'', NULL),
     (2, ''Community'', NULL, NULL),
     (3, ''Blog'', ''blog.sql'', 2),
-    (4, ''Issues'', ''https://github.com/lovasoa/sqlpage/issues'', 2),
-    (5, ''Discussions'', ''https://github.com/lovasoa/sqlpage/discussions'', 2),
-    (6, ''Github'', ''https://github.com/lovasoa/sqlpage'', 2);
+    (4, ''Issues'', ''https://github.com/sqlpage/SQLPage/issues'', 2),
+    (5, ''Discussions'', ''https://github.com/sqlpage/SQLPage/discussions'', 2),
+    (6, ''Github'', ''https://github.com/sqlpage/SQLPage'', 2);
 ```
 
 Then, one could use the following SQL query to fetch

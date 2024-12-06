@@ -17,4 +17,4 @@ To override a default component, create a file with the same name as the default
 If you want to start from an existing component, you can copy it from the `sqlpage/templates` directory
 in the SQLPage source code[^2].
 
-[^2]: A simple component to start from: https://github.com/lovasoa/SQLpage/blob/main/sqlpage/templates/code.handlebars
+[^2]: A simple component to start from: https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/code.handlebars

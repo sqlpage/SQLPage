@@ -85,14 +85,14 @@ Later, when you want to deploy your website online, you can switch back to a per
 - a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/sqlite/struct.SqliteConnectOptions.html)),
 - a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/postgres/struct.PgConnectOptions.html)),
 - a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mysql/struct.MySqlConnectOptions.html)),
-- a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html#method.from_str), [note about named instances](https://github.com/lovasoa/SQLpage/issues/92)),
+- a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html#method.from_str), [note about named instances](https://github.com/sqlpage/SQLPage/issues/92)),
 
 > If `user` or `password` **contains special characters**, you should [**percent-encode**](https://en.wikipedia.org/wiki/Percent-encoding) them.
 >
 > For instance, a SQL Server database named `db` running on `localhost` port `1433` with the username `funny:user` and the password `p@ssw0rd` would be represented as 
 > `mssql://funny%3Auser:p%40ssw0rd@localhost:1433/db`.
 
-For more information about the properties that can be set in sqlpage.json, see [SQLPage's configuration documentation](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
+For more information about the properties that can be set in sqlpage.json, see [SQLPage's configuration documentation](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage)
 
 ![screenshot for the full sql website folder organisation](full-website.png)
 
@@ -159,7 +159,7 @@ SELECT name AS title,  CONCAT(name, ' is a user on this website.') as descriptio
 
 ### Your first SQLPage website is ready!
 
-You can view [the full source code for this example on Github](https://github.com/lovasoa/SQLpage/tree/main/examples/simple-website-example)
+You can view [the full source code for this example on Github](https://github.com/sqlpage/SQLPage/tree/main/examples/simple-website-example)
 
 Here is a screenshot of the final result:
 
@@ -179,14 +179,14 @@ Just create an account, and follow the instructions to upload your website to ou
 If you prefer to host your website yourself, you can use a cloud provider or a VPS provider. You will need to:
 - Configure domain name resolution to point to your server
 - Open the port you are using (8080 by default) in your server's firewall
-- [Setup docker](https://github.com/lovasoa/SQLpage?tab=readme-ov-file#with-docker) or another process manager such as [systemd](https://github.com/lovasoa/SQLpage/blob/main/sqlpage.service) to start SQLPage automatically when your server boots and to keep it running
+- [Setup docker](https://github.com/sqlpage/SQLPage?tab=readme-ov-file#with-docker) or another process manager such as [systemd](https://github.com/sqlpage/SQLPage/blob/main/sqlpage.service) to start SQLPage automatically when your server boots and to keep it running
 - Optionally, [setup a reverse proxy](nginx.sql) to avoid exposing SQLPage directly to the internet
 - Optionally, setup a TLS certificate to enable HTTPS
-- Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](https://github.com/lovasoa/SQLpage/blob/main/configuration.md#configuring-sqlpage)
+- Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage)
 
 # Go further
 
 - Check out [learnsqlpage.com](https://learnsqlpage.com) by Nick Antonaccio for an in-depth tutorial with many examples
 - Read the [SQLPage documentation](/documentation.sql) to learn about all the components available in SQLPage
-- Join the [SQLPage community](https://github.com/lovasoa/SQLpage/discussions) to ask questions and share your projects
+- Join the [SQLPage community](https://github.com/sqlpage/SQLPage/discussions) to ask questions and share your projects
 - If you like videos better, check this series that shows how to build and deploy your app from scratch [SQLPage on Youtube](https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_) 

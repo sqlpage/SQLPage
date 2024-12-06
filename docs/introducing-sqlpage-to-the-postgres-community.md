@@ -48,10 +48,10 @@ order by name;
 
 ## Get Started
 
-To explore the possibilities and limitations of SQLPage, visit [the official website](https://sql-page.com) and read the [SQL website building tutorial](https://sql-page.com/get%20started.sql). Join the [SQLPage community](https://github.com/lovasoa/SQLpage/discussions) to discuss your PostgreSQL-powered web applications.
+To explore the possibilities and limitations of SQLPage, visit [the official website](https://sql-page.com) and read the [SQL website building tutorial](https://sql-page.com/get%20started.sql). Join the [SQLPage community](https://github.com/sqlpage/SQLPage/discussions) to discuss your PostgreSQL-powered web applications.
 
 ## Contributing
 
-SQLPage is an open-source project, and contributions from the PostgreSQL community are highly encouraged. Visit [the GitHub repository](https://github.com/lovasoa/sqlpage) to contribute, report issues, or submit feature requests.
+SQLPage is an open-source project, and contributions from the PostgreSQL community are highly encouraged. Visit [the GitHub repository](https://github.com/sqlpage/SQLPage) to contribute, report issues, or submit feature requests.
 
 Discover the power of SQL-driven web application development with SQLPage and take your PostgreSQL experience to new heights!

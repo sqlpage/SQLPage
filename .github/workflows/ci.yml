@@ -18,7 +18,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY_USERNAME: lovasoa
-  REGISTRY_IMAGE: lovasoa/sqlpage
+  REGISTRY_IMAGE: sqlpage/SQLPage
 
 jobs:
   compile_and_lint:

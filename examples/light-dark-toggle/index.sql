@@ -15,7 +15,7 @@ The SQL backend to this is SQLite, so the installation is easy:
 
 1. [Install SQLpage](https://sql-page.com/your-first-sql-website/)
 
-1. Clone SQLpage''s repository: `git clone https://github.com/lovasoa/SQLpage.git`
+1. Clone SQLpage''s repository: `git clone https://github.com/sqlpage/SQLPage.git`
 
 1. cd to `SQLpage/examples/light-dark-toggle` and run `sqlpage` in the cloned directory
 
