@@ -145,11 +145,11 @@ The easiest way to get started is to download the latest release from the
 
 ### With docker
 
-To run on a server, you can use [the docker image](https://hub.docker.com/r/sqlpage/SQLPage):
+To run on a server, you can use [the docker image](https://hub.docker.com/r/lovasoa/SQLPage):
 
 - [Install docker](https://docs.docker.com/get-docker/)
 - In a terminal, run the following command:
-  - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm sqlpage/SQLPage`
+  - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/SQLPage`
   - (`"$(pwd):/var/www"` allows sqlpage to run sql files from your current working directory)
 - Create a file called index.sql with the contents from [this example](./index.sql)
 - Open https://localhost:8080 in your browser

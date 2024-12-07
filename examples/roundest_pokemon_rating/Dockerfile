@@ -1,4 +1,4 @@
-FROM sqlpage/SQLPage:latest
+FROM lovasoa/SQLPage:latest
 
 COPY sqlpage /etc/sqlpage
 COPY src /var/www
