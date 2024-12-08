@@ -27,7 +27,7 @@ The struggle intensifies when teams are small and lack coding skills or experien
 
 ![](https://cdn-images-1.medium.com/max/800/1*1IoXc8-07rqXO3yvKC13nQ.png)
 
-*Typical Data Flow of digital native companies.*
+*Typical Data Flow of a digital native company.*
 
 SQLPage changes this by allowing data professionals to use the same language — SQL — across the entire process, from building data pipelines to creating fully functional digital tools. Data analysts, scientists, business analysts, DBAs, and IT teams already have the expertise to craft their own custom data applications from the ground up.
 
