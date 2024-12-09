@@ -25,6 +25,7 @@
    - Useful to reset a connection to the database after each request.
 - Fix a bug where the `sqlpage.header` function would not work with headers containing uppercase letters.
 - Fix a bug where the table component would not sort columns that contained a space in their name.
+- Fix a bug where stacked bar charts would not stack the bars correctly in some cases.
 
 ## 0.31.0 (2024-11-24)
 

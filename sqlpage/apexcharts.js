@@ -46,35 +46,45 @@ sqlpage_chart = (() => {
     ]),
   );
 
-  /** @typedef { { [name:string]: {data:{x:number,y:number}[], name:string} } } Series */
+  /** @typedef { { [name:string]: {data:{x:number|string|Date,y:number}[], name:string} } } Series */
 
   /**
-   * @param {Series} series
-   * @returns {Series} */
+   * Aligns series data points by their x-axis categories, ensuring all series have data points
+   * for each unique category. Missing values are filled with zeros. Categories are sorted.
+   * 
+   * @example
+   * // Input series:
+   * const series = [
+   *   { name: "A", data: [{x: "Jan", y: 10}, {x: "Mar", y: 30}] },
+   *   { name: "B", data: [{x: "Jan", y: 20}, {x: "Feb", y: 25}] }
+   * ];
+   * 
+   * // Output after align_categories:
+   * // [
+   * //   { name: "A", data: [{x: "Feb", y: 0}, {x: "Jan", y: 10}, {x: "Mar", y: 30}] },
+   * //   { name: "B", data: [{x: "Feb", y: 25}, {x: "Jan", y: 20}, {x: "Mar", y: 0}] }
+   * // ]
+   * 
+   * @param {Series[string][]} series - Array of series objects, each containing name and data points
+   * @returns {Series[string][]} Aligned series with consistent categories across all series
+   */
   function align_categories(series) {
-    const new_series = series.map((s) => ({ name: s.name, data: [] }));
-    let category = null;
-    do {
-      category = null;
-      series.forEach((s, s_i) => {
-        const point = s.data[0];
-        let new_point = { x: category, y: 0 };
-        if (point) {
-          if (category == null) category = point.x;
-          if (category === point.x) {
-            new_point = s.data.shift();
-          }
-        }
-        new_series[s_i].data.push(new_point);
-      });
-      for (const s of new_series) {
-        s.data[s.data.length - 1].x = category;
-      }
-    } while (category != null);
-    for (const s of new_series) {
-      s.data.pop();
-    }
-    return new_series;
+    // Collect all unique categories
+    const categories = new Set(series.flatMap(s => s.data.map(p => p.x)));
+    const sortedCategories = Array.from(categories).sort();
+
+    // Create a map of category -> value for each series
+    return series.map(s => {
+      const valueMap = new Map(s.data.map(point => [point.x, point.y]));
+
+      return {
+        name: s.name,
+        data: sortedCategories.map(category => ({
+          x: category,
+          y: valueMap.get(category) || 0
+        }))
+      };
+    });
   }
 
   /** @param {HTMLElement} c */
@@ -155,7 +165,7 @@ sqlpage_chart = (() => {
             ? (_val, { seriesIndex, w }) => w.config.series[seriesIndex].name
             : data.type === "pie"
               ? (value, { seriesIndex, w }) =>
-                  `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
+                `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
               : (value) => value.toLocaleString(),
       },
       fill: {
@@ -235,6 +245,7 @@ sqlpage_chart = (() => {
       series,
     };
     if (labels) options.labels = labels;
+    console.log("Rendering chart", options);
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
     if (window.charts) window.charts.push(chart);
