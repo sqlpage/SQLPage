@@ -26,6 +26,7 @@
 - Fix a bug where the `sqlpage.header` function would not work with headers containing uppercase letters.
 - Fix a bug where the table component would not sort columns that contained a space in their name.
 - Fix a bug where stacked bar charts would not stack the bars correctly in some cases.
+- Update ApexCharts to [v4.1.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.1.0).
 
 ## 0.31.0 (2024-11-24)
 
