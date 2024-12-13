@@ -48,9 +48,10 @@ SELECT 'alert' as component,
     'Do you prefer videos ?' as title,
     'brand-youtube' as icon,
     'purple' as color,
-    'I made a video to introduce you to SQLPage. You can watch it on YouTube. The video covers everything from the underlying technology to the philosophy behind SQLPage to the actual steps to create your first website.' as description_md,
+    'We made videos to introduce you to SQLPage. You can watch them on YouTube. The videos cover everything from the underlying technology to the philosophy behind SQLPage to the actual steps to create your first website.' as description_md,
     'https://www.youtube.com/watch?v=9NJgH_-zXjY' AS link,
     'Watch the introduction video' as link_text;
+select 'https://www.youtube.com/watch?v=6D5D10v18b0&list=PLTue_qIAHxActQnLn_tHWZUNXziZTeraB' as link, 'Tutorial video series' as title;
 
 select 'text' as component, sqlpage.read_file_as_text(printf('your-first-sql-website/tutorial-install-%s.md',
     case
