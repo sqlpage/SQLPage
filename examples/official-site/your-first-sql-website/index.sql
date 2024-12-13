@@ -7,6 +7,8 @@ select 'dynamic' as component, properties FROM example WHERE component = 'shell'
 set os = COALESCE($os, case 
     when sqlpage.header('user-agent') like '%windows%' then 'windows'
     when sqlpage.header('user-agent') like '%x11; linux%' then 'linux'
+    when sqlpage.header('user-agent') like '%x11; ubuntu; linux%' then 'linux'
+    when sqlpage.header('user-agent') like '%x11; debian; linux%' then 'linux'
     when sqlpage.header('user-agent') like '%macintosh%' then 'macos'
     else 'any'
 end);
