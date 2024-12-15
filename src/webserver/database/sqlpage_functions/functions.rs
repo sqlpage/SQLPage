@@ -448,11 +448,11 @@ async fn run_sql<'a>(
         log::debug!("run_sql: first argument is NULL, returning NULL");
         return Ok(None);
     };
-    let sql_file = request
-        .app_state
+    let app_state = &request.app_state;
+    let sql_file = app_state
         .sql_file_cache
         .get_with_privilege(
-            &request.app_state,
+            app_state,
             std::path::Path::new(sql_file_path.as_ref()),
             true,
         )
@@ -466,11 +466,14 @@ async fn run_sql<'a>(
     } else {
         request.clone()
     };
-    if tmp_req.clone_depth > 8 {
-        anyhow::bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to 8 levels. \n\
+    let max_recursion_depth = app_state.config.max_recursion_depth;
+    if tmp_req.clone_depth > max_recursion_depth {
+        anyhow::bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to {max_recursion_depth} levels. \n\
         Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\
         This is to prevent infinite loops and stack overflows.\n\
-        Make sure that your SQL file does not try to run itself, directly or through a chain of other files.");
+        Make sure that your SQL file does not try to run itself, directly or through a chain of other files.\n\
+        If you need to include more files, you can increase max_recursion_depth in the configuration file.\
+        ");
     }
     let mut results_stream =
         crate::webserver::database::execute_queries::stream_query_results_boxed(

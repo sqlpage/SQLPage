@@ -243,6 +243,10 @@ pub struct AppConfig {
     /// `SSL_CERT_FILE` and `SSL_CERT_DIR` environment variables.
     #[serde(default = "default_system_root_ca_certificates")]
     pub system_root_ca_certificates: bool,
+
+    /// Maximum depth of recursion allowed in the `run_sql` function.
+    #[serde(default = "default_max_recursion_depth")]
+    pub max_recursion_depth: u8,
 }
 
 impl AppConfig {
@@ -488,6 +492,10 @@ fn default_compress_responses() -> bool {
 fn default_system_root_ca_certificates() -> bool {
     std::env::var("SSL_CERT_FILE").is_ok_and(|x| !x.is_empty())
         || std::env::var("SSL_CERT_DIR").is_ok_and(|x| !x.is_empty())
+}
+
+fn default_max_recursion_depth() -> u8 {
+    10
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]

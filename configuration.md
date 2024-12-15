@@ -33,6 +33,7 @@ Here are the available configuration options and their default values:
 | `environment`                                 | development                                                 | The environment in which SQLPage is running. Can be either `development` or `production`. In `production` mode, SQLPage will hide error messages and stack traces from the user, and will cache sql files in memory to avoid reloading them from disk. |
 | `content_security_policy`                     | `script-src 'self' 'nonce-XXX` | The [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) to set in the HTTP headers. If you get CSP errors in the browser console, you can set this to the empty string to disable CSP. |
 | `system_root_ca_certificates`                 | false                                                      | Whether to use the system root CA certificates to validate SSL certificates when making http requests with `sqlpage.fetch`. If set to false, SQLPage will use its own set of root CA certificates. If the `SSL_CERT_FILE` or `SSL_CERT_DIR` environment variables are set, they will be used instead of the system root CA certificates. |
+| `max_recursion_depth`                         | 10                                                           | Maximum depth of recursion allowed in the `run_sql` function. Maximum value is 255. |
 
 Multiple configuration file formats are supported:
 you can use a [`.json5`](https://json5.org/) file, a [`.toml`](https://toml.io/) file, or a [`.yaml`](https://en.wikipedia.org/wiki/YAML#Syntax) file.
