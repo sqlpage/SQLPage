@@ -854,6 +854,8 @@ fn is_json_function(expr: &Expr) -> bool {
                     "json_objectagg",
                     "json_group_array",
                     "json_group_object",
+                    "json",
+                    "jsonb",
                 ]
                 .iter()
                 .any(|&func| value.eq_ignore_ascii_case(func))
@@ -1349,5 +1351,21 @@ mod test {
             assert_eq!(params, []);
             assert_eq!(json_columns, Vec::<String>::new());
         }
+    }
+
+    #[test]
+    fn test_extract_json_columns_from_literal() {
+        let sql = r#"
+            SELECT 
+                'Pro Plan' as title,
+                JSON('{"icon":"database","color":"blue","description":"1GB Database"}') as item,
+                JSON('{"icon":"headset","color":"green","description":"Priority Support"}') as item
+        "#;
+
+        let stmt = parse_stmt(sql, &SQLiteDialect {});
+        let json_columns = extract_json_columns(&stmt, AnyKind::Sqlite);
+
+        assert!(json_columns.contains(&"item".to_string()));
+        assert!(!json_columns.contains(&"title".to_string()));
     }
 }

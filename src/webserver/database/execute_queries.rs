@@ -442,3 +442,80 @@ impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
         true
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+
+    fn create_row_item(value: Value) -> DbItem {
+        DbItem::Row(value)
+    }
+
+    fn assert_json_value(item: &DbItem, key: &str, expected: Value) {
+        let DbItem::Row(Value::Object(row)) = item else {
+            panic!("Expected DbItem::Row");
+        };
+        assert_eq!(row[key], expected);
+    }
+
+    #[test]
+    fn test_basic_json_string_conversion() {
+        let mut item = create_row_item(json!({
+            "json_col": "{\"key\": \"value\"}",
+            "normal_col": "text"
+        }));
+        apply_json_columns(&mut item, &["json_col".to_string()]);
+        assert_json_value(&item, "json_col", json!({"key": "value"}));
+        assert_json_value(&item, "normal_col", json!("text"));
+    }
+
+    #[test]
+    fn test_json_array_conversion() {
+        let mut item = create_row_item(json!({
+            "array_col": ["{\"a\": 1}", "{\"b\": 2}"],
+            "normal_array": ["text"]
+        }));
+        apply_json_columns(&mut item, &["array_col".to_string()]);
+        assert_json_value(&item, "array_col", json!([{"a": 1}, {"b": 2}]));
+        assert_json_value(&item, "normal_array", json!(["text"]));
+    }
+
+    #[test]
+    fn test_invalid_json_handling() {
+        let mut item = create_row_item(json!({
+            "invalid_json": "{not valid json}",
+            "normal_col": "text"
+        }));
+        apply_json_columns(&mut item, &["invalid_json".to_string()]);
+        assert_json_value(&item, "invalid_json", json!("{not valid json}"));
+        assert_json_value(&item, "normal_col", json!("text"));
+    }
+
+    #[test]
+    fn test_missing_column_handling() {
+        let mut item = create_row_item(json!({
+            "existing_col": "text"
+        }));
+        apply_json_columns(&mut item, &["missing_col".to_string()]);
+        assert_json_value(&item, "existing_col", json!("text"));
+    }
+
+    #[test]
+    fn test_non_row_dbitem_handling() {
+        let mut item = DbItem::FinishedQuery;
+        apply_json_columns(&mut item, &["json_col".to_string()]);
+        assert!(matches!(item, DbItem::FinishedQuery));
+    }
+
+    #[test]
+    fn test_duplicate_json_column_names() {
+        let mut item = create_row_item(json!({
+            "json_col": "{\"key\": \"value\"}",
+            "normal_col": "text"
+        }));
+        apply_json_columns(&mut item, &["json_col".to_string(), "json_col".to_string()]);
+        assert_json_value(&item, "json_col", json!({"key": "value"}));
+        assert_json_value(&item, "normal_col", json!("text"));
+    }
+}

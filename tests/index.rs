@@ -526,6 +526,31 @@ async fn privileged_paths_are_not_accessible() {
 }
 
 #[actix_web::test]
+/// https://github.com/sqlpage/SQLPage/issues/738
+async fn test_json_columns() {
+    let resp_result = req_path("/tests/json_columns.sql").await;
+    let resp = resp_result.expect("Failed to request /tests/json_columns.sql");
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_html_escaped = body_str.replace("&quot;", "\"");
+    assert!(
+        !body_html_escaped.contains("error"),
+        "the request should not have failed, in: {body_html_escaped}"
+    );
+    assert!(body_html_escaped.contains("1GB Database"));
+    assert!(body_html_escaped.contains("Priority Support"));
+    assert!(
+        !body_html_escaped.contains("\"description\""),
+        "the json should have been parsed, not returned as a string, in: {body_html_escaped}"
+    );
+    assert!(
+        !body_html_escaped.contains("{"),
+        "the json should have been parsed, not returned as a string, in: {body_html_escaped}"
+    );
+}
+
+#[actix_web::test]
 async fn test_static_files() {
     let resp = req_path("/tests/it_works.txt").await.unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);

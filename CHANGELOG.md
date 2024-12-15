@@ -29,6 +29,7 @@
 - Update ApexCharts to [v4.1.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.1.0).
 - Temporarily disable automatic tick amount calculation in the chart component. This was causing issues with mislabeled x-axis data, because of a bug in ApexCharts.
 - Add a new `max_recursion_depth` configuration option to limit the depth of recursion allowed in the `run_sql` function.
+- Fix a bug where the results of the `JSON` function in sqlite would be interpreted as a string instead of a json object.
 
 ## 0.31.0 (2024-11-24)
 
