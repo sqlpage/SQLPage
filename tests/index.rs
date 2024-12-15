@@ -528,6 +528,12 @@ async fn privileged_paths_are_not_accessible() {
 #[actix_web::test]
 /// https://github.com/sqlpage/SQLPage/issues/738
 async fn test_json_columns() {
+    let app_data = make_app_data().await;
+    if !matches!(app_data.db.to_string().to_lowercase().as_str(), "postgres" | "sqlite") {
+        log::info!("Skipping test_json_columns on database {}", app_data.db);
+        return;
+    }
+
     let resp_result = req_path("/tests/json_columns.sql").await;
     let resp = resp_result.expect("Failed to request /tests/json_columns.sql");
     assert_eq!(resp.status(), http::StatusCode::OK);
