@@ -31,6 +31,7 @@
 - Add a new `max_recursion_depth` configuration option to limit the depth of recursion allowed in the `run_sql` function.
 - Fix a bug where the results of the `JSON` function in sqlite would be interpreted as a string instead of a json object.
 - Fix a bug where the `sqlpage.environment_variable` function would return an error if the environment variable was not set. Now it returns `null` instead.
+- Update ApexCharts to [v4.3.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.3.0).
 
 ## 0.31.0 (2024-11-24)
 
