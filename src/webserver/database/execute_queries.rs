@@ -457,6 +457,7 @@ mod tests {
             panic!("Expected DbItem::Row");
         };
         assert_eq!(row[key], expected);
+        drop(expected);
     }
 
     #[test]
