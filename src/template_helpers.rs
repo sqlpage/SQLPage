@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use crate::{app_config::AppConfig, utils::static_filename};
 use anyhow::Context as _;
 use handlebars::{
-    handlebars_helper, Context, Handlebars, HelperDef, PathAndJson, RenderError, RenderErrorReason,
-    Renderable, ScopedJson,
+    handlebars_helper, Context, Handlebars, HelperDef, JsonTruthy, PathAndJson, RenderError,
+    RenderErrorReason, Renderable, ScopedJson,
 };
 use serde_json::Value as JsonValue;
 
@@ -19,6 +19,10 @@ type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     let site_prefix = config.site_prefix.clone();
+
+    register_helper(h, "all", HelperCheckTruthy(false));
+    register_helper(h, "any", HelperCheckTruthy(true));
+
     register_helper(h, "stringify", stringify_helper as H);
     register_helper(h, "parse_json", parse_json_helper as EH);
     register_helper(h, "default", default_helper as HH);
@@ -398,6 +402,26 @@ fn sum_helper<'reg, 'rc>(
     }
     write!(writer, "{sum}")?;
     Ok(())
+}
+
+/// Helper that returns the first argument with the given truthiness, or the last argument if none have it.
+/// Equivalent to a && b && c && ... if the truthiness is false,
+/// or a || b || c || ... if the truthiness is true.
+pub struct HelperCheckTruthy(bool);
+
+impl CanHelp for HelperCheckTruthy {
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        for arg in args {
+            if arg.value().is_truthy(false) == self.0 {
+                return Ok(arg.value().clone());
+            }
+        }
+        if let Some(last) = args.last() {
+            Ok(last.value().clone())
+        } else {
+            Err("expected at least one argument".to_string())
+        }
+    }
 }
 
 trait CanHelp: Send + Sync + 'static {

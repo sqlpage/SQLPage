@@ -25,9 +25,13 @@
         {{~#if id}} id="{{id}}"{{/if}}>
             <div class="card h-100
                 {{~#if active}} card-active {{/if~}}
-                {{~#if background_color}} bg-{{background_color}} text-{{background_color}}-fg
-                {{~else}}{{#if embed}}{{#unless (or title description)}} bg-transparent border-0{{/unless}}{{/if}}
-                {{~/if~}}
+                {{~#if background_color}}
+                    bg-{{background_color}} text-{{background_color}}-fg
+                {{~else}}
+                    {{#if (all embed (not title) (not description) (not icon))}}
+                        bg-transparent border-0
+                    {{/if}}
+                {{/if}}
                 "
                 {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
@@ -41,7 +45,7 @@
                          <div class="card-status-start bg-{{color}}"></div>
                     {{/if}}
                 {{/if}}
-                <div class="card-body {{#if embed}}{{#unless (or title description)}}p-0{{/unless}}{{/if}}">
+                <div class="card-body {{#if (all embed (not title) (not description) (not icon))}}p-0{{/if}}">
                     {{#if title}}<h2 class="card-title fs-3 me-3">{{title}}</h2>{{/if}}
                     <div class="card-content remove-bottom-margin{{#if (and icon (not title))}} pe-4{{/if}}">
                         {{~description~}}
