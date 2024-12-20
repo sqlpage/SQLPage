@@ -28,7 +28,7 @@
                 {{~#if background_color}}
                     bg-{{background_color}} text-{{background_color}}-fg
                 {{~else}}
-                    {{#if (all embed (not title) (not description) (not icon))}}
+                    {{#if (all embed (not title) (not icon))}}
                         bg-transparent border-0
                     {{/if}}
                 {{/if}}
@@ -45,7 +45,7 @@
                          <div class="card-status-start bg-{{color}}"></div>
                     {{/if}}
                 {{/if}}
-                <div class="card-body {{#if (all embed (not title) (not description) (not icon))}}p-0{{/if}}">
+                <div class="card-body {{#if (all embed (not title) (not icon))}}p-0{{/if}}">
                     {{#if title}}<h2 class="card-title fs-3 me-3">{{title}}</h2>{{/if}}
                     <div class="card-content remove-bottom-margin{{#if (and icon (not title))}} pe-4{{/if}}">
                         {{~description~}}
