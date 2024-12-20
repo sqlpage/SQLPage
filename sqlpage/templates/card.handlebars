@@ -26,7 +26,7 @@
             <div class="card h-100
                 {{~#if active}} card-active {{/if~}}
                 {{~#if background_color}} bg-{{background_color}} text-{{background_color}}-fg
-                {{~else}}{{#if embed}} bg-transparent border-0{{/if}}
+                {{~else}}{{#if embed}}{{#if (not title)}}{{#if (not description)}} bg-transparent border-0{{/if}}{{/if}}{{/if}}
                 {{~/if~}}
                 "
                 {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
@@ -39,7 +39,7 @@
                 {{#if color}}
                     <div class="card-status-start bg-{{color}}"></div>
                 {{/if}}
-                <div class="card-body {{#if embed}}p-0{{/if}}">
+                <div class="card-body {{#if embed}}{{#if (not title)}}{{#if (not description)}}p-0{{/if}}{{/if}}{{/if}}">
                     {{#if title}}<h2 class="card-title fs-3 me-3">{{title}}</h2>{{/if}}
                     <div class="card-content remove-bottom-margin{{#if (and icon (not title))}} pe-4{{/if}}">
                         {{~description~}}
