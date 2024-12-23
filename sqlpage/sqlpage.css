@@ -1,6 +1,13 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css */
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler-vendors.min.css */
 
+/* 241220RH printer-friendly; output all code to the printer */
+@media print {
+    pre:has(code) {
+        max-height: none !important;
+    }
+}
+
 :root {
   /* Workaround for https://github.com/tabler/tabler/issues/1879 */
   --tblr-text-secondary-rgb: var(--tblr-secondary-rgb);
