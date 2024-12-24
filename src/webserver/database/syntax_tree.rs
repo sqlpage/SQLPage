@@ -38,6 +38,7 @@ pub(crate) enum StmtParam {
     Literal(String),
     Null,
     Concat(Vec<StmtParam>),
+    Coalesce(Vec<StmtParam>),
     JsonObject(Vec<StmtParam>),
     JsonArray(Vec<StmtParam>),
     FunctionCall(SqlPageFunctionCall),
@@ -53,6 +54,13 @@ impl std::fmt::Display for StmtParam {
             StmtParam::Null => write!(f, "NULL"),
             StmtParam::Concat(items) => {
                 write!(f, "CONCAT(")?;
+                for item in items {
+                    write!(f, "{item}, ")?;
+                }
+                write!(f, ")")
+            }
+            StmtParam::Coalesce(items) => {
+                write!(f, "COALESCE(")?;
                 for item in items {
                     write!(f, "{item}, ")?;
                 }
@@ -163,6 +171,7 @@ pub(super) async fn extract_req_param<'a, 'b>(
         StmtParam::Concat(args) => concat_params(&args[..], request, db_connection).await?,
         StmtParam::JsonObject(args) => json_object_params(&args[..], request, db_connection).await?,
         StmtParam::JsonArray(args) => json_array_params(&args[..], request, db_connection).await?,
+        StmtParam::Coalesce(args) => coalesce_params(&args[..], request, db_connection).await?,
         StmtParam::FunctionCall(func) => func.evaluate(request, db_connection).await.with_context(|| {
             format!(
                 "Error in function call {func}.\nExpected {:#}",
@@ -185,6 +194,19 @@ async fn concat_params<'a, 'b>(
         result.push_str(&arg);
     }
     Ok(Some(Cow::Owned(result)))
+}
+
+async fn coalesce_params<'a, 'b>(
+    args: &[StmtParam],
+    request: &'a RequestInfo,
+    db_connection: &'b mut DbConn,
+) -> anyhow::Result<Option<Cow<'a, str>>> {
+    for arg in args {
+        if let Some(arg) = Box::pin(extract_req_param(arg, request, db_connection)).await? {
+            return Ok(Some(arg));
+        }
+    }
+    Ok(None)
 }
 
 async fn json_object_params<'a, 'b>(

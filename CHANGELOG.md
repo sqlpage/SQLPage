@@ -33,6 +33,7 @@
 - Fix a bug where the `sqlpage.environment_variable` function would return an error if the environment variable was not set. Now it returns `null` instead.
 - Update ApexCharts to [v4.3.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.3.0).
 - New `article` property in the text component to display text in a more readable, article-like format.
+- Add support for evaluating calls to `coalesce` inside sqlpage functions. This means you can now use `coalesce` inside arguments of sqlpage functions, and it will be evaluated inside sqlpage. For instance, this lets you call `sqlpage.link(coalesce($url, 'https://sql-page.com'))` to create a link that will use the value of `$url` if it is not null, or fallback to `https://sql-page.com` if it is null.
 
 ## 0.31.0 (2024-11-24)
 

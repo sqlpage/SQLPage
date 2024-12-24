@@ -659,6 +659,12 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
                     json_obj_args.push(function_arg_to_stmt_param(arg)?);
                 }
                 Some(StmtParam::JsonArray(json_obj_args))
+            } else if func_name.eq_ignore_ascii_case("coalesce") {
+                let mut coalesce_args = Vec::with_capacity(args.len());
+                for arg in args {
+                    coalesce_args.push(function_arg_to_stmt_param(arg)?);
+                }
+                Some(StmtParam::Coalesce(coalesce_args))
             } else {
                 log::warn!("SQLPage cannot emulate the following function: {func_name}");
                 None
