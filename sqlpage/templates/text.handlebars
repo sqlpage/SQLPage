@@ -7,9 +7,11 @@
     {{/if}}
 {{~/if~}}
 {{~#if contents_md~}}
-    <div class="remove-bottom-margin">{{{markdown contents_md}}}</div>
+    <div class="remove-bottom-margin {{#if center}}mx-auto{{/if}} {{#if article}}markdown article-text{{/if}}">
+        {{{~markdown contents_md~}}}
+    </div>
 {{~/if~}}
-<p class="{{#if center}}mx-auto{{/if}}">
+<p class="{{#if center}}mx-auto{{/if}} {{#if article}}markdown article-text{{/if}}">
     {{contents}}
     {{~#each_row~}}
         {{~#if break~}}</p><p>{{~/if~}}

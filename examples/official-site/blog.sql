@@ -4,6 +4,7 @@ where ($post IS NULL AND sqlpage.path() <> '/blog.sql') OR ($post IS NOT NULL AN
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 SELECT 'text' AS component,
+        true as article,
         content AS contents_md
 FROM blog_posts
 WHERE title = $post;

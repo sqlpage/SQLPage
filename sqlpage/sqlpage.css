@@ -87,3 +87,17 @@ code {
   background: var(--tblr-bg-surface-secondary);
   box-shadow: 3px 0 3px var(--tblr-border-color);
 }
+
+.article-text {
+  font-size: 1.2em;
+  line-height: 1.5em;
+  font-family: 'Times New Roman', serif;
+  max-width: 65ch;
+  margin: 1.5em auto;
+}
+
+.article-text p::first-letter {
+  font-size: 1.2em;
+  font-weight: 500;
+}
+

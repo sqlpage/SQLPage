@@ -32,6 +32,7 @@
 - Fix a bug where the results of the `JSON` function in sqlite would be interpreted as a string instead of a json object.
 - Fix a bug where the `sqlpage.environment_variable` function would return an error if the environment variable was not set. Now it returns `null` instead.
 - Update ApexCharts to [v4.3.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.3.0).
+- New `article` property in the text component to display text in a more readable, article-like format.
 
 ## 0.31.0 (2024-11-24)
 

@@ -18,7 +18,7 @@ select 'SQLPage' as title, '/' as link, 'Home page' as description;
 select 'Components' as title, '/documentation.sql' as link, 'List of all components' as description;
 select $component as title, '/component.sql?component=' || sqlpage.url_encode($component) as link;
 
-select 'text' as component, 'component' as id,
+select 'text' as component, 'component' as id, true as article,
     format('# The **%s** component
 
 %s', $component, description) as contents_md

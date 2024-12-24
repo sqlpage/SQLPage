@@ -141,6 +141,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('html', 'Raw html code to include on the page. Don''t use that if you are not sure what you are doing, it may have security implications.', 'TEXT', TRUE, TRUE),
     ('contents', 'A top-level paragraph of text to display, without any formatting, without having to make additional queries.', 'TEXT', TRUE, TRUE),
     ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', TRUE, TRUE),
+    ('article', 'Makes long texts more readable by increasing the line height, adding margins, using a serif font, and decorating the initial letter.', 'BOOLEAN', TRUE, TRUE),
     -- item level
     ('contents', 'A span of text to display', 'TEXT', FALSE, FALSE),
     ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', FALSE, TRUE),
@@ -156,7 +157,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('text', 'Rendering a simple text paragraph.', json('[{"component":"text", "contents":"Hello, world ! <3"}]')),
-    ('text', 'Rendering rich text using markdown', json('[{"component":"text", "contents_md":"\n'||
+    ('text', 'Rendering rich text using markdown', json('[{"component":"text", "article": true, "contents_md":"\n'||
     '# Markdown in SQLPage\n\n' ||
     '## Simple formatting\n\n' ||
     'SQLPage supports only plain text as column values, but markdown allows easily adding **bold**, *italics*, [external links](https://github.com/sqlpage/SQLPage), [links to other pages](/index.sql) and [intra-page links](#my-paragraph). \n\n' ||
