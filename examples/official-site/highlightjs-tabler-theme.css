@@ -85,7 +85,7 @@
 
 /* Token transition */
 .hljs {
-  transition: .3s;
+  transition: 0.3s;
 }
 
 /* Code selection */
@@ -93,7 +93,7 @@ code::selection,
 code ::selection {
   background: var(--tblr-yellow);
   color: var(--tblr-gray-900);
-  border-radius: .1em;
+  border-radius: 0.1em;
 }
 
 code .hljs-keyword::selection,
@@ -111,12 +111,12 @@ pre:has(code) {
   max-height: 33vh; /* Limit height */
   overflow: auto;
   box-shadow: inset -10px -10px 30px #000000af; /* Inset shadow */
-  border-radius: .5rem;
+  border-radius: 0.5rem;
 }
 
 @media print {
   pre:has(code) {
-      max-height: none !important;  
-      box-shadow: none !important;
+    max-height: none !important;
+    box-shadow: none !important;
   }
 }

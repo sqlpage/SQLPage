@@ -91,7 +91,7 @@ code {
 .article-text {
   font-size: 1.2em;
   line-height: 1.5em;
-  font-family: 'Times New Roman', serif;
+  font-family: "Times New Roman", serif;
   max-width: 65ch;
   margin: 1.5em auto;
 }
@@ -100,4 +100,3 @@ code {
   font-size: 1.2em;
   font-weight: 500;
 }
-
