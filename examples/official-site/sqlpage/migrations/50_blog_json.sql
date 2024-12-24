@@ -1,4 +1,3 @@
-
 INSERT INTO blog_posts (title, description, icon, created_at, content)
 VALUES
     (
@@ -62,9 +61,9 @@ FROM users;
 
 | user_json |
 |-----------|
-| {"name":"Alice","birthday":"1990-01-15"} |
-| {"name":"Bob","birthday":"1985-05-22"} |
-| {"name":"Charlie","birthday":"1992-09-30"} |
+| `{"name":"Alice","birthday":"1990-01-15"}` |
+| `{"name":"Bob","birthday":"1985-05-22"}` |
+| `{"name":"Charlie","birthday":"1992-09-30"}` |
 
 ### Creating a JSON array
 
@@ -75,9 +74,9 @@ FROM users;
 
 | user_array |
 |------------|
-| ["Alice","1990-01-15","Admin"] |
-| ["Bob","1985-05-22","User"] |
-| ["Charlie","1992-09-30","User"] |
+| `["Alice","1990-01-15","Admin"]` |
+| `["Bob","1985-05-22","User"]` |
+| `["Charlie","1992-09-30","User"]` |
 
 ### Aggregating multiple values into a JSON array
 
@@ -88,18 +87,18 @@ FROM users;
 
 | names |
 |-------|
-| ["Alice","Bob","Charlie"] |
+| `["Alice","Bob","Charlie"]` |
 
 ### Aggregating values into a JSON object
 
 ```sql
-SELECT json_group_object(name, birthday) AS name_birthday_map
+SELECT json_group_object(name, group_name) AS name_group_map
 FROM users;
 ```
 
-| name_birthday_map |
+| name_group_map |
 |-------------------|
-| {"Alice":"1990-01-15","Bob":"1985-05-22","Charlie":"1992-09-30"} |
+| `{"Alice":"Admin", "Bob":"User", "Charlie":"User"}` |
 
 
 ### Iterating over a JSON array
@@ -124,17 +123,26 @@ The `json_each()` function returns a table with several columns. The most common
 
 For more complex JSON structures, you can use the `json_tree()` function, which recursively walks through the entire JSON structure.
 
-These iteration functions can be used to test whether a value is present in a JSON array. For instance, to create a 
-[multi-value select dropdown](documentation.sql?component=form#component) with pre-selected values, you can use the following query:
+These iteration functions can be used to check if specific values exist in a JSON array.
+Here''s a practical example:
+Let''s say you have a form with a [multiple-choice dropdown](documentation.sql?component=form#component) that allows selecting multiple users.
+Some users might already be selected, and their IDs are stored in a JSON array passed as an URL parameter called `$selected_ids`.
+You can create this dropdown using the following query:
 
 ```sql
 select json_group_array(json_object(
-    ''label'', name
+    ''label'', name,
     ''value'', id,
     ''selected'', id in (select value from json_each_text($selected_ids))
 )) as options
 from users;
 ```
+
+This query will:
+1. Create a dropdown option for each user
+2. Use their name as the display label
+3. Use their ID as the value
+4. Mark the option as selected if the user's ID exists in the $selected_ids array
 
 ### Combining two JSON objects
 
@@ -156,26 +164,35 @@ See [the list of JSON functions in PostgreSQL](https://www.postgresql.org/docs/c
 ### Creating a JSON object
 
 ```sql
-SELECT jsonb_build_object(''name'', name, ''birthday'', birthday) AS user_json FROM users;
+SELECT
+  jsonb_build_object(
+    ''name'', name,
+    ''birthday'', birthday
+  ) AS user_json
+FROM users;
 ```
 
 | user_json |
 |-----------|
-| {"name": "Alice", "birthday": "1990-01-15"} |
-| {"name": "Bob", "birthday": "1985-05-22"} |
-| {"name": "Charlie", "birthday": "1992-09-30"} |
+| `{"name":"Alice","birthday":"1990-01-15"}` |
+| `{"name":"Bob","birthday":"1985-05-22"}` |
+| `{"name":"Charlie","birthday":"1992-09-30"}` |
 
 ### Creating a JSON array
 
 ```sql
-SELECT jsonb_build_array(name, birthday, group_name) AS user_array FROM users;
+SELECT
+  jsonb_build_array(
+    name, birthday, group_name
+  ) AS user_array
+FROM users;
 ```
 
 | user_array |
 |------------|
-| ["Alice", "1990-01-15", "Admin"] |
-| ["Bob", "1985-05-22", "User"] |
-| ["Charlie", "1992-09-30", "User"] |
+| `["Alice",   "1990-01-15", "Admin"]` |
+| `["Bob",     "1985-05-22", "User"]` |
+| `["Charlie", "1992-09-30", "User"]` |
 
 ### Aggregating multiple values into a JSON array
 
@@ -185,18 +202,21 @@ SELECT jsonb_agg(name) AS names FROM users;
 
 | names |
 |-------|
-| ["Alice", "Bob", "Charlie"] |
+| `["Alice","Bob","Charlie"]` |
 
 ### Aggregating values into a JSON object
 
 ```sql
-SELECT jsonb_object_agg(name, birthday) AS name_birthday_map
+SELECT
+  jsonb_object_agg(
+    name, birthday
+  ) AS name_birthday_map
 FROM users;
 ```
 
 | name_birthday_map |
 |-------------------|
-| `{"Alice": "1990-01-15", "Bob": "1985-05-22", "Charlie": "1992-09-30"}` |
+| `{"Alice":"1990-01-15","Bob":"1985-05-22","Charlie":"1992-09-30"}` |
 
 
 ### Iterating over a JSON array
@@ -278,9 +298,9 @@ FROM users;
 
 | user_json |
 |-----------|
-| {"name": "Alice", "birthday": "1990-01-15"} |
-| {"name": "Bob", "birthday": "1985-05-22"} |
-| {"name": "Charlie", "birthday": "1992-09-30"} |
+| `{"name":"Alice","birthday":"1990-01-15"}` |
+| `{"name":"Bob","birthday":"1985-05-22"}` |
+| `{"name":"Charlie","birthday":"1992-09-30"}` |
 
 ### Creating a JSON array
 
@@ -291,9 +311,9 @@ FROM users;
 
 | user_array |
 |------------|
-| ["Alice", "1990-01-15", "Admin"] |
-| ["Bob", "1985-05-22", "User"] |
-| ["Charlie", "1992-09-30", "User"] |
+| `["Alice","1990-01-15","Admin"]` |
+| `["Bob","1985-05-22","User"]` |
+| `["Charlie","1992-09-30","User"]` |
 
 ### Aggregating multiple values into a JSON array
 
@@ -304,7 +324,7 @@ FROM users;
 
 | names |
 |-------|
-| ["Alice", "Bob", "Charlie"] |
+| `["Alice","Bob","Charlie"]` |
 
 ### Aggregating values into a JSON object
 
@@ -315,7 +335,7 @@ FROM users;
 
 | name_birthday_map |
 |-------------------|
-| {"Alice": "1990-01-15", "Bob": "1985-05-22", "Charlie": "1992-09-30"} |
+| `{"Alice":"1990-01-15","Bob":"1985-05-22","Charlie":"1992-09-30"}` |
 
 ### Iterating over a JSON array
 
@@ -442,9 +462,9 @@ FROM users;
 
 | user_json |
 |-----------|
-| {"name":"Alice","birthday":"1990-01-15"} |
-| {"name":"Bob","birthday":"1985-05-22"} |
-| {"name":"Charlie","birthday":"1992-09-30"} |
+| `{"name":"Alice","birthday":"1990-01-15"}` |
+| `{"name":"Bob","birthday":"1985-05-22"}` |
+| `{"name":"Charlie","birthday":"1992-09-30"}` |
 
 Alternatively, you can use the `JSON_OBJECT` function:
 
@@ -464,9 +484,9 @@ FROM users;
 
 | user_array |
 |------------|
-| [{"name":"Alice","birthday":"1990-01-15","group_name":"Admin"}] |
-| [{"name":"Bob","birthday":"1985-05-22","group_name":"User"}] |
-| [{"name":"Charlie","birthday":"1992-09-30","group_name":"User"}] |
+| `[{"name":"Alice","birthday":"1990-01-15","group_name":"Admin"}]` |
+| `[{"name":"Bob","birthday":"1985-05-22","group_name":"User"}]` |
+| `[{"name":"Charlie","birthday":"1992-09-30","group_name":"User"}]` |
 
 You can also use the `JSON_ARRAY` function:
 
@@ -485,7 +505,7 @@ SELECT (SELECT name FROM users FOR JSON PATH) AS names;
 
 | names |
 |-------|
-| [{"name":"Alice"},{"name":"Bob"},{"name":"Charlie"}] |
+| `[{"name":"Alice"},{"name":"Bob"},{"name":"Charlie"}]` |
 
 Alternatively, use the `JSON_ARRAYAGG` function:
 
