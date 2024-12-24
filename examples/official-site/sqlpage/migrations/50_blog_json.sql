@@ -142,7 +142,7 @@ This query will:
 1. Create a dropdown option for each user
 2. Use their name as the display label
 3. Use their ID as the value
-4. Mark the option as selected if the user's ID exists in the $selected_ids array
+4. Mark the option as selected if the user''s ID exists in the $selected_ids array
 
 ### Combining two JSON objects
 
