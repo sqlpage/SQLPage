@@ -113,3 +113,10 @@ pre:has(code) {
   box-shadow: inset -10px -10px 30px #000000af; /* Inset shadow */
   border-radius: .5rem;
 }
+
+@media print {
+  pre:has(code) {
+      max-height: none !important;  
+      box-shadow: none !important;
+  }
+}
