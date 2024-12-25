@@ -15,6 +15,7 @@ SELECT 'list' AS component,
     'Users' AS title;
 SELECT username AS title,
     username || ' is a user on this website.' as description,
+    case when is_admin then 'red' end as color,
     'user' as icon,
     'user.sql?id=' || id as link
 FROM users;

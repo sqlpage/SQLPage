@@ -1,4 +1,5 @@
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL
+    username TEXT NOT NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE
 );
