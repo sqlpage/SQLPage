@@ -1,6 +1,6 @@
 services:
   web:
-    image: sqlpage/SQLPage:main # main is cutting edge, use sqlpage/SQLPage:latest for the latest stable version
+    image: lovasoa/sqlpage:main # main is cutting edge, use sqlpage/SQLPage:latest for the latest stable version
     ports:
       - "8080:8080"
     volumes:

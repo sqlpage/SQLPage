@@ -1,6 +1,6 @@
 services:
   web:
-    image: sqlpage/SQLPage:main
+    image: lovasoa/sqlpage:main
     ports:
       - "8080:8080"
     volumes:
