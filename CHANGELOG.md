@@ -34,6 +34,7 @@
 - Update ApexCharts to [v4.3.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.3.0).
 - New `article` property in the text component to display text in a more readable, article-like format.
 - Add support for evaluating calls to `coalesce` inside sqlpage functions. This means you can now use `coalesce` inside arguments of sqlpage functions, and it will be evaluated inside sqlpage. For instance, this lets you call `sqlpage.link(coalesce($url, 'https://sql-page.com'))` to create a link that will use the value of `$url` if it is not null, or fallback to `https://sql-page.com` if it is null.
+- In the form component, allow the usage of the `value` property in checkboxes and radio buttons. The custom `checked` property still works, but it is now optional.
 
 ## 0.31.0 (2024-11-24)
 
