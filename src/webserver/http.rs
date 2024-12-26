@@ -662,25 +662,22 @@ fn log_welcome_message(config: &AppConfig) {
     } else if let Some(domain) = &config.https_domain {
         format!("https://{domain}")
     } else {
-        use std::fmt::Write;
         let listen_on = config.listen_on();
-        let mut msg = format!("{listen_on}");
-        if listen_on.ip().is_unspecified() {
-            // let the user know the service is publicly accessible
-            write!(
-                msg,
-                ": accessible from the network, and locally on http://localhost:{}",
-                listen_on.port()
-            )
-            .unwrap();
+        let port = listen_on.port();
+        let ip = listen_on.ip();
+        if ip.is_unspecified() {
+            format!("http://localhost:{port}\n\
+            (also accessible from other devices using your IP address)")
+        } else {
+            format!("http://{ip}:{port}")
         }
-        msg
     };
 
-    log::info!(
-        "SQLPage v{} started successfully.
-    Now listening on {}
-    You can write your website's code in .sql files in {}",
+    println!(
+        "✨ SQLPage v{} is ready! ✨\n\n\
+        View your website at:\n🔗 {}\n\n\
+        Create your pages using SQL files in:\n💻 {}\n\n\
+        Happy coding! 🚀",
         env!("CARGO_PKG_VERSION"),
         address_message,
         config.web_root.display()

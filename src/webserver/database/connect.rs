@@ -31,7 +31,7 @@ impl Database {
             database_url
         );
         set_custom_connect_options(&mut connect_options, config);
-        log::info!("Connecting to database: {database_url}");
+        log::debug!("Connecting to database: {database_url}");
         let mut retries = config.database_connection_retries;
         let connection = loop {
             match Self::create_pool_options(config, connect_options.kind())
