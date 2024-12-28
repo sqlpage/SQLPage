@@ -36,6 +36,7 @@
 - Add support for evaluating calls to `coalesce` inside sqlpage functions. This means you can now use `coalesce` inside arguments of sqlpage functions, and it will be evaluated inside sqlpage. For instance, this lets you call `sqlpage.link(coalesce($url, 'https://sql-page.com'))` to create a link that will use the value of `$url` if it is not null, or fallback to `https://sql-page.com` if it is null.
 - In the form component, allow the usage of the `value` property in checkboxes and radio buttons. The custom `checked` property still works, but it is now optional.
 - Updated the welcome message displayed on the terminal when starting the server to be friendlier and more helpful.
+- Display the page footer (by default: `Built with SQLPage`) at the bottom of the page instead of immediately after the main content.
 
 ## 0.31.0 (2024-11-24)
 

@@ -53,11 +53,20 @@ SELECT 'alert' as component,
     'Watch the introduction video' as link_text;
 select 'https://www.youtube.com/watch?v=6D5D10v18b0&list=PLTue_qIAHxActQnLn_tHWZUNXziZTeraB' as link, 'Tutorial video series' as title;
 
-select 'text' as component, sqlpage.read_file_as_text(printf('your-first-sql-website/tutorial-install-%s.md',
-    case
-        when $os = 'windows' then 'windows'
-        when $os = 'macos' then 'macos'
-        else 'any'
-    end
-)) as contents_md, 'download' as id;
-select 'text' as component, sqlpage.read_file_as_text('your-first-sql-website/tutorial.md') as contents_md;
+select 'text' as component,
+    sqlpage.read_file_as_text(
+        printf('your-first-sql-website/tutorial-install-%s.md',
+            case
+                when $os = 'windows' then 'windows'
+                when $os = 'macos' then 'macos'
+                else 'any'
+            end
+        )
+    ) as contents_md,
+    true as article,
+    'download' as id;
+
+select 'text' as component,
+        sqlpage.read_file_as_text('your-first-sql-website/tutorial.md') as contents_md,
+        true as article,
+        'tutorial' as id;

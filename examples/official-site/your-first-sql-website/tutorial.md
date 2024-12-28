@@ -9,7 +9,7 @@ In the rest of this tutorial, we will call this folder the **root folder** of yo
 
 ![screenshot for the sql website setup on linux](first-sql-website-launch.png)
 
-You should see a message in your terminal that includes the sentence `accessible from the network, and locally on http://localhost:8080`
+You should see a message in your terminal telling you that SQLPage is ready, and giving you the address of your website.
 
 You can open your website locally by visiting [`http://localhost:8080`](http://localhost:8080)
 
@@ -20,19 +20,24 @@ SQLPage should have automatically created a folder called `sqlpage` with a SQLit
 In the root folder of your SQLPage website, create a new SQL file called `index.sql`.
 Open it in a text editor that supports SQL syntax highlighting (I recommend [VSCode](https://code.visualstudio.com/)).
 
-The `index.sql` file will be executed every time a visitor opens your website's home page.
-You can use it to retrieve data from your database and define how it should be displayed to your visitors.
+The `index.sql` file will be executed every time a visitor opens your website's home page, and the results will be displayed to the visitor
+using the components you specify in the file.
 
-As an example, let's start with a simple `index.sql` that displays a list of popular websites:
+Let's start with a simple `index.sql` that displays a list of popular websites:
 
 ```sql
-SELECT 'list' AS component, 'Popular websites' AS title;
+SELECT 'list' AS component,
+       'Popular websites' AS title;
 
-SELECT 'Hello' AS title, 'world' AS description, 'https://wikipedia.org' AS link;
+SELECT 'Hello' AS title,
+       'world' AS description,
+       'https://wikipedia.org' AS link;
 ```
 
+![screenshot of the first sql website](hello-world.png)
+
 The first line of the file defines the component that will be used to display the data, and properties of that component.
-In this case, we use the [`list` component](/documentation.sql?component=list#component) to display a list of items.
+In this case, we use the [`list` component](/component.sql?component=list) to display a list of items.
 The second line defines the data that will populate the component.
 All the components you can use and their properties are documented in [SQLPage's online documentation](https://sql-page.com/documentation.sql).
 

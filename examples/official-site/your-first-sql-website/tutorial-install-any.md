@@ -1,7 +1,11 @@
-# Download SQLPage: the SQL website framework
+# Download SQLPage (the SQL website builder)
 
-SQLPage is a small executable file that will take requests to your website, execute the SQL files you write,
+SQLPage is a small single-file program that will
+execute the SQL files you write,
 and render the database responses as nice web pages.
+
+If you have already downloaded SQLPage,
+you can skip this step and [start writing your website](#tutorial).
 
 [Download the latest SQLPage](https://github.com/sqlpage/SQLPage/releases) for your operating system.
 In the _release assets_ section, you will find files named `sqlpage-windows.zip`, `sqlpage-linux.tgz`, and `sqlpage-macos.tgz`.

@@ -676,7 +676,7 @@ fn log_welcome_message(config: &AppConfig) {
     println!(
         "✨ SQLPage v{} is ready! ✨\n\n\
         View your website at:\n🔗 {}\n\n\
-        Create your pages using SQL files in:\n💻 {}\n\n\
+        Create your pages with SQL files in:\n💻 {}\n\n\
         Happy coding! 🚀",
         env!("CARGO_PKG_VERSION"),
         address_message,
