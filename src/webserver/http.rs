@@ -684,7 +684,7 @@ fn log_welcome_message(config: &AppConfig) {
     let web_root = config.web_root.display();
 
     println!(
-        "{sparkle} SQLPage v{version} is ready! {sparkle}\n\n\
+        "{sparkle} SQLPage v{version} started successfully! {sparkle}\n\n\
         View your website at:\n{link} {address_message}\n\n\
         Create your pages with SQL files in:\n{computer} {web_root}\n\n\
         Happy coding! {rocket}"
