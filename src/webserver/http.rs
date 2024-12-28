@@ -666,21 +666,28 @@ fn log_welcome_message(config: &AppConfig) {
         let port = listen_on.port();
         let ip = listen_on.ip();
         if ip.is_unspecified() {
-            format!("http://localhost:{port}\n\
-            (also accessible from other devices using your IP address)")
+            format!(
+                "http://localhost:{port}\n\
+            (also accessible from other devices using your IP address)"
+            )
         } else {
             format!("http://{ip}:{port}")
         }
     };
 
+    let (sparkle, link, computer, rocket) = if cfg!(target_os = "windows") {
+        ("", "", "", "")
+    } else {
+        ("✨", "🔗", "💻", "🚀")
+    };
+    let version = env!("CARGO_PKG_VERSION");
+    let web_root = config.web_root.display();
+
     println!(
-        "✨ SQLPage v{} is ready! ✨\n\n\
-        View your website at:\n🔗 {}\n\n\
-        Create your pages with SQL files in:\n💻 {}\n\n\
-        Happy coding! 🚀",
-        env!("CARGO_PKG_VERSION"),
-        address_message,
-        config.web_root.display()
+        "{sparkle} SQLPage v{version} is ready! {sparkle}\n\n\
+        View your website at:\n{link} {address_message}\n\n\
+        Create your pages with SQL files in:\n{computer} {web_root}\n\n\
+        Happy coding! {rocket}"
     );
 }
 
