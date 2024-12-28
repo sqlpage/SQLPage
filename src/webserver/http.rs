@@ -683,7 +683,7 @@ fn log_welcome_message(config: &AppConfig) {
     let version = env!("CARGO_PKG_VERSION");
     let web_root = config.web_root.display();
 
-    println!(
+    eprintln!(
         "{sparkle} SQLPage v{version} started successfully! {sparkle}\n\n\
         View your website at:\n{link} {address_message}\n\n\
         Create your pages with SQL files in:\n{computer} {web_root}\n\n\
