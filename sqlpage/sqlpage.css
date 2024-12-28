@@ -104,3 +104,7 @@ code {
 li p {
   margin: 0;
 }
+
+.leaflet-container {
+  background: var(--tblr-active-bg) !important;
+}

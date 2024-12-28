@@ -38,6 +38,7 @@
 - Updated the welcome message displayed on the terminal when starting the server to be friendlier and more helpful.
 - Display the page footer (by default: `Built with SQLPage`) at the bottom of the page instead of immediately after the main content.
 - Improve links in the list component: The entire list item is now clickable, when a `link` property is provided.
+- When using the map component without a basemap, use a light background color that respects the theme color.
 
 ## 0.31.0 (2024-11-24)
 
