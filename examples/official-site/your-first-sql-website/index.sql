@@ -41,7 +41,7 @@ SELECT 'alert' as component,
     'teal' as color,
     'You don’t want to have anything to do with scary hacker things ?
     You can use a preconfigured SQLPage  hosted on our servers, and **never have to configure a server** yourself.' as description_md,
-    'https://replit.com/@pimaj62145/SQLPage#index.sql' AS link,
+    'https://editor.datapage.app' AS link,
     'Try SQLPage from your browser' as link_text;
 select 'https://datapage.app' as link, 'Host your app on our servers' as title, 'teal' as color;
 SELECT 'alert' as component,

@@ -29,20 +29,20 @@ No design skills are required, yet your website will be responsive, and look pro
     'green' as color;
 SELECT 'Fast' as title,
     'Pages [load instantly](performance.sql), even on slow mobile networks.
-    SQLPage is designed as a single **lightweight** executable, ensuring fast performance even on low-cost servers.' as description_md,
+    SQLPage is designed as a single **lightweight** executable leveraging server-side rendering to ensure fast page loads even on low-cost servers.' as description_md,
     'mail-fast' as icon,
     'red' as color;
 
 SELECT 'hero' as component,
     true as reverse,
-    '🧩 Easy User Interface' as title,
+    '🧩 SQL User Interfaces' as title,
     'At the core of SQLPage is a [rich library of user interface components](/documentation.sql) for tables, charts, maps, timelines, forms and much more.
 
 To build your app, you just populate the components with data returned by your database queries.' as description_md,
     'sqlpage_illustration_components.webp' as image;
 
 SELECT 'hero' as component,
-    '🪄 Automatic' as title,
+    '🪄 Seamless' as title,
     'SQLPage handles HTTP requests, database connections, streaming rendering, styling, [security](safety.sql), and [performance](performance.sql) for you.
 
 Focus only on your data, and how you want to present it. We''ve tamed the tech, you tame the data.' as description_md,

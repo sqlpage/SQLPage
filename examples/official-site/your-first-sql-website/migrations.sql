@@ -4,4 +4,6 @@ select 'http_header' as component,
 select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
 
 -- Article by Matthew Larkin
-select 'text' as component, sqlpage.read_file_as_text('your-first-sql-website/migrations.md') as contents_md;
+select 'text' as component,
+    sqlpage.read_file_as_text('your-first-sql-website/migrations.md') as contents_md,
+    true as article;

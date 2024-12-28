@@ -1,4 +1,4 @@
-# Download SQLPage (the SQL website builder)
+# Download SQLPage
 
 SQLPage is a small single-file program that will
 execute the SQL files you write,
