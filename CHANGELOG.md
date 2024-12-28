@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.32.0 (unreleased)
+## 0.32.0 (2024-12-29)
 
 - Rollback any open transactions when an error occurs in a SQL file.
   - Previously, if an error occurred in the middle of a transaction, the transaction would be left open, and the connection would be returned to the pool. The next request could get a connection with an open half-completed transaction, which could lead to hard to debug issues.
