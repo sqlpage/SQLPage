@@ -1,4 +1,4 @@
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js */
+/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta21/dist/js/tabler.min.js */
 const nonce = document.currentScript.nonce;
 
 function sqlpage_card() {
@@ -89,19 +89,18 @@ let is_leaflet_loaded = false;
 
 function sqlpage_map() {
   const first_map = document.querySelector("[data-pre-init=map]");
+  const leaflet_base_url = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4";
   if (first_map && !is_leaflet_injected) {
     // Add the leaflet js and css to the page
     const leaflet_css = document.createElement("link");
     leaflet_css.rel = "stylesheet";
-    leaflet_css.href =
-      "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
+    leaflet_css.href = `${leaflet_base_url}/dist/leaflet.css`;
     leaflet_css.integrity =
       "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
     leaflet_css.crossOrigin = "anonymous";
     document.head.appendChild(leaflet_css);
     const leaflet_js = document.createElement("script");
-    leaflet_js.src =
-      "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
+    leaflet_js.src = `${leaflet_base_url}/dist/leaflet.js`;
     leaflet_js.integrity =
       "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
     leaflet_js.crossOrigin = "anonymous";
