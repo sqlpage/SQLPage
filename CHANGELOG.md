@@ -37,6 +37,7 @@
 - In the form component, allow the usage of the `value` property in checkboxes and radio buttons. The custom `checked` property still works, but it is now optional.
 - Updated the welcome message displayed on the terminal when starting the server to be friendlier and more helpful.
 - Display the page footer (by default: `Built with SQLPage`) at the bottom of the page instead of immediately after the main content.
+- Improve links in the list component: The entire list item is now clickable, when a `link` property is provided.
 
 ## 0.31.0 (2024-11-24)
 

@@ -57,10 +57,16 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties) VALUES
     ('list', 'A basic compact list', json('[{"component":"list", "compact": true, "title": "SQLPage lists are..."},{"title":"Beautiful"},{"title":"Useful"},{"title":"Versatile"}]')),
     ('list', 'An empty list with a link to add an item', json('[{"component":"list", "empty_title": "No items yet", "empty_description": "This list is empty. Click here to create a new item !", "empty_link": "documentation.sql"}]')),
-    ('list', 'A list with rich text descriptions', json('[{"component":"list", "wrap": true},
-        {"title":"SQLPage", "image_url": "https://raw.githubusercontent.com/sqlpage/SQLPage/main/docs/favicon.png", "description_md":"A **SQL**-based **page** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**. [Free on Github](https://github.com/sqlpage/SQLPage)"},
-        {"title":"Tabler", "image_url": "https://avatars.githubusercontent.com/u/35471246", "description_md":"A **free** and **open-source** **HTML** template pack based on **Bootstrap**."},
-        {"title":"Tabler Icons", "image_url": "https://tabler.io/favicon.ico", "description_md":"A set of over **700** free MIT-licensed high-quality **SVG** icons for you to use in your web projects."}
+    ('list', '
+### A list with rich text descriptions
+
+This example illustrates creating a nice list where each item has a title, a description, an image, and a link to another page.
+
+> Be careful, nested links are not supported. If you use the list''s `link` property, then your markdown `description_md` should not contain any link.
+', json('[{"component":"list", "wrap": true},
+        {"title":"SQL Websites", "image_url": "/favicon.ico", "description_md":"Write SQL, get a website. SQLPage is a **SQL**-based **site** generator for **PostgreSQL**, **MySQL**, **SQLite** and **SQL Server**.", "link": "/"},
+        {"title":"SQL Forms", "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b6/FileStack_retouched.jpg", "description_md":"Easily collect data **from users to your database** using the *form* component. Handle the data in SQL with `INSERT` or `UPDATE` queries.", "link": "?component=form"},
+        {"title":"SQL Maps", "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/15/Vatican_City_map_EN.png", "description_md":"Show database contents on a map using the *map* component. Works well with *PostGIS* and *SpatiaLite*.", "link": "?component=map"}
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
             json('[{"component":"list", "title":"Top SQLPage features" }, '||

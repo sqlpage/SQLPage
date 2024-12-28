@@ -9,18 +9,17 @@ VALUES
 
 The map component displays a custom interactive map with markers on it.
 
-Useful in combination with PostgreSQL''s PostGIS or SQLite''s spatialite,
-to create custom visualizations of your geospatial data.
-
-The map component is also compatible with non-geospatial databases,
-by manually setting the `latitude` and `longitude` parameters.
+In its simplest form, the component displays points on a map from a table of latitudes and longitudes.
+But it can also be used by cartographers in combination with PostgreSQL''s PostGIS or SQLite''s spatialite,
+to create custom visualizations of geospatial data.
+Use the `geojson` property to generate rich maps from a GIS database.
 
 ### Example Use Cases
 
 1. **Store Locator**: Build an interactive map to find the nearest store information using SQL-stored geospatial data.
 2. **Delivery Route Optimization**: Visualize the results of delivery route optimization algorithms.
 3. **Sales Heatmap**: Identify high-performing regions by mapping sales data stored in SQL.
-4. **Real-Time Tracking**: Create dynamic dashboards that track vehicles, assets, or users live using PostGIS or MS SQL Server geospatial time series data.
+4. **Real-Time Tracking**: Create dynamic dashboards that track vehicles, assets, or users live using PostGIS or MS SQL Server geospatial time series data. Use the [shell](?component=shell) component to auto-refresh the map.
 5. **Demographic Insights**: Map customer demographics or trends geographically to uncover opportunities for growth or better decision-making.
 ',
         'map',
@@ -216,7 +215,7 @@ Perfect for visualizing multi-dimensional relationships between points on a map,
             '[
             { "component": "map", "title": "Paris", "zoom": 11, "latitude": 48.85, "longitude": 2.34 },
             { "title": "Notre Dame", "icon": "building-castle", "color": "indigo", "latitude": 48.8530, "longitude": 2.3498, "description_md": "A beautiful cathedral.", "link": "https://en.wikipedia.org/wiki/Notre-Dame_de_Paris" },
-            { "title": "Eiffel Tower", "icon": "tower", "color": "yellow", "latitude": 48.8584, "longitude": 2.2945, "description_md": "A tall tower. [Wikipedia](https://en.wikipedia.org/wiki/Eiffel_Tower)" },
+            { "title": "Eiffel Tower", "icon": "tower", "color": "red", "latitude": 48.8584, "longitude": 2.2945, "description_md": "A tall tower. [Wikipedia](https://en.wikipedia.org/wiki/Eiffel_Tower)" },
             { "title": "Tower to Cathedral", "geojson": {"type": "LineString", "coordinates": [[2.2945, 48.8584], [2.3498, 48.8530]]}, "color": "teal", "description": "A nice 45 minutes walk." }
             ]'
         )

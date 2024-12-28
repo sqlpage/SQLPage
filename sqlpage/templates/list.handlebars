@@ -6,13 +6,14 @@
     {{/if}}
     <div class="list-group list-group-flush list-group-hoverable">
         {{#each_row}}
+        {{#if link}}
+            <a href="{{link}}" {{#if id}}id="{{id}}"{{/if}}
+                class="list-group-item list-group-item-action {{#if active}}active{{/if}} {{#if ../compact}}py-1{{/if}} {{class}} text-decoration-none link-body-emphasis">
+        {{else}}
             <div {{#if id}}id="{{id}}"{{/if}}
                 class="list-group-item list-group-item-action {{#if active}}active{{/if}} {{#if ../compact}}py-1{{/if}} {{class}}">
-                <div class="row align-items-center">
-                    {{#if link}}
-                        <a href="{{link}}" class="col text-truncate row align-items-center text-decoration-none link-body-emphasis">
-                    {{/if}}
-
+        {{/if}}
+            <div class="row align-items-center">
                     {{#if color}}
                         <div class="col-auto"><span class="badge bg-{{color}}"></span></div>
                     {{/if}}
@@ -36,11 +37,6 @@
                         </div>
                     </div>
 
-                    {{#if link}}
-                        </a>
-                    {{/if}}
-
-
                     {{#if view_link}}
                         <a href="{{view_link}}" class="link-secondary col-auto" title="View">
                             {{~icon_img 'eye'~}}
@@ -59,7 +55,11 @@
                         </a>
                     {{/if}}
                 </div>
+        {{#if link}}
+            </a>
+        {{else}}
             </div>
+        {{/if}}
         {{/each_row}}
         {{#if (eq @row_index 0)}}
             <a href="{{default empty_link '#'}}" class="list-group-item list-group-item-action">
