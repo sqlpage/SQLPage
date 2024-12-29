@@ -42,7 +42,7 @@ To build your app, you just populate the components with data returned by your d
     'sqlpage_illustration_components.webp' as image;
 
 SELECT 'hero' as component,
-    '🪄 Seamless' as title,
+    '🪄 Seamlessly' as title,
     'SQLPage handles HTTP requests, database connections, streaming rendering, styling, [security](safety.sql), and [performance](performance.sql) for you.
 
 Focus only on your data, and how you want to present it. We''ve tamed the tech, you tame the data.' as description_md,
