@@ -40,15 +40,15 @@ more information on how to build JSON objects in your database.
 
 ```sql
 set request = json_object(
-    ''method'', ''POST''
+    ''method'', ''POST'',
     ''url'', ''https://postman-echo.com/post'',
     ''headers'', json_object(
         ''Content-Type'', ''application/json'',
         ''Authorization'', ''Bearer '' || sqlpage.environment_variable(''MY_API_TOKEN'')
     ),
     ''body'', json_object(
-        ''Hello'', ''world'',
-    ),
+        ''Hello'', ''world''
+    )
 );
 set api_results = sqlpage.fetch($request);
 
