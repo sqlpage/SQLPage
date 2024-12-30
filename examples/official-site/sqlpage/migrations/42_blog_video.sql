@@ -3,7 +3,7 @@ INSERT INTO blog_posts (title, description, icon, created_at, content)
 VALUES
     (
         'Introduction video',
-        'A 30-minute live presetation of SQLPage, its raison d''être, and how to use it.',
+        'A 30-minute live presentation of SQLPage, its raison d''être, and how to use it.',
         'brand-youtube',
         '2024-05-14',
         '
