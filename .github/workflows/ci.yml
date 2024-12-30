@@ -40,7 +40,6 @@ jobs:
           path: "target/debug/sqlpage"
 
   test:
-    needs: compile_and_lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
