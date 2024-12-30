@@ -1,5 +1,12 @@
 # CHANGELOG.md
 
+## 0.32.1 (unreleased)
+
+This is a bugfix release.
+
+- Fix a bug where the form component would not display the right checked state in radio buttons and checkboxes.
+ - https://github.com/sqlpage/SQLPage/issues/751
+
 ## 0.32.0 (2024-12-29)
 
 - Rollback any open transactions when an error occurs in a SQL file.

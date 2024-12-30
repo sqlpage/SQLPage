@@ -418,16 +418,21 @@ We could also save all the options in a database table, and then run a simple qu
 
 ```sql
 SELECT ''form'' AS component;
-SELECT * FROM fruit_option;
+SELECT 
+    ''radio'' as type,
+    ''db'' as name,
+    option_name as label,
+    option_id as value
+FROM my_options;
 ```
 
-In this example, depending on what the user clicks, the target `index.sql` page will be loaded with a the variable `$fruit` set to the string "1", "2", or "3".
+In this example, depending on what the user clicks, the page will be reloaded with a the variable `$component` set to the string "form", "map", or "chart".
 
-    ', json('[{"component":"form", "method": "GET", "action": "index.sql"}, '||
-    '{"name": "fruit", "type": "radio", "value": 1, "description": "An apple a day keeps the doctor away", "label": "Apple"}, '||
-    '{"name": "fruit", "type": "radio", "value": 2, "description": "Oranges are a good source of vitamin C", "label": "Orange", "checked": true}, '||
-    '{"name": "fruit", "type": "radio", "value": 3, "description": "Bananas are a good source of potassium", "label": "Banana"}'||
-    ']')),
+    ', json('[{"component":"form", "method": "GET"},
+    {"name": "component", "type": "radio", "value": "form", "description": "Read user input in SQL", "label": "Form"},
+    {"name": "component", "type": "radio", "value": "map", "checked": true, "description": "Display a map based on database data", "label": "Map"},
+    {"name": "component", "type": "radio", "value": "chart", "description": "Interactive plots of SQL query results", "label": "Chart"}
+    ]')),
     ('form', 'When you want to include some information in the form data, but not display it to the user, you can use a hidden field.
 
 This can be used to track simple data such as the current user''s id,
@@ -722,6 +727,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('markdown', 'Set this to the name of a column whose content should be interpreted as markdown . Used to display rich text with links in the table. This argument can be repeated multiple times to intepret multiple columns as markdown.', 'TEXT', TRUE, TRUE),
     ('icon', 'Set this to the name of a column whose content should be interpreted as a tabler icon name. Used to display icons in the table. This argument can be repeated multiple times to intepret multiple columns as icons. Introduced in v0.8.0.', 'TEXT', TRUE, TRUE),
     ('align_right', 'Name of a column the contents of which should be right-aligned. This argument can be repeated multiple times to align multiple columns to the right. Introduced in v0.15.0.', 'TEXT', TRUE, TRUE),
+    ('align_center', 'Name of a column the contents of which should be center-aligned. This argument can be repeated multiple times to align multiple columns to the center.', 'TEXT', TRUE, TRUE),
+    ('monospace', 'Name of a column the contents of which should be displayed in monospace. This argument can be repeated multiple times to display multiple columns in monospace. Introduced in v0.32.1.', 'TEXT', TRUE, TRUE),
     ('striped_rows', 'Whether to add zebra-striping to any table row.', 'BOOLEAN', TRUE, TRUE),
     ('striped_columns', 'Whether to add zebra-striping to any table column.', 'BOOLEAN', TRUE, TRUE),
     ('hover', 'Whether to enable a hover state on table rows.', 'BOOLEAN', TRUE, TRUE),
@@ -754,7 +761,7 @@ INSERT INTO example(component, description, properties) VALUES
     'table',
     'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.',
     json(
-        '[{"component":"table", "sort": true, "align_right": ["Price ($)", "Amount in stock"]}, ' ||
+        '[{"component":"table", "sort": true, "align_right": ["Price ($)", "Amount in stock"], "align_center": ["part_no"], "monospace": ["part_no"]}, ' ||
          '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C", "Price ($)": 12, "Amount in stock": 5},
           {"id": 996, "part_no": "MIC-ROCC-F-24-206-A", "Price ($)": 1, "Amount in stock": 15},
           {"id": 131456, "part_no": "KIB-ROCC-F-24-205-B", "Price ($)": 127, "Amount in stock": 9}

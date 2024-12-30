@@ -32,6 +32,7 @@
                                 <th class="
                                     {{~@key~}}
                                     {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
+                                    {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
                                 ">
                                     {{~#if ../../sort~}}
                                         <button class="table-sort sort d-inline" data-sort="{{@key}}">{{@key}}</button>
@@ -51,9 +52,9 @@
                             {{~#if (not (starts_with @key '_sqlpage_'))~}}
                             <td class="
                                 {{~@key~}}
-                                {{~#if (array_contains_case_insensitive ../../align_right @key)
-                                }} text-end {{
-                                /if}} align-middle">
+                                {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
+                                {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
+                                align-middle">
                                 {{~#if (array_contains_case_insensitive ../../markdown @key)~}}
                                     {{{markdown this}}}
                                 {{~else~}}
