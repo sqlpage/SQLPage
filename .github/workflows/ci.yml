@@ -55,7 +55,7 @@ jobs:
         run: docker compose logs ${{ matrix.database }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: cargo test -- --nocapture
+        run: cargo test
         env:
           DATABASE_URL: ${{ matrix.database }}://root:Password123!@127.0.0.1/sqlpage
           RUST_BACKTRACE: 1

@@ -183,7 +183,7 @@ async fn test_files() {
         let req_str = format!("/{}?x=1", test_file_path_string);
         let resp = req_path_with_app_data(&req_str, app_data.clone())
             .await
-            .unwrap_or_else(|_| panic!("Failed to get response for {req_str}"));
+            .unwrap_or_else(|e| panic!("Failed to get response for {req_str}: {e}"));
         let body = test::read_body(resp).await;
         assert!(
             body.starts_with(b"<!DOCTYPE html>"),
@@ -607,7 +607,7 @@ async fn test_official_website_documentation() {
     let app_data = make_app_data_for_official_website().await;
     let resp = req_path_with_app_data("/component.sql?component=button", app_data)
         .await
-        .unwrap();
+        .unwrap_or_else(|e| panic!("Failed to get response for /component.sql?component=button: {e}"));
     assert_eq!(resp.status(), http::StatusCode::OK);
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
@@ -681,12 +681,18 @@ async fn srv_req_path_with_app_data(
         .to_srv_request()
 }
 
+const REQ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
 async fn req_path_with_app_data(
     path: impl AsRef<str>,
     app_data: actix_web::web::Data<AppState>,
-) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
+) -> anyhow::Result<actix_web::dev::ServiceResponse> {
+    let path = path.as_ref();
     let req = srv_req_path_with_app_data(path, app_data).await;
-    main_handler(req).await
+    let resp = tokio::time::timeout(REQ_TIMEOUT, main_handler(req))
+        .await
+        .map_err(|e| anyhow::anyhow!("Request to {path} timed out: {e}"))?
+        .map_err(|e| anyhow::anyhow!("Request to {path} failed: {e}"))?;
+    Ok(resp)
 }
 
 pub fn test_config() -> AppConfig {
