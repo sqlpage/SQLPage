@@ -607,7 +607,9 @@ async fn test_official_website_documentation() {
     let app_data = make_app_data_for_official_website().await;
     let resp = req_path_with_app_data("/component.sql?component=button", app_data)
         .await
-        .unwrap_or_else(|e| panic!("Failed to get response for /component.sql?component=button: {e}"));
+        .unwrap_or_else(|e| {
+            panic!("Failed to get response for /component.sql?component=button: {e}")
+        });
     assert_eq!(resp.status(), http::StatusCode::OK);
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
