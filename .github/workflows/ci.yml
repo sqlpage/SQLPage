@@ -56,13 +56,11 @@ jobs:
         run: docker compose logs ${{ matrix.database }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: cargo +nightly test -- -Z unstable-options --ensure-time
+        run: cargo test -- --nocapture
         env:
           DATABASE_URL: ${{ matrix.database }}://root:Password123!@127.0.0.1/sqlpage
           RUST_BACKTRACE: 1
           RUST_LOG: sqlpage=debug
-          RUST_TEST_TIME_UNIT: 100,1000
-          RUST_TEST_TIME_INTEGRATION: 1000,10000
 
   windows_test:
     runs-on: windows-latest
