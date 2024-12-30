@@ -156,12 +156,12 @@ test("no console errors on card page", async ({ page }) => {
 
 test("form component documentation", async ({ page }) => {
   await page.goto(`${BASE}/component.sql?component=form`);
-  
+
   // Find the form that contains radio buttons for component selection
-  const componentForm = page.locator('form', {
-    has: page.getByRole('radio', { name: 'Chart' })
+  const componentForm = page.locator("form", {
+    has: page.getByRole("radio", { name: "Chart" }),
   });
-  
+
   // the form should be visible
   await expect(componentForm).toBeVisible();
 
@@ -169,11 +169,13 @@ test("form component documentation", async ({ page }) => {
   const mapRadio = componentForm.getByRole("radio", { name: "Map" });
   await expect(mapRadio).toHaveValue("map");
   await expect(mapRadio).toBeChecked();
-  
+
   // Select "Chart" option and submit
   await componentForm.getByLabel("Chart").click({ force: true });
   await componentForm.getByRole("button", { name: "Submit" }).click();
 
   // Verify we're on the chart documentation page
-  await expect(page.getByRole("heading", { name: /chart/i, level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /chart/i, level: 1 }),
+  ).toBeVisible();
 });
