@@ -761,10 +761,10 @@ INSERT INTO example(component, description, properties) VALUES
     'table',
     'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.',
     json(
-        '[{"component":"table", "sort": true, "align_right": ["Price ($)", "Amount in stock"], "align_center": ["part_no"], "monospace": ["part_no"]}, ' ||
-         '{"id": 31456, "part_no": "MIC-ROCC-F-23-206-C", "Price ($)": 12, "Amount in stock": 5},
-          {"id": 996, "part_no": "MIC-ROCC-F-24-206-A", "Price ($)": 1, "Amount in stock": 15},
-          {"id": 131456, "part_no": "KIB-ROCC-F-24-205-B", "Price ($)": 127, "Amount in stock": 9}
+        '[{"component":"table", "sort": true, "align_right": ["Price ($)", "Amount in stock"], "align_center": ["part_no"] },
+         {"id": 31456, "part_no": "SQL-TABLE-856-G", "Price ($)": 12, "Amount in stock": 5},
+          {"id": 996, "part_no": "SQL-FORMS-86-M", "Price ($)": 1, "Amount in stock": 15},
+          {"id": 131456, "part_no": "SQL-CARDS-56-K", "Price ($)": 127, "Amount in stock": 9}
         ]'
     )),
     (
