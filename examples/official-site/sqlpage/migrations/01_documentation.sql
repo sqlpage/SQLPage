@@ -1132,7 +1132,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
 ',
      json('[{
             "component": "shell",
-            "title": "SQLPage: SQL to web pages",
+            "title": "SQLPage: SQL websites",
             "icon": "database",
             "link": "/",
             "menu_item": [
