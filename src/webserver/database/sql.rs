@@ -70,6 +70,8 @@ impl AsyncFromStrWithState for ParsedSqlFile {
 pub(super) struct StmtWithParams {
     /// The SQL query with placeholders for parameters.
     pub query: String,
+    /// The line and column of the first token in the query.
+    pub query_position: SourceSpan,
     /// Parameters that should be bound to the query.
     /// They can contain functions that will be called before the query is executed,
     /// the result of which will be bound to the query.
@@ -80,6 +82,20 @@ pub(super) struct StmtWithParams {
     /// Columns that are JSON columns, and which should be converted to JSON objects after the query is executed.
     /// Only relevant for databases that do not have a native JSON type, and which return JSON values as text.
     pub json_columns: Vec<String>,
+}
+
+/// A location in the source code.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub(super) struct SourceSpan {
+    pub start: SourceLocation,
+    pub end: SourceLocation,
+}
+
+/// A location in the source code.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub(super) struct SourceLocation {
+    pub line: usize,
+    pub column: usize,
 }
 
 #[derive(Debug)]
@@ -165,10 +181,25 @@ fn parse_single_statement(
     log::debug!("Final transformed statement: {stmt}");
     Some(ParsedStatement::StmtWithParams(StmtWithParams {
         query,
+        query_position: extract_query_start(&stmt),
         params,
         delayed_functions,
         json_columns,
     }))
+}
+
+fn extract_query_start(stmt: &impl Spanned) -> SourceSpan {
+    let location = stmt.span();
+    SourceSpan {
+        start: SourceLocation {
+            line: usize::try_from(location.start.line).unwrap_or(0),
+            column: usize::try_from(location.start.column).unwrap_or(0),
+        },
+        end: SourceLocation {
+            line: usize::try_from(location.end.line).unwrap_or(0),
+            column: usize::try_from(location.end.column).unwrap_or(0),
+        },
+    }
 }
 
 fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement {
@@ -426,6 +457,7 @@ fn extract_set_variable(
                 variable,
                 StmtWithParams {
                     query: select_stmt.to_string(),
+                    query_position: extract_query_start(&select_stmt),
                     params: std::mem::take(params),
                     delayed_functions,
                     json_columns,

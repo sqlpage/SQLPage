@@ -3,11 +3,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use super::sql::{SourceSpan, StmtWithParams};
+
 #[derive(Debug)]
 struct NiceDatabaseError {
+    /// The source file that contains the query.
     source_file: PathBuf,
+    /// The error that occurred.
     db_err: sqlx::error::Error,
+    /// The query that was executed.
     query: String,
+    /// The start location of the query in the source file, if the query was extracted from a larger file.
+    query_position: Option<SourceSpan>,
 }
 
 impl std::fmt::Display for NiceDatabaseError {
@@ -22,12 +29,20 @@ impl std::fmt::Display for NiceDatabaseError {
             let Some(mut offset) = db_err.offset() else {
                 return write!(f, "{}", self.query);
             };
-            for (line_no, line) in self.query.lines().enumerate() {
+            for line in self.query.lines() {
                 if offset > line.len() {
                     offset -= line.len() + 1;
                 } else {
                     highlight_line_offset(f, line, offset);
-                    write!(f, "line {}, character {offset}", line_no + 1)?;
+                    if let Some(query_position) = self.query_position {
+                        let start_line = query_position.start.line;
+                        let end_line = query_position.end.line;
+                        if start_line == end_line {
+                            write!(f, "{}: line {}", self.source_file.display(), start_line)?;
+                        } else {
+                            write!(f, "{}: lines {} to {}", self.source_file.display(), start_line, end_line)?;
+                        }
+                    }
                     break;
                 }
             }
@@ -51,6 +66,22 @@ pub fn display_db_error(
         source_file: source_file.to_path_buf(),
         db_err,
         query: query.to_string(),
+        query_position: None,
+    })
+}
+
+/// Display a database error with a highlighted line and character offset.
+#[must_use]
+pub fn display_stmt_db_error(
+    source_file: &Path,
+    stmt: &StmtWithParams,
+    db_err: sqlx::error::Error,
+) -> anyhow::Error {
+    anyhow::Error::new(NiceDatabaseError {
+        source_file: source_file.to_path_buf(),
+        db_err,
+        query: stmt.query.to_string(),
+        query_position: Some(stmt.query_position),
     })
 }
 

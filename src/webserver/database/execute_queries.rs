@@ -8,6 +8,7 @@ use std::path::Path;
 use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
+use super::error_highlighting::display_stmt_db_error;
 use super::sql::{
     DelayedFunctionCall, ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams,
 };
@@ -62,7 +63,7 @@ pub fn stream_query_results_with_conn<'a>(
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
                     while let Some(elem) = stream.next().await {
-                        let mut query_result = parse_single_sql_result(source_file, &stmt.query, elem);
+                        let mut query_result = parse_single_sql_result(source_file, stmt, elem);
                         if let DbItem::Error(e) = query_result {
                             error = Some(e);
                             break;
@@ -196,7 +197,7 @@ async fn execute_set_variable_query<'a>(
         Ok(None) => None,
         Err(e) => {
             try_rollback_transaction(connection).await;
-            let err = display_db_error(source_file, &statement.query, e);
+            let err = display_stmt_db_error(source_file, statement, e);
             return Err(err);
         }
     };
@@ -257,7 +258,7 @@ async fn take_connection<'a, 'b>(
 #[inline]
 fn parse_single_sql_result(
     source_file: &Path,
-    sql: &str,
+    stmt: &StmtWithParams,
     res: sqlx::Result<Either<AnyQueryResult, AnyRow>>,
 ) -> DbItem {
     match res {
@@ -272,7 +273,7 @@ fn parse_single_sql_result(
             DbItem::FinishedQuery
         }
         Err(err) => {
-            let nice_err = display_db_error(source_file, sql, err);
+            let nice_err = display_stmt_db_error(source_file, stmt, err);
             DbItem::Error(nice_err)
         }
     }

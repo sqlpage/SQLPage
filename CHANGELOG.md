@@ -12,6 +12,7 @@ This is a bugfix release.
   - adds support for MSSQL's `JSON_ARRAY` and `JSON_OBJECT` functions
   - adds support for PostgreSQL's `JSON_OBJECT(key : value)` and `JSON_OBJECT(key VALUE value)` syntax
   - fixes the parsing of `true` and `false` in Microsoft SQL Server (mssql): they are now correctly parsed as column names, not as boolean values, since mssql does not support boolean literals. This means you may have to replace `TRUE as some_property` with `1 as some_property` in your SQL code when working with mssql.
+- When your SQL contains errors, the error message now displays the precise line(s) number(s) of your file that contain the error.
 
 ## 0.32.0 (2024-12-29)
 
