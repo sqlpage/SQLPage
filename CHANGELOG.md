@@ -7,6 +7,10 @@ This is a bugfix release.
 - Fix a bug where the form component would not display the right checked state in radio buttons and checkboxes.
  - https://github.com/sqlpage/SQLPage/issues/751
 - Fix a bug in the [link](https://sql-page.com/component.sql?component=link) component where the properties `view_link`, `edit_link`, and `delete_link` had become incompatible with the main `link` property.
+- Updated sqlparser to [v0.53](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.53.0.md) which fixes parse errors when using some advanced SQL syntax
+  - adds support for SQLite's `UPDATE OR REPLACE` syntax
+  - adds support for MSSQL's `JSON_ARRAY` and `JSON_OBJECT` functions
+  - adds support for PostgreSQL's `JSON_OBJECT(key : value)` and `JSON_OBJECT(key VALUE value)` syntax
 
 ## 0.32.0 (2024-12-29)
 

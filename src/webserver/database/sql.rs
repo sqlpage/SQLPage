@@ -6,15 +6,16 @@ use crate::file_cache::AsyncFromStrWithState;
 use crate::webserver::database::error_highlighting::quote_source_with_highlight;
 use crate::{AppState, Database};
 use async_trait::async_trait;
+use sqlparser::ast::helpers::attached_token::AttachedToken;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName,
-    OneOrManyWithParens, SelectItem, SetExpr, Statement, Value, VisitMut, VisitorMut,
+    OneOrManyWithParens, SelectItem, SetExpr, Spanned, Statement, Value, VisitMut, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
-use sqlparser::tokenizer::Token::{SemiColon, EOF};
-use sqlparser::tokenizer::Tokenizer;
+use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
+use sqlparser::tokenizer::{TokenWithSpan, Tokenizer};
 use sqlx::any::AnyKind;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -171,10 +172,10 @@ fn parse_single_statement(
 }
 
 fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement {
-    let location = parser.peek_token_no_skip().location;
+    let location = parser.peek_token_no_skip().span;
     ParsedStatement::Error(anyhow::Error::from(err).context(format!(
         "Parsing failed: SQLPage couldn't understand the SQL file. Please check for syntax errors:\n\n{}",
-        quote_source_with_highlight(sql, location.line, location.column)
+        quote_source_with_highlight(sql, location.start.line, location.start.column)
     )))
 }
 
@@ -769,6 +770,7 @@ impl VisitorMut for ParameterExtractor {
                     filter: None,
                     null_treatment: None,
                     within_group: Vec::new(),
+                    uses_odbc_syntax: false,
                 });
             }
             Expr::Cast {
@@ -884,6 +886,10 @@ fn expr_to_statement(expr: Expr) -> Statement {
         with: None,
         body: Box::new(sqlparser::ast::SetExpr::Select(Box::new(
             sqlparser::ast::Select {
+                select_token: AttachedToken(TokenWithSpan::new(
+                    Token::make_keyword("SELECT"),
+                    expr.span(),
+                )),
                 distinct: None,
                 top: None,
                 projection: vec![SelectItem::ExprWithAlias {
