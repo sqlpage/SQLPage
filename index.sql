@@ -23,7 +23,7 @@ SELECT 'text' as component, -- We can switch to another component at any time ju
 SELECT 'In order to get started, visit ' as contents;
 select 'SQLPage''s website' as contents,
     'https://sql-page.com/your-first-sql-website/' as link,
-    true as italics;
+    1 as italics;
 SELECT '. You can replace this page''s contents by creating a file named ' as contents;
 SELECT 'index.sql' as contents, 1 as code;
 SELECT ' in the folder where sqlpage is running (current working directory: ' as contents;
