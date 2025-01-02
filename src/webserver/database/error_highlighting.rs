@@ -40,7 +40,13 @@ impl std::fmt::Display for NiceDatabaseError {
                         if start_line == end_line {
                             write!(f, "{}: line {}", self.source_file.display(), start_line)?;
                         } else {
-                            write!(f, "{}: lines {} to {}", self.source_file.display(), start_line, end_line)?;
+                            write!(
+                                f,
+                                "{}: lines {} to {}",
+                                self.source_file.display(),
+                                start_line,
+                                end_line
+                            )?;
                         }
                     }
                     break;
