@@ -69,9 +69,11 @@ This example illustrates creating a nice list where each item has a title, a des
         {"title":"SQL Maps", "image_url": "https://upload.wikimedia.org/wikipedia/commons/1/15/Vatican_City_map_EN.png", "description_md":"Show database contents on a map using the *map* component. Works well with *PostGIS* and *SpatiaLite*.", "link": "?component=map"}
     ]')),
     ('list', 'A beautiful list with bells and whistles.',
-            json('[{"component":"list", "title":"Top SQLPage features" }, '||
-            '{"title":"Authentication", "link":"?component=authentication", "description": "Authenticate users with a login form or HTTP basic authentication", "color": "red", "icon":"lock", "active": true }, '||
-            '{"title":"Editing data", "description": "SQLPage makes it easy to UPDATE, INSERT and DELETE data in your database tables", "color": "blue", "icon":"database", "edit_link": "?component=form", "delete_link": "?component=alert" }]'));
+            json('[{"component":"list", "title":"Top SQLPage features", "compact": true },
+            {"title":"Authentication", "link":"?component=authentication", "description": "Authenticate users with a login form or HTTP basic authentication", "color": "red", "icon":"lock", "active": true, "view_link": "?component=authentication#view" },
+            {"title":"Editing data", "link":"?component=form", "description": "SQLPage makes it easy to UPDATE, INSERT and DELETE data in your database tables", "color": "blue", "icon":"database", "edit_link": "?component=form#edit", "delete_link": "?component=form#delete" },
+            {"title":"API", "link":"?component=json", "description": "Generate a REST API from a single SQL query to connect with other applications and services", "color": "green", "icon":"plug-connected", "edit_link": "?component=json#edit", "delete_link": "?component=json#delete" }
+        ]'));
 
 INSERT INTO component(name, icon, description) VALUES
     ('datagrid', 'grid-dots', 'Display small pieces of information in a clear and readable way. Each item has a name and is associated with a value.');

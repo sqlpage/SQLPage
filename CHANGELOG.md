@@ -6,6 +6,7 @@ This is a bugfix release.
 
 - Fix a bug where the form component would not display the right checked state in radio buttons and checkboxes.
  - https://github.com/sqlpage/SQLPage/issues/751
+- Fix a bug in the [link](https://sql-page.com/component.sql?component=link) component where the properties `view_link`, `edit_link`, and `delete_link` had become incompatible with the main `link` property.
 
 ## 0.32.0 (2024-12-29)
 
