@@ -1,7 +1,10 @@
 select 'redirect' as component, '/blog.sql' as link
 where ($post IS NULL AND sqlpage.path() <> '/blog.sql') OR ($post IS NOT NULL AND NOT EXISTS (SELECT 1 FROM blog_posts WHERE title = $post));
 
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
+    'title', coalesce($post || ' - ', '') || 'SQLPage Blog'
+)) as properties
+FROM example WHERE component = 'shell' LIMIT 1;
 
 SELECT 'text' AS component,
         true as article,

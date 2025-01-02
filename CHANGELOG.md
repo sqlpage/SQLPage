@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.32.1 (unreleased)
+## 0.32.1 (2025-01-03)
 
 This is a bugfix release.
 
