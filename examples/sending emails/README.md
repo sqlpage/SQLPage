@@ -25,16 +25,18 @@ Email services solve these problems by providing reliable APIs for sending email
 
 Here's a complete example using Mailgun's API to send emails through SQLPage:
 
+### [`email.sql`](./email.sql)
 ```sql
 -- Configure the email request
 set email_request = json_object(
     'url', 'https://api.mailgun.net/v3/' || sqlpage.environment_variable('MAILGUN_DOMAIN') || '/messages',
     'method', 'POST',
     'headers', json_object(
+        'Content-Type', 'application/x-www-form-urlencoded',
         'Authorization', 'Basic ' || encode(('api:' || sqlpage.environment_variable('MAILGUN_API_KEY'))::bytea, 'base64')
     ),
     'body', 
-        'from=Sender Name <noreply@' || sqlpage.environment_variable('MAILGUN_DOMAIN') || '>'
+        'from=Your Name <noreply@' || sqlpage.environment_variable('MAILGUN_DOMAIN') || '>'
         || '&to=' || $to_email
         || '&subject=' || $subject
         || '&text=' || $message_text
