@@ -11,6 +11,8 @@ select 'Corporate Game', 'corporate-conundrum', 'sqlite', 'An interactive multip
 select 'Roundest Pokemon', 'roundest_pokemon_rating', 'sqlite', 'Demo app with a distinct non-default design, using custom HTML templates for everything.' union all
 select 'Todo Application', 'todo application (PostgreSQL)', 'postgres', 'A full-featured todo list application with PostgreSQL backend.' union all
 select 'MySQL & JSON', 'mysql json handling', 'mysql', 'Learn advanced JSON manipulation in MySQL to build advanced SQLPage applications.' union all
+select 'Apache Web Server', 'web servers - apache', 'mysql', 'Use an existing Apache httpd Web Server to expose your SQLPage application.' union all
+select 'Sending Emails', 'sending emails', 'sqlite', 'Use the fetch function to send emails (or interact with any other HTTP API).' union all
 select 'Simple Website', 'simple-website-example', 'sqlite', 'Basic website example with navigation and data management.' union all
 select 'Geographic App', 'PostGIS - using sqlpage with geographic data', 'postgres', 'Use SQLPage to create and manage geodata.' union all
 select 'Multi-step form', 'forms-with-multiple-steps', 'sqlite', 'Guide to the implementation of forms that spread over multiple pages.' union all
