@@ -1,0 +1,33 @@
+services:
+  sqlpage:
+    image: lovasoa/sqlpage:main
+    volumes:
+      - ./sqlpage_config:/etc/sqlpage:ro
+      - ./website:/var/www:ro
+    environment:
+      - DATABASE_URL=mysql://sqlpage:sqlpage_password@mysql:3306/sqlpage_db
+    depends_on:
+      - mysql
+
+  apache:
+    image: httpd:2.4
+    ports:
+      - "80:80"
+    volumes:
+      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+      - ./static:/var/www:ro
+    depends_on:
+      - sqlpage
+
+  mysql:
+    image: mysql:8
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=sqlpage_db
+      - MYSQL_USER=sqlpage
+      - MYSQL_PASSWORD=sqlpage_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data: 

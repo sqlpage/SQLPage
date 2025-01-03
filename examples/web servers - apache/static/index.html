@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            text-align: center;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        .main-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .main-link:hover {
+            background: #89ca8c;
+        }
+        .info {
+            max-width: 600px;
+            margin: 20px auto;
+            color: #666;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Our Site</h1>
+    <p class="info">
+        This page is served by Apache web server, which acts as a reverse proxy. When you click the button below, 
+        you'll be redirected to a SQLPage application running in a separate container. The setup includes three 
+        services: Apache for static content and routing, SQLPage for dynamic content, and MySQL for data storage.
+    </p>
+    <a href="/my_website" class="main-link">Enter Site</a>
+</body>
+</html>
