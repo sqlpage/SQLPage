@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 0.33.0 (unreleased)
+
+- Add support for HTTP Basic Authentication in the [fetch](https://sql-page.com/documentation.sql?component=fetch#component) function.
+
 ## 0.32.1 (2025-01-03)
 
 This is a bugfix release.

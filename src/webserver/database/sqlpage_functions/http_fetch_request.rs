@@ -14,6 +14,8 @@ pub(super) struct HttpFetchRequest<'b> {
     pub timeout_ms: Option<u64>,
     #[serde(borrow, deserialize_with = "deserialize_map_to_vec_pairs")]
     pub headers: HeaderVec<'b>,
+    pub username: Option<Cow<'b, str>>,
+    pub password: Option<Cow<'b, str>>,
     #[serde(borrow)]
     pub body: Option<Cow<'b, serde_json::value::RawValue>>,
 }
@@ -52,6 +54,8 @@ impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
                 url: s,
                 method: None,
                 headers: Vec::new(),
+                username: None,
+                password: None,
                 body: None,
                 timeout_ms: None,
             }
@@ -78,6 +82,8 @@ impl HttpFetchRequest<'_> {
                 .collect(),
             body: self.body.map(Cow::into_owned).map(Cow::Owned),
             timeout_ms: self.timeout_ms,
+            username: self.username.map(Cow::into_owned).map(Cow::Owned),
+            password: self.password.map(Cow::into_owned).map(Cow::Owned),
         }
     }
 }

@@ -29,6 +29,7 @@ select $user_search as title,
   CAST($api_results->>0->>''lat'' AS FLOAT) as latitude,
   CAST($api_results->>0->>''lon'' AS FLOAT) as longitude;
 ```
+
 #### POST query with a body
 
 In this example, we use the complex form of the function to make an
@@ -59,6 +60,23 @@ select
     $api_results as contents;
 ```
 
+
+#### Authenticated request using Basic Auth
+
+Here''s how to make a request to an API that requires [HTTP Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication):
+
+```sql
+set request = json_object(
+    ''url'', ''https://api.example.com/data'',
+    ''username'', ''my_username'',
+    ''password'', ''my_password''
+);
+set api_results = sqlpage.fetch($request);
+```
+
+> This will add the `Authorization: Basic bXlfdXNlcm5hbWU6bXlfcGFzc3dvcmQK` header to the request,
+> where `bXlfdXNlcm5hbWU6bXlfcGFzc3dvcmQK` is the base64 encoding of the string `my_username:my_password`.
+
 # JSON parameter format
 
 The fetch function accepts either a URL string, or a JSON object with the following parameters:
@@ -67,6 +85,8 @@ The fetch function accepts either a URL string, or a JSON object with the follow
  - `headers`: A JSON object with the headers to send.
  - `body`: The body of the request. If it is a JSON object, it will be sent as JSON. If it is a string, it will be sent as is.
  - `timeout_ms`: The maximum time to wait for the request, in milliseconds. Defaults to 5000.
+ - `username`: Username for HTTP Basic Authentication. Introduced in version 0.33.0.
+ - `password`: Password for HTTP Basic Authentication. Only used if username is provided. Introduced in version 0.33.0.
 
 '
     );

@@ -151,6 +151,10 @@ async fn fetch(
     for (k, v) in http_request.headers {
         req = req.insert_header((k.as_ref(), v.as_ref()));
     }
+    if let Some(username) = http_request.username {
+        let password = http_request.password.unwrap_or_default();
+        req = req.basic_auth(username, password);
+    }
     log::info!("Fetching {}", http_request.url);
     let mut response = if let Some(body) = http_request.body {
         let val = body.get();
