@@ -90,7 +90,10 @@ test("table filtering", async ({ page }) => {
 
   const searchInput = tableSection.getByPlaceholder("Search…");
   await searchInput.fill("chart");
-  await expect(tableSection.getByRole("cell", { name: "Chart" })).toBeVisible();
+  const chartCell = tableSection.getByRole("cell", { name: "Chart" });
+  await expect(chartCell).toBeVisible();
+  await expect(chartCell).toHaveClass(/\bname\b/);
+  await expect(chartCell).toHaveCSS('vertical-align', 'middle');
   await expect(
     tableSection.getByRole("cell", { name: "Table" }),
   ).not.toBeVisible();

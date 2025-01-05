@@ -3,6 +3,7 @@
 ## 0.33.0 (unreleased)
 
 - Add support for HTTP Basic Authentication in the [fetch](https://sql-page.com/documentation.sql?component=fetch#component) function.
+- Fix a bug where the table component would not add the right css classes to table cells.
 
 ## 0.32.1 (2025-01-03)
 
