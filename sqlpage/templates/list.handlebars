@@ -9,7 +9,8 @@
         <div {{#if id}}id="{{id}}"{{/if}}
             class="list-group-item list-group-item-action p-0 {{#if active}}active{{/if}} {{class}}">
             <div class="row align-items-center m-0">
-                <a {{#if link}} href="{{link}}" {{/if}}
+                {{#if link}}<a href="{{link}}"
+                {{~else}}<div {{/if}}
                     class="col row align-items-center text-decoration-none link-body-emphasis m-0 {{#if ../compact}}p-1{{else}}p-3{{/if}}">
                     {{#if color}}
                         <div class="col-auto"><span class="badge bg-{{color}}"></span></div>
@@ -34,7 +35,11 @@
                         </div>
                     </div>
 
-                </a>
+                {{#if link}}
+                    </a>
+                {{else}}
+                    </div>
+                {{/if}}
                 {{#if view_link}}
                     <a href="{{view_link}}" class="link-secondary col-auto" title="View">
                         {{~icon_img 'eye'~}}
