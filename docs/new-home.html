@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>SQLPage - turn your database into a website</title>
+    <style>
+        /* RESET */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            font-family: sans-serif;
+            display: block;
+            background-color: hsl(225, 47%, 7%);
+            color: hsl(0, 0%, 97%);
+            background-image:
+                radial-gradient(circle at 100% 0%,
+                    hsla(212, 49%, 34%, 0.35) 0%,
+                    hsla(212, 49%, 34%, 0.15) 50%,
+                    transparent 100%),
+                radial-gradient(circle at 0% 100%,
+                    hsla(270, 41%, 41%, 0.35) 0%,
+                    hsla(270, 41%, 41%, 0.15) 50%,
+                    transparent 100%),
+                linear-gradient(135deg,
+                    hsla(225, 47%, 7%, 1) 0%,
+                    hsla(225, 47%, 10%, 1) 100%);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            -moz-backface-visibility: hidden;
+            transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0);
+            -moz-transform: translate3d(0, 0, 0);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        .container:first-of-type {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* CONTAINER */
+        .container {
+            text-align: left;
+            max-width: 1000px;
+            width: 90%;
+            margin: 0 auto;
+            padding: 40px;
+            display: flex;
+            align-items: center;
+            gap: 60px;
+        }
+
+        /* LOGO WRAPPER */
+        .logo {
+            width: 300px;
+            height: 300px;
+            flex-shrink: 0;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: rotate(-15deg) translateY(0px);
+            }
+
+            50% {
+                transform: rotate(-15deg) translateY(-10px);
+            }
+        }
+
+        /* TEXT WRAPPER */
+        .text-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* LOGO WRAPPER - ENHANCED STYLING */
+        .logo {
+            display: inline-block;
+            width: 220px;
+            height: 220px;
+            transform: rotate(-15deg);
+            position: relative;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow:
+                inset 0 0 20px rgba(0, 0, 0, 0.7),
+                0 5px 15px rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            margin-right: 30px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .logo:hover {
+            transform: rotate(-5deg) scale(1.08) translateY(-5px);
+            box-shadow:
+                inset 0 0 25px rgba(0, 0, 0, 0.8),
+                0 12px 30px rgba(0, 0, 0, 0.4),
+                0 4px 8px rgba(0, 0, 0, 0.3);
+            animation: buzz 0.6s;
+        }
+
+        @keyframes buzz {
+
+            0%,
+            100% {
+                transform: rotate(-5deg) scale(1.08) translateY(-5px);
+            }
+
+            20% {
+                transform: rotate(-3deg) scale(1.08) translateY(-5px);
+            }
+
+            40% {
+                transform: rotate(-7deg) scale(1.08) translateY(-5px);
+            }
+
+            60% {
+                transform: rotate(-3deg) scale(1.08) translateY(-5px);
+            }
+
+            80% {
+                transform: rotate(-7deg) scale(1.08) translateY(-5px);
+            }
+        }
+
+        .logo svg {
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .logo:hover svg {
+            transform: scale(0.95) translateY(2px);
+        }
+
+        /* TITLE & TAGLINE - ENHANCED */
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            font-weight: 800;
+            color: transparent;
+            background:
+                linear-gradient(180deg,
+                    rgba(255, 255, 255, .8) 0%,
+                    rgba(172, 179, 211, 0.9) 100%),
+                linear-gradient(135deg,
+                    #ccc 0%,
+                    #ccc 45%,
+                    #fff 50%,
+                    #ccc 55%,
+                    #ccc 100%);
+            background-blend-mode: multiply;
+            background-size: 100% 100%, 400% 100%;
+            background-clip: text;
+            letter-spacing: -1px;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: shimmer 25s linear infinite;
+            transform: scale(1) translateX(0) translateY(0) translateZ(0);
+        }
+
+        h1:hover {
+            color: white;
+            background: none;
+            transform: scale(1.02) translateX(8px) translateY(-8px) translateZ(2px);
+        }
+
+        h1 span:first-child {
+            margin-right: 0;
+            transition: margin-right 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        h1:hover span:first-child {
+            margin-right: 0.5em;
+        }
+
+        h1 .words {
+            position: relative;
+        }
+
+        h1 .words span {
+            position: absolute;
+            left: 0;
+            opacity: 0;
+        }
+
+        h1 .words span:first-child {
+            opacity: 1;
+            position: relative;
+            transform: translateX(0);
+        }
+
+        h1:hover .words span {
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+            /* Total animation time: 8 words × 2s per word = 16s total cycle */
+            animation: rotateWords 16s ease-in-out infinite;
+        }
+
+
+        /* Delays: each word starts at 2s intervals
+        2s × (n-1) -1s where n is the word position */
+        h1:hover .words span:nth-child(1) {
+            animation-delay: -1s;
+        }
+
+        h1:hover .words span:nth-child(2) {
+            animation-delay: 1s;
+        }
+
+        h1:hover .words span:nth-child(3) {
+            animation-delay: 3s;
+        }
+
+        h1:hover .words span:nth-child(4) {
+            animation-delay: 5s;
+        }
+
+        h1:hover .words span:nth-child(5) {
+            animation-delay: 7s;
+        }
+
+        h1:hover .words span:nth-child(6) {
+            animation-delay: 9s;
+        }
+
+        h1:hover .words span:nth-child(7) {
+            animation-delay: 11s;
+        }
+
+        h1:hover .words span:nth-child(8) {
+            animation-delay: 13s;
+        }
+
+        /** Each word needs to appear for 2s, then disappear for the rest of the animation.
+        2s / 16s = 12.5% of the animation time.
+        **/
+        @keyframes rotateWords {
+            0% {
+                opacity: 0;
+            }
+
+            3%,
+            9.5% {
+                opacity: 1;
+            }
+
+            12%,
+            100% {
+                opacity: 0;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 400% 0;
+            }
+
+            100% {
+                background-position: -400% 0;
+            }
+        }
+
+        p {
+            font-size: 2rem;
+            color: #999;
+            line-height: 1.4;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        p:hover {
+            color: #fff;
+        }
+
+        /* RESPONSIVE ADJUSTMENTS */
+        @media (max-width: 900px) {
+            .container {
+                gap: 40px;
+                padding: 30px;
+            }
+
+            .logo {
+                width: 250px;
+                height: 250px;
+            }
+
+            h1 {
+                font-size: 3.5rem;
+            }
+
+            p {
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                text-align: center;
+                gap: 30px;
+            }
+
+            .text-content {
+                align-items: center;
+            }
+
+            .logo {
+                width: 200px;
+                height: 200px;
+                margin-right: 0;
+            }
+
+            h1 {
+                font-size: 3rem;
+            }
+
+            p {
+                font-size: 1.6rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                gap: 20px;
+            }
+
+            .logo {
+                width: 150px;
+                height: 150px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            p {
+                font-size: 1.4rem;
+            }
+        }
+
+        /* MENU STYLES */
+        .menu {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 2rem;
+            z-index: 1000;
+        }
+
+        .menu a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            position: relative;
+            transition: all 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .menu:hover a {
+            opacity: 0.8;
+        }
+
+        .menu a:hover {
+            color: rgba(255, 255, 255, 0.9);
+            opacity: 1;
+        }
+
+        .menu a::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            bottom: -4px;
+            left: 0;
+            background-color: currentColor;
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s ease;
+        }
+
+        .menu a:hover::after {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        @media (max-width: 768px) {
+            .menu {
+                top: 1rem;
+                right: 1rem;
+                gap: 1rem;
+            }
+
+            .menu a {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Add new CTA button styles */
+        .cta-button {
+            display: inline-block;
+            text-align: center;
+            padding: .8rem 2rem;
+            min-width: 200px;
+            max-width: 300px;
+            font-size: 1.2rem;
+            font-weight: 500;
+            background: linear-gradient(135deg,
+                    hsla(212, 49%, 34%, 0.95) 0%,
+                    hsla(270, 41%, 41%, 0.95) 100%);
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            margin-top: 1.5rem;
+            box-shadow:
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(115deg,
+                    transparent 0%,
+                    transparent 25%,
+                    rgba(255, 255, 255, 0.1) 45%,
+                    rgba(255, 255, 255, 0.2) 50%,
+                    rgba(255, 255, 255, 0.1) 55%,
+                    transparent 75%,
+                    transparent 100%);
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px) scale(1.02);
+            color: rgba(255, 255, 255, 1);
+            background: linear-gradient(135deg,
+                    hsla(270, 41%, 41%, 0.98) 0%,
+                    hsla(212, 49%, 34%, 0.98) 100%);
+            box-shadow:
+                0 4px 8px rgba(0, 0, 0, 0.2),
+                0 8px 24px rgba(0, 0, 0, 0.2),
+                inset 0 1px rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .cta-button:hover::before {
+            left: 100%;
+            transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .cta-button:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow:
+                0 2px 4px rgba(0, 0, 0, 0.2),
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition-duration: 0.1s;
+        }
+
+        .cta-button:focus {
+            outline: none;
+            box-shadow:
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px rgba(255, 255, 255, 0.1),
+                0 0 0 2px rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .cta-button {
+                font-size: 1.1rem;
+                padding: 0.7rem 1.8rem;
+                min-width: 180px;
+            }
+        }
+
+        .scroll-link {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            transition: all 0.3s ease;
+            animation: bounce 2s infinite;
+            cursor: pointer;
+        }
+
+        .scroll-link:hover {
+            color: rgba(255, 255, 255, 0.9);
+            transform: translateX(-50%) scale(1.1);
+        }
+
+        @keyframes bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
+
+        #features {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg,
+                    hsla(225, 47%, 10%, 1) 0%,
+                    hsla(225, 47%, 13%, 1) 100%);
+        }
+
+        #features .container {
+            flex-direction: column;
+            gap: 6rem;
+        }
+
+        #features h2 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff 0%, #e1e1e1 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5rem;
+            perspective: 1000px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 2.5rem;
+            transform-style: preserve-3d;
+            transform: perspective(1000px) rotateX(10deg);
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: perspective(1000px) rotateX(0deg) translateY(-10px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            position: relative;
+        }
+
+        .feature-card h3::before {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 2px;
+            background: linear-gradient(90deg,
+                    hsla(212, 49%, 34%, 0.8),
+                    hsla(270, 41%, 41%, 0.8));
+            bottom: -8px;
+            left: 0;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover h3::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card p {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 1rem;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            opacity: 1;
+            transform: translateY(-5px);
+        }
+
+        @media (max-width: 968px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            #features .container {
+                gap: 3rem;
+            }
+
+            .feature-card {
+                padding: 2rem;
+            }
+        }
+
+        .feature-comparison {
+            position: relative;
+            display: inline;
+            margin: 1rem 0;
+        }
+
+        .feature-name {
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: help;
+            color: #999;
+        }
+
+        .feature-name:hover {
+            color: #fff;
+        }
+
+        .feature-detail {
+            z-index: 10;
+            position: absolute;
+            right: auto;
+            left: 0;
+            top: 100%;
+            transform: translateY(10px);
+            width: 100%;
+            margin-top: 0.5rem;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            box-shadow:
+                0 4px 12px rgba(0, 0, 0, 0.2),
+                0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-name:hover+.feature-detail {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="menu">
+        <a href="#">Download</a>
+        <a href="#">Documentation</a>
+        <a href="#">Examples</a>
+        <a href="#">Github</a>
+        <a href="#">Hosting</a>
+    </nav>
+    <div class="container">
+        <div class="logo">
+            <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
+                style="position: absolute; top: 0; left: 0">
+                <!-- GREY GRADIENT FOR THE CYLINDERS -->
+                <defs>
+                    <linearGradient id="cylinderGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#eee" />
+                        <stop offset="100%" stop-color="#999" />
+                    </linearGradient>
+                </defs>
+
+                <!-- FIRST CYLINDER -->
+                <!-- Top Ellipse -->
+                <ellipse cx="50" cy="20" rx="30" ry="8" fill="url(#cylinderGradient)" />
+                <!-- Cylindrical Side -->
+                <rect x="20" y="20" width="60" height="25" fill="url(#cylinderGradient)" />
+                <!-- Bottom Ellipse -->
+                <ellipse cx="50" cy="45" rx="30" ry="8" fill="url(#cylinderGradient)" />
+
+                <!-- SECOND CYLINDER (stacked below the first) -->
+                <!-- Top Ellipse (same as the bottom of the first) -->
+                <ellipse cx="50" cy="45" rx="30" ry="8" fill="url(#cylinderGradient)" />
+                <!-- Cylindrical Side -->
+                <rect x="20" y="45" width="60" height="25" fill="url(#cylinderGradient)" />
+                <!-- Bottom Ellipse -->
+                <ellipse cx="50" cy="70" rx="30" ry="8" fill="url(#cylinderGradient)" />
+            </svg>
+        </div>
+
+        <div class="text-content">
+            <h1><span>SQL</span><span class="words"><span>Page</span><span>
+                        App</span><span>
+                        Website</span><span>
+                        Tools</span><span>
+                        Forms</span><span>
+                        Maps</span><span>
+                        Plots</span><span>
+                        APIs</span></span>
+            </h1>
+            <p>Turn your database into an interactive website</p>
+            <a href="#" class="cta-button">Try Online</a>
+        </div>
+    </div>
+    <a href="#features" class="scroll-link">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+            <path d="M7 13l5 5 5-5M7 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+        </svg>
+    </a>
+
+    <section id="features">
+        <div class="container">
+            <div class="text-content">
+                <h2>Build sophisticated tools, easily</h2>
+                <p>Turn boring SQL queries into beautiful, dynamic web applications.</p>
+                <p class="subtitle">
+                    <span class="feature-comparison">
+                        <span class="feature-name">More scalable than a spreadsheet, </span>
+                        <span class="feature-detail">
+                            <strong>SQL queries</strong> handle millions of rows in milliseconds. No more slow
+                            spreadsheet formulas or memory limitations. Your app remains smooth and responsive even as
+                            your data grows.
+                        </span>
+                    </span>
+                    <span class="feature-comparison">
+                        <span class="feature-name">More dynamic than a dashboard: </span>
+                        <span class="feature-detail">
+                            Build multi-page applications with drill-down capabilities. Navigate from summaries to
+                            detailed records. <strong>Full CRUD operations</strong> support viewing, editing, and
+                            analyzing your data.
+                        </span>
+                    </span>
+                    <span class="feature-comparison">
+                        <span class="feature-name">The power of the web, without the complexity.</span>
+                        <span class="feature-detail">
+                            Write SQL, get a web app. No need for complex frameworks or multiple languages. Optional
+                            HTML/CSS/JS customization available. <strong>REST API compatible</strong> for integration
+                            with external services.
+                        </span>
+                    </span>
+                </p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3>Complete</h3>
+                    <p>Create navigatable interfaces with maps, charts, tables, forms, grids, dashboards, and more.
+                        Batteries included.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Fast</h3>
+                    <p>Build fast applications, quickly.
+                        Everything loads instantly, because the technology is simple and razor-sharp.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Easy</h3>
+                    <p>You can teach yourself enough <i>SQL</i> to query and edit a database through SQLPage in a
+                        weekend. Focus on your data, we'll handle the rest.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+
+</html>
