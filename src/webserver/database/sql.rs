@@ -332,7 +332,7 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
         .enumerate()
         .flat_map(|(position, item)| {
             let mut items = Vec::with_capacity(1);
-            while it.peek().map_or(false, |x| x.position == position) {
+            while it.peek().is_some_and(|x| x.position == position) {
                 items.push(it.next().unwrap().expr_to_insert);
             }
             if items.is_empty() {

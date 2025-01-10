@@ -110,10 +110,10 @@ impl SqlPageFunctionCall {
         })
     }
 
-    pub async fn evaluate<'a, 'b>(
+    pub async fn evaluate<'a>(
         &self,
         request: &'a RequestInfo,
-        db_connection: &'b mut DbConn,
+        db_connection: &mut DbConn,
     ) -> anyhow::Result<Option<Cow<'a, str>>> {
         let mut params = Vec::with_capacity(self.arguments.len());
         for param in &self.arguments {
@@ -149,10 +149,10 @@ impl std::fmt::Display for SqlPageFunctionCall {
 
 /// Extracts the value of a parameter from the request.
 /// Returns `Ok(None)` when NULL should be used as the parameter value.
-pub(super) async fn extract_req_param<'a, 'b>(
+pub(super) async fn extract_req_param<'a>(
     param: &StmtParam,
     request: &'a RequestInfo,
-    db_connection: &'b mut DbConn,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
         // sync functions
@@ -181,10 +181,10 @@ pub(super) async fn extract_req_param<'a, 'b>(
     })
 }
 
-async fn concat_params<'a, 'b>(
+async fn concat_params<'a>(
     args: &[StmtParam],
     request: &'a RequestInfo,
-    db_connection: &'b mut DbConn,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     let mut result = String::new();
     for arg in args {
@@ -196,10 +196,10 @@ async fn concat_params<'a, 'b>(
     Ok(Some(Cow::Owned(result)))
 }
 
-async fn coalesce_params<'a, 'b>(
+async fn coalesce_params<'a>(
     args: &[StmtParam],
     request: &'a RequestInfo,
-    db_connection: &'b mut DbConn,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     for arg in args {
         if let Some(arg) = Box::pin(extract_req_param(arg, request, db_connection)).await? {
@@ -209,10 +209,10 @@ async fn coalesce_params<'a, 'b>(
     Ok(None)
 }
 
-async fn json_object_params<'a, 'b>(
+async fn json_object_params<'a>(
     args: &[StmtParam],
     request: &'a RequestInfo,
-    db_connection: &'b mut DbConn,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::{ser::SerializeMap, Serializer};
     let mut result = Vec::new();
@@ -247,10 +247,10 @@ async fn json_object_params<'a, 'b>(
     Ok(Some(Cow::Owned(String::from_utf8(result)?)))
 }
 
-async fn json_array_params<'a, 'b>(
+async fn json_array_params<'a>(
     args: &[StmtParam],
     request: &'a RequestInfo,
-    db_connection: &'b mut DbConn,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::{ser::SerializeSeq, Serializer};
     let mut result = Vec::new();

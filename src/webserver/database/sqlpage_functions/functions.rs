@@ -367,10 +367,7 @@ async fn test_random_string() {
     assert_eq!(s.len(), 10);
 }
 
-async fn read_file_bytes<'a>(
-    request: &'a RequestInfo,
-    path_str: &str,
-) -> Result<Vec<u8>, anyhow::Error> {
+async fn read_file_bytes(request: &RequestInfo, path_str: &str) -> Result<Vec<u8>, anyhow::Error> {
     let path = std::path::Path::new(path_str);
     // If the path is relative, it's relative to the web root, not the current working directory,
     // and it can be fetched from the on-database filesystem table

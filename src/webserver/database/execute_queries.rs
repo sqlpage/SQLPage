@@ -235,10 +235,10 @@ fn vars_and_name<'a, 'b>(
     }
 }
 
-async fn take_connection<'a, 'b>(
+async fn take_connection<'a>(
     db: &'a Database,
-    conn: &'b mut DbConn,
-) -> anyhow::Result<&'b mut PoolConnection<sqlx::Any>> {
+    conn: &'a mut DbConn,
+) -> anyhow::Result<&'a mut PoolConnection<sqlx::Any>> {
     if let Some(c) = conn {
         return Ok(c);
     }
@@ -307,10 +307,10 @@ fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
     e
 }
 
-async fn bind_parameters<'a, 'b>(
+async fn bind_parameters<'a>(
     stmt: &'a StmtWithParams,
     request: &'a RequestInfo,
-    db_connection: &'b mut DbConn,
+    db_connection: &mut DbConn,
 ) -> anyhow::Result<StatementWithParams<'a>> {
     let sql = stmt.query.as_str();
     log::debug!("Preparing statement: {}", sql);

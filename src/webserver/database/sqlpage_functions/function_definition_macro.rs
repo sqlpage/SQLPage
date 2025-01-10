@@ -52,11 +52,11 @@ macro_rules! sqlpage_functions {
             }
         }
         impl SqlPageFunctionName {
-            pub(crate) async fn evaluate<'a, 'b>(
+            pub(crate) async fn evaluate<'a>(
                 &self,
                 #[allow(unused_variables)]
                 request: &'a RequestInfo,
-                db_connection: &'b mut Option<sqlx::pool::PoolConnection<sqlx::Any>>,
+                db_connection: &mut Option<sqlx::pool::PoolConnection<sqlx::Any>>,
                 params: Vec<Option<Cow<'a, str>>>
             ) -> anyhow::Result<Option<Cow<'a, str>>> {
                 use $crate::webserver::database::sqlpage_functions::function_traits::*;
