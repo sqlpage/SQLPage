@@ -2,8 +2,6 @@ select 'http_header' as component,
     'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     '<https://sql-page.com/your-first-sql-website/>; rel="canonical"' as "Link";
 
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
-
 set os = COALESCE($os, case 
     when sqlpage.header('user-agent') like '%windows%' then 'windows'
     when sqlpage.header('user-agent') like '%x11; linux%' then 'linux'
@@ -13,9 +11,18 @@ set os = COALESCE($os, case
     else 'any'
 end);
 
+-- Fetch the page title and header from the database
+select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
+    'title', 'SQL to Website - Tutorial',
+    'description', 'Convert your SQL database into a website in minutes. In this 5-minute guide, we will create a simple website from scratch, and learn the basics of SQLPage.'
+)) as properties
+FROM example WHERE component = 'shell' LIMIT 1;
+
 SELECT 'hero' as component,
     'Your first SQL Website' as title,
-    'Let''s create your first website in SQL together, from downloading SQLPage to connecting it to your database, to making a web app' as description,
+    '[SQLPage](/) is a free tool for building data-driven apps quickly.
+
+Let''s create a simple website with a database from scratch, to learn SQLPage basics.' as description_md,
     case $os
         when 'linux' then 'get_started_linux.webp'
         when 'macos' then 'get_started_macos.webp'
@@ -39,11 +46,12 @@ SELECT 'alert' as component,
     'Afraid of the setup ? Do it the easy way !' as title,
     'mood-happy' as icon,
     'teal' as color,
-    'You don’t want to have anything to do with scary hacker things ?
-    You can use a preconfigured SQLPage  hosted on our servers, and **never have to configure a server** yourself.' as description_md,
-    'https://editor.datapage.app' AS link,
-    'Try SQLPage from your browser' as link_text;
-select 'https://datapage.app' as link, 'Host your app on our servers' as title, 'teal' as color;
+    'You don’t want to install anything on your computer ?
+    You can use a preconfigured SQLPage  hosted on our servers, and get your app online in minutes, without **ever having to configure a server** yourself.' as description_md,
+    'https://datapage.app' AS link,
+    'Host your app on our servers' as link_text;
+select 'https://editor.datapage.app' as link, 'Try SQLPage from your browser' as title, 'teal' as color;
+
 SELECT 'alert' as component,
     'Do you prefer videos ?' as title,
     'brand-youtube' as icon,
