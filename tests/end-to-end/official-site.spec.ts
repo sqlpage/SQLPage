@@ -10,7 +10,6 @@ test("Open documentation", async ({ page }) => {
 
   // open the submenu
   await page.getByText("Documentation", { exact: true }).first().click();
-  await page.getByText("All Components").click();
   const components = ["form", "map", "chart", "button"];
   for (const component of components) {
     await expect(
@@ -46,7 +45,7 @@ test("form example", async ({ page }) => {
 });
 
 test("File upload", async ({ page }) => {
-  await page.goto(BASE);
+  await page.goto(`${BASE}/your-first-sql-website`);
   await page.getByRole("button", { name: "Examples", exact: true }).click();
   await page.getByText("File uploads").click();
   const my_svg = '<svg><text y="20">Hello World</text></svg>';
