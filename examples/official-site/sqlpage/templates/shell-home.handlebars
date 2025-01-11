@@ -613,7 +613,7 @@
 
         #features .container {
             flex-direction: column;
-            gap: 6rem;
+            gap: 3rem;
         }
 
         #features h2 {
@@ -716,52 +716,81 @@
             }
         }
 
-        .feature-comparison {
+        .feature-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
             position: relative;
-            display: inline;
-            margin: 1rem 0;
+            overflow: hidden;
         }
 
-        .feature-name {
-            transition: all 0.3s ease;
+        .feature-section:nth-child(odd) {
+            background: linear-gradient(135deg,
+                    var(--bg-secondary) 0%,
+                    var(--bg-tertiary) 100%);
+        }
+
+        .feature-section .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .feature-section:nth-child(even) .container {
+            direction: rtl;
+        }
+
+        .feature-section:nth-child(even) .feature-content {
+            direction: ltr;
+        }
+
+        .feature-content {
+            max-width: 500px;
+        }
+
+        .feature-content h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .feature-content p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .feature-image {
             position: relative;
-            cursor: help;
-            color: #999;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            transition: transform var(--transition-medium);
         }
 
-        .feature-name:hover {
-            color: #fff;
+        .feature-image:hover {
+            transform: translateY(-10px);
         }
 
-        .feature-detail {
-            z-index: 10;
-            position: absolute;
-            right: auto;
-            left: 0;
-            top: 100%;
-            transform: translateY(10px);
+        .feature-image img, .feature-image video {
             width: 100%;
-            margin-top: 0.5rem;
-            background: rgba(255, 255, 255, 0.15);
-            padding: 1.5rem;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-            color: rgba(255, 255, 255, 0.95);
-            font-size: 0.9rem;
-            line-height: 1.5;
-            box-shadow:
-                0 4px 12px rgba(0, 0, 0, 0.2),
-                0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+            object-position: left;
+            display: block;
         }
 
-        .feature-name:hover+.feature-detail {
-            transform: translateY(0);
-            opacity: 1;
-            visibility: visible;
+        @media (max-width: 968px) {
+            .feature-section .container {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            
+            .feature-content {
+                max-width: 100%;
+            }
         }
 
         /* FOOTER STYLES */
@@ -918,32 +947,6 @@
             <div class="text-content">
                 <h2>Build sophisticated tools, easily</h2>
                 <p>Turn boring SQL queries into beautiful, dynamic web applications.</p>
-                <p class="subtitle">
-                    <span class="feature-comparison">
-                        <span class="feature-name">More scalable than a spreadsheet, </span>
-                        <span class="feature-detail">
-                            <strong>SQL queries</strong> handle millions of rows in milliseconds. No more slow
-                            spreadsheet formulas or memory limitations. Your app remains smooth and responsive even as
-                            your data grows.
-                        </span>
-                    </span>
-                    <span class="feature-comparison">
-                        <span class="feature-name">More dynamic than a dashboard: </span>
-                        <span class="feature-detail">
-                            Build multi-page applications with drill-down capabilities. Navigate from summaries to
-                            detailed records. <strong>Full CRUD operations</strong> support viewing, editing, and
-                            analyzing your data.
-                        </span>
-                    </span>
-                    <span class="feature-comparison">
-                        <span class="feature-name">The power of the web, without the complexity.</span>
-                        <span class="feature-detail">
-                            Write SQL, get a web app. No need for complex frameworks or multiple languages. Optional
-                            HTML/CSS/JS customization available. <strong>REST API compatible</strong> for integration
-                            with external services.
-                        </span>
-                    </span>
-                </p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
@@ -964,6 +967,42 @@
                     <p>You can teach yourself enough <i>SQL</i> to query and edit a database through SQLPage in a
                         weekend. Focus on your data, we'll handle the rest.</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-section">
+        <div class="container">
+            <div class="feature-content">
+                <h2>More scalable than a spreadsheet</h2>
+                <p>SQL queries sort, filter, and aggregate millions of rows in milliseconds. No more slow spreadsheet formulas or memory limitations. Your app remains smooth and responsive even as your data grows.</p>
+            </div>
+            <div class="feature-image">
+                <video src="/assets/screenshots/big_tables.webm" alt="SQLPage displaying large tables" width="600" height="400" autoplay loop muted playsinline></video>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-section">
+        <div class="container">
+            <div class="feature-content">
+                <h2>More dynamic than a dashboard</h2>
+                <p>Build multi-page applications with drill-down capabilities. Navigate from summaries to detailed records. Full CRUD operations support viewing, editing, and analyzing your data.</p>
+            </div>
+            <div class="feature-image">
+                <video src="/assets/screenshots/big_tables.webm" alt="Interactive Dashboard" width="600" height="400"></video>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-section">
+        <div class="container">
+            <div class="feature-content">
+                <h2>The power of the web, without the complexity</h2>
+                <p>Write SQL, get a web app. No need for complex frameworks or multiple languages. Optional HTML/CSS/JS customization available. REST API compatible for integration with external services.</p>
+            </div>
+            <div class="feature-image">
+                <img src="/assets/feature-simple.webp" alt="Simple Web Development" width="600" height="400">
             </div>
         </div>
     </section>
