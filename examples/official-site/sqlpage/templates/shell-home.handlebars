@@ -616,7 +616,7 @@
             gap: 3rem;
         }
 
-        #features h2 {
+        #features .gradient-title {
             font-size: 3.5rem;
             margin-bottom: 1rem;
             background: linear-gradient(135deg, #ffffff 0%, #e1e1e1 100%);
@@ -749,7 +749,7 @@
             max-width: 500px;
         }
 
-        .feature-content h2 {
+        .feature-content .gradient-title {
             font-size: 2.5rem;
             margin-bottom: 1.5rem;
             background: var(--gradient-primary);
@@ -775,7 +775,8 @@
             transform: translateY(-10px);
         }
 
-        .feature-image img, .feature-image video {
+        .feature-image img,
+        .feature-image video {
             width: 100%;
             object-fit: cover;
             object-position: left;
@@ -787,7 +788,7 @@
                 grid-template-columns: 1fr;
                 text-align: center;
             }
-            
+
             .feature-content {
                 max-width: 100%;
             }
@@ -904,6 +905,18 @@
                 background-position: -400% 0;
             }
         }
+
+        .dynamic-title {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, rgba(231, 131, 211, 0.95) 0%, rgba(221, 22, 22, 0.85) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow:
+                0 1px 1px rgba(0, 0, 0, 0.2),
+                0 -1px 1px rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
     </style>
 </head>
 
@@ -974,11 +987,13 @@
     <section class="feature-section">
         <div class="container">
             <div class="feature-content">
-                <h2>More scalable than a spreadsheet</h2>
-                <p>SQL queries sort, filter, and aggregate millions of rows in milliseconds. No more slow spreadsheet formulas or memory limitations. Your app remains smooth and responsive even as your data grows.</p>
+                <h2 class="gradient-title">More scalable than a spreadsheet</h2>
+                <p>SQL queries sort, filter, and aggregate millions of rows in milliseconds. No more slow spreadsheet
+                    formulas or memory limitations. Your app remains smooth and responsive even as your data grows.</p>
             </div>
             <div class="feature-image">
-                <video src="/assets/screenshots/big_tables.webm" alt="SQLPage displaying large tables" width="600" height="400" autoplay loop muted playsinline></video>
+                <video src="/assets/screenshots/big_tables.webm" alt="SQLPage displaying large tables" width="600"
+                    height="400" autoplay loop muted playsinline></video>
             </div>
         </div>
     </section>
@@ -986,11 +1001,13 @@
     <section class="feature-section">
         <div class="container">
             <div class="feature-content">
-                <h2>More dynamic than a dashboard</h2>
-                <p>Build multi-page applications with drill-down capabilities. Navigate from summaries to detailed records. Full CRUD operations support viewing, editing, and analyzing your data.</p>
+                <h2 class="dynamic-title">More dynamic than a dashboard</h2>
+                <p>Build multi-page applications with drill-down capabilities. Navigate from summaries to detailed
+                    records. Comment, edit, and dive into your data instead of just looking at static numbers.</p>
             </div>
             <div class="feature-image">
-                <video src="/assets/screenshots/big_tables.webm" alt="Interactive Dashboard" width="600" height="400"></video>
+                <img src="/assets/screenshots/user-creation-form.png" alt="User creation form, illustrating the ability to create, edit, and delete individual data points, to go beyond simple static dashboards."
+                    width="600" height="400">
             </div>
         </div>
     </section>
@@ -998,8 +1015,9 @@
     <section class="feature-section">
         <div class="container">
             <div class="feature-content">
-                <h2>The power of the web, without the complexity</h2>
-                <p>Write SQL, get a web app. No need for complex frameworks or multiple languages. Optional HTML/CSS/JS customization available. REST API compatible for integration with external services.</p>
+                <h2 class="gradient-title">The power of the web, without the complexity</h2>
+                <p>Write SQL, get a web app. No need for complex frameworks or multiple languages. Optional HTML/CSS/JS
+                    customization available. REST API compatible for integration with external services.</p>
             </div>
             <div class="feature-image">
                 <img src="/assets/feature-simple.webp" alt="Simple Web Development" width="600" height="400">
