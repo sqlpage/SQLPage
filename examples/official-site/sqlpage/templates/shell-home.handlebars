@@ -574,36 +574,34 @@
 
         .scroll-link {
             position: fixed;
-            bottom: 2rem;
+            bottom: 1.5rem;
             left: 50%;
             transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.4);
             transition: all 0.3s ease;
-            animation: bounce 2s infinite;
+            animation: bounce 3s infinite;
             cursor: pointer;
         }
 
+        .scroll-link svg {
+            width: 32px;
+            height: 32px;
+        }
+
         .scroll-link:hover {
-            color: rgba(255, 255, 255, 0.9);
-            transform: translateX(-50%) scale(1.1);
+            color: rgba(255, 255, 255, 0.7);
+            transform: translateX(-50%) scale(1.05);
         }
 
         @keyframes bounce {
-
-            0%,
-            20%,
-            50%,
-            80%,
-            100% {
+            0%, 20%, 50%, 80%, 100% {
                 transform: translateX(-50%) translateY(0);
             }
-
             40% {
-                transform: translateX(-50%) translateY(-10px);
+                transform: translateX(-50%) translateY(-6px);
             }
-
             60% {
-                transform: translateX(-50%) translateY(-5px);
+                transform: translateX(-50%) translateY(-3px);
             }
         }
 
