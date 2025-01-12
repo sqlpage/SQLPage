@@ -805,11 +805,12 @@
                 radial-gradient(circle at 100% 0%,
                     hsla(212, 49%, 34%, 0.03) 0%,
                     transparent 50%);
-            padding: 4rem 0;
+            padding: 5rem 0 1rem 0;
             border-top: 1px solid var(--border-subtle);
         }
 
         footer .container {
+            padding: 0;
             min-height: auto !important;
         }
 
@@ -918,6 +919,24 @@
             position: relative;
             margin-bottom: 1rem;
         }
+
+        .footer-attribution {
+            text-align: center;
+            padding: 2rem 0 1rem 0;
+            font-size: 0.7rem;
+            opacity: 0.8;
+            transition: .2s;
+        }
+
+        .footer-attribution:hover {
+            opacity: 1;
+        }
+
+        .footer-attribution a {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dotted currentColor;
+        }
     </style>
 </head>
 
@@ -945,7 +964,7 @@
                         Plots</span><span>
                         APIs</span></span>
             </h1>
-            <p>Turn your database into an interactive website</p>
+            <p>SQL websites: powerful, simple and open-source</p>
             <a href="https://editor.datapage.app" class="cta-button">Try Online</a>
         </div>
     </div>
@@ -1090,6 +1109,9 @@
                     </svg>
                 </a>
             </div>
+        </div>
+        <div class="footer-attribution">
+            Built <a href="https://github.com/sqlpage/SQLPage/tree/main/examples/official-site">with SQLPage</a>
         </div>
     </footer>
 </body>
