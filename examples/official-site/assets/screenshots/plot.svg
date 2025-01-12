@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:data="ApexChartsNS" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="1910.7" height="1448.5" class="apexcharts-svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:data="ApexChartsNS" xmlns:xhtml="http://www.w3.org/1999/xhtml" xml:space="preserve" width="1910.7" height="1448.5">
   <defs>
     <filter id="b" width="1.1" height="1.1" x="0" y="0" color-interpolation-filters="sRGB">
       <feFlood flood-color="#5A585F" flood-opacity=".1" result="flood"/>
@@ -7,7 +7,6 @@
       <feComposite in="flood" in2="offset" operator="in" result="comp1"/>
       <feComposite in="SourceGraphic" in2="comp1" result="comp2"/>
     </filter>
-    <path id="c" stroke="#e0e0e0" stroke-dasharray="none" stroke-linecap="butt" d="M0 185h333" class="apexcharts-gridline"/>
   </defs>
   <defs>
     <filter id="a" width="1.1" height="1.1" x="0" y="0" color-interpolation-filters="sRGB">
@@ -41,83 +40,66 @@
     </g>
   </g>
   <foreignObject width="388" height="250" x="0" y="0">
-    <xhtml:div class="apexcharts-legend" style="max-height:125px"/>
+    <xhtml:div style="max-height:125px"/>
   </foreignObject>
-  <g class="apexcharts-yaxis">
-    <g fill="#373d3f" class="apexcharts-yaxis-texts-g" font-family="mono" font-size="11" font-weight="400" text-anchor="end">
-      <text x="20" y="34" class="apexcharts-text apexcharts-yaxis-label" transform="translate(709 616) scale(3.02526)"><tspan>120</tspan></text>
-      <text x="20" y="65" class="apexcharts-text apexcharts-yaxis-label" transform="translate(709 616) scale(3.02526)"><tspan>100</tspan></text>
-      <text x="20" y="95" class="apexcharts-text apexcharts-yaxis-label" transform="translate(709 616) scale(3.02526)"><tspan>80</tspan></text>
-      <text x="20" y="126" class="apexcharts-text apexcharts-yaxis-label" transform="translate(709 616) scale(3.02526)"><tspan>60</tspan></text>
-      <text x="20" y="157" class="apexcharts-text apexcharts-yaxis-label" transform="translate(709 616) scale(3.02526)"><tspan>40</tspan></text>
-      <text x="20" y="188" class="apexcharts-text apexcharts-yaxis-label" transform="translate(709 616) scale(3.02526)"><tspan>20</tspan></text>
-      <text x="20" y="219" class="apexcharts-text apexcharts-yaxis-label" transform="translate(709 616) scale(3.02526)"><tspan>0</tspan></text>
-    </g>
+  <g fill="#373d3f" font-family="mono" font-size="11" font-weight="400" text-anchor="end">
+    <text x="20" y="34" transform="translate(709 616) scale(3.02526)"><tspan>120</tspan></text>
+    <text x="20" y="65" transform="translate(709 616) scale(3.02526)"><tspan>100</tspan></text>
+    <text x="20" y="95" transform="translate(709 616) scale(3.02526)"><tspan>80</tspan></text>
+    <text x="20" y="126" transform="translate(709 616) scale(3.02526)"><tspan>60</tspan></text>
+    <text x="20" y="157" transform="translate(709 616) scale(3.02526)"><tspan>40</tspan></text>
+    <text x="20" y="188" transform="translate(709 616) scale(3.02526)"><tspan>20</tspan></text>
+    <text x="20" y="219" transform="translate(709 616) scale(3.02526)"><tspan>0</tspan></text>
   </g>
-  <g class="apexcharts-inner apexcharts-graphical" transform="translate(800 707) scale(3.02526)">
+  <g transform="translate(800 707) scale(3.02526)">
     <defs>
-      <clipPath id="e">
+      <clipPath id="d">
         <rect width="333.3" height="185.2" fill="#fff" stroke-width="0" rx="0" ry="0"/>
       </clipPath>
-      <clipPath id="f">
+      <clipPath id="e">
         <rect width="353.3" height="205.2" x="-10" y="-10" fill="#fff" stroke-width="0" rx="0" ry="0"/>
       </clipPath>
-      <linearGradient id="d" x1="0" x2="0" y1="30.8" y2="264.3" gradientTransform="scale(1.42726 .70064)" gradientUnits="userSpaceOnUse">
+      <linearGradient id="c" x1="0" x2="0" y1="30.8" y2="264.3" gradientTransform="scale(1.42726 .70064)" gradientUnits="userSpaceOnUse">
         <stop offset="0" stop-color="#4263eb" stop-opacity=".6"/>
         <stop offset="1" stop-color="#66b4c4" stop-opacity="0"/>
         <stop offset="1" stop-color="#bdd4ef" stop-opacity=".1"/>
       </linearGradient>
     </defs>
-    <path fill="#b1b9c4" fill-opacity=".9" stroke="#b6b6b6" stroke-dasharray="3" d="M0 0v185" class="apexcharts-xcrosshairs"/>
-    <path stroke="#7c848d" stroke-opacity=".3" d="M0 185v6" class="apexcharts-xaxis-tick"/>
-    <path stroke="#e0e0e0" d="M55 185v6m56-6v6m56-6v6m56-6v6m55-6v6" class="apexcharts-xaxis-tick"/>
-    <g class="apexcharts-grid">
-      <g stroke="#7c848d" stroke-opacity=".3" class="apexcharts-gridlines-horizontal">
-        <path d="M0 31h333M0 62h333M0 93h333M0 124h333M0 154h333" class="apexcharts-gridline"/>
-      </g>
-      <path stroke="transparent" d="M0 185h333M0 1v184"/>
-    </g>
-    <g class="apexcharts-grid-borders">
-      <path stroke="#7c848d" stroke-opacity=".3" d="M0 0h333" class="apexcharts-gridline" opacity=".4"/>
-      <use xlink:href="#c" class="apexcharts-gridline"/>
-      <use xlink:href="#c" stroke="#7c848d" stroke-opacity=".3"/>
-    </g>
-    <g class="apexcharts-area-series apexcharts-plot-series">
-      <g data:longestSeries="true" data:realIndex="0" class="apexcharts-series">
-        <path fill="url(#d)" d="M0 162c19 0 36-48 55-48s36 36 55 36c20 0 37-73 57-73 19 0 36 54 56 54 19 0 35-109 55-109 19 0 36 81 55 81v82H0Z" class="apexcharts-area" clip-path="url(#e)"/>
-        <path fill="none" stroke="#4263eb" stroke-linecap="round" stroke-width="3" d="M0 162c19 0 36-48 55-48s36 36 55 36c20 0 37-73 57-73 19 0 36 54 56 54 19 0 35-109 55-109 19 0 36 81 55 81" class="apexcharts-area" clip-path="url(#e)"/>
-        <g data:realIndex="0" class="apexcharts-series-markers-wrap apexcharts-hidden-element-shown">
-          <g fill="#4263eb" class="apexcharts-series-markers" clip-path="url(#f)">
-            <path d="M-5 162a5 5 0 1 0 10 0 5 5 0 1 0-10 0" class="apexcharts-marker no-pointer-events wizctsd8ch"/>
-            <path d="M50 114a5 5 0 1 0 10 0 5 5 0 1 0-10 0" class="apexcharts-marker no-pointer-events w5uw23abo"/>
-          </g>
-          <g class="apexcharts-series-markers" clip-path="url(#f)">
-            <path fill="#4263eb" d="M105 150a5 5 0 1 0 10 0 5 5 0 1 0-10 0" class="apexcharts-marker no-pointer-events w7vxnyqx2h"/>
-          </g>
-          <g class="apexcharts-series-markers" clip-path="url(#f)">
-            <path fill="#4263eb" d="M162 77a5 5 0 1 0 10 0 5 5 0 1 0-10 0" class="apexcharts-marker no-pointer-events wid1srl7bl"/>
-          </g>
-          <g class="apexcharts-series-markers" clip-path="url(#f)">
-            <path fill="#4263eb" d="M218 131a5 5 0 1 0 10 0 5 5 0 1 0-10 0" class="apexcharts-marker no-pointer-events wniqhqn2y"/>
-          </g>
-          <g class="apexcharts-series-markers" clip-path="url(#f)">
-            <path fill="#4263eb" d="M273 22a5 5 0 1 0 10 0 5 5 0 1 0-10 0" class="apexcharts-marker no-pointer-events wtujsnty1"/>
-          </g>
-          <g class="apexcharts-series-markers" clip-path="url(#f)">
-            <path fill="#4263eb" d="M328 103a5 5 0 1 0 10 0 5 5 0 1 0-10 0" class="apexcharts-marker no-pointer-events w2tg2g2qi"/>
-          </g>
+    <path fill="#b1b9c4" fill-opacity=".9" stroke="#b6b6b6" stroke-dasharray="3" d="M0 0v185"/>
+    <path stroke="#7c848d" stroke-opacity=".3" d="M0 185v6m55-6v6m56-6v6m56-6v6m56-6v6m55-6v6M0 31h333M0 62h333M0 93h333M0 124h333M0 154h333"/>
+    <path stroke="transparent" d="M0 185h333M0 1v184"/>
+    <path stroke="#7c848d" stroke-opacity=".3" d="M0 0h333" opacity=".4"/>
+    <g data:longestSeries="true" data:realIndex="0">
+      <path fill="url(#c)" d="M0 162c19 0 36-48 55-48s36 36 55 36c20 0 37-73 57-73 19 0 36 54 56 54 19 0 35-109 55-109 19 0 36 81 55 81v82H0Z" clip-path="url(#d)"/>
+      <path fill="none" stroke="#4263eb" stroke-linecap="round" stroke-width="3" d="M0 162c19 0 36-48 55-48s36 36 55 36c20 0 37-73 57-73 19 0 36 54 56 54 19 0 35-109 55-109 19 0 36 81 55 81" clip-path="url(#d)"/>
+      <g data:realIndex="0">
+        <g fill="#4263eb" clip-path="url(#e)">
+          <path d="M-5 162a5 5 0 1 0 10 0 5 5 0 1 0-10 0m55-48a5 5 0 1 0 10 0 5 5 0 1 0-10 0"/>
+        </g>
+        <g clip-path="url(#e)">
+          <path fill="#4263eb" d="M105 150a5 5 0 1 0 10 0 5 5 0 1 0-10 0"/>
+        </g>
+        <g clip-path="url(#e)">
+          <path fill="#4263eb" d="M162 77a5 5 0 1 0 10 0 5 5 0 1 0-10 0"/>
+        </g>
+        <g clip-path="url(#e)">
+          <path fill="#4263eb" d="M218 131a5 5 0 1 0 10 0 5 5 0 1 0-10 0"/>
+        </g>
+        <g clip-path="url(#e)">
+          <path fill="#4263eb" d="M273 22a5 5 0 1 0 10 0 5 5 0 1 0-10 0"/>
+        </g>
+        <g clip-path="url(#e)">
+          <path fill="#4263eb" d="M328 103a5 5 0 1 0 10 0 5 5 0 1 0-10 0"/>
         </g>
       </g>
     </g>
-    <g class="apexcharts-xaxis">
-      <g fill="#373d3f" class="apexcharts-xaxis-texts-g" font-family="mono" font-size="12" text-anchor="middle">
-        <text y="213" class="apexcharts-text apexcharts-xaxis-label" font-weight="400" transform="translate(0 -4)">Jan 25</text>
-        <text x="55" y="213" class="apexcharts-text apexcharts-xaxis-label" font-weight="400" transform="translate(0 -4)">Apr 25</text>
-        <text x="111" y="213" class="apexcharts-text apexcharts-xaxis-label" font-weight="400" transform="translate(0 -4)">Jul 25</text>
-        <text x="167" y="213" class="apexcharts-text apexcharts-xaxis-label" font-weight="400" transform="translate(0 -4)">Oct 25</text>
-        <text x="223" y="213" class="apexcharts-text apexcharts-xaxis-label" font-weight="600" transform="translate(0 -4)">2026</text>
-        <text x="278" y="213" class="apexcharts-text apexcharts-xaxis-label" font-weight="400" transform="translate(0 -4)">Apr 26</text>
-      </g>
+    <g fill="#373d3f" font-family="mono" font-size="12" text-anchor="middle">
+      <text y="213" font-weight="400" transform="translate(0 -4)">Jan 25</text>
+      <text x="55" y="213" font-weight="400" transform="translate(0 -4)">Apr 25</text>
+      <text x="111" y="213" font-weight="400" transform="translate(0 -4)">Jul 25</text>
+      <text x="167" y="213" font-weight="400" transform="translate(0 -4)">Oct 25</text>
+      <text x="223" y="213" font-weight="600" transform="translate(0 -4)">2026</text>
+      <text x="278" y="213" font-weight="400" transform="translate(0 -4)">Apr 26</text>
     </g>
   </g>
   <text xml:space="preserve" x="113" y="257" fill="#fff" stroke-width="170" font-family="Monospace" font-size="64" font-weight="400" style="-inkscape-font-specification:'Monospace, Normal';text-align:start;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"><tspan x="113" y="257" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"><tspan fill="#dca654" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">select</tspan> <tspan fill="#84c6fa" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">&apos;chart&apos;</tspan> <tspan fill="#dca654" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">as</tspan> <tspan fill="#f8f7d9" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">component</tspan><tspan fill="#5c7580" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">;</tspan></tspan><tspan x="113" y="417" fill="#dca654" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">select</tspan><tspan x="113" y="497" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">    date <tspan fill="#dca654" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">as</tspan> <tspan fill="#f8f7d9" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">x</tspan><tspan fill="#5c7580" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">,</tspan> revenue <tspan fill="#dca654" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">as</tspan> <tspan fill="#f8f7d9" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">y</tspan></tspan><tspan x="113" y="577" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"><tspan fill="#dca654" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">from</tspan> sales<tspan fill="#5c7580" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">;</tspan></tspan><tspan x="113" y="737" fill-opacity=".5" style="-inkscape-font-specification:'Monospace, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-- The end</tspan></text>
