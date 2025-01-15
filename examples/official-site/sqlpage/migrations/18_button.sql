@@ -12,7 +12,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('shape', 'Shape of the buttons (e.g., pill, square)', 'TEXT', TRUE, TRUE),
     -- Item-level parameters (for each button)
     ('link', 'The URL to which the button should navigate when clicked. If the form attribute is specified, then this overrides the page to which the form is submitted.', 'URL', FALSE, TRUE),
-    ('color', 'The color of the button (e.g., red, green, blue, but also primary, warning, danger, etc.).', 'COLOR', FALSE, TRUE),
+    ('color', 'The color of the button (e.g., red, green, blue, but also primary, warning, danger, etc.). Only base color names are supported, not variations like "blue-lt" or "gray-300". Use a custom CSS stylesheet to further customize the colors.', 'COLOR', FALSE, TRUE),
     ('title', 'The text displayed on the button.', 'TEXT', FALSE, TRUE),
     ('tooltip', 'Text displayed when the user hovers over the button.', 'TEXT', FALSE, TRUE),
     ('disabled', 'Whether the button is disabled or not.', 'BOOLEAN', FALSE, TRUE),
