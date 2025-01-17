@@ -6,8 +6,8 @@
 
   /* Core colors refined for better contrast */
   --tblr-body-color: hsl(225deg 35% 86%);
-  --tblr-secondary-color: hsl(225, 15%, 80%); /* Increased lightness for better readability */
-  --tblr-muted-color: hsla(225, 15%, 75%, 0.8); /* Brighter muted text */
+  --tblr-secondary-color: hsl(225, 15%, 80%);
+  --tblr-muted-color: hsla(225, 15%, 75%, 0.8);
 
   /* Background system */
   --tblr-body-bg: hsl(225deg 44% 9%);
@@ -16,8 +16,8 @@
   --tblr-bg-surface-tertiary: hsl(225, 47%, 14%);
 
   /* Border colors */
-  --tblr-border-color: hsl(225, 47%, 15%);
-  --tblr-border-color-translucent: hsla(225, 47%, 15%, 0.16);
+  --tblr-border-color: hsl(225deg 30% 12%);
+  --tblr-border-color-translucent: hsla(225deg 30% 25% / 0.7);
 
   /* Text secondary RGB */
   --tblr-text-secondary-rgb: 204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */
@@ -27,20 +27,23 @@
   --tblr-code-bg: hsla(225, 47%, 15%, 0.5); /* Subtle dark background */
 
   /* Ethereal accent colors */
-  --tblr-primary: hsla(212, 60%, 60%, 0.95); /* Cosmic blue */
+  --tblr-blue-rgb: 84, 151, 213;
+  --tblr-blue: rgb(var(--tblr-blue-rgb));
+  --tblr-blue-lt-rgb: 21, 31, 53;
+  --tblr-blue-lt: rgb(var(--tblr-blue-lt-rgb));
+  --tblr-primary-rgb: 66, 99, 133;
+  --tblr-primary: rgb(var(--tblr-primary-rgb));
   --tblr-secondary: hsla(246.7, 60%, 94.1%, 0.85); /* Nebula purple */
 
   /* Luminous links */
   --tblr-link-color: hsl(212, 70%, 75%) !important; /* Star glow */
   --tblr-link-hover-color: hsl(212, 70%, 85%) !important; /* Supernova */
 
-  --tblr-blue-lt-rgb: 47, 61, 83;
-  --tblr-blue-rgb: 189, 214, 237;
-
   /* Ethereal shadows */
   --tblr-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px
     rgba(66, 153, 225, 0.15);
-  --tblr-box-shadow-dropdown: 0px 8px 24px rgba(0, 0, 0, 0.25), 1px 9px 20px rgba(174, 62, 201, 0.15);
+  --tblr-box-shadow-dropdown: 0px 8px 24px rgba(0, 0, 0, 0.25), 1px 9px 20px
+    rgba(174, 62, 201, 0.15);
 
   /* Pure white emphasis */
   --tblr-emphasis-color: #ffffff;
