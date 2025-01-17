@@ -1,5 +1,10 @@
-select 'http_header' as component, '</tabs/>; rel="canonical"' as "Link";
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'http_header' as component, '<https://sql-page.com/examples/tabs/>; rel="canonical"' as "Link";
+
+select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
+    'title', 'SQLPage - SQL website examples',
+    'description', 'These small focused examples each illustrate one feature of the SQLPage website builder.'
+)) as properties
+FROM example WHERE component = 'shell' LIMIT 1;
 
 drop table if exists example_cards;
 create temporary table if not exists example_cards as 

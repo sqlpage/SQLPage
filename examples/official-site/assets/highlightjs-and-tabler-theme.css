@@ -1,0 +1,199 @@
+@charset "utf-8";
+
+:root,
+.layout-boxed[data-bs-theme="dark"] {
+  color-scheme: dark;
+
+  /* Core colors refined for better contrast */
+  --tblr-body-color: hsl(225deg 35% 86%);
+  --tblr-secondary-color: hsl(225, 15%, 80%); /* Increased lightness for better readability */
+  --tblr-muted-color: hsla(225, 15%, 75%, 0.8); /* Brighter muted text */
+
+  /* Background system */
+  --tblr-body-bg: hsl(225deg 44% 9%);
+  --tblr-bg-surface: hsl(225, 47%, 10%);
+  --tblr-bg-surface-secondary: hsl(225, 47%, 12%);
+  --tblr-bg-surface-tertiary: hsl(225, 47%, 14%);
+
+  /* Border colors */
+  --tblr-border-color: hsl(225, 47%, 15%);
+  --tblr-border-color-translucent: hsla(225, 47%, 15%, 0.16);
+
+  /* Text secondary RGB */
+  --tblr-text-secondary-rgb: 204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */
+
+  /* Code colors */
+  --tblr-code-color: hsl(225deg 45.4% 76.93%); /* Light code text for dark theme */
+  --tblr-code-bg: hsla(225, 47%, 15%, 0.5); /* Subtle dark background */
+
+  /* Ethereal accent colors */
+  --tblr-primary: hsla(212, 60%, 60%, 0.95); /* Cosmic blue */
+  --tblr-secondary: hsla(246.7, 60%, 94.1%, 0.85); /* Nebula purple */
+
+  /* Luminous links */
+  --tblr-link-color: hsl(212, 70%, 75%) !important; /* Star glow */
+  --tblr-link-hover-color: hsl(212, 70%, 85%) !important; /* Supernova */
+
+  --tblr-blue-lt-rgb: 47, 61, 83;
+  --tblr-blue-rgb: 189, 214, 237;
+
+  /* Ethereal shadows */
+  --tblr-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px
+    rgba(66, 153, 225, 0.15);
+  --tblr-box-shadow-dropdown: 0px 8px 24px rgba(0, 0, 0, 0.25), 1px 9px 20px rgba(174, 62, 201, 0.15);
+
+  /* Pure white emphasis */
+  --tblr-emphasis-color: #ffffff;
+  --tblr-heading-color: #ffffff;
+
+  /* Syntax highlighting colors */
+  --hljs-cosmic-comment: hsl(290, 10%, 60%); /* Distant star */
+  --hljs-cosmic-punctuation: hsl(60, 40%, 85%); /* Stardust */
+  --hljs-cosmic-property: hsl(340, 60%, 65%); /* Red giant */
+  --hljs-cosmic-number: hsl(0, 50%, 75%); /* Solar flare */
+  --hljs-cosmic-boolean: hsl(270, 100%, 75%); /* Purple nebula */
+  --hljs-cosmic-string: hsl(120, 40%, 75%); /* Green aurora */
+  --hljs-cosmic-operator: hsl(0, 0%, 95%); /* White dwarf */
+  --hljs-cosmic-keyword: hsl(210, 100%, 75%); /* Blue giant */
+}
+
+@media (min-width: 768px) {
+  .layout-boxed {
+    background: #07020ff5
+      linear-gradient(70deg, rgba(23, 17, 39, 0.4), transparent) fixed;
+  }
+}
+
+/* Comments, Prolog, Doctype, and Cdata */
+.hljs-comment,
+.hljs-prolog,
+.hljs-meta,
+.hljs-cdata {
+  color: var(--tblr-secondary-color);
+}
+
+/* Punctuation */
+.hljs-template-variable,
+.hljs-punctuation {
+  color: var(--hljs-cosmic-punctuation);
+}
+
+/* Property and Tag */
+.hljs-property {
+  color: var(--hljs-cosmic-property);
+}
+
+/* Number */
+.hljs-number {
+  color: var(--hljs-cosmic-number);
+}
+
+/* Boolean */
+.hljs-literal {
+  color: var(--hljs-cosmic-boolean);
+}
+
+/* String */
+.hljs-selector-tag,
+.hljs-string {
+  color: var(--hljs-cosmic-string);
+}
+
+/* Operator */
+.hljs-operator,
+.hljs-symbol,
+.hljs-link,
+.language-css .hljs-string,
+.style .hljs-string {
+  color: var(--hljs-cosmic-operator);
+}
+
+/* Keyword */
+.hljs-template-tag,
+.hljs-keyword {
+  color: var(--hljs-cosmic-keyword);
+}
+
+/* Namespace */
+.hljs-namespace {
+  opacity: 0.7;
+}
+
+/* Selector, Attr-name, and String */
+.hljs-attr {
+  color: #fcfce5;
+}
+
+.hljs-name {
+  color: #e4faf6;
+}
+
+/* Operator, Entity, URL, CSS String, and Style String */
+.hljs-operator,
+.hljs-symbol,
+.hljs-link,
+.language-css .hljs-string,
+.style .hljs-string {
+  color: #f8f8f2;
+}
+
+/* At-rule and Attr-value */
+.hljs-tag,
+.hljs-keyword,
+.hljs-attribute-value {
+  color: #e6db74;
+}
+
+/* Regex and Important */
+.hljs-regexp,
+.hljs-important {
+  color: var(--tblr-yellow);
+}
+
+/* Important */
+.hljs-important {
+  font-weight: bold;
+}
+
+/* Entity */
+.hljs-symbol {
+  cursor: help;
+}
+
+/* Token transition */
+.hljs {
+  transition: 0.3s;
+}
+
+/* Code selection */
+code::selection,
+code ::selection {
+  background: var(--tblr-yellow);
+  color: var(--tblr-gray-900);
+  border-radius: 0.1em;
+}
+
+code .hljs-keyword::selection,
+code .hljs-punctuation::selection {
+  color: var(--tblr-gray-800);
+}
+
+/* Pre code padding */
+pre code {
+  padding: 0;
+}
+
+/* Limit height and add inset shadow to code blocks */
+pre:has(code) {
+  max-height: 33vh; /* Limit height */
+  overflow: auto;
+  box-shadow: inset 0 -1px 20px hsla(207.7, 39.4%, 6.5%, 0.64);
+  border-radius: 0.5rem;
+}
+
+@media print {
+  pre:has(code) {
+    max-height: none !important;
+    box-shadow: none !important;
+  }
+}

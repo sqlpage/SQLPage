@@ -1171,15 +1171,16 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "language": "en-US",
             "description": "Go from SQL queries to web applications in an instant.",
             "preview_image": "https://sql-page.com/sqlpage_social_preview.webp",
+            "theme": "dark",
             "font": "Poppins",
             "javascript": [
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/sql.min.js",
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/handlebars.min.js",
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/json.min.js",
-                "/highlightjs-launch.js"
+                "/assets/highlightjs-launch.js"
             ],
-            "css": "/highlightjs-tabler-theme.css",
+            "css": "/assets/highlightjs-and-tabler-theme.css",
             "footer": "Official [SQLPage](https://sql-page.com) documentation"
         }]')),
     ('shell', '
