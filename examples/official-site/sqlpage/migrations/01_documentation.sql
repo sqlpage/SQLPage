@@ -1181,7 +1181,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                 "/assets/highlightjs-launch.js"
             ],
             "css": "/assets/highlightjs-and-tabler-theme.css",
-            "footer": "Official [SQLPage](https://sql-page.com) documentation"
+            "footer": "[Built with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/official-site)"
         }]')),
     ('shell', '
 ### Sharing the shell between multiple pages
