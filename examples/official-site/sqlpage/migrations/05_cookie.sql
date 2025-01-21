@@ -2,12 +2,15 @@
 INSERT INTO component (name, description, icon)
 VALUES (
         'cookie',
-        'Sets a cookie in the client browser, used for session management and storing user-related information.
+        '
+Sets a cookie in the client browser, used for session management and storing user-related information.
         
-        This component creates a single cookie. Since cookies need to be set before the response body is sent to the client,
-        this component should be placed at the top of the page, before any other components that generate output.
-        
-        After being set, a cookie can be accessed anywhere in your SQL code using the `sqlpage.cookie(''cookie_name'')` pseudo-function.',
+This component creates a single cookie. Since cookies need to be set before the response body is sent to the client,
+this component should be **placed at the top of the page**, before any other components that generate output.
+
+After being set, a cookie can be accessed anywhere in your SQL code using the `sqlpage.cookie(''cookie_name'')` pseudo-function.
+
+Note that if your site is accessed over HTTP (and not HTTPS), you have to set `false as secure` to force browsers to accept your cookies.',
         'cookie'
     );
 -- Insert the parameters for the http_header component into the parameter table
