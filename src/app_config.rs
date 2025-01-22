@@ -225,6 +225,12 @@ pub struct AppConfig {
     )]
     pub site_prefix: String,
 
+    /// Setting this to `true` will cause the sqlpage link function to omit the file extension when
+    /// generating links (e.g. `/path/to/your/file` instead of `/path/to/your/file.sql`).
+    /// Use this if running behind a reverse proxy with appropriate rewrite rules.
+    #[serde(default)]
+    pub suppress_file_extensions: bool,
+
     /// Maximum number of messages that can be stored in memory before sending them to the client.
     /// This prevents a single request from using up all available memory.
     #[serde(default = "default_max_pending_rows")]

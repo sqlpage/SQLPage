@@ -27,7 +27,7 @@ super::function_definition_macro::sqlpage_functions! {
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
 
-    link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
+    link((&RequestInfo), file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
 
     path((&RequestInfo));
     persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
@@ -262,15 +262,29 @@ async fn header<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<
         .map(SingleOrVec::as_json_str)
 }
 
-/// Builds a URL from a file name and a JSON object conatining URL parameters.
+/// Builds a URL from a file name and a JSON object containing URL parameters.
 /// For instance, if the file is "index.sql" and the parameters are {"x": "hello world"},
 /// the result will be "index.sql?x=hello%20world".
 async fn link<'a>(
+    request: &'a RequestInfo,
     file: Cow<'a, str>,
     parameters: Option<Cow<'a, str>>,
     hash: Option<Cow<'a, str>>,
 ) -> anyhow::Result<String> {
+    let suppress_file_extensions = request.app_state.config.suppress_file_extensions;
+    do_link(file, parameters, hash, suppress_file_extensions).await
+}
+
+async fn do_link<'a>(
+    file: Cow<'a, str>,
+    parameters: Option<Cow<'a, str>>,
+    hash: Option<Cow<'a, str>>,
+    suppress_file_extensions: bool,
+) -> anyhow::Result<String> {
     let mut url = file.into_owned();
+    if suppress_file_extensions {
+        url = url.strip_suffix(".sql").ok_or(anyhow!("Unable to strip file suffix"))?.parse()?
+    }
     if let Some(parameters) = parameters {
         url.push('?');
         let encoded = serde_json::from_str::<URLParameters>(&parameters).with_context(|| {
@@ -603,4 +617,56 @@ async fn variables<'a>(
 /// Returns the version of the sqlpage that is running.
 async fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::do_link;
+    use rstest::rstest;
+    use std::borrow::Cow;
+
+    #[tokio::test]
+    #[rstest]
+    #[case::bare("/some/path/to/file.sql", None, None, false, "/some/path/to/file.sql")]
+    #[case::single_parameter(
+        "/some/path/to/file.sql",
+        Some(Cow::from(r#"{ "q":"search" }"#)),
+        None,
+        false,
+        "/some/path/to/file.sql?q=search"
+    )]
+    #[case::two_parameters(
+        "/some/path/to/file.sql",
+        Some(Cow::from(r#"{ "q":"search", "limit":100 }"#)),
+        None,
+        false,
+        "/some/path/to/file.sql?q=search&limit=100"
+    )]
+    #[case::hash(
+        "/some/path/to/file.sql",
+        None,
+        Some(Cow::from("anchor1")),
+        false,
+        "/some/path/to/file.sql#anchor1"
+    )]
+    #[case::suppress_file_extensions(
+        "/some/path/to/file.sql",
+        None,
+        None,
+        true,
+        "/some/path/to/file"
+    )]
+    async fn link_spec(
+        #[case] filename: &str,
+        #[case] parameters: Option<Cow<str>>,
+        #[case] hash: Option<Cow<str>>,
+        #[case] suppress_file_extensions: bool,
+        #[case] expected: &str,
+    ) {
+        let file = Cow::from(filename);
+        let actual = do_link(file, parameters, hash, suppress_file_extensions).await.unwrap();
+
+        assert_eq!(actual, String::from(expected));
+    }
+
 }

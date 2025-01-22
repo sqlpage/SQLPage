@@ -69,3 +69,6 @@ awc = { version = "3", features = ["rustls-0_22-webpki-roots"] }
 actix-rt = "2.8"
 libflate = "2"
 futures-util = "0.3.21"
+
+[dev-dependencies]
+rstest = "0.24.0"
