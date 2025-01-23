@@ -283,7 +283,10 @@ async fn do_link<'a>(
 ) -> anyhow::Result<String> {
     let mut url = file.into_owned();
     if suppress_file_extensions {
-        url = url.strip_suffix(".sql").ok_or(anyhow!("Unable to strip file suffix"))?.parse()?
+        url = url
+            .strip_suffix(".sql")
+            .ok_or(anyhow!("Unable to strip file suffix"))?
+            .parse()?
     }
     if let Some(parameters) = parameters {
         url.push('?');
@@ -664,9 +667,10 @@ mod tests {
         #[case] expected: &str,
     ) {
         let file = Cow::from(filename);
-        let actual = do_link(file, parameters, hash, suppress_file_extensions).await.unwrap();
+        let actual = do_link(file, parameters, hash, suppress_file_extensions)
+            .await
+            .unwrap();
 
         assert_eq!(actual, String::from(expected));
     }
-
 }
