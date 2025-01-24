@@ -146,15 +146,24 @@ pub(super) async fn run_csv_import(
     csv_import: &CsvImport,
     request: &RequestInfo,
 ) -> anyhow::Result<()> {
-    let file_path = request
+    let named_temp_file = &request
         .uploaded_files
         .get(&csv_import.uploaded_file)
-        .ok_or_else(|| anyhow::anyhow!("File not found"))?
-        .file
-        .path();
-    let file = tokio::fs::File::open(file_path)
-        .await
-        .with_context(|| "opening csv")?;
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "The request does not contain a field named {:?} with an uploaded file.\n\
+                Please check that :\n\
+                 - you have selected a file to upload, \n\
+                 - the form field name is correct.",
+                csv_import.uploaded_file
+            )
+        })?
+        .file;
+    let file_path = named_temp_file.path();
+    let file_name = file_path.file_name().unwrap_or_default();
+    let file = tokio::fs::File::open(file_path).await.with_context(|| {
+        format!("The CSV file {file_name:?} was uploaded correctly, but could not be opened",)
+    })?;
     let buffered = tokio::io::BufReader::new(file);
     // private_get_mut is not supposed to be used outside of sqlx, but it is the only way to
     // access the underlying connection
@@ -165,9 +174,9 @@ pub(super) async fn run_csv_import(
         _ => run_csv_import_insert(db, csv_import, buffered).await,
     }
     .with_context(|| {
+        let table_name = &csv_import.table_name;
         format!(
-            "running CSV import from {} to {}",
-            csv_import.uploaded_file, csv_import.table_name
+            "{file_name:?} was uploaded correctly, but its records could not be imported into the table {table_name}"
         )
     })
 }
@@ -179,13 +188,26 @@ async fn run_csv_import_postgres(
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
 ) -> anyhow::Result<()> {
+    log::debug!("Running CSV import with postgres");
     let mut copy_transact = db
         .copy_in_raw(csv_import.query.as_str())
         .await
-        .with_context(|| "running COPY IN")?;
-    copy_transact.read_from(file).await?;
-    copy_transact.finish().await?;
-    Ok(())
+        .with_context(|| "The postgres COPY FROM STDIN command failed.")?;
+    log::debug!("Copy transaction created");
+    match copy_transact.read_from(file).await {
+        Ok(_) => {
+            log::debug!("Copy transaction finished successfully");
+            copy_transact.finish().await?;
+            Ok(())
+        }
+        Err(e) => {
+            log::debug!("Copy transaction failed with error: {e}");
+            copy_transact
+                .abort("The COPY FROM STDIN command failed.")
+                .await?;
+            Err(e.into())
+        }
+    }
 }
 
 async fn run_csv_import_insert(

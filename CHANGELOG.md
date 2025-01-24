@@ -4,6 +4,8 @@
 
 - Add support for HTTP Basic Authentication in the [fetch](https://sql-page.com/documentation.sql?component=fetch#component) function.
 - Fix a bug where the table component would not add the right css classes to table cells.
+- Better error messages when a CSV import fails (using a `copy` statement and a file upload).
+- Fix a bug where subsequent requests would fail after a failed CSV import on postgres (https://github.com/sqlpage/SQLPage/issues/788)
 
 ## 0.32.1 (2025-01-03)
 
