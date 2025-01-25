@@ -1,16 +1,18 @@
+use awc::http::Uri;
 use std::path::PathBuf;
 use RoutingAction::{Error, Execute, NotFound, Redirect, Serve};
 
 const INDEX: &'static str = "index.sql";
 const NOT_FOUND: &'static str = "404.sql";
 const EXECUTION_EXTENSION: &'static str = "sql";
+const FORWARD_SLASH: &'static str = "/";
 
 #[derive(Debug, PartialEq)]
 pub enum RoutingAction {
     Error(String),
     Execute(PathBuf),
     NotFound(PathBuf),
-    Redirect(String),
+    Redirect(Uri),
     Serve(PathBuf),
 }
 
@@ -18,42 +20,56 @@ pub trait ExecutionStore {
     fn contains(&self, path: &PathBuf) -> bool;
 }
 
-pub fn calculate_route<T>(uri: &str, store: T) -> RoutingAction
+pub fn calculate_route<T>(uri: Uri, store: &T) -> RoutingAction
 where
     T: ExecutionStore,
 {
-    let mut path = PathBuf::from(uri);
+    let mut path = PathBuf::from(uri.path());
     match path.extension() {
         None => {
-            if uri.ends_with("/") {
+            if uri.path().ends_with(FORWARD_SLASH) {
                 path.push(INDEX);
-                find_execution(path, store)
+                find_execution_or_not_found(path, store)
             } else {
-                Redirect(format!("{}/", uri))
+                let path_with_ext = path.with_extension(EXECUTION_EXTENSION);
+                match find_execution(path_with_ext, store) {
+                    Some(action) => action,
+                    None => Redirect(append_to_uri_path(&uri, FORWARD_SLASH)),
+                }
             }
         }
         Some(extension) => {
             if extension == EXECUTION_EXTENSION {
-                find_execution(path, store)
+                find_execution_or_not_found(path, store)
             } else {
-                Serve(PathBuf::from(uri))
+                Serve(PathBuf::from(uri.path()))
             }
         }
     }
 }
 
-fn find_execution<T>(path: PathBuf, store: T) -> RoutingAction
+fn find_execution_or_not_found<T>(path: PathBuf, store: &T) -> RoutingAction
+where
+    T: ExecutionStore,
+{
+    match find_execution(path.clone(), store) {
+        None => find_not_found(path, store),
+        Some(execute) => execute,
+    }
+}
+
+fn find_execution<T>(path: PathBuf, store: &T) -> Option<RoutingAction>
 where
     T: ExecutionStore,
 {
     if store.contains(&path) {
-        Execute(path)
+        Some(Execute(path))
     } else {
-        find_not_found(path, store)
+        None
     }
 }
 
-fn find_not_found<T>(path: PathBuf, store: T) -> RoutingAction
+fn find_not_found<T>(path: PathBuf, store: &T) -> RoutingAction
 where
     T: ExecutionStore,
 {
@@ -70,6 +86,12 @@ where
     Error(path_to_string(&path))
 }
 
+fn append_to_uri_path(uri: &Uri, append: &str) -> Uri {
+    let mut full_uri = uri.to_string();
+    full_uri.insert_str(uri.path().len(), append);
+    full_uri.parse().unwrap()
+}
+
 fn path_to_string(path: &PathBuf) -> String {
     path.to_string_lossy().to_string()
 }
@@ -77,82 +99,136 @@ fn path_to_string(path: &PathBuf) -> String {
 #[cfg(test)]
 mod tests {
     use super::RoutingAction::{Error, Execute, NotFound, Redirect, Serve};
-    use super::{calculate_route, path_to_string, ExecutionStore};
+    use super::{calculate_route, path_to_string, ExecutionStore, RoutingAction};
+    use awc::http::Uri;
+    use std::default::Default as StdDefault;
     use std::path::PathBuf;
+    use std::str::FromStr;
+    use StoreConfig::{Default, Empty, File};
 
     #[test]
     fn root_path_executes_index_sql() {
-        let actual = calculate_route("/", Store::default());
-        let expected = Execute(PathBuf::from("/index.sql"));
+        let actual = do_route("/", Default);
+        let expected = execute("/index.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn path_with_sql_extension_executes_corresponding_sql_file() {
-        let actual = calculate_route("/index.sql", Store::default());
-        let expected = Execute(PathBuf::from("/index.sql"));
+        let actual = do_route("/index.sql", Default);
+        let expected = execute("/index.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn path_with_sql_extension_executes_corresponding_not_found_file() {
-        let actual = calculate_route("/unknown.sql", Store::default());
-        let expected = NotFound(PathBuf::from("/404.sql"));
+        let actual = do_route("/unknown.sql", Default);
+        let expected = not_found("/404.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn path_with_sql_extension_executes_deeper_not_found_file_if_exists() {
-        let actual = calculate_route("/unknown/unknown.sql", Store::new("/unknown/404.sql"));
-        let expected = NotFound(PathBuf::from("/unknown/404.sql"));
+        let actual = do_route("/unknown/unknown.sql", File("/unknown/404.sql"));
+        let expected = not_found("/unknown/404.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn path_with_sql_extension_executes_deepest_not_found_file_that_exists() {
-        let actual = calculate_route(
-            "/unknown/unknown/unknown.sql",
-            Store::new("/unknown/404.sql"),
-        );
-        let expected = NotFound(PathBuf::from("/unknown/404.sql"));
+        let actual = do_route("/unknown/unknown/unknown.sql", File("/unknown/404.sql"));
+        let expected = not_found("/unknown/404.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn path_with_sql_extension_errors_when_no_not_found_file_available() {
-        let actual = calculate_route("/unknown.sql", Store::empty());
-        let expected = Error("/unknown.sql".to_string());
+        let actual = do_route("/unknown.sql", Empty);
+        let expected = error("/unknown.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn path_with_no_extension_and_no_corresponding_sql_file_redirects_with_trailing_slash() {
-        let actual = calculate_route("/folder", Store::default());
-        let expected = Redirect("/folder/".to_string());
+        let actual = do_route("/folder", Default);
+        let expected = redirect("/folder/");
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn path_with_no_extension_executes_corresponding_sql_file_if_exists() {
+        let actual = do_route("/path", File("/path.sql"));
+        let expected = execute("/path.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn path_with_trailing_slash_executes_index_sql_from_directory() {
-        let actual = calculate_route("/folder/", Store::new("/folder/index.sql"));
-        let expected = Execute(PathBuf::from("/folder/index.sql"));
+        let actual = do_route("/folder/", File("/folder/index.sql"));
+        let expected = execute("/folder/index.sql");
 
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn non_sql_file_extension_serves_corresponding_asset() {
-        let actual = calculate_route("/favicon.ico", Store::default());
-        let expected = Serve(PathBuf::from("/favicon.ico"));
+        let actual = do_route("/favicon.ico", Default);
+        let expected = serve("/favicon.ico");
 
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    #[ignore]
+    fn path_without_site_prefix_redirects_to_site_prefix() {
+        let _prefix = "/sqlpage/";
+        let actual = do_route("/path", File("/path.sql"));
+        let expected = redirect("/sqlpage/");
+
+        assert_eq!(expected, actual);
+    }
+
+    fn do_route(uri: &str, config: StoreConfig) -> RoutingAction {
+        let store = match config {
+            Default => Store::default(),
+            Empty => Store::empty(),
+            File(file) => Store::new(file),
+        };
+        calculate_route(Uri::from_str(uri).unwrap(), &store)
+    }
+
+    fn error(uri: &str) -> RoutingAction {
+        Error(uri.to_string())
+    }
+
+    fn execute(path: &str) -> RoutingAction {
+        Execute(PathBuf::from(path))
+    }
+
+    fn not_found(path: &str) -> RoutingAction {
+        NotFound(PathBuf::from(path))
+    }
+
+    fn redirect(uri: &str) -> RoutingAction {
+        Redirect(Uri::from_str(uri).unwrap())
+    }
+
+    fn serve(path: &str) -> RoutingAction {
+        Serve(PathBuf::from(path))
+    }
+
+    enum StoreConfig {
+        Default,
+        Empty,
+        File(&'static str),
     }
 
     struct Store {
@@ -177,7 +253,7 @@ mod tests {
         }
     }
 
-    impl Default for Store {
+    impl StdDefault for Store {
         fn default() -> Self {
             Self {
                 contents: Self::default_contents(),
