@@ -2,10 +2,10 @@
 INSERT INTO blog_posts (title, description, icon, created_at, content)
 VALUES
     (
-        'Alexis''s performance monitoring tool',
-        'Alexis built a performance monitoring tool with SQLPage',
+        'How I built a 360° performance monitoring tool with SQL Queries',
+        'Alexis built a performance monitoring tool with SQLPage for a 100M€/year company',
         'shirt',
-        '2024-10-26',
+        '2025-01-25',
         '
 # How I Built And Deployed An Exhaustive Performance Monitoring Tool For a 100M€/year Company Using SQL Queries Only
 
