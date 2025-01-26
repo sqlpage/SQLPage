@@ -1,4 +1,5 @@
 use awc::http::Uri;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use RoutingAction::{Error, Execute, NotFound, Redirect, Serve};
 
@@ -21,7 +22,7 @@ pub trait ExecutionStore {
 }
 
 pub trait RoutingConfig {
-    fn prefix(&self) -> &str;
+    fn prefix(&self) -> &Uri;
 }
 
 pub async fn calculate_route<T, C>(uri: Uri, store: &T, config: &C) -> RoutingAction
@@ -29,60 +30,88 @@ where
     T: ExecutionStore,
     C: RoutingConfig,
 {
-    if !uri.path().starts_with(config.prefix()) {
-        return Redirect(config.prefix().parse().unwrap());
-    };
+    match check_uri(&uri, config) {
+        Ok(path) => match path.clone().extension() {
+            None => calculate_route_without_extension(&uri, path, store).await,
+            Some(extension) => calculate_route_with_extension(path, extension, store).await,
+        },
+        Err(action) => action,
+    }
+}
 
-    let mut path = PathBuf::from(format!(
-        "/{}",
-        uri.path().strip_prefix(config.prefix()).unwrap()
-    ));
+fn check_uri<C>(uri: &Uri, config: &C) -> Result<PathBuf, RoutingAction>
+where
+    C: RoutingConfig,
+{
+    if uri.path().starts_with(config.prefix().path()) {
+        Ok(PathBuf::from(format!(
+            "/{}",
+            uri.path()
+                .strip_prefix(config.prefix().path())
+                .expect("Unable to remove expected prefix from path")
+        )))
+    } else {
+        Err(Redirect(config.prefix().clone()))
+    }
+}
 
-    match path.extension() {
-        None => {
-            if uri.path().ends_with(FORWARD_SLASH) {
-                path.push(INDEX);
-                find_execution_or_not_found(path, store).await
-            } else {
-                let path_with_ext = path.with_extension(EXECUTION_EXTENSION);
-                match find_execution(path_with_ext, store).await {
-                    Some(action) => action,
-                    None => Redirect(append_to_uri_path(&uri, FORWARD_SLASH)),
-                }
-            }
-        }
-        Some(extension) => {
-            if extension == EXECUTION_EXTENSION {
-                find_execution_or_not_found(path, store).await
-            } else {
-                Serve(path)
-            }
+async fn calculate_route_without_extension<T>(
+    uri: &Uri,
+    mut path: PathBuf,
+    store: &T,
+) -> RoutingAction
+where
+    T: ExecutionStore,
+{
+    if uri.path().ends_with(FORWARD_SLASH) {
+        path.push(INDEX);
+        find_execution_or_not_found(&path, store).await
+    } else {
+        let path_with_ext = path.with_extension(EXECUTION_EXTENSION);
+        match find_execution(&path_with_ext, store).await {
+            Some(action) => action,
+            None => Redirect(append_to_uri_path(&uri, FORWARD_SLASH)),
         }
     }
 }
 
-async fn find_execution_or_not_found<T>(path: PathBuf, store: &T) -> RoutingAction
+async fn calculate_route_with_extension<T>(
+    path: PathBuf,
+    extension: &OsStr,
+    store: &T,
+) -> RoutingAction
 where
     T: ExecutionStore,
 {
-    match find_execution(path.clone(), store).await {
+    if extension == EXECUTION_EXTENSION {
+        find_execution_or_not_found(&path, store).await
+    } else {
+        Serve(path)
+    }
+}
+
+async fn find_execution_or_not_found<T>(path: &PathBuf, store: &T) -> RoutingAction
+where
+    T: ExecutionStore,
+{
+    match find_execution(path, store).await {
         None => find_not_found(path, store).await,
         Some(execute) => execute,
     }
 }
 
-async fn find_execution<T>(path: PathBuf, store: &T) -> Option<RoutingAction>
+async fn find_execution<T>(path: &PathBuf, store: &T) -> Option<RoutingAction>
 where
     T: ExecutionStore,
 {
-    if store.contains(&path).await {
-        Some(Execute(path))
+    if store.contains(path).await {
+        Some(Execute(path.clone()))
     } else {
         None
     }
 }
 
-async fn find_not_found<T>(path: PathBuf, store: &T) -> RoutingAction
+async fn find_not_found<T>(path: &PathBuf, store: &T) -> RoutingAction
 where
     T: ExecutionStore,
 {
@@ -96,13 +125,13 @@ where
         }
     }
 
-    Error(path_to_string(&path))
+    Error(path_to_string(path))
 }
 
 fn append_to_uri_path(uri: &Uri, append: &str) -> Uri {
     let mut full_uri = uri.to_string();
     full_uri.insert_str(uri.path().len(), append);
-    full_uri.parse().unwrap()
+    full_uri.parse().expect("Could not append uri path")
 }
 
 fn path_to_string(path: &PathBuf) -> String {
@@ -132,7 +161,7 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn root_path_with_site_prefix_executes_index() {
+        async fn root_path_and_site_prefix_executes_index() {
             let actual = do_route("/prefix/", Default, Some("/prefix/")).await;
             let expected = execute("/index.sql");
 
@@ -140,7 +169,7 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn sql_extension() {
+        async fn extension() {
             let actual = do_route("/index.sql", Default, None).await;
             let expected = execute("/index.sql");
 
@@ -148,7 +177,7 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn sql_extension_and_site_prefix() {
+        async fn extension_and_site_prefix() {
             let actual = do_route("/prefix/index.sql", Default, Some("/prefix/")).await;
             let expected = execute("/index.sql");
 
@@ -295,6 +324,22 @@ mod tests {
         }
 
         #[tokio::test]
+        async fn asset_trims_query() {
+            let actual = do_route("/favicon.ico?version=10", Default, None).await;
+            let expected = serve("/favicon.ico");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn asset_trims_fragment() {
+            let actual = do_route("/favicon.ico#asset1", Default, None).await;
+            let expected = serve("/favicon.ico");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
         async fn serves_corresponding_asset_given_site_prefix() {
             let actual = do_route("/prefix/favicon.ico", Default, Some("/prefix/")).await;
             let expected = serve("/favicon.ico");
@@ -319,6 +364,22 @@ mod tests {
         async fn no_extension_and_no_corresponding_file_redirects_with_trailing_slash() {
             let actual = do_route("/folder", Default, None).await;
             let expected = redirect("/folder/");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn no_extension_no_corresponding_file_redirects_with_trailing_slash_and_query() {
+            let actual = do_route("/folder?misc=1&foo=bar", Default, None).await;
+            let expected = redirect("/folder/?misc=1&foo=bar");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn no_extension_no_corresponding_file_redirects_with_trailing_slash_and_fragment() {
+            let actual = do_route("/folder#anchor1", Default, None).await;
+            let expected = redirect("/folder/#anchor1");
 
             assert_eq!(expected, actual);
         }
@@ -409,19 +470,19 @@ mod tests {
     }
 
     struct Config {
-        prefix: String,
+        prefix: Uri,
     }
 
     impl Config {
         fn new(prefix: &str) -> Self {
             Self {
-                prefix: prefix.to_string(),
+                prefix: prefix.parse().unwrap(),
             }
         }
     }
     impl RoutingConfig for Config {
-        fn prefix(&self) -> &str {
-            self.prefix.as_str()
+        fn prefix(&self) -> &Uri {
+            &self.prefix
         }
     }
 
