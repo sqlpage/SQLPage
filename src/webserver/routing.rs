@@ -44,12 +44,14 @@ where
     C: RoutingConfig,
 {
     if uri.path().starts_with(config.prefix().path()) {
-        Ok(PathBuf::from(format!(
-            "/{}",
+        let mut result = String::from("/");
+        result.push_str(
             uri.path()
                 .strip_prefix(config.prefix().path())
-                .expect("Unable to remove expected prefix from path")
-        )))
+                .expect("Unable to remove expected prefix from path"),
+        );
+
+        Ok(PathBuf::from(result))
     } else {
         Err(Redirect(config.prefix().clone()))
     }
