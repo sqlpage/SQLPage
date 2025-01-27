@@ -31,9 +31,9 @@
   --tblr-blue: rgb(var(--tblr-blue-rgb));
   --tblr-blue-lt-rgb: 21, 31, 53;
   --tblr-blue-lt: rgb(var(--tblr-blue-lt-rgb));
-  --tblr-primary-rgb: 66, 99, 133;
+  --tblr-primary-rgb: 95, 132, 169;
   --tblr-primary: rgb(var(--tblr-primary-rgb));
-  --tblr-secondary: hsla(246.7, 60%, 94.1%, 0.85); /* Nebula purple */
+  --tblr-secondary: hsla(247, 60%, 94%, 0.7); /* Nebula purple */
 
   /* Luminous links */
   --tblr-link-color: hsl(212, 70%, 75%) !important; /* Star glow */
