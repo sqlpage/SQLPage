@@ -8,6 +8,7 @@ use sqlx::postgres::types::PgTimeTz;
 use sqlx::{Postgres, Statement, Type};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
+use crate::webserver::routing::FileStore;
 
 pub(crate) struct FileSystem {
     local_root: PathBuf,
@@ -130,6 +131,12 @@ impl FileSystem {
             }
         }
         Ok(self.local_root.join(path))
+    }
+}
+
+impl FileStore for FileSystem {
+    async fn contains(&self, path: &PathBuf) -> bool {
+        tokio::fs::try_exists(self.local_root.join(path)).await.unwrap_or(false)
     }
 }
 

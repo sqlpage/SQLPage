@@ -1,113 +1,133 @@
+use crate::file_cache::FileCache;
+use crate::filesystem::FileSystem;
+use crate::webserver::database::ParsedSqlFile;
+use awc::http::uri::PathAndQuery;
 use awc::http::Uri;
-use std::ffi::OsStr;
+use log::debug;
 use std::path::PathBuf;
-use RoutingAction::{Error, Execute, NotFound, Redirect, Serve};
+use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
 
 const INDEX: &'static str = "index.sql";
 const NOT_FOUND: &'static str = "404.sql";
-const EXECUTION_EXTENSION: &'static str = "sql";
+const SQL_EXTENSION: &'static str = "sql";
 const FORWARD_SLASH: &'static str = "/";
 
 #[derive(Debug, PartialEq)]
 pub enum RoutingAction {
-    Error(String),
+    CustomNotFound(PathBuf),
     Execute(PathBuf),
-    NotFound(PathBuf),
+    NotFound,
     Redirect(Uri),
     Serve(PathBuf),
 }
 
-pub trait ExecutionStore {
+#[expect(async_fn_in_trait)]
+pub trait FileStore {
     async fn contains(&self, path: &PathBuf) -> bool;
 }
 
 pub trait RoutingConfig {
-    fn prefix(&self) -> &Uri;
+    fn prefix(&self) -> &str;
 }
 
-pub async fn calculate_route<T, C>(uri: Uri, store: &T, config: &C) -> RoutingAction
-where
-    T: ExecutionStore,
-    C: RoutingConfig,
-{
-    match check_uri(&uri, config) {
-        Ok(path) => match path.clone().extension() {
-            None => calculate_route_without_extension(&uri, path, store).await,
-            Some(extension) => calculate_route_with_extension(path, extension, store).await,
-        },
-        Err(action) => action,
+pub(crate) struct AppFileStore<'a> {
+    cache: &'a FileCache<ParsedSqlFile>,
+    filesystem: &'a FileSystem,
+}
+
+impl<'a> AppFileStore<'a> {
+    pub fn new(
+        cache: &'a FileCache<ParsedSqlFile>,
+        filesystem: &'a FileSystem,
+    ) -> AppFileStore<'a> {
+        Self { cache, filesystem }
     }
 }
 
-fn check_uri<C>(uri: &Uri, config: &C) -> Result<PathBuf, RoutingAction>
+impl FileStore for AppFileStore<'_> {
+    async fn contains(&self, path: &PathBuf) -> bool {
+        self.cache.contains(path).await || self.filesystem.contains(path).await
+    }
+}
+
+pub async fn calculate_route<T, C>(
+    path_and_query: &PathAndQuery,
+    store: &T,
+    config: &C,
+) -> RoutingAction
+where
+    T: FileStore,
+    C: RoutingConfig,
+{
+    let result = match check_path(path_and_query, config) {
+        Ok(path) => match path.clone().extension() {
+            None => calculate_route_without_extension(path_and_query, path, store).await,
+            Some(extension) => {
+                let ext = extension.to_str().expect("invalid file extension");
+                find_file_or_not_found(&path, ext, store).await
+            }
+        },
+        Err(action) => action,
+    };
+    debug!("Route: [{}] -> {:?}", path_and_query, result);
+    result
+}
+
+fn check_path<C>(path_and_query: &PathAndQuery, config: &C) -> Result<PathBuf, RoutingAction>
 where
     C: RoutingConfig,
 {
-    if uri.path().starts_with(config.prefix().path()) {
-        let mut result = String::from("/");
-        result.push_str(
-            uri.path()
-                .strip_prefix(config.prefix().path())
-                .expect("Unable to remove expected prefix from path"),
-        );
-
-        Ok(PathBuf::from(result))
-    } else {
-        Err(Redirect(config.prefix().clone()))
+    match path_and_query.path().strip_prefix(config.prefix()) {
+        None => Err(Redirect(
+            config
+                .prefix()
+                .parse()
+                .expect("Expected prefix to be valid uri path"),
+        )),
+        Some(path) => Ok(PathBuf::from(path)),
     }
 }
 
 async fn calculate_route_without_extension<T>(
-    uri: &Uri,
+    path_and_query: &PathAndQuery,
     mut path: PathBuf,
     store: &T,
 ) -> RoutingAction
 where
-    T: ExecutionStore,
+    T: FileStore,
 {
-    if uri.path().ends_with(FORWARD_SLASH) {
+    if path_and_query.path().ends_with(FORWARD_SLASH) {
         path.push(INDEX);
-        find_execution_or_not_found(&path, store).await
+        find_file_or_not_found(&path, SQL_EXTENSION, store).await
     } else {
-        let path_with_ext = path.with_extension(EXECUTION_EXTENSION);
-        match find_execution(&path_with_ext, store).await {
+        let path_with_ext = path.with_extension(SQL_EXTENSION);
+        match find_file(&path_with_ext, SQL_EXTENSION, store).await {
             Some(action) => action,
-            None => Redirect(append_to_uri_path(&uri, FORWARD_SLASH)),
+            None => Redirect(append_to_path(&path_and_query, FORWARD_SLASH)),
         }
     }
 }
 
-async fn calculate_route_with_extension<T>(
-    path: PathBuf,
-    extension: &OsStr,
-    store: &T,
-) -> RoutingAction
+async fn find_file_or_not_found<T>(path: &PathBuf, extension: &str, store: &T) -> RoutingAction
 where
-    T: ExecutionStore,
+    T: FileStore,
 {
-    if extension == EXECUTION_EXTENSION {
-        find_execution_or_not_found(&path, store).await
-    } else {
-        Serve(path)
-    }
-}
-
-async fn find_execution_or_not_found<T>(path: &PathBuf, store: &T) -> RoutingAction
-where
-    T: ExecutionStore,
-{
-    match find_execution(path, store).await {
+    match find_file(path, extension, store).await {
         None => find_not_found(path, store).await,
         Some(execute) => execute,
     }
 }
 
-async fn find_execution<T>(path: &PathBuf, store: &T) -> Option<RoutingAction>
+async fn find_file<T>(path: &PathBuf, extension: &str, store: &T) -> Option<RoutingAction>
 where
-    T: ExecutionStore,
+    T: FileStore,
 {
     if store.contains(path).await {
-        Some(Execute(path.clone()))
+        if extension == SQL_EXTENSION {
+            Some(Execute(path.clone()))
+        } else {
+            Some(Serve(path.clone()))
+        }
     } else {
         None
     }
@@ -115,35 +135,31 @@ where
 
 async fn find_not_found<T>(path: &PathBuf, store: &T) -> RoutingAction
 where
-    T: ExecutionStore,
+    T: FileStore,
 {
     let mut parent = path.parent();
     while let Some(p) = parent {
         let target = p.join(NOT_FOUND);
         if store.contains(&target).await {
-            return NotFound(target);
-        } else {
-            parent = p.parent()
+            return CustomNotFound(target);
         }
+        parent = p.parent()
     }
 
-    Error(path_to_string(path))
+    NotFound
 }
 
-fn append_to_uri_path(uri: &Uri, append: &str) -> Uri {
-    let mut full_uri = uri.to_string();
-    full_uri.insert_str(uri.path().len(), append);
+fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> Uri {
+    let mut full_uri = path_and_query.to_string();
+    full_uri.insert_str(path_and_query.path().len(), append);
     full_uri.parse().expect("Could not append uri path")
-}
-
-fn path_to_string(path: &PathBuf) -> String {
-    path.to_string_lossy().to_string()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::RoutingAction::{Error, Execute, NotFound, Redirect, Serve};
-    use super::{calculate_route, path_to_string, ExecutionStore, RoutingAction, RoutingConfig};
+    use super::RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
+    use super::{calculate_route, FileStore, RoutingAction, RoutingConfig};
+    use awc::http::uri::PathAndQuery;
     use awc::http::Uri;
     use std::default::Default as StdDefault;
     use std::path::PathBuf;
@@ -157,7 +173,7 @@ mod tests {
         #[tokio::test]
         async fn root_path_executes_index() {
             let actual = do_route("/", Default, None).await;
-            let expected = execute("/index.sql");
+            let expected = execute("index.sql");
 
             assert_eq!(expected, actual);
         }
@@ -165,7 +181,7 @@ mod tests {
         #[tokio::test]
         async fn root_path_and_site_prefix_executes_index() {
             let actual = do_route("/prefix/", Default, Some("/prefix/")).await;
-            let expected = execute("/index.sql");
+            let expected = execute("index.sql");
 
             assert_eq!(expected, actual);
         }
@@ -173,7 +189,7 @@ mod tests {
         #[tokio::test]
         async fn extension() {
             let actual = do_route("/index.sql", Default, None).await;
-            let expected = execute("/index.sql");
+            let expected = execute("index.sql");
 
             assert_eq!(expected, actual);
         }
@@ -181,31 +197,31 @@ mod tests {
         #[tokio::test]
         async fn extension_and_site_prefix() {
             let actual = do_route("/prefix/index.sql", Default, Some("/prefix/")).await;
-            let expected = execute("/index.sql");
+            let expected = execute("index.sql");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
         async fn no_extension() {
-            let actual = do_route("/path", File("/path.sql"), None).await;
-            let expected = execute("/path.sql");
+            let actual = do_route("/path", File("path.sql"), None).await;
+            let expected = execute("path.sql");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
         async fn no_extension_and_site_prefix() {
-            let actual = do_route("/prefix/path", File("/path.sql"), Some("/prefix/")).await;
-            let expected = execute("/path.sql");
+            let actual = do_route("/prefix/path", File("path.sql"), Some("/prefix/")).await;
+            let expected = execute("path.sql");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
         async fn trailing_slash_executes_index_in_directory() {
-            let actual = do_route("/folder/", File("/folder/index.sql"), None).await;
-            let expected = execute("/folder/index.sql");
+            let actual = do_route("/folder/", File("folder/index.sql"), None).await;
+            let expected = execute("folder/index.sql");
 
             assert_eq!(expected, actual);
         }
@@ -214,24 +230,24 @@ mod tests {
         async fn trailing_slash_and_site_prefix_executes_index_in_directory() {
             let actual = do_route(
                 "/prefix/folder/",
-                File("/folder/index.sql"),
+                File("folder/index.sql"),
                 Some("/prefix/"),
             )
             .await;
-            let expected = execute("/folder/index.sql");
+            let expected = execute("folder/index.sql");
 
             assert_eq!(expected, actual);
         }
     }
 
-    mod not_found {
+    mod custom_not_found {
         use super::StoreConfig::{Default, File};
-        use super::{do_route, not_found};
+        use super::{custom_not_found, do_route};
 
         #[tokio::test]
         async fn sql_extension() {
             let actual = do_route("/unknown.sql", Default, None).await;
-            let expected = not_found("/404.sql");
+            let expected = custom_not_found("404.sql");
 
             assert_eq!(expected, actual);
         }
@@ -239,15 +255,15 @@ mod tests {
         #[tokio::test]
         async fn sql_extension_and_site_prefix() {
             let actual = do_route("/prefix/unknown.sql", Default, Some("/prefix/")).await;
-            let expected = not_found("/404.sql");
+            let expected = custom_not_found("404.sql");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
         async fn sql_extension_executes_deeper_not_found_file_if_exists() {
-            let actual = do_route("/unknown/unknown.sql", File("/unknown/404.sql"), None).await;
-            let expected = not_found("/unknown/404.sql");
+            let actual = do_route("/unknown/unknown.sql", File("unknown/404.sql"), None).await;
+            let expected = custom_not_found("unknown/404.sql");
 
             assert_eq!(expected, actual);
         }
@@ -256,11 +272,11 @@ mod tests {
         async fn sql_extension_and_site_prefix_executes_deeper_not_found_file_if_exists() {
             let actual = do_route(
                 "/prefix/unknown/unknown.sql",
-                File("/unknown/404.sql"),
+                File("unknown/404.sql"),
                 Some("/prefix/"),
             )
             .await;
-            let expected = not_found("/unknown/404.sql");
+            let expected = custom_not_found("unknown/404.sql");
 
             assert_eq!(expected, actual);
         }
@@ -269,11 +285,11 @@ mod tests {
         async fn sql_extension_executes_deepest_not_found_file_that_exists() {
             let actual = do_route(
                 "/unknown/unknown/unknown.sql",
-                File("/unknown/404.sql"),
+                File("unknown/404.sql"),
                 None,
             )
             .await;
-            let expected = not_found("/unknown/404.sql");
+            let expected = custom_not_found("unknown/404.sql");
 
             assert_eq!(expected, actual);
         }
@@ -282,69 +298,78 @@ mod tests {
         async fn sql_extension_and_site_prefix_executes_deepest_not_found_file_that_exists() {
             let actual = do_route(
                 "/prefix/unknown/unknown/unknown.sql",
-                File("/unknown/404.sql"),
+                File("unknown/404.sql"),
                 Some("/prefix/"),
             )
             .await;
-            let expected = not_found("/unknown/404.sql");
+            let expected = custom_not_found("unknown/404.sql");
 
             assert_eq!(expected, actual);
         }
     }
 
-    mod error {
+    mod not_found {
         use super::StoreConfig::Empty;
-        use super::{do_route, error};
+        use super::{default_not_found, do_route};
 
         #[tokio::test]
-        async fn sql_extension_errors_when_no_not_found_file_available() {
+        async fn default_404_when_no_not_found_file_available() {
             let actual = do_route("/unknown.sql", Empty, None).await;
-            let expected = error("/unknown.sql");
+            let expected = default_not_found();
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
-        async fn sql_extension_and_site_prefix_errors_when_no_not_found_file_available() {
+        async fn default_404_when_no_not_found_file_available_and_site_prefix() {
             let actual = do_route("/prefix/unknown.sql", Empty, Some("/prefix/")).await;
-            let expected = error("/unknown.sql");
+            let expected = default_not_found();
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn asset_not_found() {
+            let actual = do_route("/favicon.ico", Empty, None).await;
+            let expected = default_not_found();
 
             assert_eq!(expected, actual);
         }
     }
 
     mod asset {
-        use super::StoreConfig::Default;
+        use super::StoreConfig::File;
         use super::{do_route, serve};
 
         #[tokio::test]
         async fn serves_corresponding_asset() {
-            let actual = do_route("/favicon.ico", Default, None).await;
-            let expected = serve("/favicon.ico");
+            let actual = do_route("/favicon.ico", File("favicon.ico"), None).await;
+            let expected = serve("favicon.ico");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
         async fn asset_trims_query() {
-            let actual = do_route("/favicon.ico?version=10", Default, None).await;
-            let expected = serve("/favicon.ico");
+            let actual = do_route("/favicon.ico?version=10", File("favicon.ico"), None).await;
+            let expected = serve("favicon.ico");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
         async fn asset_trims_fragment() {
-            let actual = do_route("/favicon.ico#asset1", Default, None).await;
-            let expected = serve("/favicon.ico");
+            let actual = do_route("/favicon.ico#asset1", File("favicon.ico"), None).await;
+            let expected = serve("favicon.ico");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
         async fn serves_corresponding_asset_given_site_prefix() {
-            let actual = do_route("/prefix/favicon.ico", Default, Some("/prefix/")).await;
-            let expected = serve("/favicon.ico");
+            let actual =
+                do_route("/prefix/favicon.ico", File("favicon.ico"), Some("/prefix/")).await;
+            let expected = serve("favicon.ico");
 
             assert_eq!(expected, actual);
         }
@@ -396,7 +421,7 @@ mod tests {
         }
     }
 
-    async fn do_route(uri: &str, config: StoreConfig, prefix: Option<&str>) -> RoutingAction {
+    async fn do_route(path: &str, config: StoreConfig, prefix: Option<&str>) -> RoutingAction {
         let store = match config {
             Default => Store::default(),
             Empty => Store::empty(),
@@ -406,19 +431,19 @@ mod tests {
             None => Config::default(),
             Some(value) => Config::new(value),
         };
-        calculate_route(Uri::from_str(uri).unwrap(), &store, &config).await
+        calculate_route(&PathAndQuery::from_str(path).unwrap(), &store, &config).await
     }
 
-    fn error(uri: &str) -> RoutingAction {
-        Error(uri.to_string())
+    fn default_not_found() -> RoutingAction {
+        NotFound
     }
 
     fn execute(path: &str) -> RoutingAction {
         Execute(PathBuf::from(path))
     }
 
-    fn not_found(path: &str) -> RoutingAction {
-        NotFound(PathBuf::from(path))
+    fn custom_not_found(path: &str) -> RoutingAction {
+        CustomNotFound(PathBuf::from(path))
     }
 
     fn redirect(uri: &str) -> RoutingAction {
@@ -440,8 +465,8 @@ mod tests {
     }
 
     impl Store {
-        const INDEX: &'static str = "/index.sql";
-        const NOT_FOUND: &'static str = "/404.sql";
+        const INDEX: &'static str = "index.sql";
+        const NOT_FOUND: &'static str = "404.sql";
         fn new(path: &str) -> Self {
             let mut contents = Self::default_contents();
             contents.push(path.to_string());
@@ -465,25 +490,25 @@ mod tests {
         }
     }
 
-    impl ExecutionStore for Store {
+    impl FileStore for Store {
         async fn contains(&self, path: &PathBuf) -> bool {
-            self.contents.contains(&path_to_string(path))
+            self.contents.contains(&path.to_string_lossy().to_string())
         }
     }
 
     struct Config {
-        prefix: Uri,
+        prefix: String,
     }
 
     impl Config {
         fn new(prefix: &str) -> Self {
             Self {
-                prefix: prefix.parse().unwrap(),
+                prefix: prefix.to_string(),
             }
         }
     }
     impl RoutingConfig for Config {
-        fn prefix(&self) -> &Uri {
+        fn prefix(&self) -> &str {
             &self.prefix
         }
     }

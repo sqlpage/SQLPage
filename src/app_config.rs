@@ -6,6 +6,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use crate::webserver::routing::RoutingConfig;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -263,6 +264,12 @@ impl AppConfig {
             addr.set_port(port);
         }
         addr
+    }
+}
+
+impl RoutingConfig for AppConfig {
+    fn prefix(&self) -> &str {
+        &self.site_prefix
     }
 }
 

@@ -13,6 +13,7 @@ use std::sync::atomic::{
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
+use crate::webserver::routing::FileStore;
 
 /// The maximum time in milliseconds that a file can be cached before its freshness is checked
 /// (in production mode)
@@ -72,6 +73,13 @@ pub struct FileCache<T: AsyncFromStrWithState> {
     /// Files that are loaded at the beginning of the program,
     /// and used as fallback when there is no match for the request in the file system
     static_files: HashMap<PathBuf, Cached<T>>,
+}
+
+impl<T: AsyncFromStrWithState> FileStore for FileCache<T> {
+    async fn contains(&self, path: &PathBuf) -> bool {
+        self.cache.read().await.contains_key(path)
+            || self.static_files.contains_key(path)
+    }
 }
 
 impl<T: AsyncFromStrWithState> Default for FileCache<T> {

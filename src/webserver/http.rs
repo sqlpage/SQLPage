@@ -34,6 +34,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
+use crate::webserver::routing::{calculate_route, AppFileStore};
+use crate::webserver::routing::RoutingAction::{NotFound, Execute, CustomNotFound, Redirect, Serve};
 
 #[derive(Clone)]
 pub struct RequestContext {
@@ -423,41 +425,58 @@ async fn serve_fallback(
 pub async fn main_handler(
     mut service_request: ServiceRequest,
 ) -> actix_web::Result<ServiceResponse> {
-    if let Some(redirect) = redirect_missing_prefix(&service_request) {
-        return Ok(service_request.into_response(redirect));
-    }
-
-    let path = req_path(&service_request);
-    let sql_file_path = path_to_sql_file(&path);
-    let maybe_response = if let Some(sql_path) = sql_file_path {
-        if let Some(redirect) = redirect_missing_trailing_slash(service_request.uri()) {
-            Ok(redirect)
-        } else {
-            log::debug!("Processing SQL request: {:?}", sql_path);
-            process_sql_request(&mut service_request, sql_path).await
+    let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+    let store = AppFileStore::new(&app_state.sql_file_cache, &app_state.file_system);
+    let path_and_query = service_request.uri().path_and_query().expect("expected valid path with query from request");
+    return match calculate_route(path_and_query, &store, &app_state.config).await {
+        NotFound => { serve_fallback(&mut service_request, ErrorWithStatus { status: StatusCode::NOT_FOUND }.into()).await }
+        Execute(path) => { process_sql_request(&mut service_request, path).await }
+        CustomNotFound(path) => { process_sql_request(&mut service_request, path).await }
+        Redirect(uri) => { Ok(HttpResponse::MovedPermanently()
+            .insert_header((header::LOCATION, uri.to_string()))
+            .finish()) }
+        Serve(path) => {
+            let if_modified_since = IfModifiedSince::parse(&service_request).ok();
+            let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+            serve_file(path.as_os_str().to_str().unwrap(), app_state, if_modified_since).await
         }
-    } else {
-        log::debug!("Serving file: {:?}", path);
-        let path = req_path(&service_request);
-        let if_modified_since = IfModifiedSince::parse(&service_request).ok();
-        let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-        serve_file(&path, app_state, if_modified_since).await
-    };
+    }.map(|response| service_request.into_response(response));
 
-    // On 404/NOT_FOUND error, fall back to `404.sql` handler if it exists
-    let response = match maybe_response {
-        // File could not be served due to a 404 error. Try to find a user provide 404 handler in
-        // the form of a `404.sql` in the current directory. If there is none, look in the parent
-        // directeory, and its parent directory, ...
-        Err(e) if e.as_response_error().status_code() == StatusCode::NOT_FOUND => {
-            serve_fallback(&mut service_request, e).await?
-        }
-
-        // Either a valid response, or an unrelated error that shall be bubbled up.
-        e => e?,
-    };
-
-    Ok(service_request.into_response(response))
+    // if let Some(redirect) = redirect_missing_prefix(&service_request) {
+    //     return Ok(service_request.into_response(redirect));
+    // }
+    //
+    // let path = req_path(&service_request);
+    // let sql_file_path = path_to_sql_file(&path);
+    // let maybe_response = if let Some(sql_path) = sql_file_path {
+    //     if let Some(redirect) = redirect_missing_trailing_slash(service_request.uri()) {
+    //         Ok(redirect)
+    //     } else {
+    //         log::debug!("Processing SQL request: {:?}", sql_path);
+    //         process_sql_request(&mut service_request, sql_path).await
+    //     }
+    // } else {
+    //     log::debug!("Serving file: {:?}", path);
+    //     let path = req_path(&service_request);
+    //     let if_modified_since = IfModifiedSince::parse(&service_request).ok();
+    //     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
+    //     serve_file(&path, app_state, if_modified_since).await
+    // };
+    //
+    // // On 404/NOT_FOUND error, fall back to `404.sql` handler if it exists
+    // let response = match maybe_response {
+    //     // File could not be served due to a 404 error. Try to find a user provide 404 handler in
+    //     // the form of a `404.sql` in the current directory. If there is none, look in the parent
+    //     // directeory, and its parent directory, ...
+    //     Err(e) if e.as_response_error().status_code() == StatusCode::NOT_FOUND => {
+    //         serve_fallback(&mut service_request, e).await?
+    //     }
+    //
+    //     // Either a valid response, or an unrelated error that shall be bubbled up.
+    //     e => e?,
+    // };
+    //
+    // Ok(service_request.into_response(response))
 }
 
 fn redirect_missing_prefix(service_request: &ServiceRequest) -> Option<HttpResponse> {

@@ -43,5 +43,5 @@ pub use error_with_status::ErrorWithStatus;
 pub use database::make_placeholder;
 pub use database::migrations::apply;
 pub mod response_writer;
-mod routing;
+pub mod routing;
 mod static_content;
