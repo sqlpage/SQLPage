@@ -54,7 +54,7 @@ pub fn stream_query_results_with_conn<'a>(
                 ParsedStatement::CsvImport(csv_import) => {
                     let connection = take_connection(&request.app_state.db, db_connection).await?;
                     log::debug!("Executing CSV import: {:?}", csv_import);
-                    run_csv_import(connection, csv_import, request).await?;
+                    run_csv_import(connection, csv_import, request).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },
                 ParsedStatement::StmtWithParams(stmt) => {
                     let query = bind_parameters(stmt, request, db_connection).await?;

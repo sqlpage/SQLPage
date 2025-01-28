@@ -16,7 +16,7 @@ INSERT INTO parameter (
 VALUES (
         'tab',
         'title',
-        'Text to display on the tab.',
+        'Text to display on the tab. If link is not set, the link will be the current page with a ''$tab'' parameter set to the tab''s title. If ''id'' is set, the page will be scrolled to the tab.',
         'TEXT',
         FALSE,
         FALSE
@@ -80,7 +80,19 @@ To implement contents that change based on the active tab, use the `tab` paramet
 For example, if the page is `/my-page.sql`, then the first tab will have a link of `/my-page.sql?tab=My+First+tab`.
 
 You could then for instance display contents coming from the database based on the value of the `tab` parameter.
-For instance: `SELECT ''text'' AS component, contents_md FROM my_page_contents WHERE tab = $tab`
+For instance: `SELECT ''text'' AS component, contents_md FROM my_page_contents WHERE tab = $tab`.
+Or you could write different queries for different tabs and use the `$tab` parameter with a static value in a where clause to switch between tabs:
+
+```sql
+select ''tab'' as component;
+select ''Projects'' as title, $tab = ''Projects'' as active;
+select ''Tasks''    as title, $tab = ''Tasks''    as active;
+
+select ''table'' as component;
+
+select * from my_projects where $tab = ''Projects'';
+select * from my_tasks    where $tab = ''Tasks'';
+```
 
 Note that the example below is completely static, and does not use the `tab` parameter to actually switch between tabs.
 View the [dynamic tabs example](/examples/tabs/).
@@ -88,9 +100,9 @@ View the [dynamic tabs example](/examples/tabs/).
         JSON(
             '[
             { "component": "tab" },
-            { "title": "This tab does not exist", "active": true },
-            { "title": "I am not a true tab" },
-            { "title": "Do not click here" }
+            { "title": "This tab does not exist", "active": true, "link": "?component=tab&tab=tab_1" },
+            { "title": "I am not a true tab", "link": "?component=tab&tab=tab_2" },
+            { "title": "Do not click here", "link": "?component=tab&tab=tab_3" }
         ]'
         )
     ),
@@ -101,7 +113,7 @@ View the [dynamic tabs example](/examples/tabs/).
             '[
             { "component": "tab", "center": true },
             { "title": "Hero", "link": "?component=hero#component", "icon": "home", "description": "The hero component is a full-width banner with a title and an image." },
-            { "title": "Tab", "active": true, "link": "?component=tab#component", "icon": "user", "color": "dark" },
+            { "title": "Tab", "link": "?component=tab#component", "icon": "user", "color": "purple" },
             { "title": "Card", "link": "?component=card#component", "icon": "credit-card" }
         ]'
         )
