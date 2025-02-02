@@ -387,7 +387,7 @@ pub async fn main_handler(
         .uri()
         .path_and_query()
         .ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
-    return match calculate_route(path_and_query, &store, &app_state.config).await {
+    match calculate_route(path_and_query, &store, &app_state.config).await {
         NotFound => Ok(serve_not_found(&mut service_request)),
         Execute(path) => process_sql_request(&mut service_request, path).await,
         CustomNotFound(path) => {
@@ -408,43 +408,7 @@ pub async fn main_handler(
             .await
         }
     }
-    .map(|response| service_request.into_response(response));
-
-    // if let Some(redirect) = redirect_missing_prefix(&service_request) {
-    //     return Ok(service_request.into_response(redirect));
-    // }
-    //
-    // let path = req_path(&service_request);
-    // let sql_file_path = path_to_sql_file(&path);
-    // let maybe_response = if let Some(sql_path) = sql_file_path {
-    //     if let Some(redirect) = redirect_missing_trailing_slash(service_request.uri()) {
-    //         Ok(redirect)
-    //     } else {
-    //         log::debug!("Processing SQL request: {:?}", sql_path);
-    //         process_sql_request(&mut service_request, sql_path).await
-    //     }
-    // } else {
-    //     log::debug!("Serving file: {:?}", path);
-    //     let path = req_path(&service_request);
-    //     let if_modified_since = IfModifiedSince::parse(&service_request).ok();
-    //     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-    //     serve_file(&path, app_state, if_modified_since).await
-    // };
-    //
-    // // On 404/NOT_FOUND error, fall back to `404.sql` handler if it exists
-    // let response = match maybe_response {
-    //     // File could not be served due to a 404 error. Try to find a user provide 404 handler in
-    //     // the form of a `404.sql` in the current directory. If there is none, look in the parent
-    //     // directeory, and its parent directory, ...
-    //     Err(e) if e.as_response_error().status_code() == StatusCode::NOT_FOUND => {
-    //         serve_fallback(&mut service_request, e).await?
-    //     }
-    //
-    //     // Either a valid response, or an unrelated error that shall be bubbled up.
-    //     e => e?,
-    // };
-    //
-    // Ok(service_request.into_response(response))
+    .map(|response| service_request.into_response(response))
 }
 
 /// called when a request is made to a path outside of the sub-path we are serving the site from
