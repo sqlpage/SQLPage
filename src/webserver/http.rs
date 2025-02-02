@@ -22,6 +22,10 @@ use actix_web::{HttpResponseBuilder, ResponseError};
 use super::https::make_auto_rustls_config;
 use super::response_writer::ResponseWriter;
 use super::static_content;
+use crate::webserver::routing::RoutingAction::{
+    CustomNotFound, Execute, NotFound, Redirect, Serve,
+};
+use crate::webserver::routing::{calculate_route, AppFileStore};
 use actix_web::body::MessageBody;
 use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
@@ -34,8 +38,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
-use crate::webserver::routing::{calculate_route, AppFileStore};
-use crate::webserver::routing::RoutingAction::{NotFound, Execute, CustomNotFound, Redirect, Serve};
 
 #[derive(Clone)]
 pub struct RequestContext {
@@ -211,15 +213,19 @@ async fn render_sql(
 
 fn anyhow_err_to_actix_resp(e: &anyhow::Error, env: app_config::DevOrProd) -> HttpResponse {
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
-    let mut body = "Sorry, but we were not able to process your request. \n\n\
-        Below are detailed debugging information which may contain sensitive data. \
-        Set environment to \"prod\" in the configuration file to hide this information. \n\n"
-        .to_owned();
+    let mut body = "Sorry, but we were not able to process your request.\n\n".to_owned();
     if env.is_prod() {
         body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
+        log::error!("{e:#}");
     } else {
         use std::fmt::Write;
-        write!(body, "{e:?}").unwrap();
+        write!(
+            body,
+            "Below are detailed debugging information which may contain sensitive data. \n\
+        Set environment to \"production\" in the configuration file to hide this information. \n\n\
+        {e:?}"
+        )
+        .unwrap();
     }
     resp.insert_header((
         header::CONTENT_TYPE,
@@ -349,64 +355,28 @@ fn strip_site_prefix<'a>(path: &'a str, state: &AppState) -> &'a str {
     path.strip_prefix(&state.config.site_prefix).unwrap_or(path)
 }
 
-/// Fallback handler for when a file could not be served
-///
-/// Recursively traverses upwards in the request's path, looking for a `404.sql` to call as the
-/// fallback handler. Fails if none is found, or if there is an issue while running the `404.sql`.
-async fn serve_fallback(
-    service_request: &mut ServiceRequest,
-    original_err: actix_web::Error,
-) -> actix_web::Result<HttpResponse> {
-    let catch_all = "404.sql";
-
-    let req_path = req_path(service_request);
-    let mut fallback_path_candidate = req_path.clone().into_owned();
-    log::debug!("Trying to find a {catch_all:?} handler for {fallback_path_candidate:?}");
-
+/// Serves a fallback 404 error page (when no 404 handler is found)
+async fn serve_not_found(service_request: &mut ServiceRequest) -> actix_web::Result<HttpResponse> {
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-
-    // Find the indices of each char which follows a directroy separator (`/`). Also consider the 0
-    // index, as we also have to try to check the empty path, for a root dir `404.sql`.
-    for idx in req_path
-        .rmatch_indices('/')
-        .map(|(idx, _)| idx + 1)
-        .take(128) // Limit the number of iterations because lookups can be expensive
-        .chain(std::iter::once(0))
-    {
-        // Remove the trailing substring behind the current `/`, and append `404.sql`.
-        fallback_path_candidate.truncate(idx);
-        fallback_path_candidate.push_str(catch_all);
-
-        // Check if `maybe_fallback_path` actually exists, if not, skip to the next round (which
-        // will check `maybe_fallback_path`s parent directory for fallback handler).
-        let mabye_sql_path = PathBuf::from(&fallback_path_candidate);
-        match app_state
-            .sql_file_cache
-            .get_with_privilege(app_state, &mabye_sql_path, false)
-            .await
-        {
-            // `maybe_fallback_path` does seem to exist, lets try to run it!
-            Ok(sql_file) => {
-                log::debug!("Processing SQL request via fallback: {:?}", mabye_sql_path);
-                return render_sql(service_request, sql_file).await;
-            }
-            Err(e) => {
-                let actix_web_err = anyhow_err_to_actix(e, app_state.config.environment);
-
-                // `maybe_fallback_path` does not exist, continue search in parent dir.
-                if actix_web_err.as_response_error().status_code() == StatusCode::NOT_FOUND {
-                    log::trace!("The 404 handler {mabye_sql_path:?} does not exist");
-                    continue;
-                }
-
-                // Another error occured, bubble it up!
-                return Err(actix_web_err);
-            }
-        }
+    let source_err = anyhow::anyhow!(ErrorWithStatus {
+        status: StatusCode::NOT_FOUND
+    });
+    let path = service_request.path();
+    let mut message = format!("{path} does not exist.");
+    if !app_state.config.environment.is_prod() {
+        message.push_str("\n\nRouting Debug Info:\n\
+        - SQLPage first looks for an exact match of your file (e.g. 'page.sql')\n\
+        - For paths without extensions that end in '/', SQLPage looks for 'index.sql' in that directory (e.g. '/dir/' loads 'dir/index.sql')\n\
+        - For paths without extensions that don't end in '/', SQLPage tries:\n\
+          1. Looking for the path with '.sql' extension (e.g. '/dir/page' loads 'dir/page.sql')\n\
+          2. If not found, redirects by adding a trailing '/' (e.g. '/dir' redirects to '/dir/')\n\
+        - When no file is found, SQLPage looks for '404.sql' in the current and parent directories (e.g. 'dir/x/y' may load 'dir/404.sql')\n\
+        \nTry creating one of these files to handle this route.");
     }
 
-    log::debug!("There is no {catch_all:?} handler, this response is terminally failed");
-    Err(original_err)
+    let err = source_err.context(message);
+    let http_response = anyhow_err_to_actix_resp(&err, app_state.config.environment);
+    Ok(http_response)
 }
 
 pub async fn main_handler(
@@ -414,20 +384,29 @@ pub async fn main_handler(
 ) -> actix_web::Result<ServiceResponse> {
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
     let store = AppFileStore::new(&app_state.sql_file_cache, &app_state.file_system);
-    let path_and_query = service_request.uri().path_and_query().ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
+    let path_and_query = service_request
+        .uri()
+        .path_and_query()
+        .ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
     return match calculate_route(path_and_query, &store, &app_state.config).await {
-        NotFound => { serve_fallback(&mut service_request, ErrorWithStatus { status: StatusCode::NOT_FOUND }.into()).await }
-        Execute(path) => { process_sql_request(&mut service_request, path).await }
-        CustomNotFound(path) => { process_sql_request(&mut service_request, path).await }
-        Redirect(uri) => { Ok(HttpResponse::MovedPermanently()
+        NotFound => serve_not_found(&mut service_request).await,
+        Execute(path) => process_sql_request(&mut service_request, path).await,
+        CustomNotFound(path) => process_sql_request(&mut service_request, path).await,
+        Redirect(uri) => Ok(HttpResponse::MovedPermanently()
             .insert_header((header::LOCATION, uri.to_string()))
-            .finish()) }
+            .finish()),
         Serve(path) => {
             let if_modified_since = IfModifiedSince::parse(&service_request).ok();
             let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-            serve_file(path.as_os_str().to_str().unwrap(), app_state, if_modified_since).await
+            serve_file(
+                path.as_os_str().to_str().unwrap(),
+                app_state,
+                if_modified_since,
+            )
+            .await
         }
-    }.map(|response| service_request.into_response(response));
+    }
+    .map(|response| service_request.into_response(response));
 
     // if let Some(redirect) = redirect_missing_prefix(&service_request) {
     //     return Ok(service_request.into_response(redirect));
@@ -464,14 +443,6 @@ pub async fn main_handler(
     // };
     //
     // Ok(service_request.into_response(response))
-}
-
-/// Extracts the path from a request and percent-decodes it
-fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
-    let encoded_path = req.path();
-    let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-    let encoded_path = strip_site_prefix(encoded_path, app_state);
-    percent_encoding::percent_decode_str(encoded_path).decode_utf8_lossy()
 }
 
 /// called when a request is made to a path outside of the sub-path we are serving the site from
