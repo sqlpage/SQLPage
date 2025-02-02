@@ -10,7 +10,7 @@ use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
 use crate::{app_config, AppConfig, AppState, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
-use actix_web::error::ErrorInternalServerError;
+use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode};
 use actix_web::web::PayloadConfig;
@@ -414,7 +414,7 @@ pub async fn main_handler(
 ) -> actix_web::Result<ServiceResponse> {
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
     let store = AppFileStore::new(&app_state.sql_file_cache, &app_state.file_system);
-    let path_and_query = service_request.uri().path_and_query().expect("expected valid path with query from request");
+    let path_and_query = service_request.uri().path_and_query().ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
     return match calculate_route(path_and_query, &store, &app_state.config).await {
         NotFound => { serve_fallback(&mut service_request, ErrorWithStatus { status: StatusCode::NOT_FOUND }.into()).await }
         Execute(path) => { process_sql_request(&mut service_request, path).await }
