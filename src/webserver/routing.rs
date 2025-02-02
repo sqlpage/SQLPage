@@ -2,7 +2,6 @@ use crate::file_cache::FileCache;
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
 use awc::http::uri::PathAndQuery;
-use awc::http::Uri;
 use log::debug;
 use std::path::{Path, PathBuf};
 use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
@@ -17,7 +16,7 @@ pub enum RoutingAction {
     CustomNotFound(PathBuf),
     Execute(PathBuf),
     NotFound,
-    Redirect(Uri),
+    Redirect(String),
     Serve(PathBuf),
 }
 
@@ -78,12 +77,7 @@ where
     C: RoutingConfig,
 {
     match path_and_query.path().strip_prefix(config.prefix()) {
-        None => Err(Redirect(
-            config
-                .prefix()
-                .parse()
-                .expect("Expected prefix to be valid uri path"),
-        )),
+        None => Err(Redirect(config.prefix().to_string())),
         Some(path) => Ok(PathBuf::from(path)),
     }
 }
@@ -149,10 +143,10 @@ where
     NotFound
 }
 
-fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> Uri {
+fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> String {
     let mut full_uri = path_and_query.to_string();
     full_uri.insert_str(path_and_query.path().len(), append);
-    full_uri.parse().expect("Could not append uri path")
+    full_uri
 }
 
 #[cfg(test)]
@@ -160,7 +154,6 @@ mod tests {
     use super::RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
     use super::{calculate_route, FileStore, RoutingAction, RoutingConfig};
     use awc::http::uri::PathAndQuery;
-    use awc::http::Uri;
     use std::default::Default as StdDefault;
     use std::path::{Path, PathBuf};
     use std::str::FromStr;
@@ -447,7 +440,7 @@ mod tests {
     }
 
     fn redirect(uri: &str) -> RoutingAction {
-        Redirect(Uri::from_str(uri).unwrap())
+        Redirect(uri.to_string())
     }
 
     fn serve(path: &str) -> RoutingAction {

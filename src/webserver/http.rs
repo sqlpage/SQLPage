@@ -395,7 +395,7 @@ pub async fn main_handler(
             process_sql_request(&mut service_request, path).await
         }
         Redirect(uri) => Ok(HttpResponse::MovedPermanently()
-            .insert_header((header::LOCATION, uri.to_string()))
+            .insert_header((header::LOCATION, uri))
             .finish()),
         Serve(path) => {
             let if_modified_since = IfModifiedSince::parse(&service_request).ok();
