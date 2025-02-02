@@ -12,7 +12,7 @@ use crate::{app_config, AppConfig, AppState, ParsedSqlFile};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
-use actix_web::http::{header, StatusCode, Uri};
+use actix_web::http::{header, StatusCode};
 use actix_web::web::PayloadConfig;
 use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, App, HttpResponse, HttpServer,
@@ -294,19 +294,6 @@ impl SingleOrVec {
     }
 }
 
-/// Resolves the path in a query to the path to a local SQL file if there is one that matches
-fn path_to_sql_file(path: &str) -> Option<PathBuf> {
-    let mut path = PathBuf::from(path);
-    match path.extension() {
-        None => {
-            path.push("index.sql");
-            Some(path)
-        }
-        Some(ext) if ext == "sql" => Some(path),
-        Some(_other) => None,
-    }
-}
-
 async fn process_sql_request(
     req: &mut ServiceRequest,
     sql_path: PathBuf,
@@ -479,52 +466,12 @@ pub async fn main_handler(
     // Ok(service_request.into_response(response))
 }
 
-fn redirect_missing_prefix(service_request: &ServiceRequest) -> Option<HttpResponse> {
-    let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-    if !service_request
-        .path()
-        .starts_with(&app_state.config.site_prefix)
-    {
-        let header = (header::LOCATION, app_state.config.site_prefix.clone());
-        return Some(
-            HttpResponse::PermanentRedirect()
-                .insert_header(header)
-                .finish(),
-        );
-    }
-    None
-}
-
 /// Extracts the path from a request and percent-decodes it
 fn req_path(req: &ServiceRequest) -> Cow<'_, str> {
     let encoded_path = req.path();
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
     let encoded_path = strip_site_prefix(encoded_path, app_state);
     percent_encoding::percent_decode_str(encoded_path).decode_utf8_lossy()
-}
-
-fn redirect_missing_trailing_slash(uri: &Uri) -> Option<HttpResponse> {
-    let path = uri.path();
-    if !path.ends_with('/')
-        && path
-            .rsplit_once('.')
-            .map(|(_, ext)| ext.eq_ignore_ascii_case("sql"))
-            != Some(true)
-    {
-        let mut redirect_path = path.to_owned();
-        redirect_path.push('/');
-        if let Some(query) = uri.query() {
-            redirect_path.push('?');
-            redirect_path.push_str(query);
-        }
-        Some(
-            HttpResponse::MovedPermanently()
-                .insert_header((header::LOCATION, redirect_path))
-                .finish(),
-        )
-    } else {
-        None
-    }
 }
 
 /// called when a request is made to a path outside of the sub-path we are serving the site from
