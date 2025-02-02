@@ -356,7 +356,7 @@ fn strip_site_prefix<'a>(path: &'a str, state: &AppState) -> &'a str {
 }
 
 /// Serves a fallback 404 error page (when no 404 handler is found)
-async fn serve_not_found(service_request: &mut ServiceRequest) -> actix_web::Result<HttpResponse> {
+fn serve_not_found(service_request: &mut ServiceRequest) -> HttpResponse {
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
     let source_err = anyhow::anyhow!(ErrorWithStatus {
         status: StatusCode::NOT_FOUND
@@ -375,8 +375,7 @@ async fn serve_not_found(service_request: &mut ServiceRequest) -> actix_web::Res
     }
 
     let err = source_err.context(message);
-    let http_response = anyhow_err_to_actix_resp(&err, app_state.config.environment);
-    Ok(http_response)
+    anyhow_err_to_actix_resp(&err, app_state.config.environment)
 }
 
 pub async fn main_handler(
@@ -389,9 +388,12 @@ pub async fn main_handler(
         .path_and_query()
         .ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
     return match calculate_route(path_and_query, &store, &app_state.config).await {
-        NotFound => serve_not_found(&mut service_request).await,
+        NotFound => Ok(serve_not_found(&mut service_request)),
         Execute(path) => process_sql_request(&mut service_request, path).await,
-        CustomNotFound(path) => process_sql_request(&mut service_request, path).await,
+        CustomNotFound(path) => {
+            // Currently, we do not set a 404 status when the user provides a fallback 404.sql file.
+            process_sql_request(&mut service_request, path).await
+        }
         Redirect(uri) => Ok(HttpResponse::MovedPermanently()
             .insert_header((header::LOCATION, uri.to_string()))
             .finish()),

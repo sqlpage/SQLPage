@@ -135,7 +135,7 @@ impl FileSystem {
 }
 
 impl FileStore for FileSystem {
-    async fn contains(&self, path: &PathBuf) -> bool {
+    async fn contains(&self, path: &Path) -> bool {
         tokio::fs::try_exists(self.local_root.join(path)).await.unwrap_or(false)
     }
 }

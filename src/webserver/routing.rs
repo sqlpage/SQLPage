@@ -4,13 +4,13 @@ use crate::webserver::database::ParsedSqlFile;
 use awc::http::uri::PathAndQuery;
 use awc::http::Uri;
 use log::debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
 
-const INDEX: &'static str = "index.sql";
-const NOT_FOUND: &'static str = "404.sql";
-const SQL_EXTENSION: &'static str = "sql";
-const FORWARD_SLASH: &'static str = "/";
+const INDEX: &str = "index.sql";
+const NOT_FOUND: &str = "404.sql";
+const SQL_EXTENSION: &str = "sql";
+const FORWARD_SLASH: &str = "/";
 
 #[derive(Debug, PartialEq)]
 pub enum RoutingAction {
@@ -23,7 +23,7 @@ pub enum RoutingAction {
 
 #[expect(async_fn_in_trait)]
 pub trait FileStore {
-    async fn contains(&self, path: &PathBuf) -> bool;
+    async fn contains(&self, path: &Path) -> bool;
 }
 
 pub trait RoutingConfig {
@@ -45,7 +45,7 @@ impl<'a> AppFileStore<'a> {
 }
 
 impl FileStore for AppFileStore<'_> {
-    async fn contains(&self, path: &PathBuf) -> bool {
+    async fn contains(&self, path: &Path) -> bool {
         self.cache.contains(path).await || self.filesystem.contains(path).await
     }
 }
@@ -60,10 +60,10 @@ where
     C: RoutingConfig,
 {
     let result = match check_path(path_and_query, config) {
-        Ok(path) => match path.clone().extension() {
+        Ok(path) => match path.extension() {
             None => calculate_route_without_extension(path_and_query, path, store).await,
             Some(extension) => {
-                let ext = extension.to_str().expect("invalid file extension");
+                let ext = extension.to_str().unwrap_or_default();
                 find_file_or_not_found(&path, ext, store).await
             }
         },
@@ -103,12 +103,12 @@ where
         let path_with_ext = path.with_extension(SQL_EXTENSION);
         match find_file(&path_with_ext, SQL_EXTENSION, store).await {
             Some(action) => action,
-            None => Redirect(append_to_path(&path_and_query, FORWARD_SLASH)),
+            None => Redirect(append_to_path(path_and_query, FORWARD_SLASH)),
         }
     }
 }
 
-async fn find_file_or_not_found<T>(path: &PathBuf, extension: &str, store: &T) -> RoutingAction
+async fn find_file_or_not_found<T>(path: &Path, extension: &str, store: &T) -> RoutingAction
 where
     T: FileStore,
 {
@@ -118,22 +118,22 @@ where
     }
 }
 
-async fn find_file<T>(path: &PathBuf, extension: &str, store: &T) -> Option<RoutingAction>
+async fn find_file<T>(path: &Path, extension: &str, store: &T) -> Option<RoutingAction>
 where
     T: FileStore,
 {
     if store.contains(path).await {
         if extension == SQL_EXTENSION {
-            Some(Execute(path.clone()))
+            Some(Execute(path.to_path_buf()))
         } else {
-            Some(Serve(path.clone()))
+            Some(Serve(path.to_path_buf()))
         }
     } else {
         None
     }
 }
 
-async fn find_not_found<T>(path: &PathBuf, store: &T) -> RoutingAction
+async fn find_not_found<T>(path: &Path, store: &T) -> RoutingAction
 where
     T: FileStore,
 {
@@ -143,7 +143,7 @@ where
         if store.contains(&target).await {
             return CustomNotFound(target);
         }
-        parent = p.parent()
+        parent = p.parent();
     }
 
     NotFound
@@ -162,7 +162,7 @@ mod tests {
     use awc::http::uri::PathAndQuery;
     use awc::http::Uri;
     use std::default::Default as StdDefault;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::str::FromStr;
     use StoreConfig::{Default, Empty, File};
 
@@ -491,7 +491,7 @@ mod tests {
     }
 
     impl FileStore for Store {
-        async fn contains(&self, path: &PathBuf) -> bool {
+        async fn contains(&self, path: &Path) -> bool {
             self.contents.contains(&path.to_string_lossy().to_string())
         }
     }

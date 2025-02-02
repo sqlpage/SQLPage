@@ -76,7 +76,7 @@ pub struct FileCache<T: AsyncFromStrWithState> {
 }
 
 impl<T: AsyncFromStrWithState> FileStore for FileCache<T> {
-    async fn contains(&self, path: &PathBuf) -> bool {
+    async fn contains(&self, path: &Path) -> bool {
         self.cache.read().await.contains_key(path)
             || self.static_files.contains_key(path)
     }
