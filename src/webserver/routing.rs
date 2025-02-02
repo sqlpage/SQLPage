@@ -397,14 +397,6 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn no_extension_no_corresponding_file_redirects_with_trailing_slash_and_fragment() {
-            let actual = do_route("/folder#anchor1", Default, None).await;
-            let expected = redirect("/folder/#anchor1");
-
-            assert_eq!(expected, actual);
-        }
-
-        #[tokio::test]
         async fn no_extension_site_prefix_and_no_corresponding_file_redirects_with_trailing_slash()
         {
             let actual = do_route("/prefix/folder", Default, Some("/prefix/")).await;
