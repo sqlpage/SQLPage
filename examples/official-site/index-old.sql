@@ -9,7 +9,7 @@ SELECT 'hero' as component,
     'From database to data app, fast.' as title,
     '**SQLPage** lets you build data-driven applications in a few SQL queries.
 
-It’s free, [open-source](https://github.com/sqlpage/SQLPage), lightweight, and easy to use.
+It's free, [open-source](https://github.com/sqlpage/SQLPage), lightweight, and easy to use.
     ' as description_md,
     'sqlpage_cover_image.webp' as image,
     TRUE as rounded,
@@ -93,12 +93,10 @@ write an `index.sql`, and in five minutes you turned your database into a websit
 We made all the [optimizations](performance.sql), wrote all of the HTTP request handling code and rendering logic,
 implemented all of the security features, so that you can think about your data, and nothing else.
 
-When SQLPage receives a request with a URL ending in `.sql`, it finds the corresponding
-SQL file, runs it on the database, passing it information from the web request as SQL statement parameters
-[in a safe manner](safety.sql).
+When SQLPage receives a request, it finds the corresponding SQL file (with or without the .sql extension), runs it on the database, passing it information from the web request as SQL statement parameters [in a safe manner](safety.sql).
 When the database starts returning rows for the query,
 SQLPage maps each piece of information in the row to a parameter in the template of a pre-defined component,
-and streams the result back to the user''s browser.
+and streams the result back to the user's browser.
 ' as description_md,
     'server' as icon,
     'purple' as color;

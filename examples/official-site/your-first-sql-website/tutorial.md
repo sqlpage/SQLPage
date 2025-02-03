@@ -15,7 +15,7 @@ You can open your website locally by visiting [`http://localhost:8080`](http://l
 
 SQLPage should have automatically created a folder called `sqlpage` with a SQLite database file named `sqlpage.db`. This is your website's default database - don't worry, we'll learn how to connect to other databases like PostgreSQL, MySQL, or SQL Server later!
 
-# Your website’s first SQL file
+# Your website's first SQL file
 
 In the root folder of your SQLPage website, create a new SQL file called `index.sql`.
 Open it in a text editor that supports SQL syntax highlighting (I recommend [VSCode](https://code.visualstudio.com/)).
@@ -105,7 +105,7 @@ For more information about the properties that can be set in sqlpage.json, see [
 
 ### Displaying a form
 
-Let’s create a form to let our users insert data into our database. Add the following code to your `index.sql` file:
+Let's create a form to let our users insert data into our database. Add the following code to your `index.sql` file:
 
 ```sql
 SELECT 'form' AS component, 'Add a user' AS title;
@@ -117,7 +117,7 @@ The second SELECT statement adds a field to the form. Since we do not specify a 
 
 ### Handling form submission
 
-Nothing happens when you submit the form at the moment. Let’s fix that.
+Nothing happens when you submit the form at the moment. Let's fix that.
 Add the following below the previous code:
 
 ```sql
@@ -136,7 +136,7 @@ from the text field when the user submits the form.
 
 There are two types of parameters you can use in your SQL queries:
 
-- **URL parameters** like **`$ParameterName`**. If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `'1'` and `$y` will be set to the string `'2'`. This is useful to create links with parameters. For instance, if you have a database of products, you can create a link to a product page with the URL `product.sql?product_id=12`. Then, in the `product.sql` file, you can use the `$product_id` variable to get the product with the corresponding ID from your database. URL parameters are also sometimes called *query parameters*, or *GET parameters*.
+- **URL parameters** like **`$ParameterName`**. If you add `?x=1&y=2` to the end of the URL of your page, `$x` will be set to the string `'1'` and `$y` will be set to the string `'2'`. This is useful to create links with parameters. For instance, if you have a database of products, you can create a link to a product page with the URL `product?product_id=12` (or `product.sql?product_id=12` - both work). Then, in the `product.sql` file, you can use the `$product_id` variable to get the product with the corresponding ID from your database. URL parameters are also sometimes called *query parameters*, or *GET parameters*.
 - **Form parameters** like **`:ParameterName`**. They refer to the value of the field with the corresponding `name` entered by the user in a [form](/component.sql?component=form). If no form was submitted, it is set to `NULL`. Form parameters are also sometimes called *POST parameters*.
 
 > Note: Currently, if a `$parameter` is not present in the URL, it is first looked for in the form parameters. If it is not found there either, it is set to `NULL`. Please do not rely on this behavior, as it may change in the future.
@@ -152,8 +152,8 @@ INSERT INTO users (name) VALUES ($Username);
 
 ### Displaying data from our database
 
-Now, users are present in our database, but we can’t see them.
-Let’s see how to use data from our database to populate a [list](/component.sql?component=list) component, in order to display the list of users.
+Now, users are present in our database, but we can't see them.
+Let's see how to use data from our database to populate a [list](/component.sql?component=list) component, in order to display the list of users.
 
 Add the following code to your `index.sql` file:
 

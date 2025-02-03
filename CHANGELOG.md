@@ -6,6 +6,10 @@
 - Fix a bug where the table component would not add the right css classes to table cells.
 - Better error messages when a CSV import fails (using a `copy` statement and a file upload).
 - Fix a bug where subsequent requests would fail after a failed CSV import on postgres (https://github.com/sqlpage/SQLPage/issues/788)
+- Complete rewrite of the request routing system.
+  - Add support for *"clean URLs"*: Access the file `page.sql` using `https://example.com/page` instead of `https://example.com/page.sql`.
+  - The previous behavior is preserved (the `.sql` suffix is now optional), so this is a new feature, not a breaking change.
+  - Big thanks to @guspower who made big contributions to this feature.
 
 ## 0.32.1 (2025-01-03)
 

@@ -16,16 +16,17 @@ VALUES
 
 Let''s say you have a database of products, and you want the main page (`index.sql`) to link to the page of each product (`product.sql`) with the product name as a parameter.
 
-In `index.sql`, you can use the `link` function to generate the URL of the product page for each product:
+In `index.sql`, you can use the `link` function to generate the URL of the product page for each product.
 
 ```sql
 select ''list'' as component;
 select
     name as title,
-    sqlpage.link(''product.sql'', json_object(''product_name'', name)) as link;
+    sqlpage.link(''product'', json_object(''product_name'', name)) as link;
 ```
 
-Using `sqlpage.link` is better than manually constructing the URL with `CONCAT(''product.sql?product_name='', name)`, because it ensures that the URL is properly encoded.
+Using `sqlpage.link` is better than manually constructing the URL with `CONCAT(''product?product_name='', name)`,
+because it ensures that the URL is properly encoded.
 The former works when the product name contains special characters like `&`, while the latter would break the URL.
 
 In `product.sql`, you can then use `$product_name` to get the name of the product from the URL parameter:

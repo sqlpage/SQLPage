@@ -13,7 +13,7 @@ select 'text' as component, '
 
 By default, SQLPage serves the file that matches the URL requested by the client.
 If your users enter `https://example.com/about`, SQLPage will serve the file `about/index.sql` in your project.
-If you create a file named `about.sql`, SQLPage will serve it when the user requests `https://example.com/about.sql`.
+If you create a file named `about.sql`, SQLPage will serve it when the user requests either `https://example.com/about.sql` or `https://example.com/about` (since v0.33, the `.sql` suffix is optional).
 
 But what if you want to handle URLs that don''t match any file in your project ?
 For example, what if you have a blog, and you want nice urls like `example.com/blog/my-trip-to-rome`,
