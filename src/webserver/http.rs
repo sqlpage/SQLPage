@@ -356,7 +356,7 @@ fn strip_site_prefix<'a>(path: &'a str, state: &AppState) -> &'a str {
 }
 
 /// Serves a fallback 404 error page (when no 404 handler is found)
-fn serve_not_found(service_request: &mut ServiceRequest) -> HttpResponse {
+fn serve_not_found(service_request: &mut ServiceRequest) -> actix_web::Error {
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
     let source_err = anyhow::anyhow!(ErrorWithStatus {
         status: StatusCode::NOT_FOUND
@@ -375,27 +375,34 @@ fn serve_not_found(service_request: &mut ServiceRequest) -> HttpResponse {
     }
 
     let err = source_err.context(message);
-    anyhow_err_to_actix_resp(&err, app_state.config.environment)
+    anyhow_err_to_actix(err, app_state.config.environment)
 }
 
 pub async fn main_handler(
     mut service_request: ServiceRequest,
 ) -> actix_web::Result<ServiceResponse> {
     let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-    let store = AppFileStore::new(&app_state.sql_file_cache, &app_state.file_system);
+    let store = AppFileStore::new(&app_state.sql_file_cache, &app_state.file_system, app_state);
     let path_and_query = service_request
         .uri()
         .path_and_query()
         .ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
-    match calculate_route(path_and_query, &store, &app_state.config).await {
-        NotFound => Ok(serve_not_found(&mut service_request)),
+    let routing_action = match calculate_route(path_and_query, &store, &app_state.config).await {
+        Ok(action) => action,
+        Err(e) => {
+            let e = e.context(format!("Unable to calculate the routing action for: {path_and_query:?}"));
+            return Err(anyhow_err_to_actix(e, app_state.config.environment));
+        }
+    };
+    match routing_action {
+        NotFound => Err(serve_not_found(&mut service_request)),
         Execute(path) => process_sql_request(&mut service_request, path).await,
         CustomNotFound(path) => {
             // Currently, we do not set a 404 status when the user provides a fallback 404.sql file.
             process_sql_request(&mut service_request, path).await
         }
-        Redirect(uri) => Ok(HttpResponse::MovedPermanently()
-            .insert_header((header::LOCATION, uri))
+        Redirect(redirect_target) => Ok(HttpResponse::MovedPermanently()
+            .insert_header((header::LOCATION, redirect_target))
             .finish()),
         Serve(path) => {
             let if_modified_since = IfModifiedSince::parse(&service_request).ok();

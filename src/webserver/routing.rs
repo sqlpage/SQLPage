@@ -1,4 +1,4 @@
-use crate::file_cache::FileCache;
+use crate::{file_cache::FileCache, AppState};
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
 use awc::http::uri::PathAndQuery;
@@ -22,7 +22,7 @@ pub enum RoutingAction {
 
 #[expect(async_fn_in_trait)]
 pub trait FileStore {
-    async fn contains(&self, path: &Path) -> bool;
+    async fn contains(&self, path: &Path) -> anyhow::Result<bool>;
 }
 
 pub trait RoutingConfig {
@@ -32,20 +32,30 @@ pub trait RoutingConfig {
 pub(crate) struct AppFileStore<'a> {
     cache: &'a FileCache<ParsedSqlFile>,
     filesystem: &'a FileSystem,
+    app_state: &'a AppState,
 }
 
 impl<'a> AppFileStore<'a> {
     pub fn new(
         cache: &'a FileCache<ParsedSqlFile>,
         filesystem: &'a FileSystem,
-    ) -> AppFileStore<'a> {
-        Self { cache, filesystem }
+        app_state: &'a AppState,
+    ) -> Self {
+        Self {
+            cache,
+            filesystem,
+            app_state,
+        }
     }
 }
 
 impl FileStore for AppFileStore<'_> {
-    async fn contains(&self, path: &Path) -> bool {
-        self.cache.contains(path).await || self.filesystem.contains(path).await
+    async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
+        if self.cache.contains(path).await? {
+            Ok(true)
+        } else {
+            self.filesystem.contains(self.app_state, path).await
+        }
     }
 }
 
@@ -53,23 +63,23 @@ pub async fn calculate_route<T, C>(
     path_and_query: &PathAndQuery,
     store: &T,
     config: &C,
-) -> RoutingAction
+) -> anyhow::Result<RoutingAction>
 where
     T: FileStore,
     C: RoutingConfig,
 {
     let result = match check_path(path_and_query, config) {
         Ok(path) => match path.extension() {
-            None => calculate_route_without_extension(path_and_query, path, store).await,
+            None => calculate_route_without_extension(path_and_query, path, store).await?,
             Some(extension) => {
                 let ext = extension.to_str().unwrap_or_default();
-                find_file_or_not_found(&path, ext, store).await
+                find_file_or_not_found(&path, ext, store).await?
             }
         },
         Err(action) => action,
     };
     debug!("Route: [{}] -> {:?}", path_and_query, result);
-    result
+    Ok(result)
 }
 
 fn check_path<C>(path_and_query: &PathAndQuery, config: &C) -> Result<PathBuf, RoutingAction>
@@ -86,7 +96,7 @@ async fn calculate_route_without_extension<T>(
     path_and_query: &PathAndQuery,
     mut path: PathBuf,
     store: &T,
-) -> RoutingAction
+) -> anyhow::Result<RoutingAction>
 where
     T: FileStore,
 {
@@ -95,52 +105,52 @@ where
         find_file_or_not_found(&path, SQL_EXTENSION, store).await
     } else {
         let path_with_ext = path.with_extension(SQL_EXTENSION);
-        match find_file(&path_with_ext, SQL_EXTENSION, store).await {
-            Some(action) => action,
-            None => Redirect(append_to_path(path_and_query, FORWARD_SLASH)),
+        match find_file(&path_with_ext, SQL_EXTENSION, store).await? {
+            Some(action) => Ok(action),
+            None => Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH))),
         }
     }
 }
 
-async fn find_file_or_not_found<T>(path: &Path, extension: &str, store: &T) -> RoutingAction
+async fn find_file_or_not_found<T>(path: &Path, extension: &str, store: &T) -> anyhow::Result<RoutingAction>
 where
     T: FileStore,
 {
-    match find_file(path, extension, store).await {
+    match find_file(path, extension, store).await? {
         None => find_not_found(path, store).await,
-        Some(execute) => execute,
+        Some(execute) => Ok(execute),
     }
 }
 
-async fn find_file<T>(path: &Path, extension: &str, store: &T) -> Option<RoutingAction>
+async fn find_file<T>(path: &Path, extension: &str, store: &T) -> anyhow::Result<Option<RoutingAction>>
 where
     T: FileStore,
 {
-    if store.contains(path).await {
-        if extension == SQL_EXTENSION {
-            Some(Execute(path.to_path_buf()))
+    if store.contains(path).await? {
+        Ok(Some(if extension == SQL_EXTENSION {
+            Execute(path.to_path_buf())
         } else {
-            Some(Serve(path.to_path_buf()))
-        }
+            Serve(path.to_path_buf())
+        }))
     } else {
-        None
+        Ok(None)
     }
 }
 
-async fn find_not_found<T>(path: &Path, store: &T) -> RoutingAction
+async fn find_not_found<T>(path: &Path, store: &T) -> anyhow::Result<RoutingAction>
 where
     T: FileStore,
 {
     let mut parent = path.parent();
     while let Some(p) = parent {
         let target = p.join(NOT_FOUND);
-        if store.contains(&target).await {
-            return CustomNotFound(target);
+        if store.contains(&target).await? {
+            return Ok(CustomNotFound(target));
         }
         parent = p.parent();
     }
 
-    NotFound
+    Ok(NotFound)
 }
 
 fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> String {
@@ -416,7 +426,7 @@ mod tests {
             None => Config::default(),
             Some(value) => Config::new(value),
         };
-        calculate_route(&PathAndQuery::from_str(path).unwrap(), &store, &config).await
+        calculate_route(&PathAndQuery::from_str(path).unwrap(), &store, &config).await.unwrap()
     }
 
     fn default_not_found() -> RoutingAction {
@@ -476,8 +486,8 @@ mod tests {
     }
 
     impl FileStore for Store {
-        async fn contains(&self, path: &Path) -> bool {
-            self.contents.contains(&path.to_string_lossy().to_string())
+        async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
+            Ok(self.contents.contains(&path.to_string_lossy().to_string()))
         }
     }
 

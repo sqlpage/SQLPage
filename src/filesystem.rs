@@ -8,7 +8,6 @@ use sqlx::postgres::types::PgTimeTz;
 use sqlx::{Postgres, Statement, Type};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
-use crate::webserver::routing::FileStore;
 
 pub(crate) struct FileSystem {
     local_root: PathBuf,
@@ -132,11 +131,23 @@ impl FileSystem {
         }
         Ok(self.local_root.join(path))
     }
-}
 
-impl FileStore for FileSystem {
-    async fn contains(&self, path: &Path) -> bool {
-        tokio::fs::try_exists(self.local_root.join(path)).await.unwrap_or(false)
+    pub(crate) async fn contains(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
+        let local_exists = match self.safe_local_path(app_state, path, false) {
+            Ok(safe_path) => tokio::fs::try_exists(safe_path).await?,
+            Err(e) => {
+                log::error!("Unable to check if {path:?} exists in the local filesystem: {e:#}");
+                return Err(e);
+            }
+        };
+
+        // If not in local fs and we have db_fs, check database
+        if !local_exists {
+            if let Some(db_fs) = &self.db_fs_queries {
+                return db_fs.file_exists(app_state, path).await;
+            }
+        }
+        Ok(local_exists)
     }
 }
 
@@ -150,6 +161,7 @@ async fn file_modified_since_local(path: &Path, since: DateTime<Utc>) -> tokio::
 pub(crate) struct DbFsQueries {
     was_modified: AnyStatement<'static>,
     read_file: AnyStatement<'static>,
+    exists: AnyStatement<'static>,
 }
 
 impl DbFsQueries {
@@ -167,6 +179,7 @@ impl DbFsQueries {
         Ok(Self {
             was_modified: Self::make_was_modified_query(db, db_kind).await?,
             read_file: Self::make_read_file_query(db, db_kind).await?,
+            exists: Self::make_exists_query(db, db_kind).await?,
         })
     }
 
@@ -204,6 +217,18 @@ impl DbFsQueries {
             read_file_query
         );
         db.prepare_with(&read_file_query, param_types).await
+    }
+
+    async fn make_exists_query(
+        db: &Database,
+        db_kind: AnyKind,
+    ) -> anyhow::Result<AnyStatement<'static>> {
+        let exists_query = format!(
+            "SELECT 1 from sqlpage_files WHERE path = {}",
+            make_placeholder(db_kind, 1),
+        );
+        let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
+        db.prepare_with(&exists_query, param_types).await
     }
 
     async fn file_modified_since_in_db(
@@ -252,6 +277,16 @@ impl DbFsQueries {
                 }
             })
             .with_context(|| format!("Unable to read {path:?} from the database"))
+    }
+
+    async fn file_exists(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
+        self.exists
+            .query_as::<(i32,)>()
+            .bind(path.display().to_string())
+            .fetch_optional(&app_state.db.connection)
+            .await
+            .map(|result| result.is_some())
+            .with_context(|| format!("Unable to check if {path:?} exists in the database"))
     }
 }
 
