@@ -728,12 +728,7 @@ async fn test_routing_with_db_fs_and_prefix() {
         sqlx::any::AnyKind::Mssql => "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', CONVERT(VARBINARY(MAX), 'select ''text'' as component, ''Hi from db !'' AS contents;'))",
         _ => "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', 'select ''text'' as component, ''Hi from db !'' AS contents;')"
     };
-    state
-        .db
-        .connection
-        .execute(insert_sql)
-        .await
-        .unwrap();
+    state.db.connection.execute(insert_sql).await.unwrap();
 
     let app_data = actix_web::web::Data::new(state);
 

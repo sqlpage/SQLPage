@@ -440,7 +440,7 @@ mod tests {
 
     async fn do_route(path: &str, config: StoreConfig, prefix: Option<&str>) -> RoutingAction {
         let store = match config {
-            Default => Store::default(),
+            Default => Store::with_default_contents(),
             Empty => Store::empty(),
             File(file) => Store::new(file),
         };
@@ -496,22 +496,26 @@ mod tests {
             vec![Self::INDEX.to_string(), Self::NOT_FOUND.to_string()]
         }
 
-        fn empty() -> Self {
-            Self { contents: vec![] }
-        }
-    }
-
-    impl StdDefault for Store {
-        fn default() -> Self {
+        fn with_default_contents() -> Self {
             Self {
                 contents: Self::default_contents(),
             }
+        }
+
+        fn empty() -> Self {
+            Self { contents: vec![] }
+        }
+
+        fn contains(&self, path: &str) -> bool {
+            let normalized_path = path.replace('\\', "/");
+            dbg!(&normalized_path, &self.contents);
+            self.contents.contains(&normalized_path)
         }
     }
 
     impl FileStore for Store {
         async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
-            Ok(self.contents.contains(&path.to_string_lossy().to_string()))
+            Ok(self.contains(path.to_string_lossy().to_string().as_str()))
         }
     }
 
