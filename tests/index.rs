@@ -570,6 +570,17 @@ async fn test_static_files() {
 }
 
 #[actix_web::test]
+async fn test_spaces_in_file_names() {
+    let resp = req_path("/tests/spaces%20in%20file%20name.sql")
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body_str.contains("It works !"), "{body_str}");
+}
+
+#[actix_web::test]
 async fn test_with_site_prefix() {
     let mut config = test_config();
     config.site_prefix = "/xxx/".to_string();

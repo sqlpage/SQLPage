@@ -3,6 +3,8 @@ use crate::webserver::database::ParsedSqlFile;
 use crate::{file_cache::FileCache, AppState};
 use awc::http::uri::PathAndQuery;
 use log::debug;
+use percent_encoding;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
 
@@ -88,7 +90,19 @@ where
 {
     match path_and_query.path().strip_prefix(config.prefix()) {
         None => Err(Redirect(config.prefix().to_string())),
-        Some(path) => Ok(PathBuf::from(path)),
+        Some(path) => {
+            let decoded = percent_encoding::percent_decode_str(path);
+            #[cfg(unix)]
+            {
+                use std::os::unix::ffi::OsStringExt;
+                let decoded = decoded.collect::<Vec<u8>>();
+                Ok(PathBuf::from(OsString::from_vec(decoded)))
+            }
+            #[cfg(not(unix))]
+            {
+                Ok(PathBuf::from(decoded.decode_utf8_lossy().as_ref()))
+            }
+        }
     }
 }
 
