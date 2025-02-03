@@ -723,8 +723,18 @@ async fn test_routing_with_db_fs_and_prefix() {
         .await
         .unwrap();
 
-    // Insert test file into database
-    sqlx::query("INSERT INTO sqlpage_files(path, contents) VALUES ('tests/sql_test_files/it_works_simple.sql', 'SELECT ''It works !'' as message;')")
+    // Insert test file into database using database-specific syntax
+    let db_kind = state.db.connection.any_kind();
+    let insert_sql = match db_kind {
+        sqlx::any::AnyKind::Mssql => {
+            "INSERT INTO sqlpage_files(path, contents) VALUES (?, CONVERT(VARBINARY(MAX), ?))"
+        }
+        _ => "INSERT INTO sqlpage_files(path, contents) VALUES (?, ?)",
+    };
+
+    sqlx::query(insert_sql)
+        .bind("tests/sql_test_files/it_works_simple.sql")
+        .bind("SELECT 'It works !' as message;")
         .execute(&state.db.connection)
         .await
         .unwrap();
