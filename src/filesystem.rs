@@ -132,13 +132,14 @@ impl FileSystem {
         Ok(self.local_root.join(path))
     }
 
-    pub(crate) async fn contains(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
+    pub(crate) async fn file_exists(
+        &self,
+        app_state: &AppState,
+        path: &Path,
+    ) -> anyhow::Result<bool> {
         let local_exists = match self.safe_local_path(app_state, path, false) {
             Ok(safe_path) => tokio::fs::try_exists(safe_path).await?,
-            Err(e) => {
-                log::error!("Unable to check if {path:?} exists in the local filesystem: {e:#}");
-                return Err(e);
-            }
+            Err(e) => return Err(e),
         };
 
         // If not in local fs and we have db_fs, check database
@@ -158,14 +159,14 @@ async fn file_modified_since_local(path: &Path, since: DateTime<Utc>) -> tokio::
         .map(|modified_at| DateTime::<Utc>::from(modified_at) > since)
 }
 
-pub(crate) struct DbFsQueries {
+pub struct DbFsQueries {
     was_modified: AnyStatement<'static>,
     read_file: AnyStatement<'static>,
     exists: AnyStatement<'static>,
 }
 
 impl DbFsQueries {
-    fn get_create_table_sql(db_kind: AnyKind) -> &'static str {
+    pub fn get_create_table_sql(db_kind: AnyKind) -> &'static str {
         match db_kind {
             AnyKind::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
             AnyKind::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",

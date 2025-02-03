@@ -1,3 +1,4 @@
+use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
 use clap::Parser;
 use config::Config;
@@ -6,7 +7,6 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
-use crate::webserver::routing::RoutingConfig;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]

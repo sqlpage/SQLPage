@@ -12,7 +12,7 @@ mod sql_to_json;
 pub use sql::{make_placeholder, ParsedSqlFile};
 
 pub struct Database {
-    pub(crate) connection: sqlx::AnyPool,
+    pub connection: sqlx::AnyPool,
 }
 impl Database {
     pub async fn close(&self) -> anyhow::Result<()> {

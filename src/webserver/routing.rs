@@ -1,6 +1,6 @@
-use crate::{file_cache::FileCache, AppState};
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
+use crate::{file_cache::FileCache, AppState};
 use awc::http::uri::PathAndQuery;
 use log::debug;
 use std::path::{Path, PathBuf};
@@ -54,7 +54,7 @@ impl FileStore for AppFileStore<'_> {
         if self.cache.contains(path).await? {
             Ok(true)
         } else {
-            self.filesystem.contains(self.app_state, path).await
+            self.filesystem.file_exists(self.app_state, path).await
         }
     }
 }
@@ -112,7 +112,11 @@ where
     }
 }
 
-async fn find_file_or_not_found<T>(path: &Path, extension: &str, store: &T) -> anyhow::Result<RoutingAction>
+async fn find_file_or_not_found<T>(
+    path: &Path,
+    extension: &str,
+    store: &T,
+) -> anyhow::Result<RoutingAction>
 where
     T: FileStore,
 {
@@ -122,7 +126,11 @@ where
     }
 }
 
-async fn find_file<T>(path: &Path, extension: &str, store: &T) -> anyhow::Result<Option<RoutingAction>>
+async fn find_file<T>(
+    path: &Path,
+    extension: &str,
+    store: &T,
+) -> anyhow::Result<Option<RoutingAction>>
 where
     T: FileStore,
 {
@@ -426,7 +434,9 @@ mod tests {
             None => Config::default(),
             Some(value) => Config::new(value),
         };
-        calculate_route(&PathAndQuery::from_str(path).unwrap(), &store, &config).await.unwrap()
+        calculate_route(&PathAndQuery::from_str(path).unwrap(), &store, &config)
+            .await
+            .unwrap()
     }
 
     fn default_not_found() -> RoutingAction {

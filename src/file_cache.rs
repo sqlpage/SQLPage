@@ -1,3 +1,4 @@
+use crate::webserver::routing::FileStore;
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::http::StatusCode;
@@ -13,7 +14,6 @@ use std::sync::atomic::{
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
-use crate::webserver::routing::FileStore;
 
 /// The maximum time in milliseconds that a file can be cached before its freshness is checked
 /// (in production mode)
@@ -77,8 +77,7 @@ pub struct FileCache<T: AsyncFromStrWithState> {
 
 impl<T: AsyncFromStrWithState> FileStore for FileCache<T> {
     async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
-        Ok(self.cache.read().await.contains_key(path)
-            || self.static_files.contains_key(path))
+        Ok(self.cache.read().await.contains_key(path) || self.static_files.contains_key(path))
     }
 }
 

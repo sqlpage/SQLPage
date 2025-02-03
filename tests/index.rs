@@ -13,12 +13,14 @@ use actix_web::{
 };
 use sqlpage::{
     app_config::{test_database_url, AppConfig},
+    filesystem::DbFsQueries,
     webserver::{
         self,
         http::{form_config, main_handler, payload_config},
     },
     AppState,
 };
+use sqlx::Executor as _;
 
 #[actix_web::test]
 async fn test_index_ok() {
@@ -695,6 +697,74 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     Ok(())
 }
 
+#[actix_web::test]
+async fn test_routing_with_db_fs_and_prefix() {
+    let mut config = test_config();
+    config.site_prefix = "/prefix/".to_string();
+    let state = AppState::init(&config).await.unwrap();
+
+    // Set up database filesystem
+    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.connection.any_kind());
+    state
+        .db
+        .connection
+        .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_str())
+        .await
+        .unwrap();
+
+    // Insert test file into database
+    sqlx::query("INSERT INTO sqlpage_files(path, contents) VALUES ('tests/sql_test_files/it_works_simple.sql', 'SELECT ''It works !'' as message;')")
+        .execute(&state.db.connection)
+        .await
+        .unwrap();
+
+    let app_data = actix_web::web::Data::new(state);
+
+    // Test basic routing with prefix
+    let resp = req_path_with_app_data(
+        "/prefix/tests/sql_test_files/it_works_simple.sql",
+        app_data.clone(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("It works !"),
+        "{body_str}\nexpected to contain: It works !"
+    );
+    assert!(
+        body_str.contains("href=\"/prefix/"),
+        "{body_str}\nexpected to contain links with site prefix"
+    );
+
+    // Test 404 handling with prefix
+    let resp = req_path_with_app_data("/prefix/nonexistent.sql", app_data.clone())
+        .await
+        .expect_err("Expected 404 error")
+        .to_string();
+    assert!(resp.contains("404"));
+
+    // Test forbidden paths with prefix
+    let resp = req_path_with_app_data("/prefix/sqlpage/migrations/0001_init.sql", app_data.clone())
+        .await
+        .expect_err("Expected forbidden error")
+        .to_string();
+    assert!(resp.to_lowercase().contains("forbidden"), "{resp}");
+
+    // accessing without prefix should redirect to the prefix
+    let resp = req_path_with_app_data("/tests/sql_test_files/it_works_simple.sql", app_data)
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), http::StatusCode::MOVED_PERMANENTLY);
+    let location = resp
+        .headers()
+        .get("location")
+        .expect("location header should be present");
+    assert_eq!(location.to_str().unwrap(), "/prefix/");
+}
+
 async fn get_request_to_with_data(
     path: &str,
     data: actix_web::web::Data<AppState>,
@@ -752,7 +822,12 @@ async fn req_path_with_app_data(
     let resp = tokio::time::timeout(REQ_TIMEOUT, main_handler(req))
         .await
         .map_err(|e| anyhow::anyhow!("Request to {path} timed out: {e}"))?
-        .map_err(|e| anyhow::anyhow!("Request to {path} failed: {e}"))?;
+        .map_err(|e| {
+            anyhow::anyhow!(
+                "Request to {path} failed with status {}: {e:#}",
+                e.as_response_error().status_code()
+            )
+        })?;
     Ok(resp)
 }
 
