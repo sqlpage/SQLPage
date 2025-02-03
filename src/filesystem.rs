@@ -166,6 +166,7 @@ pub struct DbFsQueries {
 }
 
 impl DbFsQueries {
+    #[must_use]
     pub fn get_create_table_sql(db_kind: AnyKind) -> &'static str {
         match db_kind {
             AnyKind::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
