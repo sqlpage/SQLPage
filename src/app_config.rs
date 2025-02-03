@@ -447,6 +447,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
     prefix + ":memory:?cache=shared"
 }
 
+#[cfg(any(test, not(feature = "lambda-web")))]
 fn encode_uri(path: &Path) -> std::borrow::Cow<str> {
     const ASCII_SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
         .remove(b'-')

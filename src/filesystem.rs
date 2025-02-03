@@ -144,6 +144,7 @@ impl FileSystem {
 
         // If not in local fs and we have db_fs, check database
         if !local_exists {
+            log::debug!("File {path:?} not found in local filesystem, checking database");
             if let Some(db_fs) = &self.db_fs_queries {
                 return db_fs.file_exists(app_state, path).await;
             }
@@ -226,7 +227,7 @@ impl DbFsQueries {
         db_kind: AnyKind,
     ) -> anyhow::Result<AnyStatement<'static>> {
         let exists_query = format!(
-            "SELECT 1 from sqlpage_files WHERE path = {}",
+            "SELECT 1 from sqlpage_files WHERE path = {} LIMIT 1",
             make_placeholder(db_kind, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
@@ -282,11 +283,20 @@ impl DbFsQueries {
     }
 
     async fn file_exists(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
-        self.exists
+        let query = self
+            .exists
             .query_as::<(i32,)>()
-            .bind(path.display().to_string())
-            .fetch_optional(&app_state.db.connection)
-            .await
+            .bind(path.display().to_string());
+        log::trace!(
+            "Checking if file {path:?} exists by executing query: \n\
+            {}\n\
+            with parameters: {:?}",
+            self.exists.sql(),
+            (path,)
+        );
+        let result = query.fetch_optional(&app_state.db.connection).await;
+        log::debug!("DB File exists result: {:?}", result);
+        result
             .map(|result| result.is_some())
             .with_context(|| format!("Unable to check if {path:?} exists in the database"))
     }

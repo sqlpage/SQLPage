@@ -709,8 +709,13 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
-async fn test_routing_with_db_fs_and_prefix() {
+async fn test_routing_with_db_fs() {
     let mut config = test_config();
+    // ignore this test if we are running on a temporary in-memory database
+    if config.database_url.contains("memory") {
+        return;
+    }
+
     config.site_prefix = "/prefix/".to_string();
     let state = AppState::init(&config).await.unwrap();
 
@@ -730,6 +735,7 @@ async fn test_routing_with_db_fs_and_prefix() {
     };
     state.db.connection.execute(insert_sql).await.unwrap();
 
+    let state = AppState::init(&config).await.unwrap();
     let app_data = actix_web::web::Data::new(state);
 
     // Test on_db.sql
@@ -743,7 +749,15 @@ async fn test_routing_with_db_fs_and_prefix() {
         body_str.contains("Hi from db !"),
         "{body_str}\nexpected to contain: Hi from db !"
     );
+}
 
+#[actix_web::test]
+async fn test_routing_with_prefix() {
+    let mut config = test_config();
+    config.site_prefix = "/prefix/".to_string();
+    let state = AppState::init(&config).await.unwrap();
+
+    let app_data = actix_web::web::Data::new(state);
     // Test basic routing with prefix
     let resp = req_path_with_app_data(
         "/prefix/tests/sql_test_files/it_works_simple.sql",
