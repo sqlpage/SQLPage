@@ -4,7 +4,6 @@ use crate::{file_cache::FileCache, AppState};
 use awc::http::uri::PathAndQuery;
 use log::debug;
 use percent_encoding;
-use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
 
@@ -94,7 +93,9 @@ where
             let decoded = percent_encoding::percent_decode_str(path);
             #[cfg(unix)]
             {
+                use std::ffi::OsString;
                 use std::os::unix::ffi::OsStringExt;
+
                 let decoded = decoded.collect::<Vec<u8>>();
                 Ok(PathBuf::from(OsString::from_vec(decoded)))
             }
