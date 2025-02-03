@@ -227,7 +227,7 @@ impl DbFsQueries {
         db_kind: AnyKind,
     ) -> anyhow::Result<AnyStatement<'static>> {
         let exists_query = format!(
-            "SELECT 1 from sqlpage_files WHERE path = {} LIMIT 1",
+            "SELECT 1 from sqlpage_files WHERE path = {}",
             make_placeholder(db_kind, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
