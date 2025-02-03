@@ -719,27 +719,35 @@ async fn test_routing_with_db_fs_and_prefix() {
     state
         .db
         .connection
-        .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_str())
+        .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_ref())
         .await
         .unwrap();
 
     // Insert test file into database using database-specific syntax
-    let db_kind = state.db.connection.any_kind();
-    let insert_sql = match db_kind {
-        sqlx::any::AnyKind::Mssql => {
-            "INSERT INTO sqlpage_files(path, contents) VALUES (?, CONVERT(VARBINARY(MAX), ?))"
-        }
-        _ => "INSERT INTO sqlpage_files(path, contents) VALUES (?, ?)",
+    let insert_sql = match state.db.connection.any_kind() {
+        sqlx::any::AnyKind::Mssql => "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', CONVERT(VARBINARY(MAX), 'select ''text'' as component, ''Hi from db !'' AS contents;'))",
+        _ => "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', 'select ''text'' as component, ''Hi from db !'' AS contents;')"
     };
-
-    sqlx::query(insert_sql)
-        .bind("tests/sql_test_files/it_works_simple.sql")
-        .bind("SELECT 'It works !' as message;")
-        .execute(&state.db.connection)
+    state
+        .db
+        .connection
+        .execute(insert_sql)
         .await
         .unwrap();
 
     let app_data = actix_web::web::Data::new(state);
+
+    // Test on_db.sql
+    let resp = req_path_with_app_data("/prefix/on_db.sql", app_data.clone())
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("Hi from db !"),
+        "{body_str}\nexpected to contain: Hi from db !"
+    );
 
     // Test basic routing with prefix
     let resp = req_path_with_app_data(
