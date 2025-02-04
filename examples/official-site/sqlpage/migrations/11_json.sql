@@ -3,9 +3,22 @@ INSERT INTO
 VALUES
     (
         'json',
-        'For advanced users, allows you to easily build an API over your database.
-        The json component responds to the current HTTP request with a JSON object.
-        This component must appear at the top of your SQL file, before any other data has been sent to the browser.',
+        'Converts SQL query results into the JSON machine-readable data format. Ideal to quickly build APIs for interfacing with external systems.
+        
+**JSON** is a widely used data format for programmatic data exchange.
+For example, you can use it to integrate with web services written in different languages,
+with mobile or desktop apps, or with [custom client-side components](/custom_components.sql) inside your SQLPage app.
+
+Use it when your application needs to expose data to external systems.
+If you only need to render standard web pages,
+and do not need other software to access your data,
+you can ignore this component.
+
+This component **must appear at the top of your SQL file**, before any other data has been sent to the browser.
+An HTTP response can have only a single datatype, and it must be declared in the headers.
+So if you have already called the `shell` component, or another traditional HTML component,
+you cannot use this component in the same file.
+',
         'code',
         '0.9.0'
     );
@@ -32,7 +45,10 @@ VALUES
     (
         'json',
         'type',
-        'The type of the JSON payload to send. Defaults to "array" (each query result is rendered as a JSON object in the array). Other possible values are "jsonlines" (each query result is rendered as a JSON object in a new line, without a top-level array) and "sse" (each query result is rendered as a JSON object in a new line, prefixed by "data: ", which allows you to read the results as server-sent events in real-time from javascript).',
+        'The type of the JSON payload to send: "array", "jsonlines", or "sse".
+In "array" mode, each query result is rendered as a JSON object in a single top-level array.
+In "jsonlines" mode, results are rendered as JSON objects in separate lines, without a top-level array.
+In "sse" mode, results are rendered as JSON objects in separate lines, prefixed by "data: ", which allows you to read the results as server-sent events in real-time from javascript.',
         'TEXT',
         TRUE,
         TRUE
@@ -45,7 +61,14 @@ VALUES
     (
         'json',
         '
-## Send query results as a JSON array
+## Send query results as a single JSON array: `''array'' as type`
+
+The default `array` mode sends the query results as a single JSON array.
+
+If a query returns an error, the array will contain an object with an `error` property.
+
+If multiple queries are executed, all query results will be concatenated into a single array
+of heterogeneous objects.
 
 ### SQL
 
@@ -67,9 +90,20 @@ select * from users;
     (
         'json',
         '
-## Send a single JSON object
+## Send a single JSON object: `''jsonlines'' as type`
+
+In `jsonlines` mode, each query result is rendered as a JSON object in a separate line,
+without a top-level array.
+
+If there is a single query result, the response will be a valid JSON object.
+If there are multiple query results, you will need to parse each line of the response as a separate JSON object.
+
+If a query returns an error, the response will be a JSON object with an `error` property.
 
 ### SQL
+
+The following SQL creates an API endpoint that takes a `user_id` URL parameter
+and returns a single JSON object containing the user''s details, with one json object key per column in the `users` table.
 
 ```sql
 select ''json'' AS component, ''jsonlines'' AS type;
@@ -91,7 +125,7 @@ select * from users where id = $user_id LIMIT 1;
     (
         'json',
         '
-## Create a complex API endpoint
+## Create a complex API endpoint: the `''contents''` property
 
 You can create an API endpoint that will return a JSON value in any format you want,
 to implement a complex API.
@@ -138,12 +172,12 @@ you can use
     (
         'json',
         '
-## Access query results in real-time with server-sent events
+## Access query results in real-time with server-sent events: `''sse'' as type`
 
 Using server-sent events, you can stream large query results to the client in real-time,
 row by row.
 
-This allows building sophisticated dynamic applications that will start processing and displaying 
+This allows building sophisticated dynamic web applications that will start processing and displaying 
 the first rows of data in the browser while the database server is still processing the end of the query.
 
 ### SQL
@@ -161,9 +195,7 @@ eventSource.onmessage = function (event) {
     const user = JSON.parse(event.data);
     console.log(user.username);
 }
-eventSource.onerror = function () {
-    eventSource.close(); // do not reconnect after reading all the data
-}
+eventSource.onerror = () => eventSource.close(); // do not reconnect after reading all the data
 ```
 '
     );
