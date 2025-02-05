@@ -40,8 +40,7 @@ function sqlpage_select_dropdown() {
 function sqlpage_load_options_source(options_source) {
   if (!options_source) return;
   return async (query, callback) => {
-    const err = (label) =>
-      callback([{ label, value: "" }]);
+    const err = (label) => callback([{ label, value: "" }]);
     const resp = await fetch(
       `${options_source}?search=${encodeURIComponent(query)}`,
     );
@@ -67,7 +66,11 @@ function sqlpage_load_options_source(options_source) {
     }
     if (results.length > 0) {
       const keys = Object.keys(results[0]);
-      if (keys.length !== 2 || !keys.includes("label") || !keys.includes("value")) {
+      if (
+        keys.length !== 2 ||
+        !keys.includes("label") ||
+        !keys.includes("value")
+      ) {
         return err(
           `Invalid response from "${options_source}". The response must be an array of objects with a 'label' and a 'value' property. Got: ${JSON.stringify(results[0])} in the first object instead.`,
         );
