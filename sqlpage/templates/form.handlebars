@@ -7,6 +7,7 @@
     {{else}}
     {{#if id}}action="#{{id}}"{{/if}}
     {{/if}}
+    {{#if auto_submit}}data-auto-submit{{/if}}
 >
     <fieldset class="form-fieldset mb-1">
         {{#if title}}
@@ -130,7 +131,7 @@
             {{/if}}
         {{/each_row}}
         </div>
-        {{#if (ne validate '')}} 
+        {{#if (and (ne validate '') (not auto_submit))}}
             <input class="btn
             btn-{{default validate_color "primary"}}
             {{#if validate_shape}} btn-{{validate_shape}} {{/if}}

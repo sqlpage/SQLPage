@@ -274,6 +274,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('validate_outline', 'A color to outline the validation button.', 'COLOR', TRUE, TRUE),
     ('reset', 'The text to display in the button at the bottom of the form that resets the form to its original state. Omit this property not to show a reset button at all.', 'TEXT', TRUE, TRUE),
     ('id', 'A unique identifier for the form, which can then be used to validate the form from a button outside of the form.', 'TEXT', TRUE, TRUE),
+    ('auto_submit', 'Automatically submit the form when the user changes any of its fields, and remove the validation button.', 'BOOLEAN', TRUE, TRUE),
     -- item level
     ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number to accept only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter, hidden for a value that will be submitted but not shown to the user. text by default.', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
@@ -435,6 +436,18 @@ In this example, depending on what the user clicks, the page will be reloaded wi
     {"name": "component", "type": "radio", "value": "form", "description": "Read user input in SQL", "label": "Form"},
     {"name": "component", "type": "radio", "value": "map", "checked": true, "description": "Display a map based on database data", "label": "Map"},
     {"name": "component", "type": "radio", "value": "chart", "description": "Interactive plots of SQL query results", "label": "Chart"}
+    ]')),
+    ('form', '
+### Dynamically refresh the page when the user changes the form
+
+The form will be automatically submitted when the user changes any of its fields, and the page will be reloaded with the new value.
+The validation button is removed.
+', json('[{"component":"form", "auto_submit": true},
+    {"name": "component", "type": "select", "autocomplete": false, "options": [
+        {"label": "Form", "value": "form", "selected": true},
+        {"label": "Map", "value": "map"},
+        {"label": "Chart", "value": "chart"}
+    ], "description": "Choose a component to view its documentation. No need to click a button, the page will be reloaded automatically.", "label": "Component"}
     ]')),
     ('form', 'When you want to include some information in the form data, but not display it to the user, you can use a hidden field.
 

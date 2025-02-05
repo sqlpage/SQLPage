@@ -216,6 +216,11 @@ function sqlpage_form() {
       }
     });
   }
+
+  const auto_submit_forms = document.querySelectorAll("form[data-auto-submit]");
+  for (const form of auto_submit_forms) {
+    form.addEventListener("change", () => form.submit());
+  }
 }
 
 function get_tabler_color(name) {
