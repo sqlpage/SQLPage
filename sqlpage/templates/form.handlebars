@@ -69,10 +69,11 @@
                         {{~#if autofocus}} autofocus {{/if~}}
                         {{~#if disabled}}disabled {{/if~}}
                         {{~#if multiple}} multiple {{/if~}}
-                        {{~#if (or dropdown searchable)}} 
+                        {{~#if (or dropdown searchable options_source)}} 
                             data-pre-init="select-dropdown"
                             data-sqlpage-js="{{static_path 'tomselect.js'}}"
                         {{/if~}}
+                        {{~#if options_source}} data-options_source="{{options_source}}" {{/if~}}
                         {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
                         {{~#if create_new}} data-create_new={{create_new}} {{/if~}}
                         >

@@ -375,7 +375,7 @@ FROM fruits
     ('form', '### Multi-select
 You can authorize the user to select multiple options by setting the `multiple` property to `true`.
 This creates a more compact (but arguably less user-friendly) alternative to a series of checkboxes.
-In this case, you should add square brackets to the name of the field.
+In this case, you should add square brackets to the name of the field (e.g. `''my_field[]'' as name`).
 The target page will then receive the value as a JSON array of strings, which you can iterate over using 
  - the `json_each` function [in SQLite](https://www.sqlite.org/json1.html) and [Postgres](https://www.postgresql.org/docs/9.3/functions-json.html),
  - the [`OPENJSON`](https://learn.microsoft.com/fr-fr/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16) function in Microsoft SQL Server.
@@ -388,14 +388,20 @@ The target page could then look like this:
 ```sql
 insert into best_fruits(id) -- INSERT INTO ... SELECT ... runs the SELECT query and inserts the results into the table
 select CAST(value AS integer) as id -- all values are transmitted by the browser as strings
-from json_each($preferred_fruits); -- json_each returns a table with a "value" column for each element in the JSON array
+from json_each($my_field); -- in SQLite, json_each returns a table with a "value" column for each element in the JSON array
 ```
 
 ### Example multiselect generated from a database table
 
-As an example, if you have a table of all possible options (`my_options(id int, label text)`),
-and another table that contains the selected options per user (`my_user_options(user_id int, option_id int)`),
-you can use a query like this to generate the multi-select field:
+If you have a table of all possible options (`my_options(id int, label text)`),
+and want to generate a multi-select field from it, you have two options:
+- if the number of options is not too large, you can use the `options` parameter to return them all as a JSON array in the SQL query
+- if the number of options is large (e.g. more than 1000), you can use `options_source` to load options dynamically from a different SQL query as the user types
+
+#### Embedding all options in the SQL query
+
+Let''s say you have a table that contains the selected options per user (`my_user_options(user_id int, option_id int)`).
+You can use a query like this to generate the multi-select field:
 
 ```sql
 select ''select'' as type, true as multiple, json_group_array(json_object(
@@ -408,10 +414,33 @@ left join my_user_options
     on  my_options.id = my_user_options.option_id
     and my_user_options.user_id = $user_id
 ```
+
+This will generate a json array of objects, each containing the label, value and selected status of each option.
+
+#### Loading options dynamically from a different SQL query with `options_source`
+
+If the `my_options` table has a large number of rows, you can use the `options_source` parameter to load options dynamically from a different SQL query as the user types.
+
+We''ll write a second SQL file, `options_source.sql`, that will receive the user''s search string as a parameter named `$search`,
+ and return a json array of objects, each containing the label and value of each option.
+
+##### `options_source.sql`
+
+```sql
+select ''json'' as component;
+
+select id as value, label as label
+from my_options
+where label like $search || ''%'';
+```
+
+##### `form`
+
 ', json('[{"component":"form", "action":"examples/show_variables.sql", "reset": "Reset"}, 
-    {"label": "Fruits", "name": "fruits[]", "type": "select", "multiple": true, "create_new":true, "placeholder": "Good fruits...", "searchable": true, "description": "press ctrl to select multiple values", "options":
-        "[{\"label\": \"Orange\", \"value\": 0, \"selected\": true}, {\"label\": \"Apple\", \"value\": 1}, {\"label\": \"Banana\", \"value\": 3, \"selected\": true}]"}
-    ]')),
+    {"name": "component", "type": "select",
+    "options_source": "examples/from_component_options_source.sql",
+    "description": "Start typing the name of a component like ''map'' or ''form''..."
+    }]')),
     ('form', 'This example illustrates the use of the `radio` type.
 The `name` parameter is used to group the radio buttons together.
 The `value` parameter is used to set the value that will be submitted when the user selects the radio button.

@@ -13,6 +13,8 @@
 - Update ApexCharts to [v4.4.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.4.0): fixes multiple small bugs in the chart component.
 - Add a new `auto_submit` parameter to the form component. When set to true, the form will be automatically submitted when the user changes any of its fields, and the page will be reloaded with the new value. The validation button is removed.
   - This is useful to quickly create filters at the top of a dashboard or report page, that will be automatically applied when the user changes them.
+- New `options_source` parameter in the form component. This allows to dynamically load options for dropdowns from a different SQL file.
+ - This allows easily implementing autocomplete for form fields with a large number of possible options.
 
 ## 0.32.1 (2025-01-03)
 
