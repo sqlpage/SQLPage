@@ -13,6 +13,30 @@ git clone https://github.com/sqlpage/sqlpage
 cd sqlpage
 ```
 
+## Building the project
+
+The first time you build the project,
+dependencies will be downloaded, so you will need internet access,
+and the build may take a while.
+
+Run the following command from the root of the repository to build the project in development mode:
+
+```bash
+cargo build
+```
+
+The resulting executable will be in `target/debug/sqlpage`.
+
+### Release mode
+
+To build the project in release mode:
+
+```bash
+cargo build --release
+```
+
+The resulting executable will be in `target/release/sqlpage`.
+
 ## Code Style and Linting
 
 ### Rust
