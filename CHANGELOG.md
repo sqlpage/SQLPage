@@ -10,6 +10,7 @@
   - Add support for *"clean URLs"*: Access the file `page.sql` using `https://example.com/page` instead of `https://example.com/page.sql`.
   - The previous behavior is preserved (the `.sql` suffix is now optional), so this is a new feature, not a breaking change.
   - Big thanks to @guspower who made big contributions to this feature.
+- Update ApexCharts to [v4.4.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.4.0): fixes multiple small bugs in the chart component.
 
 ## 0.32.1 (2025-01-03)
 
