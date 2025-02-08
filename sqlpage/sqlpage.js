@@ -157,7 +157,7 @@ function sqlpage_map() {
       : createGeoJSONMarker(marker_elem, options);
     marker.addTo(map);
     map._sqlpage_markers.push(marker);
-    if (options.title) marker.bindPopup(marker_elem);
+    if (marker_elem.textContent.trim()) marker.bindPopup(marker_elem);
     else if (marker_elem.dataset.link) {
       marker.on("click", () => {
         window.location.href = marker_elem.dataset.link;

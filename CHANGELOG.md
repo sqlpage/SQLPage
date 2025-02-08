@@ -15,6 +15,7 @@
   - This is useful to quickly create filters at the top of a dashboard or report page, that will be automatically applied when the user changes them.
 - New `options_source` parameter in the form component. This allows to dynamically load options for dropdowns from a different SQL file.
  - This allows easily implementing autocomplete for form fields with a large number of possible options.
+ - In the map component, add support for map pins with a description but no title.
 
 ## 0.32.1 (2025-01-03)
 
