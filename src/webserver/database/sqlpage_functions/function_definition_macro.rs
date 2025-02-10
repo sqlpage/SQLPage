@@ -66,7 +66,7 @@ macro_rules! sqlpage_functions {
                             let mut iter_params = params.into_iter();
                             $(
                                 let $param_name = <$param_type as FunctionParamType<'_>>::from_args(&mut iter_params)
-                                    .map_err(|e| anyhow!("Parameter {}: {e}", stringify!($param_name)))?;
+                                    .with_context(|| format!("Invalid value for parameter {}", stringify!($param_name)))?;
                             )*
                             if let Some(extraneous_param) = iter_params.next() {
                                 anyhow::bail!("Too many arguments. Remove extra argument {}", as_sql(extraneous_param));
