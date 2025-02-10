@@ -46,6 +46,8 @@ super::function_definition_macro::sqlpage_functions! {
 
     variables((&RequestInfo), get_or_post: Option<Cow<str>>);
     version();
+    request_body((&RequestInfo));
+    request_body_base64((&RequestInfo));
 }
 
 /// Returns the password from the HTTP basic auth header, if present.
@@ -603,4 +605,27 @@ async fn variables<'a>(
 /// Returns the version of the sqlpage that is running.
 async fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+/// Returns the raw request body as a string.
+/// If the request body is not valid UTF-8, invalid characters are replaced with the Unicode replacement character.
+/// Returns NULL if there is no request body or if the request content type is
+/// application/x-www-form-urlencoded or multipart/form-data (in this case, the body is accessible via the `post_variables` field).
+async fn request_body(request: &RequestInfo) -> Option<String> {
+    let raw_body = request.raw_body.as_ref()?;
+    Some(String::from_utf8_lossy(raw_body).to_string())
+}
+
+/// Returns the raw request body encoded in base64.
+/// Returns NULL if there is no request body or if the request content type is
+/// application/x-www-form-urlencoded or multipart/form-data (in this case, the body is accessible via the `post_variables` field).
+async fn request_body_base64(request: &RequestInfo) -> Option<String> {
+    let raw_body = request.raw_body.as_ref()?;
+    let mut base64_string = String::with_capacity((raw_body.len() * 4 + 2) / 3);
+    base64::Engine::encode_string(
+        &base64::engine::general_purpose::STANDARD,
+        raw_body,
+        &mut base64_string,
+    );
+    Some(base64_string)
 }

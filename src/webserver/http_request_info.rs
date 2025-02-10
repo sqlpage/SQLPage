@@ -38,6 +38,7 @@ pub struct RequestInfo {
     pub basic_auth: Option<Basic>,
     pub app_state: Arc<AppState>,
     pub clone_depth: u8,
+    pub raw_body: Option<Vec<u8>>,
 }
 
 impl RequestInfo {
@@ -56,6 +57,7 @@ impl RequestInfo {
             basic_auth: self.basic_auth.clone(),
             app_state: self.app_state.clone(),
             clone_depth: self.clone_depth + 1,
+            raw_body: self.raw_body.clone(),
         }
     }
 }
@@ -77,7 +79,8 @@ pub(crate) async fn extract_request_info(
     let method = http_req.method().clone();
     let protocol = http_req.connection_info().scheme().to_string();
     let config = &app_state.config;
-    let (post_variables, uploaded_files) = extract_post_data(http_req, payload, config).await?;
+    let (post_variables, uploaded_files, raw_body) =
+        extract_post_data(http_req, payload, config).await?;
     let headers = req.headers().iter().map(|(name, value)| {
         (
             name.to_string(),
@@ -112,6 +115,7 @@ pub(crate) async fn extract_request_info(
         app_state,
         protocol,
         clone_depth: 0,
+        raw_body,
     })
 }
 
@@ -119,7 +123,11 @@ async fn extract_post_data(
     http_req: &mut actix_web::HttpRequest,
     payload: &mut actix_web::dev::Payload,
     config: &crate::app_config::AppConfig,
-) -> anyhow::Result<(Vec<(String, String)>, Vec<(String, TempFile)>)> {
+) -> anyhow::Result<(
+    Vec<(String, String)>,
+    Vec<(String, TempFile)>,
+    Option<Vec<u8>>,
+)> {
     let content_type = http_req
         .headers()
         .get(&CONTENT_TYPE)
@@ -127,13 +135,16 @@ async fn extract_post_data(
         .unwrap_or_default();
     if content_type.starts_with(b"application/x-www-form-urlencoded") {
         let vars = extract_urlencoded_post_variables(http_req, payload).await?;
-        Ok((vars, Vec::new()))
+        Ok((vars, Vec::new(), None))
     } else if content_type.starts_with(b"multipart/form-data") {
-        extract_multipart_post_data(http_req, payload, config).await
+        let (vars, files) = extract_multipart_post_data(http_req, payload, config).await?;
+        Ok((vars, files, None))
     } else {
-        let ct_str = String::from_utf8_lossy(content_type);
-        log::debug!("Not parsing POST data from request without known content type {ct_str}");
-        Ok((Vec::new(), Vec::new()))
+        let body = actix_web::web::Bytes::from_request(http_req, payload)
+            .await
+            .map(|bytes| bytes.to_vec())
+            .unwrap_or_default();
+        Ok((Vec::new(), Vec::new(), Some(body)))
     }
 }
 
