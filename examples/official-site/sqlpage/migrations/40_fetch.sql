@@ -80,13 +80,13 @@ set api_results = sqlpage.fetch($request);
 # JSON parameter format
 
 The fetch function accepts either a URL string, or a JSON object with the following parameters:
+ - `url`: The URL to fetch. Required.
  - `method`: The HTTP method to use. Defaults to `GET`.
- - `url`: The URL to fetch.
- - `headers`: A JSON object with the headers to send.
- - `body`: The body of the request. If it is a JSON object, it will be sent as JSON. If it is a string, it will be sent as is.
+ - `headers`: A JSON object with the headers to send. Defaults to sending a User-Agent header containing the SQLPage version.
+ - `body`: The body of the request. If it is a JSON object, it will be sent as JSON. If it is a string, it will be sent as is. When omitted, no request body is sent.
  - `timeout_ms`: The maximum time to wait for the request, in milliseconds. Defaults to 5000.
- - `username`: Username for HTTP Basic Authentication. Introduced in version 0.33.0.
- - `password`: Password for HTTP Basic Authentication. Only used if username is provided. Introduced in version 0.33.0.
+ - `username`: Optional username for HTTP Basic Authentication. Introduced in version 0.33.0.
+ - `password`: Optional password for HTTP Basic Authentication. Only used if username is provided. Introduced in version 0.33.0.
 
 '
     );

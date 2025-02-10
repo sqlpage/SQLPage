@@ -4,6 +4,21 @@ use super::function_traits::BorrowFromStr;
 use std::borrow::Cow;
 
 type HeaderVec<'a> = Vec<(Cow<'a, str>, Cow<'a, str>)>;
+
+fn default_headers<'a>() -> HeaderVec<'a> {
+    vec![
+        (Cow::Borrowed("Accept"), Cow::Borrowed("*/*")),
+        (
+            Cow::Borrowed("User-Agent"),
+            Cow::Borrowed(concat!(
+                "SQLPage/v",
+                env!("CARGO_PKG_VERSION"),
+                " (+https://sql-page.com)"
+            )),
+        ),
+    ]
+}
+
 #[derive(serde::Deserialize, Debug)]
 #[serde(expecting = "an http request object, e.g. '{\"url\":\"http://example.com\"}'")]
 pub(super) struct HttpFetchRequest<'b> {
@@ -11,13 +26,17 @@ pub(super) struct HttpFetchRequest<'b> {
     pub url: Cow<'b, str>,
     #[serde(borrow)]
     pub method: Option<Cow<'b, str>>,
-    pub timeout_ms: Option<u64>,
-    #[serde(borrow, deserialize_with = "deserialize_map_to_vec_pairs")]
+    #[serde(
+        default = "default_headers",
+        borrow,
+        deserialize_with = "deserialize_map_to_vec_pairs"
+    )]
     pub headers: HeaderVec<'b>,
     pub username: Option<Cow<'b, str>>,
     pub password: Option<Cow<'b, str>>,
     #[serde(borrow)]
     pub body: Option<Cow<'b, serde_json::value::RawValue>>,
+    pub timeout_ms: Option<u64>,
 }
 
 fn deserialize_map_to_vec_pairs<'de, D: serde::Deserializer<'de>>(
@@ -53,7 +72,7 @@ impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
             HttpFetchRequest {
                 url: s,
                 method: None,
-                headers: Vec::new(),
+                headers: default_headers(),
                 username: None,
                 password: None,
                 body: None,
