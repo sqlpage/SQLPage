@@ -21,6 +21,7 @@ fn default_headers<'a>() -> HeaderVec<'a> {
 
 #[derive(serde::Deserialize, Debug)]
 #[serde(expecting = "an http request object, e.g. '{\"url\":\"http://example.com\"}'")]
+#[serde(deny_unknown_fields)]
 pub(super) struct HttpFetchRequest<'b> {
     #[serde(borrow)]
     pub url: Cow<'b, str>,

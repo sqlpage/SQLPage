@@ -16,7 +16,7 @@
 - New `options_source` parameter in the form component. This allows to dynamically load options for dropdowns from a different SQL file.
  - This allows easily implementing autocomplete for form fields with a large number of possible options.
  - In the map component, add support for map pins with a description but no title.
-- Improved error messages when a parameter of a sqlpage function is invalid. Error traces used to be truncated, and made it hard to understand the exact cause of the error in some cases. In particular, calls to `sqlpage.fetch` would display an unhelpful error message when the HTTP request definition was invalid.
+- Improved error messages when a parameter of a sqlpage function is invalid. Error traces used to be truncated, and made it hard to understand the exact cause of the error in some cases. In particular, calls to `sqlpage.fetch` would display an unhelpful error message when the HTTP request definition was invalid. `sqlpage.fetch` now also throws an error if the HTTP request definition contains unknown fields.
 - Make the `headers` field of the `sqlpage.fetch` function parameter optional. It defaults to sending a User-Agent header containing the SQLPage version.
 
 ## 0.32.1 (2025-01-03)
