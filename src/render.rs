@@ -653,8 +653,16 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         let shell_row = rows_iter
             .next()
             .expect("shell row should exist at this point");
+        let mut shell_component =
+            get_object_str(&shell_row, "component").expect("shell should exist");
+        if request_context.is_embedded && shell_component != FRAGMENT_SHELL_COMPONENT {
+            log::warn!(
+                "Embedded pages cannot use a shell component! Ignoring the '{shell_component}' component and its properties: {shell_row}"
+            );
+            shell_component = FRAGMENT_SHELL_COMPONENT;
+        }
         let mut shell_renderer = Self::create_renderer(
-            get_object_str(&shell_row, "component").expect("shell should exist"),
+            shell_component,
             Arc::clone(&app_state),
             0,
             request_context.content_security_policy.nonce,

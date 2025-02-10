@@ -4,7 +4,9 @@ const nonce = document.currentScript.nonce;
 function sqlpage_card() {
   for (const c of document.querySelectorAll("[data-pre-init=card]")) {
     c.removeAttribute("data-pre-init");
-    fetch(c.dataset.embed)
+    const url = new URL(c.dataset.embed, window.location.href);
+    url.searchParams.set("_sqlpage_embed", "1");
+    fetch(url)
       .then((res) => res.text())
       .then((html) => {
         const body = c.querySelector(".card-content");

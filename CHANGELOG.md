@@ -18,6 +18,9 @@
  - In the map component, add support for map pins with a description but no title.
 - Improved error messages when a parameter of a sqlpage function is invalid. Error traces used to be truncated, and made it hard to understand the exact cause of the error in some cases. In particular, calls to `sqlpage.fetch` would display an unhelpful error message when the HTTP request definition was invalid. `sqlpage.fetch` now also throws an error if the HTTP request definition contains unknown fields.
 - Make the `headers` field of the `sqlpage.fetch` function parameter optional. It defaults to sending a User-Agent header containing the SQLPage version.
+- Make custom layout creations with the `card` component easier and less error-prone:
+  - The `embed` property now automatically adds the `_sqlpage_embed` parameter to the embedded page URL to render it as an embeddable fragment.
+  - When an embedded page is rendered, the `shell` component is automatically replaced by a `shell-empty` component, to avoid displaying a duplicate shell and creating invalid duplicated page metadata in the response.
 
 ## 0.32.1 (2025-01-03)
 
