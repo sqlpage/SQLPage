@@ -21,6 +21,8 @@
 - Make custom layout creations with the `card` component easier and less error-prone:
   - The `embed` property now automatically adds the `_sqlpage_embed` parameter to the embedded page URL to render it as an embeddable fragment.
   - When an embedded page is rendered, the `shell` component is automatically replaced by a `shell-empty` component, to avoid displaying a duplicate shell and creating invalid duplicated page metadata in the response.
+- Update Tabler Icons to version [3.30.0](https://tabler.io/changelog#/changelog/tabler-icons-3.30), with many new icons.
+- Update the CSS framework to [Tabler 1.0.0](https://github.com/tabler/tabler/releases/tag/v1.0.0), with many small UI consistency improvements.
 
 ## 0.32.1 (2025-01-03)
 
