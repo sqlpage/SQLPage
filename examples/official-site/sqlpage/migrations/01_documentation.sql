@@ -293,6 +293,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOLEAN', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'REAL', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
+    ('description_md', 'A helper text to display near the input field - formatted using markdown.', 'TEXT', FALSE, TRUE),
     ('pattern', 'A regular expression that the value must match. For instance, [0-9]{3} will only accept 3 digits.', 'TEXT', FALSE, TRUE),
     ('autofocus', 'Automatically focus the field when the page is loaded', 'BOOLEAN', FALSE, TRUE),
     ('width', 'Width of the form field, between 1 and 12.', 'INTEGER', FALSE, TRUE),
