@@ -780,10 +780,14 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('border', 'Whether to draw borders on all sides of the table and cells.', 'BOOLEAN', TRUE, TRUE),
     ('overflow', 'Whether to to let "wide" tables overflow across the right border and enable browser-based horizontal scrolling.', 'BOOLEAN', TRUE, TRUE),
     ('small', 'Whether to use compact table.', 'BOOLEAN', TRUE, TRUE),
-    ('description','Description of the table content and helps users with screen readers to find a table and understand what it’s.','TEXT',TRUE,TRUE),
+    ('description','Description of the table contents. Helps users with screen readers to find a table and understand what it’s about.','TEXT',TRUE,TRUE),
     ('empty_description', 'Text to display if the table does not contain any row. Defaults to "no data".', 'TEXT', TRUE, TRUE),
     ('freeze_columns', 'Whether to freeze the leftmost column of the table.', 'BOOLEAN', TRUE, TRUE),
     ('freeze_headers', 'Whether to freeze the top row of the table.', 'BOOLEAN', TRUE, TRUE),
+    ('raw_numbers', 'Name of a column whose values are numeric, but should be displayed as raw numbers without any formatting (no thousands separators, decimal separator is always a dot). This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
+    ('money', 'Name of a numeric column whose values should be displayed as currency amounts, in the currency defined by the `currency` property. This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
+    ('currency', 'The ISO 4217 currency code (e.g., USD, EUR, GBP, etc.) to use when formatting monetary values.', 'TEXT', TRUE, TRUE),
+    ('number_format_digits', 'Maximum number of decimal digits to display for numeric values.', 'INTEGER', TRUE, TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'COLOR', FALSE, TRUE),
@@ -804,12 +808,18 @@ INSERT INTO example(component, description, properties) VALUES
         ]')),
     (
     'table',
-    'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.',
+    'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.
+
+Numbers can be displayed 
+ - as raw digits without formatting using the `raw_numbers` property,
+ - as currency using the `money` property to define columns that contain monetary values and `currency` to define the currency,
+ - as numbers with a fixed maximum number of decimal digits using the `number_format_digits` property.
+',
     json(
-        '[{"component":"table", "sort": true, "align_right": ["Price ($)", "Amount in stock"], "align_center": ["part_no"] },
-         {"id": 31456, "part_no": "SQL-TABLE-856-G", "Price ($)": 12, "Amount in stock": 5},
-          {"id": 996, "part_no": "SQL-FORMS-86-M", "Price ($)": 1, "Amount in stock": 15},
-          {"id": 131456, "part_no": "SQL-CARDS-56-K", "Price ($)": 127, "Amount in stock": 9}
+        '[{"component":"table", "sort": true, "align_right": ["Price", "Amount in stock"], "align_center": ["part_no"], "raw_numbers": ["id"], "currency": "USD", "money": ["Price"] },
+         {"id": 31456, "part_no": "SQL-TABLE-856-G", "Price": 12, "Amount in stock": 5},
+          {"id": 996, "part_no": "SQL-FORMS-86-M", "Price": 1, "Amount in stock": 1234},
+          {"id": 131456, "part_no": "SQL-CARDS-56-K", "Price": 127, "Amount in stock": 98}
         ]'
     )),
     (

@@ -21,7 +21,11 @@
             {{~#if hover}} table-hover {{/if~}}
             {{~#if border}} table-bordered {{/if~}}
             {{~#if small}} table-sm {{/if~}}
-            ">
+            "
+            {{~#if number_format_locale}} data-number_format_locale="{{number_format_locale}}"{{/if~}}
+            {{~#if number_format_digits}} data-number_format_digits="{{number_format_digits}}"{{/if~}}
+            {{~#if currency}} data-currency="{{currency}}"{{/if~}}
+            >
             {{#if description}}<caption>{{description}}</caption>{{/if}}
                 {{#each_row}}
                     {{#if (eq @row_index 0)}}
@@ -33,7 +37,11 @@
                                     {{~@key~}}
                                     {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                     {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
-                                ">
+                                "
+                                    data-column_type="{{typeof this}}"
+                                    {{~#if (array_contains_case_insensitive ../../raw_numbers @key)~}} data-raw_number="1"{{/if~}}
+                                    {{~#if (array_contains_case_insensitive ../../money @key)~}} data-money="1"{{/if~}}
+                                >
                                     {{~#if ../../sort~}}
                                         <button class="table-sort sort d-inline" data-sort="{{@key}}">{{@key}}</button>
                                     {{~else~}}
@@ -53,10 +61,7 @@
                             <td class="align-middle {{@key~}}
                                 {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                 {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
-                            "
-                                {{~#if (array_contains_case_insensitive ../../number_format_locale @key)}} number-format-locale {{/if~}}
-                                number-format-digits={{ ../../number_format_digits }}
-                            >
+                            ">
                                 {{~#if (array_contains_case_insensitive ../../markdown @key)~}}
                                     {{{markdown this}}}
                                 {{~else~}}

@@ -23,29 +23,37 @@ function sqlpage_card() {
   }
 }
 
-/** @param {HTMLElement} el */
-function table_search_sort(el) {
+/** @param {HTMLElement} root_el */
+function table_search_sort(root_el) {
   /** @type {HTMLInputElement | null} */
-  const search_input = el.querySelector("input.search");
-  const sort_buttons = [...el.querySelectorAll("button.sort[data-sort]")];
-  const item_parent = el.querySelector("tbody");
-  const items = [...item_parent.querySelectorAll("tr")].map((el) => {
-    const cells = el.getElementsByTagName("td");
+  const search_input = root_el.querySelector("input.search");
+  const table_el = root_el.querySelector("table");
+  const sort_buttons = [...table_el.querySelectorAll("button.sort[data-sort]")];
+  const item_parent = table_el.querySelector("tbody");
+  const number_format_locale = table_el.dataset.number_format_locale;
+  const number_format_digits = table_el.dataset.number_format_digits;
+  const currency = table_el.dataset.currency;
+  const header_els = table_el.querySelectorAll("thead > tr > th");
+  const col_types = [...header_els].map((el) => el.dataset.column_type);
+  const col_rawnums = [...header_els].map((el) => !!el.dataset.raw_number);
+  const col_money = [...header_els].map((el) => !!el.dataset.money);
+  const items = [...item_parent.querySelectorAll("tr")].map((tr_el) => {
+    const cells = tr_el.getElementsByTagName("td");
     return {
-      el,
-      sort_keys: sort_buttons.map((b, idx) => {
+      el: tr_el,
+      sort_keys: sort_buttons.map((btn_el, idx) => {
         const sort_key = cells[idx]?.textContent;
+        const column_type = col_types[idx];
         const num = Number.parseFloat(sort_key);
-        // if the user requested for this column to be formatted using `toLocaleString()`,
-        // we replace the cell contents
-        if (cells[idx]?.hasAttribute("number-format-locale") && !Number.isNaN(num)) {
-          const digits = cell.getAttribute("number-format-digits");
-          // The variable `digits` can be left empty or contain an integer
-          const options = digits
-            ? { minimumFractionDigits: digits, maximumFractionDigits: digits }
-            : {};
-          // Use the host default language, with the options we just defined
-          cell.innerHTML = num.toLocaleString(undefined, options);
+        const is_raw_number = col_rawnums[idx];
+        if (column_type === "number" && !is_raw_number) {
+          const cell_el = cells[idx];
+          const is_money = col_money[idx];
+          cell_el.textContent = num.toLocaleString(number_format_locale, {
+            maximumFractionDigits: number_format_digits,
+            currency,
+            style: is_money ? "currency" : undefined,
+          });
         }
         return {
           num,

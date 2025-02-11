@@ -14,8 +14,8 @@
 - Add a new `auto_submit` parameter to the form component. When set to true, the form will be automatically submitted when the user changes any of its fields, and the page will be reloaded with the new value. The validation button is removed.
   - This is useful to quickly create filters at the top of a dashboard or report page, that will be automatically applied when the user changes them.
 - New `options_source` parameter in the form component. This allows to dynamically load options for dropdowns from a different SQL file.
- - This allows easily implementing autocomplete for form fields with a large number of possible options.
- - In the map component, add support for map pins with a description but no title.
+  - This allows easily implementing autocomplete for form fields with a large number of possible options.
+- In the map component, add support for map pins with a description but no title.
 - Improved error messages when a parameter of a sqlpage function is invalid. Error traces used to be truncated, and made it hard to understand the exact cause of the error in some cases. In particular, calls to `sqlpage.fetch` would display an unhelpful error message when the HTTP request definition was invalid. `sqlpage.fetch` now also throws an error if the HTTP request definition contains unknown fields.
 - Make the `headers` field of the `sqlpage.fetch` function parameter optional. It defaults to sending a User-Agent header containing the SQLPage version.
 - Make custom layout creations with the `card` component easier and less error-prone:
@@ -23,6 +23,16 @@
   - When an embedded page is rendered, the `shell` component is automatically replaced by a `shell-empty` component, to avoid displaying a duplicate shell and creating invalid duplicated page metadata in the response.
 - Update Tabler Icons to version [3.30.0](https://tabler.io/changelog#/changelog/tabler-icons-3.30), with many new icons.
 - Update the CSS framework to [Tabler 1.0.0](https://github.com/tabler/tabler/releases/tag/v1.0.0), with many small UI consistency improvements.
+- Add native number formatting to the table component. Numeric values in tables are now formatted in the visitor's locale by default, using country-specific thousands separators and decimal points.
+  - This is better than formatting numbers inside the database, because 
+    - columns are sorted correctly in the numeric order by default, instead of being sorted in the alphabetic order of the formatted string.
+    - the formatted numbers are more readable for the user by default, without requiring any additional code.
+    - it adapts to the visitor's preferred locale, for instance using `.` as a decimal point and a space as a thousands separator if the visitor is in France.
+    - less data is sent from the database to sqlpage, and from sqlpage to the client, because the numbers are not formatted directly in the database.
+  - Add new customization properties to the table component:
+    - Switch back to displaying raw numbers without formatting using the `raw_numbers` property.
+    - Format monetary values using the `money` property to specify columns and `currency` to set the currency.
+    - Control decimal places with `number_format_digits` property.
 
 ## 0.32.1 (2025-01-03)
 
@@ -118,7 +128,7 @@ This is a bugfix release.
     - Added support for:
       - advanced `JSON_TABLE` usage in MySQL for working with JSON arrays.
       - `EXECUTE` statements with parameters in MSSQL for running stored procedures.
-      - MSSQL’s `TRY_CONVERT` function for type conversion.
+      - MSSQL's `TRY_CONVERT` function for type conversion.
       - `ANY`, `ALL`, and `SOME` subqueries (e.g., `SELECT * FROM t WHERE a = ANY (SELECT b FROM t2)`).
       - `LIMIT max_rows, offset` syntax in SQLite.
       - Assigning column names aliases using `=` in MSSQL (e.g., `SELECT col_name = value`).

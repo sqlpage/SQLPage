@@ -121,7 +121,9 @@ test("table sorting", async ({ page }) => {
   // Test amount in stock column sorting
   await tableSection.getByRole("button", { name: "Amount in stock" }).click();
   const amounts = await tableSection.locator("td.Amount").allInnerTexts();
-  const numericAmounts = amounts.map((amount) => Number.parseInt(amount));
+  const numericAmounts = amounts.map((amount) =>
+    Number.parseInt(amount.replace(/[^0-9]/g, "")),
+  );
   const sortedAmounts = [...numericAmounts].sort((a, b) => a - b);
   expect(numericAmounts).toEqual(sortedAmounts);
 });
