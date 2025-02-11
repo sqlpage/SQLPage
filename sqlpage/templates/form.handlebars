@@ -31,6 +31,9 @@
                                 {{#if description}}
                                     <small class="form-hint mt-0">{{description}}</small>
                                 {{/if}}
+                                {{#if description_md}}
+                                    <small class="form-hint mt-0">{{markdown description_md}}</small>
+                                {{/if}}
                             </div>
                         </div>
                     </label>
@@ -122,6 +125,9 @@
                     {{/if}}
                     {{#if description}}
                         <small class="form-hint mt-0">{{description}}</small>
+                    {{/if}}
+                    {{#if description_md}}
+                        <small class="form-hint mt-0">{{markdown description_md}}</small>
                     {{/if}}
                 </label>
             {{/if}}
