@@ -53,7 +53,10 @@
                             <td class="align-middle {{@key~}}
                                 {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                 {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
-                            ">
+                            "
+                                {{~#if (array_contains_case_insensitive ../../number_format_locale @key)}} number-format-locale {{/if~}}
+                                number-format-digits={{ ../../number_format_digits }}
+                            >
                                 {{~#if (array_contains_case_insensitive ../../markdown @key)~}}
                                     {{{markdown this}}}
                                 {{~else~}}

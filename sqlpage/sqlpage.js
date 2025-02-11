@@ -35,7 +35,22 @@ function table_search_sort(el) {
       el,
       sort_keys: sort_buttons.map((b, idx) => {
         const sort_key = cells[idx]?.textContent;
-        return { num: Number.parseFloat(sort_key), str: sort_key };
+        const num = Number.parseFloat(sort_key);
+        // if the user requested for this column to be formatted using `toLocaleString()`,
+        // we replace the cell contents
+        if (cells[idx]?.hasAttribute("number-format-locale") && !Number.isNaN(num)) {
+          const digits = cell.getAttribute("number-format-digits");
+          // The variable `digits` can be left empty or contain an integer
+          const options = digits
+            ? { minimumFractionDigits: digits, maximumFractionDigits: digits }
+            : {};
+          // Use the host default language, with the options we just defined
+          cell.innerHTML = num.toLocaleString(undefined, options);
+        }
+        return {
+          num,
+          str: sort_key,
+        };
       }),
     };
   });
