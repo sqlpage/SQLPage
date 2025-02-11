@@ -33,6 +33,7 @@
     - Switch back to displaying raw numbers without formatting using the `raw_numbers` property.
     - Format monetary values using the `money` property to specify columns and `currency` to set the currency.
     - Control decimal places with `number_format_digits` property.
+- Add a new `description_md` row-level property to the form component to allow displaying markdown in a form field description.
 
 ## 0.32.1 (2025-01-03)
 
