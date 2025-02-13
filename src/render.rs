@@ -714,7 +714,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
                                     This component must be used before any other component. \n\
                                      To fix this, either move the call to the '{comp_str}' component to the top of the SQL file, \n\
                                     or create a new SQL file where '{comp_str}' is the first component."),
-                    Err(_) => return Err(err),
+                    Err(()) => return Err(err),
                 },
             }
         } else if current_component.is_none() {
