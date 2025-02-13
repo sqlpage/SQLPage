@@ -51,12 +51,12 @@ use actix_web::cookie::time::OffsetDateTime;
 use actix_web::http::{header, StatusCode};
 use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{bail, format_err, Context as AnyhowContext};
-use async_recursion::async_recursion;
 use awc::cookie::time::Duration;
 use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
+use std::convert::TryFrom;
 use std::io::Write;
 use std::sync::Arc;
 
@@ -105,15 +105,19 @@ impl HeaderContext {
     }
     pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext> {
         log::debug!("Handling header row: {data}");
-        match get_object_str(&data, "component") {
-            Some("status_code") => self.status_code(&data).map(PageContext::Header),
-            Some("http_header") => self.add_http_header(&data).map(PageContext::Header),
-            Some("redirect") => self.redirect(&data).map(PageContext::Close),
-            Some("json") => self.json(&data),
-            Some("csv") => self.csv(&data).await,
-            Some("cookie") => self.add_cookie(&data).map(PageContext::Header),
-            Some("authentication") => self.authentication(data).await,
-            _ => self.start_body(data).await,
+        let comp_opt =
+            get_object_str(&data, "component").and_then(|s| HeaderComponent::try_from(s).ok());
+        match comp_opt {
+            Some(HeaderComponent::StatusCode) => self.status_code(&data).map(PageContext::Header),
+            Some(HeaderComponent::HttpHeader) => {
+                self.add_http_header(&data).map(PageContext::Header)
+            }
+            Some(HeaderComponent::Redirect) => self.redirect(&data).map(PageContext::Close),
+            Some(HeaderComponent::Json) => self.json(&data),
+            Some(HeaderComponent::Csv) => self.csv(&data).await,
+            Some(HeaderComponent::Cookie) => self.add_cookie(&data).map(PageContext::Header),
+            Some(HeaderComponent::Authentication) => self.authentication(data).await,
+            None => self.start_body(data).await,
         }
     }
 
@@ -692,41 +696,33 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
-    #[async_recursion(? Send)]
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         let new_component = get_object_str(data, "component");
         let current_component = self
             .current_component
             .as_ref()
             .map(SplitTemplateRenderer::name);
-        match (current_component, new_component) {
-            (
-                _,
-                Some(
-                    component_name @ ("status_code" | "http_header" | "redirect" | "json"
-                    | "cookie" | "authentication"),
-                ),
-            ) => {
-                bail!("The {component_name} component cannot be used after data has already been sent to the client's browser. \
-                This component must be used before any other component. \
-                To fix this, either move the call to the '{component_name}' component to the top of the SQL file, or create a new SQL file where '{component_name}' is the first component.");
+        if let Some(comp_str) = new_component {
+            if Self::is_shell_component(comp_str) {
+                bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
             }
-            (_, Some(c)) if Self::is_shell_component(c) => {
-                bail!("There cannot be more than a single shell per page. \n\
-                You are trying to open the {c:?} component, but a shell component is already opened for the current page. \n\
-                You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data. \n")
+
+            match self.open_component_with_data(comp_str, &data).await {
+                Ok(_) => (),
+                Err(err) => match HeaderComponent::try_from(comp_str) {
+                    Ok(_) => bail!("The {comp_str} component cannot be used after data has already been sent to the client's browser. \n\
+                                    This component must be used before any other component. \n\
+                                     To fix this, either move the call to the '{comp_str}' component to the top of the SQL file, \n\
+                                    or create a new SQL file where '{comp_str}' is the first component."),
+                    Err(_) => return Err(err),
+                },
             }
-            (None, None) => {
-                self.open_component_with_data(DEFAULT_COMPONENT, &JsonValue::Null)
-                    .await?;
-                self.render_current_template_with_data(&data).await?;
-            }
-            (_, Some(new_component)) => {
-                self.open_component_with_data(new_component, &data).await?;
-            }
-            (Some(_current_component), None) => {
-                self.render_current_template_with_data(&data).await?;
-            }
+        } else if current_component.is_none() {
+            self.open_component_with_data(DEFAULT_COMPONENT, &JsonValue::Null)
+                .await?;
+            self.render_current_template_with_data(&data).await?;
+        } else {
+            self.render_current_template_with_data(&data).await?;
         }
         Ok(())
     }
@@ -1054,5 +1050,32 @@ mod tests {
             "<b> 1 <b> 2  2 </b> 1 </b>"
         );
         Ok(())
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum HeaderComponent {
+    StatusCode,
+    HttpHeader,
+    Redirect,
+    Json,
+    Csv,
+    Cookie,
+    Authentication,
+}
+
+impl TryFrom<&str> for HeaderComponent {
+    type Error = ();
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "status_code" => Ok(HeaderComponent::StatusCode),
+            "http_header" => Ok(HeaderComponent::HttpHeader),
+            "redirect" => Ok(HeaderComponent::Redirect),
+            "json" => Ok(HeaderComponent::Json),
+            "csv" => Ok(HeaderComponent::Csv),
+            "cookie" => Ok(HeaderComponent::Cookie),
+            "authentication" => Ok(HeaderComponent::Authentication),
+            _ => Err(()),
+        }
     }
 }
