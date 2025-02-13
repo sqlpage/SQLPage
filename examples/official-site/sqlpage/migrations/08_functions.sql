@@ -86,6 +86,8 @@ Log the [`User-Agent`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
 ```sql
 INSERT INTO user_agent_log (user_agent) VALUES (sqlpage.header(''user-agent''));
 ```
+
+If you need access to all headers at once, use [`sqlpage.headers()`](?function=headers) instead.
     '
     );
 INSERT INTO sqlpage_function_parameters (

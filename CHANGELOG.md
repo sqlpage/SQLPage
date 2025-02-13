@@ -35,6 +35,7 @@
     - Control decimal places with `number_format_digits` property.
 - Add a new `description_md` row-level property to the form component to allow displaying markdown in a form field description.
 - Improve the error message when a header component (e.g. status_code, json, cookie) is used in the wrong place (after data has already been sent to the client).
+- New function: [`sqlpage.headers`](https://sql-page.com/functions.sql?function=headers).
 
 ## 0.32.1 (2025-01-03)
 

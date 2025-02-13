@@ -26,6 +26,7 @@ super::function_definition_macro::sqlpage_functions! {
 
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
+    headers((&RequestInfo));
 
     link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
 
@@ -628,4 +629,8 @@ async fn request_body_base64(request: &RequestInfo) -> Option<String> {
         &mut base64_string,
     );
     Some(base64_string)
+}
+
+async fn headers(request: &RequestInfo) -> String {
+    serde_json::to_string(&request.headers).unwrap_or_default()
 }
