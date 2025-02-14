@@ -2,103 +2,124 @@
 
 ## 0.33.0 (2025-02-15)
 
-### Routing & URL Enhancements
+### 1. Routing & URL Enhancements 🔀
 
 #### **Clean URLs:**  
+Access your pages without the extra “.sql” suffix. For instance, if your file is `page.sql`, you can now use either:  
 
-Now, you can access your pages without the extra “.sql” suffix. For example, if you’ve got a file called `page.sql`, simply use:  
-
-| old | new |
+| Old URL | New URL |
 |---|---|
-| `https://example.com/page.sql` | Either `https://example.com/page` or `https://example.com/page.sql` 
+| `https://example.com/page.sql` | `https://example.com/page` (or `page.sql` still works) |
 
-The previous behavior is preserved, so adding “.sql” still works. A big shout‑out to [@guspower](https://github.com/guspower) for their contributions!
+Big thanks to [@guspower](https://github.com/guspower) for their contributions!
 
-#### **Complete Routing Rewrite**  
-We’ve reworked our request routing system from top to bottom to make things smoother and more predictable for every request.
+#### **Complete Routing Rewrite:**  
+We overhauled our request routing system for smoother, more predictable routing across every request.
 
-### SQLPage functions
+---
 
-#### sqlpage.fetch (call external services from SQLPage)
+### 2. SQLPage Functions ⚙️
 
-**HTTP Basic Authentication**  
-SQLPage’s `sqlpage.fetch(request)` function now supports HTTP Basic Authentication. Quickly call external APIs that require a username and password. For example, in PostgreSQL:  
-```sql
-SET result = sqlpage.fetch(json_object(
-  'url', 'https://api.example.com/data',
-  'username', 'user',
-  'password', 'pass'
-));
-```
-Learn more in the [fetch documentation](https://sql-page.com/documentation.sql?component=fetch#component).
+#### **sqlpage.fetch (Calling External Services)**
 
-**Smarter fetch errors & Headers Defaults:**  
-When your HTTP request definition is off, you’ll now get clearer error messages — especially if there are unknown fields.
-Plus, the `headers` parameter is now optional: if omitted, SQLPage sends a default User‑Agent header that includes the SQLPage version.
+- **HTTP Basic Authentication:**  
+  SQLPage’s `sqlpage.fetch(request)` now supports HTTP Basic Auth. Easily call APIs requiring a username/password. For example:  
 
-**New Function: sqlpage.headers**  
-Easily manage and inspect HTTP headers with the brand‑new [`sqlpage.headers`](https://sql-page.com/functions.sql?function=headers) function.
+    ```sql
+    SET result = sqlpage.fetch(json_object(
+      'url', 'https://api.example.com/data',
+      'username', 'user',
+      'password', 'pass'
+    ));
+    ```  
+  Check out the [[fetch documentation](https://sql-page.com/documentation.sql?component=fetch#component)](https://sql-page.com/documentation.sql?component=fetch#component) for more.
 
-### UI Component Enhancements
+- **Smarter Fetch Errors & Headers Defaults:**  
+  Get clearer error messages if your HTTP request definition is off (unknown fields, etc.). Plus, if you omit the `headers` parameter, SQLPage now sends a default User‑Agent header that includes the SQLPage version.
 
-#### Table & Card Components
+- New Functions: [`sqlpage.request_body`](https://sql-page.com/functions.sql?function=request_body) and [`sqlpage.request_body_base64`](https://sql-page.com/functions.sql?function=request_body_base64)
+  - Return the raw request body as a string or base64 encoded string.
+  - Useful to build REST JSON APIs in SQL easily.
+  - Example:
+    ```sql
+    INSERT INTO users (name, email)
+    VALUES (
+      json(sqlpage.request_body())->>'name',
+      json(sqlpage.request_body())->>'email'
+    );
+    ```
+
+- **New Function: [sqlpage.headers](https://sql-page.com/functions.sql?function=headers):**  
+  Easily manage and inspect HTTP headers with the brand‑new [`sqlpage.headers`](https://sql-page.com/functions.sql?function=headers) function.
+
+### 3. UI Component Enhancements 🎨
+
+#### **Table & Card Components**
 
 - **Table CSS Fixes:**  
-  We fixed a bug that prevented proper CSS classes from being added to table cells. This fixes alignment in tables.
+  We fixed a bug where table cells weren’t getting the right CSS classes—your tables now align perfectly.
 
 - **Native Number Formatting:**  
-  Numeric values in tables are automatically formatted to your visitor’s locale. That means thousands separators, correct decimal points, and sorting that respects numeric order—without any extra work from you.  
-  ![image](https://github.com/user-attachments/assets/ba51a63f-b9ce-4ab2-a6dd-dfa8e22396de)
-
-  Not a formatted string in the database—just pure, locale‑sensitive output.
+  Numeric values in tables are now automatically formatted to your visitor’s locale with proper thousands separators and decimal points, and sorted numerically.  
+  _Example:_  
+  ![Number Formatting Example](https://github.com/user-attachments/assets/ba51a63f-b9ce-4ab2-a6dd-dfa8e22396de)
 
 - **Enhanced Card Layouts:**  
-  Creating custom layouts with the `card` component is now easier:
-  - The `embed` property automatically appends the `_sqlpage_embed` parameter to render your page as an embeddable fragment.
-  - When an embedded page is rendered, the `shell` component is replaced by `shell-empty` to avoid duplicate headers and metadata.
-  - ![screen](https://github.com/user-attachments/assets/c5b58402-178a-441e-8966-fd8e341b02bc)
+  Customizing your `card` components is now easier:  
+  - The `embed` property auto‑appends the `_sqlpage_embed` parameter for embeddable fragments.  
+  - When rendering an embedded page, the `shell` component is replaced by `shell-empty` to avoid duplicate headers and metadata.  
+  ![Card Layout Example](https://github.com/user-attachments/assets/c5b58402-178a-441e-8966-fd8e341b02bc)
 
-#### Form Component Boosts
+#### **Form Component Boosts**
 
 - **Auto‑Submit Forms:**  
-  Add the new `auto_submit` parameter to your forms, and watch them auto‑submit on any field change—perfect for instant filters on dashboards.  
+  Set `auto_submit` to true and your form will instantly submit on any field change—ideal for dashboard filters.  
   *Example:*  
   ```sql
   SELECT 'form' AS component, 'Filter Results' AS title, true AS auto_submit;
   SELECT 'date' AS name;
   ```
 - **Dynamic Options for Dropdowns:**  
-  Use the new `options_source` parameter to load dropdown options dynamically from another SQL file. Great for autocomplete on huge option lists!  
+  Use `options_source` to load dropdown options dynamically from another SQL file. Perfect for autocomplete with large option sets.  
   *Example:*  
   ```sql
   SELECT 'form' AS component, 'Select Country' AS title, 'countries.sql' AS options_source;
   SELECT 'country' AS name;
   ```
 - **Markdown in Field Descriptions:**  
-  With the new `description_md` property, you can now render markdown in form field descriptions to better guide your users.
-
+  With the new `description_md` property, render markdown in form field descriptions for improved guidance.
 - **Improved Header Error Messages:**  
-  If you accidentally use a header component (like `json` or `cookie`) after sending data, you’ll now see a more helpful error message.
+  Now you’ll get more helpful errors if header components (e.g., `json`, `cookie`) are used incorrectly.
 
-### Chart, Icons & CSS Updates
+---
+
+### 4. Chart, Icons & CSS Updates 📊
 
 - **ApexCharts Upgrade:**  
-  We’ve updated ApexCharts to [v4.4.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.4.0). Expect smoother charts with bug fixes for your visualizations.
+  We updated ApexCharts to [[v4.4.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.4.0)](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.4.0) for smoother charts and minor bug fixes.
 
 - **Tabler Icons & CSS:**  
-  Enjoy a refreshed look with Tabler Icons updated to [v3.30.0](https://tabler.io/changelog#/changelog/tabler-icons-3.30) and the CSS framework upgraded to [Tabler 1.0.0](https://github.com/tabler/tabler/releases/tag/v1.0.0). More icons, better consistency, and a sleeker interface.
+  Enjoy a refreshed look:  
+  - Tabler Icons are now [[v3.30.0](https://tabler.io/changelog#/changelog/tabler-icons-3.30)](https://tabler.io/changelog#/changelog/tabler-icons-3.30) with many new icons.  
+  - The CSS framework has been upgraded to [[Tabler 1.0.0](https://github.com/tabler/tabler/releases/tag/v1.0.0)](https://github.com/tabler/tabler/releases/tag/v1.0.0) for improved consistency and a sleeker interface.
 
-### 5. CSV Import & Error Handling
+---
+
+### 5. CSV Import & Error Handling 📥
 
 - **Enhanced CSV Error Messages:**  
-  We improved error messages when a CSV import fails (using a `copy` statement and file upload).  
-- **Postgres CSV Bug Fix**  
-  A pesky bug causing subsequent requests to fail after a CSV import error on PostgreSQL is now fixed. (See [Issue #788](https://github.com/sqlpage/SQLPage/issues/788) for details.)
+  More descriptive error messages when a CSV import fails (via `copy` and file upload).
 
-### 6. SQL Parser & Advanced SQL Support
+- **Postgres CSV Bug Fix:**  
+  A bug that caused subsequent requests to fail after a CSV import error on PostgreSQL is now fixed.  
+  (See [Issue #788](https://github.com/sqlpage/SQLPage/issues/788) for details.)
 
-**Upgraded SQL Parser (v0.54):**  
-Our sqlparser is now at [v0.54](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.54.0.md), offering enhanced support for advanced SQL syntax. New additions include:
+---
+
+### 6. SQL Parser & Advanced SQL Support 🔍
+
+**Upgraded SQL Parser ([v0.54](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.54.0.md)):**  
+Our sqlparser is now at [v0.54](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.54.0.md), with support for advanced SQL syntax:  
 
 - **INSERT...SELECT...RETURNING:**  
   ```sql
@@ -109,10 +130,14 @@ Our sqlparser is now at [v0.54](https://github.com/apache/datafusion-sqlparser-r
   ```
 - **PostgreSQL’s overlaps operator:**  
   ```sql
-  SELECT 'card' AS component;
-  SELECT event_name AS title, start_time || ' - ' || end_time AS description
+  SELECT 'card' AS component,
+        event_name AS title,
+        start_time::text || ' - ' || end_time::text AS description
   FROM events
-  WHERE (start_time, end_time) overlaps ($start_filter::timestamp, $end_filter::timestamp);
+  WHERE
+     (start_time, end_time)
+     OVERLAPS
+     ($start_filter::timestamp, $end_filter::timestamp);
   ```
 - **MySQL’s INSERT...SET syntax:**  
   ```sql
