@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.33.0 (unreleased)
+## 0.33.0 (2025-02-14)
 
 - Add support for HTTP Basic Authentication in the [fetch](https://sql-page.com/documentation.sql?component=fetch#component) function.
 - Fix a bug where the table component would not add the right css classes to table cells.
