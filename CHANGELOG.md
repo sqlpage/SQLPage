@@ -24,12 +24,11 @@ We’ve reworked our request routing system from top to bottom to make things sm
 **HTTP Basic Authentication**  
 SQLPage’s `sqlpage.fetch(request)` function now supports HTTP Basic Authentication. Quickly call external APIs that require a username and password. For example, in PostgreSQL:  
 ```sql
-SELECT sqlpage.fetch(
-  'https://api.example.com/data',
-  JSON_OBJECT(
-    'auth', JSON_OBJECT('username', 'user', 'password', 'pass')
-  )
-);
+SET result = sqlpage.fetch(json_object(
+  'url', 'https://api.example.com/data',
+  'username', 'user',
+  'password', 'pass'
+));
 ```
 Learn more in the [fetch documentation](https://sql-page.com/documentation.sql?component=fetch#component).
 
