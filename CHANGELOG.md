@@ -7,13 +7,11 @@
 #### **Clean URLs:**  
 
 Now, you can access your pages without the extra “.sql” suffix. For example, if you’ve got a file called `page.sql`, simply use:  
-```
--- old
-https://example.com/page.sql
 
--- new
-https://example.com/page
-```  
+| old | new |
+|---|---|
+| `https://example.com/page.sql` | Either `https://example.com/page` or `https://example.com/page.sql` 
+
 The previous behavior is preserved, so adding “.sql” still works. A big shout‑out to [@guspower](https://github.com/guspower) for their contributions!
 
 #### **Complete Routing Rewrite**  
