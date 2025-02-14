@@ -36,6 +36,29 @@
 - Add a new `description_md` row-level property to the form component to allow displaying markdown in a form field description.
 - Improve the error message when a header component (e.g. status_code, json, cookie) is used in the wrong place (after data has already been sent to the client).
 - New function: [`sqlpage.headers`](https://sql-page.com/functions.sql?function=headers).
+- Updated sqlparser to [v0.54](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.54.0.md) which fixes parse errors when using some advanced SQL syntax
+  - Add support for `INSERT INTO ... SELECT ... RETURNING` statements, like
+    ```sql
+    INSERT INTO table1(x, y)
+      SELECT :x, :y
+        WHERE :x IS NOT NULL
+      RETURNING
+        'redirect' as component,
+        'inserted.sql?id=' || id as link;
+    ```
+  - Add support for PostgreSQL's `overlaps` operator, like
+    ```sql
+    select 'card' as component;
+    select event_name as title, start_time || ' - ' || end_time as description
+    from events
+    where (start_time, end_time) overlaps ($start_filter::timestamp, $end_filter::timestamp);
+    ```
+  - Add support for MySQL's `INSERT INTO ... SET` syntax, like
+    ```sql
+    insert into users
+    set name = :name, email = :email
+    ```
+
 
 ## 0.32.1 (2025-01-03)
 

@@ -185,7 +185,9 @@ mod tests {
                 INTERVAL '4 hours' as hour_interval,
                 INTERVAL '1.5 days' as fractional_interval,
                 '{\"key\": \"value\"}'::JSON as json,
-                '{\"key\": \"value\"}'::JSONB as jsonb",
+                '{\"key\": \"value\"}'::JSONB as jsonb,
+                age('2024-03-14'::timestamp, '2024-01-01'::timestamp) as age_interval,
+                justify_interval(interval '1 year 2 months 3 days') as justified_interval",
         )
         .fetch_one(&mut c)
         .await?;
@@ -208,6 +210,8 @@ mod tests {
                 "fractional_interval": "1 day 12:00:00",
                 "json": {"key": "value"},
                 "jsonb": {"key": "value"},
+                "age_interval": "2 mons 13 days",
+                "justified_interval": "1 year 2 mons 3 days"
             }),
         );
         Ok(())
