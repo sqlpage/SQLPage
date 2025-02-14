@@ -356,8 +356,8 @@ pub(crate) async fn random_string(len: usize) -> anyhow::Result<String> {
 
 /// Returns a random string of the specified length.
 pub(crate) fn random_string_sync(len: usize) -> String {
-    use rand::{distributions::Alphanumeric, Rng};
-    password_hash::rand_core::OsRng
+    use rand::{distr::Alphanumeric, Rng};
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(len)
         .map(char::from)

@@ -241,7 +241,7 @@ fn anyhow_err_to_actix_resp(e: &anyhow::Error, env: app_config::DevOrProd) -> Ht
         resp.status(StatusCode::TOO_MANY_REQUESTS)
             .insert_header((
                 header::RETRY_AFTER,
-                header::HeaderValue::from(rand::thread_rng().gen_range(1..=15)),
+                header::HeaderValue::from(rand::rng().random_range(1..=15)),
             ))
             .body("The database is currently too busy to handle your request. Please try again later.\n\n".to_owned() + &body)
     } else {
