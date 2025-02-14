@@ -1,64 +1,129 @@
 # CHANGELOG.md
 
-## 0.33.0 (2025-02-14)
+## 0.33.0 (2025-02-15)
 
-- Add support for HTTP Basic Authentication in the [fetch](https://sql-page.com/documentation.sql?component=fetch#component) function.
-- Fix a bug where the table component would not add the right css classes to table cells.
-- Better error messages when a CSV import fails (using a `copy` statement and a file upload).
-- Fix a bug where subsequent requests would fail after a failed CSV import on postgres (https://github.com/sqlpage/SQLPage/issues/788)
-- Complete rewrite of the request routing system.
-  - Add support for *"clean URLs"*: Access the file `page.sql` using `https://example.com/page` instead of `https://example.com/page.sql`.
-  - The previous behavior is preserved (the `.sql` suffix is now optional), so this is a new feature, not a breaking change.
-  - Big thanks to @guspower who made big contributions to this feature.
-- Update ApexCharts to [v4.4.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.4.0): fixes multiple small bugs in the chart component.
-- Add a new `auto_submit` parameter to the form component. When set to true, the form will be automatically submitted when the user changes any of its fields, and the page will be reloaded with the new value. The validation button is removed.
-  - This is useful to quickly create filters at the top of a dashboard or report page, that will be automatically applied when the user changes them.
-- New `options_source` parameter in the form component. This allows to dynamically load options for dropdowns from a different SQL file.
-  - This allows easily implementing autocomplete for form fields with a large number of possible options.
-- In the map component, add support for map pins with a description but no title.
-- Improved error messages when a parameter of a sqlpage function is invalid. Error traces used to be truncated, and made it hard to understand the exact cause of the error in some cases. In particular, calls to `sqlpage.fetch` would display an unhelpful error message when the HTTP request definition was invalid. `sqlpage.fetch` now also throws an error if the HTTP request definition contains unknown fields.
-- Make the `headers` field of the `sqlpage.fetch` function parameter optional. It defaults to sending a User-Agent header containing the SQLPage version.
-- Make custom layout creations with the `card` component easier and less error-prone:
-  - The `embed` property now automatically adds the `_sqlpage_embed` parameter to the embedded page URL to render it as an embeddable fragment.
-  - When an embedded page is rendered, the `shell` component is automatically replaced by a `shell-empty` component, to avoid displaying a duplicate shell and creating invalid duplicated page metadata in the response.
-- Update Tabler Icons to version [3.30.0](https://tabler.io/changelog#/changelog/tabler-icons-3.30), with many new icons.
-- Update the CSS framework to [Tabler 1.0.0](https://github.com/tabler/tabler/releases/tag/v1.0.0), with many small UI consistency improvements.
-- Add native number formatting to the table component. Numeric values in tables are now formatted in the visitor's locale by default, using country-specific thousands separators and decimal points.
-  - This is better than formatting numbers inside the database, because 
-    - columns are sorted correctly in the numeric order by default, instead of being sorted in the alphabetic order of the formatted string.
-    - the formatted numbers are more readable for the user by default, without requiring any additional code.
-    - it adapts to the visitor's preferred locale, for instance using `.` as a decimal point and a space as a thousands separator if the visitor is in France.
-    - less data is sent from the database to sqlpage, and from sqlpage to the client, because the numbers are not formatted directly in the database.
-  - Add new customization properties to the table component:
-    - Switch back to displaying raw numbers without formatting using the `raw_numbers` property.
-    - Format monetary values using the `money` property to specify columns and `currency` to set the currency.
-    - Control decimal places with `number_format_digits` property.
-- Add a new `description_md` row-level property to the form component to allow displaying markdown in a form field description.
-- Improve the error message when a header component (e.g. status_code, json, cookie) is used in the wrong place (after data has already been sent to the client).
-- New function: [`sqlpage.headers`](https://sql-page.com/functions.sql?function=headers).
-- Updated sqlparser to [v0.54](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.54.0.md) which fixes parse errors when using some advanced SQL syntax
-  - Add support for `INSERT INTO ... SELECT ... RETURNING` statements, like
-    ```sql
-    INSERT INTO table1(x, y)
-      SELECT :x, :y
-        WHERE :x IS NOT NULL
-      RETURNING
-        'redirect' as component,
-        'inserted.sql?id=' || id as link;
-    ```
-  - Add support for PostgreSQL's `overlaps` operator, like
-    ```sql
-    select 'card' as component;
-    select event_name as title, start_time || ' - ' || end_time as description
-    from events
-    where (start_time, end_time) overlaps ($start_filter::timestamp, $end_filter::timestamp);
-    ```
-  - Add support for MySQL's `INSERT INTO ... SET` syntax, like
-    ```sql
-    insert into users
-    set name = :name, email = :email
-    ```
+### Routing & URL Enhancements
 
+#### **Clean URLs:**  
+
+Now, you can access your pages without the extra “.sql” suffix. For example, if you’ve got a file called `page.sql`, simply use:  
+```
+-- old
+https://example.com/page.sql
+
+-- new
+https://example.com/page
+```  
+The previous behavior is preserved, so adding “.sql” still works. A big shout‑out to [@guspower](https://github.com/guspower) for their contributions!
+
+#### **Complete Routing Rewrite**  
+We’ve reworked our request routing system from top to bottom to make things smoother and more predictable for every request.
+
+### SQLPage functions
+
+#### sqlpage.fetch (call external services from SQLPage)
+
+**HTTP Basic Authentication**  
+SQLPage’s `sqlpage.fetch(request)` function now supports HTTP Basic Authentication. Quickly call external APIs that require a username and password. For example, in PostgreSQL:  
+```sql
+SELECT sqlpage.fetch(
+  'https://api.example.com/data',
+  JSON_OBJECT(
+    'auth', JSON_OBJECT('username', 'user', 'password', 'pass')
+  )
+);
+```
+Learn more in the [fetch documentation](https://sql-page.com/documentation.sql?component=fetch#component).
+
+**Smarter fetch errors & Headers Defaults:**  
+When your HTTP request definition is off, you’ll now get clearer error messages — especially if there are unknown fields.
+Plus, the `headers` parameter is now optional: if omitted, SQLPage sends a default User‑Agent header that includes the SQLPage version.
+
+**New Function: sqlpage.headers**  
+Easily manage and inspect HTTP headers with the brand‑new [`sqlpage.headers`](https://sql-page.com/functions.sql?function=headers) function.
+
+### UI Component Enhancements
+
+#### Table & Card Components
+
+- **Table CSS Fixes:**  
+  We fixed a bug that prevented proper CSS classes from being added to table cells. This fixes alignment in tables.
+
+- **Native Number Formatting:**  
+  Numeric values in tables are automatically formatted to your visitor’s locale. That means thousands separators, correct decimal points, and sorting that respects numeric order—without any extra work from you.  
+  ![image](https://github.com/user-attachments/assets/ba51a63f-b9ce-4ab2-a6dd-dfa8e22396de)
+
+  Not a formatted string in the database—just pure, locale‑sensitive output.
+
+- **Enhanced Card Layouts:**  
+  Creating custom layouts with the `card` component is now easier:
+  - The `embed` property automatically appends the `_sqlpage_embed` parameter to render your page as an embeddable fragment.
+  - When an embedded page is rendered, the `shell` component is replaced by `shell-empty` to avoid duplicate headers and metadata.
+  - ![screen](https://github.com/user-attachments/assets/c5b58402-178a-441e-8966-fd8e341b02bc)
+
+#### Form Component Boosts
+
+- **Auto‑Submit Forms:**  
+  Add the new `auto_submit` parameter to your forms, and watch them auto‑submit on any field change—perfect for instant filters on dashboards.  
+  *Example:*  
+  ```sql
+  SELECT 'form' AS component, 'Filter Results' AS title, true AS auto_submit;
+  SELECT 'date' AS name;
+  ```
+- **Dynamic Options for Dropdowns:**  
+  Use the new `options_source` parameter to load dropdown options dynamically from another SQL file. Great for autocomplete on huge option lists!  
+  *Example:*  
+  ```sql
+  SELECT 'form' AS component, 'Select Country' AS title, 'countries.sql' AS options_source;
+  SELECT 'country' AS name;
+  ```
+- **Markdown in Field Descriptions:**  
+  With the new `description_md` property, you can now render markdown in form field descriptions to better guide your users.
+
+- **Improved Header Error Messages:**  
+  If you accidentally use a header component (like `json` or `cookie`) after sending data, you’ll now see a more helpful error message.
+
+### Chart, Icons & CSS Updates
+
+- **ApexCharts Upgrade:**  
+  We’ve updated ApexCharts to [v4.4.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v4.4.0). Expect smoother charts with bug fixes for your visualizations.
+
+- **Tabler Icons & CSS:**  
+  Enjoy a refreshed look with Tabler Icons updated to [v3.30.0](https://tabler.io/changelog#/changelog/tabler-icons-3.30) and the CSS framework upgraded to [Tabler 1.0.0](https://github.com/tabler/tabler/releases/tag/v1.0.0). More icons, better consistency, and a sleeker interface.
+
+### 5. CSV Import & Error Handling
+
+- **Enhanced CSV Error Messages:**  
+  We improved error messages when a CSV import fails (using a `copy` statement and file upload).  
+- **Postgres CSV Bug Fix**  
+  A pesky bug causing subsequent requests to fail after a CSV import error on PostgreSQL is now fixed. (See [Issue #788](https://github.com/sqlpage/SQLPage/issues/788) for details.)
+
+### 6. SQL Parser & Advanced SQL Support
+
+**Upgraded SQL Parser (v0.54):**  
+Our sqlparser is now at [v0.54](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.54.0.md), offering enhanced support for advanced SQL syntax. New additions include:
+
+- **INSERT...SELECT...RETURNING:**  
+  ```sql
+  INSERT INTO users (name, email)
+  SELECT :name, :email
+  WHERE :name IS NOT NULL
+  RETURNING 'redirect' AS component, 'user.sql?id=' || id AS link;
+  ```
+- **PostgreSQL’s overlaps operator:**  
+  ```sql
+  SELECT 'card' AS component;
+  SELECT event_name AS title, start_time || ' - ' || end_time AS description
+  FROM events
+  WHERE (start_time, end_time) overlaps ($start_filter::timestamp, $end_filter::timestamp);
+  ```
+- **MySQL’s INSERT...SET syntax:**  
+  ```sql
+  INSERT INTO users
+  SET name = :name, email = :email;
+  ```
+
+---
 
 ## 0.32.1 (2025-01-03)
 
