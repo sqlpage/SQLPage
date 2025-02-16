@@ -1,5 +1,5 @@
 <div class="card my-2 {{class}}" {{#if overflow}}style="width: fit-content;"{{/if}} {{#if id}}id="{{id}}"{{/if}}>
-    <div class="card-body p-0" {{#if (or sort (or search initial_search_value))}}data-pre-init="table"{{/if}}>
+    <div class="card-body p-0" data-pre-init="table">
         {{#if (or search initial_search_value)}}
         <div class="p-3">
             <input

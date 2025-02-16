@@ -24,44 +24,29 @@ function sqlpage_card() {
 }
 
 /** @param {HTMLElement} root_el */
-function table_search_sort(root_el) {
+function setup_table(root_el) {
   /** @type {HTMLInputElement | null} */
   const search_input = root_el.querySelector("input.search");
   const table_el = root_el.querySelector("table");
   const sort_buttons = [...table_el.querySelectorAll("button.sort[data-sort]")];
   const item_parent = table_el.querySelector("tbody");
-  const number_format_locale = table_el.dataset.number_format_locale;
-  const number_format_digits = table_el.dataset.number_format_digits;
-  const currency = table_el.dataset.currency;
-  const header_els = table_el.querySelectorAll("thead > tr > th");
-  const col_types = [...header_els].map((el) => el.dataset.column_type);
-  const col_rawnums = [...header_els].map((el) => !!el.dataset.raw_number);
-  const col_money = [...header_els].map((el) => !!el.dataset.money);
-  const items = [...item_parent.querySelectorAll("tr")].map((tr_el) => {
-    const cells = tr_el.getElementsByTagName("td");
-    return {
-      el: tr_el,
-      sort_keys: sort_buttons.map((btn_el, idx) => {
-        const sort_key = cells[idx]?.textContent;
-        const column_type = col_types[idx];
-        const num = Number.parseFloat(sort_key);
-        const is_raw_number = col_rawnums[idx];
-        if (column_type === "number" && !is_raw_number) {
-          const cell_el = cells[idx];
-          const is_money = col_money[idx];
-          cell_el.textContent = num.toLocaleString(number_format_locale, {
-            maximumFractionDigits: number_format_digits,
-            currency,
-            style: is_money ? "currency" : undefined,
-          });
-        }
-        return {
-          num,
-          str: sort_key,
-        };
-      }),
-    };
-  });
+  const has_sort = sort_buttons.length > 0;
+
+  if (search_input || has_sort) {
+    const items = table_parse_data(table_el, sort_buttons);
+    if (search_input) setup_table_search_behavior(search_input, items);
+    if (has_sort) setup_sort_behavior(sort_buttons, items, item_parent);
+  }
+
+  // Change number format AFTER parsing and storing the sort keys
+  apply_number_formatting(table_el);
+}
+
+/**
+ * @param {HTMLInputElement} search_input
+ * @param {Array<{el: HTMLElement, sort_keys: Array<{num: number, str: string}>}>} items
+ */
+function setup_table_search_behavior(search_input, items) {
   function onSearch() {
     const lower_search = search_input.value
       .toLowerCase()
@@ -74,10 +59,66 @@ function table_search_sort(root_el) {
       item.el.style.display = show ? "" : "none";
     }
   }
-  if (search_input) {
-    search_input.addEventListener("input", onSearch);
-    onSearch();
+
+  search_input.addEventListener("input", onSearch);
+  onSearch();
+}
+
+/**@param {HTMLElement} table_el */
+function apply_number_formatting(table_el) {
+  const header_els = table_el.querySelectorAll("thead > tr > th");
+  const col_types = [...header_els].map((el) => el.dataset.column_type);
+  const col_rawnums = [...header_els].map((el) => !!el.dataset.raw_number);
+  const col_money = [...header_els].map((el) => !!el.dataset.money);
+  const number_format_locale = table_el.dataset.number_format_locale;
+  const number_format_digits = table_el.dataset.number_format_digits;
+  const currency = table_el.dataset.currency;
+
+  for (const tr_el of table_el.querySelectorAll("tbody tr")) {
+    const cells = tr_el.getElementsByTagName("td");
+    for (let idx = 0; idx < cells.length; idx++) {
+      const column_type = col_types[idx];
+      const is_raw_number = col_rawnums[idx];
+      const cell_el = cells[idx];
+
+      if (column_type === "number" && !is_raw_number) {
+        const num = Number.parseFloat(cell_el.textContent);
+        const is_money = col_money[idx];
+        cell_el.textContent = num.toLocaleString(number_format_locale, {
+          maximumFractionDigits: number_format_digits,
+          currency,
+          style: is_money ? "currency" : undefined,
+        });
+      }
+    }
   }
+}
+
+/** Prepare the table rows for sorting.
+ * @param {HTMLElement} table_el
+ * @param {HTMLElement[]} sort_buttons
+ */
+function table_parse_data(table_el, sort_buttons) {
+  return [...table_el.querySelectorAll("tbody tr")].map((tr_el) => {
+    const cells = tr_el.getElementsByTagName("td");
+    return {
+      el: tr_el,
+      sort_keys: sort_buttons.map((btn_el, idx) => {
+        const str = cells[idx]?.textContent;
+        const num = Number.parseFloat(str);
+        return { num, str };
+      }),
+    };
+  });
+}
+
+/**
+ * Adds event listeners to the sort buttons to sort the table rows.
+ * @param {HTMLElement[]} sort_buttons
+ * @param {HTMLElement[]} items
+ * @param {HTMLElement} item_parent
+ */
+function setup_sort_behavior(sort_buttons, items, item_parent) {
   sort_buttons.forEach((button, button_index) => {
     button.addEventListener("click", function sort_items() {
       const sort_desc = button.classList.contains("asc");
@@ -102,10 +143,9 @@ function table_search_sort(root_el) {
 }
 
 function sqlpage_table() {
-  // Tables
   for (const r of document.querySelectorAll("[data-pre-init=table]")) {
-    table_search_sort(r);
     r.removeAttribute("data-pre-init");
+    setup_table(r);
   }
 }
 
