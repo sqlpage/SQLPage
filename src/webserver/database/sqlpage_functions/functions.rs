@@ -16,6 +16,7 @@ super::function_definition_macro::sqlpage_functions! {
     basic_auth_password((&RequestInfo));
     basic_auth_username((&RequestInfo));
 
+    client_ip((&RequestInfo));
     cookie((&RequestInfo), name: Cow<str>);
     current_working_directory();
 
@@ -633,4 +634,8 @@ async fn request_body_base64(request: &RequestInfo) -> Option<String> {
 
 async fn headers(request: &RequestInfo) -> String {
     serde_json::to_string(&request.headers).unwrap_or_default()
+}
+
+async fn client_ip(request: &RequestInfo) -> String {
+    request.client_ip.expect("REASON").to_string()
 }
