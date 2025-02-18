@@ -80,9 +80,10 @@ function apply_number_formatting(table_el) {
       const column_type = col_types[idx];
       const is_raw_number = col_rawnums[idx];
       const cell_el = cells[idx];
+      const text = cell_el.textContent;
 
-      if (column_type === "number" && !is_raw_number) {
-        const num = Number.parseFloat(cell_el.textContent);
+      if (column_type === "number" && !is_raw_number && text) {
+        const num = Number.parseFloat(text);
         const is_money = col_money[idx];
         cell_el.textContent = num.toLocaleString(number_format_locale, {
           maximumFractionDigits: number_format_digits,
