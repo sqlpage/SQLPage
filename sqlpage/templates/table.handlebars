@@ -39,8 +39,8 @@
                                     {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
                                 "
                                     data-column_type="{{typeof this}}"
-                                    {{~#if (array_contains_case_insensitive ../../raw_numbers @key)~}} data-raw_number="1"{{/if~}}
-                                    {{~#if (array_contains_case_insensitive ../../money @key)~}} data-money="1"{{/if~}}
+                                    {{~#if (array_contains_case_insensitive ../../raw_numbers @key)}} data-raw_number="1"{{/if~}}
+                                    {{~#if (array_contains_case_insensitive ../../money @key)}} data-money="1"{{/if~}}
                                 >
                                     {{~#if ../../sort~}}
                                         <button class="table-sort sort d-inline" data-sort="{{@key}}">{{@key}}</button>
