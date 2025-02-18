@@ -100,13 +100,16 @@ function apply_number_formatting(table_el) {
  * @param {HTMLElement[]} sort_buttons
  */
 function table_parse_data(table_el, sort_buttons) {
+  const is_num = [...sort_buttons].map(
+    (btn_el) => btn_el.parentElement.dataset.column_type === "number",
+  );
   return [...table_el.querySelectorAll("tbody tr")].map((tr_el) => {
     const cells = tr_el.getElementsByTagName("td");
     return {
       el: tr_el,
       sort_keys: sort_buttons.map((btn_el, idx) => {
         const str = cells[idx]?.textContent;
-        const num = Number.parseFloat(str);
+        const num = is_num[idx] ? Number.parseFloat(str) : Number.NaN;
         return { num, str };
       }),
     };
