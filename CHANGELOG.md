@@ -4,7 +4,7 @@
 
 - Fix a bug where the table component would not format numbers if sorting was not enabled.
 - Fix a bug with date sorting in the table component.
-
+- Center table descriptions.
 
 ## 0.33.0 (2025-02-15)
 

@@ -26,7 +26,7 @@
             {{~#if number_format_digits}} data-number_format_digits="{{number_format_digits}}"{{/if~}}
             {{~#if currency}} data-currency="{{currency}}"{{/if~}}
             >
-            {{#if description}}<caption>{{description}}</caption>{{/if}}
+            {{#if description}}<caption class="text-center text-muted">{{description}}</caption>{{/if}}
                 {{#each_row}}
                     {{#if (eq @row_index 0)}}
                         <thead>
