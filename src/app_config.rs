@@ -248,6 +248,12 @@ pub struct AppConfig {
     /// Maximum depth of recursion allowed in the `run_sql` function.
     #[serde(default = "default_max_recursion_depth")]
     pub max_recursion_depth: u8,
+
+    #[serde(default = "default_markdown_allow_dangerous_html")]
+    pub markdown_allow_dangerous_html: bool,
+
+    #[serde(default = "default_markdown_allow_dangerous_protocol")]
+    pub markdown_allow_dangerous_protocol: bool,
 }
 
 impl AppConfig {
@@ -504,6 +510,14 @@ fn default_system_root_ca_certificates() -> bool {
 
 fn default_max_recursion_depth() -> u8 {
     10
+}
+
+fn default_markdown_allow_dangerous_html() -> bool {
+    false
+}
+
+fn default_markdown_allow_dangerous_protocol() -> bool {
+    false
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
