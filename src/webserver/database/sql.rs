@@ -473,8 +473,11 @@ struct ParameterExtractor {
     parameters: Vec<StmtParam>,
 }
 
-const PLACEHOLDER_PREFIXES: [(AnyKind, &str); 2] =
-    [(AnyKind::Postgres, "$"), (AnyKind::Mssql, "@p")];
+const PLACEHOLDER_PREFIXES: [(AnyKind, &str); 3] =[
+    (AnyKind::Sqlite, "?"),
+    (AnyKind::Postgres, "$"),
+    (AnyKind::Mssql, "@p")
+];
 const DEFAULT_PLACEHOLDER: &str = "?";
 
 impl ParameterExtractor {
@@ -490,8 +493,17 @@ impl ParameterExtractor {
         this.parameters
     }
 
+    fn replace_with_placeholder(&mut self, value: &mut Expr, param: StmtParam) {
+        let placeholder = self.make_placeholder();
+        log::trace!("Replacing {value:?} with {placeholder:?}, which references parameter {param:?}");
+        self.parameters.push(param);
+        *value = placeholder;
+    }
+
     fn make_placeholder(&self) -> Expr {
-        let name = make_placeholder(self.db_kind, self.parameters.len() + 1);
+        // This now uses the current length before sorting, which will be corrected after sorting
+        let current_index = self.parameters.len();
+        let name = make_placeholder(self.db_kind, current_index + 1);
         // We cast our placeholders to TEXT even though we always bind TEXT data to them anyway
         // because that helps the database engine to prepare the query.
         // For instance in PostgreSQL, the query planner will not be able to use an index on a
@@ -510,18 +522,6 @@ impl ParameterExtractor {
             format: None,
             kind: CastKind::Cast,
         }
-    }
-
-    fn handle_builtin_function(
-        &mut self,
-        func_name: &str,
-        mut arguments: Vec<FunctionArg>,
-    ) -> Expr {
-        #[allow(clippy::single_match_else)]
-        let placeholder = self.make_placeholder();
-        let param = func_call_to_param(func_name, &mut arguments);
-        self.parameters.push(param);
-        placeholder
     }
 
     fn is_own_placeholder(&self, param: &str) -> bool {
@@ -746,20 +746,18 @@ fn extract_ident_param(Ident { value, .. }: &mut Ident) -> Option<StmtParam> {
 impl VisitorMut for ParameterExtractor {
     type Break = ();
     fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
+        log::trace!("Visiting {value} with span {span:?}", span = value.span());
         match value {
             Expr::Identifier(ident) => {
                 if let Some(param) = extract_ident_param(ident) {
-                    *value = self.make_placeholder();
-                    self.parameters.push(param);
+                    self.replace_with_placeholder(value, param);
                 }
             }
             Expr::Value(Value::Placeholder(param)) if !self.is_own_placeholder(param) =>
             // this check is to avoid recursively replacing placeholders in the form of '?', or '$1', '$2', which we emit ourselves
             {
-                let new_expr = self.make_placeholder();
                 let name = std::mem::take(param);
-                self.parameters.push(map_param(name));
-                *value = new_expr;
+                self.replace_with_placeholder(value, map_param(name));
             }
             Expr::Function(Function {
                 name: ObjectName(func_name_parts),
@@ -776,8 +774,9 @@ impl VisitorMut for ParameterExtractor {
             }) if is_sqlpage_func(func_name_parts) && are_params_extractable(args) => {
                 let func_name = sqlpage_func_name(func_name_parts);
                 log::trace!("Handling builtin function: {func_name}");
-                let arguments = std::mem::take(args);
-                *value = self.handle_builtin_function(func_name, arguments);
+                let mut arguments = std::mem::take(args);
+                let param = func_call_to_param(func_name, &mut arguments);
+                self.replace_with_placeholder(value, param);
             }
             // Replace 'str1' || 'str2' with CONCAT('str1', 'str2') for MSSQL
             Expr::BinaryOp {
@@ -1005,7 +1004,7 @@ mod test {
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Sqlite);
         assert_eq!(
             ast.to_string(),
-            "SELECT CAST(? AS TEXT), CAST(? AS TEXT) FROM t"
+            "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
         );
         assert_eq!(
             parameters,
@@ -1148,7 +1147,7 @@ mod test {
 
         assert!(ParameterExtractor {
             db_kind: AnyKind::Postgres,
-            parameters: vec![StmtParam::Get('x'.to_string())]
+            parameters: vec![StmtParam::Get("x".to_string())]
         }
         .is_own_placeholder("$2"));
 
@@ -1162,7 +1161,7 @@ mod test {
             db_kind: AnyKind::Sqlite,
             parameters: vec![]
         }
-        .is_own_placeholder("?"));
+        .is_own_placeholder("?1"));
 
         assert!(!ParameterExtractor {
             db_kind: AnyKind::Sqlite,
