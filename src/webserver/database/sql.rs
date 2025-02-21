@@ -473,10 +473,10 @@ struct ParameterExtractor {
     parameters: Vec<StmtParam>,
 }
 
-const PLACEHOLDER_PREFIXES: [(AnyKind, &str); 3] =[
+const PLACEHOLDER_PREFIXES: [(AnyKind, &str); 3] = [
     (AnyKind::Sqlite, "?"),
     (AnyKind::Postgres, "$"),
-    (AnyKind::Mssql, "@p")
+    (AnyKind::Mssql, "@p"),
 ];
 const DEFAULT_PLACEHOLDER: &str = "?";
 
@@ -494,23 +494,23 @@ impl ParameterExtractor {
     }
 
     fn replace_with_placeholder(&mut self, value: &mut Expr, param: StmtParam) {
-        let placeholder = self.make_placeholder();
-        log::trace!("Replacing {value:?} with {placeholder:?}, which references parameter {param:?}");
-        self.parameters.push(param);
+        let placeholder =
+            if let Some(existing_idx) = self.parameters.iter().position(|p| *p == param) {
+                // Parameter already exists, use its index
+                self.make_placeholder_for_index(existing_idx + 1)
+            } else {
+                // New parameter, add it to the list
+                let placeholder = self.make_placeholder();
+                log::trace!("Replacing {param} with {placeholder}");
+                self.parameters.push(param);
+                placeholder
+            };
         *value = placeholder;
     }
 
-    fn make_placeholder(&self) -> Expr {
-        // This now uses the current length before sorting, which will be corrected after sorting
-        let current_index = self.parameters.len();
-        let name = make_placeholder(self.db_kind, current_index + 1);
-        // We cast our placeholders to TEXT even though we always bind TEXT data to them anyway
-        // because that helps the database engine to prepare the query.
-        // For instance in PostgreSQL, the query planner will not be able to use an index on a
-        // column if the column is compared to a placeholder of type VARCHAR, but it will be able
-        // to use the index if the column is compared to a placeholder of type TEXT.
+    fn make_placeholder_for_index(&self, index: usize) -> Expr {
+        let name = make_placeholder(self.db_kind, index);
         let data_type = match self.db_kind {
-            // MySQL requires CAST(? AS CHAR) and does not understand CAST(? AS TEXT)
             AnyKind::MySql => DataType::Char(None),
             AnyKind::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
             _ => DataType::Text,
@@ -522,6 +522,10 @@ impl ParameterExtractor {
             format: None,
             kind: CastKind::Cast,
         }
+    }
+
+    fn make_placeholder(&self) -> Expr {
+        self.make_placeholder_for_index(self.parameters.len() + 1)
     }
 
     fn is_own_placeholder(&self, param: &str) -> bool {
@@ -746,7 +750,6 @@ fn extract_ident_param(Ident { value, .. }: &mut Ident) -> Option<StmtParam> {
 impl VisitorMut for ParameterExtractor {
     type Break = ();
     fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
-        log::trace!("Visiting {value} with span {span:?}", span = value.span());
         match value {
             Expr::Identifier(ident) => {
                 if let Some(param) = extract_ident_param(ident) {
@@ -979,15 +982,16 @@ mod test {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
         let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Postgres);
+        // $a -> $1
+        // $x -> $2
+        // sqlpage.cookie(...) -> $3
         assert_eq!(
         ast.to_string(),
-        "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($3 AS TEXT) OR CAST($4 AS TEXT) = CAST($5 AS TEXT)"
+        "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($1 AS TEXT) OR CAST($2 AS TEXT) = CAST($3 AS TEXT)"
     );
         assert_eq!(
             parameters,
             [
-                StmtParam::PostOrGet("a".to_string()),
-                StmtParam::PostOrGet("x".to_string()),
                 StmtParam::PostOrGet("a".to_string()),
                 StmtParam::PostOrGet("x".to_string()),
                 StmtParam::FunctionCall(SqlPageFunctionCall {
