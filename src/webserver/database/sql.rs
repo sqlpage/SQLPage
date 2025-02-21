@@ -749,6 +749,7 @@ impl VisitorMut for ParameterExtractor {
         match value {
             Expr::Identifier(ident) => {
                 if let Some(param) = extract_ident_param(ident) {
+                    log::trace!("Extracted parameter {param} from identifier {ident}");
                     *value = self.make_placeholder();
                     self.parameters.push(param);
                 }
@@ -757,8 +758,10 @@ impl VisitorMut for ParameterExtractor {
             // this check is to avoid recursively replacing placeholders in the form of '?', or '$1', '$2', which we emit ourselves
             {
                 let new_expr = self.make_placeholder();
+                log::trace!("Extracted SQL placeholder {param}, replacing with {new_expr}");
                 let name = std::mem::take(param);
-                self.parameters.push(map_param(name));
+                let parameter = map_param(name);
+                self.parameters.push(parameter);
                 *value = new_expr;
             }
             Expr::Function(Function {
