@@ -8,6 +8,11 @@
   --tblr-code-bg: #e4f1ff;
 }
 
+.navbar {
+  /* https://github.com/sqlpage/SQLPage/issues/822 */
+  --tblr-navbar-color: rgba(var(--tblr-body-color-rgb), 0.8);
+}
+
 [data-bs-theme="dark"] .alert:not(.alert-important) {
   /* See https://github.com/tabler/tabler/issues/1607 */
   background-color: var(--tblr-bg-surface);
