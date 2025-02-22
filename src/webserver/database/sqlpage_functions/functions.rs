@@ -24,6 +24,7 @@ super::function_definition_macro::sqlpage_functions! {
     exec((&RequestInfo), program_name: Cow<str>, args: Vec<Cow<str>>);
 
     fetch((&RequestInfo), http_request: SqlPageFunctionParam<super::http_fetch_request::HttpFetchRequest<'_>>);
+    fetch_with_meta((&RequestInfo), http_request: SqlPageFunctionParam<super::http_fetch_request::HttpFetchRequest<'_>>);
 
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
@@ -135,16 +136,13 @@ async fn exec<'a>(
     Ok(String::from_utf8_lossy(&res.stdout).into_owned())
 }
 
-async fn fetch(
-    request: &RequestInfo,
-    http_request: super::http_fetch_request::HttpFetchRequest<'_>,
-) -> anyhow::Result<String> {
+fn build_request<'a>(
+    client: &'a awc::Client,
+    http_request: &'a super::http_fetch_request::HttpFetchRequest<'_>,
+) -> anyhow::Result<awc::ClientRequest> {
     use awc::http::Method;
-    let client = make_http_client(&request.app_state.config)
-        .with_context(|| "Unable to create an HTTP client")?;
-
-    let method = if let Some(method) = http_request.method {
-        Method::from_str(&method).with_context(|| format!("Invalid HTTP method: {method}"))?
+    let method = if let Some(method) = &http_request.method {
+        Method::from_str(method).with_context(|| format!("Invalid HTTP method: {method}"))?
     } else {
         Method::GET
     };
@@ -152,36 +150,56 @@ async fn fetch(
     if let Some(timeout) = http_request.timeout_ms {
         req = req.timeout(core::time::Duration::from_millis(timeout));
     }
-    for (k, v) in http_request.headers {
+    for (k, v) in &http_request.headers {
         req = req.insert_header((k.as_ref(), v.as_ref()));
     }
-    if let Some(username) = http_request.username {
-        let password = http_request.password.unwrap_or_default();
+    if let Some(username) = &http_request.username {
+        let password = http_request.password.as_deref().unwrap_or_default();
         req = req.basic_auth(username, password);
     }
+    Ok(req)
+}
+
+fn prepare_request_body(
+    body: &serde_json::value::RawValue,
+    mut req: awc::ClientRequest,
+) -> anyhow::Result<(String, awc::ClientRequest)> {
+    let val = body.get();
+    let body_str = if val.starts_with('"') {
+        serde_json::from_str::<'_, String>(val).with_context(|| {
+            format!("Invalid JSON string in the body of the HTTP request: {val}")
+        })?
+    } else {
+        req = req.content_type("application/json");
+        val.to_owned()
+    };
+    Ok((body_str, req))
+}
+
+async fn fetch(
+    request: &RequestInfo,
+    http_request: super::http_fetch_request::HttpFetchRequest<'_>,
+) -> anyhow::Result<String> {
+    let client = make_http_client(&request.app_state.config)
+        .with_context(|| "Unable to create an HTTP client")?;
+    let req = build_request(&client, &http_request)?;
+    
     log::info!("Fetching {}", http_request.url);
-    let mut response = if let Some(body) = http_request.body {
-        let val = body.get();
-        // The body can be either json, or a string representing a raw body
-        let body = if val.starts_with('"') {
-            serde_json::from_str::<'_, String>(val).with_context(|| {
-                format!("Invalid JSON string in the body of the HTTP request: {val}")
-            })?
-        } else {
-            req = req.content_type("application/json");
-            val.to_owned()
-        };
+    let mut response = if let Some(body) = &http_request.body {
+        let (body, req) = prepare_request_body(body, req)?;
         req.send_body(body)
     } else {
         req.send()
     }
     .await
     .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
+    
     log::debug!(
         "Finished fetching {}. Status: {}",
         http_request.url,
         response.status()
     );
+    
     let body = response
         .body()
         .await
@@ -197,6 +215,76 @@ async fn fetch(
     )?;
     log::debug!("Fetch response: {response_str}");
     Ok(response_str)
+}
+
+async fn fetch_with_meta(
+    request: &RequestInfo,
+    http_request: super::http_fetch_request::HttpFetchRequest<'_>,
+) -> anyhow::Result<String> {
+    let client = make_http_client(&request.app_state.config)
+        .with_context(|| "Unable to create an HTTP client")?;
+    let req = build_request(&client, &http_request)?;
+    
+    log::info!("Fetching {} with metadata", http_request.url);
+    let response_result = if let Some(body) = &http_request.body {
+        let (body, req) = prepare_request_body(body, req)?;
+        req.send_body(body).await
+    } else {
+        req.send().await
+    };
+
+    let mut response_info = serde_json::Map::new();
+    match response_result {
+        Ok(mut response) => {
+            response_info.insert("status".to_string(), response.status().as_u16().into());
+            
+            let mut headers = serde_json::Map::new();
+            for (name, value) in response.headers().iter() {
+                if let Ok(value_str) = value.to_str() {
+                    headers.insert(name.to_string(), value_str.into());
+                }
+            }
+            response_info.insert("headers".to_string(), headers.clone().into());
+
+            match response.body().await {
+                Ok(body) => {
+                    let body_bytes = body.to_vec();
+                    let content_type = headers.get("content-type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default();
+
+                    let body_value = if content_type.contains("application/json") {
+                        match serde_json::from_slice(&body_bytes) {
+                            Ok(json_value) => json_value,
+                            Err(_) => serde_json::Value::String(String::from_utf8_lossy(&body_bytes).into_owned()),
+                        }
+                    } else {
+                        match String::from_utf8(body_bytes.clone()) {
+                            Ok(text) => serde_json::Value::String(text),
+                            Err(_) => {
+                                let mut base64_string = String::new();
+                                base64::Engine::encode_string(
+                                    &base64::engine::general_purpose::STANDARD,
+                                    &body_bytes,
+                                    &mut base64_string,
+                                );
+                                serde_json::Value::String(base64_string)
+                            }
+                        }
+                    };
+                    response_info.insert("body".to_string(), body_value);
+                }
+                Err(e) => {
+                    response_info.insert("error".to_string(), format!("Failed to read response body: {}", e).into());
+                }
+            }
+        }
+        Err(e) => {
+            response_info.insert("error".to_string(), format!("Request failed: {}", e).into());
+        }
+    }
+
+    Ok(serde_json::to_string(&response_info)?)
 }
 
 static NATIVE_CERTS: OnceLock<anyhow::Result<rustls::RootCertStore>> = OnceLock::new();
