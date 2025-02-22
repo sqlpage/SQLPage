@@ -11,6 +11,7 @@
   - the issue only occured when using in case expressions where variables were used both in conditions and results.
 - Implement parameter deduplication.
   Now, when you write `select $x where $x is not null`, the value of `$x` is sent to the database only once. It used to be sent as many times as `$x` appeared in the statement.
+- Improve error messages on invalid sqlpage function calls. The messages now contain actionable advice.
 
 ## 0.33.0 (2025-02-15)
 

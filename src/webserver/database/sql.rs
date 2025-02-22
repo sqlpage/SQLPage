@@ -10,7 +10,8 @@ use sqlparser::ast::helpers::attached_token::AttachedToken;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName,
-    OneOrManyWithParens, SelectItem, SetExpr, Spanned, Statement, Value, VisitMut, VisitorMut,
+    OneOrManyWithParens, SelectItem, SetExpr, Spanned, Statement, Value, Visit, VisitMut, Visitor,
+    VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -154,10 +155,7 @@ fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, db_kind: AnyK
             let end = query[start_of_number..]
                 .find(|c: char| !c.is_ascii_digit())
                 .map_or(query.len(), |i| start_of_number + i);
-            let param_idx = query[start_of_number..end]
-                .parse::<usize>()
-                .unwrap_or(1)
-                - 1;
+            let param_idx = query[start_of_number..end].parse::<usize>().unwrap_or(1) - 1;
             query.replace_range(pos..end, placeholder);
             new_params.push(stmt.params[param_idx].clone());
         }
@@ -196,7 +194,11 @@ fn parse_single_statement(
         return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
     let delayed_functions = extract_toplevel_functions(&mut stmt);
-    remove_invalid_function_calls(&mut stmt, &mut params);
+    if let Err(err) = validate_function_calls(&stmt) {
+        return Some(ParsedStatement::Error(err.context(format!(
+            "Invalid SQLPage function call found in:\n{stmt}"
+        ))));
+    }
     let json_columns = extract_json_columns(&stmt, db_kind);
     let query = format!(
         "{stmt}{semicolon}",
@@ -477,7 +479,18 @@ fn extract_set_variable(
             let owned_expr = std::mem::replace(value, Expr::Value(Value::Null));
             let mut select_stmt: Statement = expr_to_statement(owned_expr);
             let delayed_functions = extract_toplevel_functions(&mut select_stmt);
-            remove_invalid_function_calls(&mut select_stmt, params);
+            if let Err(err) = validate_function_calls(&mut select_stmt) {
+                return Some((
+                    variable,
+                    StmtWithParams {
+                        query: format!("SELECT '' WHERE false -- {}", err),
+                        query_position: extract_query_start(&select_stmt),
+                        params: std::mem::take(params),
+                        delayed_functions: vec![],
+                        json_columns: vec![],
+                    },
+                ));
+            }
             let json_columns = extract_json_columns(&select_stmt, db_kind);
             return Some((
                 variable,
@@ -598,10 +611,10 @@ impl ParameterExtractor {
     }
 }
 
-struct BadFunctionRemover;
-impl VisitorMut for BadFunctionRemover {
-    type Break = StmtParam;
-    fn pre_visit_expr(&mut self, value: &mut Expr) -> ControlFlow<Self::Break> {
+struct InvalidFunctionFinder;
+impl Visitor for InvalidFunctionFinder {
+    type Break = (String, Vec<FunctionArg>);
+    fn pre_visit_expr(&mut self, value: &Expr) -> ControlFlow<Self::Break> {
         match value {
             Expr::Function(Function {
                 name: ObjectName(func_name_parts),
@@ -614,10 +627,8 @@ impl VisitorMut for BadFunctionRemover {
                 ..
             }) if is_sqlpage_func(func_name_parts) => {
                 let func_name = sqlpage_func_name(func_name_parts);
-                log::error!("Invalid function call to sqlpage.{func_name}. SQLPage function arguments must be static if the function is not at the top level of a select statement.");
-                let mut arguments = std::mem::take(args);
-                let param = func_call_to_param(func_name, &mut arguments);
-                return ControlFlow::Break(param);
+                let arguments = args.clone();
+                return ControlFlow::Break((func_name.to_string(), arguments));
             }
             _ => (),
         }
@@ -625,10 +636,28 @@ impl VisitorMut for BadFunctionRemover {
     }
 }
 
-fn remove_invalid_function_calls(stmt: &mut Statement, params: &mut Vec<StmtParam>) {
-    let mut remover = BadFunctionRemover;
-    if let ControlFlow::Break(param) = stmt.visit(&mut remover) {
-        params.push(param);
+fn validate_function_calls(stmt: &Statement) -> anyhow::Result<()> {
+    let mut finder = InvalidFunctionFinder;
+    if let ControlFlow::Break((func_name, args)) = stmt.visit(&mut finder) {
+        let args_str = FormatArguments(&args);
+        let error_msg = format!(
+            "Invalid SQLPage function call: sqlpage.{func_name}({args_str})\n\n\
+            Arbitrary SQL expressions as function arguments are not supported.\n\n\
+            SQLPage functions can either:\n\
+            1. Run BEFORE the query (to provide input values)\n\
+            2. Run AFTER the query (to process the results)\n\
+            But they can't run DURING the query - the database doesn't know how to call them!\n\n\
+            To fix this, you can either:\n\
+            1. Store the function argument in a variable first:\n\
+               SET {func_name}_arg = ...;\n\
+               SET {func_name}_result = sqlpage.{func_name}(${func_name}_arg);\n\
+               SELECT * FROM example WHERE xxx = ${func_name}_result;\n\n\
+            2. Or move the function to the top level to process results:\n\
+               SELECT sqlpage.{func_name}(...) FROM example;"
+        );
+        Err(anyhow::anyhow!(error_msg))
+    } else {
+        Ok(())
     }
 }
 
