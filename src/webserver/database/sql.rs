@@ -182,9 +182,8 @@ fn parse_single_statement(
         semicolon = true;
     }
     let mut params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
-    if let Some((variable, mut value)) = extract_set_variable(&mut stmt, &mut params, db_kind) {
-        transform_to_positional_placeholders(&mut value, db_kind);
-        return Some(ParsedStatement::SetVariable { variable, value });
+    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_kind) {
+        return Some(parsed);
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
         return Some(ParsedStatement::CsvImport(csv_import));
@@ -462,7 +461,7 @@ fn extract_set_variable(
     stmt: &mut Statement,
     params: &mut Vec<StmtParam>,
     db_kind: AnyKind,
-) -> Option<(StmtParam, StmtWithParams)> {
+) -> Option<ParsedStatement> {
     if let Statement::SetVariable {
         variables: OneOrManyWithParens::One(ObjectName(name)),
         value,
@@ -479,29 +478,19 @@ fn extract_set_variable(
             let owned_expr = std::mem::replace(value, Expr::Value(Value::Null));
             let mut select_stmt: Statement = expr_to_statement(owned_expr);
             let delayed_functions = extract_toplevel_functions(&mut select_stmt);
-            if let Err(err) = validate_function_calls(&mut select_stmt) {
-                return Some((
-                    variable,
-                    StmtWithParams {
-                        query: format!("SELECT '' WHERE false -- {}", err),
-                        query_position: extract_query_start(&select_stmt),
-                        params: std::mem::take(params),
-                        delayed_functions: vec![],
-                        json_columns: vec![],
-                    },
-                ));
+            if let Err(err) = validate_function_calls(&select_stmt) {
+                return Some(ParsedStatement::Error(err));
             }
             let json_columns = extract_json_columns(&select_stmt, db_kind);
-            return Some((
-                variable,
-                StmtWithParams {
-                    query: select_stmt.to_string(),
-                    query_position: extract_query_start(&select_stmt),
-                    params: std::mem::take(params),
-                    delayed_functions,
-                    json_columns,
-                },
-            ));
+            let mut value = StmtWithParams {
+                query: select_stmt.to_string(),
+                query_position: extract_query_start(&select_stmt),
+                params: std::mem::take(params),
+                delayed_functions,
+                json_columns,
+            };
+            transform_to_positional_placeholders(&mut value, db_kind);
+            return Some(ParsedStatement::SetVariable { variable, value });
         }
     }
     None
@@ -607,7 +596,7 @@ impl ParameterExtractor {
                 return index <= self.parameters.len() + 1;
             }
         }
-        return false;
+        false
     }
 }
 
@@ -1419,18 +1408,18 @@ mod test {
                 json_array(1, 2, 3) AS json_col2,
                 (SELECT json_build_object('nested', subq.val) 
                  FROM (SELECT AVG(x) AS val FROM generate_series(1, 5) x) subq
-                ) AS json_col3, -- not supported because of the subquery
-                CASE 
-                    WHEN EXISTS (SELECT 1 FROM json_cte WHERE cte_json->>'a' = '2')
-                    THEN to_json(ARRAY(SELECT cte_json FROM json_cte))
-                    ELSE json_build_array()
-                END AS json_col4, -- not supported because of the CASE
-                json_unknown_fn(regular_column) AS non_json_col,
-                CAST(json_col1 AS json) AS json_col6
-            FROM some_table
-            CROSS JOIN json_cte
-            WHERE json_typeof(json_col1) = 'object'
-        ";
+            ) AS json_col3, -- not supported because of the subquery
+            CASE 
+                WHEN EXISTS (SELECT 1 FROM json_cte WHERE cte_json->>'a' = '2')
+                THEN to_json(ARRAY(SELECT cte_json FROM json_cte))
+                ELSE json_build_array()
+            END AS json_col4, -- not supported because of the CASE
+            json_unknown_fn(regular_column) AS non_json_col,
+            CAST(json_col1 AS json) AS json_col6
+        FROM some_table
+        CROSS JOIN json_cte
+        WHERE json_typeof(json_col1) = 'object'
+    ";
 
         let stmt = parse_postgres_stmt(sql);
         let json_columns = extract_json_columns(&stmt, AnyKind::Sqlite);
@@ -1569,5 +1558,22 @@ mod test {
                 StmtParam::PostOrGet("x10".to_string()),
             ]
         );
+    }
+
+    #[test]
+    fn test_set_variable_error_handling() {
+        let sql = "set x = db_function(sqlpage.fetch(other_db_function()))";
+        for &(dialect, db_kind) in ALL_DIALECTS {
+            let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
+            let stmt = parse_single_statement(&mut parser, db_kind, sql);
+            if let Some(ParsedStatement::Error(err)) = stmt {
+                assert!(
+                    err.to_string().contains("Invalid SQLPage function call"),
+                    "Expected error for invalid function, got: {err}"
+                );
+            } else {
+                panic!("Expected error for invalid function, got: {stmt:#?}");
+            }
+        }
     }
 }

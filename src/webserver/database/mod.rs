@@ -41,7 +41,7 @@ impl std::fmt::Display for Database {
 #[must_use]
 pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
     if let Some((_, placeholder)) = DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == db_kind) {
-        match placeholder {
+        match *placeholder {
             DbPlaceHolder::PrefixedNumber { prefix } => format!("{prefix}{arg_number}"),
             DbPlaceHolder::Positional { placeholder } => placeholder.to_string(),
         }
