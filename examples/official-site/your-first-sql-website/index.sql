@@ -1,3 +1,7 @@
+SET url = 'https://api.github.com/repos/sqlpage/SQLPage/releases/latest';
+SET api_results = sqlpage.fetch($url);
+SET sqlpage_version = json_extract($api_results, '$.tag_name');
+
 select 'http_header' as component,
     'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     '<https://sql-page.com/your-first-sql-website/>; rel="canonical"' as "Link";
@@ -36,10 +40,10 @@ Let''s create a simple website with a database from scratch, to learn SQLPage ba
         ELSE 'https://github.com/sqlpage/SQLPage/releases'
     END AS link,
     CASE $os
-        WHEN 'macos' THEN 'Install SQLPage using Homebrew'
-        WHEN 'windows' THEN 'Download SQLPage for Windows'
-        WHEN 'linux' THEN 'Download SQLPage for Linux'
-        ELSE 'Download SQLPage'
+        WHEN 'macos' THEN CONCAT('Install SQLPage ', $sqlpage_version, ' using Homebrew')
+        WHEN 'windows' THEN CONCAT('Download SQLPage ', $sqlpage_version, ' for Windows')
+        WHEN 'linux' THEN CONCAT('Download SQLPage ', $sqlpage_version, ' for Linux')
+        ELSE CONCAT('Download SQLPage ', $sqlpage_version)
     END AS link_text;
 
 SELECT 'alert' as component,
