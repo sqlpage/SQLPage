@@ -6,6 +6,12 @@
 - Fix a bug with date sorting in the table component.
 - Center table descriptions.
 - Fix a rare crash on startup in some restricted linux environments.
+- Fix a rare but serious issue when on SQLite and MySQL, some variable values were assigned incorrectly
+  - `CASE WHEN $a THEN $x WHEN $b THEN $y` would be executed as `CASE WHEN $a THEN $b WHEN $x THEN $y` on these databases.
+  - the issue only occured when using in case expressions where variables were used both in conditions and results.
+- Implement parameter deduplication.
+  Now, when you write `select $x where $x is not null`, the value of `$x` is sent to the database only once. It used to be sent as many times as `$x` appeared in the statement.
+- Improve error messages on invalid sqlpage function calls. The messages now contain actionable advice.
 
 ## 0.33.0 (2025-02-15)
 
