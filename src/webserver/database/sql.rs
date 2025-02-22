@@ -143,6 +143,29 @@ fn parse_sql<'a>(
     }))
 }
 
+fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, db_kind: AnyKind) {
+    if let Some((_, DbPlaceHolder::Positional { placeholder })) =
+        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == db_kind)
+    {
+        let mut new_params = Vec::new();
+        let mut query = stmt.query.clone();
+        while let Some(pos) = query.find(TEMP_PLACEHOLDER_PREFIX) {
+            let start_of_number = pos + TEMP_PLACEHOLDER_PREFIX.len();
+            let end = query[start_of_number..]
+                .find(|c: char| !c.is_ascii_digit())
+                .map_or(query.len(), |i| start_of_number + i);
+            let param_idx = query[start_of_number..end]
+                .parse::<usize>()
+                .unwrap_or(1)
+                - 1;
+            query.replace_range(pos..end, placeholder);
+            new_params.push(stmt.params[param_idx].clone());
+        }
+        stmt.query = query;
+        stmt.params = new_params;
+    }
+}
+
 fn parse_single_statement(
     parser: &mut Parser<'_>,
     db_kind: AnyKind,
@@ -161,7 +184,8 @@ fn parse_single_statement(
         semicolon = true;
     }
     let mut params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
-    if let Some((variable, value)) = extract_set_variable(&mut stmt, &mut params, db_kind) {
+    if let Some((variable, mut value)) = extract_set_variable(&mut stmt, &mut params, db_kind) {
+        transform_to_positional_placeholders(&mut value, db_kind);
         return Some(ParsedStatement::SetVariable { variable, value });
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
@@ -178,14 +202,16 @@ fn parse_single_statement(
         "{stmt}{semicolon}",
         semicolon = if semicolon { ";" } else { "" }
     );
-    log::debug!("Final transformed statement: {stmt}");
-    Some(ParsedStatement::StmtWithParams(StmtWithParams {
+    let mut stmt_with_params = StmtWithParams {
         query,
         query_position: extract_query_start(&stmt),
         params,
         delayed_functions,
         json_columns,
-    }))
+    };
+    transform_to_positional_placeholders(&mut stmt_with_params, db_kind);
+    log::debug!("Final transformed statement: {}", stmt_with_params.query);
+    Some(ParsedStatement::StmtWithParams(stmt_with_params))
 }
 
 fn extract_query_start(stmt: &impl Spanned) -> SourceSpan {
@@ -473,12 +499,45 @@ struct ParameterExtractor {
     parameters: Vec<StmtParam>,
 }
 
-const PLACEHOLDER_PREFIXES: [(AnyKind, &str); 3] = [
-    (AnyKind::Sqlite, "?"),
-    (AnyKind::Postgres, "$"),
-    (AnyKind::Mssql, "@p"),
+#[derive(Debug)]
+pub enum DbPlaceHolder {
+    PrefixedNumber { prefix: &'static str },
+    Positional { placeholder: &'static str },
+}
+
+pub const DB_PLACEHOLDERS: [(AnyKind, DbPlaceHolder); 4] = [
+    (
+        AnyKind::Sqlite,
+        DbPlaceHolder::PrefixedNumber { prefix: "?" },
+    ),
+    (
+        AnyKind::Postgres,
+        DbPlaceHolder::PrefixedNumber { prefix: "$" },
+    ),
+    (
+        AnyKind::MySql,
+        DbPlaceHolder::Positional { placeholder: "?" },
+    ),
+    (
+        AnyKind::Mssql,
+        DbPlaceHolder::PrefixedNumber { prefix: "@p" },
+    ),
 ];
-const DEFAULT_PLACEHOLDER: &str = "?";
+
+/// For positional parameters, we use a temporary placeholder during parameter extraction,
+/// And then replace it with the actual placeholder during statement rewriting.
+const TEMP_PLACEHOLDER_PREFIX: &str = "@SQLPAGE_TEMP";
+
+fn get_placeholder_prefix(db_kind: AnyKind) -> &'static str {
+    if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) = DB_PLACEHOLDERS
+        .iter()
+        .find(|(kind, _prefix)| *kind == db_kind)
+    {
+        prefix
+    } else {
+        TEMP_PLACEHOLDER_PREFIX
+    }
+}
 
 impl ParameterExtractor {
     fn extract_parameters(
@@ -509,7 +568,7 @@ impl ParameterExtractor {
     }
 
     fn make_placeholder_for_index(&self, index: usize) -> Expr {
-        let name = make_placeholder(self.db_kind, index);
+        let name = make_tmp_placeholder(self.db_kind, index);
         let data_type = match self.db_kind {
             AnyKind::MySql => DataType::Char(None),
             AnyKind::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
@@ -529,18 +588,13 @@ impl ParameterExtractor {
     }
 
     fn is_own_placeholder(&self, param: &str) -> bool {
-        if let Some((_, prefix)) = PLACEHOLDER_PREFIXES
-            .iter()
-            .find(|(kind, _prefix)| *kind == self.db_kind)
-        {
-            if let Some(param) = param.strip_prefix(prefix) {
-                if let Ok(index) = param.parse::<usize>() {
-                    return index <= self.parameters.len() + 1;
-                }
+        let prefix = get_placeholder_prefix(self.db_kind);
+        if let Some(param) = param.strip_prefix(prefix) {
+            if let Ok(index) = param.parse::<usize>() {
+                return index <= self.parameters.len() + 1;
             }
-            return false;
         }
-        param == DEFAULT_PLACEHOLDER
+        return false;
     }
 }
 
@@ -728,14 +782,15 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 
 #[inline]
 #[must_use]
-pub fn make_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
-    if let Some((_, prefix)) = PLACEHOLDER_PREFIXES
-        .iter()
-        .find(|(kind, _)| *kind == db_kind)
+pub fn make_tmp_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
+    let prefix = if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) =
+        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == db_kind)
     {
-        return format!("{prefix}{arg_number}");
-    }
-    DEFAULT_PLACEHOLDER.to_string()
+        prefix
+    } else {
+        TEMP_PLACEHOLDER_PREFIX
+    };
+    format!("{prefix}{arg_number}")
 }
 
 fn extract_ident_param(Ident { value, .. }: &mut Ident) -> Option<StmtParam> {
@@ -1414,5 +1469,76 @@ mod test {
 
         assert!(json_columns.contains(&"item".to_string()));
         assert!(!json_columns.contains(&"title".to_string()));
+    }
+
+    #[test]
+    fn test_positional_placeholders() {
+        let sql = "select \
+        @SQLPAGE_TEMP10 as a1, \
+        @SQLPAGE_TEMP9 as a2, \
+        @SQLPAGE_TEMP8 as a3, \
+        @SQLPAGE_TEMP7 as a4, \
+        @SQLPAGE_TEMP6 as a5, \
+        @SQLPAGE_TEMP5 as a6, \
+        @SQLPAGE_TEMP4 as a7, \
+        @SQLPAGE_TEMP3 as a8, \
+        @SQLPAGE_TEMP2 as a9, \
+        @SQLPAGE_TEMP1 as a10 \
+        @SQLPAGE_TEMP10 as a1bis \
+        from t";
+        let mut stmt = StmtWithParams {
+            query: sql.to_string(),
+            query_position: SourceSpan {
+                start: SourceLocation { line: 1, column: 1 },
+                end: SourceLocation { line: 1, column: 1 },
+            },
+            params: vec![
+                StmtParam::PostOrGet("x1".to_string()),
+                StmtParam::PostOrGet("x2".to_string()),
+                StmtParam::PostOrGet("x3".to_string()),
+                StmtParam::PostOrGet("x4".to_string()),
+                StmtParam::PostOrGet("x5".to_string()),
+                StmtParam::PostOrGet("x6".to_string()),
+                StmtParam::PostOrGet("x7".to_string()),
+                StmtParam::PostOrGet("x8".to_string()),
+                StmtParam::PostOrGet("x9".to_string()),
+                StmtParam::PostOrGet("x10".to_string()),
+            ],
+            delayed_functions: vec![],
+            json_columns: vec![],
+        };
+        transform_to_positional_placeholders(&mut stmt, AnyKind::MySql);
+        assert_eq!(
+            stmt.query,
+            "select \
+        ? as a1, \
+        ? as a2, \
+        ? as a3, \
+        ? as a4, \
+        ? as a5, \
+        ? as a6, \
+        ? as a7, \
+        ? as a8, \
+        ? as a9, \
+        ? as a10 \
+        ? as a1bis \
+        from t"
+        );
+        assert_eq!(
+            stmt.params,
+            vec![
+                StmtParam::PostOrGet("x10".to_string()),
+                StmtParam::PostOrGet("x9".to_string()),
+                StmtParam::PostOrGet("x8".to_string()),
+                StmtParam::PostOrGet("x7".to_string()),
+                StmtParam::PostOrGet("x6".to_string()),
+                StmtParam::PostOrGet("x5".to_string()),
+                StmtParam::PostOrGet("x4".to_string()),
+                StmtParam::PostOrGet("x3".to_string()),
+                StmtParam::PostOrGet("x2".to_string()),
+                StmtParam::PostOrGet("x1".to_string()),
+                StmtParam::PostOrGet("x10".to_string()),
+            ]
+        );
     }
 }
