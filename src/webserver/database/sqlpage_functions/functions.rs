@@ -183,7 +183,7 @@ async fn fetch(
     let client = make_http_client(&request.app_state.config)
         .with_context(|| "Unable to create an HTTP client")?;
     let req = build_request(&client, &http_request)?;
-    
+
     log::info!("Fetching {}", http_request.url);
     let mut response = if let Some(body) = &http_request.body {
         let (body, req) = prepare_request_body(body, req)?;
@@ -193,13 +193,13 @@ async fn fetch(
     }
     .await
     .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
-    
+
     log::debug!(
         "Finished fetching {}. Status: {}",
         http_request.url,
         response.status()
     );
-    
+
     let body = response
         .body()
         .await
@@ -224,7 +224,7 @@ async fn fetch_with_meta(
     let client = make_http_client(&request.app_state.config)
         .with_context(|| "Unable to create an HTTP client")?;
     let req = build_request(&client, &http_request)?;
-    
+
     log::info!("Fetching {} with metadata", http_request.url);
     let response_result = if let Some(body) = &http_request.body {
         let (body, req) = prepare_request_body(body, req)?;
@@ -237,7 +237,7 @@ async fn fetch_with_meta(
     match response_result {
         Ok(mut response) => {
             response_info.insert("status".to_string(), response.status().as_u16().into());
-            
+
             let mut headers = serde_json::Map::new();
             for (name, value) in response.headers().iter() {
                 if let Ok(value_str) = value.to_str() {
@@ -249,14 +249,17 @@ async fn fetch_with_meta(
             match response.body().await {
                 Ok(body) => {
                     let body_bytes = body.to_vec();
-                    let content_type = headers.get("content-type")
+                    let content_type = headers
+                        .get("content-type")
                         .and_then(|v| v.as_str())
                         .unwrap_or_default();
 
                     let body_value = if content_type.contains("application/json") {
                         match serde_json::from_slice(&body_bytes) {
                             Ok(json_value) => json_value,
-                            Err(_) => serde_json::Value::String(String::from_utf8_lossy(&body_bytes).into_owned()),
+                            Err(_) => serde_json::Value::String(
+                                String::from_utf8_lossy(&body_bytes).into_owned(),
+                            ),
                         }
                     } else {
                         match String::from_utf8(body_bytes.clone()) {
@@ -275,7 +278,10 @@ async fn fetch_with_meta(
                     response_info.insert("body".to_string(), body_value);
                 }
                 Err(e) => {
-                    response_info.insert("error".to_string(), format!("Failed to read response body: {}", e).into());
+                    response_info.insert(
+                        "error".to_string(),
+                        format!("Failed to read response body: {}", e).into(),
+                    );
                 }
             }
         }
