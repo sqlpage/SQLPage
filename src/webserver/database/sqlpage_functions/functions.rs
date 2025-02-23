@@ -261,7 +261,9 @@ async fn fetch_with_meta(
                                 String::from_utf8_lossy(&body_bytes).into_owned(),
                             ),
                         }
-                    } else if let Ok(text) = String::from_utf8(body_bytes.clone()) { serde_json::Value::String(text) } else {
+                    } else if let Ok(text) = String::from_utf8(body_bytes.clone()) {
+                        serde_json::Value::String(text)
+                    } else {
                         let mut base64_string = String::new();
                         base64::Engine::encode_string(
                             &base64::engine::general_purpose::STANDARD,
