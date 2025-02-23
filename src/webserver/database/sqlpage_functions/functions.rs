@@ -239,7 +239,7 @@ async fn fetch_with_meta(
             response_info.insert("status".to_string(), response.status().as_u16().into());
 
             let mut headers = serde_json::Map::new();
-            for (name, value) in response.headers().iter() {
+            for (name, value) in response.headers() {
                 if let Ok(value_str) = value.to_str() {
                     headers.insert(name.to_string(), value_str.into());
                 }
@@ -261,32 +261,27 @@ async fn fetch_with_meta(
                                 String::from_utf8_lossy(&body_bytes).into_owned(),
                             ),
                         }
-                    } else {
-                        match String::from_utf8(body_bytes.clone()) {
-                            Ok(text) => serde_json::Value::String(text),
-                            Err(_) => {
-                                let mut base64_string = String::new();
-                                base64::Engine::encode_string(
-                                    &base64::engine::general_purpose::STANDARD,
-                                    &body_bytes,
-                                    &mut base64_string,
-                                );
-                                serde_json::Value::String(base64_string)
-                            }
-                        }
+                    } else if let Ok(text) = String::from_utf8(body_bytes.clone()) { serde_json::Value::String(text) } else {
+                        let mut base64_string = String::new();
+                        base64::Engine::encode_string(
+                            &base64::engine::general_purpose::STANDARD,
+                            &body_bytes,
+                            &mut base64_string,
+                        );
+                        serde_json::Value::String(base64_string)
                     };
                     response_info.insert("body".to_string(), body_value);
                 }
                 Err(e) => {
                     response_info.insert(
                         "error".to_string(),
-                        format!("Failed to read response body: {}", e).into(),
+                        format!("Failed to read response body: {e}").into(),
                     );
                 }
             }
         }
         Err(e) => {
-            response_info.insert("error".to_string(), format!("Request failed: {}", e).into());
+            response_info.insert("error".to_string(), format!("Request failed: {e}").into());
         }
     }
 
