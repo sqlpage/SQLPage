@@ -285,11 +285,13 @@ async fn fetch_with_meta(
                     }
                 }
                 Err(e) => {
+                    log::warn!("Failed to read response body: {e}");
                     obj.serialize_entry("error", &format!("Failed to read response body: {e}"))?;
                 }
             }
         }
         Err(e) => {
+            log::warn!("Request failed: {e}");
             obj.serialize_entry("error", &format!("Request failed: {e}"))?;
         }
     }
