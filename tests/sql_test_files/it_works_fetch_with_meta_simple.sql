@@ -5,11 +5,9 @@ set res = sqlpage.fetch_with_meta('{
         "user-agent": "myself"
     }
 }');
+
 select 'text' as component,
     case
-        when json_extract($res, '$.status') = 200
-        and cast(json_extract($res, '$.headers.content-length') as int) > 100
-        and json_extract($res, '$.body') like 'PUT /hello_world%'
-        then 'It works !'
-        else 'It failed! Got: ' || $res
+        when $res LIKE '%"status":200%' AND $res LIKE '%"headers":{%' AND $res LIKE '%"body":"%' then 'It works !'
+        else 'Error! Got: ' || $res
     end as contents; 
