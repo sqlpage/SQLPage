@@ -102,7 +102,7 @@ fn copy_cached_to_opened_file(source: &Path, outfile: &mut impl std::io::Write) 
 async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
     let mut attempt = 1;
     let max_attempts = 2;
-    
+
     loop {
         match client.get(url).send().await {
             Ok(mut resp) => {

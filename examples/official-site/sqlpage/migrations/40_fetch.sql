@@ -88,6 +88,12 @@ The fetch function accepts either a URL string, or a JSON object with the follow
  - `username`: Optional username for HTTP Basic Authentication. Introduced in version 0.33.0.
  - `password`: Optional password for HTTP Basic Authentication. Only used if username is provided. Introduced in version 0.33.0.
 
+# Error handling and reading response headers
+
+If the request fails, this function throws an error, that will be displayed to the user.
+The response headers are not available for inspection.
+
+If you need to handle errors or inspect the response headers, use [`sqlpage.fetch_with_meta`](?function=fetch_with_meta).
 '
     );
 INSERT INTO sqlpage_function_parameters (

@@ -221,6 +221,8 @@ async fn fetch_with_meta(
     request: &RequestInfo,
     http_request: super::http_fetch_request::HttpFetchRequest<'_>,
 ) -> anyhow::Result<String> {
+    use serde::{ser::SerializeMap, Serializer};
+
     let client = make_http_client(&request.app_state.config)
         .with_context(|| "Unable to create an HTTP client")?;
     let req = build_request(&client, &http_request)?;
@@ -233,61 +235,68 @@ async fn fetch_with_meta(
         req.send().await
     };
 
-    let mut response_info = serde_json::Map::new();
+    let mut resp_str = Vec::new();
+    let mut encoder = serde_json::Serializer::new(&mut resp_str);
+    let mut obj = encoder.serialize_map(Some(3))?;
     match response_result {
         Ok(mut response) => {
-            response_info.insert("status".to_string(), response.status().as_u16().into());
+            obj.serialize_entry("status", &response.status().as_u16())?;
 
-            let mut headers = serde_json::Map::new();
-            for (name, value) in response.headers() {
-                if let Ok(value_str) = value.to_str() {
-                    headers.insert(name.to_string(), value_str.into());
-                }
-            }
-            response_info.insert("headers".to_string(), headers.clone().into());
+            let headers = response.headers();
+
+            let is_json = headers
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or_default()
+                .starts_with("application/json");
+
+            obj.serialize_entry(
+                "headers",
+                &headers
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default()))
+                    .collect::<std::collections::HashMap<_, _>>(),
+            )?;
 
             match response.body().await {
                 Ok(body) => {
                     let body_bytes = body.to_vec();
-                    let content_type = headers
-                        .get("content-type")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default();
+                    let body_str = String::from_utf8(body_bytes);
 
-                    let body_value = if content_type.contains("application/json") {
-                        match serde_json::from_slice(&body_bytes) {
-                            Ok(json_value) => json_value,
-                            Err(_) => serde_json::Value::String(
-                                String::from_utf8_lossy(&body_bytes).into_owned(),
-                            ),
+                    match body_str {
+                        Ok(body_str) if is_json => {
+                            obj.serialize_entry(
+                                "body",
+                                &serde_json::value::RawValue::from_string(body_str)?,
+                            )?;
                         }
-                    } else if let Ok(text) = String::from_utf8(body_bytes.clone()) {
-                        serde_json::Value::String(text)
-                    } else {
-                        let mut base64_string = String::new();
-                        base64::Engine::encode_string(
-                            &base64::engine::general_purpose::STANDARD,
-                            &body_bytes,
-                            &mut base64_string,
-                        );
-                        serde_json::Value::String(base64_string)
-                    };
-                    response_info.insert("body".to_string(), body_value);
+                        Ok(body_str) => {
+                            obj.serialize_entry("body", &body_str)?;
+                        }
+                        Err(utf8_err) => {
+                            let mut base64_string = String::new();
+                            base64::Engine::encode_string(
+                                &base64::engine::general_purpose::STANDARD,
+                                utf8_err.as_bytes(),
+                                &mut base64_string,
+                            );
+                            obj.serialize_entry("body", &base64_string)?;
+                        }
+                    }
                 }
                 Err(e) => {
-                    response_info.insert(
-                        "error".to_string(),
-                        format!("Failed to read response body: {e}").into(),
-                    );
+                    obj.serialize_entry("error", &format!("Failed to read response body: {e}"))?;
                 }
             }
         }
         Err(e) => {
-            response_info.insert("error".to_string(), format!("Request failed: {e}").into());
+            obj.serialize_entry("error", &format!("Request failed: {e}"))?;
         }
     }
 
-    Ok(serde_json::to_string(&response_info)?)
+    obj.end()?;
+    let return_value = String::from_utf8(resp_str)?;
+    Ok(return_value)
 }
 
 static NATIVE_CERTS: OnceLock<anyhow::Result<rustls::RootCertStore>> = OnceLock::new();
