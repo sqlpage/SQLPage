@@ -136,7 +136,10 @@ fn start_echo_server() -> ServerHandle {
         }
         f.push(b'|');
         f.extend_from_slice(&r.extract::<actix_web::web::Bytes>().await?);
-        let resp = HttpResponse::Ok().body(f);
+        let resp = HttpResponse::Ok()
+            .insert_header((header::DATE, "Mon, 24 Feb 2025 12:00:00 GMT"))
+            .insert_header((header::CONTENT_TYPE, "text/plain"))
+            .body(f);
         Ok(r.into_response(resp))
     }
     let server = actix_web::HttpServer::new(move || {
@@ -201,7 +204,7 @@ async fn test_files() {
             );
             assert!(
                 !lowercase_body.contains("error"),
-                "{body}\nexpected to not contain: error"
+                "{req_str}\n{body}\nexpected to not contain: error"
             );
         } else if stem.starts_with("error_") {
             let rest = stem.strip_prefix("error_").unwrap();
