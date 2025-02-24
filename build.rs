@@ -1,4 +1,5 @@
 use actix_rt::spawn;
+use actix_rt::time::sleep;
 use libflate::gzip;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
@@ -99,21 +100,37 @@ fn copy_cached_to_opened_file(source: &Path, outfile: &mut impl std::io::Write) 
 }
 
 async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
-    let mut resp = client.get(url).send().await.unwrap_or_else(|err| {
-        let path = make_url_path(url);
-        panic!(
-            "We need to download external frontend dependencies to build the static frontend. \n\
-                Could not download static asset. You can manually download the file with: \n\
-                curl {url:?} > {path:?} \n\
-                {err}"
-        )
-    });
-    if resp.status() != 200 {
-        panic!("Received {} status code from {}", resp.status(), url);
+    let mut attempt = 1;
+    let max_attempts = 2;
+    
+    loop {
+        match client.get(url).send().await {
+            Ok(mut resp) => {
+                if resp.status() != 200 {
+                    panic!("Received {} status code from {}", resp.status(), url);
+                }
+                let bytes = resp.body().limit(128 * 1024 * 1024).await.unwrap();
+                std::fs::write(path, &bytes)
+                    .expect("Failed to write external frontend dependency to local file");
+                break;
+            }
+            Err(err) => {
+                if attempt >= max_attempts {
+                    let path = make_url_path(url);
+                    panic!(
+                        "We need to download external frontend dependencies to build the static frontend. \n\
+                        Could not download static asset after {} attempts. You can manually download the file with: \n\
+                        curl {url:?} > {path:?} \n\
+                        {err}",
+                        max_attempts
+                    );
+                }
+                sleep(Duration::from_secs(1)).await;
+                println!("cargo:warning=Retrying download of {url} after {err}.");
+                attempt += 1;
+            }
+        }
     }
-    let bytes = resp.body().limit(128 * 1024 * 1024).await.unwrap();
-    std::fs::write(path, &bytes)
-        .expect("Failed to write external frontend dependency to local file");
 }
 
 // Given a filename, creates a new unique filename based on the file contents
