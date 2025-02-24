@@ -1,7 +1,3 @@
-SET url = 'https://api.github.com/repos/sqlpage/SQLPage/releases/latest';
-SET api_results = sqlpage.fetch($url);
-SET sqlpage_version = json_extract($api_results, '$.tag_name');
-
 select 'http_header' as component,
     'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     '<https://sql-page.com/your-first-sql-website/>; rel="canonical"' as "Link";
@@ -21,6 +17,13 @@ select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json
     'description', 'Convert your SQL database into a website in minutes. In this 5-minute guide, we will create a simple website from scratch, and learn the basics of SQLPage.'
 )) as properties
 FROM example WHERE component = 'shell' LIMIT 1;
+
+SET req = '{
+    "url": "https://api.github.com/repos/sqlpage/SQLPage/releases/latest",
+    "timeout_ms": 200
+}';
+SET api_results = sqlpage.fetch_with_meta($req);
+SET sqlpage_version = COALESCE(json_extract($api_results, '$.body.tag_name'), '');
 
 SELECT 'hero' as component,
     'Your first SQL Website' as title,
