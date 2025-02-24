@@ -14,6 +14,13 @@
 - Improve error messages on invalid sqlpage function calls. The messages now contain actionable advice.
 - Fix top navigation bar links color. They appeared "muted", with low contrast, since v0.33
 - update to apex charts v4.5.0. This fixes a bug where tick positions in scatter plots would be incorrect.
+- New function: `sqlpage.fetch_with_meta`
+  - This function is similar to `sqlpage.fetch`, but it returns a json object with the following properties:
+    - `status`: the http status code of the response.
+    - `headers`: a json object with the response headers.
+    - `body`: the response body.
+    - `error`: an error message if the request failed.
+  - This is useful when interacting with complex or unreliable external APIs.
 
 ## 0.33.0 (2025-02-15)
 

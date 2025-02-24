@@ -240,7 +240,13 @@ async fn fetch_with_meta(
     let mut obj = encoder.serialize_map(Some(3))?;
     match response_result {
         Ok(mut response) => {
-            obj.serialize_entry("status", &response.status().as_u16())?;
+            let status = response.status();
+            obj.serialize_entry("status", &status.as_u16())?;
+            let mut has_error = false;
+            if status.is_server_error() {
+                has_error = true;
+                obj.serialize_entry("error", &format!("Server error: {status}"))?;
+            }
 
             let headers = response.headers();
 
@@ -286,7 +292,12 @@ async fn fetch_with_meta(
                 }
                 Err(e) => {
                     log::warn!("Failed to read response body: {e}");
-                    obj.serialize_entry("error", &format!("Failed to read response body: {e}"))?;
+                    if !has_error {
+                        obj.serialize_entry(
+                            "error",
+                            &format!("Failed to read response body: {e}"),
+                        )?;
+                    }
                 }
             }
         }
