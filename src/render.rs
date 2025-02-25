@@ -1068,13 +1068,13 @@ impl TryFrom<&str> for HeaderComponent {
     type Error = ();
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
-            "status_code" => Ok(HeaderComponent::StatusCode),
-            "http_header" => Ok(HeaderComponent::HttpHeader),
-            "redirect" => Ok(HeaderComponent::Redirect),
-            "json" => Ok(HeaderComponent::Json),
-            "csv" => Ok(HeaderComponent::Csv),
-            "cookie" => Ok(HeaderComponent::Cookie),
-            "authentication" => Ok(HeaderComponent::Authentication),
+            "status_code" => Ok(Self::StatusCode),
+            "http_header" => Ok(Self::HttpHeader),
+            "redirect" => Ok(Self::Redirect),
+            "json" => Ok(Self::Json),
+            "csv" => Ok(Self::Csv),
+            "cookie" => Ok(Self::Cookie),
+            "authentication" => Ok(Self::Authentication),
             _ => Err(()),
         }
     }
