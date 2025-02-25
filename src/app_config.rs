@@ -143,6 +143,7 @@ pub fn load_from_env() -> anyhow::Result<AppConfig> {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct AppConfig {
     #[serde(default = "default_database_url")]
     pub database_url: String,
