@@ -1,5 +1,3 @@
 {
-  "database_url": "sqlite:///tmp/bug.db?mode=rwc",
-  "markdown_allow_dangerous_html": true,
-  "markdown_allow_dangerous_protocol": true
+  "database_url": "sqlite:///tmp/bug.db?mode=rwc"
 }
