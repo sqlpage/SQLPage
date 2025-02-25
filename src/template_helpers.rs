@@ -63,7 +63,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
 
     // icon helper: generate an image with the specified icon
     h.register_helper("icon_img", Box::new(IconImgHelper(site_prefix)));
-    register_helper(h, "markdown", markdown_helper as EH);
+    register_helper(h, "markdown", MarkdownHelper::new(config));
     register_helper(h, "buildinfo", buildinfo_helper as EH);
     register_helper(h, "typeof", typeof_helper as H);
     register_helper(h, "rfc2822_date", rfc2822_date_helper as EH);
@@ -247,21 +247,45 @@ fn typeof_helper(v: &JsonValue) -> JsonValue {
     .into()
 }
 
-fn markdown_helper(x: &JsonValue) -> anyhow::Result<JsonValue> {
-    let as_str = match x {
-        JsonValue::String(s) => Cow::Borrowed(s),
-        JsonValue::Array(arr) => Cow::Owned(
-            arr.iter()
-                .map(|v| v.as_str().unwrap_or_default())
-                .collect::<Vec<_>>()
-                .join("\n"),
-        ),
-        JsonValue::Null => Cow::Owned(String::new()),
-        other => Cow::Owned(other.to_string()),
-    };
-    markdown::to_html_with_options(&as_str, &markdown::Options::gfm())
-        .map(JsonValue::String)
-        .map_err(|e| anyhow::anyhow!("markdown error: {e}"))
+/// Helper to render markdown with configurable options
+struct MarkdownHelper {
+    allow_dangerous_html: bool,
+    allow_dangerous_protocol: bool,
+}
+
+impl MarkdownHelper {
+    fn new(config: &AppConfig) -> Self {
+        Self {
+            allow_dangerous_html: config.markdown_allow_dangerous_html,
+            allow_dangerous_protocol: config.markdown_allow_dangerous_protocol,
+        }
+    }
+}
+
+impl CanHelp for MarkdownHelper {
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        let as_str = match args {
+            [v] => v.value(),
+            _ => return Err("expected one argument".to_string()),
+        };
+        let as_str = match as_str {
+            JsonValue::String(s) => Cow::Borrowed(s),
+            JsonValue::Array(arr) => Cow::Owned(
+                arr.iter()
+                    .map(|v| v.as_str().unwrap_or_default())
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            ),
+            JsonValue::Null => Cow::Owned(String::new()),
+            other => Cow::Owned(other.to_string()),
+        };
+        let mut options = markdown::Options::gfm();
+        options.compile.allow_dangerous_html = self.allow_dangerous_html;
+        options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
+        markdown::to_html_with_options(&as_str, &options)
+            .map(JsonValue::String)
+            .map_err(|e| e.to_string())
+    }
 }
 
 fn buildinfo_helper(x: &JsonValue) -> anyhow::Result<JsonValue> {
