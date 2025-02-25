@@ -1,11 +1,26 @@
 # CHANGELOG.md
 
-## 0.33.1 (unreleased)
+## 0.33.1 (2025-02-25)
 
 - Fix a bug where the table component would not format numbers if sorting was not enabled.
 - Fix a bug with date sorting in the table component.
 - Center table descriptions.
 - Fix a rare crash on startup in some restricted linux environments.
+- Fix a rare but serious issue when on SQLite and MySQL, some variable values were assigned incorrectly
+  - `CASE WHEN $a THEN $x WHEN $b THEN $y` would be executed as `CASE WHEN $a THEN $b WHEN $x THEN $y` on these databases.
+  - the issue only occured when using in case expressions where variables were used both in conditions and results.
+- Implement parameter deduplication.
+  Now, when you write `select $x where $x is not null`, the value of `$x` is sent to the database only once. It used to be sent as many times as `$x` appeared in the statement.
+- Improve error messages on invalid sqlpage function calls. The messages now contain actionable advice.
+- Fix top navigation bar links color. They appeared "muted", with low contrast, since v0.33
+- update to apex charts v4.5.0. This fixes a bug where tick positions in scatter plots would be incorrect.
+- New function: `sqlpage.fetch_with_meta`
+  - This function is similar to `sqlpage.fetch`, but it returns a json object with the following properties:
+    - `status`: the http status code of the response.
+    - `headers`: a json object with the response headers.
+    - `body`: the response body.
+    - `error`: an error message if the request failed.
+  - This is useful when interacting with complex or unreliable external APIs.
 
 ## 0.33.0 (2025-02-15)
 

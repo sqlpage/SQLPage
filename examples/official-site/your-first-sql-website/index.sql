@@ -18,6 +18,13 @@ select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json
 )) as properties
 FROM example WHERE component = 'shell' LIMIT 1;
 
+SET req = '{
+    "url": "https://api.github.com/repos/sqlpage/SQLPage/releases/latest",
+    "timeout_ms": 200
+}';
+SET api_results = sqlpage.fetch_with_meta($req);
+SET sqlpage_version = COALESCE(json_extract($api_results, '$.body.tag_name'), '');
+
 SELECT 'hero' as component,
     'Your first SQL Website' as title,
     '[SQLPage](/) is a free tool for building data-driven apps quickly.
@@ -36,10 +43,10 @@ Let''s create a simple website with a database from scratch, to learn SQLPage ba
         ELSE 'https://github.com/sqlpage/SQLPage/releases'
     END AS link,
     CASE $os
-        WHEN 'macos' THEN 'Install SQLPage using Homebrew'
-        WHEN 'windows' THEN 'Download SQLPage for Windows'
-        WHEN 'linux' THEN 'Download SQLPage for Linux'
-        ELSE 'Download SQLPage'
+        WHEN 'macos' THEN CONCAT('Install SQLPage ', $sqlpage_version, ' using Homebrew')
+        WHEN 'windows' THEN CONCAT('Download SQLPage ', $sqlpage_version, ' for Windows')
+        WHEN 'linux' THEN CONCAT('Download SQLPage ', $sqlpage_version, ' for Linux')
+        ELSE CONCAT('Download SQLPage ', $sqlpage_version)
     END AS link_text;
 
 SELECT 'alert' as component,
