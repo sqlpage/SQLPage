@@ -255,7 +255,7 @@ struct MarkdownHelper {
 
 impl MarkdownHelper {
     fn new(config: &AppConfig) -> Self {
-        Self { 
+        Self {
             allow_dangerous_html: config.markdown_allow_dangerous_html,
             allow_dangerous_protocol: config.markdown_allow_dangerous_protocol,
         }
