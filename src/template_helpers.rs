@@ -537,7 +537,7 @@ fn replace_helper(text: &JsonValue, original: &JsonValue, replacement: &JsonValu
         JsonValue::String(s) => s,
         other => &other.to_string(),
     };
-    
+
     text_str.replace(original_str, replacement_str).into()
 }
 
