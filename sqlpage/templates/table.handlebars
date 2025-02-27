@@ -34,7 +34,7 @@
                             {{#each this}}
                                 {{#if (not (starts_with @key '_sqlpage_'))}}
                                 <th class="
-                                    {{~@key~}}
+                                    _col_{{~@key~}}
                                     {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                     {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
                                 "

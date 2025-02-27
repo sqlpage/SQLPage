@@ -1,5 +1,11 @@
 # CHANGELOG.md
 
+## unreleased
+ - `delete_link` in the list component now submits a POST request, instead of being a simple link.
+  - This avoids accidental deletion by bots following links, and is more in line with HTTP semantics.
+ - In the table component, the `_col_` prefix is now added to column names in CSS classes. This avoids conflicts with other CSS classes that might be used in the page.
+  - fixes https://github.com/sqlpage/SQLPage/issues/830
+
 ## 0.33.1 (2025-02-25)
 
 - Fix a bug where the table component would not format numbers if sorting was not enabled.
