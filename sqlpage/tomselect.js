@@ -4,37 +4,49 @@ function sqlpage_select_dropdown() {
   for (const s of document.querySelectorAll(
     "[data-pre-init=select-dropdown]",
   )) {
-    s.removeAttribute("data-pre-init");
-    // See: https://github.com/orchidjs/tom-select/issues/716
-    // By default, TomSelect will not retain the focus if s is already focused
-    // This is a workaround to fix that
-    const is_focused = s === document.activeElement;
-
-    const tom = new TomSelect(s, {
-      load: sqlpage_load_options_source(s.dataset.options_source),
-      valueField: "value",
-      labelField: "label",
-      searchField: "label",
-      create: s.dataset.create_new,
-      maxOptions: null,
-      onItemAdd: function () {
-        this.setTextboxValue("");
-        this.refreshOptions();
-      },
-    });
-    if (is_focused) tom.focus();
-    s.form?.addEventListener("reset", async () => {
-      // The reset event is fired before the form is reset, so we need to wait for the next event loop
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      // Sync the options with the new reset value
-      tom.sync();
-      // Wait for the options to be updated
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      // "sync" also focuses the input, so we need to blur it to remove the focus
-      tom.blur();
-      tom.close();
-    });
+    try {
+      sqlpage_select_dropdown_individual(s);
+    } catch (e) {
+      console.error(e);
+    }
   }
+}
+
+/**
+ * Initialize a select dropdown for a single element
+ * @param {HTMLSelectElement} s - The select element to initialize
+ */
+function sqlpage_select_dropdown_individual(s) {
+  s.removeAttribute("data-pre-init");
+  // See: https://github.com/orchidjs/tom-select/issues/716
+  // By default, TomSelect will not retain the focus if s is already focused
+  // This is a workaround to fix that
+  const is_focused = s === document.activeElement;
+
+  const tom = new TomSelect(s, {
+    load: sqlpage_load_options_source(s.dataset.options_source),
+    valueField: "value",
+    labelField: "label",
+    searchField: "label",
+    create: s.dataset.create_new,
+    maxOptions: null,
+    onItemAdd: function () {
+      this.setTextboxValue("");
+      this.refreshOptions();
+    },
+  });
+  if (is_focused) tom.focus();
+  s.form?.addEventListener("reset", async () => {
+    // The reset event is fired before the form is reset, so we need to wait for the next event loop
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Sync the options with the new reset value
+    tom.sync();
+    // Wait for the options to be updated
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // "sync" also focuses the input, so we need to blur it to remove the focus
+    tom.blur();
+    tom.close();
+  });
 }
 
 function sqlpage_load_options_source(options_source) {
