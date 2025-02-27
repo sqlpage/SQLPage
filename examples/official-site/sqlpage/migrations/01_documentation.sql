@@ -51,7 +51,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('active', 'Whether this item in the list is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE),
     ('view_link', 'A URL to which the user should be taken when they click on the "view" icon. Does not show the icon when omitted.', 'URL', FALSE, TRUE),
     ('edit_link', 'A URL to which the user should be taken when they click on the "edit" icon. Does not show the icon when omitted.', 'URL', FALSE, TRUE),
-    ('delete_link', 'A URL to which the user should be taken when they click on the "delete" icon. Does not show the icon when omitted.', 'URL', FALSE, TRUE)
+    ('delete_link', 'A page that will be loaded when the user clicks on the delete button for this specific item. The link will be submitted as a POST request.', 'URL', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES

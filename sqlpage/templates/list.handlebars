@@ -47,9 +47,11 @@
                 {{/if}}
 
                 {{#if delete_link}}
-                    <a href="{{delete_link}}" class="link-secondary col-auto" title="Delete">
-                        {{~icon_img 'trash'~}}
-                    </a>
+                    <form method="POST" action="{{delete_link}}" class="col-auto m-0 p-0">
+                        <button type="submit" class="btn btn-link link-secondary p-0 border-0" title="Delete">
+                            {{~icon_img 'trash'~}}
+                        </button>
+                    </form>
                 {{/if}}
 
                 {{#if edit_link}}
