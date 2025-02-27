@@ -87,6 +87,14 @@ VALUES
     ),
     (
         'map',
+        'height',
+        'Height of the map, in pixels. Default to 350px',
+        'INTEGER',
+        TRUE,
+        TRUE
+    ),
+    (
+        'map',
         'latitude',
         'Latitude of the marker. Required only if geojson is not set.',
         'REAL',
