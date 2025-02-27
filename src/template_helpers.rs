@@ -17,6 +17,7 @@ type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
 /// Helper that takes two arguments
 type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
 /// Helper that takes three arguments
+#[allow(clippy::upper_case_acronyms)]
 type HHH = fn(&JsonValue, &JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
