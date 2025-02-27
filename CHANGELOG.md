@@ -5,6 +5,9 @@
   - This avoids accidental deletion by bots following links, and is more in line with HTTP semantics.
  - In the table component, the `_col_` prefix is now added to column names in CSS classes. This avoids conflicts with other CSS classes that might be used in the page.
   - fixes https://github.com/sqlpage/SQLPage/issues/830
+  - This is a breaking change for custom CSS rules that target table columns by their name.
+    - Before: `.my_column { ... }`
+    - After: `._col_my_column { ... }`
 
 ## 0.33.1 (2025-02-25)
 

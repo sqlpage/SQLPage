@@ -16,6 +16,8 @@ type H = fn(&JsonValue) -> JsonValue;
 type EH = fn(&JsonValue) -> anyhow::Result<JsonValue>;
 /// Helper that takes two arguments
 type HH = fn(&JsonValue, &JsonValue) -> JsonValue;
+/// Helper that takes three arguments
+type HHH = fn(&JsonValue, &JsonValue, &JsonValue) -> JsonValue;
 
 pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     let site_prefix = config.site_prefix.clone();
@@ -27,6 +29,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "parse_json", parse_json_helper as EH);
     register_helper(h, "default", default_helper as HH);
     register_helper(h, "entries", entries_helper as H);
+    register_helper(h, "replace", replace_helper as HHH);
     // delay helper: store a piece of information in memory that can be output later with flush_delayed
     h.register_helper("delay", Box::new(delay_helper));
     h.register_helper("flush_delayed", Box::new(flush_delayed_helper));
@@ -464,6 +467,15 @@ impl CanHelp for HH {
     }
 }
 
+impl CanHelp for HHH {
+    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+        match args {
+            [a, b, c] => Ok(self(a.value(), b.value(), c.value())),
+            _ => Err("expected three arguments".to_string()),
+        }
+    }
+}
+
 struct JFun<F: CanHelp> {
     name: &'static str,
     fun: F,
@@ -486,6 +498,23 @@ impl<F: CanHelp> handlebars::HelperDef for JFun<F> {
 
 fn register_helper(h: &mut Handlebars, name: &'static str, fun: impl CanHelp) {
     h.register_helper(name, Box::new(JFun { name, fun }));
+}
+
+fn replace_helper(text: &JsonValue, original: &JsonValue, replacement: &JsonValue) -> JsonValue {
+    let text_str = match text {
+        JsonValue::String(s) => s,
+        other => &other.to_string(),
+    };
+    let original_str = match original {
+        JsonValue::String(s) => s,
+        other => &other.to_string(),
+    };
+    let replacement_str = match replacement {
+        JsonValue::String(s) => s,
+        other => &other.to_string(),
+    };
+    
+    text_str.replace(original_str, replacement_str).into()
 }
 
 #[test]
