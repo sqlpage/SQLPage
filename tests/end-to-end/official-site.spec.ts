@@ -91,7 +91,7 @@ test("table filtering", async ({ page }) => {
   await searchInput.fill("chart");
   const chartCell = tableSection.getByRole("cell", { name: "Chart" });
   await expect(chartCell).toBeVisible();
-  await expect(chartCell).toHaveClass(/\bname\b/);
+  await expect(chartCell).toHaveClass(/\b_col_name\b/);
   await expect(chartCell).toHaveCSS("vertical-align", "middle");
   await expect(
     tableSection.getByRole("cell", { name: "Table" }),
