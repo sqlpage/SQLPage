@@ -214,15 +214,17 @@
                 {{~#each_row~}}{{~/each_row~}}
             </main>
 
-            <footer class="w-100 text-center fs-6 my-2 text-secondary" id="sqlpage_footer">
-                {{#if footer}}
-                    {{{markdown footer}}}
-            {{else}}
-                <!-- You can change this footer using the 'footer' parameter of the 'shell' component -->
-                Built with <a class="text-reset" href="https://sql-page.com"
-                    title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
-            {{/if}}
-            </footer>
+            {{#unless (eq footer '')}}
+                <footer class="w-100 text-center fs-6 my-2 text-secondary" id="sqlpage_footer">
+                    {{#if footer}}
+                        {{{markdown footer}}}
+                    {{else}}
+                        <!-- You can change this footer using the 'footer' parameter of the 'shell' component -->
+                        Built with <a class="text-reset" href="https://sql-page.com"
+                            title="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">SQLPage</a>
+                    {{/if}}
+                </footer>
+            {{/unless}}
         </div>
     </div>
 </body>
