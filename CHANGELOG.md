@@ -13,6 +13,7 @@
   - `markdown_allow_dangerous_html`: allow the usage of html in markdown (default: false)
   - `markdown_allow_dangerous_protocol`: allow the usage of custom protocols in markdown (default: false)
   - see [configuration.md](./configuration.md) for more details.
+- In the shell component, setting the `footer` parameter to the empty string (`''`) will now completely hide the footer, instead of showing the default one 
 
 ## 0.33.1 (2025-02-25)
 
