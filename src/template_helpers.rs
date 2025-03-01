@@ -286,6 +286,7 @@ impl CanHelp for MarkdownHelper {
         let mut options = markdown::Options::gfm();
         options.compile.allow_dangerous_html = self.allow_dangerous_html;
         options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
+        options.compile.allow_any_img_src = true;
         markdown::to_html_with_options(&as_str, &options)
             .map(JsonValue::String)
             .map_err(|e| e.to_string())

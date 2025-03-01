@@ -12,6 +12,7 @@
 - New configuration options:
   - `markdown_allow_dangerous_html`: allow the usage of html in markdown (default: false)
   - `markdown_allow_dangerous_protocol`: allow the usage of custom protocols in markdown (default: false)
+  - Allow data URLs in markdown images. This allows embedding base64 encoded images in any markdown field.
   - see [configuration.md](./configuration.md) for more details.
 - In the shell component, setting the `footer` parameter to the empty string (`''`) will now completely hide the footer, instead of showing the default one 
 
