@@ -15,6 +15,7 @@
   - Allow data URLs in markdown images. This allows embedding base64 encoded images in any markdown field.
   - see [configuration.md](./configuration.md) for more details.
 - In the shell component, setting the `footer` parameter to the empty string (`''`) will now completely hide the footer, instead of showing the default one 
+- New configuration option: `rtl` to display the page in right-to-left mode. This can be used to display Arabic, Hebrew, Persian, etc.
 
 ## 0.33.1 (2025-02-25)
 

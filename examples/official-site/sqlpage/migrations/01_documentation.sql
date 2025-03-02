@@ -1164,6 +1164,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('font', 'Specifies the font to be used for displaying text, which can be a valid font name from fonts.google.com or the path to a local WOFF2 font file starting with a slash (e.g., "/fonts/MyLocalFont.woff2").', 'TEXT', TRUE, TRUE),
     ('font_size', 'Font size on the page, in pixels. Set to 18 by default.', 'INTEGER', TRUE, TRUE),
     ('language', 'The language of the page. This can be used by search engines and screen readers to determine in which language the page is written.', 'TEXT', TRUE, TRUE),
+    ('rtl', 'Whether the page should be displayed in right-to-left mode. Used to display Arabic, Hebrew, Persian, etc.', 'BOOLEAN', TRUE, TRUE),
     ('refresh', 'Number of seconds after which the page should refresh. This can be useful to display dynamic content that updates automatically.', 'INTEGER', TRUE, TRUE),
     ('sidebar', 'Whether the menu defined by menu_item should be displayed on the left side of the page instead of the top. Introduced in v0.27.', 'BOOLEAN', TRUE, TRUE),
     ('sidebar_theme', 'Used with sidebar property, It can be set to "dark" to exclusively set the sidebar into dark theme.', 'BOOLEAN', TRUE, TRUE),
