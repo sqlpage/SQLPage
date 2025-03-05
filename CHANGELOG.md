@@ -18,6 +18,7 @@
 - New configuration option: `rtl` to display the page in right-to-left mode. This can be used to display Arabic, Hebrew, Persian, etc.
 - fix a crash when manipulating TINYINTs from microsoft sql server
 - update sqlparser to 0.55: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.55.0.md
+- fix a diplay issue when using intra-page anchor links inside tables with fixed headers
 
 ## 0.33.1 (2025-02-25)
 
