@@ -9,9 +9,9 @@ use async_trait::async_trait;
 use sqlparser::ast::helpers::attached_token::AttachedToken;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
-    FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName,
-    OneOrManyWithParens, SelectItem, SetExpr, Spanned, Statement, Value, Visit, VisitMut, Visitor,
-    VisitorMut,
+    FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, ObjectNamePart,
+    OneOrManyWithParens, SelectFlavor, SelectItem, SetExpr, Spanned, Statement, Value,
+    ValueWithSpan, Visit, VisitMut, Visitor, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -329,7 +329,7 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
                                 let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
                                 argument_col_names.push(argument_col_name.clone());
                                 let expr_to_insert = SelectItem::ExprWithAlias {
-                                    expr: std::mem::replace(expr, Expr::Value(Value::Null)),
+                                    expr: std::mem::replace(expr, Expr::value(Value::Null)),
                                     alias: Ident::new(argument_col_name),
                                 };
                                 select_items_to_add.push(SelectItemToAdd {
@@ -417,10 +417,21 @@ fn extract_static_simple_select(
             return None;
         };
         let value = match expr {
-            Expr::Value(Value::Boolean(b)) => Static(Bool(*b)),
-            Expr::Value(Value::Number(n, _)) => Static(Number(n.parse().ok()?)),
-            Expr::Value(Value::SingleQuotedString(s)) => Static(String(s.clone())),
-            Expr::Value(Value::Null) => Static(Null),
+            Expr::Value(ValueWithSpan {
+                value: Value::Boolean(b),
+                ..
+            }) => Static(Bool(*b)),
+            Expr::Value(ValueWithSpan {
+                value: Value::Number(n, _),
+                ..
+            }) => Static(Number(n.parse().ok()?)),
+            Expr::Value(ValueWithSpan {
+                value: Value::SingleQuotedString(s),
+                ..
+            }) => Static(String(s.clone())),
+            Expr::Value(ValueWithSpan {
+                value: Value::Null, ..
+            }) => Static(Null),
             e if is_simple_select_placeholder(e) => {
                 if let Some(p) = params_iter.next() {
                     Dynamic(p)
@@ -446,7 +457,10 @@ fn extract_static_simple_select(
 
 fn is_simple_select_placeholder(e: &Expr) -> bool {
     match e {
-        Expr::Value(Value::Placeholder(_)) => true,
+        Expr::Value(ValueWithSpan {
+            value: Value::Placeholder(_),
+            ..
+        }) => true,
         Expr::Cast {
             expr,
             data_type: DataType::Text | DataType::Varchar(_) | DataType::Char(_),
@@ -469,13 +483,15 @@ fn extract_set_variable(
         hivevar: false,
     } = stmt
     {
-        if let ([ident], [value]) = (name.as_mut_slice(), value.as_mut_slice()) {
+        if let ([ObjectNamePart::Identifier(ident)], [value]) =
+            (name.as_mut_slice(), value.as_mut_slice())
+        {
             let variable = if let Some(variable) = extract_ident_param(ident) {
                 variable
             } else {
                 StmtParam::PostOrGet(std::mem::take(&mut ident.value))
             };
-            let owned_expr = std::mem::replace(value, Expr::Value(Value::Null));
+            let owned_expr = std::mem::replace(value, Expr::value(Value::Null));
             let mut select_stmt: Statement = expr_to_statement(owned_expr);
             let delayed_functions = extract_toplevel_functions(&mut select_stmt);
             if let Err(err) = validate_function_calls(&select_stmt) {
@@ -576,7 +592,7 @@ impl ParameterExtractor {
             AnyKind::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
             _ => DataType::Text,
         };
-        let value = Expr::Value(Value::Placeholder(name));
+        let value = Expr::value(Value::Placeholder(name));
         Expr::Cast {
             expr: Box::new(value),
             data_type,
@@ -693,9 +709,10 @@ pub(super) fn function_args_to_stmt_params(
 
 fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
     match arg {
-        Expr::Value(Value::Placeholder(placeholder)) => {
-            Some(map_param(std::mem::take(placeholder)))
-        }
+        Expr::Value(ValueWithSpan {
+            value: Value::Placeholder(placeholder),
+            ..
+        }) => Some(map_param(std::mem::take(placeholder))),
         Expr::Identifier(ident) => extract_ident_param(ident),
         Expr::Function(Function {
             name: ObjectName(func_name_parts),
@@ -710,13 +727,17 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
             sqlpage_func_name(func_name_parts),
             args.as_mut_slice(),
         )),
-        Expr::Value(Value::SingleQuotedString(param_value)) => {
-            Some(StmtParam::Literal(std::mem::take(param_value)))
-        }
-        Expr::Value(Value::Number(param_value, _is_long)) => {
-            Some(StmtParam::Literal(param_value.clone()))
-        }
-        Expr::Value(Value::Null) => Some(StmtParam::Null),
+        Expr::Value(ValueWithSpan {
+            value: Value::SingleQuotedString(param_value),
+            ..
+        }) => Some(StmtParam::Literal(std::mem::take(param_value))),
+        Expr::Value(ValueWithSpan {
+            value: Value::Number(param_value, _is_long),
+            ..
+        }) => Some(StmtParam::Literal(param_value.clone())),
+        Expr::Value(ValueWithSpan {
+            value: Value::Null, ..
+        }) => Some(StmtParam::Null),
         Expr::BinaryOp {
             // 'str1' || 'str2'
             left,
@@ -741,7 +762,10 @@ fn expr_to_stmt_param(arg: &mut Expr) -> Option<StmtParam> {
                 }),
             ..
         }) if func_name_parts.len() == 1 => {
-            let func_name = func_name_parts[0].value.as_str();
+            let func_name = func_name_parts[0]
+                .as_ident()
+                .map(|ident| ident.value.as_str())
+                .unwrap_or_default();
             if func_name.eq_ignore_ascii_case("concat") {
                 let mut concat_args = Vec::with_capacity(args.len());
                 for arg in args {
@@ -829,7 +853,10 @@ impl VisitorMut for ParameterExtractor {
                     self.replace_with_placeholder(value, param);
                 }
             }
-            Expr::Value(Value::Placeholder(param)) if !self.is_own_placeholder(param) =>
+            Expr::Value(ValueWithSpan {
+                value: Value::Placeholder(param),
+                ..
+            }) if !self.is_own_placeholder(param) =>
             // this check is to avoid recursively replacing placeholders in the form of '?', or '$1', '$2', which we emit ourselves
             {
                 let name = std::mem::take(param);
@@ -860,10 +887,10 @@ impl VisitorMut for ParameterExtractor {
                 op: BinaryOperator::StringConcat,
                 right,
             } if self.db_kind == AnyKind::Mssql => {
-                let left = std::mem::replace(left.as_mut(), Expr::Value(Value::Null));
-                let right = std::mem::replace(right.as_mut(), Expr::Value(Value::Null));
+                let left = std::mem::replace(left.as_mut(), Expr::value(Value::Null));
+                let right = std::mem::replace(right.as_mut(), Expr::value(Value::Null));
                 *value = Expr::Function(Function {
-                    name: ObjectName(vec![Ident::new("CONCAT")]),
+                    name: ObjectName(vec![ObjectNamePart::Identifier(Ident::new("CONCAT"))]),
                     args: FunctionArguments::List(FunctionArgumentList {
                         args: vec![
                             FunctionArg::Unnamed(FunctionArgExpr::Expr(left)),
@@ -896,18 +923,22 @@ impl VisitorMut for ParameterExtractor {
 
 const SQLPAGE_FUNCTION_NAMESPACE: &str = "sqlpage";
 
-fn is_sqlpage_func(func_name_parts: &[Ident]) -> bool {
-    if let [Ident { value, .. }, Ident { .. }] = func_name_parts {
+fn is_sqlpage_func(func_name_parts: &[ObjectNamePart]) -> bool {
+    if let [ObjectNamePart::Identifier(Ident { value, .. }), ObjectNamePart::Identifier(Ident { .. })] =
+        func_name_parts
+    {
         value == SQLPAGE_FUNCTION_NAMESPACE
     } else {
         false
     }
 }
 
-fn extract_sqlpage_function_name(func_name_parts: &[Ident]) -> Option<SqlPageFunctionName> {
-    if let [Ident {
+fn extract_sqlpage_function_name(
+    func_name_parts: &[ObjectNamePart],
+) -> Option<SqlPageFunctionName> {
+    if let [ObjectNamePart::Identifier(Ident {
         value: namespace, ..
-    }, Ident { value, .. }] = func_name_parts
+    }), ObjectNamePart::Identifier(Ident { value, .. })] = func_name_parts
     {
         if namespace == SQLPAGE_FUNCTION_NAMESPACE {
             return SqlPageFunctionName::from_str(value).ok();
@@ -916,8 +947,10 @@ fn extract_sqlpage_function_name(func_name_parts: &[Ident]) -> Option<SqlPageFun
     None
 }
 
-fn sqlpage_func_name(func_name_parts: &[Ident]) -> &str {
-    if let [Ident { .. }, Ident { value, .. }] = func_name_parts {
+fn sqlpage_func_name(func_name_parts: &[ObjectNamePart]) -> &str {
+    if let [ObjectNamePart::Identifier(Ident { .. }), ObjectNamePart::Identifier(Ident { value, .. })] =
+        func_name_parts
+    {
         value
     } else {
         debug_assert!(
@@ -955,7 +988,7 @@ fn extract_json_columns(stmt: &Statement, db_kind: AnyKind) -> Vec<String> {
 fn is_json_function(expr: &Expr) -> bool {
     match expr {
         Expr::Function(function) => {
-            if let [Ident { value, .. }] = function.name.0.as_slice() {
+            if let [ObjectNamePart::Identifier(Ident { value, .. })] = function.name.0.as_slice() {
                 [
                     "json_object",
                     "json_array",
@@ -979,10 +1012,17 @@ fn is_json_function(expr: &Expr) -> bool {
             }
         }
         Expr::Cast { data_type, .. } => {
-            matches!(data_type, DataType::JSON | DataType::JSONB)
-                || (matches!(data_type, DataType::Custom(ObjectName(parts), _) if
-                    (parts.len() == 1)
-                    && (parts[0].value.eq_ignore_ascii_case("json"))))
+            if matches!(data_type, DataType::JSON | DataType::JSONB) {
+                true
+            } else if let DataType::Custom(ObjectName(parts), _) = data_type {
+                if let [ObjectNamePart::Identifier(ident)] = parts.as_slice() {
+                    ident.value.eq_ignore_ascii_case("json")
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
         }
         _ => false,
     }
@@ -1019,6 +1059,7 @@ fn expr_to_statement(expr: Expr) -> Statement {
                 window_before_qualify: false,
                 value_table_mode: None,
                 connect_by: None,
+                flavor: SelectFlavor::Standard,
             },
         ))),
         order_by: None,

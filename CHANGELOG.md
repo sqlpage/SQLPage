@@ -16,6 +16,8 @@
   - see [configuration.md](./configuration.md) for more details.
 - In the shell component, setting the `footer` parameter to the empty string (`''`) will now completely hide the footer, instead of showing the default one 
 - New configuration option: `rtl` to display the page in right-to-left mode. This can be used to display Arabic, Hebrew, Persian, etc.
+- fix a crash when manipulating TINYINTs from microsoft sql server
+- update sqlparser to 0.55: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.55.0.md
 
 ## 0.33.1 (2025-02-25)
 
