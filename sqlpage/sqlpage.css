@@ -93,6 +93,11 @@ code {
   box-shadow: 3px 0 3px var(--tblr-border-color);
 }
 
+/* Prevent the fixed headers from hiding the selected target row */
+.table-freeze-headers tr[id] {
+  scroll-margin-top: 2.1rem;
+}
+
 .article-text {
   font-size: 1.2em;
   line-height: 1.5em;
