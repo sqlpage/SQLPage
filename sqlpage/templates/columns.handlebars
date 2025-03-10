@@ -31,9 +31,11 @@
             {{/each}}
           </ul>
         </div>
+        {{#if button_text}}
         <div class="text-center">
           <a href="{{link}}" {{#if target}}target="{{target}}"{{/if}} class="btn w-100 {{#if button_color}}btn-{{button_color}}{{/if}}">{{button_text}}</a> 
         </div>
+        {{/if}}
       </div>
     </div>
   </div>
