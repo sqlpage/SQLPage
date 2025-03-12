@@ -109,6 +109,30 @@ For instance, if you want to create a custom `my_component` component, that disp
 
 [See the full custom component documentation](https://sql-page.com/custom_components.sql).
 
+## Directories
+
+SQLPage needs two important directories to work: the configuration directory, and the web root. 
+
+### Configuration directory
+
+The configuration directory is the `./sqlpage/` folder by default.
+In the [official docker image](https://hub.docker.com/r/lovasoa/sqlpage), it is located in `/etc/sqlpage/`.
+It can be configured using the `--config-dir` command-line argument, or the `SQLPAGE_CONFIGURATION_DIRECTORY` environment variable.
+
+It can contain
+
+ - the [`sqlpage.json`](#configuring-sqlpage) configuration file,
+ - the [`templates`](#custom-components) directory,
+ - the [`migrations`](#migrations) directory,
+ - the [connection management](#connection-management) sql files.
+
+### Web Root
+
+The web root is where you place your sql files.
+By default, it is set to the current working directory, from which the sqlpage binary is launched.
+In the [official docker image](https://hub.docker.com/r/lovasoa/sqlpage), the web root is set to `/var/www`.
+It can be configured using the `--web-root` command-line argument, or the `SQLPAGE_WEB_ROOT` environment variable.
+
 ## Connection management
 
 ### Connection initialization scripts
