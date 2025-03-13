@@ -8,7 +8,7 @@
 {{~/if~}}
 {{~#if contents_md~}}
     <div class="remove-bottom-margin {{#if center}}mx-auto{{/if}} {{#if article}}markdown article-text{{/if}}">
-        {{{~markdown contents_md~}}}
+        {{{~markdown contents_md unsafe~}}}
     </div>
 {{~/if~}}
 <p class="{{#if center}}mx-auto{{/if}} {{#if article}}markdown article-text{{/if}}">
@@ -30,7 +30,7 @@
         ">{{contents}}</span>
         {{~flush_delayed~}}
         {{~#if contents_md~}}
-            {{{markdown contents_md}}}
+            {{{markdown contents_md unsafe}}}
         {{~/if~}}
     {{~/each_row~}}
 </p>
