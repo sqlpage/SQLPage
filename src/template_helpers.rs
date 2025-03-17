@@ -281,7 +281,7 @@ impl MarkdownHelper {
         }
     }
 
-    fn system_options(&self, preset_name: &str) -> Result<markdown::Options, String> {
+    fn get_preset_options(&self, preset_name: &str) -> Result<markdown::Options, String> {
         let mut options = markdown::Options::gfm();
         options.compile.allow_dangerous_html = self.allow_dangerous_html;
         options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
@@ -325,7 +325,7 @@ impl CanHelp for MarkdownHelper {
             other => Cow::Owned(other.to_string()),
         };
 
-        let options = self.system_options(preset_name)?;
+        let options = self.get_preset_options(preset_name)?;
         markdown::to_html_with_options(&markdown_src, &options)
             .map(JsonValue::String)
             .map_err(|e| e.to_string())
