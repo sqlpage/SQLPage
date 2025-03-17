@@ -282,7 +282,6 @@ impl Default for MarkdownHelper {
 }
 
 impl MarkdownHelper {
-
     const ALLOW_UNSAFE: &'static str = "allow_unsafe";
 
     fn new(config: &impl MarkdownConfig) -> Self {
@@ -296,9 +295,10 @@ impl MarkdownHelper {
         let mut options = self.system_options();
 
         if !options.compile.allow_dangerous_html && args.len() > 1 {
-            let arg = &args[1];
-            if arg.relative_path() == Some(&Self::ALLOW_UNSAFE.to_string()) {
-                options.compile.allow_dangerous_html = arg.value() == &JsonValue::Bool(true)
+            if let Some(arg) = args.get(1) {
+                if arg.value().as_str() == Some(Self::ALLOW_UNSAFE) {
+                    options.compile.allow_dangerous_html = true
+                }
             }
         }
 
@@ -313,7 +313,6 @@ impl MarkdownHelper {
 
         options
     }
-
 }
 
 impl CanHelp for MarkdownHelper {
@@ -321,7 +320,7 @@ impl CanHelp for MarkdownHelper {
         let options = self.calculate_options(args);
         let as_str = match args {
             [v] | [v, _] => v.value(),
-            _ => return Err("expected one argument".to_string()),
+            _ => return Err("expected one or two arguments".to_string()),
         };
         let as_str = match as_str {
             JsonValue::String(s) => Cow::Borrowed(s),
@@ -593,9 +592,9 @@ fn replace_helper(text: &JsonValue, original: &JsonValue, replacement: &JsonValu
 
 #[cfg(test)]
 mod tests {
+    use crate::template_helpers::{rfc2822_date_helper, CanHelp, MarkdownHelper};
     use handlebars::{JsonValue, PathAndJson, ScopedJson};
     use serde_json::Value;
-    use crate::template_helpers::{rfc2822_date_helper, CanHelp, MarkdownHelper};
 
     const CONTENT_KEY: &'static str = "contents_md";
 
@@ -673,7 +672,7 @@ mod tests {
             let actual = helper
                 .call(&[
                     as_helper_arg(CONTENT_KEY, &contents()),
-                    to_path_and_json(MarkdownHelper::ALLOW_UNSAFE, allow_unsafe)
+                    to_path_and_json(MarkdownHelper::ALLOW_UNSAFE, allow_unsafe),
                 ])
                 .unwrap();
 
@@ -683,7 +682,7 @@ mod tests {
         #[test]
         fn test_html_blocks_are_allowed_when_allow_unsafe_is_true() {
             let helper = MarkdownHelper::default();
-            let allow_unsafe = Value::Bool(true);
+            let allow_unsafe = Value::String(String::from(MarkdownHelper::ALLOW_UNSAFE));
             let actual = helper
                 .call(&as_args_with_unsafe(&contents(), &allow_unsafe))
                 .unwrap();
@@ -691,7 +690,10 @@ mod tests {
             assert_eq!(Some(UNSAFE_MARKUP), actual.as_str());
         }
 
-        fn as_args_with_unsafe<'a>(contents: &'a Value, allow_unsafe: &'a Value) -> [PathAndJson<'a>; 2] {
+        fn as_args_with_unsafe<'a>(
+            contents: &'a Value,
+            allow_unsafe: &'a Value,
+        ) -> [PathAndJson<'a>; 2] {
             [
                 as_helper_arg(CONTENT_KEY, contents),
                 as_helper_arg(MarkdownHelper::ALLOW_UNSAFE, allow_unsafe),
@@ -701,7 +703,6 @@ mod tests {
         fn contents() -> Value {
             Value::String(UNSAFE_MARKUP.to_string())
         }
-
     }
 
     fn as_args(contents: &Value) -> [PathAndJson; 1] {
@@ -720,6 +721,4 @@ mod tests {
     fn as_json_context<'a>(path: &'a str, value: &'a Value) -> ScopedJson<'a> {
         ScopedJson::Context(value, vec![path.to_string()])
     }
-
-
 }
