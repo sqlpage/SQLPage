@@ -21,6 +21,7 @@
 - fix a diplay issue when using intra-page anchor links inside tables with fixed headers
 - Columns without buttons
   - In the columns component, when no button text is specified, no button is displayed (instead of an empty button)
+- New `unsafe_contents_md` property in the text component to allow rendering markdown with embedded HTML tags.
 
 ## 0.33.1 (2025-02-25)
 
