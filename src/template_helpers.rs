@@ -274,8 +274,6 @@ struct MarkdownHelper {
 }
 
 impl MarkdownHelper {
-    const ALLOW_UNSAFE: &'static str = "allow_unsafe";
-
     fn new(config: &impl MarkdownConfig) -> Self {
         Self {
             allow_dangerous_html: config.allow_dangerous_html(),
@@ -283,38 +281,39 @@ impl MarkdownHelper {
         }
     }
 
-    fn calculate_options(&self, args: &[PathAndJson]) -> markdown::Options {
-        let mut options = self.system_options();
-
-        if !options.compile.allow_dangerous_html && args.len() > 1 {
-            if let Some(arg) = args.get(1) {
-                if arg.value().as_str() == Some(Self::ALLOW_UNSAFE) {
-                    options.compile.allow_dangerous_html = true;
-                }
-            }
-        }
-
-        options
-    }
-
-    fn system_options(&self) -> markdown::Options {
+    fn system_options(&self, preset_name: &str) -> Result<markdown::Options, String> {
         let mut options = markdown::Options::gfm();
         options.compile.allow_dangerous_html = self.allow_dangerous_html;
         options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
         options.compile.allow_any_img_src = true;
 
-        options
+        match preset_name {
+            "default" => {}
+            "allow_unsafe" => {
+                options.compile.allow_dangerous_html = true;
+                options.compile.allow_dangerous_protocol = true;
+            }
+            _ => return Err(format!("unknown markdown preset: {preset_name}")),
+        }
+
+        Ok(options)
     }
 }
 
 impl CanHelp for MarkdownHelper {
     fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
-        let options = self.calculate_options(args);
-        let as_str = match args {
-            [v] | [v, _] => v.value(),
-            _ => return Err("expected one or two arguments".to_string()),
+        let (markdown_src_value, preset_name) = match args {
+            [v] => (v.value(), "default"),
+            [v, preset] => (
+                v.value(),
+                preset
+                    .value()
+                    .as_str()
+                    .ok_or("markdown template helper expects a string as preset name")?,
+            ),
+            _ => return Err("markdown template helper expects one or two arguments".to_string()),
         };
-        let as_str = match as_str {
+        let markdown_src = match markdown_src_value {
             JsonValue::String(s) => Cow::Borrowed(s),
             JsonValue::Array(arr) => Cow::Owned(
                 arr.iter()
@@ -326,7 +325,8 @@ impl CanHelp for MarkdownHelper {
             other => Cow::Owned(other.to_string()),
         };
 
-        markdown::to_html_with_options(&as_str, &options)
+        let options = self.system_options(preset_name)?;
+        markdown::to_html_with_options(&markdown_src, &options)
             .map(JsonValue::String)
             .map_err(|e| e.to_string())
     }
