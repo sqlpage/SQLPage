@@ -267,18 +267,10 @@ impl MarkdownConfig for AppConfig {
 }
 
 /// Helper to render markdown with configurable options
+#[derive(Default)]
 struct MarkdownHelper {
     allow_dangerous_html: bool,
     allow_dangerous_protocol: bool,
-}
-
-impl Default for MarkdownHelper {
-    fn default() -> Self {
-        Self {
-            allow_dangerous_html: false,
-            allow_dangerous_protocol: false,
-        }
-    }
 }
 
 impl MarkdownHelper {
@@ -297,7 +289,7 @@ impl MarkdownHelper {
         if !options.compile.allow_dangerous_html && args.len() > 1 {
             if let Some(arg) = args.get(1) {
                 if arg.value().as_str() == Some(Self::ALLOW_UNSAFE) {
-                    options.compile.allow_dangerous_html = true
+                    options.compile.allow_dangerous_html = true;
                 }
             }
         }
