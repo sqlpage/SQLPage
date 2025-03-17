@@ -11,6 +11,11 @@
         {{{~markdown contents_md~}}}
     </div>
 {{~/if~}}
+{{~#if unsafe_contents_md~}}
+    <div class="remove-bottom-margin {{#if center}}mx-auto{{/if}} {{#if article}}markdown article-text{{/if}}">
+        {{{~markdown unsafe_contents_md 'allow_unsafe'~}}}
+    </div>
+{{~/if~}}
 <p class="{{#if center}}mx-auto{{/if}} {{#if article}}markdown article-text{{/if}}">
     {{contents}}
     {{~#each_row~}}
@@ -31,6 +36,9 @@
         {{~flush_delayed~}}
         {{~#if contents_md~}}
             {{{markdown contents_md}}}
+        {{~/if~}}
+        {{~#if unsafe_contents_md~}}
+            {{{markdown unsafe_contents_md 'allow_unsafe'}}}
         {{~/if~}}
     {{~/each_row~}}
 </p>

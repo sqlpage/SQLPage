@@ -251,28 +251,69 @@ fn typeof_helper(v: &JsonValue) -> JsonValue {
     .into()
 }
 
+pub trait MarkdownConfig {
+    fn allow_dangerous_html(&self) -> bool;
+    fn allow_dangerous_protocol(&self) -> bool;
+}
+
+impl MarkdownConfig for AppConfig {
+    fn allow_dangerous_html(&self) -> bool {
+        self.markdown_allow_dangerous_html
+    }
+
+    fn allow_dangerous_protocol(&self) -> bool {
+        self.markdown_allow_dangerous_protocol
+    }
+}
+
 /// Helper to render markdown with configurable options
+#[derive(Default)]
 struct MarkdownHelper {
     allow_dangerous_html: bool,
     allow_dangerous_protocol: bool,
 }
 
 impl MarkdownHelper {
-    fn new(config: &AppConfig) -> Self {
+    fn new(config: &impl MarkdownConfig) -> Self {
         Self {
-            allow_dangerous_html: config.markdown_allow_dangerous_html,
-            allow_dangerous_protocol: config.markdown_allow_dangerous_protocol,
+            allow_dangerous_html: config.allow_dangerous_html(),
+            allow_dangerous_protocol: config.allow_dangerous_protocol(),
         }
+    }
+
+    fn get_preset_options(&self, preset_name: &str) -> Result<markdown::Options, String> {
+        let mut options = markdown::Options::gfm();
+        options.compile.allow_dangerous_html = self.allow_dangerous_html;
+        options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
+        options.compile.allow_any_img_src = true;
+
+        match preset_name {
+            "default" => {}
+            "allow_unsafe" => {
+                options.compile.allow_dangerous_html = true;
+                options.compile.allow_dangerous_protocol = true;
+            }
+            _ => return Err(format!("unknown markdown preset: {preset_name}")),
+        }
+
+        Ok(options)
     }
 }
 
 impl CanHelp for MarkdownHelper {
     fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
-        let as_str = match args {
-            [v] => v.value(),
-            _ => return Err("expected one argument".to_string()),
+        let (markdown_src_value, preset_name) = match args {
+            [v] => (v.value(), "default"),
+            [v, preset] => (
+                v.value(),
+                preset
+                    .value()
+                    .as_str()
+                    .ok_or("markdown template helper expects a string as preset name")?,
+            ),
+            _ => return Err("markdown template helper expects one or two arguments".to_string()),
         };
-        let as_str = match as_str {
+        let markdown_src = match markdown_src_value {
             JsonValue::String(s) => Cow::Borrowed(s),
             JsonValue::Array(arr) => Cow::Owned(
                 arr.iter()
@@ -283,11 +324,9 @@ impl CanHelp for MarkdownHelper {
             JsonValue::Null => Cow::Owned(String::new()),
             other => Cow::Owned(other.to_string()),
         };
-        let mut options = markdown::Options::gfm();
-        options.compile.allow_dangerous_html = self.allow_dangerous_html;
-        options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
-        options.compile.allow_any_img_src = true;
-        markdown::to_html_with_options(&as_str, &options)
+
+        let options = self.get_preset_options(preset_name)?;
+        markdown::to_html_with_options(&markdown_src, &options)
             .map(JsonValue::String)
             .map_err(|e| e.to_string())
     }
@@ -543,20 +582,135 @@ fn replace_helper(text: &JsonValue, original: &JsonValue, replacement: &JsonValu
     text_str.replace(original_str, replacement_str).into()
 }
 
-#[test]
-fn test_rfc2822_date() {
-    assert_eq!(
-        rfc2822_date_helper(&JsonValue::String("1970-01-02T03:04:05+02:00".into()))
-            .unwrap()
-            .as_str()
-            .unwrap(),
-        "Fri, 02 Jan 1970 03:04:05 +0200"
-    );
-    assert_eq!(
-        rfc2822_date_helper(&JsonValue::String("1970-01-02".into()))
-            .unwrap()
-            .as_str()
-            .unwrap(),
-        "Fri, 02 Jan 1970 00:00:00 +0000"
-    );
+#[cfg(test)]
+mod tests {
+    use crate::template_helpers::{rfc2822_date_helper, CanHelp, MarkdownHelper};
+    use handlebars::{JsonValue, PathAndJson, ScopedJson};
+    use serde_json::Value;
+
+    const CONTENT_KEY: &'static str = "contents_md";
+
+    #[test]
+    fn test_rfc2822_date() {
+        assert_eq!(
+            rfc2822_date_helper(&JsonValue::String("1970-01-02T03:04:05+02:00".into()))
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            "Fri, 02 Jan 1970 03:04:05 +0200"
+        );
+        assert_eq!(
+            rfc2822_date_helper(&JsonValue::String("1970-01-02".into()))
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            "Fri, 02 Jan 1970 00:00:00 +0000"
+        );
+    }
+
+    #[test]
+    fn test_basic_gfm_markdown() {
+        let helper = MarkdownHelper::default();
+
+        let contents = Value::String("# Heading".to_string());
+        let actual = helper.call(&as_args(&contents)).unwrap();
+
+        assert_eq!(Some("<h1>Heading</h1>"), actual.as_str());
+    }
+
+    // Optionally allow potentially unsafe html blocks
+    // See https://spec.commonmark.org/0.31.2/#html-blocks
+    mod markdown_html_blocks {
+
+        use super::*;
+
+        const UNSAFE_MARKUP: &'static str = "<table><tr><td>";
+        const ESCAPED_UNSAFE_MARKUP: &'static str = "&lt;table&gt;&lt;tr&gt;&lt;td&gt;";
+
+        #[test]
+        fn test_html_blocks_are_not_allowed_by_default() {
+            let helper = MarkdownHelper::default();
+            let actual = helper.call(&as_args(&contents())).unwrap();
+
+            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
+        }
+
+        #[test]
+        fn test_html_blocks_are_not_allowed_when_allow_unsafe_is_undefined() {
+            let helper = MarkdownHelper::default();
+            let allow_unsafe = Value::Null;
+            let actual = helper
+                .call(&as_args_with_unsafe(&contents(), &allow_unsafe))
+                .unwrap();
+
+            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
+        }
+
+        #[test]
+        fn test_html_blocks_are_not_allowed_when_allow_unsafe_is_false() {
+            let helper = MarkdownHelper::default();
+            let allow_unsafe = Value::Bool(false);
+            let actual = helper
+                .call(&as_args_with_unsafe(&contents(), &allow_unsafe))
+                .unwrap();
+
+            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
+        }
+
+        #[test]
+        fn test_html_blocks_are_not_allowed_when_allow_unsafe_option_is_missing() {
+            let helper = MarkdownHelper::default();
+            let allow_unsafe = ScopedJson::Missing;
+            let actual = helper
+                .call(&[
+                    as_helper_arg(CONTENT_KEY, &contents()),
+                    to_path_and_json(MarkdownHelper::ALLOW_UNSAFE, allow_unsafe),
+                ])
+                .unwrap();
+
+            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
+        }
+
+        #[test]
+        fn test_html_blocks_are_allowed_when_allow_unsafe_is_true() {
+            let helper = MarkdownHelper::default();
+            let allow_unsafe = Value::String(String::from(MarkdownHelper::ALLOW_UNSAFE));
+            let actual = helper
+                .call(&as_args_with_unsafe(&contents(), &allow_unsafe))
+                .unwrap();
+
+            assert_eq!(Some(UNSAFE_MARKUP), actual.as_str());
+        }
+
+        fn as_args_with_unsafe<'a>(
+            contents: &'a Value,
+            allow_unsafe: &'a Value,
+        ) -> [PathAndJson<'a>; 2] {
+            [
+                as_helper_arg(CONTENT_KEY, contents),
+                as_helper_arg(MarkdownHelper::ALLOW_UNSAFE, allow_unsafe),
+            ]
+        }
+
+        fn contents() -> Value {
+            Value::String(UNSAFE_MARKUP.to_string())
+        }
+    }
+
+    fn as_args(contents: &Value) -> [PathAndJson; 1] {
+        [as_helper_arg(CONTENT_KEY, contents)]
+    }
+
+    fn as_helper_arg<'a>(path: &'a str, value: &'a Value) -> PathAndJson<'a> {
+        let json_context = as_json_context(path, value);
+        to_path_and_json(path, json_context)
+    }
+
+    fn to_path_and_json<'a>(path: &'a str, value: ScopedJson<'a>) -> PathAndJson<'a> {
+        PathAndJson::new(Some(path.to_string()), value)
+    }
+
+    fn as_json_context<'a>(path: &'a str, value: &'a Value) -> ScopedJson<'a> {
+        ScopedJson::Context(value, vec![path.to_string()])
+    }
 }
