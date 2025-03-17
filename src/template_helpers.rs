@@ -304,13 +304,13 @@ impl CanHelp for MarkdownHelper {
     fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
         let (markdown_src_value, preset_name) = match args {
             [v] => (v.value(), "default"),
-            [v, preset] => (
-                v.value(),
-                preset
-                    .value()
-                    .as_str()
-                    .ok_or("markdown template helper expects a string as preset name")?,
-            ),
+            [v, preset] => {
+                let value = v.value();
+                let preset_name_value = preset.value();
+                let preset = preset_name_value.as_str()
+                    .ok_or_else(|| format!("markdown template helper expects a string as preset name. Got: {preset_name_value}"))?;
+                (value, preset)
+            }
             _ => return Err("markdown template helper expects one or two arguments".to_string()),
         };
         let markdown_src = match markdown_src_value {
@@ -626,60 +626,67 @@ mod tests {
 
         const UNSAFE_MARKUP: &'static str = "<table><tr><td>";
         const ESCAPED_UNSAFE_MARKUP: &'static str = "&lt;table&gt;&lt;tr&gt;&lt;td&gt;";
-
         #[test]
-        fn test_html_blocks_are_not_allowed_by_default() {
+        fn test_html_blocks_with_various_settings() {
             let helper = MarkdownHelper::default();
-            let actual = helper.call(&as_args(&contents())).unwrap();
+            let content = contents();
 
-            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
-        }
+            struct TestCase {
+                name: &'static str,
+                preset: Option<Value>,
+                expected_output: Result<&'static str, String>,
+            }
 
-        #[test]
-        fn test_html_blocks_are_not_allowed_when_allow_unsafe_is_undefined() {
-            let helper = MarkdownHelper::default();
-            let allow_unsafe = Value::Null;
-            let actual = helper
-                .call(&as_args_with_unsafe(&contents(), &allow_unsafe))
-                .unwrap();
+            let test_cases = [
+                TestCase {
+                    name: "default settings",
+                    preset: Some(Value::String("default".to_string())),
+                    expected_output: Ok(ESCAPED_UNSAFE_MARKUP),
+                },
+                TestCase {
+                    name: "allow_unsafe preset",
+                    preset: Some(Value::String("allow_unsafe".to_string())),
+                    expected_output: Ok(UNSAFE_MARKUP),
+                },
+                TestCase {
+                    name: "undefined allow_unsafe",
+                    preset: Some(Value::Null),
+                    expected_output: Err(
+                        "markdown template helper expects a string as preset name. Got: null"
+                            .to_string(),
+                    ),
+                },
+                TestCase {
+                    name: "allow_unsafe is false",
+                    preset: Some(Value::Bool(false)),
+                    expected_output: Err(
+                        "markdown template helper expects a string as preset name. Got: false"
+                            .to_string(),
+                    ),
+                },
+            ];
 
-            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
-        }
+            for case in test_cases {
+                let args = match case.preset {
+                    None => &as_args(&content)[..],
+                    Some(ref preset) => &as_args_with_unsafe(&content, preset)[..],
+                };
 
-        #[test]
-        fn test_html_blocks_are_not_allowed_when_allow_unsafe_is_false() {
-            let helper = MarkdownHelper::default();
-            let allow_unsafe = Value::Bool(false);
-            let actual = helper
-                .call(&as_args_with_unsafe(&contents(), &allow_unsafe))
-                .unwrap();
-
-            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
-        }
-
-        #[test]
-        fn test_html_blocks_are_not_allowed_when_allow_unsafe_option_is_missing() {
-            let helper = MarkdownHelper::default();
-            let allow_unsafe = ScopedJson::Missing;
-            let actual = helper
-                .call(&[
-                    as_helper_arg(CONTENT_KEY, &contents()),
-                    to_path_and_json(MarkdownHelper::ALLOW_UNSAFE, allow_unsafe),
-                ])
-                .unwrap();
-
-            assert_eq!(Some(ESCAPED_UNSAFE_MARKUP), actual.as_str());
-        }
-
-        #[test]
-        fn test_html_blocks_are_allowed_when_allow_unsafe_is_true() {
-            let helper = MarkdownHelper::default();
-            let allow_unsafe = Value::String(String::from(MarkdownHelper::ALLOW_UNSAFE));
-            let actual = helper
-                .call(&as_args_with_unsafe(&contents(), &allow_unsafe))
-                .unwrap();
-
-            assert_eq!(Some(UNSAFE_MARKUP), actual.as_str());
+                match helper.call(&args) {
+                    Ok(actual) => assert_eq!(
+                        case.expected_output.unwrap(),
+                        actual.as_str().unwrap(),
+                        "Failed on case: {}",
+                        case.name
+                    ),
+                    Err(e) => assert_eq!(
+                        case.expected_output.unwrap_err(),
+                        e,
+                        "Failed on case: {}",
+                        case.name
+                    ),
+                }
+            }
         }
 
         fn as_args_with_unsafe<'a>(
@@ -688,7 +695,7 @@ mod tests {
         ) -> [PathAndJson<'a>; 2] {
             [
                 as_helper_arg(CONTENT_KEY, contents),
-                as_helper_arg(MarkdownHelper::ALLOW_UNSAFE, allow_unsafe),
+                as_helper_arg("allow_unsafe", allow_unsafe),
             ]
         }
 
