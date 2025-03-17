@@ -6,7 +6,6 @@ use handlebars::{
     handlebars_helper, Context, Handlebars, HelperDef, JsonTruthy, PathAndJson, RenderError,
     RenderErrorReason, Renderable, ScopedJson,
 };
-use markdown::Options;
 use serde_json::Value as JsonValue;
 
 /// Simple static json helper
@@ -293,7 +292,7 @@ impl MarkdownHelper {
         }
     }
 
-    fn calculate_options(&self, args: &[PathAndJson]) -> Options {
+    fn calculate_options(&self, args: &[PathAndJson]) -> markdown::Options {
         let mut options = self.system_options();
 
         if !options.compile.allow_dangerous_html && args.len() > 1 {
@@ -306,8 +305,8 @@ impl MarkdownHelper {
         options
     }
 
-    fn system_options(&self) -> Options {
-        let mut options = Options::gfm();
+    fn system_options(&self) -> markdown::Options {
+        let mut options = markdown::Options::gfm();
         options.compile.allow_dangerous_html = self.allow_dangerous_html;
         options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
         options.compile.allow_any_img_src = true;
