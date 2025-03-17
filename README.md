@@ -149,7 +149,7 @@ To run on a server, you can use [the docker image](https://hub.docker.com/r/lova
 
 - [Install docker](https://docs.docker.com/get-docker/)
 - In a terminal, run the following command:
-  - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/SQLPage`
+  - `docker run -it --name sqlpage -p 8080:8080 --volume "$(pwd):/var/www" --rm lovasoa/sqlpage`
   - (`"$(pwd):/var/www"` allows sqlpage to run sql files from your current working directory)
 - Create a file called index.sql with the contents from [this example](./index.sql)
 - Open https://localhost:8080 in your browser
