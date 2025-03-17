@@ -16,7 +16,7 @@ Each page in SQLPage is composed of a `shell` component,
 which contains the page title and the navigation bar,
 and a series of normal components that display the data.
 
-The `shell` component is always present unless explicitly skipped via the `?_sqlpage_embed` query parameter. 
+The `shell` component is always present unless explicitly skipped via the `?_sqlpage_embed` query parameter.
 If you don''t call it explicitly, it will be invoked with the default parameters automatically before your first component
 invocation that tries to render data on the page.
 
@@ -88,7 +88,7 @@ For instance, you can easily create a multi-column layout with the following cod
 </div>
 ```
 
-For custom styling, you can write your own CSS files 
+For custom styling, you can write your own CSS files
 and include them in your page header.
 You can use the `css` parameter of the default [`shell`](./documentation.sql?component=shell#component) component,
 or create your own custom `shell` component with a `<link>` tag.
@@ -132,7 +132,7 @@ and SQLPage adds a few more:
 - `static_path`: returns the path to one of the static files bundled with SQLPage. Accepts arguments like `sqlpage.js`, `sqlpage.css`, `apexcharts.js`, etc.
 - `app_config`: returns the value of a configuration parameter from sqlpage''s configuration file, such as `max_uploaded_file_size`, `site_prefix`, etc.
 - `icon_img`: generate an svg icon from a *tabler* icon name
-- `markdown`: renders markdown text
+- `markdown`: renders markdown text. Accepts an optional 2nd argument `''allow_unsafe''` that will render embedded html blocks: use only on trusted content. See the [Commonmark spec](https://spec.commonmark.org/0.31.2/#html-blocks) for more info.
 - `each_row`: iterates over the rows of a query result
 - `typeof`: returns the type of a value (`string`, `number`, `boolean`, `object`, `array`, `null`)
 - `rfc2822_date`: formats a date as a string in the [RFC 2822](https://tools.ietf.org/html/rfc2822#section-3.3) format, that is, `Thu, 21 Dec 2000 16:01:07 +0200`
@@ -178,7 +178,7 @@ Some interesting examples are:
 
  - [The `shell` component](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/shell.handlebars)
  - [The `card` component](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/card.handlebars): simple yet complete example of a component that displays a list of items.
- - [The `table` component](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/table.handlebars): more complex example of a component that uses 
+ - [The `table` component](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates/table.handlebars): more complex example of a component that uses
     - the `eq`, `or`, and `sort` handlebars helpers,
     - the `../` syntax to access the parent context,
     - and the `@key` to work with objects whose keys are not known in advance.
