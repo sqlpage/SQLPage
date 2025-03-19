@@ -785,6 +785,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('empty_description', 'Text to display if the table does not contain any row. Defaults to "no data".', 'TEXT', TRUE, TRUE),
     ('freeze_columns', 'Whether to freeze the leftmost column of the table.', 'BOOLEAN', TRUE, TRUE),
     ('freeze_headers', 'Whether to freeze the top row of the table.', 'BOOLEAN', TRUE, TRUE),
+    ('freeze_footers', 'Whether to freeze the footer (bottom row) of the table, only works if that row has the `_sqlpage_footer` property applied to it.', 'BOOLEAN', TRUE, TRUE),
     ('raw_numbers', 'Name of a column whose values are numeric, but should be displayed as raw numbers without any formatting (no thousands separators, decimal separator is always a dot). This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('money', 'Name of a numeric column whose values should be displayed as currency amounts, in the currency defined by the `currency` property. This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('currency', 'The ISO 4217 currency code (e.g., USD, EUR, GBP, etc.) to use when formatting monetary values.', 'TEXT', TRUE, TRUE),
@@ -792,6 +793,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'COLOR', FALSE, TRUE),
+    ('_sqlpage_footer', 'Sets this row as the table footer. It is recommended that this parameter is applied to the last row. Added in v0.34.0.', 'BOOLEAN', FALSE, TRUE),
     ('_sqlpage_id', 'Sets the id of the html tabler row element. Allows you to make links targeting a specific row in a table.', 'TEXT', FALSE, TRUE)
 ) x;
 
@@ -808,11 +810,11 @@ INSERT INTO example(component, description, properties) VALUES
         {"icon": "timeline", "name": "[Chart](?component=chart)", "description": "Show graphs based on numeric data."}
         ]')),
     ('table', 'A sortable table with a colored footer showing the average value of its entries.',
-        json('[{"component":"table", "sort":true, "first_row_is_footer":true}, '||
-        '{"_sqlpage_color": "green", "Person": "Average", "Height": 180},' ||
+        json('[{"component":"table", "sort":true}, '||
         '{"Person": "Rudolph Lingens", "Height": 190},' ||
         '{"Person": "Jane Doe", "Height": 150},' ||
-        '{"Person": "John Doe", "Height": 200}]')),
+        '{"Person": "John Doe", "Height": 200},' ||
+        '{"_sqlpage_footer":true, "_sqlpage_color": "green", "Person": "Average", "Height": 180}]')),
     (
     'table',
     'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.
