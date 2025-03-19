@@ -10,9 +10,22 @@
   >
     <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}">
       <div class="card-body d-flex flex-column">
+        
         {{#if title}}
         <div class="d-flex align-items-center">
-          <div class="subheader text-truncate me-2">{{title}}</div>
+          <!-- Otsikko (title): mahdollisuus linkkiin ja targetiin -->
+          <div class="subheader text-truncate me-2">
+            {{#if title_link}}
+              <a href="{{title_link}}" 
+                 class="text-decoration-none"
+                 {{#if title_target}} target="{{title_target}}" rel="noopener noreferrer" {{/if}}>
+                {{title}}
+              </a>
+            {{else}}
+              {{title}}
+            {{/if}}
+          </div>
+          
           {{#if dropdown_item}}
           <div class="ms-auto lh-1">
             <div class="dropdown">
@@ -31,8 +44,21 @@
           {{/if}}
         </div>
         {{/if~}}
+        
         <div class="d-flex align-items-center mt-1">
-          <div class="h1 {{#if description}}mb-3{{else}}mb-0{{/if}} mt-auto text-nowrap text-truncate">{{value}}{{#if unit}} {{unit}}{{/if}}</div>
+          <!-- Arvo (value): mahdollisuus linkkiin ja targetiin -->
+          <div class="h1 {{#if description}}mb-3{{else}}mb-0{{/if}} mt-auto text-nowrap text-truncate">
+            {{#if value_link}}
+              <a href="{{value_link}}"
+                 class="text-decoration-none"
+                 {{#if value_target}} target="{{value_target}}" rel="noopener noreferrer" {{/if}}>
+                {{value}}{{#if unit}} {{unit}}{{/if}}
+              </a>
+            {{else}}
+              {{value}}{{#if unit}} {{unit}}{{/if}}
+            {{/if}}
+          </div>
+          
           {{#if (and change_percent (not description))}}
           <div class="ms-auto">
             {{#if change_percent}}
@@ -48,6 +74,7 @@
           </div>
           {{/if}}
         </div>
+        
         {{~#if description}}
         <div class="d-flex flex-wrap mb-2" title="{{description}}">
           <div class="text-truncate me-2">{{description}}</div>
@@ -65,6 +92,7 @@
           {{~/if~}}
         </div>
         {{~/if~}}
+        
         {{~#if progress_percent~}}
         <div class="progress progress-sm">
           <div class="progress-bar bg-{{progress_color}}" style="width: {{progress_percent}}%" role="progressbar" aria-valuenow="{{progress_percent}}" aria-valuemin="0" aria-valuemax="100" aria-label="{{progress_percent}}% Complete">
@@ -72,6 +100,7 @@
           </div>
         </div>
         {{~/if}}
+        
       </div>
     </div>
   </div>
