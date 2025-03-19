@@ -807,6 +807,12 @@ INSERT INTO example(component, description, properties) VALUES
         '{"icon": "table", "name": "[Table](?component=table)", "description": "Displays SQL results as a searchable table.", "_sqlpage_color": "red"},
         {"icon": "timeline", "name": "[Chart](?component=chart)", "description": "Show graphs based on numeric data."}
         ]')),
+    ('table', 'A table with a footer showing the average value of its entries.',
+        json('[{"component":"table", "sort":true, "first_row_is_footer":true}, '||
+        '{"Person": "Average", "Height": 180},' ||
+        '{"Person": "Joe Public", "Height": 190},' ||
+        '{"Person": "Jane Doe", "Height": 150},' ||
+        '{"Person": "John Doe", "Height": 200}]')),
     (
     'table',
     'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.
