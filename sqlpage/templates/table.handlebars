@@ -58,7 +58,7 @@
                         {{#if ../first_row_is_footer}}
                             {{! If first row is the footer we open the <tfoot> tag, while the <tbody> will be added after this row is rendered }}
                             <tfoot>
-                        {{#else}}
+                        {{else}}
                             {{! If there is no footer we open the <tbody> now, with a 'delay'ed closure }}
                             <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
                         {{/if}}
