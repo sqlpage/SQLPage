@@ -74,7 +74,7 @@ function apply_number_formatting(table_el) {
   const number_format_digits = table_el.dataset.number_format_digits;
   const currency = table_el.dataset.currency;
 
-  for (const tr_el of table_el.querySelectorAll("tbody tr")) {
+  for (const tr_el of table_el.querySelectorAll("tbody tr, tfoot tr")) {
     const cells = tr_el.getElementsByTagName("td");
     for (let idx = 0; idx < cells.length; idx++) {
       const column_type = col_types[idx];
