@@ -908,6 +908,12 @@ Numbers can be displayed
         "feature": "Performance",
         "description": "Designed for performance, with a focus on efficient data processing and minimal overhead.",
         "benefits": "Quickly processes large datasets, handles high volumes of requests, and minimizes server load."
+    },
+    {
+        "_sqlpage_footer": true,
+        "feature": "Summary",
+        "description": "Summarizes the features of the product.",
+        "benefits": "Provides a quick overview of the product''s features and benefits."
     }
 ]')
     ),

@@ -56,9 +56,8 @@
                         </thead>
                     <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
                     {{~/if~}}
-
-                    {{! If this data row should go into the footer, close the <tbody>, open the <tfoot> }}
-                    {{#if _sqlpage_footer}} </tbody><tfoot> {{/if}}
+                    {{!~ If this data row should go into the footer, close the <tbody>, open the <tfoot> ~}}
+                    {{~#if _sqlpage_footer~}} </tbody><tfoot> {{/if~}}
                     <tr class="{{_sqlpage_css_class}} {{#if _sqlpage_color}}bg-{{_sqlpage_color}}-lt{{/if}}" {{#if _sqlpage_id}}id="{{_sqlpage_id}}"{{/if}}>
                         {{~#each this~}}
                             {{~#if (not (starts_with @key '_sqlpage_'))~}}
@@ -79,10 +78,11 @@
                             {{/if~}}
                         {{~/each~}}
                     </tr>
-
-                    {{! After this <tr> has been rendered, if this was a footer, we need to reopen a new <tbody> }}
-                    {{! No need for another delayed closure since the previous one still applies }}
-                    {{#if _sqlpage_footer}} </tfoot><tbody class="table-tbody list"> {{/if}}
+                    {{!~ 
+                        After this <tr> has been rendered, if this was a footer, we need to reopen a new <tbody> 
+                        No need for another delayed closure since the previous one still applies
+                    ~}}
+                    {{~#if _sqlpage_footer}} </tfoot><tbody class="table-tbody list"> {{/if~}}
                 {{/each_row}}
                 {{flush_delayed}}
 
