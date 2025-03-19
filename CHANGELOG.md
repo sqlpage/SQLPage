@@ -22,6 +22,8 @@
 - Columns without buttons
   - In the columns component, when no button text is specified, no button is displayed (instead of an empty button)
 - New `unsafe_contents_md` property in the text component to allow rendering markdown with embedded HTML tags.
+- New `first_row_is_footer` property in table component. When enabled, the first row of table data will be put in the table footer instead of body.
+- New `freeze-footers` property in table component. If the is footer enabled, it will always be visible while the user scrolls the table body.
 
 ## 0.33.1 (2025-02-25)
 
