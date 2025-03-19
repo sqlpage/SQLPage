@@ -14,6 +14,7 @@
         <div class="table-responsive
             {{~#if freeze_columns}} table-freeze-columns text-nowrap {{/if~}}
             {{~#if freeze_headers}} table-freeze-headers text-nowrap {{/if~}}
+            {{~#if freeze_footers}} table-freeze-footers text-nowrap {{/if~}}
         ">
             <table class="table
             {{~#if striped_rows}} table-striped {{/if~}}
@@ -29,6 +30,7 @@
             {{#if description}}<caption class="text-center text-muted">{{description}}</caption>{{/if}}
                 {{#each_row}}
                     {{#if (eq @row_index 0)}}
+                        {{! Since we are inside the first data row, we always start with the header }}
                         <thead>
                         <tr>
                             {{#each this}}
@@ -52,9 +54,17 @@
                             {{/each}}
                         </tr>
                         </thead>
-                    <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
+                        {{! For the first row we have two choices, depending on the first_row_is_footer variable }}
+                        {{#if ../first_row_is_footer}}
+                            {{! If first row is the footer we open the <tfoot> tag, while the <tbody> will be added after this row is rendered }}
+                            <tfoot>
+                        {{#else}}
+                            {{! If there is no footer we open the <tbody> now, with a 'delay'ed closure }}
+                            <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
+                        {{/if}}
                     {{~/if~}}
 
+                    {{! Regardless of which row we are in, this part of the template renders the row data }}
                     <tr class="{{_sqlpage_css_class}} {{#if _sqlpage_color}}bg-{{_sqlpage_color}}-lt{{/if}}" {{#if _sqlpage_id}}id="{{_sqlpage_id}}"{{/if}}>
                         {{~#each this~}}
                             {{~#if (not (starts_with @key '_sqlpage_'))~}}
@@ -75,15 +85,37 @@
                             {{/if~}}
                         {{~/each~}}
                     </tr>
+
+                    {{! After this <tr> has been rendered, we need to check again if there is more work to do done }}
+                    {{#if (eq @row_index 0)}}
+                        {{#if ../first_row_is_footer}}
+                            {{! If the first row was the footer, 2 things must happen: we need to close the <tfoot> tag }}
+                            </tfoot>
+                            {{! and since it was not done before, the <tbody> tag needs to be added now, with a delayed </tbody> }}
+                            <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
+                        {{/if}}
+                    {{~/if~}}
                 {{/each_row}}
                 {{flush_delayed}}
-                {{#if (eq @row_index 0)}}
-                    <tbody class="table-tbody list">
-                        <tr>
-                            <td class="text-center">{{default empty_description 'No data'}}</td>
-                        </tr>
-                    </tbody>
-                {{/if}}
+
+                {{! If not enough rows were rendered, we need to place a 'No data' cell. "Not enough rows" depends on the footer settings }}
+                {{#if ../first_row_is_footer}}
+                    {{#if (lte @row_index 1)}}
+                        <tbody class="table-tbody list">
+                            <tr>
+                                <td class="text-center">{{default empty_description 'No data'}}</td>
+                            </tr>
+                        </tbody>
+                    {{/if}}
+                {{else}}
+                    {{#if (eq @row_index 0)}}
+                        <tbody class="table-tbody list">
+                            <tr>
+                                <td class="text-center">{{default empty_description 'No data'}}</td>
+                            </tr>
+                        </tbody>
+                    {{/if}}
+                {{~/if~}}
             </table>
         </div>
     </div>

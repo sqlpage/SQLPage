@@ -76,7 +76,17 @@ code {
   z-index: 2;
 }
 
+.table-freeze-footers tfoot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
 .table-freeze-headers {
+  max-height: 50vh;
+}
+
+.table-freeze-footers {
   max-height: 50vh;
 }
 
