@@ -27,7 +27,12 @@ select ''dynamic'' as component, sqlpage.run_sql(''common_header.sql'') as prope
 #### Notes
 
  - **recursion**: you can use `run_sql` to include a file that itself includes another file, and so on. However, be careful to avoid infinite loops. SQLPage will throw an error if the inclusion depth is superior to `max_recursion_depth` (10 by default).
- - **security**: be careful when using `run_sql` to include files. Never use `run_sql` with a user-provided parameter. Never run a file uploaded by a user, or a file that is not under your control.
+ - **security**: be careful when using `run_sql` to include files. 
+    - Never use `run_sql` with a user-provided parameter. 
+    - Never run a file uploaded by a user, or a file that is not under your control.
+    - Remember that users can also run the files you include with `sqlpage.run_sql(...)` directly just by loading the file in the browser.
+        - Make sure this does not allow users to bypass security measures you put in place such as [access control](/component.sql?component=authentication).
+        - If you need to include a file, but make it inaccessible to users, you can use hidden files and folders (starting with a `.`), or put files in the special `sqlpage/` folder that is not accessible to users.
  - **variables**: the included file will have access to the same variables (URL parameters, POST variables, etc.)
    as the calling file.
    If the included file changes the value of a variable or creates a new variable, the change will not be visible in the calling file.

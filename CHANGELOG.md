@@ -24,6 +24,7 @@
 - New `unsafe_contents_md` property in the text component to allow rendering markdown with embedded HTML tags.
 - New `_sqlpage_footer` property for table rows. When applied, that row will be rendered as the table footer. It is recommended to use this on the last data row.
 - New `freeze_footers` property in table component. If the footer is enabled, this will make it always visible. Works similarly to `freeze_headers`.
+- Hidden files and folders (those with a name starting with a `.`) are now inaccessible. This allows you to easily create internal files to use with `sqlpage.run_sql(...)` that will not be directly accessible.
 
 ## 0.33.1 (2025-02-25)
 

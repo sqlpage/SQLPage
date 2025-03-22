@@ -880,6 +880,22 @@ async fn test_request_body_base64() -> actix_web::Result<()> {
     Ok(())
 }
 
+#[actix_web::test]
+async fn test_hidden_files() {
+    let resp_result = req_path("/tests/.hidden.sql").await;
+    assert!(
+        resp_result.is_err(),
+        "Accessing a hidden file should be forbidden, but received success: {resp_result:?}"
+    );
+    let resp = resp_result.unwrap_err().error_response();
+    assert_eq!(resp.status(), http::StatusCode::FORBIDDEN);
+    assert!(
+        String::from_utf8_lossy(&resp.into_body().try_into_bytes().unwrap())
+            .to_lowercase()
+            .contains("forbidden"),
+    );
+}
+
 async fn get_request_to_with_data(
     path: &str,
     data: actix_web::web::Data<AppState>,
