@@ -122,7 +122,7 @@ impl FileSystem {
                             status: actix_web::http::StatusCode::FORBIDDEN,
                         });
                     }
-                    if c.to_str().map_or(false, |s| s.starts_with('.')) {
+                    if c.as_encoded_bytes().starts_with(b".") {
                         anyhow::bail!(ErrorWithStatus {
                             status: actix_web::http::StatusCode::FORBIDDEN,
                         });
