@@ -1,30 +1,113 @@
 # CHANGELOG.md
 
-## 0.34.0 (2025-03-23)
+## v0.34 (2025-03-23)
 
- - `delete_link` in the list component now submits a POST request, instead of being a simple link.
-  - This avoids accidental deletion by bots following links, and is more in line with HTTP semantics.
- - In the table component, the `_col_` prefix is now added to column names in CSS classes. This avoids conflicts with other CSS classes that might be used in the page.
-  - fixes https://github.com/sqlpage/SQLPage/issues/830
-  - This is a breaking change for custom CSS rules that target table columns by their name.
-    - Before: `.my_column { ... }`
-    - After: `._col_my_column { ... }`
-- New configuration options:
-  - `markdown_allow_dangerous_html`: allow the usage of html in markdown (default: false)
-  - `markdown_allow_dangerous_protocol`: allow the usage of custom protocols in markdown (default: false)
-  - Allow data URLs in markdown images. This allows embedding base64 encoded images in any markdown field.
-  - see [configuration.md](./configuration.md) for more details.
-- In the shell component, setting the `footer` parameter to the empty string (`''`) will now completely hide the footer, instead of showing the default one 
-- New configuration option: `rtl` to display the page in right-to-left mode. This can be used to display Arabic, Hebrew, Persian, etc.
-- fix a crash when manipulating TINYINTs from microsoft sql server
-- update sqlparser to 0.55: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.55.0.md
-- fix a diplay issue when using intra-page anchor links inside tables with fixed headers
-- Columns without buttons
-  - In the columns component, when no button text is specified, no button is displayed (instead of an empty button)
-- New `unsafe_contents_md` property in the text component to allow rendering markdown with embedded HTML tags.
-- New `_sqlpage_footer` property for table rows. When applied, that row will be rendered as the table footer. It is recommended to use this on the last data row.
-- New `freeze_footers` property in table component. If the footer is enabled, this will make it always visible. Works similarly to `freeze_headers`.
-- Hidden files and folders (those with a name starting with a `.`) are now inaccessible. This allows you to easily create internal files to use with `sqlpage.run_sql(...)` that will not be directly accessible.
+### ✨ Top Features at a Glance
+- **Safer deletion flows** in lists  
+- **Better table styling control** with CSS updates  
+- **Right-to-Left language support**  
+- **HTML-enhanced Markdown** in text components  
+- **Sticky table footers** for better data presentation  
+
+### 🔒 Security First
+#### **POST-based Deletions**  
+List component's `delete_link` now uses secure POST requests:  
+```sql
+SELECT 'list' AS component;
+SELECT 'Delete me' AS title, 'delete_item.sql?id=77' AS delete_link;
+```
+*Prevents accidental deletions by web crawlers and follows REST best practices*
+
+#### **Protected Internal Files**  
+- Files/folders starting with `.` (e.g., `.utils/`) are now inaccessible  
+- Perfect for internal scripts used with `sqlpage.run_sql()`
+
+### 🎨 UI & Component Upgrades
+#### **Table Styling Revolution**  
+```css
+/* Before: .price | After: */
+._col_price { 
+    background: #f8f9fa;
+    border-right: 2px solid #dee2e6;
+}
+```
+- New CSS class pattern: `._col_{column_name}`  
+- Fixes [#830](https://github.com/sqlpage/SQLPage/issues/830)  
+
+#### **Column component**  
+```sql
+SELECT 'columns' AS component;
+SELECT 'View details' AS title; -- No button shown
+```
+- Columns without button text now hide empty buttons  
+- Cleaner interfaces by default
+
+#### **Sticky Table Footers**  
+```sql
+SELECT 
+    'table' AS component,
+    true AS freeze_footers;
+SELECT 
+    'Total' AS label,
+    SUM(price) AS value,
+    true AS _sqlpage_footer;
+```
+- Keep summary rows visible during scroll  
+- Use `_sqlpage_footer` on your final data row
+
+### 🌍 Internationalization
+#### **Right-to-Left Support**  
+```sql
+SELECT 'shell' AS component, true AS rtl;
+```
+- Enable RTL mode per page via shell component  
+- Perfect for Arabic, Hebrew, and Persian content
+
+### 📝 Content Handling
+#### **Rich Text Power**  
+```sql
+SELECT 'text' AS component,
+       '<div class="alert alert-warning">
+       **Important!**
+       
+       New *HTML-enhanced* content.
+       </div>' 
+       AS unsafe_contents_md;
+```
+- New `unsafe_contents_md` allows HTML+Markdown mixing  
+
+#### **Base64 Image Support**  
+```markdown
+![Alt text](data:image/png;base64,iVBORw0KGg...)
+```
+- Embed images directly in Markdown fields  
+
+### ⚙️ Configuration Tweaks
+```json
+{
+  "markdown_allow_dangerous_html": false,
+  "markdown_allow_dangerous_protocol": false
+}
+```
+- **Markdown safety controls** to change markdown rendering settings
+
+### 🐛 Notable Fixes
+- **SQL Server**  
+  Fixed TINYINT handling crashes  
+- **Anchor Links**  
+  Corrected display in tables with fixed headers
+- **Form Inputs**  
+  Proper handling of `0` values in number fields
+
+### 💡 Upgrade Guide
+1. **CSS Updates**  
+   Search/replace `.your_column` → `._col_your_column` if you have custom css targetting tables.
+2. **Deletion Flows**  
+   Test list components using `delete_link`. 
+   You can now add a check that the request method is POST if you want to forbid deletions by simply loading pages.
+
+[View full configuration options →](./configuration.md)
+
 
 ## 0.33.1 (2025-02-25)
 
