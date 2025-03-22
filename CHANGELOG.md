@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.34.0 (unreleased)
+## 0.34.0 (2025-03-23)
 
  - `delete_link` in the list component now submits a POST request, instead of being a simple link.
   - This avoids accidental deletion by bots following links, and is more in line with HTTP semantics.
