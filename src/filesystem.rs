@@ -122,6 +122,11 @@ impl FileSystem {
                             status: actix_web::http::StatusCode::FORBIDDEN,
                         });
                     }
+                    if c.to_str().map_or(false, |s| s.starts_with('.')) {
+                        anyhow::bail!(ErrorWithStatus {
+                            status: actix_web::http::StatusCode::FORBIDDEN,
+                        });
+                    }
                 } else {
                     anyhow::bail!(
                     "Unsupported path: {path:?}. Path component '{component:?}' is not allowed."
