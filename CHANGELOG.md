@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## v0.35
+ - Fix tooltips not showing on line charts with one or more hidden series
+
 ## v0.34 (2025-03-23)
 
 ### ✨ Top Features at a Glance

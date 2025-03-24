@@ -215,6 +215,7 @@ sqlpage_chart = (() => {
             : undefined,
         y: {
           formatter: (value) => {
+            if (value == null) return "";
             if (is_timeseries && data.type === "rangeBar") {
               const d = new Date(value);
               if (d.getHours() === 0 && d.getMinutes() === 0)
