@@ -11,40 +11,29 @@ sqlpage_chart = (() => {
     }
   }
 
-  const tblrColors = Object.fromEntries(
-    [
-      "azure",
-      "red",
-      "lime",
-      "purple",
-      "yellow",
-      "gray-600",
-      "orange",
-      "pink",
-      "teal",
-      "indigo",
-      "cyan",
-      "green",
-      "blue-lt",
-      "yellow-lt",
-      "pink-lt",
-      "green-lt",
-      "orange-lt",
-      "blue",
-      "gray-500",
-      "gray-400",
-      "gray-300",
-      "gray-200",
-      "gray-100",
-      "gray-50",
-      "black",
-    ].map((c) => [
-      c,
-      getComputedStyle(document.documentElement).getPropertyValue(
-        `--tblr-${c}`,
-      ),
+  const tblrColors = [
+    ["blue", "#0054a6", "#6fb0e8"],
+    ["red", "#b71c1c", "#e06666"],
+    ["green", "#2fb344", "#5dc973"],
+    ["pink", "#d6336c", "#e05a8c"],
+    ["purple", "#ae3ec9", "#c264d9"],
+    ["orange", "#7a3214", "#ff8a3d"],
+    ["cyan", "#17a2b8", "#40b9cc"],
+    ["teal", "#0ca678", "#2dc08e"],
+    ["yellow", "#a69600", "#ffb733"],
+    ["indigo", "#4263eb", "#7085f0"],
+    ["azure", "#4299e1", "#6ab0e8"],
+    ["gray", "#555555", "#e0e0e0"],
+    ["black", "#000000", "#000000"],
+    ["white", "#ffffff", "#ffffff"],
+  ];
+  const colorNames = Object.fromEntries(
+    tblrColors.flatMap(([name, dark, light]) => [
+      [name, dark],
+      [`${name}-lt`, light],
     ]),
   );
+  const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
   /** @typedef { { [name:string]: {data:{x:number|string|Date,y:number}[], name:string} } } Series */
 
@@ -114,8 +103,9 @@ sqlpage_chart = (() => {
     if (data.ymax == null) data.ymax = undefined;
 
     const colors = [
-      ...data.colors.filter((c) => c).map((c) => tblrColors[c]),
-      ...Object.values(tblrColors),
+      ...data.colors.filter((c) => c).map((c) => colorNames[c]),
+      ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? dark : light)),
+      ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? light : dark)),
     ];
 
     let series = Object.values(series_map);
@@ -152,8 +142,8 @@ sqlpage_chart = (() => {
       dataLabels: {
         enabled: !!data.labels,
         dropShadow: {
-          enabled: true,
-          color: "#f6f8fb",
+          enabled: false,
+          color: "var(--tblr-primary-bg-subtle)",
         },
         formatter:
           data.type === "rangeBar"

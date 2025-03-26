@@ -2,6 +2,7 @@
 
 ## v0.35
  - Fix tooltips not showing on line charts with one or more hidden series
+ - Update default chart colors and text shadows for better readability with all themes
 
 ## v0.34 (2025-03-23)
 
