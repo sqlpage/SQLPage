@@ -43,11 +43,11 @@
                 <input type="hidden" name="{{name}}" {{#if id}}id="{{id}}" {{/if}}value="{{value}}">
             {{else}}
                 <label class="form-label mb-2 col-md-{{default width 12}}">
-                    {{default label name}}
+                    {{~default label name~}}
                     {{~#if required}}
                         <span class="text-danger ms-1" aria-label="required" title="required">*</span>
                         {{/if}}
-                    {{#if (eq type 'textarea')}}
+                    {{~#if (eq type 'textarea')~}}
                         <textarea
                             name="{{name}}"
                             class="form-control {{class}}"
@@ -64,7 +64,7 @@
                         >
                         {{~#if value includeZero=true}}{{value}}{{/if~}}
                         </textarea>
-                    {{else}}{{#if (eq type 'select')}}
+                    {{~else~}}{{#if (eq type 'select')~}}
                         <select name="{{name}}" 
                             class="form-select {{class}}"
                         {{~#if id}} id="{{id}}" {{/if~}}
@@ -123,14 +123,14 @@
                         </div>
                     {{/if}}
                     {{/if}}
-                    {{#if description}}
+                    {{~#if description~}}
                         <small class="form-hint mt-0">{{description}}</small>
-                    {{/if}}
-                    {{#if description_md}}
+                    {{~/if~}}
+                    {{~#if description_md~}}
                         <small class="form-hint mt-0">{{{markdown description_md}}}</small>
-                    {{/if}}
+                    {{~/if~}}
                 </label>
-            {{/if}}
+            {{~/if~}}
             {{/if}}
             {{#if (eq type "file")}}
                 <!-- Change the form encoding type if this is a file input-->
