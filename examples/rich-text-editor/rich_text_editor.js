@@ -59,7 +59,7 @@ function getMarkdownToolbarOptions() {
   return [
     [{ header: 1 }, { header: 2 }, { header: 3 }],
     ["bold", "italic"],
-    ["link", "image", "blockquote"],
+    ["link", "image", "blockquote", "code-block"],
     [{ list: "ordered" }, { list: "bullet" }],
     ["clean"],
   ];
