@@ -438,7 +438,7 @@ async fn persist_uploaded_file<'a>(
     // create the folder if it doesn't exist
     tokio::fs::create_dir_all(&target_folder)
         .await
-        .with_context(|| format!("unable to create folder {target_folder:?}"))?;
+        .with_context(|| format!("unable to create folder {}", target_folder.display()))?;
     let date = chrono::Utc::now().format("%Y-%m-%d_%Hh%Mm%Ss");
     let random_part = random_string_sync(8);
     let random_target_name = format!("{date}_{random_part}.{extension}");

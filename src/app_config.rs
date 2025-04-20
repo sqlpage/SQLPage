@@ -34,17 +34,23 @@ impl AppConfig {
                     config_file
                 ));
             }
-            log::debug!("Loading configuration from file: {config_file:?}");
+            log::debug!("Loading configuration from file: {}", config_file.display());
             load_from_file(config_file)?
         } else if let Some(config_dir) = &cli.config_dir {
-            log::debug!("Loading configuration from directory: {config_dir:?}");
+            log::debug!(
+                "Loading configuration from directory: {}",
+                config_dir.display()
+            );
             load_from_directory(config_dir)?
         } else {
             log::debug!("Loading configuration from environment");
             load_from_env()?
         };
         if let Some(web_root) = &cli.web_root {
-            log::debug!("Setting web root to value from the command line: {web_root:?}");
+            log::debug!(
+                "Setting web root to value from the command line: {}",
+                web_root.display()
+            );
             config.web_root.clone_from(web_root);
         }
         if let Some(config_dir) = &cli.config_dir {
@@ -56,8 +62,8 @@ impl AppConfig {
 
         if !config.configuration_directory.exists() {
             log::info!(
-                "Configuration directory does not exist, creating it: {:?}",
-                config.configuration_directory
+                "Configuration directory does not exist, creating it: {}",
+                config.configuration_directory.display()
             );
             std::fs::create_dir_all(&config.configuration_directory).with_context(|| {
                 format!(
@@ -80,6 +86,10 @@ impl AppConfig {
             .context("The provided configuration is invalid")?;
 
         log::debug!("Loaded configuration: {config:#?}");
+        log::info!(
+            "Configuration loaded from {}",
+            config.configuration_directory.display()
+        );
 
         Ok(config)
     }
@@ -302,7 +312,7 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 /// This should be called only once at the start of the program.
 pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
     let cannonical = cannonicalize_if_possible(directory);
-    log::debug!("Loading configuration from {cannonical:?}");
+    log::debug!("Loading configuration from {}", cannonical.display());
     let config_file = directory.join("sqlpage");
     let mut app_config = load_from_file(&config_file)?;
     app_config.configuration_directory = directory.into();
@@ -311,7 +321,7 @@ pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
 
 /// Parses and loads the configuration from the given file.
 pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
-    log::debug!("Loading configuration from file: {config_file:?}");
+    log::debug!("Loading configuration from file: {}", config_file.display());
     let config = Config::builder()
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
@@ -447,7 +457,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
         }
     }
 
-    log::warn!("No DATABASE_URL provided, and {configuration_directory:?} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
+    log::warn!("No DATABASE_URL provided, and {} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory.display());
     prefix + ":memory:?cache=shared"
 }
 

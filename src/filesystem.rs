@@ -51,9 +51,9 @@ impl FileSystem {
                     .file_modified_since_in_db(app_state, path, since)
                     .await
             }
-            (Err(e), _) => {
-                Err(e).with_context(|| format!("Unable to read local file metadata for {path:?}"))
-            }
+            (Err(e), _) => Err(e).with_context(|| {
+                format!("Unable to read local file metadata for {}", path.display())
+            }),
         }
     }
 
@@ -64,8 +64,12 @@ impl FileSystem {
         priviledged: bool,
     ) -> anyhow::Result<String> {
         let bytes = self.read_file(app_state, path, priviledged).await?;
-        String::from_utf8(bytes)
-            .with_context(|| format!("The file at {path:?} contains invalid UTF8 characters"))
+        String::from_utf8(bytes).with_context(|| {
+            format!(
+                "The file at {} contains invalid UTF8 characters",
+                path.display()
+            )
+        })
     }
 
     /**
@@ -78,7 +82,11 @@ impl FileSystem {
         priviledged: bool,
     ) -> anyhow::Result<Vec<u8>> {
         let local_path = self.safe_local_path(app_state, path, priviledged)?;
-        log::debug!("Reading file {path:?} from {local_path:?}");
+        log::debug!(
+            "Reading file {} from {}",
+            path.display(),
+            local_path.display()
+        );
         let local_result = tokio::fs::read(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
@@ -90,7 +98,9 @@ impl FileSystem {
                 status: actix_web::http::StatusCode::NOT_FOUND,
             }
             .into()),
-            (Err(e), _) => Err(e).with_context(|| format!("Unable to read local file {path:?}")),
+            (Err(e), _) => {
+                Err(e).with_context(|| format!("Unable to read local file {}", path.display()))
+            }
         }
     }
 
@@ -104,14 +114,16 @@ impl FileSystem {
             // Templates requests are always made to the static TEMPLATES_DIR, because this is where they are stored in the database
             // but when serving them from the filesystem, we need to serve them from the `SQLPAGE_CONFIGURATION_DIRECTORY/templates` directory
             if let Ok(template_path) = path.strip_prefix(TEMPLATES_DIR) {
-                let normalized = [
-                    &app_state.config.configuration_directory,
-                    Path::new("templates"),
-                    template_path,
-                ]
-                .iter()
-                .collect();
-                log::trace!("Normalizing template path {path:?} to {normalized:?}");
+                let normalized = app_state
+                    .config
+                    .configuration_directory
+                    .join("templates")
+                    .join(template_path);
+                log::trace!(
+                    "Normalizing template path {} to {}",
+                    path.display(),
+                    normalized.display()
+                );
                 return Ok(normalized);
             }
         } else {
@@ -149,7 +161,10 @@ impl FileSystem {
 
         // If not in local fs and we have db_fs, check database
         if !local_exists {
-            log::debug!("File {path:?} not found in local filesystem, checking database");
+            log::debug!(
+                "File {} not found in local filesystem, checking database",
+                path.display()
+            );
             if let Some(db_fs) = &self.db_fs_queries {
                 return db_fs.file_exists(app_state, path).await;
             }
@@ -245,9 +260,11 @@ impl DbFsQueries {
             .bind(since)
             .bind(path.display().to_string());
         log::trace!(
-            "Checking if file {path:?} was modified since {since} by executing query: \n\
+            "Checking if file {} was modified since {} by executing query: \n\
             {}\n\
             with parameters: {:?}",
+            path.display(),
+            since,
             self.was_modified.sql(),
             (since, path)
         );
@@ -256,7 +273,10 @@ impl DbFsQueries {
             .await
             .map(|modified| modified == Some((1,)))
             .with_context(|| {
-                format!("Unable to check when {path:?} was last modified in the database")
+                format!(
+                    "Unable to check when {} was last modified in the database",
+                    path.display()
+                )
             })
     }
 
@@ -278,7 +298,7 @@ impl DbFsQueries {
                     .into())
                 }
             })
-            .with_context(|| format!("Unable to read {path:?} from the database"))
+            .with_context(|| format!("Unable to read {} from the database", path.display()))
     }
 
     async fn file_exists(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
@@ -287,17 +307,21 @@ impl DbFsQueries {
             .query_as::<(i32,)>()
             .bind(path.display().to_string());
         log::trace!(
-            "Checking if file {path:?} exists by executing query: \n\
+            "Checking if file {} exists by executing query: \n\
             {}\n\
             with parameters: {:?}",
+            path.display(),
             self.exists.sql(),
             (path,)
         );
         let result = query.fetch_optional(&app_state.db.connection).await;
         log::debug!("DB File exists result: {result:?}");
-        result
-            .map(|result| result.is_some())
-            .with_context(|| format!("Unable to check if {path:?} exists in the database"))
+        result.map(|result| result.is_some()).with_context(|| {
+            format!(
+                "Unable to check if {} exists in the database",
+                path.display()
+            )
+        })
     }
 }
 

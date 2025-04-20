@@ -32,7 +32,7 @@ impl ParsedSqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> ParsedSqlFile {
         let dialect = dialect_for_db(db.connection.any_kind());
-        log::debug!("Parsing SQL file {source_path:?}");
+        log::debug!("Parsing SQL file {}", source_path.display());
         let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err, source_path),
@@ -48,7 +48,7 @@ impl ParsedSqlFile {
         Self {
             statements: vec![ParsedStatement::Error(
                 e.into()
-                    .context(format!("While parsing file {source_path:?}")),
+                    .context(format!("While parsing file {}", source_path.display())),
             )],
             source_path: source_path.to_path_buf(),
         }
@@ -300,57 +300,57 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
     let mut select_items_to_add: Vec<SelectItemToAdd> = Vec::new();
 
     for (position, select_item) in select_items.iter_mut().enumerate() {
-        match select_item {
-            SelectItem::ExprWithAlias {
-                expr:
-                    Expr::Function(Function {
-                        name: ObjectName(func_name_parts),
-                        args:
-                            FunctionArguments::List(FunctionArgumentList {
-                                args,
-                                duplicate_treatment: None,
-                                ..
-                            }),
-                        ..
-                    }),
-                alias,
-            } => {
-                if let Some(func_name) = extract_sqlpage_function_name(func_name_parts) {
-                    func_name_parts.clear(); // mark the function for deletion
-                    let mut argument_col_names = Vec::with_capacity(args.len());
-                    for (arg_idx, arg) in args.iter_mut().enumerate() {
-                        match arg {
-                            FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))
-                            | FunctionArg::Named {
-                                arg: FunctionArgExpr::Expr(expr),
-                                ..
-                            } => {
-                                let func_idx = delayed_function_calls.len();
-                                let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
-                                argument_col_names.push(argument_col_name.clone());
-                                let expr_to_insert = SelectItem::ExprWithAlias {
-                                    expr: std::mem::replace(expr, Expr::value(Value::Null)),
-                                    alias: Ident::new(argument_col_name),
-                                };
-                                select_items_to_add.push(SelectItemToAdd {
-                                    expr_to_insert,
-                                    position,
-                                });
-                            }
-                            other => {
-                                log::error!("Unsupported argument to {func_name}: {other}");
-                            }
-                        }
-                    }
-                    delayed_function_calls.push(DelayedFunctionCall {
-                        function: func_name,
-                        argument_col_names,
-                        target_col_name: alias.value.clone(),
+        let SelectItem::ExprWithAlias {
+            expr:
+                Expr::Function(Function {
+                    name: ObjectName(func_name_parts),
+                    args:
+                        FunctionArguments::List(FunctionArgumentList {
+                            args,
+                            duplicate_treatment: None,
+                            ..
+                        }),
+                    ..
+                }),
+            alias,
+        } = select_item
+        else {
+            continue;
+        };
+        let Some(func_name) = extract_sqlpage_function_name(func_name_parts) else {
+            continue;
+        };
+        func_name_parts.clear(); // mark the function for deletion
+        let mut argument_col_names = Vec::with_capacity(args.len());
+        for (arg_idx, arg) in args.iter_mut().enumerate() {
+            match arg {
+                FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))
+                | FunctionArg::Named {
+                    arg: FunctionArgExpr::Expr(expr),
+                    ..
+                } => {
+                    let func_idx = delayed_function_calls.len();
+                    let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
+                    argument_col_names.push(argument_col_name.clone());
+                    let expr_to_insert = SelectItem::ExprWithAlias {
+                        expr: std::mem::replace(expr, Expr::value(Value::Null)),
+                        alias: Ident::new(argument_col_name),
+                    };
+                    select_items_to_add.push(SelectItemToAdd {
+                        expr_to_insert,
+                        position,
                     });
                 }
+                other => {
+                    log::error!("Unsupported argument to {func_name}: {other}");
+                }
             }
-            _ => continue,
         }
+        delayed_function_calls.push(DelayedFunctionCall {
+            function: func_name,
+            argument_col_names,
+            target_col_name: alias.value.clone(),
+        });
     }
     // Insert the new select items (the function arguments) at the positions where the function calls were
     let mut it = select_items_to_add.into_iter().peekable();
