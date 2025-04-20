@@ -3,6 +3,7 @@
 ## v0.35
  - Fix tooltips not showing on line charts with one or more hidden series
  - Update default chart colors and text shadows for better readability with all themes
+ - Optimize memory layout by boxing large structs. Slightly reduces memory usage.
 
 ## v0.34 (2025-03-23)
 

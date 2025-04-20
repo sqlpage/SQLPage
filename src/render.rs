@@ -52,7 +52,7 @@ use actix_web::http::{header, StatusCode};
 use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{bail, format_err, Context as AnyhowContext};
 use awc::cookie::time::Duration;
-use handlebars::{BlockContext, Context, JsonValue, RenderError, Renderable};
+use handlebars::{BlockContext, JsonValue, RenderError, Renderable};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
@@ -510,7 +510,8 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
 }
 
 pub struct CsvBodyRenderer {
-    writer: csv_async::AsyncWriter<AsyncResponseWriter>,
+    // The writer is a large struct, so we store it on the heap
+    writer: Box<csv_async::AsyncWriter<AsyncResponseWriter>>,
     columns: Vec<String>,
 }
 
@@ -550,7 +551,7 @@ impl CsvBodyRenderer {
         tokio::io::AsyncWriteExt::flush(&mut async_writer).await?;
         let writer = builder.create_writer(async_writer);
         Ok(CsvBodyRenderer {
-            writer,
+            writer: Box::new(writer),
             columns: vec![],
         })
     }
@@ -870,13 +871,19 @@ impl<W: std::io::Write> handlebars::Output for HandlebarWriterOutput<W> {
 
 pub struct SplitTemplateRenderer {
     split_template: Arc<SplitTemplate>,
-    local_vars: Option<handlebars::LocalVars>,
-    ctx: Context,
+    // LocalVars is a large struct, so we store it on the heap
+    local_vars: Option<Box<handlebars::LocalVars>>,
+    ctx: Box<handlebars::Context>,
     app_state: Arc<AppState>,
     row_index: usize,
     component_index: usize,
-    nonce: JsonValue,
+    nonce: u64,
 }
+
+const _: () = assert!(
+    std::mem::size_of::<SplitTemplateRenderer>() <= 64,
+    "SplitTemplateRenderer should be small enough to be allocated on the stack"
+);
 
 impl SplitTemplateRenderer {
     fn new(
@@ -890,9 +897,9 @@ impl SplitTemplateRenderer {
             local_vars: None,
             app_state,
             row_index: 0,
-            ctx: Context::null(),
+            ctx: Box::new(handlebars::Context::null()),
             component_index,
-            nonce: nonce.into(),
+            nonce,
         }
     }
     fn name(&self) -> &str {
@@ -920,7 +927,7 @@ impl SplitTemplateRenderer {
             .block_mut()
             .expect("context created without block");
         blk.set_local_var("component_index", self.component_index.into());
-        blk.set_local_var("csp_nonce", self.nonce.clone());
+        blk.set_local_var("csp_nonce", self.nonce.into());
 
         *self.ctx.data_mut() = data;
         let mut output = HandlebarWriterOutput(writer);
@@ -930,9 +937,11 @@ impl SplitTemplateRenderer {
             &mut render_context,
             &mut output,
         )?;
-        self.local_vars = render_context
-            .block_mut()
-            .map(|blk| std::mem::take(blk.local_variables_mut()));
+        let blk = render_context.block_mut();
+        if let Some(blk) = blk {
+            let local_vars = std::mem::take(blk.local_variables_mut());
+            self.local_vars = Some(Box::new(local_vars));
+        }
         self.row_index = 0;
         Ok(())
     }
@@ -948,12 +957,12 @@ impl SplitTemplateRenderer {
             let blk = render_context
                 .block_mut()
                 .expect("context created without block");
-            *blk.local_variables_mut() = local_vars;
+            *blk.local_variables_mut() = *local_vars;
             let mut blk = BlockContext::new();
             blk.set_base_value(data);
             blk.set_local_var("component_index", self.component_index.into());
             blk.set_local_var("row_index", self.row_index.into());
-            blk.set_local_var("csp_nonce", self.nonce.clone());
+            blk.set_local_var("csp_nonce", self.nonce.into());
             render_context.push_block(blk);
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.list_content.render(
@@ -963,9 +972,11 @@ impl SplitTemplateRenderer {
                 &mut output,
             )?;
             render_context.pop_block();
-            self.local_vars = render_context
-                .block_mut()
-                .map(|blk| std::mem::take(blk.local_variables_mut()));
+            let blk = render_context.block_mut();
+            if let Some(blk) = blk {
+                let local_vars = std::mem::take(blk.local_variables_mut());
+                self.local_vars = Some(Box::new(local_vars));
+            }
             self.row_index += 1;
         }
         Ok(())
@@ -983,12 +994,12 @@ impl SplitTemplateRenderer {
             let mut render_context = handlebars::RenderContext::new(None);
             local_vars.put("row_index", self.row_index.into());
             local_vars.put("component_index", self.component_index.into());
-            local_vars.put("csp_nonce", self.nonce.clone());
+            local_vars.put("csp_nonce", self.nonce.into());
             log::trace!("Rendering the after_list template with the following local variables: {local_vars:?}");
             *render_context
                 .block_mut()
                 .expect("ctx created without block")
-                .local_variables_mut() = local_vars;
+                .local_variables_mut() = *local_vars;
             let mut output = HandlebarWriterOutput(writer);
             self.split_template.after_list.render(
                 &self.app_state.all_templates.handlebars,
