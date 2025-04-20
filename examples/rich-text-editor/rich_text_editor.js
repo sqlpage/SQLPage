@@ -57,7 +57,7 @@ function createAndReplaceTextarea(textarea) {
  */
 function getMarkdownToolbarOptions() {
   return [
-    [{ header: [1, 2, 3, false] }],
+    [{ header: 1 }, { header: 2 }, { header: 3 }],
     ["bold", "italic"],
     ["link", "image", "blockquote"],
     [{ list: "ordered" }, { list: "bullet" }],
