@@ -424,7 +424,7 @@ async fn persist_uploaded_file<'a>(
         return Ok(None);
     };
     let file_name = uploaded_file.file_name.as_deref().unwrap_or_default();
-    let extension = file_name.split('.').last().unwrap_or_default();
+    let extension = file_name.split('.').next_back().unwrap_or_default();
     if !allowed_extensions
         .clone()
         .any(|x| x.eq_ignore_ascii_case(extension))
@@ -446,14 +446,22 @@ async fn persist_uploaded_file<'a>(
     tokio::fs::copy(&uploaded_file.file.path(), &target_path)
         .await
         .with_context(|| {
-            format!("unable to copy uploaded file {field_name:?} to {target_path:?}")
+            format!(
+                "unable to copy uploaded file {field_name:?} to \"{}\"",
+                target_path.display()
+            )
         })?;
     // remove the WEB_ROOT prefix from the path, but keep the leading slash
     let path = "/".to_string()
         + target_path
             .strip_prefix(web_root)?
             .to_str()
-            .with_context(|| format!("unable to convert path {target_path:?} to a string"))?;
+            .with_context(|| {
+                format!(
+                    "unable to convert path \"{}\" to a string",
+                    target_path.display()
+                )
+            })?;
     Ok(Some(path))
 }
 
@@ -497,7 +505,7 @@ async fn read_file_bytes(request: &RequestInfo, path_str: &str) -> Result<Vec<u8
     } else {
         tokio::fs::read(path)
             .await
-            .with_context(|| format!("Unable to read file {path:?}"))
+            .with_context(|| format!("Unable to read file \"{}\"", path.display()))
     }
 }
 
@@ -609,7 +617,7 @@ async fn run_sql<'a>(
         use crate::webserver::database::DbItem::{Error, FinishedQuery, Row};
         match db_item {
             Row(row) => {
-                log::debug!("run_sql: row: {:?}", row);
+                log::debug!("run_sql: row: {row:?}");
                 seq.serialize_element(&row)?;
             }
             FinishedQuery => log::trace!("run_sql: Finished query"),
@@ -736,7 +744,7 @@ async fn request_body(request: &RequestInfo) -> Option<String> {
 /// application/x-www-form-urlencoded or multipart/form-data (in this case, the body is accessible via the `post_variables` field).
 async fn request_body_base64(request: &RequestInfo) -> Option<String> {
     let raw_body = request.raw_body.as_ref()?;
-    let mut base64_string = String::with_capacity((raw_body.len() * 4 + 2) / 3);
+    let mut base64_string = String::with_capacity((raw_body.len() * 4).div_ceil(3));
     base64::Engine::encode_string(
         &base64::engine::general_purpose::STANDARD,
         raw_body,

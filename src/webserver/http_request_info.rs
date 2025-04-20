@@ -194,7 +194,7 @@ async fn extract_multipart_post_data(
             .get_name()
             .unwrap_or_default()
             .to_string();
-        log::trace!("Parsing multipart field: {}", field_name);
+        log::trace!("Parsing multipart field: {field_name}");
         if let Some(filename) = filename {
             log::debug!("Extracting file: {field_name} ({filename})");
             let extracted = extract_file(http_req, field, &mut limits)
@@ -205,7 +205,10 @@ async fn extract_multipart_post_data(
                         config.max_uploaded_file_size / 1_024
                     )
                 })?;
-            log::trace!("Extracted file {field_name} to {:?}", extracted.file.path());
+            log::trace!(
+                "Extracted file {field_name} to \"{}\"",
+                extracted.file.path().display()
+            );
             if is_file_field_empty(&extracted).await? {
                 log::debug!("Ignoring empty file field: {field_name}");
                 continue;

@@ -33,7 +33,7 @@ use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
 use std::mem;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -309,7 +309,7 @@ async fn process_sql_request(
         .sql_file_cache
         .get_with_privilege(app_state, &sql_path, false)
         .await
-        .with_context(|| format!("Unable to get SQL file {sql_path:?}"))
+        .with_context(|| format!("Unable to get SQL file \"{}\"", sql_path.display()))
         .map_err(|e| anyhow_err_to_actix(e, app_state.config.environment))?;
     render_sql(req, sql_file).await
 }
@@ -528,7 +528,10 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
     }
     let mut server = HttpServer::new(factory);
     if let Some(unix_socket) = &config.unix_socket {
-        log::info!("Will start HTTP server on UNIX socket: {:?}", unix_socket);
+        log::info!(
+            "Will start HTTP server on UNIX socket: \"{}\"",
+            unix_socket.display()
+        );
         #[cfg(target_family = "unix")]
         {
             server = server
@@ -570,7 +573,7 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
 
 fn log_welcome_message(config: &AppConfig) {
     let address_message = if let Some(unix_socket) = &config.unix_socket {
-        format!("unix socket {unix_socket:?}")
+        format!("unix socket \"{}\"", unix_socket.display())
     } else if let Some(domain) = &config.https_domain {
         format!("https://{domain}")
     } else {
@@ -632,14 +635,18 @@ fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Err
 }
 
 #[cfg(target_family = "unix")]
-fn bind_unix_socket_err(e: std::io::Error, unix_socket: &PathBuf) -> anyhow::Error {
+fn bind_unix_socket_err(e: std::io::Error, unix_socket: &Path) -> anyhow::Error {
     let ctx = if e.kind() == std::io::ErrorKind::PermissionDenied {
         format!(
-            "You do not have permission to bind to the UNIX socket {unix_socket:?}. \
+            "You do not have permission to bind to the UNIX socket \"{}\". \
             You can change the socket path in the configuration file or check the permissions.",
+            unix_socket.display()
         )
     } else {
-        format!("Unable to bind to UNIX socket {unix_socket:?} {e:?}")
+        format!(
+            "Unable to bind to UNIX socket \"{}\" {e:?}",
+            unix_socket.display()
+        )
     };
     anyhow::anyhow!(e).context(ctx)
 }

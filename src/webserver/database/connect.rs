@@ -172,7 +172,7 @@ fn add_on_connection_handler(
 fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfig) {
     if let Some(sqlite_options) = options.as_sqlite_mut() {
         for extension_name in &config.sqlite_extensions {
-            log::info!("Loading SQLite extension: {}", extension_name);
+            log::info!("Loading SQLite extension: {extension_name}");
             *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
         }
         *sqlite_options = std::mem::take(sqlite_options)

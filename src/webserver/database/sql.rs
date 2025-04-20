@@ -32,7 +32,7 @@ impl ParsedSqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> ParsedSqlFile {
         let dialect = dialect_for_db(db.connection.any_kind());
-        log::debug!("Parsing SQL file {:?}", source_path);
+        log::debug!("Parsing SQL file {source_path:?}");
         let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err, source_path),
@@ -566,7 +566,7 @@ impl ParameterExtractor {
             db_kind,
             parameters: vec![],
         };
-        sql_ast.visit(&mut this);
+        let _ = sql_ast.visit(&mut this);
         this.parameters
     }
 

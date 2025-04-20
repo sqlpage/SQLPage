@@ -241,7 +241,7 @@ async fn json_object_params<'a>(
                 let evaluated = Box::pin(extract_req_param(val, request, db_connection)).await?;
                 map_ser.serialize_value(&evaluated)?;
             }
-        };
+        }
     }
     map_ser.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(result)?)))
@@ -273,7 +273,7 @@ async fn json_array_params<'a>(
                     Box::pin(extract_req_param(element, request, db_connection)).await?;
                 seq_ser.serialize_element(&evaluated)?;
             }
-        };
+        }
     }
     seq_ser.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(result)?)))

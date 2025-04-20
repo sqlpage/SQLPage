@@ -588,7 +588,7 @@ mod tests {
     use handlebars::{JsonValue, PathAndJson, ScopedJson};
     use serde_json::Value;
 
-    const CONTENT_KEY: &'static str = "contents_md";
+    const CONTENT_KEY: &str = "contents_md";
 
     #[test]
     fn test_rfc2822_date() {
@@ -624,8 +624,8 @@ mod tests {
 
         use super::*;
 
-        const UNSAFE_MARKUP: &'static str = "<table><tr><td>";
-        const ESCAPED_UNSAFE_MARKUP: &'static str = "&lt;table&gt;&lt;tr&gt;&lt;td&gt;";
+        const UNSAFE_MARKUP: &str = "<table><tr><td>";
+        const ESCAPED_UNSAFE_MARKUP: &str = "&lt;table&gt;&lt;tr&gt;&lt;td&gt;";
         #[test]
         fn test_html_blocks_with_various_settings() {
             let helper = MarkdownHelper::default();
@@ -672,7 +672,7 @@ mod tests {
                     Some(ref preset) => &as_args_with_unsafe(&content, preset)[..],
                 };
 
-                match helper.call(&args) {
+                match helper.call(args) {
                     Ok(actual) => assert_eq!(
                         case.expected_output.unwrap(),
                         actual.as_str().unwrap(),

@@ -34,20 +34,17 @@ impl AppConfig {
                     config_file
                 ));
             }
-            log::debug!("Loading configuration from file: {:?}", config_file);
+            log::debug!("Loading configuration from file: {config_file:?}");
             load_from_file(config_file)?
         } else if let Some(config_dir) = &cli.config_dir {
-            log::debug!("Loading configuration from directory: {:?}", config_dir);
+            log::debug!("Loading configuration from directory: {config_dir:?}");
             load_from_directory(config_dir)?
         } else {
             log::debug!("Loading configuration from environment");
             load_from_env()?
         };
         if let Some(web_root) = &cli.web_root {
-            log::debug!(
-                "Setting web root to value from the command line: {:?}",
-                web_root
-            );
+            log::debug!("Setting web root to value from the command line: {web_root:?}");
             config.web_root.clone_from(web_root);
         }
         if let Some(config_dir) = &cli.config_dir {
@@ -82,7 +79,7 @@ impl AppConfig {
             .validate()
             .context("The provided configuration is invalid")?;
 
-        log::debug!("Loaded configuration: {:#?}", config);
+        log::debug!("Loaded configuration: {config:#?}");
 
         Ok(config)
     }
@@ -305,7 +302,7 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 /// This should be called only once at the start of the program.
 pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
     let cannonical = cannonicalize_if_possible(directory);
-    log::debug!("Loading configuration from {:?}", cannonical);
+    log::debug!("Loading configuration from {cannonical:?}");
     let config_file = directory.join("sqlpage");
     let mut app_config = load_from_file(&config_file)?;
     app_config.configuration_directory = directory.into();
@@ -314,7 +311,7 @@ pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
 
 /// Parses and loads the configuration from the given file.
 pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
-    log::debug!("Loading configuration from file: {:?}", config_file);
+    log::debug!("Loading configuration from file: {config_file:?}");
     let config = Config::builder()
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
@@ -450,7 +447,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
         }
     }
 
-    log::warn!("No DATABASE_URL provided, and {:?} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory);
+    log::warn!("No DATABASE_URL provided, and {configuration_directory:?} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.");
     prefix + ":memory:?cache=shared"
 }
 
@@ -477,7 +474,7 @@ fn default_database_connection_acquire_timeout_seconds() -> f64 {
 
 fn default_web_root() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|e| {
-        log::error!("Unable to get current directory: {}", e);
+        log::error!("Unable to get current directory: {e}");
         PathBuf::from(&std::path::Component::CurDir)
     })
 }

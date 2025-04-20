@@ -204,10 +204,7 @@ impl DbFsQueries {
             PgTimeTz::type_info().into(),
             <str as Type<Postgres>>::type_info().into(),
         ];
-        log::debug!(
-            "Preparing the database filesystem was_modified_query: {}",
-            was_modified_query
-        );
+        log::debug!("Preparing the database filesystem was_modified_query: {was_modified_query}");
         db.prepare_with(&was_modified_query, param_types).await
     }
 
@@ -220,10 +217,7 @@ impl DbFsQueries {
             make_placeholder(db_kind, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
-        log::debug!(
-            "Preparing the database filesystem read_file_query: {}",
-            read_file_query
-        );
+        log::debug!("Preparing the database filesystem read_file_query: {read_file_query}");
         db.prepare_with(&read_file_query, param_types).await
     }
 
@@ -300,7 +294,7 @@ impl DbFsQueries {
             (path,)
         );
         let result = query.fetch_optional(&app_state.db.connection).await;
-        log::debug!("DB File exists result: {:?}", result);
+        log::debug!("DB File exists result: {result:?}");
         result
             .map(|result| result.is_some())
             .with_context(|| format!("Unable to check if {path:?} exists in the database"))

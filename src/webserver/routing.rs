@@ -79,7 +79,7 @@ where
         },
         Err(action) => action,
     };
-    debug!("Route: [{}] -> {:?}", path_and_query, result);
+    debug!("Route: [{path_and_query}] -> {result:?}");
     Ok(result)
 }
 

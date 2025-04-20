@@ -28,12 +28,12 @@ pub fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
                     .take()
                     .unwrap_or_else(|| row.try_get_raw(col.ordinal()).unwrap())
             });
-            log::trace!("Decoded value: {:?}", decoded);
+            log::trace!("Decoded value: {decoded:?}");
             decoded
         }
         Ok(_null) => Value::Null,
         Err(e) => {
-            log::warn!("Unable to extract value from row: {:?}", e);
+            log::warn!("Unable to extract value from row: {e:?}");
             Value::Null
         }
     }

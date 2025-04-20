@@ -189,7 +189,7 @@ impl HeaderContext {
         if remove == Some(&json!(true)) || remove == Some(&json!(1)) {
             cookie.make_removal();
             self.response.cookie(cookie);
-            log::trace!("Removing cookie {}", name);
+            log::trace!("Removing cookie {name}");
             return Ok(self);
         }
 
@@ -225,7 +225,7 @@ impl HeaderContext {
                 _ => bail!("expires must be a string or a number"),
             }));
         }
-        log::trace!("Setting cookie {}", cookie);
+        log::trace!("Setting cookie {cookie}");
         self.response
             .append_header((header::SET_COOKIE, cookie.encoded().to_string()));
         Ok(self)
@@ -300,10 +300,10 @@ impl HeaderContext {
         let password_hash = take_object_str(&mut data, "password_hash");
         let password = take_object_str(&mut data, "password");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
-            log::debug!("Authentication with password_hash = {:?}", password_hash);
+            log::debug!("Authentication with password_hash = {password_hash:?}");
             match verify_password_async(password_hash, password).await? {
                 Ok(()) => return Ok(PageContext::Header(self)),
-                Err(e) => log::info!("Password didn't match: {}", e),
+                Err(e) => log::info!("Password didn't match: {e}"),
             }
         }
         log::debug!("Authentication failed");
@@ -405,7 +405,7 @@ impl AnyRenderBodyContext {
         }
     }
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
-        log::error!("SQL error: {:?}", error);
+        log::error!("SQL error: {error:?}");
         match self {
             AnyRenderBodyContext::Html(render_context) => render_context.handle_error(error).await,
             AnyRenderBodyContext::Json(json_body_renderer) => {
@@ -766,7 +766,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
 
     pub async fn handle_result_and_log<R>(&mut self, result: &anyhow::Result<R>) {
         if let Err(e) = self.handle_result(result).await {
-            log::error!("{}", e);
+            log::error!("{e}");
         }
     }
 
@@ -838,14 +838,14 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
     }
 
     fn close_component(&mut self) -> anyhow::Result<()> {
-        if let Some(old_component) = self.current_component.as_mut().take() {
+        if let Some(old_component) = self.current_component.as_mut() {
             old_component.render_end(&mut self.writer)?;
         }
         Ok(())
     }
 
     pub async fn close(mut self) -> W {
-        if let Some(old_component) = self.current_component.as_mut().take() {
+        if let Some(old_component) = self.current_component.as_mut() {
             let res = old_component
                 .render_end(&mut self.writer)
                 .map_err(|e| format_err!("Unable to render the component closing: {e}"));
