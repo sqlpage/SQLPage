@@ -116,9 +116,15 @@ function initializeQuillEditor(editorDiv, toolbarOptions, initialValue) {
       toolbar: toolbarOptions,
     },
     formats: [
-      'bold', 'italic', 'link',
-      'header', 'list', 'blockquote',
-      'code', 'code-block', 'image'
+      "bold",
+      "italic",
+      "link",
+      "header",
+      "list",
+      "blockquote",
+      "code",
+      "code-block",
+      "image",
     ],
   });
   if (initialValue) {
@@ -261,52 +267,49 @@ function deltaToMdast(delta) {
   let textBuffer = "";
 
   for (const op of delta.ops) {
-    if (op.delete || op.retain) {
-      continue;
-    }
-
-    if (typeof op.insert === "string") {
-      const text = op.insert;
-      const attributes = op.attributes || {};
-
-      if (text === "\n") {
-        processLineBreak(
-          mdast,
-          currentParagraph,
-          attributes,
-          textBuffer,
-          currentList,
-        );
-        if (
-          !attributes.list &&
-          !attributes.blockquote &&
-          !attributes["code-block"] &&
-          !attributes.header
-        ) {
-          currentList = null;
-        }
-
-        // Reset paragraph and buffer after processing line break
-        currentParagraph = null;
-        textBuffer = "";
-        continue;
-      }
-
-      // Process regular text
-      const node = createTextNode(text, attributes);
-
-      if (!currentParagraph) {
-        currentParagraph = createParagraphNode();
-      }
-
-      textBuffer += text;
-      currentParagraph.children.push(node);
-    } else if (isImageInsert(op)) {
+    if (isImageInsert(op)) {
       if (!currentParagraph) {
         currentParagraph = createParagraphNode();
       }
       currentParagraph.children.push(createImageNode(op));
     }
+    if (typeof op.insert !== "string") continue;
+
+    const text = op.insert;
+    const attributes = op.attributes || {};
+
+    if (text === "\n") {
+      processLineBreak(
+        mdast,
+        currentParagraph,
+        attributes,
+        textBuffer,
+        currentList,
+      );
+      if (
+        !attributes.list &&
+        !attributes.blockquote &&
+        !attributes["code-block"] &&
+        !attributes.header
+      ) {
+        currentList = null;
+      }
+
+      // Reset paragraph and buffer after processing line break
+      currentParagraph = null;
+      textBuffer = "";
+      continue;
+    }
+
+    // Process regular text
+    const node = createTextNode(text, attributes);
+
+    if (!currentParagraph) {
+      currentParagraph = createParagraphNode();
+    }
+
+    textBuffer += text;
+    currentParagraph.children.push(node);
   }
 
   if (currentParagraph) {
@@ -537,12 +540,19 @@ function processHeaderLineBreak(mdast, textBuffer, attributes) {
  * @returns {void}
  */
 function processCodeBlockLineBreak(mdast, textBuffer, attributes) {
-  mdast.children.push({
-    type: "code",
-    value: textBuffer,
-    lang:
-      attributes["code-block"] === "plain" ? null : attributes["code-block"],
-  });
+  const lang =
+    attributes["code-block"] === "plain" ? null : attributes["code-block"];
+  // Two code blocks in a row are merged into one
+  const lastChild = mdast.children[mdast.children.length - 1];
+  if (lastChild && lastChild.type === "code" && lastChild.lang === lang) {
+    lastChild.value += `\n${textBuffer}`;
+  } else {
+    mdast.children.push({
+      type: "code",
+      value: textBuffer,
+      lang,
+    });
+  }
 }
 
 /**
