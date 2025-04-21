@@ -32,40 +32,17 @@ import { toMarkdown as mdastUtilToMarkdown } from "https://esm.sh/mdast-util-to-
  * @returns {string} - Markdown representation.
  */
 function deltaToMarkdown(delta) {
-  try {
-    const mdastTree = deltaToMdast(delta);
-    const options = {
-      bullet: "*",
-      listItemIndent: "one",
-      handlers: {},
-      unknownHandler: (node) => {
-        console.warn(`Unknown node type encountered: ${node.type}`, node);
-        return false;
-      },
-    };
-    return mdastUtilToMarkdown(mdastTree, options);
-  } catch (error) {
-    console.error("Error during Delta to Markdown conversion:", error);
-    console.warn("Falling back to basic text extraction");
-    return extractPlainTextFromDelta(delta);
-  }
-}
-
-/**
- * Extracts plain text from a Quill Delta object.
- * @param {QuillDelta} delta - Quill Delta object.
- * @returns {string} - Plain text extracted from the delta.
- */
-function extractPlainTextFromDelta(delta) {
-  try {
-    return delta.ops
-      .map((op) => (typeof op.insert === "string" ? op.insert : ""))
-      .join("")
-      .trim();
-  } catch (e) {
-    console.error("Fallback extraction also failed:", e);
-    return "";
-  }
+  const mdastTree = deltaToMdast(delta);
+  const options = {
+    bullet: "*",
+    listItemIndent: "one",
+    handlers: {},
+    unknownHandler: (node) => {
+      console.warn(`Unknown node type encountered: ${node.type}`, node);
+      return false;
+    },
+  };
+  return mdastUtilToMarkdown(mdastTree, options);
 }
 
 /**
@@ -302,14 +279,14 @@ function deltaToMdast(delta) {
     }
 
     // Process regular text
-    const node = createTextNode(text, attributes);
+    const nodes = createTextNodes(text, attributes);
 
     if (!currentParagraph) {
       currentParagraph = createParagraphNode();
     }
 
     textBuffer += text;
-    currentParagraph.children.push(node);
+    currentParagraph.children.push(...nodes);
   }
 
   if (currentParagraph) {
@@ -368,43 +345,42 @@ function createImageNode(op) {
  * Creates a text MDAST node with optional formatting.
  * @param {string} text - The text content.
  * @param {Object} attributes - The formatting attributes.
- * @returns {MdastNode} - The formatted text node.
+ * @returns {MdastNode[]} - The formatted text nodes.
  */
-function createTextNode(text, attributes) {
-  let node = {
-    type: "text",
-    value: text,
-  };
+function createTextNodes(text, attributes) {
+  let nodes = text.split("\n").flatMap((value, i) => [
+    ...(i > 0 ? [{ type: "break" }] : []),
+    {
+      type: "text",
+      value,
+    },
+  ]);
 
   if (attributes.bold) {
-    node = wrapNodeWith(node, "strong");
+    nodes = [wrapNodesWith(nodes, "strong")];
   }
 
   if (attributes.italic) {
-    node = wrapNodeWith(node, "emphasis");
+    nodes = [wrapNodesWith(nodes, "emphasis")];
   }
 
   if (attributes.link) {
-    node = {
-      type: "link",
-      url: attributes.link,
-      children: [node],
-    };
+    nodes = [{ ...wrapNodesWith(nodes, "link"), url: attributes.link }];
   }
 
-  return node;
+  return nodes;
 }
 
 /**
  * Wraps a node with a formatting container.
- * @param {MdastNode} node - The node to wrap.
+ * @param {MdastNode[]} children - The node to wrap.
  * @param {string} type - The type of container.
  * @returns {MdastNode} - The wrapped node.
  */
-function wrapNodeWith(node, type) {
+function wrapNodesWith(children, type) {
   return {
     type: type,
-    children: [node],
+    children,
   };
 }
 
