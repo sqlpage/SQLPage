@@ -24,6 +24,10 @@ Here are the available configuration options and their default values:
 | `configuration_directory`                     | `./sqlpage/`                                                | The directory where the `sqlpage.json` file is located. This is used to find the path to [`templates/`](https://sql-page.com/custom_components.sql), [`migrations/`](https://sql-page.com/your-first-sql-website/migrations.sql), and `on_connect.sql`. Obviously, this configuration parameter can be set only through environment variables, not through the `sqlpage.json` file itself in order to find the `sqlpage.json` file. Be careful not to use a path that is accessible from the public WEB_ROOT |
 | `allow_exec`                                  | false                                                       | Allow usage of the `sqlpage.exec` function. Do this only if all users with write access to sqlpage query files and to the optional `sqlpage_files` table on the database are trusted.                                                                  |
 | `max_uploaded_file_size`                      | 5242880                                                     | Maximum size of forms and uploaded files in bytes. Defaults to 5 MiB.                                                                                                                                                                                            |
+| `oidc_issuer_url`                            |                                                           | The base URL of the [OpenID Connect provider](#openid-connect-oidc-authentication). Required for enabling Single Sign-On. |
+| `oidc_client_id`                             | sqlpage                                                   | The ID that identifies your SQLPage application to the OIDC provider. You get this when registering your app with the provider. |
+| `oidc_client_secret`                         |                                                           | The secret key for your SQLPage application. Keep this confidential as it allows your app to authenticate with the OIDC provider. |
+| `oidc_scopes`                                | openid email profile                                      | Space-separated list of [scopes](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) your app requests from the OIDC provider. |
 | `max_pending_rows`                            | 256                                                         | Maximum number of rendered rows that can be queued up in memory when a client is slow to receive them. |
 | `compress_responses`                          | true                                                        | When the client supports it, compress the http response body. This can save bandwidth and speed up page loading on slow connections, but can also increase CPU usage and cause rendering delays on pages that take time to render (because streaming responses are buffered for longer than necessary). |
 | `https_domain`                                |                                                             | Domain name to request a certificate for. Setting this parameter will automatically make SQLPage listen on port 443 and request an SSL certificate. The server will take a little bit longer to start the first time it has to request a certificate.  |
@@ -82,6 +86,43 @@ postgres://my_user:p%40ss@localhost:5432/my_database?sslmode=verify-ca&sslrootce
 If the `database_password` configuration parameter is set, it will override any password specified in the `database_url`.
 It does not need to be percent-encoded.
 This allows you to keep the password separate from the connection string, which can be useful for security purposes, especially when storing configurations in version control systems.
+
+### OpenID Connect (OIDC) Authentication
+
+OpenID Connect (OIDC) is a secure way to let users log in to your SQLPage application using their existing accounts from popular services. When OIDC is configured, all access to your SQLPage application will require users to log in through the chosen provider. This enables Single Sign-On (SSO), allowing you to restrict access to your application without having to handle authentication yourself.
+
+To set up OIDC, you'll need to:
+1. Register your application with an OIDC provider
+2. Configure the provider's details in SQLPage
+
+#### Cloud Identity Providers
+
+- **Google**
+  - Documentation: https://developers.google.com/identity/openid-connect/openid-connect
+  - Set *oidc_issuer_url* to `https://accounts.google.com`
+
+- **Microsoft Entra ID** (formerly Azure AD)
+  - Documentation: https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app
+  - Set *oidc_issuer_url* to `https://login.microsoftonline.com/{tenant}/v2.0` 
+    - ([Find your tenant name](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc#find-your-apps-openid-configuration-document-uri))
+
+- **GitHub**
+  - Issuer URL: `https://github.com`
+  - Documentation: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+
+#### Self-Hosted Solutions
+
+- **Keycloak**
+  - Issuer URL: `https://your-keycloak-server/auth/realms/your-realm`
+  - [Setup Guide](https://www.keycloak.org/getting-started/getting-started-docker)
+
+- **Authentik**
+  - Issuer URL: `https://your-authentik-server/application/o/your-application`
+  - [Setup Guide](https://goauthentik.io/docs/providers/oauth2)
+
+After registering your application with the provider, you'll receive a client ID and client secret. These are used to configure SQLPage to work with your chosen provider.
+
+Note: OIDC is optional. If you don't configure it, your SQLPage application will be accessible without authentication.
 
 ### Example `.env` file
 
