@@ -14,18 +14,28 @@ function deltaToMarkdown(delta) {
     const options = {
       bullet: "*",
       listItemIndent: "one",
+      handlers: {
+        // Custom handlers can be added here if needed
+      },
+      unknownHandler: (node) => {
+        console.warn(`Unknown node type encountered: ${node.type}`, node);
+        // Return false to fall back to the default handler
+        return false;
+      }
     };
     const markdown = mdastUtilToMarkdown(mdastTree, options); // Convert MDAST to Markdown
     console.log("markdown", markdown);
     return markdown;
   } catch (error) {
     console.error("Error during Delta to Markdown conversion:", error);
+    console.warn("Falling back to basic text extraction");
     try {
       return delta.ops
         .map((op) => (typeof op.insert === "string" ? op.insert : ""))
         .join("")
         .trim();
     } catch (e) {
+      console.error("Fallback extraction also failed:", e);
       return "";
     }
   }
@@ -173,14 +183,11 @@ function deltaToMdast(delta) {
   };
 
   let currentParagraph = null;
+  let currentList = null;
   let textBuffer = "";
 
   for (const op of delta.ops) {
-    if (op.delete) {
-      continue;
-    }
-
-    if (op.retain) {
+    if (op.delete || op.retain) {
       continue;
     }
 
@@ -220,15 +227,88 @@ function deltaToMdast(delta) {
             }
             currentParagraph = null;
             textBuffer = "";
+          } else if (attributes["code-block"]) {
+            const codeBlock = {
+              type: "code",
+              value: textBuffer,
+              lang: attributes["code-block"] === "plain" ? null : attributes["code-block"],
+            };
+            mdast.children.push(codeBlock);
+            currentParagraph = null;
+            textBuffer = "";
+          } else if (attributes.list) {
+            if (!currentList || currentList.ordered !== (attributes.list === "ordered")) {
+              currentList = {
+                type: "list",
+                ordered: attributes.list === "ordered",
+                spread: false,
+                children: [],
+              };
+              mdast.children.push(currentList);
+            }
+            
+            const listItem = {
+              type: "listItem",
+              spread: false,
+              children: [currentParagraph],
+            };
+            
+            currentList.children.push(listItem);
+            currentParagraph = null;
+            textBuffer = "";
+          } else if (attributes.blockquote) {
+            const blockquote = {
+              type: "blockquote",
+              children: [currentParagraph],
+            };
+            mdast.children.push(blockquote);
+            currentParagraph = null;
+            textBuffer = "";
           } else {
             mdast.children.push(currentParagraph);
             currentParagraph = null;
+            textBuffer = "";
           }
+        } else if (attributes["code-block"]) {
+          const codeBlock = {
+            type: "code",
+            value: "",
+            lang: attributes["code-block"] === "plain" ? null : attributes["code-block"],
+          };
+          mdast.children.push(codeBlock);
+        } else if (attributes.list) {
+          if (!currentList || currentList.ordered !== (attributes.list === "ordered")) {
+            currentList = {
+              type: "list",
+              ordered: attributes.list === "ordered",
+              spread: false,
+              children: [],
+            };
+            mdast.children.push(currentList);
+          }
+          
+          const listItem = {
+            type: "listItem",
+            spread: false,
+            children: [{ type: "paragraph", children: [] }],
+          };
+          
+          currentList.children.push(listItem);
+        } else if (attributes.blockquote) {
+          const blockquote = {
+            type: "blockquote",
+            children: [{ type: "paragraph", children: [] }],
+          };
+          mdast.children.push(blockquote);
         }
+        
+        if (!attributes.list && !attributes.blockquote && !attributes["code-block"] && !attributes.header) {
+          currentList = null;
+        }
+        
         continue;
       }
 
-      textBuffer += text;
       let node = {
         type: "text",
         value: text,
@@ -263,6 +343,7 @@ function deltaToMdast(delta) {
         };
       }
 
+      textBuffer += text;
       currentParagraph.children.push(node);
     } else if (typeof op.insert === "object") {
       if (op.insert.image) {
@@ -281,7 +362,6 @@ function deltaToMdast(delta) {
         }
 
         currentParagraph.children.push(imageNode);
-        textBuffer = "";
       }
     }
   }
@@ -295,3 +375,5 @@ function deltaToMdast(delta) {
 
 // --- Main Script Execution ---
 document.addEventListener("DOMContentLoaded", initializeEditors);
+
+export { deltaToMdast };
