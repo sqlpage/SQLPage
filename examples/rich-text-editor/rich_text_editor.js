@@ -258,7 +258,7 @@ function deltaToMdast(delta) {
     // Handle newlines within text content
     if (text.includes("\n") && text !== "\n") {
       const lines = text.split("\n");
-      
+
       // Process all lines except the last one as complete lines
       for (let i = 0; i < lines.length - 1; i++) {
         const line = lines[i];
@@ -271,13 +271,13 @@ function deltaToMdast(delta) {
           currentParagraph.children.push(...nodes);
           textBuffer = line;
         }
-        
+
         // Process line break with empty attributes (regular paragraph break)
         processLineBreak(mdast, currentParagraph, {}, textBuffer, currentList);
         currentParagraph = null;
         textBuffer = "";
       }
-      
+
       // Add the last line to the buffer without processing the line break yet
       const lastLine = lines[lines.length - 1];
       if (lastLine.length > 0) {
@@ -288,7 +288,7 @@ function deltaToMdast(delta) {
         currentParagraph.children.push(...nodes);
         textBuffer = lastLine;
       }
-      
+
       continue;
     }
 
@@ -298,9 +298,9 @@ function deltaToMdast(delta) {
         currentParagraph,
         attributes,
         textBuffer,
-        currentList
+        currentList,
       );
-      
+
       // Reset paragraph and buffer after processing line break
       currentParagraph = null;
       textBuffer = "";
@@ -436,22 +436,27 @@ function processLineBreak(
   if (attributes.header) {
     processHeaderLineBreak(mdast, textBuffer, attributes);
     return null;
-  } 
-  
+  }
+
   if (attributes["code-block"]) {
     processCodeBlockLineBreak(mdast, textBuffer, attributes);
     return currentList;
-  } 
-  
+  }
+
   if (attributes.list) {
-    return processListLineBreak(mdast, currentParagraph, attributes, currentList);
-  } 
-  
+    return processListLineBreak(
+      mdast,
+      currentParagraph,
+      attributes,
+      currentList,
+    );
+  }
+
   if (attributes.blockquote) {
     processBlockquoteLineBreak(mdast, currentParagraph);
     return currentList;
-  } 
-  
+  }
+
   // Default case: regular paragraph
   mdast.children.push(currentParagraph);
   return null;
@@ -468,19 +473,19 @@ function handleEmptyLineWithAttributes(mdast, attributes, currentList) {
   if (attributes["code-block"]) {
     mdast.children.push(createEmptyCodeBlock(attributes));
     return currentList;
-  } 
-  
+  }
+
   if (attributes.list) {
     const list = ensureList(mdast, attributes, currentList);
     list.children.push(createEmptyListItem());
     return list;
-  } 
-  
+  }
+
   if (attributes.blockquote) {
     mdast.children.push(createEmptyBlockquote());
     return currentList;
   }
-  
+
   return null;
 }
 
@@ -566,7 +571,7 @@ function processHeaderLineBreak(mdast, textBuffer, attributes) {
 function processCodeBlockLineBreak(mdast, textBuffer, attributes) {
   const lang =
     attributes["code-block"] === "plain" ? null : attributes["code-block"];
-  
+
   // Find the last code block with the same language
   let lastCodeBlock = null;
   for (let i = mdast.children.length - 1; i >= 0; i--) {
@@ -599,16 +604,20 @@ function processCodeBlockLineBreak(mdast, textBuffer, attributes) {
  */
 function ensureList(mdast, attributes, currentList) {
   const isOrderedList = attributes.list === "ordered";
-  
+
   // If there's no current list or the list type doesn't match
   if (!currentList || currentList.ordered !== isOrderedList) {
     // Check if the last child is a list of the correct type
     const lastChild = mdast.children[mdast.children.length - 1];
-    if (lastChild && lastChild.type === "list" && lastChild.ordered === isOrderedList) {
+    if (
+      lastChild &&
+      lastChild.type === "list" &&
+      lastChild.ordered === isOrderedList
+    ) {
       // Use the last list if it matches the type
       return lastChild;
     }
-    
+
     // Create a new list
     const newList = {
       type: "list",
@@ -619,7 +628,7 @@ function ensureList(mdast, attributes, currentList) {
     mdast.children.push(newList);
     return newList;
   }
-  
+
   return currentList;
 }
 
@@ -642,20 +651,21 @@ function processListLineBreak(
   // Check if this list item already exists to avoid duplication
   const paragraphContent = JSON.stringify(currentParagraph.children);
   const isDuplicate = list.children.some(
-    item => item.children?.length === 1 &&
-    JSON.stringify(item.children[0].children) === paragraphContent
+    (item) =>
+      item.children?.length === 1 &&
+      JSON.stringify(item.children[0].children) === paragraphContent,
   );
-  
+
   if (!isDuplicate) {
     const listItem = {
       type: "listItem",
       spread: false,
       children: [currentParagraph],
     };
-    
+
     list.children.push(listItem);
   }
-  
+
   return list;
 }
 
@@ -669,11 +679,12 @@ function processBlockquoteLineBreak(mdast, currentParagraph) {
   // Look for an existing blockquote with identical content to avoid duplication
   const paragraphContent = JSON.stringify(currentParagraph.children);
   const existingBlockquote = mdast.children.find(
-    child => child.type === "blockquote" && 
-    child.children?.length === 1 &&
-    JSON.stringify(child.children[0].children) === paragraphContent
+    (child) =>
+      child.type === "blockquote" &&
+      child.children?.length === 1 &&
+      JSON.stringify(child.children[0].children) === paragraphContent,
   );
-  
+
   if (!existingBlockquote) {
     mdast.children.push({
       type: "blockquote",
