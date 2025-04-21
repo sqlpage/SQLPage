@@ -4,6 +4,7 @@
  - Fix tooltips not showing on line charts with one or more hidden series
  - Update default chart colors and text shadows for better readability with all themes
  - Optimize memory layout by boxing large structs. Slightly reduces memory usage.
+ - New example: [Rich text editor](./examples/rich-text-editor/). Let your users safely write formatted text with links and images.
 
 ## v0.34 (2025-03-23)
 
