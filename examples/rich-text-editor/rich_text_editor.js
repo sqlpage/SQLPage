@@ -2,8 +2,33 @@ import Quill from "https://esm.sh/quill@2.0.3";
 import { toMarkdown as mdastUtilToMarkdown } from "https://esm.sh/mdast-util-to-markdown@2.1.2";
 
 /**
+ * @typedef {Object} QuillAttributes
+ * @property {boolean} [bold] - Whether the text is bold.
+ * @property {boolean} [italic] - Whether the text is italic.
+ * @property {string} [link] - URL if the text is a link.
+ * @property {number} [header] - Header level (1-3).
+ * @property {string} [list] - List type ('ordered' or 'bullet').
+ * @property {boolean} [blockquote] - Whether the text is in a blockquote.
+ * @property {string} [code-block] - Code language if in a code block.
+ * @property {string} [alt] - Alt text for images.
+ */
+
+/**
+ * @typedef {Object} QuillOperation
+ * @property {string|Object} [insert] - Content to insert (string or object with image URL).
+ * @property {number} [delete] - Number of characters to delete.
+ * @property {number} [retain] - Number of characters to retain.
+ * @property {QuillAttributes} [attributes] - Formatting attributes.
+ */
+
+/**
+ * @typedef {Object} QuillDelta
+ * @property {Array<QuillOperation>} ops - Array of operations in the delta.
+ */
+
+/**
  * Converts Quill Delta object to a Markdown string using mdast.
- * @param {object} delta - Quill Delta object (https://quilljs.com/docs/delta/).
+ * @param {QuillDelta} delta - Quill Delta object (https://quilljs.com/docs/delta/).
  * @returns {string} - Markdown representation.
  */
 function deltaToMarkdown(delta) {
@@ -26,6 +51,11 @@ function deltaToMarkdown(delta) {
   }
 }
 
+/**
+ * Extracts plain text from a Quill Delta object.
+ * @param {QuillDelta} delta - Quill Delta object.
+ * @returns {string} - Plain text extracted from the delta.
+ */
 function extractPlainTextFromDelta(delta) {
   try {
     return delta.ops
@@ -60,7 +90,7 @@ function createAndReplaceTextarea(textarea) {
 
 /**
  * Returns the toolbar options array configured for Markdown compatibility.
- * @returns {Array} - Quill toolbar options.
+ * @returns {Array<Array<any>>} - Quill toolbar options.
  */
 function getMarkdownToolbarOptions() {
   return [
@@ -75,7 +105,7 @@ function getMarkdownToolbarOptions() {
 /**
  * Initializes a Quill editor instance on a given div.
  * @param {HTMLDivElement} editorDiv - The div element for the editor.
- * @param {Array} toolbarOptions - The toolbar configuration.
+ * @param {Array<Array<any>>} toolbarOptions - The toolbar configuration.
  * @param {string} initialValue - The initial content for the editor.
  * @returns {Quill} - The initialized Quill instance.
  */
@@ -94,9 +124,10 @@ function initializeQuillEditor(editorDiv, toolbarOptions, initialValue) {
 
 /**
  * Attaches a submit event listener to the form to update the hidden textarea.
- * @param {HTMLFormElement} form - The form containing the editor.
+ * @param {HTMLFormElement|null} form - The form containing the editor.
  * @param {HTMLTextAreaElement} textarea - The original (hidden) textarea.
  * @param {Quill} quill - The Quill editor instance.
+ * @returns {void}
  */
 function updateTextareaOnSubmit(form, textarea, quill) {
   if (!form) {
@@ -113,6 +144,10 @@ function updateTextareaOnSubmit(form, textarea, quill) {
   });
 }
 
+/**
+ * Loads the Quill CSS stylesheet.
+ * @returns {void}
+ */
 function loadQuillStylesheet() {
   const link = document.createElement("link");
   link.rel = "stylesheet";
@@ -120,6 +155,12 @@ function loadQuillStylesheet() {
   document.head.appendChild(link);
 }
 
+/**
+ * Handles errors during editor initialization.
+ * @param {HTMLTextAreaElement} textarea - The textarea that failed initialization.
+ * @param {Error} error - The error that occurred.
+ * @returns {void}
+ */
 function handleEditorInitError(textarea, error) {
   console.error("Failed to initialize Quill for textarea:", textarea, error);
   textarea.style.display = "";
@@ -129,6 +170,12 @@ function handleEditorInitError(textarea, error) {
   textarea.parentNode.insertBefore(errorMsg, textarea.nextSibling);
 }
 
+/**
+ * Sets up a single editor for a textarea.
+ * @param {HTMLTextAreaElement} textarea - The textarea to replace with an editor.
+ * @param {Array<Array<any>>} toolbarOptions - The toolbar configuration.
+ * @returns {boolean} - Whether the setup was successful.
+ */
 function setupSingleEditor(textarea, toolbarOptions) {
   if (textarea.dataset.quillInitialized === "true") {
     return false;
@@ -152,6 +199,10 @@ function setupSingleEditor(textarea, toolbarOptions) {
   }
 }
 
+/**
+ * Initializes Quill editors for all textareas in the document.
+ * @returns {void}
+ */
 function initializeEditors() {
   loadQuillStylesheet();
 
@@ -177,9 +228,30 @@ function initializeEditors() {
 }
 
 // MDAST conversion functions
+/**
+ * @typedef {Object} MdastNode
+ * @property {string} type - The type of the node.
+ * @property {Array<MdastNode>} [children] - Child nodes.
+ * @property {string} [value] - Text value for text nodes.
+ * @property {string} [url] - URL for link and image nodes.
+ * @property {string} [title] - Title for image nodes.
+ * @property {string} [alt] - Alt text for image nodes.
+ * @property {number} [depth] - Depth for heading nodes.
+ * @property {boolean} [ordered] - Whether the list is ordered.
+ * @property {boolean} [spread] - Whether the list is spread.
+ * @property {string} [lang] - Language for code blocks.
+ */
+
+/**
+ * Converts a Quill Delta to a MDAST (Markdown Abstract Syntax Tree).
+ * @param {QuillDelta} delta - The Quill Delta to convert.
+ * @returns {MdastNode} - The root MDAST node.
+ */
 function deltaToMdast(delta) {
   const mdast = createRootNode();
+  /** @type {MdastNode|null} */
   let currentParagraph = null;
+  /** @type {MdastNode|null} */
   let currentList = null;
   let textBuffer = "";
 
@@ -239,6 +311,10 @@ function deltaToMdast(delta) {
   return mdast;
 }
 
+/**
+ * Creates a root MDAST node.
+ * @returns {MdastNode} - The root node.
+ */
 function createRootNode() {
   return {
     type: "root",
@@ -246,6 +322,10 @@ function createRootNode() {
   };
 }
 
+/**
+ * Creates a paragraph MDAST node.
+ * @returns {MdastNode} - The paragraph node.
+ */
 function createParagraphNode() {
   return {
     type: "paragraph",
@@ -253,10 +333,20 @@ function createParagraphNode() {
   };
 }
 
+/**
+ * Checks if an operation is an image insertion.
+ * @param {Object} op - The operation to check.
+ * @returns {boolean} - Whether the operation is an image insertion.
+ */
 function isImageInsert(op) {
   return typeof op.insert === "object" && op.insert.image;
 }
 
+/**
+ * Creates an image MDAST node.
+ * @param {Object} op - The operation containing the image.
+ * @returns {MdastNode} - The image node.
+ */
 function createImageNode(op) {
   return {
     type: "image",
@@ -266,6 +356,12 @@ function createImageNode(op) {
   };
 }
 
+/**
+ * Creates a text MDAST node with optional formatting.
+ * @param {string} text - The text content.
+ * @param {Object} attributes - The formatting attributes.
+ * @returns {MdastNode} - The formatted text node.
+ */
 function createTextNode(text, attributes) {
   let node = {
     type: "text",
@@ -291,6 +387,12 @@ function createTextNode(text, attributes) {
   return node;
 }
 
+/**
+ * Wraps a node with a formatting container.
+ * @param {MdastNode} node - The node to wrap.
+ * @param {string} type - The type of container.
+ * @returns {MdastNode} - The wrapped node.
+ */
 function wrapNodeWith(node, type) {
   return {
     type: type,
@@ -298,6 +400,15 @@ function wrapNodeWith(node, type) {
   };
 }
 
+/**
+ * Processes a line break in the Delta.
+ * @param {MdastNode} mdast - The root MDAST node.
+ * @param {MdastNode|null} currentParagraph - The current paragraph being built.
+ * @param {Object} attributes - The attributes for the line.
+ * @param {string} textBuffer - The text buffer for the current line.
+ * @param {MdastNode|null} currentList - The current list being built.
+ * @returns {void}
+ */
 function processLineBreak(
   mdast,
   currentParagraph,
@@ -323,6 +434,13 @@ function processLineBreak(
   }
 }
 
+/**
+ * Handles an empty line with special attributes.
+ * @param {MdastNode} mdast - The root MDAST node.
+ * @param {Object} attributes - The attributes for the line.
+ * @param {MdastNode|null} currentList - The current list being built.
+ * @returns {void}
+ */
 function handleEmptyLineWithAttributes(mdast, attributes, currentList) {
   if (attributes["code-block"]) {
     mdast.children.push(createEmptyCodeBlock(attributes));
@@ -334,6 +452,11 @@ function handleEmptyLineWithAttributes(mdast, attributes, currentList) {
   }
 }
 
+/**
+ * Creates an empty code block MDAST node.
+ * @param {Object} attributes - The attributes for the code block.
+ * @returns {MdastNode} - The code block node.
+ */
 function createEmptyCodeBlock(attributes) {
   return {
     type: "code",
@@ -343,6 +466,10 @@ function createEmptyCodeBlock(attributes) {
   };
 }
 
+/**
+ * Creates an empty list item MDAST node.
+ * @returns {MdastNode} - The list item node.
+ */
 function createEmptyListItem() {
   return {
     type: "listItem",
@@ -351,6 +478,10 @@ function createEmptyListItem() {
   };
 }
 
+/**
+ * Creates an empty blockquote MDAST node.
+ * @returns {MdastNode} - The blockquote node.
+ */
 function createEmptyBlockquote() {
   return {
     type: "blockquote",
@@ -358,6 +489,13 @@ function createEmptyBlockquote() {
   };
 }
 
+/**
+ * Processes a header line break.
+ * @param {MdastNode} mdast - The root MDAST node.
+ * @param {string} textBuffer - The text buffer for the current line.
+ * @param {Object} attributes - The attributes for the line.
+ * @returns {void}
+ */
 function processHeaderLineBreak(mdast, textBuffer, attributes) {
   const lines = textBuffer.split("\n");
 
@@ -386,6 +524,13 @@ function processHeaderLineBreak(mdast, textBuffer, attributes) {
   }
 }
 
+/**
+ * Processes a code block line break.
+ * @param {MdastNode} mdast - The root MDAST node.
+ * @param {string} textBuffer - The text buffer for the current line.
+ * @param {Object} attributes - The attributes for the line.
+ * @returns {void}
+ */
 function processCodeBlockLineBreak(mdast, textBuffer, attributes) {
   mdast.children.push({
     type: "code",
@@ -395,6 +540,13 @@ function processCodeBlockLineBreak(mdast, textBuffer, attributes) {
   });
 }
 
+/**
+ * Ensures a list exists in the MDAST.
+ * @param {MdastNode} mdast - The root MDAST node.
+ * @param {Object} attributes - The attributes for the line.
+ * @param {MdastNode|null} currentList - The current list being built.
+ * @returns {MdastNode} - The list node.
+ */
 function ensureList(mdast, attributes, currentList) {
   if (!currentList || currentList.ordered !== (attributes.list === "ordered")) {
     const newList = {
@@ -409,6 +561,14 @@ function ensureList(mdast, attributes, currentList) {
   return currentList;
 }
 
+/**
+ * Processes a list line break.
+ * @param {MdastNode} mdast - The root MDAST node.
+ * @param {MdastNode} currentParagraph - The current paragraph being built.
+ * @param {Object} attributes - The attributes for the line.
+ * @param {MdastNode|null} currentList - The current list being built.
+ * @returns {void}
+ */
 function processListLineBreak(
   mdast,
   currentParagraph,
@@ -426,6 +586,12 @@ function processListLineBreak(
   list.children.push(listItem);
 }
 
+/**
+ * Processes a blockquote line break.
+ * @param {MdastNode} mdast - The root MDAST node.
+ * @param {MdastNode} currentParagraph - The current paragraph being built.
+ * @returns {void}
+ */
 function processBlockquoteLineBreak(mdast, currentParagraph) {
   mdast.children.push({
     type: "blockquote",
@@ -435,5 +601,3 @@ function processBlockquoteLineBreak(mdast, currentParagraph) {
 
 // Main execution
 document.addEventListener("DOMContentLoaded", initializeEditors);
-
-export { deltaToMdast };
