@@ -160,11 +160,10 @@ pub(super) async fn run_csv_import(
         })?
         .file;
     let file_path = named_temp_file.path();
-    let file_name = file_path.file_name().unwrap_or_default();
     let file = tokio::fs::File::open(file_path).await.with_context(|| {
         format!(
             "The CSV file {} was uploaded correctly, but could not be opened",
-            file_name.display()
+            file_path.display()
         )
     })?;
     let buffered = tokio::io::BufReader::new(file);
@@ -180,7 +179,7 @@ pub(super) async fn run_csv_import(
         let table_name = &csv_import.table_name;
         format!(
             "{} was uploaded correctly, but its records could not be imported into the table {}",
-            file_name.display(),
+            file_path.display(),
             table_name
         )
     })
