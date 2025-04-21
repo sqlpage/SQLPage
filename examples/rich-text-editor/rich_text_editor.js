@@ -95,7 +95,7 @@ function createAndReplaceTextarea(textarea) {
 function getMarkdownToolbarOptions() {
   return [
     [{ header: 1 }, { header: 2 }, { header: 3 }],
-    ["bold", "italic"],
+    ["bold", "italic", "code"],
     ["link", "image", "blockquote", "code-block"],
     [{ list: "ordered" }, { list: "bullet" }],
     ["clean"],
@@ -115,6 +115,11 @@ function initializeQuillEditor(editorDiv, toolbarOptions, initialValue) {
     modules: {
       toolbar: toolbarOptions,
     },
+    formats: [
+      'bold', 'italic', 'link',
+      'header', 'list', 'blockquote',
+      'code', 'code-block', 'image'
+    ],
   });
   if (initialValue) {
     quill.setText(initialValue);
