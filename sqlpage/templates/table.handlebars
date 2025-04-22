@@ -64,6 +64,7 @@
                             <td class="align-middle _col_{{replace @key ' ' '_'~}}
                                 {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                 {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
+                                {{~#if (array_contains_case_insensitive ../../monospace @key)}} font-monospace {{/if~}}
                             ">
                                 {{~#if (array_contains_case_insensitive ../../markdown @key)~}}
                                     {{{markdown this}}}
