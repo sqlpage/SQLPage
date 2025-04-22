@@ -12,7 +12,7 @@ This component helps you:
 There is no `IF` statement in SQL. Even when you use a [`CASE` expression](https://modern-sql.com/caniuse/case_(simple)), all branches are always evaluated (and only one is returned).
 
 To conditionally execute a component or a [SQLPage function](/functions.sql), you can use the `redirect` component.
-A common use case is error handling. You may want to process with the rest of a page only when certain pre-conditions are met.
+A common use case is error handling. You may want to proceed with the rest of a page only when certain pre-conditions are met.
 
 ```sql
 SELECT
