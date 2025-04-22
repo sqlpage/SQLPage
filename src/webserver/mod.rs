@@ -45,3 +45,4 @@ pub use database::migrations::apply;
 pub mod response_writer;
 pub mod routing;
 mod static_content;
+mod oidc;

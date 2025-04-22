@@ -20,6 +20,7 @@ use actix_web::{
 use actix_web::{HttpResponseBuilder, ResponseError};
 
 use super::https::make_auto_rustls_config;
+use super::oidc::OidcMiddleware;
 use super::response_writer::ResponseWriter;
 use super::static_content;
 use crate::webserver::routing::RoutingAction::{
@@ -466,6 +467,7 @@ pub fn create_app(
         )
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
+        .wrap(OidcMiddleware::new(&app_state.config))
         .wrap(Logger::default())
         .wrap(default_headers(&app_state))
         .wrap(middleware::Condition::new(
