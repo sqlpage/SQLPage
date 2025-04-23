@@ -33,6 +33,7 @@ mod content_security_policy;
 pub mod database;
 pub mod error_with_status;
 pub mod http;
+pub mod http_client;
 pub mod http_request_info;
 mod https;
 pub mod request_variables;

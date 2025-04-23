@@ -1,14 +1,16 @@
 use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
-use crate::app_config::AppConfig;
+use crate::{app_config::AppConfig, AppState};
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Condition,
-    Error,
+    web, Error,
 };
 use anyhow::anyhow;
 use awc::Client;
 use openidconnect::{AsyncHttpClient, IssuerUrl};
+
+use super::http_client::make_http_client;
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
@@ -39,11 +41,12 @@ impl TryFrom<&AppConfig> for OidcConfig {
 
 pub struct OidcMiddleware {
     pub config: Option<Arc<OidcConfig>>,
+    app_state: web::Data<AppState>,
 }
 
 impl OidcMiddleware {
-    pub fn new(config: &AppConfig) -> Condition<Self> {
-        let config = OidcConfig::try_from(config);
+    pub fn new(app_state: &web::Data<AppState>) -> Condition<Self> {
+        let config = OidcConfig::try_from(&app_state.config);
         match &config {
             Ok(config) => {
                 log::debug!("Setting up OIDC with issuer: {}", config.issuer_url);
@@ -57,14 +60,21 @@ impl OidcMiddleware {
             }
         }
         let config = config.ok().map(Arc::new);
-        Condition::new(config.is_some(), Self { config })
+        Condition::new(
+            config.is_some(),
+            Self {
+                config,
+                app_state: web::Data::clone(app_state),
+            },
+        )
     }
 }
 
 async fn discover_provider_metadata(
+    app_config: &AppConfig,
     issuer_url: IssuerUrl,
 ) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
-    let http_client = AwcHttpClient::new();
+    let http_client = AwcHttpClient::new(app_config)?;
     let provider_metadata =
         openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, &http_client).await?;
     Ok(provider_metadata)
@@ -84,9 +94,10 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         let config = self.config.clone();
+        let app_state = web::Data::clone(&self.app_state);
         Box::pin(async move {
             match config {
-                Some(config) => Ok(OidcService::new(service, Arc::clone(&config))
+                Some(config) => Ok(OidcService::new(service, &app_state, Arc::clone(&config))
                     .await
                     .map_err(|err| {
                         log::error!(
@@ -102,16 +113,23 @@ where
 
 pub struct OidcService<S> {
     service: S,
+    app_state: web::Data<AppState>,
     config: Arc<OidcConfig>,
     provider_metadata: openidconnect::core::CoreProviderMetadata,
 }
 
 impl<S> OidcService<S> {
-    pub async fn new(service: S, config: Arc<OidcConfig>) -> anyhow::Result<Self> {
+    pub async fn new(
+        service: S,
+        app_state: &web::Data<AppState>,
+        config: Arc<OidcConfig>,
+    ) -> anyhow::Result<Self> {
+        let issuer_url = config.issuer_url.clone();
         Ok(Self {
             service,
-            config: Arc::clone(&config),
-            provider_metadata: discover_provider_metadata(config.issuer_url.clone()).await?,
+            app_state: web::Data::clone(app_state),
+            config,
+            provider_metadata: discover_provider_metadata(&app_state.config, issuer_url).await?,
         })
     }
 }
@@ -146,10 +164,10 @@ pub struct AwcHttpClient {
 }
 
 impl AwcHttpClient {
-    pub fn new() -> Self {
-        Self {
-            client: Client::default(),
-        }
+    pub fn new(app_config: &AppConfig) -> anyhow::Result<Self> {
+        Ok(Self {
+            client: make_http_client(app_config)?,
+        })
     }
 }
 
@@ -175,7 +193,7 @@ async fn execute_oidc_request_with_awc(
 ) -> Result<openidconnect::http::Response<Vec<u8>>, anyhow::Error> {
     let awc_method = awc::http::Method::from_bytes(request.method().as_str().as_bytes())?;
     let awc_uri = awc::http::Uri::from_str(&request.uri().to_string())?;
-    log::debug!("Executing OIDC request: {} {}", awc_method, awc_uri);
+    log::debug!("Executing OIDC request: {awc_method} {awc_uri}");
     let mut req = client.request(awc_method, awc_uri);
     for (name, value) in request.headers() {
         req = req.insert_header((name.as_str(), value.to_str()?));

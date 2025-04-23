@@ -467,7 +467,7 @@ pub fn create_app(
         )
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
-        .wrap(OidcMiddleware::new(&app_state.config))
+        .wrap(OidcMiddleware::new(&app_state))
         .wrap(Logger::default())
         .wrap(default_headers(&app_state))
         .wrap(middleware::Condition::new(
