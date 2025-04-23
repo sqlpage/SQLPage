@@ -11,7 +11,7 @@
             <div class="row align-items-center m-0">
                 {{#if link}}<a href="{{link}}"
                 {{~else}}<div {{/if}}
-                    class="col row align-items-center text-decoration-none link-body-emphasis m-0 {{#if ../compact}}p-1{{else}}p-3{{/if}}">
+                    class="col row align-items-center text-decoration-none text-body m-0 {{#if ../compact}}p-1{{else}}p-3{{/if}}">
                     {{#if color}}
                         <div class="col-auto"><span class="badge bg-{{color}}"></span></div>
                     {{/if}}
@@ -48,7 +48,7 @@
 
                 {{#if delete_link}}
                     <form method="POST" action="{{delete_link}}" class="col-auto m-0 p-0">
-                        <button type="submit" class="btn btn-link link-secondary p-0 border-0" title="Delete">
+                        <button type="submit" class="btn btn-link link-secondary p-0 border-0 bg-transparent" title="Delete">
                             {{~icon_img 'trash'~}}
                         </button>
                     </form>
