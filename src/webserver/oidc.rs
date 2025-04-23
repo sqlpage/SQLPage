@@ -1,9 +1,4 @@
-use std::{
-    future::Future,
-    pin::Pin,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
 use crate::app_config::AppConfig;
 use actix_web::{
@@ -17,7 +12,7 @@ use openidconnect::{AsyncHttpClient, IssuerUrl};
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
-    pub issuer_url: String,
+    pub issuer_url: IssuerUrl,
     pub client_id: String,
     pub client_secret: String,
     pub scopes: String,
@@ -51,7 +46,8 @@ impl OidcMiddleware {
         let config = OidcConfig::try_from(config);
         match &config {
             Ok(config) => {
-                log::info!("Setting up OIDC with config: {config:?}");
+                log::debug!("Setting up OIDC with issuer: {}", config.issuer_url);
+                // contains secrets
             }
             Err(Some(err)) => {
                 log::error!("Invalid OIDC configuration: {err}");
@@ -66,10 +62,9 @@ impl OidcMiddleware {
 }
 
 async fn discover_provider_metadata(
-    issuer_url: String,
+    issuer_url: IssuerUrl,
 ) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
     let http_client = AwcHttpClient::new();
-    let issuer_url = IssuerUrl::new(issuer_url)?;
     let provider_metadata =
         openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, &http_client).await?;
     Ok(provider_metadata)
@@ -136,7 +131,7 @@ where
     forward_ready!(service);
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
-        log::info!("OIDC config: {:?}", self.config);
+        log::debug!("Started OIDC middleware with config: {:?}", self.config);
         let future = self.service.call(request);
 
         Box::pin(async move {
@@ -180,6 +175,7 @@ async fn execute_oidc_request_with_awc(
 ) -> Result<openidconnect::http::Response<Vec<u8>>, anyhow::Error> {
     let awc_method = awc::http::Method::from_bytes(request.method().as_str().as_bytes())?;
     let awc_uri = awc::http::Uri::from_str(&request.uri().to_string())?;
+    log::debug!("Executing OIDC request: {} {}", awc_method, awc_uri);
     let mut req = client.request(awc_method, awc_uri);
     for (name, value) in request.headers() {
         req = req.insert_header((name.as_str(), value.to_str()?));
@@ -195,6 +191,11 @@ async fn execute_oidc_request_with_awc(
         resp_builder = resp_builder.header(name.as_str(), value.to_str()?);
     }
     let body = response.body().await?.to_vec();
+    log::debug!(
+        "Received OIDC response with status {}: {}",
+        response.status(),
+        String::from_utf8_lossy(&body)
+    );
     let resp = resp_builder.body(body)?;
     Ok(resp)
 }

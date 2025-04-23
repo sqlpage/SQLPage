@@ -2,6 +2,7 @@ use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
 use clap::Parser;
 use config::Config;
+use openidconnect::IssuerUrl;
 use percent_encoding::AsciiSet;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -200,7 +201,7 @@ pub struct AppConfig {
 
     /// The base URL of the `OpenID` Connect provider.
     /// Required when enabling Single Sign-On through an OIDC provider.
-    pub oidc_issuer_url: Option<String>,
+    pub oidc_issuer_url: Option<IssuerUrl>,
     /// The client ID assigned to `SQLPage` when registering with the OIDC provider.
     /// Defaults to `sqlpage`.
     #[serde(default = "default_oidc_client_id")]
