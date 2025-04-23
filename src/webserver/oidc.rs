@@ -1,5 +1,5 @@
 use std::{
-    future::{ready, Future, Ready},
+    future::Future,
     pin::Pin,
     str::FromStr,
     sync::Arc,
@@ -11,9 +11,9 @@ use actix_web::{
     middleware::Condition,
     Error,
 };
+use anyhow::anyhow;
 use awc::Client;
-use openidconnect::AsyncHttpClient;
-use std::error::Error as StdError;
+use openidconnect::{AsyncHttpClient, IssuerUrl};
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
@@ -65,9 +65,19 @@ impl OidcMiddleware {
     }
 }
 
+async fn discover_provider_metadata(
+    issuer_url: String,
+) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
+    let http_client = AwcHttpClient::new();
+    let issuer_url = IssuerUrl::new(issuer_url)?;
+    let provider_metadata =
+        openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, &http_client).await?;
+    Ok(provider_metadata)
+}
+
 impl<S, B> Transform<S, ServiceRequest> for OidcMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
     B: 'static,
 {
@@ -75,24 +85,40 @@ where
     type Error = Error;
     type InitError = ();
     type Transform = OidcService<S>;
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Transform, Self::InitError>> + 'static>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(
-            self.config
-                .as_ref()
-                .map(|config| OidcService {
-                    service,
-                    config: Arc::clone(config),
-                })
-                .ok_or(()),
-        )
+        let config = self.config.clone();
+        Box::pin(async move {
+            match config {
+                Some(config) => Ok(OidcService::new(service, Arc::clone(&config))
+                    .await
+                    .map_err(|err| {
+                        log::error!(
+                            "Error creating OIDC service with issuer: {}: {err:?}",
+                            config.issuer_url
+                        );
+                    })?),
+                None => Err(()),
+            }
+        })
     }
 }
 
 pub struct OidcService<S> {
     service: S,
     config: Arc<OidcConfig>,
+    provider_metadata: openidconnect::core::CoreProviderMetadata,
+}
+
+impl<S> OidcService<S> {
+    pub async fn new(service: S, config: Arc<OidcConfig>) -> anyhow::Result<Self> {
+        Ok(Self {
+            service,
+            config: Arc::clone(&config),
+            provider_metadata: discover_provider_metadata(config.issuer_url.clone()).await?,
+        })
+    }
 }
 
 type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
@@ -133,7 +159,7 @@ impl AwcHttpClient {
 }
 
 impl<'c> AsyncHttpClient<'c> for AwcHttpClient {
-    type Error = awc::error::SendRequestError;
+    type Error = StringError;
     type Future = Pin<
         Box<dyn Future<Output = Result<openidconnect::http::Response<Vec<u8>>, Self::Error>> + 'c>,
     >;
@@ -141,30 +167,45 @@ impl<'c> AsyncHttpClient<'c> for AwcHttpClient {
     fn call(&'c self, request: openidconnect::http::Request<Vec<u8>>) -> Self::Future {
         let client = self.client.clone();
         Box::pin(async move {
-            let awc_method = awc::http::Method::from_bytes(request.method().as_str().as_bytes())
-                .map_err(to_awc_error)?;
-            let awc_uri =
-                awc::http::Uri::from_str(&request.uri().to_string()).map_err(to_awc_error)?;
-            let mut req = client.request(awc_method, awc_uri);
-            for (name, value) in request.headers() {
-                req = req.insert_header((name.as_str(), value.to_str().map_err(to_awc_error)?));
-            }
-            let mut response = req.send_body(request.into_body()).await?;
-            let head = response.headers();
-            let mut resp_builder =
-                openidconnect::http::Response::builder().status(response.status().as_u16());
-            for (name, value) in head {
-                resp_builder =
-                    resp_builder.header(name.as_str(), value.to_str().map_err(to_awc_error)?);
-            }
-            let body = response.body().await.map_err(to_awc_error)?.to_vec();
-            let resp = resp_builder.body(body).map_err(to_awc_error)?;
-            Ok(resp)
+            execute_oidc_request_with_awc(client, request)
+                .await
+                .map_err(|err| StringError(format!("Failed to execute OIDC request: {err:?}")))
         })
     }
 }
 
-fn to_awc_error<T: StdError + 'static>(err: T) -> awc::error::SendRequestError {
-    let err_str = err.to_string();
-    awc::error::SendRequestError::Custom(Box::new(err), Box::new(err_str))
+async fn execute_oidc_request_with_awc(
+    client: Client,
+    request: openidconnect::http::Request<Vec<u8>>,
+) -> Result<openidconnect::http::Response<Vec<u8>>, anyhow::Error> {
+    let awc_method = awc::http::Method::from_bytes(request.method().as_str().as_bytes())?;
+    let awc_uri = awc::http::Uri::from_str(&request.uri().to_string())?;
+    let mut req = client.request(awc_method, awc_uri);
+    for (name, value) in request.headers() {
+        req = req.insert_header((name.as_str(), value.to_str()?));
+    }
+    let mut response = req
+        .send_body(request.into_body())
+        .await
+        .map_err(|e| anyhow!("{:?}", e))?;
+    let head = response.headers();
+    let mut resp_builder =
+        openidconnect::http::Response::builder().status(response.status().as_u16());
+    for (name, value) in head {
+        resp_builder = resp_builder.header(name.as_str(), value.to_str()?);
+    }
+    let body = response.body().await?.to_vec();
+    let resp = resp_builder.body(body)?;
+    Ok(resp)
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StringError(String);
+
+impl std::fmt::Display for StringError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::error::Error for StringError {}
