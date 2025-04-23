@@ -12,14 +12,14 @@
       {{/if}}
     {{/if}}
   {{/if}}
-  <p class="{{title}}">No results found</p>
+  <p class="empty-title">{{title}}</p>
   <p class="empty-subtitle text-secondary">
-    {{information}}
+      {{description}}
   </p>
   <div class="empty-action">
     <a href="{{link}}" class="btn btn-primary">
-      <span class="me-1">{{icon_img btn_icon}}</span>
-      {{btn_title}}
+      <span class="me-1">{{icon_img link_icon}}</span>
+      {{link_text}}
     </a>
   </div>
 </div>
