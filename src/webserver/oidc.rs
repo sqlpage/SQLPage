@@ -1,6 +1,7 @@
 use std::{
     future::{ready, Future, Ready},
     pin::Pin,
+    str::FromStr,
     sync::Arc,
 };
 
@@ -10,6 +11,9 @@ use actix_web::{
     middleware::Condition,
     Error,
 };
+use awc::Client;
+use openidconnect::AsyncHttpClient;
+use std::error::Error as StdError;
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
@@ -114,4 +118,53 @@ where
             Ok(response)
         })
     }
+}
+
+pub struct AwcHttpClient {
+    client: Client,
+}
+
+impl AwcHttpClient {
+    pub fn new() -> Self {
+        Self {
+            client: Client::default(),
+        }
+    }
+}
+
+impl<'c> AsyncHttpClient<'c> for AwcHttpClient {
+    type Error = awc::error::SendRequestError;
+    type Future = Pin<
+        Box<dyn Future<Output = Result<openidconnect::http::Response<Vec<u8>>, Self::Error>> + 'c>,
+    >;
+
+    fn call(&'c self, request: openidconnect::http::Request<Vec<u8>>) -> Self::Future {
+        let client = self.client.clone();
+        Box::pin(async move {
+            let awc_method = awc::http::Method::from_bytes(request.method().as_str().as_bytes())
+                .map_err(to_awc_error)?;
+            let awc_uri =
+                awc::http::Uri::from_str(&request.uri().to_string()).map_err(to_awc_error)?;
+            let mut req = client.request(awc_method, awc_uri);
+            for (name, value) in request.headers() {
+                req = req.insert_header((name.as_str(), value.to_str().map_err(to_awc_error)?));
+            }
+            let mut response = req.send_body(request.into_body()).await?;
+            let head = response.headers();
+            let mut resp_builder =
+                openidconnect::http::Response::builder().status(response.status().as_u16());
+            for (name, value) in head {
+                resp_builder =
+                    resp_builder.header(name.as_str(), value.to_str().map_err(to_awc_error)?);
+            }
+            let body = response.body().await.map_err(to_awc_error)?.to_vec();
+            let resp = resp_builder.body(body).map_err(to_awc_error)?;
+            Ok(resp)
+        })
+    }
+}
+
+fn to_awc_error<T: StdError + 'static>(err: T) -> awc::error::SendRequestError {
+    let err_str = err.to_string();
+    awc::error::SendRequestError::Custom(Box::new(err), Box::new(err_str))
 }
