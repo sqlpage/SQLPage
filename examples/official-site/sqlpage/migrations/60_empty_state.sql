@@ -3,7 +3,7 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'empty_state', * FROM (VALUES
     ('title','Description of the empty state.','TEXT',TRUE,FALSE),
-    ('status_code','HTTP status code displayed on the top of the empty state.','INTEGER',TRUE,TRUE),
+    ('header','Text displayed on the top of the empty state.','TEXT',TRUE,TRUE),
     ('icon','Name of an icon to be displayed on the top of the empty state.','ICON',TRUE,TRUE),
     ('image','The URL (absolute or relative) of an image to display at the top of the empty state.','URL',TRUE,TRUE),
     ('description','A short text displayed below the title.','TEXT',TRUE,TRUE),
@@ -19,7 +19,7 @@ The empty_state component provides users with informative and visually appealing
     json('[{
         "component": "empty_state",
         "title": "No results found",
-        "status_code": 404,
+        "header": "404",
         "description": "Try adjusting your search or filter to find what you''re looking for.",
         "link_text": "Search again",
         "link_icon": "search",
