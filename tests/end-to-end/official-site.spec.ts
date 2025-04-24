@@ -137,7 +137,7 @@ async function checkNoConsoleErrors(page: Page, component: string) {
   });
 
   await page.goto(`${BASE}/documentation.sql?component=${component}`);
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState();
 
   expect(errors).toHaveLength(0);
 }
