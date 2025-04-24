@@ -802,9 +802,11 @@ INSERT INTO example(component, description, properties) VALUES
     ('table', 'The most basic table.',
         json('[{"component":"table"}, {"a": 1, "b": 2}, {"a": 3, "b": 4}]')),
     ('table', 'A table of users with filtering and sorting.',
-        json('[{"component":"table", "sort":true, "search":true}, '||
-        '{"First Name": "Ophir", "Last Name": "Lojkine", "Pseudonym": "lovasoa"},' ||
-        '{"First Name": "Linus", "Last Name": "Torvalds", "Pseudonym": "torvalds"}]')),
+        json('[
+        {"component":"table", "sort":true, "search":true, "search_placeholder": "Filter by name"},
+        {"First Name": "Ophir", "Last Name": "Lojkine", "Pseudonym": "lovasoa"},
+        {"First Name": "Linus", "Last Name": "Torvalds", "Pseudonym": "torvalds"}
+    ]')),
     ('table', 'A table that uses markdown to display links',
         json('[{"component":"table", "markdown": "Name", "icon": "icon", "search": true}, '||
         '{"icon": "table", "name": "[Table](?component=table)", "description": "Displays SQL results as a searchable table.", "_sqlpage_color": "red"},
@@ -836,8 +838,12 @@ Numbers can be displayed
     'table',
     'A table with some presentation options',
     json(
-        '[{"component":"table", "hover": true, "striped_rows": true, "description": "Some Star Trek Starfleet starships", "small": true, "initial_search_value": "NCC-" },'||
-        '{"name": "USS Enterprise", "registry": "NCC-1701-C", "class":"Ambassador"},
+        '[{"component":"table",
+                "hover": true, "striped_rows": true,
+                "description": "Some Star Trek Starfleet starships",
+                "small": true, "initial_search_value": "NCC-"
+        },
+         {"name": "USS Enterprise", "registry": "NCC-1701-C", "class":"Ambassador"},
          {"name": "USS Archer", "registry": "NCC-44278", "class":"Archer"},
          {"name": "USS Endeavour", "registry": "NCC-06", "class":"Columbia"},
          {"name": "USS Constellation", "registry": "NCC-1974", "class":"Constellation"},
