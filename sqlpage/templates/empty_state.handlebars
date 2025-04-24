@@ -13,9 +13,13 @@
     {{/if}}
   {{/if}}
   <p class="empty-title">{{title}}</p>
-  <p class="empty-subtitle text-secondary">
-      {{description}}
-  </p>
+  <div class="empty-subtitle text-secondary remove-bottom-margin">
+    {{~#if description}}<p>{{description}}</p>{{/if~}}
+    {{~#if description_md~}}
+      {{{markdown description_md}}}
+    {{~/if~}}
+  </div>
+
   <div class="empty-action">
     <a href="{{link}}" class="btn btn-primary">
       <span class="me-1">{{icon_img link_icon}}</span>
