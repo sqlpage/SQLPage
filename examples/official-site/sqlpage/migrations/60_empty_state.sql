@@ -13,7 +13,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('description','A short text displayed below the title.','TEXT',TRUE,TRUE),
     ('link_text','The text displayed on the button.','TEXT',TRUE,FALSE),
     ('link_icon','Name of an icon to be displayed on the left side of the button.','ICON',TRUE,FALSE),
-    ('link','The URL to which the button should navigate when clicked.','URL',TRUE,FALSE)
+    ('link','The URL to which the button should navigate when clicked.','URL',TRUE,FALSE),
+    ('class','Class attribute added to the container in HTML. It can be used to apply custom styling to this item through css.','TEXT',TRUE,TRUE),
+    ('id','ID attribute added to the container in HTML. It can be used to target this item through css or for scrolling to this item through links (use "#id" in link url).','TEXT',TRUE,TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -30,7 +32,8 @@ This example shows how to create a 404-style "Not Found" empty state with
         "description": "Try adjusting your search or filter to find what you''re looking for.",
         "link_text": "Search again",
         "link_icon": "search",
-        "link": "#"
+        "link": "#not-found",
+        "id": "not-found"
     }]')),
     ('empty_state', '
 It''s possible to use an icon or an image to illustrate the problem.
