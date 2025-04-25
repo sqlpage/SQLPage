@@ -5,7 +5,7 @@
             <input
                 type="search"
                 class="form-control form-control-rounded fs-6 search"
-                placeholder="Search…"
+                placeholder="{{default search_placeholder 'Search…'}}"
                 value="{{initial_search_value}}"
                 {{#if initial_search_value}}autocomplete="off"{{/if}}
             >
@@ -64,6 +64,7 @@
                             <td class="align-middle _col_{{replace @key ' ' '_'~}}
                                 {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                 {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
+                                {{~#if (array_contains_case_insensitive ../../monospace @key)}} font-monospace {{/if~}}
                             ">
                                 {{~#if (array_contains_case_insensitive ../../markdown @key)~}}
                                     {{{markdown this}}}

@@ -1,5 +1,6 @@
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0/dist/css/tabler.min.css */
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0/dist/css/tabler-vendors.min.css */
+/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler.min.css */
+/* !include https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.css */
+/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler-vendors.min.css */
 
 :root {
   /* Workaround for https://github.com/tabler/tabler/issues/1879 */

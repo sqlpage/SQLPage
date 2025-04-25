@@ -5,6 +5,9 @@
  - Update default chart colors and text shadows for better readability with all themes
  - Optimize memory layout by boxing large structs. Slightly reduces memory usage.
  - New example: [Rich text editor](./examples/rich-text-editor/). Let your users safely write formatted text with links and images.
+ - Update the Tabler CSS library to [v1.2](https://tabler.io/changelog#/changelog/tabler-1.2). This fixes issues with 
+   - the alignment inside chart tooltips
+   - the display of lists
 
 ## v0.34 (2025-03-23)
 
