@@ -331,7 +331,7 @@ fn make_oidc_client(
             config.app_host, SQLPAGE_REDIRECT_URI,
         ))?;
     }
-    log::debug!("Redirect URL: {redirect_url}");
+    log::info!("OIDC redirect URL for {}: {redirect_url}", config.client_id);
     let client = openidconnect::core::CoreClient::from_provider_metadata(
         provider_metadata,
         client_id,
