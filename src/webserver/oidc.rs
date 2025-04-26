@@ -173,6 +173,13 @@ impl<S> OidcService<S> {
             .url();
         auth_url.to_string()
     }
+    
+    fn handle_unauthenticated_request(&self, request: ServiceRequest) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+        let auth_url = self.build_auth_url(&request);
+        Box::pin(async move {
+            Ok(request.into_response(build_redirect_response(auth_url)))
+        })
+    }
 }
 
 type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
@@ -196,12 +203,8 @@ where
                 log::trace!("Found SQLPage auth cookie: {cookie}");
             }
             None => {
-                log::trace!("No SQLPage auth cookie found, redirecting to login");
-                let auth_url = self.build_auth_url(&request);
-
-                return Box::pin(async move {
-                    Ok(request.into_response(build_redirect_response(auth_url)))
-                });
+                log::trace!("No SQLPage auth cookie found");
+                return self.handle_unauthenticated_request(request);
             }
         }
         let future = self.service.call(request);
