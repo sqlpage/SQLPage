@@ -4,20 +4,28 @@ use crate::{app_config::AppConfig, AppState};
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Condition,
-    web, Error,
+    web, Error, HttpResponse,
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use awc::Client;
-use openidconnect::{AsyncHttpClient, IssuerUrl};
+use openidconnect::{
+    core::{CoreAuthDisplay, CoreAuthenticationFlow},
+    AsyncHttpClient, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet, EndpointNotSet,
+    EndpointSet, IssuerUrl, Nonce, RedirectUrl, Scope,
+};
 
 use super::http_client::make_http_client;
+
+const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
+const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
     pub issuer_url: IssuerUrl,
     pub client_id: String,
     pub client_secret: String,
-    pub scopes: String,
+    pub app_host: String,
+    pub scopes: Vec<Scope>,
 }
 
 impl TryFrom<&AppConfig> for OidcConfig {
@@ -25,16 +33,26 @@ impl TryFrom<&AppConfig> for OidcConfig {
 
     fn try_from(config: &AppConfig) -> Result<Self, Self::Error> {
         let issuer_url = config.oidc_issuer_url.as_ref().ok_or(None)?;
-        let client_secret = config
-            .oidc_client_secret
+        let client_secret = config.oidc_client_secret.as_ref().ok_or(Some(
+            "The \"oidc_client_secret\" setting is required to authenticate with the OIDC provider",
+        ))?;
+
+        let app_host = config
+            .host
             .as_ref()
-            .ok_or(Some("Missing oidc_client_secret"))?;
+            .or_else(|| config.https_domain.as_ref())
+            .ok_or(Some("The \"host\" or \"https_domain\" setting is required to build the OIDC redirect URL"))?;
 
         Ok(Self {
             issuer_url: issuer_url.clone(),
             client_id: config.oidc_client_id.clone(),
             client_secret: client_secret.clone(),
-            scopes: config.oidc_scopes.clone(),
+            scopes: config
+                .oidc_scopes
+                .split_whitespace()
+                .map(|s| Scope::new(s.to_string()))
+                .collect(),
+            app_host: app_host.clone(),
         })
     }
 }
@@ -80,13 +98,12 @@ async fn discover_provider_metadata(
     Ok(provider_metadata)
 }
 
-impl<S, B> Transform<S, ServiceRequest> for OidcMiddleware
+impl<S> Transform<S, ServiceRequest> for OidcMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
     S::Future: 'static,
-    B: 'static,
 {
-    type Response = ServiceResponse<B>;
+    type Response = ServiceResponse<BoxBody>;
     type Error = Error;
     type InitError = ();
     type Transform = OidcService<S>;
@@ -115,7 +132,7 @@ pub struct OidcService<S> {
     service: S,
     app_state: web::Data<AppState>,
     config: Arc<OidcConfig>,
-    provider_metadata: openidconnect::core::CoreProviderMetadata,
+    client: OidcClient,
 }
 
 impl<S> OidcService<S> {
@@ -125,24 +142,40 @@ impl<S> OidcService<S> {
         config: Arc<OidcConfig>,
     ) -> anyhow::Result<Self> {
         let issuer_url = config.issuer_url.clone();
+        let provider_metadata = discover_provider_metadata(&app_state.config, issuer_url).await?;
+        let client: OidcClient = make_oidc_client(&config, provider_metadata)?;
         Ok(Self {
             service,
             app_state: web::Data::clone(app_state),
             config,
-            provider_metadata: discover_provider_metadata(&app_state.config, issuer_url).await?,
+            client,
         })
+    }
+
+    fn build_auth_url(&self, request: &ServiceRequest) -> String {
+        let (auth_url, csrf_token, nonce) = self
+            .client
+            .authorize_url(
+                CoreAuthenticationFlow::AuthorizationCode,
+                CsrfToken::new_random,
+                Nonce::new_random,
+            )
+            // Set the desired scopes.
+            .add_scopes(self.config.scopes.iter().cloned())
+            .url();
+        auth_url.to_string()
     }
 }
 
 type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
+use actix_web::body::BoxBody;
 
-impl<S, B> Service<ServiceRequest> for OidcService<S>
+impl<S> Service<ServiceRequest> for OidcService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
     S::Future: 'static,
-    B: 'static,
 {
-    type Response = ServiceResponse<B>;
+    type Response = ServiceResponse<BoxBody>;
     type Error = Error;
     type Future = LocalBoxFuture<Result<Self::Response, Self::Error>>;
 
@@ -150,13 +183,37 @@ where
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::debug!("Started OIDC middleware with config: {:?}", self.config);
-        let future = self.service.call(request);
+        match get_sqlpage_auth_cookie(&request) {
+            Some(cookie) => {
+                log::trace!("Found SQLPage auth cookie: {cookie}");
+            }
+            None => {
+                log::trace!("No SQLPage auth cookie found, redirecting to login");
+                let auth_url = self.build_auth_url(&request);
 
+                return Box::pin(async move {
+                    Ok(request.into_response(build_redirect_response(auth_url)))
+                });
+            }
+        }
+        let future = self.service.call(request);
         Box::pin(async move {
             let response = future.await?;
             Ok(response)
         })
     }
+}
+
+fn build_redirect_response(auth_url: String) -> HttpResponse {
+    HttpResponse::TemporaryRedirect()
+        .append_header(("Location", auth_url))
+        .body("Redirecting to the login page.")
+}
+
+fn get_sqlpage_auth_cookie(request: &ServiceRequest) -> Option<String> {
+    let cookie = request.cookie(SQLPAGE_AUTH_COOKIE_NAME)?;
+    log::error!("TODO: actually check the validity of the cookie");
+    Some(cookie.value().to_string())
 }
 
 pub struct AwcHttpClient {
@@ -226,5 +283,43 @@ impl std::fmt::Display for StringError {
         std::fmt::Display::fmt(&self.0, f)
     }
 }
-
+type OidcClient = openidconnect::core::CoreClient<
+    EndpointSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointMaybeSet,
+    EndpointMaybeSet,
+>;
 impl std::error::Error for StringError {}
+
+fn make_oidc_client(
+    config: &Arc<OidcConfig>,
+    provider_metadata: openidconnect::core::CoreProviderMetadata,
+) -> anyhow::Result<OidcClient> {
+    let client_id = openidconnect::ClientId::new(config.client_id.clone());
+    let client_secret = openidconnect::ClientSecret::new(config.client_secret.clone());
+
+    let local_hosts = ["localhost", "127.0.0.1", "::1"];
+    let is_localhost = local_hosts.iter().any(|host| {
+        config.app_host.starts_with(host)
+            && config
+                .app_host
+                .get(host.len()..(host.len() + 1))
+                .is_none_or(|c| c == ":")
+    });
+    let redirect_url = RedirectUrl::new(format!(
+        "{}://{}{}",
+        if is_localhost { "http" } else { "https" },
+        config.app_host,
+        SQLPAGE_REDIRECT_URI,
+    ))?;
+    let client = openidconnect::core::CoreClient::from_provider_metadata(
+        provider_metadata,
+        client_id,
+        Some(client_secret),
+    )
+    .set_redirect_uri(redirect_url);
+
+    Ok(client)
+}

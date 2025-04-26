@@ -14,6 +14,8 @@ services:
       - ./sqlpage:/etc/sqlpage
     environment:
       # OIDC configuration
+      - SQLPAGE_HOST=localhost:8080
+      - SQLPAGE_OIDC_ISSUER_URL=http://localhost:8181/realms/sqlpage_demo
       - OIDC_AUTHORIZATION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/auth
       - OIDC_TOKEN_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/token
       - OIDC_USERINFO_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/userinfo
@@ -28,6 +30,9 @@ services:
       # SQLPage configuration
       - RUST_LOG=sqlpage=debug
     network_mode: host
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
   keycloak:
     build:
@@ -39,3 +44,9 @@ services:
     volumes:
       - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
     network_mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/keycloak/bin/kcadm.sh get realms/sqlpage_demo --server http://localhost:8181 --realm master --user admin --password admin || exit 1"]
+      interval: 10s
+      timeout: 2s
+      retries: 5
+      start_period: 5s

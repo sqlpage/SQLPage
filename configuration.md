@@ -13,6 +13,7 @@ Here are the available configuration options and their default values:
 | `database_password`                            |         | Database password. If set, this will override any password specified in the `database_url`. This allows you to keep the password separate from the connection string for better security. |
 | `port`                                        | 8080                                                        | Like listen_on, but specifies only the port.                                                                                                                                                                                                           |
 | `unix_socket`                                 |                                                             | Path to a UNIX socket to listen on instead of the TCP port. If specified, SQLPage will accept HTTP connections only on this socket and not on any TCP port. This option is mutually exclusive with `listen_on` and `port`.
+| `host`                                        |                                                             | The web address where your application is accessible (e.g., "myapp.example.com"). Used for login redirects with OIDC. |
 | `max_database_pool_connections`               | PostgreSQL: 50<BR>  MySql: 75<BR> SQLite: 16<BR> MSSQL: 100 | How many simultaneous database connections to open at most                                                                                                                                                                                             |
 | `database_connection_idle_timeout_seconds`    | SQLite: None<BR> All other: 30 minutes                      | Automatically close database connections after this period of inactivity                                                                                                                                                                               |
 | `database_connection_max_lifetime_seconds`    | SQLite: None<BR> All other: 60 minutes                      | Always close database connections after this amount of time                                                                                                                                                                                            |
@@ -94,6 +95,23 @@ OpenID Connect (OIDC) is a secure way to let users log in to your SQLPage applic
 To set up OIDC, you'll need to:
 1. Register your application with an OIDC provider
 2. Configure the provider's details in SQLPage
+
+#### Setting Your Application's Address
+
+When users log in through an OIDC provider, they need to be sent back to your application afterward. For this to work correctly, you need to tell SQLPage where your application is located online:
+
+- Use the `host` setting to specify your application's web address (for example, "myapp.example.com")
+- If you already have the `https_domain` setting set (to fetch https certificates for your site), then you don't need to duplicate it into `host`.
+
+Example configuration:
+```json
+{
+  "oidc_issuer_url": "https://accounts.google.com",
+  "oidc_client_id": "your-client-id",
+  "oidc_client_secret": "your-client-secret",
+  "host": "myapp.example.com"
+}
+```
 
 #### Cloud Identity Providers
 

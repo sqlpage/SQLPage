@@ -222,6 +222,10 @@ pub struct AppConfig {
     /// and will automatically request a certificate from Let's Encrypt
     /// using the ACME protocol (requesting a TLS-ALPN-01 challenge).
     pub https_domain: Option<String>,
+    
+    /// The hostname where your application is publicly accessible (e.g., "myapp.example.com").
+    /// This is used for OIDC redirect URLs. If not set, https_domain will be used instead.
+    pub host: Option<String>,
 
     /// The email address to use when requesting a certificate from Let's Encrypt.
     /// Defaults to `contact@<https_domain>`.
