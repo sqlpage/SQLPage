@@ -325,7 +325,7 @@ fn make_oidc_client(
         None => false,
     };
     if needs_http {
-        log::debug!("Redirect URL is local, changing to HTTP");
+        log::debug!("App host seems to be local, changing redirect URL to HTTP");
         redirect_url = RedirectUrl::new(format!(
             "http://{}{}",
             config.app_host, SQLPAGE_REDIRECT_URI,
