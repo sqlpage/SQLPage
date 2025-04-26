@@ -45,7 +45,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
             .unwrap_or_else(|| {
                 let host = config.listen_on().to_string();
                 log::warn!(
-                    "No host or https_domain provided in the configuration, using \"{}\" as the app host to build the redirect URL. This will only work locally.",
+                    "No host or https_domain provided in the configuration, using \"{}\" as the app host to build the redirect URL. This will only work locally. Disable this warning by providing a value for the \"host\" setting.",
                     host
                 );
                 host
