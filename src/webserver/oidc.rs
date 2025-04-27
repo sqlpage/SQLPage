@@ -15,12 +15,13 @@ use openidconnect::{
     EndpointSet, IdToken, IdTokenClaims, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
     TokenResponse,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::http_client::make_http_client;
 
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
+const SQLPAGE_STATE_COOKIE_NAME: &str = "sqlpage_oidc_state";
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
@@ -206,8 +207,19 @@ impl<S> OidcService<S> {
         }
 
         log::debug!("Redirecting to OIDC provider");
-        let auth_url = self.build_auth_url(&request);
-        Box::pin(async move { Ok(request.into_response(build_redirect_response(auth_url))) })
+
+        let auth_url = build_auth_url(
+            &self.oidc_client,
+            &self.config.scopes,
+            request.path().to_string(),
+        );
+        Box::pin(async move {
+            let state_cookie = create_state_cookie(&request);
+            let mut response = build_redirect_response(auth_url);
+
+            response.add_cookie(&state_cookie)?;
+            Ok(request.into_response(response))
+        })
     }
 
     fn handle_oidc_callback(
@@ -220,11 +232,15 @@ impl<S> OidcService<S> {
 
         Box::pin(async move {
             let query_string = request.query_string();
-            match process_oidc_callback(&oidc_client, &http_client, query_string).await {
+            match process_oidc_callback(&oidc_client, &http_client, query_string, &request).await {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    let auth_url = build_auth_url(&oidc_client, &oidc_config.scopes);
+                    let auth_url = build_auth_url(
+                        &oidc_client,
+                        &oidc_config.scopes,
+                        request.path().to_string(),
+                    );
                     Ok(request.into_response(build_redirect_response(auth_url)))
                 }
             }
@@ -274,15 +290,22 @@ async fn process_oidc_callback(
     oidc_client: &Arc<OidcClient>,
     http_client: &Arc<AwcHttpClient>,
     query_string: &str,
+    request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
+    let state = get_state_from_cookie(request)?;
+
     let params = Query::<OidcCallbackParams>::from_query(query_string)
-        .with_context(|| format!("{SQLPAGE_REDIRECT_URI}: failed to parse OIDC callback parameters from {query_string}"))?
+        .with_context(|| {
+            format!(
+                "{SQLPAGE_REDIRECT_URI}: failed to parse OIDC callback parameters from {query_string}"
+            )
+        })?
         .into_inner();
     log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
     let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
     log::debug!("Received token response: {token_response:?}");
-    // TODO: redirect to the original URL instead of /
-    let mut response = build_redirect_response(format!("/"));
+
+    let mut response = build_redirect_response(state.initial_url);
     set_auth_cookie(&mut response, &token_response)?;
     Ok(response)
 }
@@ -476,7 +499,7 @@ struct OidcCallbackParams {
     state: String,
 }
 
-fn build_auth_url(oidc_client: &OidcClient, scopes: &[Scope]) -> String {
+fn build_auth_url(oidc_client: &OidcClient, scopes: &[Scope], initial_url: String) -> String {
     let (auth_url, csrf_token, nonce) = oidc_client
         .authorize_url(
             CoreAuthenticationFlow::AuthorizationCode,
@@ -486,4 +509,31 @@ fn build_auth_url(oidc_client: &OidcClient, scopes: &[Scope]) -> String {
         .add_scopes(scopes.iter().cloned())
         .url();
     auth_url.to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct OidcLoginState {
+    #[serde(rename = "u")]
+    initial_url: String,
+}
+
+fn create_state_cookie(request: &ServiceRequest) -> actix_web::cookie::Cookie {
+    let state = OidcLoginState {
+        initial_url: request.path().to_string(),
+    };
+    let state_json = serde_json::to_string(&state).unwrap();
+    actix_web::cookie::Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
+        .secure(true)
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .path("/")
+        .finish()
+}
+
+fn get_state_from_cookie(request: &ServiceRequest) -> anyhow::Result<OidcLoginState> {
+    let state_cookie = request.cookie(SQLPAGE_STATE_COOKIE_NAME).with_context(|| {
+        format!("No {SQLPAGE_STATE_COOKIE_NAME} cookie found for {SQLPAGE_REDIRECT_URI}")
+    })?;
+    serde_json::from_str(state_cookie.value())
+        .with_context(|| format!("Failed to parse OIDC state from cookie"))
 }
