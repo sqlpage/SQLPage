@@ -193,19 +193,16 @@ impl<S> OidcService<S> {
         request: ServiceRequest,
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
         let client = Arc::clone(&self.client);
-        let (http_req, _payload) = request.into_parts();
-        let query_string = http_req.query_string().to_owned();
+
         Box::pin(async move {
+            let query_string = request.query_string();
             let result = Self::process_oidc_callback(&client, &query_string).await;
             match result {
-                Ok(response) => Ok(ServiceResponse::new(http_req, response).map_into_boxed_body()),
+                Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback: {}", e);
-                    Ok(ServiceResponse::new(
-                        http_req,
-                        HttpResponse::BadRequest().body("Authentication failed"),
-                    )
-                    .map_into_boxed_body())
+                    Ok(request
+                        .into_response(HttpResponse::BadRequest().body("Authentication failed")))
                 }
             }
         })
@@ -229,8 +226,6 @@ impl<S> OidcService<S> {
         todo!("Verify the state matches the expected CSRF token");
         todo!("Use client.exchange_code() to get the token response");
     }
-
-
 
     fn set_auth_cookie(
         response: &mut HttpResponse,
