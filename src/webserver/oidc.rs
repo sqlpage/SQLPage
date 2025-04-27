@@ -136,11 +136,12 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct OidcService<S> {
     service: S,
     app_state: web::Data<AppState>,
     config: Arc<OidcConfig>,
-    client: OidcClient,
+    client: Arc<OidcClient>,
 }
 
 impl<S> OidcService<S> {
@@ -156,7 +157,7 @@ impl<S> OidcService<S> {
             service,
             app_state: web::Data::clone(app_state),
             config,
-            client,
+            client: Arc::new(client),
         })
     }
 
@@ -168,17 +169,81 @@ impl<S> OidcService<S> {
                 CsrfToken::new_random,
                 Nonce::new_random,
             )
-            // Set the desired scopes.
             .add_scopes(self.config.scopes.iter().cloned())
             .url();
         auth_url.to_string()
     }
-    
-    fn handle_unauthenticated_request(&self, request: ServiceRequest) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+
+    fn handle_unauthenticated_request(
+        &self,
+        request: ServiceRequest,
+    ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+        // Check if this is the OIDC callback URL
+        if request.path() == SQLPAGE_REDIRECT_URI {
+            return self.handle_oidc_callback(request);
+        }
+
+        // If not the callback URL, redirect to auth as before
         let auth_url = self.build_auth_url(&request);
+        Box::pin(async move { Ok(request.into_response(build_redirect_response(auth_url))) })
+    }
+
+    fn handle_oidc_callback(
+        &self,
+        request: ServiceRequest,
+    ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+        let client = Arc::clone(&self.client);
+        let (http_req, _payload) = request.into_parts();
+        let query_string = http_req.query_string().to_owned();
         Box::pin(async move {
-            Ok(request.into_response(build_redirect_response(auth_url)))
+            let result = Self::process_oidc_callback(&client, &query_string).await;
+            match result {
+                Ok(response) => Ok(ServiceResponse::new(http_req, response).map_into_boxed_body()),
+                Err(e) => {
+                    log::error!("Failed to process OIDC callback: {}", e);
+                    Ok(ServiceResponse::new(
+                        http_req,
+                        HttpResponse::BadRequest().body("Authentication failed"),
+                    )
+                    .map_into_boxed_body())
+                }
+            }
         })
+    }
+
+    async fn process_oidc_callback(
+        client: &Arc<OidcClient>,
+        query_params: &str,
+    ) -> anyhow::Result<HttpResponse> {
+        let token_response = Self::exchange_code_for_token(client, query_params).await?;
+        let mut response = build_redirect_response(format!("/"));
+        Self::set_auth_cookie(&mut response, &token_response);
+        Ok(response)
+    }
+
+    async fn exchange_code_for_token(
+        client: &Arc<OidcClient>,
+        query_string: &str,
+    ) -> anyhow::Result<openidconnect::core::CoreTokenResponse> {
+        todo!("Extract 'code' and 'state' from query_string");
+        todo!("Verify the state matches the expected CSRF token");
+        todo!("Use client.exchange_code() to get the token response");
+    }
+
+
+
+    fn set_auth_cookie(
+        response: &mut HttpResponse,
+        token_response: &openidconnect::core::CoreTokenResponse,
+    ) {
+        // Extract token information (access token, id token, etc.)
+        todo!("Extract access_token and id_token from token_response");
+
+        // Create a secure cookie with the token information
+        todo!("Create a cookie with token information");
+
+        // Add the cookie to the response
+        todo!("response.cookie() to add the cookie to the response");
     }
 }
 
@@ -215,10 +280,10 @@ where
     }
 }
 
-fn build_redirect_response(auth_url: String) -> HttpResponse {
+fn build_redirect_response(target_url: String) -> HttpResponse {
     HttpResponse::TemporaryRedirect()
-        .append_header(("Location", auth_url))
-        .body("Redirecting to the login page.")
+        .append_header(("Location", target_url))
+        .body("Redirecting...")
 }
 
 fn get_sqlpage_auth_cookie(request: &ServiceRequest) -> Option<String> {
