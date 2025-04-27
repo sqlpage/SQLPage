@@ -200,6 +200,7 @@ impl<S> OidcService<S> {
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
         let oidc_client = Arc::clone(&self.oidc_client);
         let http_client = Arc::clone(&self.http_client);
+        let oidc_config = Arc::clone(&self.config);
 
         Box::pin(async move {
             let query_string = request.query_string();
@@ -207,7 +208,8 @@ impl<S> OidcService<S> {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    Ok(request.into_response(HttpResponse::BadRequest().body(e.to_string())))
+                    let auth_url = build_auth_url(&oidc_client, &oidc_config.scopes);
+                    Ok(request.into_response(build_redirect_response(auth_url)))
                 }
             }
         })
@@ -456,4 +458,16 @@ fn make_oidc_client(
 struct OidcCallbackParams {
     code: String,
     state: String,
+}
+
+fn build_auth_url(oidc_client: &OidcClient, scopes: &[Scope]) -> String {
+    let (auth_url, csrf_token, nonce) = oidc_client
+        .authorize_url(
+            CoreAuthenticationFlow::AuthorizationCode,
+            CsrfToken::new_random,
+            Nonce::new_random,
+        )
+        .add_scopes(scopes.iter().cloned())
+        .url();
+    auth_url.to_string()
 }
