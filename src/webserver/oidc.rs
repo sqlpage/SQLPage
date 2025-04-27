@@ -40,19 +40,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
             "The \"oidc_client_secret\" setting is required to authenticate with the OIDC provider",
         ))?;
 
-        let app_host = config
-            .host
-            .as_ref()
-            .or_else(|| config.https_domain.as_ref())
-            .cloned()
-            .unwrap_or_else(|| {
-                let host = config.listen_on().to_string();
-                log::warn!(
-                    "No host or https_domain provided in the configuration, using \"{}\" as the app host to build the redirect URL. This will only work locally. Disable this warning by providing a value for the \"host\" setting.",
-                    host
-                );
-                host
-            });
+        let app_host = get_app_host(config);
 
         Ok(Self {
             issuer_url: issuer_url.clone(),
@@ -68,6 +56,31 @@ impl TryFrom<&AppConfig> for OidcConfig {
     }
 }
 
+fn get_app_host(config: &AppConfig) -> String {
+    if let Some(host) = &config.host {
+        return host.clone();
+    }
+    if let Some(https_domain) = &config.https_domain {
+        return https_domain.clone();
+    }
+
+    let socket_addr = config.listen_on();
+    let ip = socket_addr.ip();
+    let host = if ip.is_unspecified() || ip.is_loopback() {
+        format!("localhost:{}", socket_addr.port())
+    } else {
+        socket_addr.to_string()
+    };
+    log::warn!(
+        "No host or https_domain provided in the configuration, \
+         using \"{}\" as the app host to build the redirect URL. \
+         This will only work locally. \
+         Disable this warning by providing a value for the \"host\" setting.",
+        host
+    );
+    host
+}
+
 pub struct OidcMiddleware {
     pub config: Option<Arc<OidcConfig>>,
     app_state: web::Data<AppState>,
@@ -79,7 +92,6 @@ impl OidcMiddleware {
         match &config {
             Ok(config) => {
                 log::debug!("Setting up OIDC with issuer: {}", config.issuer_url);
-                // contains secrets
             }
             Err(Some(err)) => {
                 log::error!("Invalid OIDC configuration: {err}");
