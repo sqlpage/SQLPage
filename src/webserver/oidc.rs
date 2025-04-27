@@ -4,15 +4,17 @@ use crate::{app_config::AppConfig, AppState};
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Condition,
-    web, Error, HttpResponse,
+    web::{self, Query},
+    Error, HttpResponse,
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
 use openidconnect::{
     core::{CoreAuthDisplay, CoreAuthenticationFlow},
     AsyncHttpClient, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet, EndpointNotSet,
-    EndpointSet, IssuerUrl, Nonce, RedirectUrl, Scope,
+    EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope, TokenResponse,
 };
+use serde::Deserialize;
 
 use super::http_client::make_http_client;
 
@@ -97,12 +99,11 @@ impl OidcMiddleware {
 }
 
 async fn discover_provider_metadata(
-    app_config: &AppConfig,
+    http_client: &AwcHttpClient,
     issuer_url: IssuerUrl,
 ) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
-    let http_client = AwcHttpClient::new(app_config)?;
     let provider_metadata =
-        openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, &http_client).await?;
+        openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, http_client).await?;
     Ok(provider_metadata)
 }
 
@@ -141,7 +142,8 @@ pub struct OidcService<S> {
     service: S,
     app_state: web::Data<AppState>,
     config: Arc<OidcConfig>,
-    client: Arc<OidcClient>,
+    oidc_client: Arc<OidcClient>,
+    http_client: Arc<AwcHttpClient>,
 }
 
 impl<S> OidcService<S> {
@@ -151,19 +153,21 @@ impl<S> OidcService<S> {
         config: Arc<OidcConfig>,
     ) -> anyhow::Result<Self> {
         let issuer_url = config.issuer_url.clone();
-        let provider_metadata = discover_provider_metadata(&app_state.config, issuer_url).await?;
+        let http_client = AwcHttpClient::new(&app_state.config)?;
+        let provider_metadata = discover_provider_metadata(&http_client, issuer_url).await?;
         let client: OidcClient = make_oidc_client(&config, provider_metadata)?;
         Ok(Self {
             service,
             app_state: web::Data::clone(app_state),
             config,
-            client: Arc::new(client),
+            oidc_client: Arc::new(client),
+            http_client: Arc::new(http_client),
         })
     }
 
     fn build_auth_url(&self, request: &ServiceRequest) -> String {
         let (auth_url, csrf_token, nonce) = self
-            .client
+            .oidc_client
             .authorize_url(
                 CoreAuthenticationFlow::AuthorizationCode,
                 CsrfToken::new_random,
@@ -192,53 +196,19 @@ impl<S> OidcService<S> {
         &self,
         request: ServiceRequest,
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        let client = Arc::clone(&self.client);
+        let oidc_client = Arc::clone(&self.oidc_client);
+        let http_client = Arc::clone(&self.http_client);
 
         Box::pin(async move {
             let query_string = request.query_string();
-            let result = Self::process_oidc_callback(&client, &query_string).await;
-            match result {
+            match process_oidc_callback(&oidc_client, &http_client, query_string).await {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
-                    log::error!("Failed to process OIDC callback: {}", e);
-                    Ok(request
-                        .into_response(HttpResponse::BadRequest().body("Authentication failed")))
+                    log::error!("Failed to process OIDC callback with params {query_string}: {e}");
+                    Ok(request.into_response(HttpResponse::BadRequest().body(e.to_string())))
                 }
             }
         })
-    }
-
-    async fn process_oidc_callback(
-        client: &Arc<OidcClient>,
-        query_params: &str,
-    ) -> anyhow::Result<HttpResponse> {
-        let token_response = Self::exchange_code_for_token(client, query_params).await?;
-        let mut response = build_redirect_response(format!("/"));
-        Self::set_auth_cookie(&mut response, &token_response);
-        Ok(response)
-    }
-
-    async fn exchange_code_for_token(
-        client: &Arc<OidcClient>,
-        query_string: &str,
-    ) -> anyhow::Result<openidconnect::core::CoreTokenResponse> {
-        todo!("Extract 'code' and 'state' from query_string");
-        todo!("Verify the state matches the expected CSRF token");
-        todo!("Use client.exchange_code() to get the token response");
-    }
-
-    fn set_auth_cookie(
-        response: &mut HttpResponse,
-        token_response: &openidconnect::core::CoreTokenResponse,
-    ) {
-        // Extract token information (access token, id token, etc.)
-        todo!("Extract access_token and id_token from token_response");
-
-        // Create a secure cookie with the token information
-        todo!("Create a cookie with token information");
-
-        // Add the cookie to the response
-        todo!("response.cookie() to add the cookie to the response");
     }
 }
 
@@ -273,6 +243,54 @@ where
             Ok(response)
         })
     }
+}
+
+async fn process_oidc_callback(
+    oidc_client: &Arc<OidcClient>,
+    http_client: &Arc<AwcHttpClient>,
+    query_string: &str,
+) -> anyhow::Result<HttpResponse> {
+    let params = Query::<OidcCallbackParams>::from_query(query_string)?.into_inner();
+    let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
+    let mut response = build_redirect_response(format!("/"));
+    set_auth_cookie(&mut response, &token_response)?;
+    Ok(response)
+}
+
+async fn exchange_code_for_token(
+    oidc_client: &OidcClient,
+    http_client: &AwcHttpClient,
+    oidc_callback_params: OidcCallbackParams,
+) -> anyhow::Result<openidconnect::core::CoreTokenResponse> {
+    // TODO: Verify the state matches the expected CSRF token
+    let token_response = oidc_client
+        .exchange_code(openidconnect::AuthorizationCode::new(
+            oidc_callback_params.code,
+        ))?
+        .request_async(http_client)
+        .await?;
+    Ok(token_response)
+}
+
+fn set_auth_cookie(
+    response: &mut HttpResponse,
+    token_response: &openidconnect::core::CoreTokenResponse,
+) -> anyhow::Result<()> {
+    let access_token = token_response.access_token();
+    log::debug!("Received access token: {}", access_token.secret());
+    let id_token = token_response
+        .id_token()
+        .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
+
+    let cookie = actix_web::cookie::Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token.to_string())
+        .secure(true)
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .path("/")
+        .finish();
+
+    response.add_cookie(&cookie).unwrap();
+    Ok(())
 }
 
 fn build_redirect_response(target_url: String) -> HttpResponse {
@@ -403,4 +421,10 @@ fn make_oidc_client(
     .set_redirect_uri(redirect_url);
 
     Ok(client)
+}
+
+#[derive(Debug, Deserialize)]
+struct OidcCallbackParams {
+    code: String,
+    state: String,
 }
