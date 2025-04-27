@@ -115,8 +115,12 @@ async fn discover_provider_metadata(
     http_client: &AwcHttpClient,
     issuer_url: IssuerUrl,
 ) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
+    log::debug!("Discovering provider metadata for {}", issuer_url);
     let provider_metadata =
-        openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, http_client).await?;
+        openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, http_client)
+            .await
+            .with_context(|| format!("Failed to discover OIDC provider metadata"))?;
+    log::debug!("Provider metadata discovered: {provider_metadata:?}");
     Ok(provider_metadata)
 }
 
