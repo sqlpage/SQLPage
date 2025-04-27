@@ -10,9 +10,10 @@ use actix_web::{
 use anyhow::{anyhow, Context};
 use awc::Client;
 use openidconnect::{
-    core::{CoreAuthDisplay, CoreAuthenticationFlow},
+    core::{CoreAuthDisplay, CoreAuthenticationFlow, CoreGenderClaim, CoreIdToken},
     AsyncHttpClient, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet, EndpointNotSet,
-    EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope, TokenResponse,
+    EndpointSet, IdToken, IdTokenClaims, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
+    TokenResponse,
 };
 use serde::Deserialize;
 
@@ -182,12 +183,13 @@ impl<S> OidcService<S> {
         &self,
         request: ServiceRequest,
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        // Check if this is the OIDC callback URL
+        log::debug!("Handling unauthenticated request to {}", request.path());
         if request.path() == SQLPAGE_REDIRECT_URI {
+            log::debug!("The request is the OIDC callback");
             return self.handle_oidc_callback(request);
         }
 
-        // If not the callback URL, redirect to auth as before
+        log::debug!("Redirecting to OIDC provider");
         let auth_url = self.build_auth_url(&request);
         Box::pin(async move { Ok(request.into_response(build_redirect_response(auth_url))) })
     }
@@ -228,12 +230,17 @@ where
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::debug!("Started OIDC middleware with config: {:?}", self.config);
-        match get_sqlpage_auth_cookie(&request) {
-            Some(cookie) => {
+        let oidc_client = Arc::clone(&self.oidc_client);
+        match get_sqlpage_auth_cookie(&oidc_client, &request) {
+            Ok(Some(cookie)) => {
                 log::trace!("Found SQLPage auth cookie: {cookie}");
             }
-            None => {
+            Ok(None) => {
                 log::trace!("No SQLPage auth cookie found");
+                return self.handle_unauthenticated_request(request);
+            }
+            Err(e) => {
+                log::error!("Found an invalid SQLPage auth cookie: {e}");
                 return self.handle_unauthenticated_request(request);
             }
         }
@@ -250,8 +257,13 @@ async fn process_oidc_callback(
     http_client: &Arc<AwcHttpClient>,
     query_string: &str,
 ) -> anyhow::Result<HttpResponse> {
-    let params = Query::<OidcCallbackParams>::from_query(query_string)?.into_inner();
+    let params = Query::<OidcCallbackParams>::from_query(query_string)
+        .with_context(|| format!("{SQLPAGE_REDIRECT_URI}: failed to parse OIDC callback parameters from {query_string}"))?
+        .into_inner();
+    log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
     let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
+    log::debug!("Received token response: {token_response:?}");
+    // TODO: redirect to the original URL instead of /
     let mut response = build_redirect_response(format!("/"));
     set_auth_cookie(&mut response, &token_response)?;
     Ok(response)
@@ -277,12 +289,14 @@ fn set_auth_cookie(
     token_response: &openidconnect::core::CoreTokenResponse,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
-    log::debug!("Received access token: {}", access_token.secret());
+    log::trace!("Received access token: {}", access_token.secret());
     let id_token = token_response
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let cookie = actix_web::cookie::Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token.to_string())
+    let id_token_str = id_token.to_string();
+    log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
+    let cookie = actix_web::cookie::Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token_str)
         .secure(true)
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
@@ -299,10 +313,25 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
         .body("Redirecting...")
 }
 
-fn get_sqlpage_auth_cookie(request: &ServiceRequest) -> Option<String> {
-    let cookie = request.cookie(SQLPAGE_AUTH_COOKIE_NAME)?;
-    log::error!("TODO: actually check the validity of the cookie");
-    Some(cookie.value().to_string())
+fn get_sqlpage_auth_cookie(
+    oidc_client: &OidcClient,
+    request: &ServiceRequest,
+) -> anyhow::Result<Option<String>> {
+    let Some(cookie) = request.cookie(SQLPAGE_AUTH_COOKIE_NAME) else {
+        return Ok(None);
+    };
+    let cookie_value = cookie.value().to_string();
+
+    let verifier = oidc_client.id_token_verifier();
+    let id_token = CoreIdToken::from_str(&cookie_value)
+        .with_context(|| anyhow!("Invalid SQLPage auth cookie"))?;
+
+    let nonce_verifier = |_: Option<&Nonce>| Ok(());
+    let claims: &IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim> = id_token
+        .claims(&verifier, nonce_verifier)
+        .with_context(|| anyhow!("Invalid SQLPage auth cookie"))?;
+    log::debug!("The current user is: {claims:?}");
+    Ok(Some(cookie_value))
 }
 
 pub struct AwcHttpClient {
