@@ -1240,7 +1240,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/your-first-sql-website", "title": "Getting started", "icon": "book"},
                     {"link": "/components.sql", "title": "All Components", "icon": "list-details"},
                     {"link": "/functions.sql", "title": "SQLPage Functions", "icon": "math-function"},
-                    {"link": "/extensions-to-sql.sql", "title": "Extensions to SQL", "icon": "cube-plus"},
+                    {"link": "/extensions-to-sql", "title": "Extensions to SQL", "icon": "cube-plus"},
                     {"link": "/custom_components.sql", "title": "Custom Components", "icon": "puzzle"},
                     {"link": "//github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
                 ]}
