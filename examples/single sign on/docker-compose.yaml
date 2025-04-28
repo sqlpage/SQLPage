@@ -13,16 +13,6 @@ services:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage
     environment:
-      # OIDC configuration
-      - SQLPAGE_HOST=localhost:8080
-      - SQLPAGE_OIDC_ISSUER_URL=http://localhost:8181/realms/sqlpage_demo
-      - OIDC_AUTHORIZATION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/auth
-      - OIDC_TOKEN_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/token
-      - OIDC_USERINFO_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/userinfo
-      - OIDC_END_SESSION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/logout
-      - OIDC_CLIENT_ID=sqlpage
-      - OIDC_CLIENT_SECRET=qiawfnYrYzsmoaOZT28rRjPPRamfvrYr
-
       # CAS (central authentication system) configuration
       # (you can ignore this if you're only using OpenID Connect)
       - CAS_ROOT_URL=http://localhost:8181/realms/sqlpage_demo/protocol/cas

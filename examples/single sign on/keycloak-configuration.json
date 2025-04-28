@@ -3597,7 +3597,7 @@
         "alwaysDisplayInConsole": true,
         "clientAuthenticatorType": "client-secret",
         "secret": "qiawfnYrYzsmoaOZT28rRjPPRamfvrYr",
-        "redirectUris": ["http://localhost:8080/oidc_redirect_handler.sql"],
+        "redirectUris": ["http://localhost:8080/sqlpage/oidc_callback"],
         "webOrigins": ["http://localhost:8080"],
         "notBefore": 0,
         "bearerOnly": false,
