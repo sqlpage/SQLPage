@@ -271,7 +271,7 @@ where
                 return self.handle_unauthenticated_request(request);
             }
             Err(e) => {
-                log::error!("Found an invalid SQLPage auth cookie: {e}");
+                log::error!("An auth cookie is present but could not be verified: {e:?}");
                 return self.handle_unauthenticated_request(request);
             }
         }
@@ -379,14 +379,15 @@ fn get_sqlpage_auth_cookie(
     };
     let cookie_value = cookie.value().to_string();
 
+    let state = get_state_from_cookie(request)?;
     let verifier = oidc_client.id_token_verifier();
     let id_token = CoreIdToken::from_str(&cookie_value)
-        .with_context(|| anyhow!("Invalid SQLPage auth cookie"))?;
+        .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
-    let nonce_verifier = |_: Option<&Nonce>| Ok(());
+    let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, &state.nonce);
     let claims: &IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim> = id_token
         .claims(&verifier, nonce_verifier)
-        .with_context(|| anyhow!("Invalid SQLPage auth cookie"))?;
+        .with_context(|| format!("Could not verify the ID token: {cookie_value:?}"))?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(cookie_value))
 }
@@ -562,13 +563,38 @@ struct OidcLoginState {
 fn hash_nonce(nonce: &Nonce) -> String {
     use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
     let salt = SaltString::generate(&mut OsRng);
-    // low-cost parameters
-    let params = argon2::Params::new(8, 1, 1, None).expect("bug: invalid Argon2 parameters");
+    // low-cost parameters: oidc tokens are short-lived
+    let params = argon2::Params::new(8, 1, 1, Some(16)).expect("bug: invalid Argon2 parameters");
     let argon2 = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
     let hash = argon2
         .hash_password(nonce.secret().as_bytes(), &salt)
         .expect("bug: failed to hash nonce");
     hash.to_string()
+}
+
+fn check_nonce(id_token_nonce: Option<&Nonce>, state_nonce: &Nonce) -> Result<(), String> {
+    match id_token_nonce {
+        Some(id_token_nonce) => nonce_matches(id_token_nonce, state_nonce),
+        None => Err("No nonce found in the ID token".to_string()),
+    }
+}
+
+fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), String> {
+    log::debug!("Checking nonce: {} == {}", id_token_nonce.secret(), state_nonce.secret());
+    let hash = argon2::password_hash::PasswordHash::new(&id_token_nonce.secret()).map_err(|e| {
+        format!(
+            "Failed to parse state nonce ({}): {e}",
+            id_token_nonce.secret()
+        )
+    })?;
+    argon2::password_hash::PasswordVerifier::verify_password(
+        &argon2::Argon2::default(),
+        state_nonce.secret().as_bytes(),
+        &hash,
+    )
+    .map_err(|e| format!("Failed to verify nonce ({}): {e}", state_nonce.secret()))?;
+    log::debug!("Nonce successfully verified");
+    Ok(())
 }
 
 impl OidcLoginState {
