@@ -3571,7 +3571,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "awc",
- "base64 0.22.1",
+ "base64 0.21.7",
  "chrono",
  "clap",
  "config",
