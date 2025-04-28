@@ -1,7 +1,14 @@
-use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
+use std::{
+    future::Future,
+    hash::{DefaultHasher, Hash, Hasher},
+    pin::Pin,
+    str::FromStr,
+    sync::Arc,
+};
 
 use crate::{app_config::AppConfig, AppState};
 use actix_web::{
+    cookie::Cookie,
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Condition,
     web::{self, Query},
@@ -10,11 +17,13 @@ use actix_web::{
 use anyhow::{anyhow, Context};
 use awc::Client;
 use openidconnect::{
-    core::{CoreAuthDisplay, CoreAuthenticationFlow, CoreGenderClaim, CoreIdToken},
+    core::{CoreAuthenticationFlow, CoreGenderClaim, CoreIdToken},
+    url::Url,
     AsyncHttpClient, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet, EndpointNotSet,
-    EndpointSet, IdToken, IdTokenClaims, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
+    EndpointSet, IdTokenClaims, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
     TokenResponse,
 };
+use password_hash::{rand_core::OsRng, SaltString};
 use serde::{Deserialize, Serialize};
 
 use super::http_client::make_http_client;
@@ -208,18 +217,9 @@ impl<S> OidcService<S> {
 
         log::debug!("Redirecting to OIDC provider");
 
-        let auth_url = build_auth_url(
-            &self.oidc_client,
-            &self.config.scopes,
-            request.path().to_string(),
-        );
-        Box::pin(async move {
-            let state_cookie = create_state_cookie(&request);
-            let mut response = build_redirect_response(auth_url);
-
-            response.add_cookie(&state_cookie)?;
-            Ok(request.into_response(response))
-        })
+        let response =
+            build_auth_provider_redirect_response(&self.oidc_client, &self.config, &request);
+        Box::pin(async move { Ok(request.into_response(response)) })
     }
 
     fn handle_oidc_callback(
@@ -236,12 +236,9 @@ impl<S> OidcService<S> {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    let auth_url = build_auth_url(
-                        &oidc_client,
-                        &oidc_config.scopes,
-                        request.path().to_string(),
-                    );
-                    Ok(request.into_response(build_redirect_response(auth_url)))
+                    let resp =
+                        build_auth_provider_redirect_response(&oidc_client, &oidc_config, &request);
+                    Ok(request.into_response(resp))
                 }
             }
         })
@@ -301,6 +298,12 @@ async fn process_oidc_callback(
             )
         })?
         .into_inner();
+
+    if state.csrf_token.secret() != params.state.secret() {
+        log::debug!("CSRF token mismatch: expected {state:?}, got {params:?}");
+        return Err(anyhow!("Invalid CSRF token: {}", params.state.secret()));
+    }
+
     log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
     let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
     log::debug!("Received token response: {token_response:?}");
@@ -337,7 +340,7 @@ fn set_auth_cookie(
 
     let id_token_str = id_token.to_string();
     log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
-    let cookie = actix_web::cookie::Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token_str)
+    let cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token_str)
         .secure(true)
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
@@ -346,6 +349,19 @@ fn set_auth_cookie(
 
     response.add_cookie(&cookie).unwrap();
     Ok(())
+}
+
+fn build_auth_provider_redirect_response(
+    oidc_client: &OidcClient,
+    oidc_config: &Arc<OidcConfig>,
+    request: &ServiceRequest,
+) -> HttpResponse {
+    let AuthUrl { url, params } = build_auth_url(oidc_client, &oidc_config.scopes);
+    let state_cookie = create_state_cookie(request, params);
+    HttpResponse::TemporaryRedirect()
+        .append_header(("Location", url.to_string()))
+        .cookie(state_cookie)
+        .body("Redirecting...")
 }
 
 fn build_redirect_response(target_url: String) -> HttpResponse {
@@ -496,33 +512,79 @@ fn make_oidc_client(
 #[derive(Debug, Deserialize)]
 struct OidcCallbackParams {
     code: String,
-    state: String,
+    state: CsrfToken,
 }
 
-fn build_auth_url(oidc_client: &OidcClient, scopes: &[Scope], initial_url: String) -> String {
-    let (auth_url, csrf_token, nonce) = oidc_client
+struct AuthUrl {
+    url: Url,
+    params: AuthUrlParams,
+}
+
+struct AuthUrlParams {
+    csrf_token: CsrfToken,
+    nonce: Nonce,
+}
+
+fn build_auth_url(oidc_client: &OidcClient, scopes: &[Scope]) -> AuthUrl {
+    let nonce_source = Nonce::new_random();
+    let hashed_nonce = Nonce::new(hash_nonce(&nonce_source));
+    let (url, csrf_token, _nonce) = oidc_client
         .authorize_url(
             CoreAuthenticationFlow::AuthorizationCode,
             CsrfToken::new_random,
-            Nonce::new_random,
+            || hashed_nonce,
         )
         .add_scopes(scopes.iter().cloned())
         .url();
-    auth_url.to_string()
+    AuthUrl {
+        url,
+        params: AuthUrlParams {
+            csrf_token,
+            nonce: nonce_source,
+        },
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct OidcLoginState {
+    /// The URL to redirect to after the login process is complete.
     #[serde(rename = "u")]
     initial_url: String,
+    /// The CSRF token to use for the login process.
+    #[serde(rename = "c")]
+    csrf_token: CsrfToken,
+    /// The source nonce to use for the login process. It must be checked against the hash
+    /// stored in the ID token.
+    #[serde(rename = "n")]
+    nonce: Nonce,
 }
 
-fn create_state_cookie(request: &ServiceRequest) -> actix_web::cookie::Cookie {
-    let state = OidcLoginState {
-        initial_url: request.path().to_string(),
-    };
+fn hash_nonce(nonce: &Nonce) -> String {
+    use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
+    let salt = SaltString::generate(&mut OsRng);
+    // low-cost parameters
+    let params = argon2::Params::new(8, 1, 1, None).expect("bug: invalid Argon2 parameters");
+    let argon2 = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
+    let hash = argon2
+        .hash_password(nonce.secret().as_bytes(), &salt)
+        .expect("bug: failed to hash nonce");
+    hash.to_string()
+}
+
+impl OidcLoginState {
+    fn new(request: &ServiceRequest, auth_url: AuthUrlParams) -> Self {
+        Self {
+            initial_url: request.path().to_string(),
+            csrf_token: auth_url.csrf_token,
+            nonce: auth_url.nonce,
+        }
+    }
+}
+
+fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie {
+    let state = OidcLoginState::new(request, auth_url);
     let state_json = serde_json::to_string(&state).unwrap();
-    actix_web::cookie::Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
+    Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
         .secure(true)
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
