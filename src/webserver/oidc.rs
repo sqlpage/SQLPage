@@ -1,10 +1,4 @@
-use std::{
-    future::Future,
-    hash::{DefaultHasher, Hash, Hasher},
-    pin::Pin,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
 use crate::{app_config::AppConfig, AppState};
 use actix_web::{
@@ -23,7 +17,6 @@ use openidconnect::{
     EndpointSet, IdTokenClaims, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
     TokenResponse,
 };
-use password_hash::{rand_core::OsRng, SaltString};
 use serde::{Deserialize, Serialize};
 
 use super::http_client::make_http_client;
@@ -83,10 +76,9 @@ fn get_app_host(config: &AppConfig) -> String {
     };
     log::warn!(
         "No host or https_domain provided in the configuration, \
-         using \"{}\" as the app host to build the redirect URL. \
+         using \"{host}\" as the app host to build the redirect URL. \
          This will only work locally. \
-         Disable this warning by providing a value for the \"host\" setting.",
-        host
+         Disable this warning by providing a value for the \"host\" setting."
     );
     host
 }
@@ -125,11 +117,11 @@ async fn discover_provider_metadata(
     http_client: &AwcHttpClient,
     issuer_url: IssuerUrl,
 ) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
-    log::debug!("Discovering provider metadata for {}", issuer_url);
+    log::debug!("Discovering provider metadata for {issuer_url}");
     let provider_metadata =
         openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, http_client)
             .await
-            .with_context(|| format!("Failed to discover OIDC provider metadata"))?;
+            .with_context(|| "Failed to discover OIDC provider metadata".to_string())?;
     log::debug!("Provider metadata discovered: {provider_metadata:?}");
     Ok(provider_metadata)
 }
@@ -190,19 +182,6 @@ impl<S> OidcService<S> {
             oidc_client: Arc::new(client),
             http_client: Arc::new(http_client),
         })
-    }
-
-    fn build_auth_url(&self, request: &ServiceRequest) -> String {
-        let (auth_url, csrf_token, nonce) = self
-            .oidc_client
-            .authorize_url(
-                CoreAuthenticationFlow::AuthorizationCode,
-                CsrfToken::new_random,
-                Nonce::new_random,
-            )
-            .add_scopes(self.config.scopes.iter().cloned())
-            .url();
-        auth_url.to_string()
     }
 
     fn handle_unauthenticated_request(
@@ -271,7 +250,13 @@ where
                 return self.handle_unauthenticated_request(request);
             }
             Err(e) => {
-                log::error!("An auth cookie is present but could not be verified: {e:?}");
+                log::debug!(
+                    "{:?}",
+                    e.context(
+                        "An auth cookie is present but could not be verified. \
+                     Redirecting to OIDC provider to re-authenticate."
+                    )
+                );
                 return self.handle_unauthenticated_request(request);
             }
         }
@@ -488,8 +473,7 @@ fn make_oidc_client(
     })?;
     let needs_http = match redirect_url.url().host() {
         Some(openidconnect::url::Host::Domain(domain)) => domain == "localhost",
-        Some(openidconnect::url::Host::Ipv4(_)) => true,
-        Some(openidconnect::url::Host::Ipv6(_)) => true,
+        Some(openidconnect::url::Host::Ipv4(_) | openidconnect::url::Host::Ipv6(_)) => true,
         None => false,
     };
     if needs_http {
@@ -563,7 +547,7 @@ struct OidcLoginState {
 fn hash_nonce(nonce: &Nonce) -> String {
     use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
     let salt = SaltString::generate(&mut OsRng);
-    // low-cost parameters: oidc tokens are short-lived
+    // low-cost parameters: oidc tokens are short-lived and the source nonce is high-entropy
     let params = argon2::Params::new(8, 1, 1, Some(16)).expect("bug: invalid Argon2 parameters");
     let argon2 = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
     let hash = argon2
@@ -580,8 +564,12 @@ fn check_nonce(id_token_nonce: Option<&Nonce>, state_nonce: &Nonce) -> Result<()
 }
 
 fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), String> {
-    log::debug!("Checking nonce: {} == {}", id_token_nonce.secret(), state_nonce.secret());
-    let hash = argon2::password_hash::PasswordHash::new(&id_token_nonce.secret()).map_err(|e| {
+    log::debug!(
+        "Checking nonce: {} == {}",
+        id_token_nonce.secret(),
+        state_nonce.secret()
+    );
+    let hash = argon2::password_hash::PasswordHash::new(id_token_nonce.secret()).map_err(|e| {
         format!(
             "Failed to parse state nonce ({}): {e}",
             id_token_nonce.secret()
@@ -623,5 +611,5 @@ fn get_state_from_cookie(request: &ServiceRequest) -> anyhow::Result<OidcLoginSt
         format!("No {SQLPAGE_STATE_COOKIE_NAME} cookie found for {SQLPAGE_REDIRECT_URI}")
     })?;
     serde_json::from_str(state_cookie.value())
-        .with_context(|| format!("Failed to parse OIDC state from cookie"))
+        .with_context(|| format!("Failed to parse OIDC state from cookie: {state_cookie}"))
 }
