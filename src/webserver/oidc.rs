@@ -173,7 +173,8 @@ impl<S> OidcService<S> {
         let issuer_url = config.issuer_url.clone();
         let http_client = AwcHttpClient::new(&app_state.config)?;
         let provider_metadata = discover_provider_metadata(&http_client, issuer_url).await?;
-        let client: OidcClient = make_oidc_client(&config, provider_metadata)?;
+        let client: OidcClient = make_oidc_client(&config, provider_metadata)
+            .with_context(|| format!("Unable to create OIDC client with config: {config:?}"))?;
         Ok(Self {
             service,
             config,
@@ -388,24 +389,23 @@ impl AwcHttpClient {
 }
 
 impl<'c> AsyncHttpClient<'c> for AwcHttpClient {
-    type Error = StringError;
-    type Future = Pin<
-        Box<dyn Future<Output = Result<openidconnect::http::Response<Vec<u8>>, Self::Error>> + 'c>,
-    >;
+    type Error = AwcWrapperError;
+    type Future =
+        Pin<Box<dyn Future<Output = Result<openidconnect::HttpResponse, Self::Error>> + 'c>>;
 
-    fn call(&'c self, request: openidconnect::http::Request<Vec<u8>>) -> Self::Future {
+    fn call(&'c self, request: openidconnect::HttpRequest) -> Self::Future {
         let client = self.client.clone();
         Box::pin(async move {
             execute_oidc_request_with_awc(client, request)
                 .await
-                .map_err(|err| StringError(format!("Failed to execute OIDC request: {err:?}")))
+                .map_err(|err| AwcWrapperError(err))
         })
     }
 }
 
 async fn execute_oidc_request_with_awc(
     client: Client,
-    request: openidconnect::http::Request<Vec<u8>>,
+    request: openidconnect::HttpRequest,
 ) -> Result<openidconnect::http::Response<Vec<u8>>, anyhow::Error> {
     let awc_method = awc::http::Method::from_bytes(request.method().as_str().as_bytes())?;
     let awc_uri = awc::http::Uri::from_str(&request.uri().to_string())?;
@@ -414,30 +414,36 @@ async fn execute_oidc_request_with_awc(
     for (name, value) in request.headers() {
         req = req.insert_header((name.as_str(), value.to_str()?));
     }
-    let mut response = req
-        .send_body(request.into_body())
-        .await
-        .map_err(|e| anyhow!("{:?}", e))?;
+    let (req_head, body) = request.into_parts();
+    let mut response = req.send_body(body).await.map_err(|e| {
+        anyhow!(e.to_string()).context(format!(
+            "Failed to send request: {} {}",
+            &req_head.method, &req_head.uri
+        ))
+    })?;
     let head = response.headers();
     let mut resp_builder =
         openidconnect::http::Response::builder().status(response.status().as_u16());
     for (name, value) in head {
         resp_builder = resp_builder.header(name.as_str(), value.to_str()?);
     }
-    let body = response.body().await?.to_vec();
+    let body = response
+        .body()
+        .await
+        .with_context(|| format!("Couldnt read from {}", &req_head.uri))?;
     log::debug!(
         "Received OIDC response with status {}: {}",
         response.status(),
         String::from_utf8_lossy(&body)
     );
-    let resp = resp_builder.body(body)?;
+    let resp = resp_builder.body(body.to_vec())?;
     Ok(resp)
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct StringError(String);
+#[derive(Debug)]
+pub struct AwcWrapperError(anyhow::Error);
 
-impl std::fmt::Display for StringError {
+impl std::fmt::Display for AwcWrapperError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.0, f)
     }
@@ -450,7 +456,11 @@ type OidcClient = openidconnect::core::CoreClient<
     EndpointMaybeSet,
     EndpointMaybeSet,
 >;
-impl std::error::Error for StringError {}
+impl std::error::Error for AwcWrapperError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.0.source()
+    }
+}
 
 fn make_oidc_client(
     config: &Arc<OidcConfig>,
