@@ -159,7 +159,6 @@ where
 #[derive(Clone)]
 pub struct OidcService<S> {
     service: S,
-    app_state: web::Data<AppState>,
     config: Arc<OidcConfig>,
     oidc_client: Arc<OidcClient>,
     http_client: Arc<AwcHttpClient>,
@@ -177,7 +176,6 @@ impl<S> OidcService<S> {
         let client: OidcClient = make_oidc_client(&config, provider_metadata)?;
         Ok(Self {
             service,
-            app_state: web::Data::clone(app_state),
             config,
             oidc_client: Arc::new(client),
             http_client: Arc::new(http_client),
