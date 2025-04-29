@@ -1,3 +1,4 @@
+use actix_web::dev::ServiceRequest;
 use anyhow::{anyhow, Context};
 use std::sync::OnceLock;
 
@@ -10,7 +11,7 @@ pub fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result
                 log::debug!("Loading native certificates because system_root_ca_certificates is enabled");
                 let certs = rustls_native_certs::load_native_certs()
                     .with_context(|| "Initial native certificates load failed")?;
-                log::info!("Loaded {} native certificates", certs.len());
+                log::debug!("Loaded {} native HTTPS client certificates", certs.len());
                 let mut roots = rustls::RootCertStore::empty();
                 for cert in certs {
                     log::trace!("Adding native certificate to root store: {cert:?}");
@@ -42,4 +43,16 @@ pub fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result
         .finish();
     log::debug!("Created HTTP client");
     Ok(client)
+}
+
+pub(crate) fn get_http_client_from_appdata(
+    request: &ServiceRequest,
+) -> anyhow::Result<&awc::Client> {
+    if let Some(result) = request.app_data::<anyhow::Result<awc::Client>>() {
+        result
+            .as_ref()
+            .map_err(|e| anyhow!("HTTP client initialization failed: {e}"))
+    } else {
+        Err(anyhow!("HTTP client not found in app data"))
+    }
 }

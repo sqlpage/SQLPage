@@ -1,7 +1,10 @@
-use std::{future::Future, pin::Pin, rc::Rc, str::FromStr, sync::Arc};
+use std::future::ready;
+use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
+use crate::webserver::http_client::get_http_client_from_appdata;
 use crate::{app_config::AppConfig, AppState};
 use actix_web::{
+    body::BoxBody,
     cookie::Cookie,
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Condition,
@@ -20,6 +23,8 @@ use openidconnect::{
 use serde::{Deserialize, Serialize};
 
 use super::http_client::make_http_client;
+
+type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
@@ -83,45 +88,54 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
+pub struct OidcState {
+    pub config: Arc<OidcConfig>,
+    pub client: Arc<OidcClient>,
+}
+
+pub async fn initialize_oidc_state(
+    app_config: &AppConfig,
+) -> anyhow::Result<Option<Arc<OidcState>>> {
+    let oidc_cfg = match OidcConfig::try_from(app_config) {
+        Ok(c) => Arc::new(c),
+        Err(None) => return Ok(None), // OIDC not configured
+        Err(Some(e)) => return Err(anyhow::anyhow!(e)),
+    };
+
+    let http_client = make_http_client(app_config)?;
+    let provider_metadata =
+        discover_provider_metadata(&http_client, oidc_cfg.issuer_url.clone()).await?;
+    let client = make_oidc_client(&oidc_cfg, provider_metadata)?;
+
+    Ok(Some(Arc::new(OidcState {
+        config: oidc_cfg,
+        client: Arc::new(client),
+    })))
+}
+
 pub struct OidcMiddleware {
-    pub config: Option<Arc<OidcConfig>>,
-    app_state: web::Data<AppState>,
+    oidc_state: Option<Arc<OidcState>>,
 }
 
 impl OidcMiddleware {
+    #[must_use]
     pub fn new(app_state: &web::Data<AppState>) -> Condition<Self> {
-        let config = OidcConfig::try_from(&app_state.config);
-        match &config {
-            Ok(config) => {
-                log::debug!("Setting up OIDC with issuer: {}", config.issuer_url);
-            }
-            Err(Some(err)) => {
-                log::error!("Invalid OIDC configuration: {err}");
-            }
-            Err(None) => {
-                log::debug!("No OIDC configuration provided, skipping middleware.");
-            }
-        }
-        let config = config.ok().map(Arc::new);
-        Condition::new(
-            config.is_some(),
-            Self {
-                config,
-                app_state: web::Data::clone(app_state),
-            },
-        )
+        let oidc_state = app_state.oidc_state.clone();
+        Condition::new(oidc_state.is_some(), Self { oidc_state })
     }
 }
 
 async fn discover_provider_metadata(
-    http_client: &AwcHttpClient,
+    http_client: &awc::Client,
     issuer_url: IssuerUrl,
 ) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
     log::debug!("Discovering provider metadata for {issuer_url}");
-    let provider_metadata =
-        openidconnect::core::CoreProviderMetadata::discover_async(issuer_url, http_client)
-            .await
-            .with_context(|| "Failed to discover OIDC provider metadata".to_string())?;
+    let provider_metadata = openidconnect::core::CoreProviderMetadata::discover_async(
+        issuer_url,
+        &AwcHttpClient::from_client(http_client),
+    )
+    .await
+    .with_context(|| "Failed to discover OIDC provider metadata".to_string())?;
     log::debug!("Provider metadata discovered: {provider_metadata:?}");
     Ok(provider_metadata)
 }
@@ -135,52 +149,28 @@ where
     type Error = Error;
     type InitError = ();
     type Transform = OidcService<S>;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Transform, Self::InitError>> + 'static>>;
+    type Future = std::future::Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        let config = self.config.clone();
-        let app_state = web::Data::clone(&self.app_state);
-        Box::pin(async move {
-            match config {
-                Some(config) => Ok(OidcService::new(service, &app_state, Arc::clone(&config))
-                    .await
-                    .map_err(|err| {
-                        log::error!(
-                            "Error creating OIDC service with issuer: {}: {err:?}",
-                            config.issuer_url
-                        );
-                    })?),
-                None => Err(()),
-            }
-        })
+        match &self.oidc_state {
+            Some(state) => ready(Ok(OidcService::new(service, Arc::clone(state)))),
+            None => ready(Err(())),
+        }
     }
 }
 
 #[derive(Clone)]
 pub struct OidcService<S> {
     service: S,
-    config: Arc<OidcConfig>,
-    oidc_client: Arc<OidcClient>,
-    http_client: Rc<AwcHttpClient>,
+    oidc_state: Arc<OidcState>,
 }
 
 impl<S> OidcService<S> {
-    pub async fn new(
-        service: S,
-        app_state: &web::Data<AppState>,
-        config: Arc<OidcConfig>,
-    ) -> anyhow::Result<Self> {
-        let issuer_url = config.issuer_url.clone();
-        let http_client = AwcHttpClient::new(&app_state.config)?;
-        let provider_metadata = discover_provider_metadata(&http_client, issuer_url).await?;
-        let client: OidcClient = make_oidc_client(&config, provider_metadata)
-            .with_context(|| format!("Unable to create OIDC client with config: {config:?}"))?;
-        Ok(Self {
+    pub fn new(service: S, oidc_state: Arc<OidcState>) -> Self {
+        Self {
             service,
-            config,
-            oidc_client: Arc::new(client),
-            http_client: Rc::new(http_client),
-        })
+            oidc_state,
+        }
     }
 
     fn handle_unauthenticated_request(
@@ -195,8 +185,11 @@ impl<S> OidcService<S> {
 
         log::debug!("Redirecting to OIDC provider");
 
-        let response =
-            build_auth_provider_redirect_response(&self.oidc_client, &self.config, &request);
+        let response = build_auth_provider_redirect_response(
+            &self.oidc_state.client,
+            &self.oidc_state.config,
+            &request,
+        );
         Box::pin(async move { Ok(request.into_response(response)) })
     }
 
@@ -204,13 +197,12 @@ impl<S> OidcService<S> {
         &self,
         request: ServiceRequest,
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        let oidc_client = Arc::clone(&self.oidc_client);
-        let http_client = Rc::clone(&self.http_client);
-        let oidc_config = Arc::clone(&self.config);
+        let oidc_client = Arc::clone(&self.oidc_state.client);
+        let oidc_config = Arc::clone(&self.oidc_state.config);
 
         Box::pin(async move {
             let query_string = request.query_string();
-            match process_oidc_callback(&oidc_client, &http_client, query_string, &request).await {
+            match process_oidc_callback(&oidc_client, query_string, &request).await {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
@@ -222,9 +214,6 @@ impl<S> OidcService<S> {
         })
     }
 }
-
-type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
-use actix_web::body::BoxBody;
 
 impl<S> Service<ServiceRequest> for OidcService<S>
 where
@@ -238,8 +227,11 @@ where
     forward_ready!(service);
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
-        log::debug!("Started OIDC middleware with config: {:?}", self.config);
-        let oidc_client = Arc::clone(&self.oidc_client);
+        log::debug!(
+            "Started OIDC middleware with config: {:?}",
+            self.oidc_state.config
+        );
+        let oidc_client = Arc::clone(&self.oidc_state.client);
         match get_sqlpage_auth_cookie(&oidc_client, &request) {
             Ok(Some(cookie)) => {
                 log::trace!("Found SQLPage auth cookie: {cookie}");
@@ -269,10 +261,11 @@ where
 
 async fn process_oidc_callback(
     oidc_client: &OidcClient,
-    http_client: &AwcHttpClient,
     query_string: &str,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
+    let http_client = get_http_client_from_appdata(request)?;
+
     let state = get_state_from_cookie(request)?;
 
     let params = Query::<OidcCallbackParams>::from_query(query_string)
@@ -299,15 +292,14 @@ async fn process_oidc_callback(
 
 async fn exchange_code_for_token(
     oidc_client: &OidcClient,
-    http_client: &AwcHttpClient,
+    http_client: &awc::Client,
     oidc_callback_params: OidcCallbackParams,
 ) -> anyhow::Result<openidconnect::core::CoreTokenResponse> {
-    // TODO: Verify the state matches the expected CSRF token
     let token_response = oidc_client
         .exchange_code(openidconnect::AuthorizationCode::new(
             oidc_callback_params.code,
         ))?
-        .request_async(http_client)
+        .request_async(&AwcHttpClient::from_client(http_client))
         .await?;
     Ok(token_response)
 }
@@ -376,19 +368,18 @@ fn get_sqlpage_auth_cookie(
     Ok(Some(cookie_value))
 }
 
-pub struct AwcHttpClient {
-    client: Client,
+pub struct AwcHttpClient<'c> {
+    client: &'c awc::Client,
 }
 
-impl AwcHttpClient {
-    pub fn new(app_config: &AppConfig) -> anyhow::Result<Self> {
-        Ok(Self {
-            client: make_http_client(app_config)?,
-        })
+impl<'c> AwcHttpClient<'c> {
+    #[must_use]
+    pub fn from_client(client: &'c awc::Client) -> Self {
+        Self { client }
     }
 }
 
-impl<'c> AsyncHttpClient<'c> for AwcHttpClient {
+impl<'c> AsyncHttpClient<'c> for AwcHttpClient<'c> {
     type Error = AwcWrapperError;
     type Future =
         Pin<Box<dyn Future<Output = Result<openidconnect::HttpResponse, Self::Error>> + 'c>>;

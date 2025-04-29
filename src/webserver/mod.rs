@@ -43,7 +43,7 @@ pub use error_with_status::ErrorWithStatus;
 
 pub use database::make_placeholder;
 pub use database::migrations::apply;
-mod oidc;
+pub mod oidc;
 pub mod response_writer;
 pub mod routing;
 mod static_content;

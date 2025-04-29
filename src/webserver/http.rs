@@ -19,6 +19,7 @@ use actix_web::{
 };
 use actix_web::{HttpResponseBuilder, ResponseError};
 
+use super::http_client::make_http_client;
 use super::https::make_auto_rustls_config;
 use super::oidc::OidcMiddleware;
 use super::response_writer::ResponseWriter;
@@ -478,6 +479,7 @@ pub fn create_app(
             middleware::TrailingSlash::MergeOnly,
         ))
         .app_data(payload_config(&app_state))
+        .app_data(make_http_client(&app_state.config))
         .app_data(form_config(&app_state))
         .app_data(app_state)
 }
