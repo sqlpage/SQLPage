@@ -1,4 +1,4 @@
-use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
+use std::{future::Future, pin::Pin, rc::Rc, str::FromStr, sync::Arc};
 
 use crate::{app_config::AppConfig, AppState};
 use actix_web::{
@@ -161,7 +161,7 @@ pub struct OidcService<S> {
     service: S,
     config: Arc<OidcConfig>,
     oidc_client: Arc<OidcClient>,
-    http_client: Arc<AwcHttpClient>,
+    http_client: Rc<AwcHttpClient>,
 }
 
 impl<S> OidcService<S> {
@@ -179,7 +179,7 @@ impl<S> OidcService<S> {
             service,
             config,
             oidc_client: Arc::new(client),
-            http_client: Arc::new(http_client),
+            http_client: Rc::new(http_client),
         })
     }
 
@@ -205,7 +205,7 @@ impl<S> OidcService<S> {
         request: ServiceRequest,
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
         let oidc_client = Arc::clone(&self.oidc_client);
-        let http_client = Arc::clone(&self.http_client);
+        let http_client = Rc::clone(&self.http_client);
         let oidc_config = Arc::clone(&self.config);
 
         Box::pin(async move {
@@ -268,8 +268,8 @@ where
 }
 
 async fn process_oidc_callback(
-    oidc_client: &Arc<OidcClient>,
-    http_client: &Arc<AwcHttpClient>,
+    oidc_client: &OidcClient,
+    http_client: &AwcHttpClient,
     query_string: &str,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
@@ -398,7 +398,7 @@ impl<'c> AsyncHttpClient<'c> for AwcHttpClient {
         Box::pin(async move {
             execute_oidc_request_with_awc(client, request)
                 .await
-                .map_err(|err| AwcWrapperError(err))
+                .map_err(AwcWrapperError)
         })
     }
 }
