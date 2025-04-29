@@ -3,7 +3,7 @@ select * FROM sqlpage_shell;
 -- Display the list of players with a link for each one to start playing
 INSERT INTO players(name, game_id)
 SELECT $Player as name,
-    $id::integer as game_id
+    CAST($id AS INTEGER) as game_id
 WHERE $Player IS NOT NULL;
 
 SELECT 'list' as component,
@@ -17,7 +17,7 @@ SELECT name as title,
         )
      ) as link
 FROM players
-WHERE game_id = $id::integer;
+WHERE game_id = CAST($id AS INTEGER);
 ---------------------------
 -- Player insertion form --
 ---------------------------
@@ -35,7 +35,7 @@ INSERT INTO game_questions(
         impostor,
         game_order
     )
-SELECT $id::integer as game_id,
+SELECT CAST($id AS INTEGER) as game_id,
     questions.id as question_id,
     -- When the true answer is small, set the wrong answer to just +/- 1, otherwise -25%/+75%.
     -- When it is a date between 1200 and 2100, make it -25 % or +75 % of the distance to today
@@ -50,7 +50,7 @@ SELECT $id::integer as game_id,
     random() as game_order
 FROM questions
     LEFT JOIN game_questions ON questions.id = game_questions.question_id
-    AND game_questions.game_id = $id::integer
+    AND game_questions.game_id = CAST($id AS INTEGER)
 WHERE game_questions.question_id IS NULL
     AND $Player IS NOT NULL
 ORDER BY random()

@@ -112,7 +112,7 @@ FROM nums as a, nums as b
 WHERE -- The powerful thing is here
     $x IS NULL
     OR -- The syntax $x allows us to extract the value 'a' when the URL ends with '?x=a'. It will be null if the URL does not contain '?x='
-    b.x = $x::DECIMAL
+    b.x = CAST($x AS DECIMAL)
 ORDER BY a.x, b.x;
 -- So when we click the card for "a times b", we will reload the page, and display only the multiplication table of a
 ---------------------------
