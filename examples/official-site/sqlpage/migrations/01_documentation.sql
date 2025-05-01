@@ -347,6 +347,24 @@ When loading the page, the value for `:username` will be `NULL` if no value has 
     json('[{"component":"form"}, '||
     '{"name": "Your account", "prefix_icon": "mail", "prefix": "Email:", "suffix": "@mydomain.com"}, ' ||
     ']')),
+
+    ('form','With the header type, you can group your input fields based on a theme. For example, you can categorize fields according to a person''s identity and their contact information.',
+    json('[{"component":"form","title":"Information about the person"}, '||
+    '{"type": "header", "label": "Identity"},' ||
+    '{"name": "Name"},' ||
+    '{"name": "Surname"},' ||
+    '{"type": "header","label": "Contact"},' ||
+    '{"name": "phone", "label": "Phone number"},' ||
+    '{"name": "Email"},' ||
+    ']')),
+
+ ('form','A toggle switch in an HTML form is a user interface element that allows users to switch between two states, typically "on" and "off." It visually resembles a physical switch and is often used for settings or options that can be enabled or disabled.',
+    json('[{"component":"form"}, '||
+    '{"type": "switch", "label": "Dark theme", "description": "Enable dark theme"},' ||
+    '{"type": "switch", "label": "A required toggle switch", "required": true},' ||
+    '{"type": "switch", "label": "A disabled toggle switch", "disabled": true},' ||
+    ']')),
+
     ('form', 'This example illustrates the use of the `select` type.
 In this select input, the various options are hardcoded, but they could also be loaded from a database table,
 [using a function to convert the rows into a json array](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) like 
