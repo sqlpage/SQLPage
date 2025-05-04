@@ -507,8 +507,9 @@ pub fn payload_config(app_state: &web::Data<AppState>) -> PayloadConfig {
 fn default_headers(app_state: &web::Data<AppState>) -> middleware::DefaultHeaders {
     let server_header = format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
     let mut headers = middleware::DefaultHeaders::new().add(("Server", server_header));
-    if let Some(csp) = &app_state.config.content_security_policy {
-        headers = headers.add(("Content-Security-Policy", csp.as_str()));
+    let csp = &app_state.config.content_security_policy;
+    if csp.is_enabled() {
+        headers = headers.add(csp);
     }
     headers
 }
