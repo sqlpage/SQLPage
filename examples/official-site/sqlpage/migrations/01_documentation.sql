@@ -1208,6 +1208,8 @@ and in its object form, to generate a dropdown menu named "Community" with links
 The object form can be used directly only on database engines that have a native JSON type.
 On other engines (such as SQLite), you can use the [`dynamic`](?component=dynamic#component) component to generate the same result.
 
+In this example, the "About" submenu is marked as active, which will highlight it in the navigation bar.
+
 You see the [page layouts demo](./examples/layouts.sql) for a live example of the different layouts.
 ',
      json('[{
@@ -1216,7 +1218,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "icon": "database",
             "link": "/",
             "menu_item": [
-                {"title": "About", "submenu": [
+                {"active": true, "title": "About", "submenu": [
                     {"link": "/safety.sql", "title": "Security", "icon": "lock"},
                     {"link": "/performance.sql", "title": "Performance", "icon": "bolt"},
                     {"link": "//github.com/sqlpage/SQLPage/blob/main/LICENSE.txt", "title": "License", "icon": "file-text"},
