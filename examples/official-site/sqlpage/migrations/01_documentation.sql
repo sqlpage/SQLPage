@@ -1218,7 +1218,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "icon": "database",
             "link": "/",
             "menu_item": [
-                {"active": true, "title": "About", "submenu": [
+                {"title": "About", "submenu": [
                     {"link": "/safety.sql", "title": "Security", "icon": "lock"},
                     {"link": "/performance.sql", "title": "Performance", "icon": "bolt"},
                     {"link": "//github.com/sqlpage/SQLPage/blob/main/LICENSE.txt", "title": "License", "icon": "file-text"},
@@ -1263,6 +1263,22 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "css": "/assets/highlightjs-and-tabler-theme.css",
             "footer": "[Built with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/official-site)"
         }]')),
+    ('shell', '
+This example shows how to set menu items as active in the navigation, so that they are highlighted in the nav bar.
+
+In this example you can see that two menu items are created, "Home" and "About" and the "Home" tab is marked as active.
+',
+     json('[{
+            "component": "shell",
+            "title": "SQLPage: SQL websites",
+            "icon": "database",
+            "link": "/",
+            "menu_item": [
+                {"title": "Home", "active": true},
+                {"title": "About"}
+            ]
+        }]')),
+
     ('shell', '
 ### Sharing the shell between multiple pages
 
