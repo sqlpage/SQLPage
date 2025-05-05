@@ -791,7 +791,7 @@ async fn user_info<'a>(
         "gender" => claims.gender().map(|g| g.to_string()), // Assumes GenderClaim impls ToString
         "birthdate" => claims.birthdate().map(|b| b.to_string()), // Assumes Birthdate impls ToString
         "zoneinfo" => claims.zoneinfo().map(|z| z.to_string()),   // Assumes ZoneInfo impls ToString
-        "locale" => claims.locale().map(std::string::ToString::to_string),       // Assumes Locale impls ToString
+        "locale" => claims.locale().map(std::string::ToString::to_string), // Assumes Locale impls ToString
         "updated_at" => claims.updated_at().map(|t| t.timestamp().to_string()),
 
         // Standard Claims (Email Scope)
