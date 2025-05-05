@@ -113,8 +113,19 @@ When deploying to production:
 
 ## Troubleshooting
 
-- If login fails, check that the redirect URI matches exactly
-- Verify that your client ID and secret are correct
-- Make sure your `host` setting matches your application's URL
-- For local development, use `http://localhost:8080` as the host
-- For production, use your actual domain name
+### Version Requirements
+- OIDC support requires SQLPage **version 0.35 or higher**. Check your version in the logs.
+
+### Common Configuration Issues
+- **Redirect URI Mismatch**: The redirect URI in your OIDC provider settings must exactly match `https://your-domain.com/sqlpage/oidc_callback` (or `http://localhost:8080/sqlpage/oidc_callback` for local development)
+- **Invalid Client Credentials**: Double-check your client ID and secret are copied correctly from your OIDC provider
+- **Host Configuration**: The `host` setting in `sqlpage.json` must match your application's domain name exactly
+- **HTTPS Requirements**: Most OIDC providers require HTTPS in production. Ensure your site is served over HTTPS.
+- **Provider Discovery**: If SQLPage fails to discover your provider's configuration, verify the `oidc_issuer_url` is correct and accessible by loading `{oidc_issuer_url}/.well-known/openid-configuration` in your browser.
+
+### Debugging Tips
+- Check SQLPage's logs for detailed error messages. You can enable verbose logging with the `RUST_LOG=trace` environment variable.
+- Verify your OIDC provider's logs for authentication attempts
+- In production, confirm your domain name matches exactly in both the OIDC provider settings and `sqlpage.json`
+- If [using a reverse proxy](/your-first-sql-website/nginx.sql), ensure it's properly configured to handle the OIDC callback path.
+- If you have checked everything and you think the bug comes from SQLPage itself, [open an issue on our bug tracker](https://github.com/sqlpage/SQLPage/issues).

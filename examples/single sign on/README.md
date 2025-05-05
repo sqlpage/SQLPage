@@ -42,7 +42,8 @@ the [CAS protocol](https://apereo.github.io/cas/) (version 3.0), which is mostly
 OIDC is an authentication protocol that allows users to authenticate with a third-party identity provider and then access applications without having to log in again. This is useful for single sign-on (SSO) scenarios where users need to access multiple applications with a single set of credentials.
 OIDC can be used to implement a "Login with Google" or "Login with Facebook" button in your application, since these providers support the OIDC protocol.
 
-SQLPage has built-in support for OIDC authentication. This project demonstrates how to use it with the free and open source [Keycloak](https://www.keycloak.org/) OIDC provider.
+SQLPage has built-in support for OIDC authentication since v0.35.
+This project demonstrates how to use it with the free and open source [Keycloak](https://www.keycloak.org/) OIDC provider.
 You can easily replace Keycloak with another OIDC provider, such as Google, or your enterprise OIDC provider, by following the steps in the [Configuration](#configuration) section.
 
 ### Important Note About OIDC Protection
