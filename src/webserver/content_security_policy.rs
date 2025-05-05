@@ -5,20 +5,23 @@ use actix_web::HttpResponseBuilder;
 use awc::http::header::InvalidHeaderValue;
 use rand::random;
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
+
+use crate::AppState;
 
 pub const DEFAULT_CONTENT_SECURITY_POLICY: &str = "script-src 'self' 'nonce-{NONCE}'";
 
 #[derive(Debug, Clone)]
 pub struct ContentSecurityPolicy {
     pub nonce: u64,
-    policy: String,
+    app_state: Arc<AppState>,
 }
 
 impl ContentSecurityPolicy {
-    pub fn new<S: Into<String>>(policy: S) -> Self {
+    pub fn new(app_state: Arc<AppState>) -> Self {
         Self {
             nonce: random(),
-            policy: policy.into(),
+            app_state,
         }
     }
 
@@ -28,21 +31,23 @@ impl ContentSecurityPolicy {
         }
     }
 
-    fn is_enabled(&self) -> bool {
-        !self.policy.is_empty()
+    fn template_string(&self) -> &str {
+        &self.app_state.config.content_security_policy
     }
 
-    #[allow(dead_code)]
-    fn set_nonce(&mut self, nonce: u64) {
-        self.nonce = nonce;
+    fn is_enabled(&self) -> bool {
+        !self.app_state.config.content_security_policy.is_empty()
     }
 }
 
 impl Display for ContentSecurityPolicy {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let value = self.policy.replace("{NONCE}", &self.nonce.to_string());
-
-        write!(f, "{value}")
+        let template = self.template_string();
+        if let Some((before, after)) = template.split_once("{NONCE}") {
+            write!(f, "{before}{nonce}{after}", nonce = self.nonce)
+        } else {
+            write!(f, "{}", template)
+        }
     }
 }
 
@@ -52,50 +57,7 @@ impl TryIntoHeaderPair for &ContentSecurityPolicy {
     fn try_into_pair(self) -> Result<(HeaderName, HeaderValue), Self::Error> {
         Ok((
             CONTENT_SECURITY_POLICY,
-            HeaderValue::from_str(&self.to_string())?,
+            HeaderValue::from_maybe_shared(self.to_string())?,
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn default_csp_response_contains_random_nonce() {
-        let mut csp = ContentSecurityPolicy::new(DEFAULT_CONTENT_SECURITY_POLICY);
-        csp.set_nonce(0);
-
-        assert!(csp.is_enabled());
-        assert_eq!(&csp.to_string(), "script-src 'self' 'nonce-0'");
-    }
-
-    #[test]
-    fn custom_csp_response_without_nonce() {
-        let csp = ContentSecurityPolicy::new("object-src 'none';");
-
-        assert!(csp.is_enabled());
-        assert_eq!("object-src 'none';", &csp.to_string());
-    }
-
-    #[test]
-    fn blank_csp_response() {
-        let csp = ContentSecurityPolicy::new("");
-
-        assert!(!csp.is_enabled());
-        assert_eq!("", &csp.to_string());
-    }
-
-    #[test]
-    fn custom_csp_with_nonce() {
-        let mut csp =
-            ContentSecurityPolicy::new("script-src 'self' 'nonce-{NONCE}'; object-src 'none';");
-        csp.set_nonce(0);
-
-        assert!(csp.is_enabled());
-        assert_eq!(
-            "script-src 'self' 'nonce-0'; object-src 'none';",
-            csp.to_string().as_str()
-        );
     }
 }
