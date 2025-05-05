@@ -9,15 +9,13 @@ use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Condition,
     web::{self, Query},
-    Error, HttpResponse,
+    Error, HttpMessage, HttpResponse,
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
 use openidconnect::{
-    core::{CoreAuthenticationFlow, CoreGenderClaim, CoreIdToken},
-    url::Url,
-    AsyncHttpClient, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet, EndpointNotSet,
-    EndpointSet, IdTokenClaims, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
+    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, CsrfToken, EndpointMaybeSet,
+    EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
     TokenResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -29,6 +27,20 @@ type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
 const SQLPAGE_STATE_COOKIE_NAME: &str = "sqlpage_oidc_state";
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct OidcAdditionalClaims(pub(crate) serde_json::Map<String, serde_json::Value>);
+
+impl openidconnect::AdditionalClaims for OidcAdditionalClaims {}
+type OidcToken = openidconnect::IdToken<
+    OidcAdditionalClaims,
+    openidconnect::core::CoreGenderClaim,
+    openidconnect::core::CoreJweContentEncryptionAlgorithm,
+    openidconnect::core::CoreJwsSigningAlgorithm,
+>;
+pub type OidcClaims =
+    openidconnect::IdTokenClaims<OidcAdditionalClaims, openidconnect::core::CoreGenderClaim>;
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
@@ -227,17 +239,15 @@ where
     forward_ready!(service);
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
-        log::debug!(
-            "Started OIDC middleware with config: {:?}",
-            self.oidc_state.config
-        );
+        log::trace!("Started OIDC middleware request handling");
         let oidc_client = Arc::clone(&self.oidc_state.client);
-        match get_sqlpage_auth_cookie(&oidc_client, &request) {
-            Ok(Some(cookie)) => {
-                log::trace!("Found SQLPage auth cookie: {cookie}");
+        match get_authenticated_user_info(&oidc_client, &request) {
+            Ok(Some(claims)) => {
+                log::trace!("Storing authenticated user info in request extensions: {claims:?}");
+                request.extensions_mut().insert(claims);
             }
             Ok(None) => {
-                log::trace!("No SQLPage auth cookie found");
+                log::trace!("No authenticated user found");
                 return self.handle_unauthenticated_request(request);
             }
             Err(e) => {
@@ -346,26 +356,29 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
         .body("Redirecting...")
 }
 
-fn get_sqlpage_auth_cookie(
+/// Returns the claims from the ID token in the `SQLPage` auth cookie.
+fn get_authenticated_user_info(
     oidc_client: &OidcClient,
     request: &ServiceRequest,
-) -> anyhow::Result<Option<String>> {
+) -> anyhow::Result<Option<OidcClaims>> {
     let Some(cookie) = request.cookie(SQLPAGE_AUTH_COOKIE_NAME) else {
         return Ok(None);
     };
     let cookie_value = cookie.value().to_string();
 
     let state = get_state_from_cookie(request)?;
-    let verifier = oidc_client.id_token_verifier();
-    let id_token = CoreIdToken::from_str(&cookie_value)
+    let verifier: openidconnect::IdTokenVerifier<'_, openidconnect::core::CoreJsonWebKey> =
+        oidc_client.id_token_verifier();
+    let id_token = OidcToken::from_str(&cookie_value)
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
     let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, &state.nonce);
-    let claims: &IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim> = id_token
+    let claims: OidcClaims = id_token
         .claims(&verifier, nonce_verifier)
-        .with_context(|| format!("Could not verify the ID token: {cookie_value:?}"))?;
+        .with_context(|| format!("Could not verify the ID token: {cookie_value:?}"))?
+        .clone();
     log::debug!("The current user is: {claims:?}");
-    Ok(Some(cookie_value))
+    Ok(Some(claims.clone()))
 }
 
 pub struct AwcHttpClient<'c> {
