@@ -177,7 +177,11 @@ async fn render_sql(
     actix_web::rt::spawn(async move {
         let request_context = RequestContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
-            content_security_policy: ContentSecurityPolicy::new(Arc::clone(&app_state)),
+            content_security_policy: ContentSecurityPolicy::new(
+                crate::webserver::content_security_policy::ContentSecurityPolicyTemplate::from(
+                    app_state.config.content_security_policy.as_str(),
+                ),
+            ),
         };
         let mut conn = None;
         let database_entries_stream =
