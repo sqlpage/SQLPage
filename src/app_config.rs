@@ -3,6 +3,7 @@ use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
 use clap::Parser;
 use config::Config;
+use openidconnect::IssuerUrl;
 use percent_encoding::AsciiSet;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -199,6 +200,21 @@ pub struct AppConfig {
     #[serde(default = "default_max_file_size")]
     pub max_uploaded_file_size: usize,
 
+    /// The base URL of the `OpenID` Connect provider.
+    /// Required when enabling Single Sign-On through an OIDC provider.
+    pub oidc_issuer_url: Option<IssuerUrl>,
+    /// The client ID assigned to `SQLPage` when registering with the OIDC provider.
+    /// Defaults to `sqlpage`.
+    #[serde(default = "default_oidc_client_id")]
+    pub oidc_client_id: String,
+    /// The client secret for authenticating `SQLPage` to the OIDC provider.
+    /// Required when enabling Single Sign-On through an OIDC provider.
+    pub oidc_client_secret: Option<String>,
+    /// Space-separated list of [scopes](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) to request during OIDC authentication.
+    /// Defaults to "openid email profile"
+    #[serde(default = "default_oidc_scopes")]
+    pub oidc_scopes: String,
+
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
     /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
     /// server's IP address.
@@ -207,6 +223,10 @@ pub struct AppConfig {
     /// and will automatically request a certificate from Let's Encrypt
     /// using the ACME protocol (requesting a TLS-ALPN-01 challenge).
     pub https_domain: Option<String>,
+
+    /// The hostname where your application is publicly accessible (e.g., "myapp.example.com").
+    /// This is used for OIDC redirect URLs. If not set, `https_domain` will be used instead.
+    pub host: Option<String>,
 
     /// The email address to use when requesting a certificate from Let's Encrypt.
     /// Defaults to `contact@<https_domain>`.
@@ -532,6 +552,14 @@ fn default_markdown_allow_dangerous_html() -> bool {
 
 fn default_markdown_allow_dangerous_protocol() -> bool {
     false
+}
+
+fn default_oidc_client_id() -> String {
+    "sqlpage".to_string()
+}
+
+fn default_oidc_scopes() -> String {
+    "openid email profile".to_string()
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]

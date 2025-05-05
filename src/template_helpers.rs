@@ -628,14 +628,14 @@ mod tests {
         const ESCAPED_UNSAFE_MARKUP: &str = "&lt;table&gt;&lt;tr&gt;&lt;td&gt;";
         #[test]
         fn test_html_blocks_with_various_settings() {
-            let helper = MarkdownHelper::default();
-            let content = contents();
-
             struct TestCase {
                 name: &'static str,
                 preset: Option<Value>,
                 expected_output: Result<&'static str, String>,
             }
+
+            let helper = MarkdownHelper::default();
+            let content = contents();
 
             let test_cases = [
                 TestCase {

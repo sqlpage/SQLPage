@@ -1,6 +1,8 @@
 # CHANGELOG.md
 
 ## v0.35
+ - Add support for [single sign-on using OIDC](sql-page.com/sso)
+   - Allows protecting access to your website using "Sign in with Google/Microsoft/..."
  - Fix tooltips not showing on line charts with one or more hidden series
  - Update default chart colors and text shadows for better readability with all themes
  - Optimize memory layout by boxing large structs. Slightly reduces memory usage.
