@@ -265,7 +265,9 @@ pub struct AppConfig {
     pub compress_responses: bool,
 
     /// Content-Security-Policy header to send to the client.
-    /// If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
+    /// If not set, a default policy allowing
+    ///  - scripts from the same origin,
+    ///  - script elements with the `nonce="{{@csp_nonce}}"` attribute,
     #[serde(default)]
     pub content_security_policy: ContentSecurityPolicyTemplate,
 
