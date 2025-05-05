@@ -83,8 +83,10 @@ pub mod webserver;
 use crate::app_config::AppConfig;
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
+use crate::webserver::oidc::OidcState;
 use file_cache::FileCache;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use templates::AllTemplates;
 use webserver::Database;
 
@@ -102,6 +104,7 @@ pub struct AppState {
     sql_file_cache: FileCache<ParsedSqlFile>,
     file_system: FileSystem,
     config: AppConfig,
+    pub oidc_state: Option<Arc<OidcState>>,
 }
 
 impl AppState {
@@ -117,12 +120,16 @@ impl AppState {
             PathBuf::from("index.sql"),
             ParsedSqlFile::new(&db, include_str!("../index.sql"), Path::new("index.sql")),
         );
+
+        let oidc_state = crate::webserver::oidc::initialize_oidc_state(config).await?;
+
         Ok(AppState {
             db,
             all_templates,
             sql_file_cache,
             file_system,
             config: config.clone(),
+            oidc_state,
         })
     }
 }

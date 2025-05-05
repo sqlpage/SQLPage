@@ -2,13 +2,41 @@
 INSERT INTO component (name, description, icon, introduced_in_version)
 VALUES (
         'authentication',
-        'An advanced component that can be used to create pages with password-restricted access.
-        When used, this component has to be at the top of your page, because once the page has begun being sent to the browser, it is too late to restrict access to it.
-        The authentication component checks if the user has sent the correct password, and if not, redirects them to the URL specified in the link parameter.
-        If you don''t want to re-check the password on every page (which is an expensive operation),
-        you can check the password only once and store a session token in your database. 
-        You can use the cookie component to set the session token cookie in the client browser,
-        and then check whether the token matches what you stored in subsequent pages.',
+        '
+Create pages with password-restricted access.
+
+
+When you want to add user authentication to your SQLPage application, 
+you have two main options:
+
+1. The `authentication` component:
+   - lets you manage usernames and passwords yourself
+   - does not require any external service
+   - gives you fine-grained control over 
+     - which pages and actions are protected
+     - the look of the login form
+     - the duration of the session
+     - the permissions of each user
+2. [**Single sign-on**](/sso)
+   - lets users log in with their existing accounts (like Google, Microsoft, or your organization''s own identity provider)
+   - requires setting up an external service (Google, Microsoft, etc.)
+   - frees you from implementing a lot of features like password reset, account creation, user management, etc.
+
+This page describes the first option.
+
+When used, this component has to be at the top of your page,
+because once the page has begun being sent to the browser,
+it is too late to restrict access to it.
+
+The authentication component checks if the user has sent the correct password,
+and if not, redirects them to the URL specified in the link parameter.
+
+If you don''t want to re-check the password on every page (which is an expensive operation),
+you can check the password only once and store a session token in your database
+(see the session example below).
+
+You can use the [cookie component](?component=cookie) to set the session token cookie in the client browser,
+and then check whether the token matches what you stored in subsequent pages.',
         'lock',
         '0.7.2'
     );
@@ -158,9 +186,6 @@ RETURNING
 ### Single sign-on with OIDC (OpenID Connect)
 
 If you don''t want to manage your own user database,
-you can use OpenID Connect and OAuth2 to authenticate users.
-This allows users to log in with their Google, Facebook, or internal company account.
-
-You will find an example of how to do this in the
-[Single sign-on with OIDC](https://github.com/sqlpage/SQLPage/tree/main/examples/single%20sign%20on).
+you can [use OpenID Connect and OAuth2](/sso) to authenticate users.
+This allows users to log in with their Google, Microsoft, or internal company account.
 ');

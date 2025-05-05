@@ -33,6 +33,7 @@ mod content_security_policy;
 pub mod database;
 pub mod error_with_status;
 pub mod http;
+pub mod http_client;
 pub mod http_request_info;
 mod https;
 pub mod request_variables;
@@ -42,6 +43,7 @@ pub use error_with_status::ErrorWithStatus;
 
 pub use database::make_placeholder;
 pub use database::migrations::apply;
+pub mod oidc;
 pub mod response_writer;
 pub mod routing;
 mod static_content;

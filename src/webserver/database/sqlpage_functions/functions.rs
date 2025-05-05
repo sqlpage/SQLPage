@@ -4,13 +4,14 @@ use crate::webserver::{
         execute_queries::DbConn, sqlpage_functions::url_parameter_deserializer::URLParameters,
     },
     http::SingleOrVec,
+    http_client::make_http_client,
     request_variables::ParamMap,
     ErrorWithStatus,
 };
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use mime_guess::mime;
-use std::{borrow::Cow, ffi::OsStr, str::FromStr, sync::OnceLock};
+use std::{borrow::Cow, ffi::OsStr, str::FromStr};
 
 super::function_definition_macro::sqlpage_functions! {
     basic_auth_password((&RequestInfo));
@@ -30,6 +31,7 @@ super::function_definition_macro::sqlpage_functions! {
     header((&RequestInfo), name: Cow<str>);
     headers((&RequestInfo));
 
+    user_info_token((&RequestInfo));
     link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
 
     path((&RequestInfo));
@@ -46,6 +48,7 @@ super::function_definition_macro::sqlpage_functions! {
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_name((&RequestInfo), upload_name: Cow<str>);
     url_encode(raw_text: Option<Cow<str>>);
+    user_info((&RequestInfo), claim: Cow<str>);
 
     variables((&RequestInfo), get_or_post: Option<Cow<str>>);
     version();
@@ -310,49 +313,6 @@ async fn fetch_with_meta(
     obj.end()?;
     let return_value = String::from_utf8(resp_str)?;
     Ok(return_value)
-}
-
-static NATIVE_CERTS: OnceLock<anyhow::Result<rustls::RootCertStore>> = OnceLock::new();
-
-fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result<awc::Client> {
-    let connector = if config.system_root_ca_certificates {
-        let roots = NATIVE_CERTS
-            .get_or_init(|| {
-                log::debug!("Loading native certificates because system_root_ca_certificates is enabled");
-                let certs = rustls_native_certs::load_native_certs()
-                    .with_context(|| "Initial native certificates load failed")?;
-                log::info!("Loaded {} native certificates", certs.len());
-                let mut roots = rustls::RootCertStore::empty();
-                for cert in certs {
-                    log::trace!("Adding native certificate to root store: {cert:?}");
-                    roots.add(cert.clone()).with_context(|| {
-                        format!("Unable to add certificate to root store: {cert:?}")
-                    })?;
-                }
-                Ok(roots)
-            })
-            .as_ref()
-            .map_err(|e| anyhow!("Unable to load native certificates, make sure the system root CA certificates are available: {e}"))?;
-
-        log::trace!("Creating HTTP client with custom TLS connector using native certificates. SSL_CERT_FILE={:?}, SSL_CERT_DIR={:?}",
-            std::env::var("SSL_CERT_FILE").unwrap_or_default(),
-            std::env::var("SSL_CERT_DIR").unwrap_or_default());
-
-        let tls_conf = rustls::ClientConfig::builder()
-            .with_root_certificates(roots.clone())
-            .with_no_client_auth();
-
-        awc::Connector::new().rustls_0_22(std::sync::Arc::new(tls_conf))
-    } else {
-        log::debug!("Using the default tls connector with builtin certs because system_root_ca_certificates is disabled");
-        awc::Connector::new()
-    };
-    let client = awc::Client::builder()
-        .connector(connector)
-        .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
-        .finish();
-    log::debug!("Created HTTP client");
-    Ok(client)
 }
 
 pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Option<String>> {
@@ -759,4 +719,94 @@ async fn headers(request: &RequestInfo) -> String {
 
 async fn client_ip(request: &RequestInfo) -> Option<String> {
     Some(request.client_ip?.to_string())
+}
+
+/// Returns the ID token claims as a JSON object.
+async fn user_info_token(request: &RequestInfo) -> anyhow::Result<Option<String>> {
+    let Some(claims) = &request.oidc_claims else {
+        return Ok(None);
+    };
+    Ok(Some(serde_json::to_string(claims)?))
+}
+
+/// Returns a specific claim from the ID token.
+async fn user_info<'a>(
+    request: &'a RequestInfo,
+    claim: Cow<'a, str>,
+) -> anyhow::Result<Option<String>> {
+    let Some(claims) = &request.oidc_claims else {
+        return Ok(None);
+    };
+
+    // Match against known OIDC claims accessible via direct methods.
+    let claim_value_str = match claim.as_ref() {
+        // Core Claims
+        "iss" => Some(claims.issuer().to_string()),
+        // aud requires serialization: handled separately if needed
+        "exp" => Some(claims.expiration().timestamp().to_string()),
+        "iat" => Some(claims.issue_time().timestamp().to_string()),
+        "sub" => Some(claims.subject().to_string()),
+        "auth_time" => claims.auth_time().map(|t| t.timestamp().to_string()),
+        "nonce" => claims.nonce().map(|n| n.secret().to_string()), // Assuming Nonce has secret()
+        "acr" => claims.auth_context_ref().map(|acr| acr.to_string()),
+        // amr requires serialization: handled separately if needed
+        "azp" => claims.authorized_party().map(|azp| azp.to_string()),
+        "at_hash" => claims.access_token_hash().map(|h| h.to_string()),
+        "c_hash" => claims.code_hash().map(|h| h.to_string()),
+
+        // Standard Claims (Profile Scope - subset)
+        "name" => claims
+            .name()
+            .and_then(|n| n.get(None))
+            .map(|s| s.to_string()),
+        "given_name" => claims
+            .given_name()
+            .and_then(|n| n.get(None))
+            .map(|s| s.to_string()),
+        "family_name" => claims
+            .family_name()
+            .and_then(|n| n.get(None))
+            .map(|s| s.to_string()),
+        "middle_name" => claims
+            .middle_name()
+            .and_then(|n| n.get(None))
+            .map(|s| s.to_string()),
+        "nickname" => claims
+            .nickname()
+            .and_then(|n| n.get(None))
+            .map(|s| s.to_string()),
+        "preferred_username" => claims.preferred_username().map(|u| u.to_string()),
+        "profile" => claims
+            .profile()
+            .and_then(|n| n.get(None))
+            .map(|url_claim| url_claim.as_str().to_string()),
+        "picture" => claims
+            .picture()
+            .and_then(|n| n.get(None))
+            .map(|url_claim| url_claim.as_str().to_string()),
+        "website" => claims
+            .website()
+            .and_then(|n| n.get(None))
+            .map(|url_claim| url_claim.as_str().to_string()),
+        "gender" => claims.gender().map(|g| g.to_string()), // Assumes GenderClaim impls ToString
+        "birthdate" => claims.birthdate().map(|b| b.to_string()), // Assumes Birthdate impls ToString
+        "zoneinfo" => claims.zoneinfo().map(|z| z.to_string()),   // Assumes ZoneInfo impls ToString
+        "locale" => claims.locale().map(std::string::ToString::to_string), // Assumes Locale impls ToString
+        "updated_at" => claims.updated_at().map(|t| t.timestamp().to_string()),
+
+        // Standard Claims (Email Scope)
+        "email" => claims.email().map(|e| e.to_string()),
+        "email_verified" => claims.email_verified().map(|b| b.to_string()),
+
+        // Standard Claims (Phone Scope)
+        "phone_number" => claims.phone_number().map(|p| p.to_string()),
+        "phone_number_verified" => claims.phone_number_verified().map(|b| b.to_string()),
+        additional_claim => claims
+            .additional_claims()
+            .0
+            .get(additional_claim)
+            .map(std::string::ToString::to_string),
+    };
+
+    Ok(claim_value_str)
 }
