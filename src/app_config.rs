@@ -1,4 +1,4 @@
-use crate::webserver::content_security_policy::DEFAULT_CONTENT_SECURITY_POLICY;
+use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
 use clap::Parser;
@@ -266,8 +266,8 @@ pub struct AppConfig {
 
     /// Content-Security-Policy header to send to the client.
     /// If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
-    #[serde(default = "default_content_security_policy")]
-    pub content_security_policy: String,
+    #[serde(default)]
+    pub content_security_policy: ContentSecurityPolicyTemplate,
 
     /// Whether `sqlpage.fetch` should load trusted certificates from the operating system's certificate store
     /// By default, it loads Mozilla's root certificates that are embedded in the `SQLPage` binary, or the ones pointed to by the
@@ -531,10 +531,6 @@ fn default_max_pending_rows() -> usize {
 
 fn default_compress_responses() -> bool {
     true
-}
-
-fn default_content_security_policy() -> String {
-    String::from(DEFAULT_CONTENT_SECURITY_POLICY)
 }
 
 fn default_system_root_ca_certificates() -> bool {

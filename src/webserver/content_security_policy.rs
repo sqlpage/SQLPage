@@ -4,6 +4,7 @@ use actix_web::http::header::{
 use actix_web::HttpResponseBuilder;
 use awc::http::header::InvalidHeaderValue;
 use rand::random;
+use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
@@ -19,10 +20,16 @@ pub struct ContentSecurityPolicy {
 /// The template is a string that contains the nonce placeholder.
 /// The nonce placeholder is replaced with the nonce value when the Content Security Policy is applied to a response.
 /// This struct is cheap to clone.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentSecurityPolicyTemplate {
     pub before_nonce: Arc<str>,
     pub after_nonce: Option<Arc<str>>,
+}
+
+impl Default for ContentSecurityPolicyTemplate {
+    fn default() -> Self {
+        Self::from(DEFAULT_CONTENT_SECURITY_POLICY)
+    }
 }
 
 impl From<&str> for ContentSecurityPolicyTemplate {
@@ -41,6 +48,16 @@ impl From<&str> for ContentSecurityPolicyTemplate {
     }
 }
 
+impl<'de> Deserialize<'de> for ContentSecurityPolicyTemplate {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: &str = Deserialize::deserialize(deserializer)?;
+        Ok(Self::from(s))
+    }
+}
+
 impl ContentSecurityPolicy {
     pub fn new(template: ContentSecurityPolicyTemplate) -> Self {
         Self {
@@ -56,7 +73,7 @@ impl ContentSecurityPolicy {
     }
 
     fn is_enabled(&self) -> bool {
-        !self.template.before_nonce.is_empty()
+        !self.template.before_nonce.is_empty() || self.template.after_nonce.is_some()
     }
 }
 

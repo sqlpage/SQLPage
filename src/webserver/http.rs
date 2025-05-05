@@ -178,9 +178,7 @@ async fn render_sql(
         let request_context = RequestContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
             content_security_policy: ContentSecurityPolicy::new(
-                crate::webserver::content_security_policy::ContentSecurityPolicyTemplate::from(
-                    app_state.config.content_security_policy.as_str(),
-                ),
+                app_state.config.content_security_policy.clone(),
             ),
         };
         let mut conn = None;
