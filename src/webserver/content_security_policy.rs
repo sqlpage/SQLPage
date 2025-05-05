@@ -59,6 +59,7 @@ impl<'de> Deserialize<'de> for ContentSecurityPolicyTemplate {
 }
 
 impl ContentSecurityPolicy {
+    #[must_use]
     pub fn new(template: ContentSecurityPolicyTemplate) -> Self {
         Self {
             nonce: random(),
