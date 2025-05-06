@@ -12,6 +12,8 @@
    - the display of lists
  - Add an `active` top-level parameter to the shell component to highlight one of the top bar menu items. Thanks to @andrewsinnovations !
  - Make the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) customization more flexible, allowing you to harden the default security rules. Thanks to @guspower !
+- Fix vertically truncated text in the list component on empty descriptions.
+  - ![screenshot](https://github.com/user-attachments/assets/df258e31-6698-4398-8ce5-4d7f396c03ef)
 
 ## v0.34 (2025-03-23)
 
