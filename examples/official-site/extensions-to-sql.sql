@@ -6,4 +6,4 @@ select 'dynamic' as component, properties FROM example WHERE component = 'shell'
 -- Article by Matthew Larkin
 select 'text' as component,
     sqlpage.read_file_as_text('extensions-to-sql.md') as contents_md,
-    false as article;
+    true as article;

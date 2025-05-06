@@ -104,9 +104,9 @@ SET var = (SELECT * FROM t);
 -- now $var contains '1'
 ```
 
-Temporary table-valued results can be stored in two ways:
+Temporary table-valued results can be stored in two ways.
 
-1. Using temporary tables
+## Storing large datasets in the database with temporary tables
 
 This is the most efficient method to store large values.
 ```sql
@@ -122,12 +122,13 @@ INSERT INTO my_temp_table(a, b)
 VALUES (1, 2), (3, 4);
 ```
 
-2. Using JSON
+## Storing rich structured data in memory using JSON
 
 This can be more convenient, but should only be used for small values, because data
 is copied from the database into SQLPage memory, and to the database again at each use.
 
-You can use the [JSON functions from your database](/blog.sql?post=JSON in SQL%3A A Comprehensive Guide).
+You can use the [JSON functions from your database](/blog.sql?post=JSON+in+SQL%3A+A+Comprehensive+Guide).
+
 Here are some examples with SQLite:
 ```sql
 -- CREATE TABLE my_table(a, b);
@@ -151,7 +152,7 @@ See the [functions page](/functions.sql) for more details.
 
 They're either executed before or after the query is run in the database.
 
-### Execution functions *before* sending a query to the database
+### Executing functions *before* sending a query to the database
 
 When they don't process results coming from the database:
 
@@ -161,12 +162,13 @@ SELECT * FROM blog WHERE slug = sqlpage.path()
 
 `sqlpage.path()` will get replaced by the result of the function.
 
-### Execution functions *after* receiving results from the database
+### Executing functions *after* receiving results from the database
 
 When they process results coming from the database:
 
 ```sql
-SELECT sqlpage.read_file_as_text(blog_post_file) AS title FROM blog;
+SELECT sqlpage.read_file_as_text(blog_post_file) AS title
+FROM blog;
 ```
 
 The query executed will be:

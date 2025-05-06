@@ -1244,7 +1244,8 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/extensions-to-sql", "title": "Extensions to SQL", "icon": "cube-plus"},
                     {"link": "/custom_components.sql", "title": "Custom Components", "icon": "puzzle"},
                     {"link": "//github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
-                ]}
+                ]},
+                {"title": "Search", "link": "/search"}
             ],
             "layout": "boxed",
             "language": "en-US",
