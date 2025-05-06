@@ -1208,6 +1208,7 @@ and in its object form, to generate a dropdown menu named "Community" with links
 The object form can be used directly only on database engines that have a native JSON type.
 On other engines (such as SQLite), you can use the [`dynamic`](?component=dynamic#component) component to generate the same result.
 
+
 You see the [page layouts demo](./examples/layouts.sql) for a live example of the different layouts.
 ',
      json('[{
@@ -1261,6 +1262,22 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "css": "/assets/highlightjs-and-tabler-theme.css",
             "footer": "[Built with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/official-site)"
         }]')),
+    ('shell', '
+This example shows how to set menu items as active in the navigation, so that they are highlighted in the nav bar.
+
+In this example you can see that two menu items are created, "Home" and "About" and the "Home" tab is marked as active.
+',
+     json('[{
+            "component": "shell",
+            "title": "SQLPage: SQL websites",
+            "icon": "database",
+            "link": "/",
+            "menu_item": [
+                {"title": "Home", "active": true},
+                {"title": "About"}
+            ]
+        }]')),
+
     ('shell', '
 ### Sharing the shell between multiple pages
 
