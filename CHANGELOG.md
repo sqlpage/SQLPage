@@ -10,6 +10,8 @@
  - Update the Tabler CSS library to [v1.2](https://tabler.io/changelog#/changelog/tabler-1.2). This fixes issues with 
    - the alignment inside chart tooltips
    - the display of lists
+ - Add an `active` top-level parameter to the shell component to highlight one of the top bar menu items. Thanks to @andrewsinnovations !
+ - Make the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) customization more flexible, allowing you to harden the default security rules. Thanks to @guspower !
 
 ## v0.34 (2025-03-23)
 
