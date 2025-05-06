@@ -13,6 +13,7 @@ use actix_web::{
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
+use chrono::Utc;
 use openidconnect::{
     core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, CsrfToken, EndpointMaybeSet,
     EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
@@ -296,7 +297,7 @@ async fn process_oidc_callback(
     log::debug!("Received token response: {token_response:?}");
 
     let mut response = build_redirect_response(state.initial_url);
-    set_auth_cookie(&mut response, &token_response)?;
+    set_auth_cookie(&mut response, &token_response, oidc_client)?;
     Ok(response)
 }
 
@@ -317,6 +318,7 @@ async fn exchange_code_for_token(
 fn set_auth_cookie(
     response: &mut HttpResponse,
     token_response: &openidconnect::core::CoreTokenResponse,
+    oidc_client: &OidcClient,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
@@ -324,11 +326,18 @@ fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
+    let id_token_verifier = oidc_client.id_token_verifier();
+    let nonce_verifier = |_nonce: Option<&Nonce>| Ok(()); // The nonce will be verified in request handling
+    let claims = id_token.claims(&id_token_verifier, nonce_verifier)?;
+    let expiration = claims.expiration();
+    let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
+
     let id_token_str = id_token.to_string();
     log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
     let cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token_str)
         .secure(true)
         .http_only(true)
+        .max_age(actix_web::cookie::time::Duration::seconds(max_age_seconds))
         .same_site(actix_web::cookie::SameSite::Lax)
         .path("/")
         .finish();
@@ -378,7 +387,7 @@ fn get_authenticated_user_info(
         .with_context(|| format!("Could not verify the ID token: {cookie_value:?}"))?
         .clone();
     log::debug!("The current user is: {claims:?}");
-    Ok(Some(claims.clone()))
+    Ok(Some(claims))
 }
 
 pub struct AwcHttpClient<'c> {
