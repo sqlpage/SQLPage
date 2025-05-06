@@ -92,9 +92,9 @@ impl HeaderContext {
     ) -> Self {
         let mut response = HttpResponseBuilder::new(StatusCode::OK);
         response.content_type("text/html; charset=utf-8");
-        if app_state.config.content_security_policy.is_none() {
-            response.insert_header(&request_context.content_security_policy);
-        }
+        request_context
+            .content_security_policy
+            .apply_to_response(&mut response);
         Self {
             app_state,
             request_context,

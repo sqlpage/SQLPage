@@ -1,3 +1,4 @@
+use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
 use clap::Parser;
@@ -264,8 +265,11 @@ pub struct AppConfig {
     pub compress_responses: bool,
 
     /// Content-Security-Policy header to send to the client.
-    /// If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
-    pub content_security_policy: Option<String>,
+    /// If not set, a default policy allowing
+    ///  - scripts from the same origin,
+    ///  - script elements with the `nonce="{{@csp_nonce}}"` attribute,
+    #[serde(default)]
+    pub content_security_policy: ContentSecurityPolicyTemplate,
 
     /// Whether `sqlpage.fetch` should load trusted certificates from the operating system's certificate store
     /// By default, it loads Mozilla's root certificates that are embedded in the `SQLPage` binary, or the ones pointed to by the
