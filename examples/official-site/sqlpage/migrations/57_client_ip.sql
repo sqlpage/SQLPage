@@ -26,7 +26,7 @@ The function returns:
 
 ### ⚠️ Important Notes for Production Use
 
-When running behind a reverse proxy (e.g., Nginx, Apache, Cloudflare):
+When [running behind a reverse proxy](/your-first-sql-website/nginx.sql) (e.g., Nginx, Apache, Cloudflare):
 - This function will return the IP address of the reverse proxy, not the actual client
 - To get the real client IP, use [`sqlpage.header`](?function=header): `sqlpage.header(''x-forwarded-for'')` or `sqlpage.header(''x-real-ip'')`
   - The exact header name depends on your reverse proxy configuration
