@@ -1,5 +1,6 @@
 import { toMarkdown as mdastUtilToMarkdown } from "https://esm.sh/mdast-util-to-markdown@2.1.2";
 import Quill from "https://esm.sh/quill@2.0.3";
+import { fromMarkdown } from "https://esm.sh/mdast-util-from-markdown@2.0.0";
 
 /**
  * @typedef {Object} QuillAttributes
@@ -61,7 +62,8 @@ function createAndReplaceTextarea(textarea) {
   } else {
     label.parentNode.insertBefore(editorDiv, label.nextSibling);
   }
-  textarea.style.display = "none";
+  // Hide the original textarea, but keep it focusable for validation
+  textarea.style = "transform: scale(0); position: absolute; opacity: 0;";
   return editorDiv;
 }
 
@@ -105,9 +107,144 @@ function initializeQuillEditor(editorDiv, toolbarOptions, initialValue) {
     ],
   });
   if (initialValue) {
-    quill.setText(initialValue);
+    const delta = markdownToDelta(initialValue);
+    quill.setContents(delta);
   }
   return quill;
+}
+
+/**
+ * Converts Markdown string to a Quill Delta object.
+ * @param {string} markdown - The markdown string to convert.
+ * @returns {QuillDelta} - Quill Delta representation.
+ */
+function markdownToDelta(markdown) {
+  try {
+    const mdastTree = fromMarkdown(markdown);
+    return mdastToDelta(mdastTree);
+  } catch (error) {
+    console.error("Error parsing markdown:", error);
+    return { ops: [{ insert: markdown }] };
+  }
+}
+
+/**
+ * Converts MDAST to Quill Delta.
+ * @param {MdastNode} tree - The MDAST tree to convert.
+ * @returns {QuillDelta} - Quill Delta representation.
+ */
+function mdastToDelta(tree) {
+  const delta = { ops: [] };
+  if (!tree || !tree.children) return delta;
+
+  for (const node of tree.children) {
+    traverseMdastNode(node, delta);
+  }
+  
+  return delta;
+}
+
+/**
+ * Recursively traverse MDAST nodes and convert to Delta operations.
+ * @param {MdastNode} node - The MDAST node to process.
+ * @param {QuillDelta} delta - The Delta object to append operations to.
+ * @param {QuillAttributes} [attributes={}] - The current attributes to apply.
+ */
+function traverseMdastNode(node, delta, attributes = {}) {
+  if (!node) return;
+  
+  switch (node.type) {
+    case 'root':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta);
+      }
+      break;
+      
+    case 'paragraph':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, attributes);
+      }
+      delta.ops.push({ insert: '\n' });
+      break;
+      
+    case 'heading':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, { header: node.depth });
+      }
+      delta.ops.push({ insert: '\n', attributes: { header: node.depth } });
+      break;
+      
+    case 'text':
+      delta.ops.push({ insert: node.value || '', attributes });
+      break;
+      
+    case 'strong':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, { ...attributes, bold: true });
+      }
+      break;
+      
+    case 'emphasis':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, { ...attributes, italic: true });
+      }
+      break;
+      
+    case 'link':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, { ...attributes, link: node.url });
+      }
+      break;
+      
+    case 'image':
+      delta.ops.push({ 
+        insert: { image: node.url },
+        attributes: { alt: node.alt || '' }
+      });
+      break;
+      
+    case 'list':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, { 
+          ...attributes, 
+          list: node.ordered ? 'ordered' : 'bullet'
+        });
+      }
+      break;
+      
+    case 'listItem':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, attributes);
+      }
+      break;
+      
+    case 'blockquote':
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, { ...attributes, blockquote: true });
+      }
+      break;
+      
+    case 'code':
+      delta.ops.push({ 
+        insert: node.value || '', 
+        attributes: { 'code-block': node.lang || 'plain' } 
+      });
+      delta.ops.push({ insert: '\n', attributes: { 'code-block': node.lang || 'plain' } });
+      break;
+      
+    case 'inlineCode':
+      delta.ops.push({ insert: node.value || '', attributes: { code: true } });
+      break;
+      
+    default:
+      if (node.children) {
+        for (const child of node.children) {
+          traverseMdastNode(child, delta, attributes);
+        }
+      } else if (node.value) {
+        delta.ops.push({ insert: node.value, attributes });
+      }
+  }
 }
 
 /**
@@ -125,10 +262,19 @@ function updateTextareaOnSubmit(form, textarea, quill) {
     );
     return;
   }
-  form.addEventListener("submit", () => {
+  form.addEventListener("submit", (event) => {
     const delta = quill.getContents();
     const markdownContent = deltaToMarkdown(delta);
     textarea.value = markdownContent;
+    if (textarea.required && !markdownContent) {
+      textarea.setCustomValidity(`${textarea.name} cannot be empty`);
+      quill.once("text-change", (delta) => {
+        textarea.value = deltaToMarkdown(delta);
+        textarea.setCustomValidity("");
+      });
+      quill.focus();
+      event.preventDefault();
+    }
   });
 }
 
