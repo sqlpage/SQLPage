@@ -1,10 +1,11 @@
+set search = nullif(trim($search), '');
+
 -- Check for exact matches and redirect if found
 set redirect = CASE 
     WHEN EXISTS (SELECT 1 FROM component WHERE name = $search) THEN sqlpage.link('/component.sql', json_object('component', $search))
     WHEN EXISTS (SELECT 1 FROM sqlpage_functions WHERE name = $search) THEN sqlpage.link('/functions.sql', json_object('function', $search))
 END
 SELECT 'redirect' as component, $redirect as link WHERE $redirect IS NOT NULL;
-
 
 select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
     'title', coalesce($search || ' | ', '') || 'SQLPage documentation search'
