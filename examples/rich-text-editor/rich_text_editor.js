@@ -160,19 +160,30 @@ function traverseMdastNode(node, delta, attributes = {}) {
       }
       break;
 
-    case "paragraph":
+    case "paragraph": {
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, attributes);
       }
-      delta.ops.push({ insert: "\n" });
-      break;
-
-    case "heading":
-      for (const child of node.children || []) {
-        traverseMdastNode(child, delta, { header: node.depth });
+      const pLineAttributes = {};
+      if (attributes.blockquote) {
+        pLineAttributes.blockquote = true;
       }
-      delta.ops.push({ insert: "\n", attributes: { header: node.depth } });
+      delta.ops.push({ insert: "\n", attributes: pLineAttributes });
       break;
+    }
+
+    case "heading": {
+      const headingContentAttributes = { ...attributes, header: node.depth };
+      for (const child of node.children || []) {
+        traverseMdastNode(child, delta, headingContentAttributes);
+      }
+      const headingLineAttributes = { header: node.depth };
+      if (attributes.blockquote) {
+        headingLineAttributes.blockquote = true;
+      }
+      delta.ops.push({ insert: "\n", attributes: headingLineAttributes });
+      break;
+    }
 
     case "text":
       delta.ops.push({ insert: node.value || "", attributes });
@@ -212,16 +223,25 @@ function traverseMdastNode(node, delta, attributes = {}) {
       }
       break;
 
-    case "listItem":
+    case "listItem": {
+      const { list, ...listItemChildrenAttributes } = attributes;
+
       for (const child of node.children || []) {
-        traverseMdastNode(child, delta, {});
+        traverseMdastNode(child, delta, listItemChildrenAttributes);
       }
+      
+      // Attributes for the listItem's newline (e.g., { list: 'bullet', blockquote: true })
+      // are in `attributes` passed to this `listItem` case.
       {
         const lastOp = delta.ops[delta.ops.length - 1];
-        if (lastOp && lastOp.insert === "\n") lastOp.attributes = attributes;
-        else delta.ops.push({ insert: "\n", attributes });
+        if (lastOp && lastOp.insert === "\n") {
+            lastOp.attributes = { ...lastOp.attributes, ...attributes };
+        } else {
+          delta.ops.push({ insert: "\n", attributes });
+        }
       }
       break;
+    }
 
     case "blockquote":
       for (const child of node.children || []) {
@@ -229,19 +249,27 @@ function traverseMdastNode(node, delta, attributes = {}) {
       }
       break;
 
-    case "code":
-      delta.ops.push({
-        insert: node.value || "",
-        attributes: { "code-block": node.lang || "plain" },
-      });
-      delta.ops.push({
-        insert: "\n",
-        attributes: { "code-block": node.lang || "plain" },
-      });
+    case "code": { // mdast 'code' is a block
+      const codeBlockLineFormat = { "code-block": node.lang || true };
+      if (attributes.blockquote) {
+        codeBlockLineFormat.blockquote = true;
+      }
+
+      const textInCodeAttributes = {};
+      if (attributes.blockquote) { // Text lines also get blockquote if active
+        textInCodeAttributes.blockquote = true;
+      }
+
+      const lines = (node.value || "").split('\n');
+      for (const lineText of lines) {
+        delta.ops.push({ insert: lineText, attributes: textInCodeAttributes });
+        delta.ops.push({ insert: "\n", attributes: codeBlockLineFormat });
+      }
       break;
+    }
 
     case "inlineCode":
-      delta.ops.push({ insert: node.value || "", attributes: { code: true } });
+      delta.ops.push({ insert: node.value || "", attributes: { ...attributes, code: true } });
       break;
 
     default:
