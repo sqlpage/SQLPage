@@ -140,7 +140,7 @@ function mdastToDelta(tree) {
   for (const node of tree.children) {
     traverseMdastNode(node, delta);
   }
-  
+
   return delta;
 }
 
@@ -152,90 +152,93 @@ function mdastToDelta(tree) {
  */
 function traverseMdastNode(node, delta, attributes = {}) {
   if (!node) return;
-  
+
   switch (node.type) {
-    case 'root':
+    case "root":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta);
       }
       break;
-      
-    case 'paragraph':
+
+    case "paragraph":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, attributes);
       }
-      delta.ops.push({ insert: '\n' });
+      delta.ops.push({ insert: "\n" });
       break;
-      
-    case 'heading':
+
+    case "heading":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, { header: node.depth });
       }
-      delta.ops.push({ insert: '\n', attributes: { header: node.depth } });
+      delta.ops.push({ insert: "\n", attributes: { header: node.depth } });
       break;
-      
-    case 'text':
-      delta.ops.push({ insert: node.value || '', attributes });
+
+    case "text":
+      delta.ops.push({ insert: node.value || "", attributes });
       break;
-      
-    case 'strong':
+
+    case "strong":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, { ...attributes, bold: true });
       }
       break;
-      
-    case 'emphasis':
+
+    case "emphasis":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, { ...attributes, italic: true });
       }
       break;
-      
-    case 'link':
+
+    case "link":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, { ...attributes, link: node.url });
       }
       break;
-      
-    case 'image':
-      delta.ops.push({ 
+
+    case "image":
+      delta.ops.push({
         insert: { image: node.url },
-        attributes: { alt: node.alt || '' }
+        attributes: { alt: node.alt || "" },
       });
       break;
-      
-    case 'list':
+
+    case "list":
       for (const child of node.children || []) {
-        traverseMdastNode(child, delta, { 
-          ...attributes, 
-          list: node.ordered ? 'ordered' : 'bullet'
+        traverseMdastNode(child, delta, {
+          ...attributes,
+          list: node.ordered ? "ordered" : "bullet",
         });
       }
       break;
-      
-    case 'listItem':
+
+    case "listItem":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, attributes);
       }
       break;
-      
-    case 'blockquote':
+
+    case "blockquote":
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, { ...attributes, blockquote: true });
       }
       break;
-      
-    case 'code':
-      delta.ops.push({ 
-        insert: node.value || '', 
-        attributes: { 'code-block': node.lang || 'plain' } 
+
+    case "code":
+      delta.ops.push({
+        insert: node.value || "",
+        attributes: { "code-block": node.lang || "plain" },
       });
-      delta.ops.push({ insert: '\n', attributes: { 'code-block': node.lang || 'plain' } });
+      delta.ops.push({
+        insert: "\n",
+        attributes: { "code-block": node.lang || "plain" },
+      });
       break;
-      
-    case 'inlineCode':
-      delta.ops.push({ insert: node.value || '', attributes: { code: true } });
+
+    case "inlineCode":
+      delta.ops.push({ insert: node.value || "", attributes: { code: true } });
       break;
-      
+
     default:
       if (node.children) {
         for (const child of node.children) {
