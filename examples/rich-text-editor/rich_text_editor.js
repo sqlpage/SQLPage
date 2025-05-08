@@ -1,6 +1,6 @@
+import { fromMarkdown } from "https://esm.sh/mdast-util-from-markdown@2.0.0";
 import { toMarkdown as mdastUtilToMarkdown } from "https://esm.sh/mdast-util-to-markdown@2.1.2";
 import Quill from "https://esm.sh/quill@2.0.3";
-import { fromMarkdown } from "https://esm.sh/mdast-util-from-markdown@2.0.0";
 
 /**
  * @typedef {Object} QuillAttributes
