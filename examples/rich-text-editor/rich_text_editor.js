@@ -214,7 +214,12 @@ function traverseMdastNode(node, delta, attributes = {}) {
 
     case "listItem":
       for (const child of node.children || []) {
-        traverseMdastNode(child, delta, attributes);
+        traverseMdastNode(child, delta, {});
+      }
+      {
+        const lastOp = delta.ops[delta.ops.length - 1];
+        if (lastOp && lastOp.insert === "\n") lastOp.attributes = attributes;
+        else delta.ops.push({ insert: "\n", attributes });
       }
       break;
 
@@ -269,6 +274,7 @@ function updateTextareaOnSubmit(form, textarea, quill) {
     const delta = quill.getContents();
     const markdownContent = deltaToMarkdown(delta);
     textarea.value = markdownContent;
+    console.log(`${textarea.name}:\n${markdownContent}\ntransformed from delta:\n${JSON.stringify(delta, null, 2)}`);
     if (textarea.required && !markdownContent) {
       textarea.setCustomValidity(`${textarea.name} cannot be empty`);
       quill.once("text-change", (delta) => {
@@ -421,8 +427,9 @@ function deltaToMdast(delta) {
           textBuffer = line;
         }
 
-        // Process line break with empty attributes (regular paragraph break)
-        processLineBreak(mdast, currentParagraph, {}, textBuffer, currentList);
+        // Process line break
+        currentList = processLineBreak(mdast, currentParagraph, attributes, textBuffer, currentList);
+
         currentParagraph = null;
         textBuffer = "";
       }
