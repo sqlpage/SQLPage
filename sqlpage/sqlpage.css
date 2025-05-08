@@ -113,7 +113,8 @@ code {
   font-size: 1.2em;
   line-height: 1.5em;
   font-family: "Times New Roman", serif;
-  max-width: 65ch;
+  width: 65ch;
+  max-width: 100%;
   margin: 1.5em auto;
 }
 
