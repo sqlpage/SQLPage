@@ -229,13 +229,13 @@ function traverseMdastNode(node, delta, attributes = {}) {
       for (const child of node.children || []) {
         traverseMdastNode(child, delta, listItemChildrenAttributes);
       }
-      
+
       // Attributes for the listItem's newline (e.g., { list: 'bullet', blockquote: true })
       // are in `attributes` passed to this `listItem` case.
       {
         const lastOp = delta.ops[delta.ops.length - 1];
         if (lastOp && lastOp.insert === "\n") {
-            lastOp.attributes = { ...lastOp.attributes, ...attributes };
+          lastOp.attributes = { ...lastOp.attributes, ...attributes };
         } else {
           delta.ops.push({ insert: "\n", attributes });
         }
@@ -249,18 +249,20 @@ function traverseMdastNode(node, delta, attributes = {}) {
       }
       break;
 
-    case "code": { // mdast 'code' is a block
+    case "code": {
+      // mdast 'code' is a block
       const codeBlockLineFormat = { "code-block": node.lang || true };
       if (attributes.blockquote) {
         codeBlockLineFormat.blockquote = true;
       }
 
       const textInCodeAttributes = {};
-      if (attributes.blockquote) { // Text lines also get blockquote if active
+      if (attributes.blockquote) {
+        // Text lines also get blockquote if active
         textInCodeAttributes.blockquote = true;
       }
 
-      const lines = (node.value || "").split('\n');
+      const lines = (node.value || "").split("\n");
       for (const lineText of lines) {
         delta.ops.push({ insert: lineText, attributes: textInCodeAttributes });
         delta.ops.push({ insert: "\n", attributes: codeBlockLineFormat });
@@ -269,7 +271,10 @@ function traverseMdastNode(node, delta, attributes = {}) {
     }
 
     case "inlineCode":
-      delta.ops.push({ insert: node.value || "", attributes: { ...attributes, code: true } });
+      delta.ops.push({
+        insert: node.value || "",
+        attributes: { ...attributes, code: true },
+      });
       break;
 
     default:
@@ -302,7 +307,9 @@ function updateTextareaOnSubmit(form, textarea, quill) {
     const delta = quill.getContents();
     const markdownContent = deltaToMarkdown(delta);
     textarea.value = markdownContent;
-    console.log(`${textarea.name}:\n${markdownContent}\ntransformed from delta:\n${JSON.stringify(delta, null, 2)}`);
+    console.log(
+      `${textarea.name}:\n${markdownContent}\ntransformed from delta:\n${JSON.stringify(delta, null, 2)}`,
+    );
     if (textarea.required && !markdownContent) {
       textarea.setCustomValidity(`${textarea.name} cannot be empty`);
       quill.once("text-change", (delta) => {
@@ -456,7 +463,13 @@ function deltaToMdast(delta) {
         }
 
         // Process line break
-        currentList = processLineBreak(mdast, currentParagraph, attributes, textBuffer, currentList);
+        currentList = processLineBreak(
+          mdast,
+          currentParagraph,
+          attributes,
+          textBuffer,
+          currentList,
+        );
 
         currentParagraph = null;
         textBuffer = "";
