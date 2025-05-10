@@ -59,7 +59,14 @@ impl<'de> Deserialize<'de> for URLParameters {
                             out.encode_and_push(&key);
                             out.0.push_str("[]");
                             out.0.push('=');
-                            out.encode_and_push(&val.to_string());
+
+                            let val = val.to_string();
+                            // Remove any surrounding quotes added by serde_json
+                            out.encode_and_push(if val.starts_with("\"") && val.ends_with("\"") {
+                                &val[1..val.len() - 1]
+                            } else {
+                                &val
+                            });
                         }
                     } else {
                         out.push_kv(&key, value);
