@@ -62,8 +62,8 @@ impl<'de> Deserialize<'de> for ContentSecurityPolicyTemplate {
     where
         D: serde::Deserializer<'de>,
     {
-        let s: &str = Deserialize::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s: String = Deserialize::deserialize(deserializer)?;
+        Ok(Self::from(s.as_str()))
     }
 }
 

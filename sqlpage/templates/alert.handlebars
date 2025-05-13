@@ -1,48 +1,41 @@
-<div
-    {{#if id}}id="{{id}}"{{/if}}
-    class="
-        alert
-        alert-{{default color "info"}}
-        {{#if dismissible}}alert-dismissible{{/if}}
-        {{#if important}}alert-important{{/if}}
-        {{class}}
-    " 
-    role="alert"
->
-  <div class="d-flex">
+<div {{~#if id}} id="{{id}}" {{/if}} class="alert alert-{{default color " info"}} {{class}} {{~#if dismissible}}
+  alert-dismissible{{/if~}} {{~#if important}} alert-important{{/if~}} " role=" alert">
 
-    {{#if icon}}
-    <div class="icon alert-icon">
-        {{~icon_img icon~}}
-    </div>
-    {{/if}}
-
-    <div>
-      {{#if title}}<h4 class="alert-title" {{#if important}}style="color:inherit"{{/if}}>{{title}}</h4>{{/if}}
-      {{~#if description~}}
-          <div class="alert-description">
-            {{~description~}}
-          </div>
-      {{~/if~}}
-      {{~#if description_md~}}
-          <div class="alert-description" style="margin-bottom: -1rem;">
-              {{{~markdown description_md~}}}
-          </div>
-      {{~/if~}}
-      {{#if link}}
-          <a href="{{link}}"
-              class="btn btn-sm alert-link mt-2 px-2 {{#if important}}text-{{default color 'info'}}{{/if}}"
-          >{{default link_text "Ok"}}</a>
-      {{/if}}
-      {{#each_row}}
-          <a href="{{link}}"
-              class="btn btn-sm btn-{{default color 'primary'}} mt-2 px-2"
-          >{{default title "Ok"}}</a>
-      {{/each_row}}
-    </div>
-
+  {{~#if icon~}}
+  <div class="icon alert-icon">
+    {{~icon_img icon~}}
   </div>
-  {{#if dismissible}}
-    <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
-  {{/if}}
+  {{~/if~}}
+
+  <div class="overflow-auto">
+    {{~#if title~}}
+    <h4 class="alert-title" {{~#if important~}}style="color:inherit" {{/if~}}>{{title}}</h4>
+    {{~/if~}}
+
+    {{~#if description~}}
+    <div class="alert-description">
+      {{~description~}}
+    </div>
+    {{~/if~}}
+
+    {{~#if description_md~}}
+    <div class="alert-description" style="margin-bottom: -1rem;">
+      {{{~markdown description_md~}}}
+    </div>
+    {{~/if~}}
+
+    {{~#if link~}}
+    <a href="{{link}}" class="btn btn-sm alert-link mt-2 px-2 {{~#if important~}}text-{{default color 'info'}}{{/if~}}">
+      {{default link_text "Ok"}}
+    </a>
+    {{~/if~}}
+
+    {{~#each_row~}}
+    <a href="{{link}}" class="btn btn-sm btn-{{default color 'primary'}} mt-2 mx-1 px-2">{{default title "Ok"}}</a>
+    {{~/each_row~}}
+  </div>
+
+  {{~#if dismissible~}}
+  <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+  {{~/if~}}
 </div>
