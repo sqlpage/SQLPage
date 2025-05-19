@@ -10,6 +10,7 @@ use actix_web::http::header::CONTENT_TYPE;
 use actix_web::web;
 use actix_web::web::Form;
 use actix_web::FromRequest;
+use actix_web::HttpMessage as _;
 use actix_web::HttpRequest;
 use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Basic;
@@ -21,6 +22,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tokio_stream::StreamExt;
 
+use super::oidc::OidcClaims;
 use super::request_variables::param_map;
 use super::request_variables::ParamMap;
 
@@ -39,6 +41,7 @@ pub struct RequestInfo {
     pub app_state: Arc<AppState>,
     pub clone_depth: u8,
     pub raw_body: Option<Vec<u8>>,
+    pub oidc_claims: Option<OidcClaims>,
 }
 
 impl RequestInfo {
@@ -58,6 +61,7 @@ impl RequestInfo {
             app_state: self.app_state.clone(),
             clone_depth: self.clone_depth + 1,
             raw_body: self.raw_body.clone(),
+            oidc_claims: self.oidc_claims.clone(),
         }
     }
 }
@@ -102,6 +106,8 @@ pub(crate) async fn extract_request_info(
         .ok()
         .map(Authorization::into_scheme);
 
+    let oidc_claims: Option<OidcClaims> = req.extensions().get::<OidcClaims>().cloned();
+
     Ok(RequestInfo {
         method,
         path: req.path().to_string(),
@@ -116,6 +122,7 @@ pub(crate) async fn extract_request_info(
         protocol,
         clone_depth: 0,
         raw_body,
+        oidc_claims,
     })
 }
 
@@ -194,7 +201,7 @@ async fn extract_multipart_post_data(
             .get_name()
             .unwrap_or_default()
             .to_string();
-        log::trace!("Parsing multipart field: {}", field_name);
+        log::trace!("Parsing multipart field: {field_name}");
         if let Some(filename) = filename {
             log::debug!("Extracting file: {field_name} ({filename})");
             let extracted = extract_file(http_req, field, &mut limits)
@@ -205,7 +212,10 @@ async fn extract_multipart_post_data(
                         config.max_uploaded_file_size / 1_024
                     )
                 })?;
-            log::trace!("Extracted file {field_name} to {:?}", extracted.file.path());
+            log::trace!(
+                "Extracted file {field_name} to \"{}\"",
+                extracted.file.path().display()
+            );
             if is_file_field_empty(&extracted).await? {
                 log::debug!("Ignoring empty file field: {field_name}");
                 continue;

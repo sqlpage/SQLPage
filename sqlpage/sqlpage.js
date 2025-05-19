@@ -1,4 +1,4 @@
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0/dist/js/tabler.min.js */
+/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.3.1/dist/js/tabler.min.js */
 const nonce = document.currentScript.nonce;
 
 function sqlpage_card() {
@@ -74,7 +74,7 @@ function apply_number_formatting(table_el) {
   const number_format_digits = table_el.dataset.number_format_digits;
   const currency = table_el.dataset.currency;
 
-  for (const tr_el of table_el.querySelectorAll("tbody tr")) {
+  for (const tr_el of table_el.querySelectorAll("tbody tr, tfoot tr")) {
     const cells = tr_el.getElementsByTagName("td");
     for (let idx = 0; idx < cells.length; idx++) {
       const column_type = col_types[idx];

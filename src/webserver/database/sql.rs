@@ -10,8 +10,8 @@ use sqlparser::ast::helpers::attached_token::AttachedToken;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, ObjectNamePart,
-    OneOrManyWithParens, SelectFlavor, SelectItem, SetExpr, Spanned, Statement, Value,
-    ValueWithSpan, Visit, VisitMut, Visitor, VisitorMut,
+    SelectFlavor, SelectItem, Set, SetExpr, Spanned, Statement, Value, ValueWithSpan, Visit,
+    VisitMut, Visitor, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -32,7 +32,7 @@ impl ParsedSqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> ParsedSqlFile {
         let dialect = dialect_for_db(db.connection.any_kind());
-        log::debug!("Parsing SQL file {:?}", source_path);
+        log::debug!("Parsing SQL file {}", source_path.display());
         let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err, source_path),
@@ -48,7 +48,7 @@ impl ParsedSqlFile {
         Self {
             statements: vec![ParsedStatement::Error(
                 e.into()
-                    .context(format!("While parsing file {source_path:?}")),
+                    .context(format!("While parsing file {}", source_path.display())),
             )],
             source_path: source_path.to_path_buf(),
         }
@@ -300,57 +300,57 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
     let mut select_items_to_add: Vec<SelectItemToAdd> = Vec::new();
 
     for (position, select_item) in select_items.iter_mut().enumerate() {
-        match select_item {
-            SelectItem::ExprWithAlias {
-                expr:
-                    Expr::Function(Function {
-                        name: ObjectName(func_name_parts),
-                        args:
-                            FunctionArguments::List(FunctionArgumentList {
-                                args,
-                                duplicate_treatment: None,
-                                ..
-                            }),
-                        ..
-                    }),
-                alias,
-            } => {
-                if let Some(func_name) = extract_sqlpage_function_name(func_name_parts) {
-                    func_name_parts.clear(); // mark the function for deletion
-                    let mut argument_col_names = Vec::with_capacity(args.len());
-                    for (arg_idx, arg) in args.iter_mut().enumerate() {
-                        match arg {
-                            FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))
-                            | FunctionArg::Named {
-                                arg: FunctionArgExpr::Expr(expr),
-                                ..
-                            } => {
-                                let func_idx = delayed_function_calls.len();
-                                let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
-                                argument_col_names.push(argument_col_name.clone());
-                                let expr_to_insert = SelectItem::ExprWithAlias {
-                                    expr: std::mem::replace(expr, Expr::value(Value::Null)),
-                                    alias: Ident::new(argument_col_name),
-                                };
-                                select_items_to_add.push(SelectItemToAdd {
-                                    expr_to_insert,
-                                    position,
-                                });
-                            }
-                            other => {
-                                log::error!("Unsupported argument to {func_name}: {other}");
-                            }
-                        }
-                    }
-                    delayed_function_calls.push(DelayedFunctionCall {
-                        function: func_name,
-                        argument_col_names,
-                        target_col_name: alias.value.clone(),
+        let SelectItem::ExprWithAlias {
+            expr:
+                Expr::Function(Function {
+                    name: ObjectName(func_name_parts),
+                    args:
+                        FunctionArguments::List(FunctionArgumentList {
+                            args,
+                            duplicate_treatment: None,
+                            ..
+                        }),
+                    ..
+                }),
+            alias,
+        } = select_item
+        else {
+            continue;
+        };
+        let Some(func_name) = extract_sqlpage_function_name(func_name_parts) else {
+            continue;
+        };
+        func_name_parts.clear(); // mark the function for deletion
+        let mut argument_col_names = Vec::with_capacity(args.len());
+        for (arg_idx, arg) in args.iter_mut().enumerate() {
+            match arg {
+                FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))
+                | FunctionArg::Named {
+                    arg: FunctionArgExpr::Expr(expr),
+                    ..
+                } => {
+                    let func_idx = delayed_function_calls.len();
+                    let argument_col_name = format!("_sqlpage_f{func_idx}_a{arg_idx}");
+                    argument_col_names.push(argument_col_name.clone());
+                    let expr_to_insert = SelectItem::ExprWithAlias {
+                        expr: std::mem::replace(expr, Expr::value(Value::Null)),
+                        alias: Ident::new(argument_col_name),
+                    };
+                    select_items_to_add.push(SelectItemToAdd {
+                        expr_to_insert,
+                        position,
                     });
                 }
+                other => {
+                    log::error!("Unsupported argument to {func_name}: {other}");
+                }
             }
-            _ => continue,
         }
+        delayed_function_calls.push(DelayedFunctionCall {
+            function: func_name,
+            argument_col_names,
+            target_col_name: alias.value.clone(),
+        });
     }
     // Insert the new select items (the function arguments) at the positions where the function calls were
     let mut it = select_items_to_add.into_iter().peekable();
@@ -377,11 +377,10 @@ fn extract_static_simple_select(
 ) -> Option<Vec<(String, SimpleSelectValue)>> {
     let set_expr = match stmt {
         Statement::Query(q)
-            if q.limit.is_none()
+            if q.limit_clause.is_none()
                 && q.fetch.is_none()
                 && q.order_by.is_none()
                 && q.with.is_none()
-                && q.offset.is_none()
                 && q.locks.is_empty() =>
         {
             q.body.as_ref()
@@ -476,15 +475,15 @@ fn extract_set_variable(
     params: &mut Vec<StmtParam>,
     db_kind: AnyKind,
 ) -> Option<ParsedStatement> {
-    if let Statement::SetVariable {
-        variables: OneOrManyWithParens::One(ObjectName(name)),
-        value,
-        local: false,
+    if let Statement::Set(Set::SingleAssignment {
+        variable: ObjectName(name),
+        values,
+        scope: None,
         hivevar: false,
-    } = stmt
+    }) = stmt
     {
         if let ([ObjectNamePart::Identifier(ident)], [value]) =
-            (name.as_mut_slice(), value.as_mut_slice())
+            (name.as_mut_slice(), values.as_mut_slice())
         {
             let variable = if let Some(variable) = extract_ident_param(ident) {
                 variable
@@ -566,7 +565,7 @@ impl ParameterExtractor {
             db_kind,
             parameters: vec![],
         };
-        sql_ast.visit(&mut this);
+        let _ = sql_ast.visit(&mut this);
         this.parameters
     }
 
@@ -1063,11 +1062,9 @@ fn expr_to_statement(expr: Expr) -> Statement {
             },
         ))),
         order_by: None,
-        limit: None,
-        offset: None,
+        limit_clause: None,
         fetch: None,
         locks: vec![],
-        limit_by: vec![],
         for_clause: None,
         settings: None,
         format_clause: None,

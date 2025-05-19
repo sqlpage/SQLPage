@@ -137,7 +137,7 @@ async function checkNoConsoleErrors(page: Page, component: string) {
   });
 
   await page.goto(`${BASE}/documentation.sql?component=${component}`);
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState();
 
   expect(errors).toHaveLength(0);
 }
@@ -156,6 +156,17 @@ test("no console errors on map page", async ({ page }) => {
 
 test("no console errors on card page", async ({ page }) => {
   await checkNoConsoleErrors(page, "card");
+});
+
+test("CSP issues unique nonces per request", async ({ page }) => {
+  const csp1 = await (await page.goto(BASE)).headerValue(
+    "content-security-policy",
+  );
+  const csp2 = await (await page.reload()).headerValue(
+    "content-security-policy",
+  );
+
+  expect(csp1, `check if ${csp1} != ${csp2}`).not.toEqual(csp2);
 });
 
 test("form component documentation", async ({ page }) => {

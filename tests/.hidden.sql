@@ -1,0 +1,1 @@
+select 'text' as component, 'This is a hidden file that should not be accessible' as contents; 

@@ -5,7 +5,7 @@
             <input
                 type="search"
                 class="form-control form-control-rounded fs-6 search"
-                placeholder="Search…"
+                placeholder="{{default search_placeholder 'Search…'}}"
                 value="{{initial_search_value}}"
                 {{#if initial_search_value}}autocomplete="off"{{/if}}
             >
@@ -14,6 +14,7 @@
         <div class="table-responsive
             {{~#if freeze_columns}} table-freeze-columns text-nowrap {{/if~}}
             {{~#if freeze_headers}} table-freeze-headers text-nowrap {{/if~}}
+            {{~#if freeze_footers}} table-freeze-footers text-nowrap {{/if~}}
         ">
             <table class="table
             {{~#if striped_rows}} table-striped {{/if~}}
@@ -29,6 +30,7 @@
             {{#if description}}<caption class="text-center text-muted">{{description}}</caption>{{/if}}
                 {{#each_row}}
                     {{#if (eq @row_index 0)}}
+                        {{! Since we are inside the first data row, render the header }}
                         <thead>
                         <tr>
                             {{#each this}}
@@ -54,13 +56,15 @@
                         </thead>
                     <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
                     {{~/if~}}
-
+                    {{!~ If this data row should go into the footer, close the <tbody>, open the <tfoot> ~}}
+                    {{~#if _sqlpage_footer~}} </tbody><tfoot> {{/if~}}
                     <tr class="{{_sqlpage_css_class}} {{#if _sqlpage_color}}bg-{{_sqlpage_color}}-lt{{/if}}" {{#if _sqlpage_id}}id="{{_sqlpage_id}}"{{/if}}>
                         {{~#each this~}}
                             {{~#if (not (starts_with @key '_sqlpage_'))~}}
                             <td class="align-middle _col_{{replace @key ' ' '_'~}}
                                 {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                 {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
+                                {{~#if (array_contains_case_insensitive ../../monospace @key)}} font-monospace {{/if~}}
                             ">
                                 {{~#if (array_contains_case_insensitive ../../markdown @key)~}}
                                     {{{markdown this}}}
@@ -75,8 +79,15 @@
                             {{/if~}}
                         {{~/each~}}
                     </tr>
+                    {{!~ 
+                        After this <tr> has been rendered, if this was a footer, we need to reopen a new <tbody> 
+                        No need for another delayed closure since the previous one still applies
+                    ~}}
+                    {{~#if _sqlpage_footer}} </tfoot><tbody class="table-tbody list"> {{/if~}}
                 {{/each_row}}
                 {{flush_delayed}}
+
+                {{! If not enough rows were rendered, we need to place a 'No data' cell. "Not enough rows" depends on the footer settings }}
                 {{#if (eq @row_index 0)}}
                     <tbody class="table-tbody list">
                         <tr>

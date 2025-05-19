@@ -98,7 +98,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
 
     /// Adds a static file to the cache so that it will never be looked up from the disk
     pub fn add_static(&mut self, path: PathBuf, contents: T) {
-        log::trace!("Adding static file {path:?} to the cache.");
+        log::trace!("Adding static file {} to the cache.", path.display());
         self.static_files.insert(path, Cached::new(contents));
     }
 
@@ -117,10 +117,13 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         path: &Path,
         privileged: bool,
     ) -> anyhow::Result<Arc<T>> {
-        log::trace!("Attempting to get from cache {:?}", path);
+        log::trace!("Attempting to get from cache {}", path.display());
         if let Some(cached) = self.cache.read().await.get(path) {
             if app_state.config.environment.is_prod() && !cached.needs_check() {
-                log::trace!("Cache answer without filesystem lookup for {:?}", path);
+                log::trace!(
+                    "Cache answer without filesystem lookup for {}",
+                    path.display()
+                );
                 return Ok(Arc::clone(&cached.content));
             }
             match app_state
@@ -129,16 +132,23 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 .await
             {
                 Ok(false) => {
-                    log::trace!("Cache answer with filesystem metadata read for {:?}", path);
+                    log::trace!(
+                        "Cache answer with filesystem metadata read for {}",
+                        path.display()
+                    );
                     cached.update_check_time();
                     return Ok(Arc::clone(&cached.content));
                 }
-                Ok(true) => log::trace!("{path:?} was changed, updating cache..."),
-                Err(e) => log::trace!("Cannot read metadata of {path:?}, re-loading it: {e:#}"),
+                Ok(true) => log::trace!("{} was changed, updating cache...", path.display()),
+                Err(e) => log::trace!(
+                    "Cannot read metadata of {}, re-loading it: {:#}",
+                    path.display(),
+                    e
+                ),
             }
         }
         // Read lock is released
-        log::trace!("Loading and parsing {:?}", path);
+        log::trace!("Loading and parsing {}", path.display());
         let file_contents = app_state
             .file_system
             .read_to_string(app_state, path, privileged)
@@ -157,32 +167,39 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                     }) =>
             {
                 if let Some(static_file) = self.static_files.get(path) {
-                    log::trace!("File {path:?} not found, loading it from static files instead.");
+                    log::trace!(
+                        "File {} not found, loading it from static files instead.",
+                        path.display()
+                    );
                     let cached: Cached<T> = static_file.make_fresh();
                     Ok(cached)
                 } else {
-                    Err(e).with_context(|| format!("Couldn't load {path:?} into cache"))
+                    Err(e).with_context(|| format!("Couldn't load {} into cache", path.display()))
                 }
             }
-            Err(e) => Err(e).with_context(|| format!("Couldn't load {path:?} into cache")),
+            Err(e) => {
+                Err(e).with_context(|| format!("Couldn't load {} into cache", path.display()))
+            }
         };
 
         match parsed {
             Ok(value) => {
                 let new_val = Arc::clone(&value.content);
-                log::trace!("Writing to cache {:?}", path);
+                log::trace!("Writing to cache {}", path.display());
                 self.cache.write().await.insert(PathBuf::from(path), value);
-                log::trace!("Done writing to cache {:?}", path);
-                log::trace!("{:?} loaded in cache", path);
+                log::trace!("Done writing to cache {}", path.display());
+                log::trace!("{} loaded in cache", path.display());
                 Ok(new_val)
             }
             Err(e) => {
                 log::trace!(
-                    "Evicting {path:?} from the cache because the following error occurred: {e}"
+                    "Evicting {} from the cache because the following error occurred: {}",
+                    path.display(),
+                    e
                 );
-                log::trace!("Removing from cache {:?}", path);
+                log::trace!("Removing from cache {}", path.display());
                 self.cache.write().await.remove(path);
-                log::trace!("Done removing from cache {:?}", path);
+                log::trace!("Done removing from cache {}", path.display());
                 Err(e)
             }
         }

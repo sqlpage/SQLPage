@@ -53,7 +53,7 @@ pub fn stream_query_results_with_conn<'a>(
             match res {
                 ParsedStatement::CsvImport(csv_import) => {
                     let connection = take_connection(&request.app_state.db, db_connection).await?;
-                    log::debug!("Executing CSV import: {:?}", csv_import);
+                    log::debug!("Executing CSV import: {csv_import:?}");
                     run_csv_import(connection, csv_import, request).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },
                 ParsedStatement::StmtWithParams(stmt) => {
@@ -269,7 +269,7 @@ fn parse_single_sql_result(
             DbItem::Row(super::sql_to_json::row_to_json(&r))
         }
         Ok(Either::Left(res)) => {
-            log::debug!("Finished query with result: {:?}", res);
+            log::debug!("Finished query with result: {res:?}");
             DbItem::FinishedQuery
         }
         Err(err) => {
@@ -296,7 +296,7 @@ fn debug_row(r: &AnyRow) {
             .unwrap();
         }
     }
-    log::trace!("Received db row: {}", row_str);
+    log::trace!("Received db row: {row_str}");
 }
 
 fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
@@ -313,7 +313,7 @@ async fn bind_parameters<'a>(
     db_connection: &mut DbConn,
 ) -> anyhow::Result<StatementWithParams<'a>> {
     let sql = stmt.query.as_str();
-    log::debug!("Preparing statement: {}", sql);
+    log::debug!("Preparing statement: {sql}");
     let mut arguments = AnyArguments::default();
     for (param_idx, param) in stmt.params.iter().enumerate() {
         log::trace!("\tevaluating parameter {}: {}", param_idx + 1, param);

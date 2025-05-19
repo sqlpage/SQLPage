@@ -16,8 +16,8 @@
   --tblr-bg-surface-tertiary: hsl(225, 47%, 14%);
 
   /* Border colors */
-  --tblr-border-color: hsl(225deg 30% 12%);
-  --tblr-border-color-translucent: hsla(225deg 30% 25% / 0.7);
+  --tblr-border-color: hsl(225deg, 26%, 19%);
+  --tblr-border-color-translucent: hsla(225deg 27% 19% / 0.7);
 
   /* Text secondary RGB */
   --tblr-text-secondary-rgb: 204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */

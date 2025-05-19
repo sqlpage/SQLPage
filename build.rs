@@ -36,13 +36,13 @@ fn make_client() -> awc::Client {
 
 /// Creates a file with inlined remote files included
 async fn download_deps(client: Rc<awc::Client>, filename: &str) {
-    let path_in = format!("sqlpage/{}", filename);
+    let path_in = format!("sqlpage/{filename}");
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let path_out: PathBuf = out_dir.join(filename);
     // Generate outfile by reading infile and interpreting all comments
     // like "/* !include https://... */" as a request to include the contents of
     // the URL in the generated file.
-    println!("cargo:rerun-if-changed={}", path_in);
+    println!("cargo:rerun-if-changed={path_in}");
     let original = File::open(path_in).unwrap();
     process_input_file(&client, &path_out, original).await;
     std::fs::write(
@@ -68,7 +68,7 @@ async fn process_input_file(client: &awc::Client, path_out: &Path, original: Fil
             }
             outfile.write_all(b"\n").unwrap();
         } else {
-            writeln!(outfile, "{}", line).unwrap();
+            writeln!(outfile, "{line}").unwrap();
         }
     }
     outfile
@@ -119,10 +119,9 @@ async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
                     let path = make_url_path(url);
                     panic!(
                         "We need to download external frontend dependencies to build the static frontend. \n\
-                        Could not download static asset after {} attempts. You can manually download the file with: \n\
+                        Could not download static asset after {max_attempts} attempts. You can manually download the file with: \n\
                         curl {url:?} > {path:?} \n\
-                        {err}",
-                        max_attempts
+                        {err}"
                     );
                 }
                 sleep(Duration::from_secs(1)).await;

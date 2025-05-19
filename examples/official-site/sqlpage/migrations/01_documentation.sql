@@ -770,6 +770,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
     ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE),
     ('initial_search_value', 'Pre-fills the search bar used to filter the table. The user will still be able to edit the value to display table rows that will initially be filtered out.', 'TEXT', TRUE, TRUE),
+    ('search_placeholder', 'Customizes the placeholder text shown in the search input field. Replaces the default "Search..." with text that better describes what users should search for.', 'TEXT', TRUE, TRUE),
     ('markdown', 'Set this to the name of a column whose content should be interpreted as markdown . Used to display rich text with links in the table. This argument can be repeated multiple times to intepret multiple columns as markdown.', 'TEXT', TRUE, TRUE),
     ('icon', 'Set this to the name of a column whose content should be interpreted as a tabler icon name. Used to display icons in the table. This argument can be repeated multiple times to intepret multiple columns as icons. Introduced in v0.8.0.', 'TEXT', TRUE, TRUE),
     ('align_right', 'Name of a column the contents of which should be right-aligned. This argument can be repeated multiple times to align multiple columns to the right. Introduced in v0.15.0.', 'TEXT', TRUE, TRUE),
@@ -785,6 +786,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('empty_description', 'Text to display if the table does not contain any row. Defaults to "no data".', 'TEXT', TRUE, TRUE),
     ('freeze_columns', 'Whether to freeze the leftmost column of the table.', 'BOOLEAN', TRUE, TRUE),
     ('freeze_headers', 'Whether to freeze the top row of the table.', 'BOOLEAN', TRUE, TRUE),
+    ('freeze_footers', 'Whether to freeze the footer (bottom row) of the table, only works if that row has the `_sqlpage_footer` property applied to it.', 'BOOLEAN', TRUE, TRUE),
     ('raw_numbers', 'Name of a column whose values are numeric, but should be displayed as raw numbers without any formatting (no thousands separators, decimal separator is always a dot). This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('money', 'Name of a numeric column whose values should be displayed as currency amounts, in the currency defined by the `currency` property. This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('currency', 'The ISO 4217 currency code (e.g., USD, EUR, GBP, etc.) to use when formatting monetary values.', 'TEXT', TRUE, TRUE),
@@ -792,6 +794,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'COLOR', FALSE, TRUE),
+    ('_sqlpage_footer', 'Sets this row as the table footer. It is recommended that this parameter is applied to the last row. Added in v0.34.0.', 'BOOLEAN', FALSE, TRUE),
     ('_sqlpage_id', 'Sets the id of the html tabler row element. Allows you to make links targeting a specific row in a table.', 'TEXT', FALSE, TRUE)
 ) x;
 
@@ -799,14 +802,22 @@ INSERT INTO example(component, description, properties) VALUES
     ('table', 'The most basic table.',
         json('[{"component":"table"}, {"a": 1, "b": 2}, {"a": 3, "b": 4}]')),
     ('table', 'A table of users with filtering and sorting.',
-        json('[{"component":"table", "sort":true, "search":true}, '||
-        '{"First Name": "Ophir", "Last Name": "Lojkine", "Pseudonym": "lovasoa"},' ||
-        '{"First Name": "Linus", "Last Name": "Torvalds", "Pseudonym": "torvalds"}]')),
+        json('[
+        {"component":"table", "sort":true, "search":true, "search_placeholder": "Filter by name"},
+        {"First Name": "Ophir", "Last Name": "Lojkine", "Pseudonym": "lovasoa"},
+        {"First Name": "Linus", "Last Name": "Torvalds", "Pseudonym": "torvalds"}
+    ]')),
     ('table', 'A table that uses markdown to display links',
         json('[{"component":"table", "markdown": "Name", "icon": "icon", "search": true}, '||
         '{"icon": "table", "name": "[Table](?component=table)", "description": "Displays SQL results as a searchable table.", "_sqlpage_color": "red"},
         {"icon": "timeline", "name": "[Chart](?component=chart)", "description": "Show graphs based on numeric data."}
         ]')),
+    ('table', 'A sortable table with a colored footer showing the average value of its entries.',
+        json('[{"component":"table", "sort":true}, '||
+        '{"Person": "Rudolph Lingens", "Height": 190},' ||
+        '{"Person": "Jane Doe", "Height": 150},' ||
+        '{"Person": "John Doe", "Height": 200},' ||
+        '{"_sqlpage_footer":true, "_sqlpage_color": "green", "Person": "Average", "Height": 180}]')),
     (
     'table',
     'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.
@@ -827,8 +838,12 @@ Numbers can be displayed
     'table',
     'A table with some presentation options',
     json(
-        '[{"component":"table", "hover": true, "striped_rows": true, "description": "Some Star Trek Starfleet starships", "small": true, "initial_search_value": "NCC-" },'||
-        '{"name": "USS Enterprise", "registry": "NCC-1701-C", "class":"Ambassador"},
+        '[{"component":"table",
+                "hover": true, "striped_rows": true,
+                "description": "Some Star Trek Starfleet starships",
+                "small": true, "initial_search_value": "NCC-"
+        },
+         {"name": "USS Enterprise", "registry": "NCC-1701-C", "class":"Ambassador"},
          {"name": "USS Archer", "registry": "NCC-44278", "class":"Archer"},
          {"name": "USS Endeavour", "registry": "NCC-06", "class":"Columbia"},
          {"name": "USS Constellation", "registry": "NCC-1974", "class":"Constellation"},
@@ -900,6 +915,12 @@ Numbers can be displayed
         "feature": "Performance",
         "description": "Designed for performance, with a focus on efficient data processing and minimal overhead.",
         "benefits": "Quickly processes large datasets, handles high volumes of requests, and minimizes server load."
+    },
+    {
+        "_sqlpage_footer": true,
+        "feature": "Summary",
+        "description": "Summarizes the features of the product.",
+        "benefits": "Provides a quick overview of the product''s features and benefits."
     }
 ]')
     ),
@@ -1160,6 +1181,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('fixed_top_menu', 'Fixes the top bar with menu at the top (the top bar remains visible when scrolling long pages).', 'BOOLEAN', TRUE, TRUE),
     ('search_target', 'When this is set, a search field will appear in the top navigation bar, and load the specified sql file with an URL parameter named "search" when the user searches something.', 'TEXT', TRUE, TRUE),
     ('search_value', 'This value will be placed in the search field when "search_target" is set. Using the "$search" query parameter value will mirror the value that the user has searched for.', 'TEXT', TRUE, TRUE),
+    ('search_placeholder', 'Customizes the placeholder text shown in the search input field. Replaces the default "Search" with text that better describes what users should search for.', 'TEXT', TRUE, TRUE),
+    ('search_button', 'Customizes the text displayed on the search button. Replaces the default "Search" label with custom text that may better match your applications terminology or language.', 'TEXT', TRUE, TRUE),
     ('norobot', 'Forbids robots to save this page in their database and follow the links on this page. This will prevent this page to appear in Google search results for any query, for instance.', 'BOOLEAN', TRUE, TRUE),
     ('font', 'Specifies the font to be used for displaying text, which can be a valid font name from fonts.google.com or the path to a local WOFF2 font file starting with a slash (e.g., "/fonts/MyLocalFont.woff2").', 'TEXT', TRUE, TRUE),
     ('font_size', 'Font size on the page, in pixels. Set to 18 by default.', 'INTEGER', TRUE, TRUE),
@@ -1184,6 +1207,7 @@ and in its object form, to generate a dropdown menu named "Community" with links
 
 The object form can be used directly only on database engines that have a native JSON type.
 On other engines (such as SQLite), you can use the [`dynamic`](?component=dynamic#component) component to generate the same result.
+
 
 You see the [page layouts demo](./examples/layouts.sql) for a live example of the different layouts.
 ',
@@ -1217,9 +1241,11 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/your-first-sql-website", "title": "Getting started", "icon": "book"},
                     {"link": "/components.sql", "title": "All Components", "icon": "list-details"},
                     {"link": "/functions.sql", "title": "SQLPage Functions", "icon": "math-function"},
+                    {"link": "/extensions-to-sql", "title": "Extensions to SQL", "icon": "cube-plus"},
                     {"link": "/custom_components.sql", "title": "Custom Components", "icon": "puzzle"},
                     {"link": "//github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
-                ]}
+                ]},
+                {"title": "Search", "link": "/search"}
             ],
             "layout": "boxed",
             "language": "en-US",
@@ -1237,6 +1263,22 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "css": "/assets/highlightjs-and-tabler-theme.css",
             "footer": "[Built with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/official-site)"
         }]')),
+    ('shell', '
+This example shows how to set menu items as active in the navigation, so that they are highlighted in the nav bar.
+
+In this example you can see that two menu items are created, "Home" and "About" and the "Home" tab is marked as active.
+',
+     json('[{
+            "component": "shell",
+            "title": "SQLPage: SQL websites",
+            "icon": "database",
+            "link": "/",
+            "menu_item": [
+                {"title": "Home", "active": true},
+                {"title": "About"}
+            ]
+        }]')),
+
     ('shell', '
 ### Sharing the shell between multiple pages
 

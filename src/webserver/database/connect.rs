@@ -103,14 +103,24 @@ impl Database {
 fn add_on_return_to_pool(config: &AppConfig, pool_options: PoolOptions<Any>) -> PoolOptions<Any> {
     let on_disconnect_file = config.configuration_directory.join(ON_RESET_FILE);
     if !on_disconnect_file.exists() {
-        log::debug!("Not creating a custom SQL connection cleanup handler because {on_disconnect_file:?} does not exist");
+        log::debug!(
+            "Not creating a custom SQL connection cleanup handler because {} does not exist",
+            on_disconnect_file.display()
+        );
         return pool_options;
     }
-    log::info!("Creating a custom SQL connection cleanup handler from {on_disconnect_file:?}");
+    log::info!(
+        "Creating a custom SQL connection cleanup handler from {}",
+        on_disconnect_file.display()
+    );
     let sql = match std::fs::read_to_string(&on_disconnect_file) {
         Ok(sql) => std::sync::Arc::new(sql),
         Err(e) => {
-            log::error!("Unable to read the file {on_disconnect_file:?}: {e}");
+            log::error!(
+                "Unable to read the file {}: {}",
+                on_disconnect_file.display(),
+                e
+            );
             return pool_options;
         }
     };
@@ -146,20 +156,30 @@ fn add_on_connection_handler(
 ) -> PoolOptions<Any> {
     let on_connect_file = config.configuration_directory.join(ON_CONNECT_FILE);
     if !on_connect_file.exists() {
-        log::debug!("Not creating a custom SQL database connection handler because {on_connect_file:?} does not exist");
+        log::debug!(
+            "Not creating a custom SQL database connection handler because {} does not exist",
+            on_connect_file.display()
+        );
         return pool_options;
     }
-    log::info!("Creating a custom SQL database connection handler from {on_connect_file:?}");
+    log::info!(
+        "Creating a custom SQL database connection handler from {}",
+        on_connect_file.display()
+    );
     let sql = match std::fs::read_to_string(&on_connect_file) {
         Ok(sql) => std::sync::Arc::new(sql),
         Err(e) => {
-            log::error!("Unable to read the file {on_connect_file:?}: {e}");
+            log::error!(
+                "Unable to read the file {}: {}",
+                on_connect_file.display(),
+                e
+            );
             return pool_options;
         }
     };
     log::trace!("The custom SQL database connection handler is:\n{sql}");
     pool_options.after_connect(move |conn, _metadata| {
-        log::debug!("Running {on_connect_file:?} on new connection");
+        log::debug!("Running {} on new connection", on_connect_file.display());
         let sql = std::sync::Arc::clone(&sql);
         Box::pin(async move {
             let r = conn.execute(sql.as_str()).await?;
@@ -172,7 +192,7 @@ fn add_on_connection_handler(
 fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfig) {
     if let Some(sqlite_options) = options.as_sqlite_mut() {
         for extension_name in &config.sqlite_extensions {
-            log::info!("Loading SQLite extension: {}", extension_name);
+            log::info!("Loading SQLite extension: {extension_name}");
             *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
         }
         *sqlite_options = std::mem::take(sqlite_options)

@@ -94,7 +94,7 @@ async fn test_concurrent_requests() {
         .map(|i| {
             let component = components[i % components.len()];
             req_path_with_app_data(
-                format!("/tests/any_component.sql?component={}", component),
+                format!("/tests/any_component.sql?component={component}"),
                 app_data.clone(),
             )
         })
@@ -185,7 +185,7 @@ async fn test_files() {
             // skipping because the test does not support the database
             continue;
         }
-        let req_str = format!("/{}?x=1", test_file_path_string);
+        let req_str = format!("/{test_file_path_string}?x=1");
         let resp = req_path_with_app_data(&req_str, app_data.clone())
             .await
             .unwrap_or_else(|e| panic!("Failed to get response for {req_str}: {e}"));
@@ -880,6 +880,22 @@ async fn test_request_body_base64() -> actix_web::Result<()> {
     Ok(())
 }
 
+#[actix_web::test]
+async fn test_hidden_files() {
+    let resp_result = req_path("/tests/.hidden.sql").await;
+    assert!(
+        resp_result.is_err(),
+        "Accessing a hidden file should be forbidden, but received success: {resp_result:?}"
+    );
+    let resp = resp_result.unwrap_err().error_response();
+    assert_eq!(resp.status(), http::StatusCode::FORBIDDEN);
+    assert!(
+        String::from_utf8_lossy(&resp.into_body().try_into_bytes().unwrap())
+            .to_lowercase()
+            .contains("forbidden"),
+    );
+}
+
 async fn get_request_to_with_data(
     path: &str,
     data: actix_web::web::Data<AppState>,
@@ -950,7 +966,7 @@ pub fn test_config() -> AppConfig {
     let db_url = test_database_url();
     serde_json::from_str::<AppConfig>(&format!(
         r#"{{
-        "database_url": "{}",
+        "database_url": "{db_url}",
         "max_database_pool_connections": 1,
         "database_connection_retries": 3,
         "database_connection_acquire_timeout_seconds": 15,
@@ -958,8 +974,7 @@ pub fn test_config() -> AppConfig {
         "max_uploaded_file_size": 123456,
         "listen_on": "111.111.111.111:1",
         "system_root_ca_certificates" : false
-    }}"#,
-        db_url
+    }}"#
     ))
     .unwrap()
 }

@@ -1,7 +1,9 @@
+use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
 use clap::Parser;
 use config::Config;
+use openidconnect::IssuerUrl;
 use percent_encoding::AsciiSet;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -34,10 +36,13 @@ impl AppConfig {
                     config_file
                 ));
             }
-            log::debug!("Loading configuration from file: {:?}", config_file);
+            log::debug!("Loading configuration from file: {}", config_file.display());
             load_from_file(config_file)?
         } else if let Some(config_dir) = &cli.config_dir {
-            log::debug!("Loading configuration from directory: {:?}", config_dir);
+            log::debug!(
+                "Loading configuration from directory: {}",
+                config_dir.display()
+            );
             load_from_directory(config_dir)?
         } else {
             log::debug!("Loading configuration from environment");
@@ -45,8 +50,8 @@ impl AppConfig {
         };
         if let Some(web_root) = &cli.web_root {
             log::debug!(
-                "Setting web root to value from the command line: {:?}",
-                web_root
+                "Setting web root to value from the command line: {}",
+                web_root.display()
             );
             config.web_root.clone_from(web_root);
         }
@@ -59,8 +64,8 @@ impl AppConfig {
 
         if !config.configuration_directory.exists() {
             log::info!(
-                "Configuration directory does not exist, creating it: {:?}",
-                config.configuration_directory
+                "Configuration directory does not exist, creating it: {}",
+                config.configuration_directory.display()
             );
             std::fs::create_dir_all(&config.configuration_directory).with_context(|| {
                 format!(
@@ -82,7 +87,11 @@ impl AppConfig {
             .validate()
             .context("The provided configuration is invalid")?;
 
-        log::debug!("Loaded configuration: {:#?}", config);
+        log::debug!("Loaded configuration: {config:#?}");
+        log::info!(
+            "Configuration loaded from {}",
+            config.configuration_directory.display()
+        );
 
         Ok(config)
     }
@@ -191,6 +200,21 @@ pub struct AppConfig {
     #[serde(default = "default_max_file_size")]
     pub max_uploaded_file_size: usize,
 
+    /// The base URL of the `OpenID` Connect provider.
+    /// Required when enabling Single Sign-On through an OIDC provider.
+    pub oidc_issuer_url: Option<IssuerUrl>,
+    /// The client ID assigned to `SQLPage` when registering with the OIDC provider.
+    /// Defaults to `sqlpage`.
+    #[serde(default = "default_oidc_client_id")]
+    pub oidc_client_id: String,
+    /// The client secret for authenticating `SQLPage` to the OIDC provider.
+    /// Required when enabling Single Sign-On through an OIDC provider.
+    pub oidc_client_secret: Option<String>,
+    /// Space-separated list of [scopes](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) to request during OIDC authentication.
+    /// Defaults to "openid email profile"
+    #[serde(default = "default_oidc_scopes")]
+    pub oidc_scopes: String,
+
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
     /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
     /// server's IP address.
@@ -199,6 +223,10 @@ pub struct AppConfig {
     /// and will automatically request a certificate from Let's Encrypt
     /// using the ACME protocol (requesting a TLS-ALPN-01 challenge).
     pub https_domain: Option<String>,
+
+    /// The hostname where your application is publicly accessible (e.g., "myapp.example.com").
+    /// This is used for OIDC redirect URLs. If not set, `https_domain` will be used instead.
+    pub host: Option<String>,
 
     /// The email address to use when requesting a certificate from Let's Encrypt.
     /// Defaults to `contact@<https_domain>`.
@@ -237,8 +265,11 @@ pub struct AppConfig {
     pub compress_responses: bool,
 
     /// Content-Security-Policy header to send to the client.
-    /// If not set, a default policy allowing scripts from the same origin is used and from jsdelivr.net
-    pub content_security_policy: Option<String>,
+    /// If not set, a default policy allowing
+    ///  - scripts from the same origin,
+    ///  - script elements with the `nonce="{{@csp_nonce}}"` attribute,
+    #[serde(default)]
+    pub content_security_policy: ContentSecurityPolicyTemplate,
 
     /// Whether `sqlpage.fetch` should load trusted certificates from the operating system's certificate store
     /// By default, it loads Mozilla's root certificates that are embedded in the `SQLPage` binary, or the ones pointed to by the
@@ -305,7 +336,7 @@ fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
 /// This should be called only once at the start of the program.
 pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
     let cannonical = cannonicalize_if_possible(directory);
-    log::debug!("Loading configuration from {:?}", cannonical);
+    log::debug!("Loading configuration from {}", cannonical.display());
     let config_file = directory.join("sqlpage");
     let mut app_config = load_from_file(&config_file)?;
     app_config.configuration_directory = directory.into();
@@ -314,7 +345,7 @@ pub fn load_from_directory(directory: &Path) -> anyhow::Result<AppConfig> {
 
 /// Parses and loads the configuration from the given file.
 pub fn load_from_file(config_file: &Path) -> anyhow::Result<AppConfig> {
-    log::debug!("Loading configuration from file: {:?}", config_file);
+    log::debug!("Loading configuration from file: {}", config_file.display());
     let config = Config::builder()
         .add_source(config::File::from(config_file).required(false))
         .add_source(env_config())
@@ -450,7 +481,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
         }
     }
 
-    log::warn!("No DATABASE_URL provided, and {:?} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory);
+    log::warn!("No DATABASE_URL provided, and {} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory.display());
     prefix + ":memory:?cache=shared"
 }
 
@@ -477,7 +508,7 @@ fn default_database_connection_acquire_timeout_seconds() -> f64 {
 
 fn default_web_root() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|e| {
-        log::error!("Unable to get current directory: {}", e);
+        log::error!("Unable to get current directory: {e}");
         PathBuf::from(&std::path::Component::CurDir)
     })
 }
@@ -519,6 +550,14 @@ fn default_markdown_allow_dangerous_html() -> bool {
 
 fn default_markdown_allow_dangerous_protocol() -> bool {
     false
+}
+
+fn default_oidc_client_id() -> String {
+    "sqlpage".to_string()
+}
+
+fn default_oidc_scopes() -> String {
+    "openid email profile".to_string()
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "test": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "fix": "biome check --fix --unsafe ."
   },
   "repository": {
     "type": "git",

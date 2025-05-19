@@ -160,9 +160,11 @@ pub(super) async fn run_csv_import(
         })?
         .file;
     let file_path = named_temp_file.path();
-    let file_name = file_path.file_name().unwrap_or_default();
     let file = tokio::fs::File::open(file_path).await.with_context(|| {
-        format!("The CSV file {file_name:?} was uploaded correctly, but could not be opened",)
+        format!(
+            "The CSV file {} was uploaded correctly, but could not be opened",
+            file_path.display()
+        )
     })?;
     let buffered = tokio::io::BufReader::new(file);
     // private_get_mut is not supposed to be used outside of sqlx, but it is the only way to
@@ -176,7 +178,9 @@ pub(super) async fn run_csv_import(
     .with_context(|| {
         let table_name = &csv_import.table_name;
         format!(
-            "{file_name:?} was uploaded correctly, but its records could not be imported into the table {table_name}"
+            "{} was uploaded correctly, but its records could not be imported into the table {}",
+            file_path.display(),
+            table_name
         )
     })
 }
