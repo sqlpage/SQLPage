@@ -14,7 +14,6 @@
         {{#if title}}
         <div class="d-flex align-items-center">
           <div class="subheader text-truncate me-2">
-            {{!--  Introduced `title_link_new_tab` and `value_link_new_tab`.  If set to a truthy value, opens the link in a new tab (target="_blank").  Otherwise, defaults to same tab (target="_self"). --}}
             {{#if title_link}}
               <a href="{{title_link}}" class="text-decoration-none"
                  {{#if title_link_new_tab}}
@@ -49,7 +48,6 @@
         
         <div class="d-flex align-items-center mt-1">
           <div class="h1 {{#if description}}mb-3{{else}}mb-0{{/if}} mt-auto text-nowrap text-truncate">
-            {{!--  Introduced `title_link_new_tab` and `value_link_new_tab`.  If set to a truthy value, opens the link in a new tab (target="_blank").  Otherwise, defaults to same tab (target="_self"). --}}
             {{#if value_link}}
               <a href="{{value_link}}"
                  class="text-decoration-none"
