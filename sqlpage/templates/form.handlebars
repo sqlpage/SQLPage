@@ -16,7 +16,7 @@
         <div class="row">
             {{#each_row}}
             {{#if (eq type "header")}}
-                <h3 class="text-center mb-2"{{#if id}} id="{{id}}"{{/if}}>{{label}}</h3>
+                <h3 class="text-center mt-2 mb-1"{{#if id}} id="{{id}}"{{/if}}>{{label}}</h3>
             {{else}}
             {{#if (or (eq type "radio") (eq type "checkbox"))}}
                 <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column mx-0 my-1 col-md-{{default width 12}}">

@@ -18,6 +18,8 @@
  - Updated sqlparser to [v0.56](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.56.0.md), with many improvements including:
   - Add support for the xmltable(...) function in postgres
   - Add support for MSSQL IF/ELSE statements.
+ - Add support for nice "switch" checkboxes in the form component using `'switch' as type`
+ - Add support for headers in the form component using
 
 ## v0.34 (2025-03-23)
 
