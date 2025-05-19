@@ -10,8 +10,8 @@ use sqlparser::ast::helpers::attached_token::AttachedToken;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, ObjectNamePart,
-    OneOrManyWithParens, SelectFlavor, SelectItem, SetExpr, Spanned, Statement, Value,
-    ValueWithSpan, Visit, VisitMut, Visitor, VisitorMut,
+    SelectFlavor, SelectItem, Set, SetExpr, Spanned, Statement, Value, ValueWithSpan, Visit,
+    VisitMut, Visitor, VisitorMut,
 };
 use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
@@ -377,11 +377,10 @@ fn extract_static_simple_select(
 ) -> Option<Vec<(String, SimpleSelectValue)>> {
     let set_expr = match stmt {
         Statement::Query(q)
-            if q.limit.is_none()
+            if q.limit_clause.is_none()
                 && q.fetch.is_none()
                 && q.order_by.is_none()
                 && q.with.is_none()
-                && q.offset.is_none()
                 && q.locks.is_empty() =>
         {
             q.body.as_ref()
@@ -476,15 +475,15 @@ fn extract_set_variable(
     params: &mut Vec<StmtParam>,
     db_kind: AnyKind,
 ) -> Option<ParsedStatement> {
-    if let Statement::SetVariable {
-        variables: OneOrManyWithParens::One(ObjectName(name)),
-        value,
-        local: false,
+    if let Statement::Set(Set::SingleAssignment {
+        variable: ObjectName(name),
+        values,
+        scope: None,
         hivevar: false,
-    } = stmt
+    }) = stmt
     {
         if let ([ObjectNamePart::Identifier(ident)], [value]) =
-            (name.as_mut_slice(), value.as_mut_slice())
+            (name.as_mut_slice(), values.as_mut_slice())
         {
             let variable = if let Some(variable) = extract_ident_param(ident) {
                 variable
@@ -1063,11 +1062,9 @@ fn expr_to_statement(expr: Expr) -> Statement {
             },
         ))),
         order_by: None,
-        limit: None,
-        offset: None,
+        limit_clause: None,
         fetch: None,
         locks: vec![],
-        limit_by: vec![],
         for_clause: None,
         settings: None,
         format_clause: None,

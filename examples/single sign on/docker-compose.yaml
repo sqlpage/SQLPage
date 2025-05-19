@@ -13,14 +13,6 @@ services:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage
     environment:
-      # OIDC configuration
-      - OIDC_AUTHORIZATION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/auth
-      - OIDC_TOKEN_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/token
-      - OIDC_USERINFO_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/userinfo
-      - OIDC_END_SESSION_ENDPOINT=http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/logout
-      - OIDC_CLIENT_ID=sqlpage
-      - OIDC_CLIENT_SECRET=qiawfnYrYzsmoaOZT28rRjPPRamfvrYr
-
       # CAS (central authentication system) configuration
       # (you can ignore this if you're only using OpenID Connect)
       - CAS_ROOT_URL=http://localhost:8181/realms/sqlpage_demo/protocol/cas
@@ -28,6 +20,9 @@ services:
       # SQLPage configuration
       - RUST_LOG=sqlpage=debug
     network_mode: host
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
   keycloak:
     build:
@@ -39,3 +34,9 @@ services:
     volumes:
       - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
     network_mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/keycloak/bin/kcadm.sh get realms/sqlpage_demo --server http://localhost:8181 --realm master --user admin --password admin || exit 1"]
+      interval: 10s
+      timeout: 2s
+      retries: 5
+      start_period: 5s

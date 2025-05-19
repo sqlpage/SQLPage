@@ -1,13 +1,23 @@
 # CHANGELOG.md
 
 ## v0.35
+ - Add support for [single sign-on using OIDC](sql-page.com/sso)
+   - Allows protecting access to your website using "Sign in with Google/Microsoft/..."
  - Fix tooltips not showing on line charts with one or more hidden series
  - Update default chart colors and text shadows for better readability with all themes
  - Optimize memory layout by boxing large structs. Slightly reduces memory usage.
  - New example: [Rich text editor](./examples/rich-text-editor/). Let your users safely write formatted text with links and images.
- - Update the Tabler CSS library to [v1.2](https://tabler.io/changelog#/changelog/tabler-1.2). This fixes issues with 
+ - Update the Tabler CSS library to [v1.3](https://tabler.io/changelog#/changelog/tabler-1.3). This fixes issues with
    - the alignment inside chart tooltips
    - the display of lists
+   - update to [tabler incons v1.33](https://tabler.io/changelog#/changelog/tabler-icons-3.33) with many new icons.
+ - Add an `active` top-level parameter to the shell component to highlight one of the top bar menu items. Thanks to @andrewsinnovations !
+ - Make the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) customization more flexible, allowing you to harden the default security rules. Thanks to @guspower !
+- Fix vertically truncated text in the list component on empty descriptions.
+  - ![screenshot](https://github.com/user-attachments/assets/df258e31-6698-4398-8ce5-4d7f396c03ef)
+ - Updated sqlparser to [v0.56](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.56.0.md), with many improvements including:
+  - Add support for the xmltable(...) function in postgres
+  - Add support for MSSQL IF/ELSE statements.
 
 ## v0.34 (2025-03-23)
 

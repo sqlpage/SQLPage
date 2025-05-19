@@ -1,26 +1,30 @@
-<div class="alert alert-danger text-muted mt-2" role="alert">
-    <p>
-        <span class="status status-red">
-            <span class="status-dot status-dot-animated"></span> Error
-        </span>
-        We are sorry, but an error occurred while generating this page.
-        You should contact the site's administrator.
-    </p>
-    <p>
-        {{#if query_number}}
-            Error in query number <strong>{{query_number}}</strong>:
-        {{/if}}
-    </p>
-    <pre><code>{{description}}</code></pre>
-    {{#if backtrace}}
-        <details open class="fs-5">
-            <summary>Backtrace</summary>
-            {{~#each backtrace~}}
-                <pre class="fs-5 mt-1 p-1 my-1"><code>{{this}}</code></pre>
-            {{~/each~}}
-        </details>
-    {{/if}}
-    {{#if note}}
-        <p class="fs-5 mt-1 p-1 my-1">{{note}}</p>
-    {{/if}}
+<div class="alert alert-danger mt-2" role="alert">
+    <div class="alert-icon">
+        {{icon_img 'alert-hexagon'}}
+    </div>
+    <div class="overflow-auto w-100">
+        <h4 class="alert-title">
+            {{#if query_number}}
+            Error in query number <strong>{{query_number}}</strong>
+            {{else}}
+            An error occurred
+            {{/if}}
+        </h4>
+        <div class="text-muted">
+            <p>We are sorry, but an error occurred while generating this page. You should contact the site's
+                administrator.</p>
+            <pre class="mt-2"><code>{{description}}</code></pre>
+            {{#if backtrace}}
+            <details class="mt-2">
+                <summary>Backtrace</summary>
+                {{~#each backtrace~}}
+                <pre class="fs-6 mt-1 p-1 my-1"><code>{{this}}</code></pre>
+                {{~/each~}}
+            </details>
+            {{/if}}
+            {{#if note}}
+            <p class="fs-6 mt-1 p-1 my-1"><strong>Note:</strong> {{note}}</p>
+            {{/if}}
+        </div>
+    </div>
 </div>

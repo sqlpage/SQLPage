@@ -9,7 +9,7 @@ select 'form' as component,
     'Create' as validate;
 
 select 'title' as name, 'Blog post title' as label, 'My new post' as value;
-select 'content' as name, 'textarea' as type, 'Your blog post here' as label, 'Your blog post here' as value;
+select 'content' as name, 'textarea' as type, 'Your blog post here' as label, 'Your blog post here' as value, true as required;
 
 select 'list' as component,
     'Blog posts' as title;

@@ -19,7 +19,9 @@ use actix_web::{
 };
 use actix_web::{HttpResponseBuilder, ResponseError};
 
+use super::http_client::make_http_client;
 use super::https::make_auto_rustls_config;
+use super::oidc::OidcMiddleware;
 use super::response_writer::ResponseWriter;
 use super::static_content;
 use crate::webserver::routing::RoutingAction::{
@@ -175,7 +177,7 @@ async fn render_sql(
     actix_web::rt::spawn(async move {
         let request_context = RequestContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
-            content_security_policy: ContentSecurityPolicy::default(),
+            content_security_policy: ContentSecurityPolicy::with_random_nonce(),
         };
         let mut conn = None;
         let database_entries_stream =
@@ -466,8 +468,9 @@ pub fn create_app(
         )
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
+        .wrap(OidcMiddleware::new(&app_state))
         .wrap(Logger::default())
-        .wrap(default_headers(&app_state))
+        .wrap(default_headers())
         .wrap(middleware::Condition::new(
             app_state.config.compress_responses,
             middleware::Compress::default(),
@@ -476,6 +479,7 @@ pub fn create_app(
             middleware::TrailingSlash::MergeOnly,
         ))
         .app_data(payload_config(&app_state))
+        .app_data(make_http_client(&app_state.config))
         .app_data(form_config(&app_state))
         .app_data(app_state)
 }
@@ -504,13 +508,9 @@ pub fn payload_config(app_state: &web::Data<AppState>) -> PayloadConfig {
     PayloadConfig::default().limit(app_state.config.max_uploaded_file_size * 2)
 }
 
-fn default_headers(app_state: &web::Data<AppState>) -> middleware::DefaultHeaders {
+fn default_headers() -> middleware::DefaultHeaders {
     let server_header = format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    let mut headers = middleware::DefaultHeaders::new().add(("Server", server_header));
-    if let Some(csp) = &app_state.config.content_security_policy {
-        headers = headers.add(("Content-Security-Policy", csp.as_str()));
-    }
-    headers
+    middleware::DefaultHeaders::new().add(("Server", server_header))
 }
 
 pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {

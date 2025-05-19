@@ -1,4 +1,4 @@
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/js/tabler.min.js */
+/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.3.1/dist/js/tabler.min.js */
 const nonce = document.currentScript.nonce;
 
 function sqlpage_card() {

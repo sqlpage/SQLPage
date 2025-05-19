@@ -8,7 +8,7 @@ use sqlpage::{
 async fn main() {
     init_logging();
     if let Err(e) = start().await {
-        log::error!("{:?}", e);
+        log::error!("{e:?}");
         std::process::exit(1);
     }
 }
@@ -38,6 +38,6 @@ fn init_logging() {
         Err(dotenvy::Error::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => log::debug!(
             "No .env file found, using only environment variables and configuration files"
         ),
-        Err(e) => log::error!("Error loading .env file: {}", e),
+        Err(e) => log::error!("Error loading .env file: {e}"),
     }
 }
