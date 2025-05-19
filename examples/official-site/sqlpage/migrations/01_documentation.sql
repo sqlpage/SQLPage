@@ -276,7 +276,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('id', 'A unique identifier for the form, which can then be used to validate the form from a button outside of the form.', 'TEXT', TRUE, TRUE),
     ('auto_submit', 'Automatically submit the form when the user changes any of its fields, and remove the validation button.', 'BOOLEAN', TRUE, TRUE),
     -- item level
-    ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number to accept only numbers, checkbox or radio for a button that is part of a group specified in the ''name'' parameter, hidden for a value that will be submitted but not shown to the user. text by default.', 'TEXT', FALSE, TRUE),
+    ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number to accept only numbers, checkbox, switch, or radio for a button that is part of a group specified in the ''name'' parameter, header for a form header, hidden for a value that will be submitted but not shown to the user. text by default.', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
@@ -347,6 +347,24 @@ When loading the page, the value for `:username` will be `NULL` if no value has 
     json('[{"component":"form"}, '||
     '{"name": "Your account", "prefix_icon": "mail", "prefix": "Email:", "suffix": "@mydomain.com"}, ' ||
     ']')),
+
+    ('form','With the header type, you can group your input fields based on a theme. For example, you can categorize fields according to a person''s identity and their contact information.',
+    json('[{"component":"form","title":"Information about the person"}, '||
+    '{"type": "header", "label": "Identity"},' ||
+    '{"name": "Name"},' ||
+    '{"name": "Surname"},' ||
+    '{"type": "header","label": "Contact"},' ||
+    '{"name": "phone", "label": "Phone number"},' ||
+    '{"name": "Email"},' ||
+    ']')),
+
+ ('form','A toggle switch in an HTML form is a user interface element that allows users to switch between two states, typically "on" and "off." It visually resembles a physical switch and is often used for settings or options that can be enabled or disabled.',
+    json('[{"component":"form"},
+    {"type": "switch", "label": "Dark theme", "name": "dark", "description": "Enable dark theme"},
+    {"type": "switch", "label": "A required toggle switch", "name": "my_checkbox", "required": true,"checked": true},
+    {"type": "switch", "label": "A disabled toggle switch", "name": "my_field", "disabled": true}
+    ]')),
+
     ('form', 'This example illustrates the use of the `select` type.
 In this select input, the various options are hardcoded, but they could also be loaded from a database table,
 [using a function to convert the rows into a json array](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) like 

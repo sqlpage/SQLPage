@@ -23,6 +23,8 @@
     - title_link_new_tab (bool): how the title link is opened
     - value_link (string): the URL or path that the Big Number’s value should link to, if any
     - value_link_new_tab (bool): open the link in a new tab
+ - Add support for nice "switch" checkboxes in the form component using `'switch' as type`
+ - Add support for headers in the form component using
 
 ## v0.34 (2025-03-23)
 

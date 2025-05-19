@@ -1,5 +1,6 @@
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Deserializer};
+use serde_json::Value;
 use std::borrow::Cow;
 use std::fmt;
 
@@ -59,7 +60,12 @@ impl<'de> Deserialize<'de> for URLParameters {
                             out.encode_and_push(&key);
                             out.0.push_str("[]");
                             out.0.push('=');
-                            out.encode_and_push(&val.to_string());
+
+                            let val = match val {
+                                Value::String(s) => s,
+                                other => other.to_string(),
+                            };
+                            out.encode_and_push(&val);
                         }
                     } else {
                         out.push_kv(&key, value);
@@ -87,5 +93,32 @@ fn test_url_parameters_deserializer() {
     assert_eq!(
         url_parameters.0,
         "x=hello%20world&num=123&arr[]=1&arr[]=2&arr[]=3"
+    );
+}
+
+#[test]
+fn test_url_parameters_deserializer_special_chars() {
+    use serde_json::json;
+    let json = json!({
+        "chars": ["\n", " ", "\""],
+    });
+
+    let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
+    assert_eq!(url_parameters.0, "chars[]=%0A&chars[]=%20&chars[]=%22");
+}
+
+#[test]
+fn test_url_parameters_deserializer_issue_879() {
+    use serde_json::json;
+    let json = json!({
+        "name": "John Doe & Son's",
+        "items": [1, "item 2 & 3", true],
+        "special_char": "%&=+ ",
+    });
+
+    let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
+    assert_eq!(
+        url_parameters.0,
+        "name=John%20Doe%20%26%20Son%27s&items[]=1&items[]=item%202%20%26%203&items[]=true&special%5Fchar=%25%26%3D%2B%20"
     );
 }
