@@ -7,9 +7,10 @@
  - Update default chart colors and text shadows for better readability with all themes
  - Optimize memory layout by boxing large structs. Slightly reduces memory usage.
  - New example: [Rich text editor](./examples/rich-text-editor/). Let your users safely write formatted text with links and images.
- - Update the Tabler CSS library to [v1.2](https://tabler.io/changelog#/changelog/tabler-1.2). This fixes issues with 
+ - Update the Tabler CSS library to [v1.3](https://tabler.io/changelog#/changelog/tabler-1.3). This fixes issues with
    - the alignment inside chart tooltips
    - the display of lists
+   - update to [tabler incons v1.33](https://tabler.io/changelog#/changelog/tabler-icons-3.33) with many new icons.
  - Add an `active` top-level parameter to the shell component to highlight one of the top bar menu items. Thanks to @andrewsinnovations !
  - Make the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) customization more flexible, allowing you to harden the default security rules. Thanks to @guspower !
 - Fix vertically truncated text in the list component on empty descriptions.

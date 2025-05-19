@@ -1,13 +1,6 @@
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler.min.css */
+/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.3.1/dist/css/tabler.min.css */
 /* !include https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.css */
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler-vendors.min.css */
-
-:root {
-  /* Workaround for https://github.com/tabler/tabler/issues/1879 */
-  --tblr-text-secondary-rgb: var(--tblr-secondary-rgb);
-  --tblr-code-color: #073345;
-  --tblr-code-bg: #e4f1ff;
-}
+/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.3.1/dist/css/tabler-vendors.min.css */
 
 .navbar {
   /* https://github.com/sqlpage/SQLPage/issues/822 */
@@ -48,6 +41,13 @@ td > p {
 /* orchidjs/tom-select#712 */
 .ts-wrapper.multi .ts-control > div.active {
   border: 1px solid transparent !important;
+}
+
+/* remove the ugly text highlight in the default tom-select */
+.ts-dropdown [data-selectable] .highlight {
+  background: inherit;
+  color: inherit;
+  text-decoration: underline;
 }
 
 .page {
