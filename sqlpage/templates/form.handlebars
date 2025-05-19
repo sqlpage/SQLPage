@@ -15,6 +15,9 @@
         {{/if}}
         <div class="row">
             {{#each_row}}
+            {{#if (eq type "header")}}
+                <h3 class="text-center mt-2 mb-1"{{#if id}} id="{{id}}"{{/if}}>{{label}}</h3>
+            {{else}}
             {{#if (or (eq type "radio") (eq type "checkbox"))}}
                 <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column mx-0 my-1 col-md-{{default width 12}}">
                     <label class="form-selectgroup-item flex-fill mx-0">
@@ -36,6 +39,25 @@
                                 {{/if}}
                             </div>
                         </div>
+                    </label>
+                </div>
+            {{else}}
+            {{~#if (eq type "switch")}}
+                <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column mx-0 my-1 col-md-{{default width 12}}">
+                    <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" {{#if id}}id="{{id}}" {{/if}}name="{{name}}" value="{{value}}"{{#if required}} required{{/if}}{{#if checked}} checked{{/if}}{{#if disabled}} disabled{{/if~}}/>
+                        <span class="form-check-label">
+                                {{default label value}}
+                                {{~#if required}}
+                                    <span class="text-danger ms-1" aria-label="required" title="required">*</span>
+                                {{/if}}
+                                {{#if description}}
+                                    <small class="form-hint mt-0">{{description}}</small>
+                                {{/if}}
+                                {{#if description_md}}
+                                    <small class="form-hint mt-0">{{{markdown description_md}}}</small>
+                                {{/if}}
+                        </span>
                     </label>
                 </div>
             {{else}}
@@ -131,6 +153,8 @@
                     {{~/if~}}
                 </label>
             {{~/if~}}
+            {{/if}}
+            {{/if}}
             {{/if}}
             {{#if (eq type "file")}}
                 <!-- Change the form encoding type if this is a file input-->
