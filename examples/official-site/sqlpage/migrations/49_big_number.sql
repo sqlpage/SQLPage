@@ -12,6 +12,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('class', 'An optional CSS class to be added to the component for custom styling', 'TEXT', TRUE, TRUE),
     -- Item-level parameters (for each big number)
     ('title', 'The title or label for the big number.', 'TEXT', FALSE, TRUE),
+    ('title_link', 'A link for the Big Number title. If set, the entire title becomes clickable.', 'TEXT', FALSE, TRUE),
+    ('title_link_new_tab', 'If true, the title link will open in a new tab/window.', 'BOOLEAN', FALSE, TRUE),
+    ('value_link', 'A link for the Big Number value. If set, the entire value becomes clickable.', 'TEXT', FALSE, TRUE),
+    ('value_link_new_tab', 'If true, the value link will open in a new tab/window.', 'BOOLEAN', FALSE, TRUE),
     ('value', 'The main value to be displayed prominently.', 'TEXT', FALSE, FALSE),
     ('unit', 'The unit of measurement for the value.', 'TEXT', FALSE, TRUE),
     ('description', 'A description or additional context for the big number.', 'TEXT', FALSE, TRUE),
@@ -30,6 +34,10 @@ INSERT INTO example(component, description, properties) VALUES
             "title":"Sales",
             "value":75,
             "unit":"%",
+            "title_link": "#sales_dashboard",
+            "title_link_new_tab": true,
+            "value_link": "#sales_details",
+            "value_link_new_tab": false,
             "description":"Conversion rate",
             "change_percent": 9,
             "progress_percent": 75,
@@ -48,8 +56,8 @@ INSERT INTO example(component, description, properties) VALUES
     ('big_number', 'Big numbers with dropdowns and customized layout',
     json('[
         {"component":"big_number", "columns":3, "id":"colorfull_dashboard"},
-        {"title":"Users", "value":"1,234", "color": "red" },
-        {"title":"Orders", "value":56, "color": "green" },
+        {"title":"Users", "value":"1,234", "color": "red", "title_link": "#users", "title_link_new_tab": false, "value_link": "#users_details", "value_link_new_tab": true },
+        {"title":"Orders", "value":56, "color": "green", "title_link": "#orders", "title_link_new_tab": true },
         {"title":"Revenue", "value":"9,876", "unit": "€", "color": "blue", "change_percent": -7, "dropdown_item": [
             {"label":"This week", "link":"?days=7&component=big_number#colorfull_dashboard"},
             {"label":"This month", "link":"?days=30&component=big_number#colorfull_dashboard"},
