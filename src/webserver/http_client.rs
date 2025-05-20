@@ -1,5 +1,6 @@
 use actix_web::dev::ServiceRequest;
 use anyhow::{anyhow, Context};
+use rustls_native_certs::CertificateResult;
 use std::sync::OnceLock;
 
 static NATIVE_CERTS: OnceLock<anyhow::Result<rustls::RootCertStore>> = OnceLock::new();
@@ -9,9 +10,11 @@ pub fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result
         let roots = NATIVE_CERTS
             .get_or_init(|| {
                 log::debug!("Loading native certificates because system_root_ca_certificates is enabled");
-                let certs = rustls_native_certs::load_native_certs()
-                    .with_context(|| "Initial native certificates load failed")?;
+                let CertificateResult { certs, errors, .. } = rustls_native_certs::load_native_certs();
                 log::debug!("Loaded {} native HTTPS client certificates", certs.len());
+                for error in errors {
+                    log::error!("Unable to load native certificate: {error}");
+                }
                 let mut roots = rustls::RootCertStore::empty();
                 for cert in certs {
                     log::trace!("Adding native certificate to root store: {cert:?}");
@@ -32,7 +35,7 @@ pub fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result
             .with_root_certificates(roots.clone())
             .with_no_client_auth();
 
-        awc::Connector::new().rustls_0_22(std::sync::Arc::new(tls_conf))
+        awc::Connector::new().rustls_0_23(std::sync::Arc::new(tls_conf))
     } else {
         log::debug!("Using the default tls connector with builtin certs because system_root_ca_certificates is disabled");
         awc::Connector::new()
