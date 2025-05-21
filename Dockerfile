@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.86-slim AS builder
+FROM --platform=$BUILDPLATFORM rust:1.87-slim AS builder
 WORKDIR /usr/src/sqlpage
 ARG TARGETARCH
 ARG BUILDARCH
