@@ -16,7 +16,7 @@ RUN apt-get update && \
     elif [ "$TARGETARCH" = "arm" ]; then \
         echo armv7-unknown-linux-gnueabihf > TARGET && \
         echo arm-linux-gnueabihf-gcc > LINKER && \
-        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 libc6-dev-armhf-cross && \
+        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 && \
         cargo install --force --locked bindgen-cli && \
         echo "-I/usr/lib/gcc-cross/arm-linux-gnueabihf/12/include -I/usr/arm-linux-gnueabihf/include" > BINDGEN_EXTRA_CLANG_ARGS; \
         cp /usr/arm-linux-gnueabihf/lib/libgcc_s.so.1 .; \
