@@ -18,6 +18,7 @@ RUN apt-get update && \
         echo arm-linux-gnueabihf-gcc > LINKER && \
         apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 libc6-dev-armhf-cross && \
         cargo install --force --locked bindgen-cli && \
+        echo "-I/usr/lib/gcc-cross/arm-linux-gnueabihf/12/include -I/usr/arm-linux-gnueabihf/include" > BINDGEN_EXTRA_CLANG_ARGS; \
         cp /usr/arm-linux-gnueabihf/lib/libgcc_s.so.1 .; \
     else \
         echo "Unsupported cross compilation target: $TARGETARCH"; \
@@ -28,7 +29,8 @@ RUN apt-get update && \
 
 # Build dependencies (creates a layer that avoids recompiling dependencies on every build)
 COPY Cargo.toml Cargo.lock ./
-RUN cargo build \
+RUN BINDGEN_EXTRA_CLANG_ARGS=$(cat BINDGEN_EXTRA_CLANG_ARGS || true) \
+    cargo build \
      --target $(cat TARGET) \
      --config target.$(cat TARGET).linker='"'$(cat LINKER)'"' \
      --profile superoptimized
