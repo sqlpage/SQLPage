@@ -35,7 +35,7 @@ use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use std::borrow::Cow;
 use std::mem;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -635,7 +635,7 @@ fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Err
 }
 
 #[cfg(target_family = "unix")]
-fn bind_unix_socket_err(e: std::io::Error, unix_socket: &Path) -> anyhow::Error {
+fn bind_unix_socket_err(e: std::io::Error, unix_socket: &std::path::Path) -> anyhow::Error {
     let ctx = if e.kind() == std::io::ErrorKind::PermissionDenied {
         format!(
             "You do not have permission to bind to the UNIX socket \"{}\". \
