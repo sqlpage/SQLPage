@@ -16,21 +16,26 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Use an older ubuntu to compile with an older glibc
-        os: [macos-latest, windows-latest, ubuntu-20.04]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         include:
           - os: windows-latest
             binary_path: target/superoptimized/sqlpage.exe
+            target: x86_64-pc-windows-gnu
           - os: macos-latest
             binary_path: target/superoptimized/sqlpage
-          - os: ubuntu-20.04
+            target: x86_64-apple-darwin
+          - os: ubuntu-latest
             binary_path: target/superoptimized/sqlpage
+            target: x86_64-unknown-linux-musl
     steps:
-      - run: rustup toolchain install stable --profile minimal
       - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install --target ${{ matrix.target }} --profile minimal stable
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
-      - run: cargo build --profile superoptimized --locked
+      - name: Build
+        run: cargo build --profile superoptimized --locked --target ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
           name: sqlpage ${{ matrix.os }}
@@ -58,7 +63,7 @@ jobs:
           chmod +x sqlpage*/sqlpage;
           mv 'sqlpage macos-latest/sqlpage' sqlpage.bin;
           tar --create --file sqlpage-macos.tgz --gzip sqlpage.bin sqlpage/sqlpage.json sqlpage/migrations sqlpage/templates sqlpage/sqlpage.json;
-          mv 'sqlpage ubuntu-20.04/sqlpage' sqlpage.bin;
+          mv 'sqlpage ubuntu-latest/sqlpage' sqlpage.bin;
           tar --create --file sqlpage-linux.tgz --gzip sqlpage.bin sqlpage/migrations sqlpage/templates sqlpage/sqlpage.json;
           mv 'sqlpage windows-latest/sqlpage.exe' .
           zip -r sqlpage-windows.zip sqlpage.exe sqlpage/migrations sqlpage/templates sqlpage/sqlpage.json;
