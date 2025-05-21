@@ -20,7 +20,7 @@ jobs:
         include:
           - os: windows-latest
             binary_path: target/superoptimized/sqlpage.exe
-            target: x86_64-pc-windows-gnu
+            target: x86_64-pc-windows-msvc
           - os: macos-latest
             binary_path: target/superoptimized/sqlpage
             target: x86_64-apple-darwin
