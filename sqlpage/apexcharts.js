@@ -12,20 +12,20 @@ sqlpage_chart = (() => {
   }
 
   const tblrColors = [
-    ["blue", "#0054a6", "#6fb0e8"],
-    ["red", "#b71c1c", "#e06666"],
-    ["green", "#2fb344", "#5dc973"],
-    ["pink", "#d6336c", "#e05a8c"],
-    ["purple", "#ae3ec9", "#c264d9"],
-    ["orange", "#7a3214", "#ff8a3d"],
-    ["cyan", "#17a2b8", "#40b9cc"],
-    ["teal", "#0ca678", "#2dc08e"],
-    ["yellow", "#a69600", "#ffb733"],
-    ["indigo", "#4263eb", "#7085f0"],
-    ["azure", "#4299e1", "#6ab0e8"],
-    ["gray", "#555555", "#e0e0e0"],
+    ["blue", "#0066FF", "#3399FF"],
+    ["red", "#FF0000", "#FF6666"],
+    ["green", "#00CC00", "#66FF66"],
+    ["pink", "#FF1493", "#FF69B4"],
+    ["purple", "#ae3ec9", "#ae3ec9"],
+    ["orange", "#f76707", "#FFA500"],
+    ["cyan", "#00CED1", "#40E0D0"],
+    ["teal", "#008080", "#20B2AA"],
+    ["yellow", "#FFD700", "#FFFF00"],
+    ["indigo", "#4B0082", "#6F00FF"],
+    ["azure", "#007FFF", "#1E90FF"],
+    ["gray", "#AAAAAA", "#AAAAAA"],
     ["black", "#000000", "#000000"],
-    ["white", "#ffffff", "#ffffff"],
+    ["white", "#E9E9E9", "#F5F5F5"],
   ];
   const colorNames = Object.fromEntries(
     tblrColors.flatMap(([name, dark, light]) => [
