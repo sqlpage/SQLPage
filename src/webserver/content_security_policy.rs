@@ -3,7 +3,7 @@ use actix_web::HttpResponseBuilder;
 use rand::random;
 use serde::Deserialize;
 
-pub const DEFAULT_CONTENT_SECURITY_POLICY: &str = "script-src 'self' 'nonce-{NONCE}'";
+pub const DEFAULT_CONTENT_SECURITY_POLICY: &str = "script-src 'self' 'nonce-{NONCE}' 'unsafe-eval'";
 pub const NONCE_PLACEHOLDER: &str = "{NONCE}";
 
 #[derive(Debug, Clone)]

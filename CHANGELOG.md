@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## v0.35.1
+ - improve color palette for charts
+ - Allow the usage of `eval` from user scripts in the default Content-Security-Policy
+
 ## v0.35
  - Add support for [single sign-on using OIDC](sql-page.com/sso)
    - Allows protecting access to your website using "Sign in with Google/Microsoft/..."
