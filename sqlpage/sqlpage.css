@@ -130,3 +130,25 @@ li p {
 .leaflet-container {
   background: var(--tblr-active-bg) !important;
 }
+
+/*
+See https://github.com/tabler/tabler/issues/2404
+*/
+.status-x{--tblr-status-color:#000000;--tblr-status-color-rgb:0,0,0}
+.status-facebook{--tblr-status-color:#1877f2;--tblr-status-color-rgb:24,119,242}
+.status-twitter{--tblr-status-color:#1da1f2;--tblr-status-color-rgb:29,161,242}
+.status-linkedin{--tblr-status-color:#0a66c2;--tblr-status-color-rgb:10,102,194}
+.status-google{--tblr-status-color:#dc4e41;--tblr-status-color-rgb:220,78,65}
+.status-youtube{--tblr-status-color:#ff0000;--tblr-status-color-rgb:255,0,0}
+.status-vimeo{--tblr-status-color:#1ab7ea;--tblr-status-color-rgb:26,183,234}
+.status-dribbble{--tblr-status-color:#ea4c89;--tblr-status-color-rgb:234,76,137}
+.status-github{--tblr-status-color:#181717;--tblr-status-color-rgb:24,23,23}
+.status-instagram{--tblr-status-color:#e4405f;--tblr-status-color-rgb:228,64,95}
+.status-pinterest{--tblr-status-color:#bd081c;--tblr-status-color-rgb:189,8,28}
+.status-vk{--tblr-status-color:#6383a8;--tblr-status-color-rgb:99,131,168}
+.status-rss{--tblr-status-color:#ffa500;--tblr-status-color-rgb:255,165,0}
+.status-flickr{--tblr-status-color:#0063dc;--tblr-status-color-rgb:0,99,220}
+.status-bitbucket{--tblr-status-color:#0052cc;--tblr-status-color-rgb:0,82,204}
+.status-tabler{--tblr-status-color:#066fd1;--tblr-status-color-rgb:6,111,209}
+
+.text-black-fg{color:var(--tblr-dark-fg)!important}

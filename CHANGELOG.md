@@ -3,6 +3,7 @@
 ## v0.35.1
  - improve color palette for charts
  - Allow the usage of `eval` from user scripts in the default Content-Security-Policy
+ - Fix some color names not working in the datagrid component
 
 ## v0.35
  - Add support for [single sign-on using OIDC](sql-page.com/sso)
