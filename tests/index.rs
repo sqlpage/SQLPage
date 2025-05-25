@@ -785,7 +785,10 @@ async fn test_routing_with_prefix() {
         .await
         .expect_err("Expected 404 error")
         .to_string();
-    assert!(resp.contains("404"));
+    assert!(
+        resp.contains("404"),
+        "Response should contain \"404\", but got:\n{resp}"
+    );
 
     // Test forbidden paths with prefix
     let resp = req_path_with_app_data("/prefix/sqlpage/migrations/0001_init.sql", app_data.clone())
