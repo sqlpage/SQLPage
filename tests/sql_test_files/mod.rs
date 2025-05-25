@@ -12,13 +12,13 @@ async fn run_all_sql_test_files() {
     // Create a shutdown channel for the echo server
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     // Start echo server once for all tests
-    let echo_handle = crate::common::start_echo_server(shutdown_rx);
+    let (echo_handle, port) = crate::common::start_echo_server(shutdown_rx);
 
     // Wait for echo server to be ready
-    wait_for_echo_server().await;
+    wait_for_echo_server(port).await;
 
     for test_file in test_files {
-        let test_result = run_sql_test(&test_file, &app_data, &echo_handle).await;
+        let test_result = run_sql_test(&test_file, &app_data, &echo_handle, port).await;
         assert_test_result(test_result, &test_file);
     }
 
@@ -31,13 +31,13 @@ async fn run_all_sql_test_files() {
     }
 }
 
-async fn wait_for_echo_server() {
+async fn wait_for_echo_server(port: u16) {
     let client = awc::Client::default();
     let start = std::time::Instant::now();
     let timeout = Duration::from_secs(5);
 
     while start.elapsed() < timeout {
-        match client.get("http://localhost:62802/").send().await {
+        match client.get(format!("http://localhost:{port}/")).send().await {
             Ok(_) => return,
             Err(_) => {
                 tokio::time::sleep(Duration::from_millis(100)).await;
@@ -64,13 +64,20 @@ fn get_sql_test_files() -> Vec<std::path::PathBuf> {
         .collect()
 }
 
+use std::fmt::Write;
+
 async fn run_sql_test(
     test_file: &std::path::Path,
     app_data: &actix_web::web::Data<AppState>,
     _echo_handle: &JoinHandle<()>,
+    port: u16,
 ) -> anyhow::Result<String> {
     let test_file_path = test_file.to_string_lossy().replace('\\', "/");
-    let req_str = format!("/{test_file_path}?x=1");
+    let mut query_params = "x=1".to_string();
+    if test_file_path.contains("fetch") {
+        write!(query_params, "&echo_port={port}").unwrap();
+    }
+    let req_str = format!("/{test_file_path}?{query_params}");
 
     let resp = tokio::time::timeout(
         Duration::from_secs(5),
@@ -114,11 +121,23 @@ fn assert_html_response(body: &str, test_file: &std::path::Path) {
 }
 
 fn assert_it_works_tests(body: &str, lowercase_body: &str, test_file: &std::path::Path) {
+    if body.contains("<code class=\"sqlpage-error-description\">") {
+        let error_desc = body
+            .split("<code class=\"sqlpage-error-description\">")
+            .nth(1)
+            .and_then(|s| s.split("</code>").next())
+            .unwrap_or("Unknown error");
+        panic!(
+            "\n\n❌ TEST FAILED: {} ❌\n\nFull Response:\n{}\n\nError Description: {}\n",
+            test_file.display(),
+            error_desc,
+            body
+        );
+    }
+
     assert!(
         body.contains("It works !"),
-        "{}\n{}\nexpected to contain: It works !",
-        test_file.display(),
-        body
+        "{body}\n❌ Error in file {test_file:?} ❌\n",
     );
     assert!(
         !lowercase_body.contains("error"),

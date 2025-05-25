@@ -1,10 +1,12 @@
-set res = sqlpage.fetch_with_meta('{
+set url = 'http://localhost:' || $echo_port || '/hello_world';
+set fetch_req = '{
     "method": "PUT",
-    "url": "http://localhost:62802/hello_world",
+    "url": "' || $url || '",
     "headers": {
         "user-agent": "myself"
     }
-}');
+}';
+set res = sqlpage.fetch_with_meta($fetch_req);
 
 select 'text' as component,
     case

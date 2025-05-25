@@ -1,9 +1,11 @@
+set actual = sqlpage.link('', sqlpage.variables('get'));
+set expected = '?x=1';
 SELECT
     'text' AS component,
-    CASE sqlpage.link('', sqlpage.variables('get'))
-        WHEN '?x=1' THEN
+    CASE $actual
+        WHEN $expected THEN
             'It works !'
         ELSE
-            'Expected "?x=1"'
+            'Expected ' || COALESCE($expected, 'null') || ' but got ' || COALESCE($actual, 'null')
     END AS contents
 ;

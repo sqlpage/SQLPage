@@ -137,7 +137,9 @@ fn build_echo_response(body: Vec<u8>, meta: String) -> HttpResponse {
         .body(resp)
 }
 
-pub fn start_echo_server(shutdown: oneshot::Receiver<()>) -> JoinHandle<()> {
+pub fn start_echo_server(shutdown: oneshot::Receiver<()>) -> (JoinHandle<()>, u16) {
+    let listener = std::net::TcpListener::bind("localhost:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
     let server = HttpServer::new(|| {
         App::new().default_service(fn_service(|mut req: ServiceRequest| async move {
             let meta = format_request_line_and_headers(&req);
@@ -146,14 +148,15 @@ pub fn start_echo_server(shutdown: oneshot::Receiver<()>) -> JoinHandle<()> {
             Ok(req.into_response(resp))
         }))
     })
-    .bind("localhost:62802")
+    .listen(listener)
     .unwrap()
     .shutdown_timeout(1)
     .run();
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         tokio::select! {
             _ = server => {},
             _ = shutdown => {},
         }
-    })
+    });
+    (handle, port)
 }
