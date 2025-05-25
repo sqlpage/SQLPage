@@ -1,7 +1,4 @@
-use actix_web::{
-    http::StatusCode,
-    test,
-};
+use actix_web::{http::StatusCode, test};
 use sqlpage::{webserver, AppState};
 use sqlx::Executor as _;
 

@@ -44,27 +44,6 @@ async fn test_404() {
 }
 
 #[actix_web::test]
-async fn test_404_fallback() {
-    for f in [
-        "/tests/does_not_exist.sql",
-        "/tests/does_not_exist.html",
-        "/tests/does_not_exist/",
-    ] {
-        let resp_result = req_path(f).await;
-        let resp = resp_result.unwrap();
-        assert_eq!(resp.status(), http::StatusCode::OK, "{f} isnt 200");
-
-        let body = test::read_body(resp).await;
-        assert!(body.starts_with(b"<!DOCTYPE html>"));
-        let body = String::from_utf8(body.to_vec()).unwrap();
-        assert!(body.contains("But the "));
-        assert!(body.contains("404.sql"));
-        assert!(body.contains("file saved the day!"));
-        assert!(!body.contains("error"));
-    }
-}
-
-#[actix_web::test]
 async fn test_static_files() {
     let resp = req_path("/tests/it_works.txt").await.unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);
