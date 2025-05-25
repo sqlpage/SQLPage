@@ -5,9 +5,8 @@ SQLpage
 [![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
 
 [SQLpage](https://sql-page.com) is an **SQL**-only webapp builder.
-It is meant for data scientists, analysts, and business intelligence teams
-to build powerful data-centric applications quickly,
-without worrying about any of the traditional web programming languages and concepts.
+It allows building powerful data-centric user interfaces quickly,
+by tranforming simple database queries into interactive websites.
 
 With SQLPage, you write simple `.sql` files containing queries to your database
 to select, group, update, insert, and delete your data, and you get good-looking clean webpages
