@@ -1,6 +1,6 @@
 select 'http_header' as component,
     printf('<%s>; rel="canonical"',
-            iif($function is not null, sqlpage.link('functions.sql', json_object('function', $function)), 'functions.sql')
+            iif($function is not null, sqlpage.link('functions', json_object('function', $function)), 'functions.sql')
     ) as "Link";
 
 select 'dynamic' as component, properties

@@ -8,7 +8,8 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta property="og:title" content="SQLPage: SQL websites" />
-    <meta name="description" content="Build interactive websites and apps with only SQL queries. SQLPage is an open-source tool to generate nice user interfaces on top of traditional databases. Maps, charts, tables, forms, and dashboards - without traditional web programming." />
+    <meta name="description"
+        content="Build interactive websites and apps with only SQL queries. SQLPage is an open-source tool to generate nice user interfaces on top of traditional databases. Maps, charts, tables, forms, and dashboards - without traditional web programming." />
     <meta property="og:description" content="Build interactive websites with only SQL queries." />
     <meta property="og:image" content="/sqlpage_social_preview.webp" />
     <meta name="twitter:image" content="/sqlpage_social_preview.webp" />
@@ -347,10 +348,6 @@
             transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        p:hover {
-            color: #fff;
-        }
-
         /* RESPONSIVE ADJUSTMENTS */
         @media (max-width: 900px) {
             :root {
@@ -454,6 +451,7 @@
         .menu a:hover {
             color: rgba(255, 255, 255, 0.9);
             opacity: 1;
+            text-decoration: none;
         }
 
         .menu a::after {
@@ -594,12 +592,19 @@
         }
 
         @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
                 transform: translateX(-50%) translateY(0);
             }
+
             40% {
                 transform: translateX(-50%) translateY(-6px);
             }
+
             60% {
                 transform: translateX(-50%) translateY(-3px);
             }
@@ -941,6 +946,22 @@
             text-decoration: none;
             border-bottom: 1px dotted currentColor;
         }
+
+        a {
+            color: #f3f3fa;
+            text-decoration: none;
+            opacity: 0.92;
+            font-weight: 500;
+            transition: color 0.2s, opacity 0.2s, text-decoration 0.2s;
+        }
+
+        a:hover {
+            opacity: 1;
+            color: #fff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            text-decoration-thickness: 1.5px;
+        }
     </style>
 </head>
 
@@ -968,7 +989,7 @@
                         Plots</span><span>
                         APIs</span></span>
             </h1>
-            <p>SQL websites: simple and open-source database app builder.</p>
+            <p>Instant web interfaces for your database. Free and open-source.</p>
             <a href="https://editor.datapage.app" class="cta-button">Try Online</a>
         </div>
     </div>
@@ -989,20 +1010,29 @@
                 <div class="feature-card">
                     <div class="feature-icon">📈</div>
                     <h3>Complete</h3>
-                    <p>Create navigatable interfaces with maps, charts, tables, forms, grids, dashboards, and more.
-                        Batteries included.</p>
+                    <p>Create navigatable interfaces with
+                        <a href="/component.sql?component=map">maps</a>,
+                        <a href="/component.sql?component=chart">charts</a>,
+                        <a href="/component.sql?component=table">tables</a>,
+                        <a href="/component.sql?component=form">forms</a>,
+                        <a href="/component.sql?component=card">grids</a>,
+                        <a href="/component.sql?component=big_number">dashboards</a>, and more.
+                        Batteries included.
+                    </p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">⚡</div>
                     <h3>Fast</h3>
-                    <p>Build fast applications, quickly.
-                        Everything loads instantly, because the technology is simple and razor-sharp.</p>
+                    <p>Build fast applications, quickly. You spend one afternoon building your first app. Then it
+                        <a href="/performance">loads instantly</a> for everyone forever.
+                    </p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🎯</div>
                     <h3>Easy</h3>
                     <p>You can teach yourself enough <i>SQL</i> to query and edit a database through SQLPage in a
-                        weekend. Focus on your data, we'll handle the rest.</p>
+                        weekend. Focus on your data, we'll handle <a href="/performance">optimizations</a> and <a
+                            href="/safety">security</a>.</p>
                 </div>
             </div>
         </div>
@@ -1013,7 +1043,9 @@
             <div class="feature-content">
                 <h2 class="gradient-title">More scalable than a spreadsheet</h2>
                 <p>SQL queries sort, filter, and aggregate millions of rows in milliseconds. No more slow spreadsheet
-                    formulas or memory limitations. Your app remains smooth and responsive even as your data grows.</p>
+                    formulas or memory limitations. Your app remains <a href="/performance">smooth and responsive</a>
+                    even
+                    as your data grows.</p>
             </div>
             <div class="feature-image">
                 <video src="/assets/screenshots/big_tables.webm" alt="SQLPage displaying large tables" width="600"
