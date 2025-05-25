@@ -66,13 +66,41 @@ fn get_sql_test_files() -> Vec<std::path::PathBuf> {
 
 use std::fmt::Write;
 
+#[derive(Debug)]
+enum TestResult {
+    Success(String),
+    Skipped(String),
+}
+
 async fn run_sql_test(
     test_file: &std::path::Path,
     app_data: &actix_web::web::Data<AppState>,
     _echo_handle: &JoinHandle<()>,
     port: u16,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<TestResult> {
     let test_file_path = test_file.to_string_lossy().replace('\\', "/");
+    let stem = test_file.file_stem().unwrap().to_str().unwrap();
+
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string());
+    let db_type = if db_url.starts_with("postgres") {
+        "postgres"
+    } else if db_url.starts_with("mysql") || db_url.starts_with("mariadb") {
+        "mysql"
+    } else if db_url.starts_with("mssql") {
+        "mssql"
+    } else if db_url.starts_with("sqlite") {
+        "sqlite"
+    } else {
+        panic!("Unknown database type in DATABASE_URL: {}", db_url);
+    };
+
+    if stem.contains(&format!("_no{}", db_type)) {
+        return Ok(TestResult::Skipped(format!(
+            "Test skipped for database type: {}",
+            db_type
+        )));
+    }
+
     let mut query_params = "x=1".to_string();
     if test_file_path.contains("fetch") {
         write!(query_params, "&echo_port={port}").unwrap();
@@ -87,29 +115,28 @@ async fn run_sql_test(
     .map_err(|e| anyhow::anyhow!("Test request timed out after 5 seconds: {}", e))??;
 
     let body = test::read_body(resp).await;
-    Ok(String::from_utf8(body.to_vec())?)
+    Ok(TestResult::Success(String::from_utf8(body.to_vec())?))
 }
 
-fn assert_test_result(result: anyhow::Result<String>, test_file: &std::path::Path) {
-    let (body, stem) = get_test_body_and_stem(result, test_file);
-    assert_html_response(&body, test_file);
-    let lowercase_body = body.to_lowercase();
+fn assert_test_result(result: anyhow::Result<TestResult>, test_file: &std::path::Path) {
+    match result {
+        Ok(TestResult::Skipped(reason)) => {
+            println!("⏭️  Skipped {}: {}", test_file.display(), reason);
+            return;
+        }
+        Ok(TestResult::Success(body)) => {
+            assert_html_response(&body, test_file);
+            let lowercase_body = body.to_lowercase();
+            let stem = test_file.file_stem().unwrap().to_str().unwrap().to_string();
 
-    if stem.starts_with("it_works") {
-        assert_it_works_tests(&body, &lowercase_body, test_file);
-    } else if stem.starts_with("error_") {
-        assert_error_tests(&stem, &lowercase_body, test_file);
+            if stem.starts_with("it_works") {
+                assert_it_works_tests(&body, &lowercase_body, test_file);
+            } else if stem.starts_with("error_") {
+                assert_error_tests(&stem, &lowercase_body, test_file);
+            }
+        }
+        Err(e) => panic!("Failed to get response for {}: {}", test_file.display(), e),
     }
-}
-
-fn get_test_body_and_stem(
-    result: anyhow::Result<String>,
-    test_file: &std::path::Path,
-) -> (String, String) {
-    let stem = test_file.file_stem().unwrap().to_str().unwrap().to_string();
-    let body = result
-        .unwrap_or_else(|e| panic!("Failed to get response for {}: {}", test_file.display(), e));
-    (body, stem)
 }
 
 fn assert_html_response(body: &str, test_file: &std::path::Path) {
