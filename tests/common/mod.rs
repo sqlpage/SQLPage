@@ -1,15 +1,21 @@
 use std::time::Duration;
 
 use actix_web::{
+    dev::{fn_service, ServiceRequest},
+    http::header,
     http::header::ContentType,
     test::{self, TestRequest},
+    web,
     web::Data,
+    App, HttpResponse, HttpServer,
 };
 use sqlpage::{
     app_config::{test_database_url, AppConfig},
     webserver::http::{form_config, main_handler, payload_config},
     AppState,
 };
+use tokio::sync::oneshot;
+use tokio::task::JoinHandle;
 
 pub async fn get_request_to_with_data(
     path: &str,
@@ -99,4 +105,55 @@ pub fn init_log() {
         .parse_default_env()
         .is_test(true)
         .try_init();
+}
+
+fn format_request_line_and_headers(req: &ServiceRequest) -> String {
+    let mut out = format!("{} {}", req.method(), req.uri());
+    let mut headers: Vec<_> = req.headers().iter().collect();
+    headers.sort_by_key(|(k, _)| k.as_str());
+    for (k, v) in headers {
+        if k.as_str().eq_ignore_ascii_case("date") {
+            continue;
+        }
+        out.push_str(&format!("|{k}: {}", v.to_str().unwrap_or("?")));
+    }
+    out
+}
+
+async fn format_body(req: &mut ServiceRequest) -> Vec<u8> {
+    req.extract::<web::Bytes>()
+        .await
+        .map(|b| b.to_vec())
+        .unwrap_or_default()
+}
+
+fn build_echo_response(body: Vec<u8>, meta: String) -> HttpResponse {
+    let mut resp = meta.into_bytes();
+    resp.push(b'|');
+    resp.extend_from_slice(&body);
+    HttpResponse::Ok()
+        .insert_header((header::DATE, "Mon, 24 Feb 2025 12:00:00 GMT"))
+        .insert_header((header::CONTENT_TYPE, "text/plain"))
+        .body(resp)
+}
+
+pub fn start_echo_server(shutdown: oneshot::Receiver<()>) -> JoinHandle<()> {
+    let server = HttpServer::new(|| {
+        App::new().default_service(fn_service(|mut req: ServiceRequest| async move {
+            let meta = format_request_line_and_headers(&req);
+            let body = format_body(&mut req).await;
+            let resp = build_echo_response(body, meta);
+            Ok(req.into_response(resp))
+        }))
+    })
+    .bind("localhost:62802")
+    .unwrap()
+    .shutdown_timeout(1)
+    .run();
+    tokio::spawn(async move {
+        tokio::select! {
+            _ = server => {},
+            _ = shutdown => {},
+        }
+    })
 }

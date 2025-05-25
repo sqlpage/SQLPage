@@ -5,5 +5,6 @@ mod core;
 mod data_formats;
 mod errors;
 mod requests;
+pub mod sql_test_files;
 mod transactions;
 mod uploads;
