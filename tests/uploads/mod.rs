@@ -1,7 +1,4 @@
-use actix_web::{
-    http::StatusCode,
-    test,
-};
+use actix_web::{http::StatusCode, test};
 use sqlpage::webserver::http::main_handler;
 
 use crate::common::get_request_to;
@@ -165,4 +162,4 @@ async fn test_csv_upload() -> actix_web::Result<()> {
         "{body_str}\nexpected to contain: Ophir is 29 years old"
     );
     Ok(())
-} 
+}

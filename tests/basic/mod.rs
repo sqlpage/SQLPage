@@ -1,11 +1,10 @@
 use actix_web::{
     body::MessageBody,
-    http::{self, StatusCode},
+    http::{self},
     test,
 };
-use sqlpage::webserver::http::main_handler;
 
-use crate::common::{get_request_to, req_path};
+use crate::common::req_path;
 
 #[actix_web::test]
 async fn test_index_ok() {
@@ -82,4 +81,4 @@ async fn test_spaces_in_file_names() {
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     assert!(body_str.contains("It works !"), "{body_str}");
-} 
+}

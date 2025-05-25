@@ -79,4 +79,4 @@ async fn test_json_columns() {
         !body_html_escaped.contains("{"),
         "the json should have been parsed, not returned as a string, in: {body_html_escaped}"
     );
-} 
+}

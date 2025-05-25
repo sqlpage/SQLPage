@@ -1,7 +1,4 @@
-use actix_web::{
-    http::StatusCode,
-    test,
-};
+use actix_web::{http::StatusCode, test};
 use sqlpage::webserver::http::main_handler;
 
 use crate::common::{get_request_to_with_data, make_app_data};
@@ -97,4 +94,4 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
         );
     }
     Ok(())
-} 
+}

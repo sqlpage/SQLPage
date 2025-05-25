@@ -1,7 +1,4 @@
-use actix_web::{
-    http::StatusCode,
-    test,
-};
+use actix_web::{http::StatusCode, test};
 use sqlpage::webserver::http::main_handler;
 
 use crate::common::get_request_to;
@@ -25,4 +22,4 @@ async fn test_overwrite_variable() -> actix_web::Result<()> {
         "{body_str}\nexpected to contain: It works !"
     );
     Ok(())
-} 
+}

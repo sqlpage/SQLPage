@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, time::Duration};
+use std::time::Duration;
 
 use actix_web::{
     http::header::ContentType,
@@ -7,9 +7,7 @@ use actix_web::{
 };
 use sqlpage::{
     app_config::{test_database_url, AppConfig},
-    webserver::{
-        http::{form_config, main_handler, payload_config},
-    },
+    webserver::http::{form_config, main_handler, payload_config},
     AppState,
 };
 
@@ -101,4 +99,4 @@ pub fn init_log() {
         .parse_default_env()
         .is_test(true)
         .try_init();
-} 
+}

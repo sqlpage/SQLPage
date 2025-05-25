@@ -1,11 +1,8 @@
 use actix_web::{
-    http::{self, StatusCode},
+    http::StatusCode,
     test,
 };
-use sqlpage::{
-    webserver,
-    AppState,
-};
+use sqlpage::{webserver, AppState};
 use sqlx::Executor as _;
 
 use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
@@ -53,7 +50,8 @@ async fn test_routing_with_db_fs() {
     config.site_prefix = "/prefix/".to_string();
     let state = AppState::init(&config).await.unwrap();
 
-    let create_table_sql = sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.connection.any_kind());
+    let create_table_sql =
+        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.connection.any_kind());
     state
         .db
         .connection
@@ -144,11 +142,9 @@ async fn test_hidden_files() {
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
     let srv_resp = actix_web::test::TestRequest::default().to_srv_response(resp);
     let body = test::read_body(srv_resp).await;
-    assert!(
-        String::from_utf8_lossy(&body)
-            .to_lowercase()
-            .contains("forbidden"),
-    );
+    assert!(String::from_utf8_lossy(&body)
+        .to_lowercase()
+        .contains("forbidden"),);
 }
 
 #[actix_web::test]
@@ -196,4 +192,4 @@ async fn make_app_data_for_official_website() -> actix_web::web::Data<AppState> 
         .await
         .unwrap();
     app_state
-} 
+}

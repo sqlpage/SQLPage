@@ -1,7 +1,4 @@
-use actix_web::{
-    http::StatusCode,
-    test,
-};
+use actix_web::{http::StatusCode, test};
 use sqlpage::webserver::http::main_handler;
 
 use crate::common::get_request_to;
@@ -101,4 +98,4 @@ async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
         "{body_str}\nexpected to contain long string submitted"
     );
     Ok(())
-} 
+}
