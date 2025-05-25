@@ -91,13 +91,12 @@ async fn run_sql_test(
     } else if db_url.starts_with("sqlite") {
         "sqlite"
     } else {
-        panic!("Unknown database type in DATABASE_URL: {}", db_url);
+        panic!("Unknown database type in DATABASE_URL: {db_url}");
     };
 
-    if stem.contains(&format!("_no{}", db_type)) {
+    if stem.contains(&format!("_no{db_type}")) {
         return Ok(TestResult::Skipped(format!(
-            "Test skipped for database type: {}",
-            db_type
+            "Test skipped for database type: {db_type}"
         )));
     }
 
@@ -122,7 +121,6 @@ fn assert_test_result(result: anyhow::Result<TestResult>, test_file: &std::path:
     match result {
         Ok(TestResult::Skipped(reason)) => {
             println!("⏭️  Skipped {}: {}", test_file.display(), reason);
-            return;
         }
         Ok(TestResult::Success(body)) => {
             assert_html_response(&body, test_file);
