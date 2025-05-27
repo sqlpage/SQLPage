@@ -2,6 +2,7 @@
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
+ - Updated dependencies, including the embedded SQLite database.
 
 ## v0.35.1
  - improve color palette for charts
