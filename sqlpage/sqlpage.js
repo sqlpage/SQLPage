@@ -181,8 +181,13 @@ function sqlpage_map() {
   if (first_map && is_leaflet_loaded) {
     onLeafletLoad();
   }
+  /**
+   *
+   * @param {string|undefined} coords
+   * @returns {[number, number] | undefined}
+   */
   function parseCoords(coords) {
-    return coords?.split(",").map((c) => Number.parseFloat(c));
+    return coords?.split(",", 2).map((c) => Number.parseFloat(c));
   }
   function onLeafletLoad() {
     is_leaflet_loaded = true;
@@ -201,14 +206,15 @@ function sqlpage_map() {
         setTimeout(addMarker, 0, marker_elem, map);
       }
       setTimeout(() => {
-        if (center == null && map._sqlpage_markers.length) {
-          map.fitBounds(
-            map._sqlpage_markers.map((m) =>
-              m.getLatLng ? m.getLatLng() : m.getBounds(),
-            ),
-          );
+        if (center) map.setView(center, +zoom);
+        else {
+          const markerBounds = (m) =>
+            m.getLatLng ? m.getLatLng() : m.getBounds();
+          const bounds = map._sqlpage_markers.map(markerBounds);
+          if (bounds.length > 0) map.fitBounds(bounds);
+          else map.setView([51.505, 10], +zoom);
           if (zoom != null) map.setZoom(+zoom);
-        } else map.setView(center, +zoom);
+        }
       }, 100);
       m.removeAttribute("data-pre-init");
       m.getElementsByClassName("spinner-border")[0]?.remove();
