@@ -12,8 +12,8 @@ sqlpage_chart = (() => {
   }
 
   const tblrColors = [
-    ["blue", "#0066FF", "#3399FF"],
-    ["red", "#FF0000", "#FF6666"],
+    ["blue", "#1c31dc", "#3399FF"],
+    ["red", "#d11414", "#FF6666"],
     ["green", "#00CC00", "#66FF66"],
     ["pink", "#FF1493", "#FF69B4"],
     ["purple", "#ae3ec9", "#c264d9"],
@@ -119,9 +119,10 @@ sqlpage_chart = (() => {
     } else if (categories && data.type === "bar")
       series = align_categories(series);
 
+    const chart_type = data.type || "line";
     const options = {
       chart: {
-        type: data.type || "line",
+        type: chart_type,
         fontFamily: "inherit",
         parentHeightOffset: 0,
         height: chartContainer.style.height,
@@ -157,7 +158,11 @@ sqlpage_chart = (() => {
         type: data.type === "area" ? "gradient" : "solid",
       },
       stroke: {
-        width: data.type === "area" ? 3 : 1,
+        width:
+          {
+            area: 3,
+            line: 2,
+          }[chart_type] || 0,
         lineCap: "round",
         curve: "smooth",
       },

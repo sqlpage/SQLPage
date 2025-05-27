@@ -678,7 +678,7 @@ INSERT INTO example(component, description, properties) VALUES
         "component": "chart",
         "title": "Quarterly Revenue",
         "type": "area",
-        "color": "indigo",
+        "color": "blue-lt",
         "marker": 5,
         "time": true
     },

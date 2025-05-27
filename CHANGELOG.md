@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## v0.35.2
+ - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
+
 ## v0.35.1
  - improve color palette for charts
  - Fix some color names not working in the datagrid component
