@@ -4,6 +4,8 @@ on:
     # Sequence of patterns matched against refs/tags
     tags:
       - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+    branches:
+      - "release-test"
 
 name: Create Release
 
@@ -11,27 +13,24 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build sqlpage binaries
+  build-macos-windows:
+    name: Build sqlpage binaries (macOS & Windows)
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-latest]
         include:
           - os: windows-latest
             binary_extension: .exe
             target: x86_64-pc-windows-msvc
           - os: macos-latest
             target: x86_64-apple-darwin
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust toolchain
-        run: rustup toolchain install --target ${{ matrix.target }} --profile minimal stable
-      - name: Install musl toolchain
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y musl-tools
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       - name: Build
@@ -41,6 +40,27 @@ jobs:
           name: sqlpage ${{ matrix.os }}
           path: target/${{ matrix.target }}/superoptimized/sqlpage${{ matrix.binary_extension }}
           if-no-files-found: error
+
+  build-linux:
+    name: Build sqlpage binaries (Linux)
+    runs-on: ubuntu-latest
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      - name: Build
+        run: cargo build --profile superoptimized --locked --target x86_64-unknown-linux-gnu
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sqlpage ubuntu-latest
+          path: target/x86_64-unknown-linux-gnu/superoptimized/sqlpage
+          if-no-files-found: error
+
   build-aws:
     name: Build AWS Lambda Serverless zip image
     runs-on: ubuntu-latest
@@ -52,10 +72,12 @@ jobs:
         with:
           name: sqlpage aws lambda serverless image
           path: sqlpage-aws-lambda.zip
+
   create_release:
     name: Create Github Release
-    needs: [build, build-aws]
+    needs: [build-macos-windows, build-linux, build-aws]
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -81,9 +103,11 @@ jobs:
             sqlpage-linux.tgz
             sqlpage-macos.tgz
             sqlpage aws lambda serverless image/sqlpage-aws-lambda.zip
+
   cargo_publish:
     name: Publish to crates.io
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
