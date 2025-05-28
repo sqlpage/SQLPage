@@ -44,7 +44,7 @@ jobs:
   build-linux:
     name: Build sqlpage binaries (Linux)
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux2014_x86_64
+    container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust toolchain
