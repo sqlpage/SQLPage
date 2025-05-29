@@ -104,11 +104,12 @@ async fn test_routing_with_prefix() {
 
     let resp = req_path_with_app_data("/prefix/nonexistent.sql", app_data.clone())
         .await
-        .expect_err("Expected 404 error")
-        .to_string();
+        .expect("should handle 404");
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
     assert!(
-        resp.contains("404"),
-        "Response should contain \"404\", but got:\n{resp}"
+        body_str.contains("404"),
+        "Response should contain \"404\", but got:\n{body_str}"
     );
 
     let resp = req_path_with_app_data("/prefix/sqlpage/migrations/0001_init.sql", app_data.clone())

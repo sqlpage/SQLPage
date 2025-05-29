@@ -357,29 +357,6 @@ fn strip_site_prefix<'a>(path: &'a str, state: &AppState) -> &'a str {
     path.strip_prefix(&state.config.site_prefix).unwrap_or(path)
 }
 
-/// Serves a fallback 404 error page (when no 404 handler is found)
-fn serve_not_found(service_request: &mut ServiceRequest) -> actix_web::Error {
-    let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-    let source_err = anyhow::anyhow!(ErrorWithStatus {
-        status: StatusCode::NOT_FOUND
-    });
-    let path = service_request.path();
-    let mut message = format!("{path} does not exist.");
-    if !app_state.config.environment.is_prod() {
-        message.push_str("\n\nRouting Debug Info:\n\
-        - SQLPage first looks for an exact match of your file (e.g. 'page.sql')\n\
-        - For paths without extensions that end in '/', SQLPage looks for 'index.sql' in that directory (e.g. '/dir/' loads 'dir/index.sql')\n\
-        - For paths without extensions that don't end in '/', SQLPage tries:\n\
-          1. Looking for the path with '.sql' extension (e.g. '/dir/page' loads 'dir/page.sql')\n\
-          2. If not found, redirects by adding a trailing '/' (e.g. '/dir' redirects to '/dir/')\n\
-        - When no file is found, SQLPage looks for '404.sql' in the current and parent directories (e.g. 'dir/x/y' may load 'dir/404.sql')\n\
-        \nTry creating one of these files to handle this route.");
-    }
-
-    let err = source_err.context(message);
-    anyhow_err_to_actix(err, app_state.config.environment)
-}
-
 pub async fn main_handler(
     mut service_request: ServiceRequest,
 ) -> actix_web::Result<ServiceResponse> {
@@ -399,7 +376,13 @@ pub async fn main_handler(
         }
     };
     match routing_action {
-        NotFound => Err(serve_not_found(&mut service_request)),
+        NotFound => {
+            let mut response =
+                process_sql_request(&mut service_request, PathBuf::from("_default_404.sql"))
+                    .await?;
+            *response.status_mut() = StatusCode::NOT_FOUND;
+            Ok(response)
+        }
         Execute(path) => process_sql_request(&mut service_request, path).await,
         CustomNotFound(path) => {
             // Currently, we do not set a 404 status when the user provides a fallback 404.sql file.

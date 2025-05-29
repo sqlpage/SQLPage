@@ -41,3 +41,62 @@ async fn test_404_fallback() {
         assert!(!body.contains("error"));
     }
 }
+
+#[actix_web::test]
+async fn test_default_404() {
+    for f in [
+        "/i-do-not-exist.html",
+        "/i-do-not-exist.sql",
+        "/i-do-not-exist/",
+    ] {
+        let resp_result = req_path(f).await;
+        let resp = resp_result.unwrap();
+        assert_eq!(
+            resp.status(),
+            http::StatusCode::NOT_FOUND,
+            "{f} should return 404"
+        );
+
+        let body = test::read_body(resp).await;
+        assert!(body.starts_with(b"<!DOCTYPE html>"));
+        let body = String::from_utf8(body.to_vec()).unwrap();
+        let msg = "The page you were looking for does not exist";
+        assert!(
+            body.contains(msg),
+            "{f} should contain '{msg}' but got:\n{body}"
+        );
+        assert!(!body.contains("error"));
+    }
+}
+
+#[actix_web::test]
+async fn test_default_404_with_redirect() {
+    let resp_result = req_path("/i-do-not-exist").await;
+    let resp = resp_result.unwrap();
+    assert_eq!(
+        resp.status(),
+        http::StatusCode::MOVED_PERMANENTLY,
+        "/i-do-not-exist should return 301"
+    );
+
+    let location = resp.headers().get(http::header::LOCATION).unwrap();
+    assert_eq!(location, "/i-do-not-exist/");
+
+    let resp_result = req_path("/i-do-not-exist/").await;
+    let resp = resp_result.unwrap();
+    assert_eq!(
+        resp.status(),
+        http::StatusCode::NOT_FOUND,
+        "/i-do-not-exist/ should return 404"
+    );
+
+    let body = test::read_body(resp).await;
+    assert!(body.starts_with(b"<!DOCTYPE html>"));
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    let msg = "The page you were looking for does not exist";
+    assert!(
+        body.contains(msg),
+        "/i-do-not-exist/ should contain '{msg}' but got:\n{body}"
+    );
+    assert!(!body.contains("error"));
+}

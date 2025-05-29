@@ -120,6 +120,14 @@ impl AppState {
             PathBuf::from("index.sql"),
             ParsedSqlFile::new(&db, include_str!("../index.sql"), Path::new("index.sql")),
         );
+        sql_file_cache.add_static(
+            PathBuf::from("_default_404.sql"),
+            ParsedSqlFile::new(
+                &db,
+                include_str!("../_default_404.sql"),
+                Path::new("_default_404.sql"),
+            ),
+        );
 
         let oidc_state = crate::webserver::oidc::initialize_oidc_state(config).await?;
 

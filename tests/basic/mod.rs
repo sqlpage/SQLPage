@@ -31,19 +31,6 @@ async fn test_access_config_forbidden() {
 }
 
 #[actix_web::test]
-async fn test_404() {
-    for f in [
-        "/does_not_exist.sql",
-        "/does_not_exist.html",
-        "/does_not_exist/",
-    ] {
-        let resp_result = req_path(f).await;
-        let resp = resp_result.unwrap_err().error_response();
-        assert_eq!(resp.status(), http::StatusCode::NOT_FOUND, "{f} isnt 404");
-    }
-}
-
-#[actix_web::test]
 async fn test_static_files() {
     let resp = req_path("/tests/it_works.txt").await.unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);
