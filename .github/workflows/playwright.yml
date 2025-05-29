@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up cargo cache
-      uses: Swatinem/rust-cache@e8e63cdbf2788df3801e6f9a81516b2ca8391886
+      uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
