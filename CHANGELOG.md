@@ -3,6 +3,7 @@
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
  - Updated dependencies, including the embedded SQLite database.
+ - Release binaries are now dynamically linked again, but use GLIBC 2.28 ([released in 2018](https://sourceware.org/glibc/wiki/Glibc%20Timeline)), with is compatible with older linux distributions.
 
 ## v0.35.1
  - improve color palette for charts
@@ -33,6 +34,7 @@
     - value_link_new_tab (bool): open the link in a new tab
  - Add support for nice "switch" checkboxes in the form component using `'switch' as type`
  - Add support for headers in the form component using
+ - Release binaries are statically linked on linux
 
 ## v0.34 (2025-03-23)
 
