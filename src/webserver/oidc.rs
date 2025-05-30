@@ -334,6 +334,13 @@ fn set_auth_cookie(
 
     let id_token_str = id_token.to_string();
     log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
+    let id_token_size_kb = id_token_str.len() / 1024;
+    if id_token_size_kb > 4 {
+        log::warn!(
+            "The ID token cookie from the OIDC provider is {id_token_size_kb}kb. \
+             Large cookies can cause performance issues and may be rejected by browsers or by reverse proxies."
+        );
+    }
     let cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token_str)
         .secure(true)
         .http_only(true)
