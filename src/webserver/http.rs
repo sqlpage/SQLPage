@@ -377,11 +377,21 @@ pub async fn main_handler(
     };
     match routing_action {
         NotFound => {
-            let mut response =
-                process_sql_request(&mut service_request, PathBuf::from("_default_404.sql"))
-                    .await?;
-            *response.status_mut() = StatusCode::NOT_FOUND;
-            Ok(response)
+            let accept_header =
+                header::Accept::parse(&service_request).unwrap_or(header::Accept::star());
+            let prefers_html = accept_header.iter().any(|h| h.item.subtype() == "html");
+
+            if prefers_html {
+                let mut response =
+                    process_sql_request(&mut service_request, PathBuf::from("_default_404.sql"))
+                        .await?;
+                *response.status_mut() = StatusCode::NOT_FOUND;
+                Ok(response)
+            } else {
+                Ok(HttpResponse::NotFound()
+                    .content_type(ContentType::plaintext())
+                    .body("404 Not Found\n"))
+            }
         }
         Execute(path) => process_sql_request(&mut service_request, path).await,
         CustomNotFound(path) => {

@@ -24,6 +24,7 @@ pub async fn get_request_to_with_data(
     Ok(test::TestRequest::get()
         .uri(path)
         .insert_header(ContentType::plaintext())
+        .insert_header(header::Accept::html())
         .app_data(payload_config(&data))
         .app_data(form_config(&data))
         .app_data(data))

@@ -7,6 +7,7 @@
   - fixes an issue introduced in 0.35 where custom SQLite extension loading would not work.
  - When an user requests a page that does not exist (and the site owner did not provide a custom 404.sql file), we now serve a nice visual 404 web page instead of the ugly textual message and the verbose log messages we used to have.
    - ![screenshot 404](https://github.com/user-attachments/assets/02525f9e-91ec-4657-a70f-1b7990cbe25f)
+   - still returns plain text 404 for non-HTML requests
 
 
 ## v0.35.1
