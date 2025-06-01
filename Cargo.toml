@@ -8,7 +8,14 @@ license = "MIT"
 homepage = "https://sql-page.com/"
 repository = "https://github.com/sqlpage/SQLPage"
 documentation = "https://docs.rs/sqlpage"
-include = ["/src", "/README.md", "/build.rs", "/sqlpage", "/index.sql", "/.sqlpage_artefacts"]
+include = [
+    "/src",
+    "/README.md",
+    "/build.rs",
+    "/sqlpage",
+    "/index.sql",
+    "/.sqlpage_artefacts",
+]
 
 [profile.superoptimized]
 inherits = "release"
@@ -18,9 +25,10 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.42", features = [
+sqlx = { package = "sqlx-oldapi", version = "0.6.42", default-features = false, features = [
     "any",
-    "runtime-actix-rustls",
+    "runtime-tokio-rustls",
+    "migrate",
     "sqlite",
     "postgres",
     "mysql",
@@ -42,7 +50,10 @@ anyhow = "1"
 serde = "1"
 serde_json = { version = "1.0.82", features = ["preserve_order", "raw_value"] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.56.0", default-features=false, features = ["std", "visitor"] } # https://github.com/apache/datafusion-sqlparser-rs/pull/1522#issuecomment-2665112118
+sqlparser = { version = "0.56.0", default-features = false, features = [
+    "std",
+    "visitor",
+] } # https://github.com/apache/datafusion-sqlparser-rs/pull/1522#issuecomment-2665112118
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
