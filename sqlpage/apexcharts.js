@@ -39,36 +39,48 @@ sqlpage_chart = (() => {
 
   /**
    * Aligns series data points by their x-axis categories, ensuring all series have data points
-   * for each unique category. Missing values are filled with zeros. Categories are sorted.
+   * for each unique category. Missing values are filled with zeros.
+   * Categories are ordered by their first appearance across all series.
    *
    * @example
    * // Input series:
    * const series = [
-   *   { name: "A", data: [{x: "Jan", y: 10}, {x: "Mar", y: 30}] },
-   *   { name: "B", data: [{x: "Jan", y: 20}, {x: "Feb", y: 25}] }
+   *   { name: "A", data: [{x: "X2", y: 10}, {x: "X3", y: 30}] },
+   *   { name: "B", data: [{x: "X1", y: 25}, {x: "X2", y: 20}] }
    * ];
    *
-   * // Output after align_categories:
+   * // Output after align_categories (orderedCategories will be ["X2", "X3", "X1"]):
    * // [
-   * //   { name: "A", data: [{x: "Feb", y: 0}, {x: "Jan", y: 10}, {x: "Mar", y: 30}] },
-   * //   { name: "B", data: [{x: "Feb", y: 25}, {x: "Jan", y: 20}, {x: "Mar", y: 0}] }
+   * //   { name: "A", data: [{x: "X2", y: 10}, {x: "X3", y: 30}, {x: "X1", y: 0}] },
+   * //   { name: "B", data: [{x: "X2", y: 20}, {x: "X3", y: 0}, {x: "X1", y: 25}] }
    * // ]
    *
-   * @param {Series[string][]} series - Array of series objects, each containing name and data points
+   * @param {(Series[string])[]} series - Array of series objects, each containing name and data points
    * @returns {Series[string][]} Aligned series with consistent categories across all series
    */
   function align_categories(series) {
-    // Collect all unique categories
-    const categories = new Set(series.flatMap((s) => s.data.map((p) => p.x)));
-    const sortedCategories = Array.from(categories).sort();
-
-    // Create a map of category -> value for each series
+    const categoriesSet = new Set();
+    const pointers = series.map((_) => 0);
+    while (true) {
+      const series_idxs = series.flatMap((series, i) =>
+        pointers[i] < series.data.length ? [i] : [],
+      );
+      if (series_idxs.length === 0) break;
+      const min_ptr = Math.min(...series_idxs.map((i) => pointers[i]));
+      const min_series_idx =
+        series_idxs.find((i) => pointers[i] === min_ptr) | 0;
+      const min_series = series[min_series_idx];
+      const min_point = min_series.data[min_ptr];
+      const new_category = min_point.x;
+      if (!categoriesSet.has(new_category)) categoriesSet.add(new_category);
+      pointers[min_series_idx]++;
+    }
+    // Create a map of category -> value for each series and rebuild
     return series.map((s) => {
       const valueMap = new Map(s.data.map((point) => [point.x, point.y]));
-
       return {
         name: s.name,
-        data: sortedCategories.map((category) => ({
+        data: Array.from(categoriesSet, (category) => ({
           x: category,
           y: valueMap.get(category) || 0,
         })),
@@ -116,7 +128,7 @@ sqlpage_chart = (() => {
     if (data.type === "pie") {
       labels = data.points.map(([name, x, y]) => x || name);
       series = data.points.map(([name, x, y]) => y);
-    } else if (categories && data.type === "bar")
+    } else if (categories && data.type === "bar" && series.length > 1)
       series = align_categories(series);
 
     const chart_type = data.type || "line";
