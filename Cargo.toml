@@ -53,7 +53,7 @@ lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
 sqlparser = { version = "0.56.0", default-features = false, features = [
     "std",
     "visitor",
-] } # https://github.com/apache/datafusion-sqlparser-rs/pull/1522#issuecomment-2665112118
+] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
