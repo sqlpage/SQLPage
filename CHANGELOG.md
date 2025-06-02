@@ -9,7 +9,7 @@
    - ![screenshot 404](https://github.com/user-attachments/assets/02525f9e-91ec-4657-a70f-1b7990cbe25f)
    - still returns plain text 404 for non-HTML requests
  - Rich text editor: implement a readonly mode, activated when the field is not editable
- - 
+ - [chart](https://sql-page.com/component.sql?component=chart): remove automatic sorting of categories. Values are now displayed in the order they are returned by the query.
 
 ## v0.35.1
  - improve color palette for charts
