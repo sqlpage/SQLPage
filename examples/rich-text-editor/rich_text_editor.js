@@ -88,7 +88,12 @@ function getMarkdownToolbarOptions() {
  * @param {string} initialValue - The initial content for the editor.
  * @returns {Quill} - The initialized Quill instance.
  */
-function initializeQuillEditor(editorDiv, toolbarOptions, initialValue, readOnly) {
+function initializeQuillEditor(
+  editorDiv,
+  toolbarOptions,
+  initialValue,
+  readOnly,
+) {
   const quill = new Quill(editorDiv, {
     theme: "snow",
     modules: {
