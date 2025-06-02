@@ -88,12 +88,13 @@ function getMarkdownToolbarOptions() {
  * @param {string} initialValue - The initial content for the editor.
  * @returns {Quill} - The initialized Quill instance.
  */
-function initializeQuillEditor(editorDiv, toolbarOptions, initialValue) {
+function initializeQuillEditor(editorDiv, toolbarOptions, initialValue, readOnly) {
   const quill = new Quill(editorDiv, {
     theme: "snow",
     modules: {
       toolbar: toolbarOptions,
     },
+    readOnly: readOnly,
     formats: [
       "bold",
       "italic",
@@ -361,12 +362,14 @@ function setupSingleEditor(textarea, toolbarOptions) {
 
   try {
     const initialValue = textarea.value;
+    const readOnly = textarea.readOnly || textarea.disabled;
     const form = textarea.closest("form");
     const editorDiv = createAndReplaceTextarea(textarea);
     const quill = initializeQuillEditor(
       editorDiv,
       toolbarOptions,
       initialValue,
+      readOnly,
     );
     updateTextareaOnSubmit(form, textarea, quill);
     textarea.dataset.quillInitialized = "true";
