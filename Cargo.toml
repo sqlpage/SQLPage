@@ -13,8 +13,6 @@ include = [
     "/README.md",
     "/build.rs",
     "/sqlpage",
-    "/index.sql",
-    "/.sqlpage_artefacts",
 ]
 
 [profile.superoptimized]
