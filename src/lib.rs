@@ -119,13 +119,13 @@ impl AppState {
         let file_system = FileSystem::init(&config.web_root, &db).await;
         sql_file_cache.add_static(
             PathBuf::from("index.sql"),
-            ParsedSqlFile::new(&db, include_str!("../index.sql"), Path::new("index.sql")),
+            ParsedSqlFile::new(&db, include_str!("index.sql"), Path::new("index.sql")),
         );
         sql_file_cache.add_static(
             PathBuf::from(DEFAULT_404_FILE),
             ParsedSqlFile::new(
                 &db,
-                include_str!("../default_404.sql"),
+                include_str!("default_404.sql"),
                 Path::new(DEFAULT_404_FILE),
             ),
         );
