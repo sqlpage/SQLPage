@@ -8,7 +8,7 @@ use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
-use crate::{app_config, AppConfig, AppState, ParsedSqlFile};
+use crate::{app_config, AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
@@ -383,7 +383,7 @@ pub async fn main_handler(
 
             if prefers_html {
                 let mut response =
-                    process_sql_request(&mut service_request, PathBuf::from("_default_404.sql"))
+                    process_sql_request(&mut service_request, PathBuf::from(DEFAULT_404_FILE))
                         .await?;
                 *response.status_mut() = StatusCode::NOT_FOUND;
                 Ok(response)

@@ -97,6 +97,7 @@ pub const TEMPLATES_DIR: &str = "sqlpage/templates/";
 pub const MIGRATIONS_DIR: &str = "migrations";
 pub const ON_CONNECT_FILE: &str = "on_connect.sql";
 pub const ON_RESET_FILE: &str = "on_reset.sql";
+pub const DEFAULT_404_FILE: &str = "default_404.sql";
 
 pub struct AppState {
     pub db: Database,
@@ -121,11 +122,11 @@ impl AppState {
             ParsedSqlFile::new(&db, include_str!("../index.sql"), Path::new("index.sql")),
         );
         sql_file_cache.add_static(
-            PathBuf::from("_default_404.sql"),
+            PathBuf::from(DEFAULT_404_FILE),
             ParsedSqlFile::new(
                 &db,
-                include_str!("../_default_404.sql"),
-                Path::new("_default_404.sql"),
+                include_str!("../default_404.sql"),
+                Path::new(DEFAULT_404_FILE),
             ),
         );
 
