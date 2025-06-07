@@ -187,7 +187,8 @@ mod tests {
                 '{\"key\": \"value\"}'::JSON as json,
                 '{\"key\": \"value\"}'::JSONB as jsonb,
                 age('2024-03-14'::timestamp, '2024-01-01'::timestamp) as age_interval,
-                justify_interval(interval '1 year 2 months 3 days') as justified_interval",
+                justify_interval(interval '1 year 2 months 3 days') as justified_interval,
+                1234.56::MONEY as money_val",
         )
         .fetch_one(&mut c)
         .await?;
@@ -211,7 +212,8 @@ mod tests {
                 "json": {"key": "value"},
                 "jsonb": {"key": "value"},
                 "age_interval": "2 mons 13 days",
-                "justified_interval": "1 year 2 mons 3 days"
+                "justified_interval": "1 year 2 mons 3 days",
+                "money_val": 1234.56
             }),
         );
         Ok(())
@@ -366,7 +368,9 @@ mod tests {
                 CAST('2024-03-14 13:14:15' AS DATETIME2) as datetime2,
                 CAST('2024-03-14 13:14:15 +02:00' AS DATETIMEOFFSET) as datetimeoffset,
                 N'Unicode String' as nvarchar,
-                'ASCII String' as varchar",
+                'ASCII String' as varchar,
+                CAST(1234.56 AS MONEY) as money_val,
+                CAST(12.34 AS SMALLMONEY) as small_money_val",
         )
         .fetch_one(&mut c)
         .await?;
@@ -391,6 +395,8 @@ mod tests {
                 "datetimeoffset": "2024-03-14T13:14:15+02:00",
                 "nvarchar": "Unicode String",
                 "varchar": "ASCII String",
+                "money_val": 1234.56,
+                "small_money_val": 12.34
             }),
         );
         Ok(())
