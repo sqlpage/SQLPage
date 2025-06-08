@@ -1,0 +1,28 @@
+<div class="modal{{~#if class}} {{class}}{{/if~}}" id="{{id}}" tabindex="-1" aria-hidden="false" aria-labelledby="{{title}}">
+    <div class="modal-dialog{{#if scrollable}} modal-dialog-scrollable"{{/if}} role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{title}}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{close}}"></button>
+            </div>
+            <div class="modal-body">
+                {{~#each_row~}}
+                    <p>
+                        {{~#if contents_md~}}
+                            {{{markdown contents_md}}}
+                        {{else}}
+                            {{~#if unsafe_contents_md~}}
+                                {{{markdown unsafe_contents_md 'allow_unsafe'}}}
+                            {{else}}
+                                {{~contents~}}
+                            {{~/if~}}
+                        {{~/if~}}
+                    </p>
+                {{~/each_row~}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn me-primary" data-bs-dismiss="modal">{{close}}</button>
+            </div>
+        </div>
+    </div>
+</div>
