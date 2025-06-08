@@ -58,9 +58,8 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     let type_name = type_info.name();
     log::trace!("Decoding a value of type {type_name:?} (type info: {type_info:?})");
     match type_name {
-        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" => {
-            decode_raw::<f64>(raw_value).into()
-        }
+        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" | "MONEY"
+        | "SMALLMONEY" => decode_raw::<f64>(raw_value).into(),
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
         | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
         "INT" | "INT4" | "INTEGER" | "MEDIUMINT" | "YEAR" => decode_raw::<i32>(raw_value).into(),
