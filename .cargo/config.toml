@@ -1,0 +1,4 @@
+[env]
+# To use built-in math functions, this compile time flag must be set
+# See https://www.sqlite.org/draft/lang_mathfunc.html as a reference
+LIBSQLITE3_FLAGS = { value = "-DSQLITE_ENABLE_MATH_FUNCTIONS", force=true }
