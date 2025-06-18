@@ -119,7 +119,10 @@ where
         path.push(INDEX);
         match find_file_or_not_found(&path, SQL_EXTENSION, store).await {
             Ok(NotFound) => {
-                let target_sql = path.parent().unwrap_or_else(|| Path::new("/")).join("_.sql");
+                let target_sql = path
+                    .parent()
+                    .unwrap_or_else(|| Path::new("/"))
+                    .join("_.sql");
                 if store.contains(&target_sql).await? {
                     Ok(Execute(target_sql))
                 } else {
