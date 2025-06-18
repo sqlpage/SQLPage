@@ -122,7 +122,17 @@ where
         let path_with_ext = path.with_extension(SQL_EXTENSION);
         match find_file(&path_with_ext, SQL_EXTENSION, store).await? {
             Some(action) => Ok(action),
-            None => Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH))),
+            None => {
+                let mut parent = path.parent();
+                while let Some(p) = parent {
+                    let target_sql = p.join("_.sql");
+                    if store.contains(&target_sql).await? {
+                        return find_file_or_not_found(&path, SQL_EXTENSION, store).await;
+                    }
+                    parent = p.parent();
+                }
+                Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
+            }
         }
     }
 }
@@ -136,9 +146,33 @@ where
     T: FileStore,
 {
     match find_file(path, extension, store).await? {
-        None => find_not_found(path, store).await,
+        None => find_up_path_tree(path, store).await,
         Some(execute) => Ok(execute),
     }
+}
+
+async fn find_up_path_tree<T>(path: &Path, store: &T) -> anyhow::Result<RoutingAction>
+where
+    T: FileStore,
+{
+    let mut parent = path.parent();
+    debug!("Starting search for 404 or index file from: {}", path.display());
+    while let Some(p) = parent {
+        debug!("Checking parent path: {}", p.display());
+        let target_404 = p.join(NOT_FOUND);
+        if store.contains(&target_404).await? {
+            return Ok(CustomNotFound(target_404));
+        }
+
+        let target_sql = p.join("_.sql");
+        if store.contains(&target_sql).await? {
+            return Ok(Execute(target_sql));
+        }
+
+        parent = p.parent();
+    }
+
+    Ok(NotFound)
 }
 
 async fn find_file<T>(
@@ -158,22 +192,6 @@ where
     } else {
         Ok(None)
     }
-}
-
-async fn find_not_found<T>(path: &Path, store: &T) -> anyhow::Result<RoutingAction>
-where
-    T: FileStore,
-{
-    let mut parent = path.parent();
-    while let Some(p) = parent {
-        let target = p.join(NOT_FOUND);
-        if store.contains(&target).await? {
-            return Ok(CustomNotFound(target));
-        }
-        parent = p.parent();
-    }
-
-    Ok(NotFound)
 }
 
 fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> String {
