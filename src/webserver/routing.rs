@@ -117,35 +117,30 @@ where
 {
     if path_and_query.path().ends_with(FORWARD_SLASH) {
         path.push(INDEX);
-        match find_file_or_not_found(&path, SQL_EXTENSION, store).await {
-            Ok(NotFound) => {
-                let target_sql = path
-                    .parent()
-                    .unwrap_or_else(|| Path::new("/"))
-                    .join("_.sql");
-                if store.contains(&target_sql).await? {
-                    Ok(Execute(target_sql))
-                } else {
-                    Ok(NotFound)
-                }
+        if let Ok(NotFound) = find_file_or_not_found(&path, SQL_EXTENSION, store).await {
+            let target_sql = path.parent().unwrap_or_else(|| Path::new("/")).join("_.sql");
+            if store.contains(&target_sql).await? {
+                Ok(Execute(target_sql))
+            } else {
+                Ok(NotFound)
             }
-            result => result,
+        } else {
+            find_file_or_not_found(&path, SQL_EXTENSION, store).await
         }
     } else {
         let path_with_ext = path.with_extension(SQL_EXTENSION);
-        match find_file(&path_with_ext, SQL_EXTENSION, store).await? {
-            Some(action) => Ok(action),
-            None => {
-                let mut parent = path.parent();
-                while let Some(p) = parent {
-                    let target_sql = p.join("_.sql");
-                    if store.contains(&target_sql).await? {
-                        return find_file_or_not_found(&path, SQL_EXTENSION, store).await;
-                    }
-                    parent = p.parent();
+        if let Some(action) = find_file(&path_with_ext, SQL_EXTENSION, store).await? {
+            Ok(action)
+        } else {
+            let mut parent = path.parent();
+            while let Some(p) = parent {
+                let target_sql = p.join("_.sql");
+                if store.contains(&target_sql).await? {
+                    return find_file_or_not_found(&path, SQL_EXTENSION, store).await;
                 }
-                Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
+                parent = p.parent();
             }
+            Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
         }
     }
 }
