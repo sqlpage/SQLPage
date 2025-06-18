@@ -118,7 +118,10 @@ where
     if path_and_query.path().ends_with(FORWARD_SLASH) {
         path.push(INDEX);
         if let Ok(NotFound) = find_file_or_not_found(&path, SQL_EXTENSION, store).await {
-            let target_sql = path.parent().unwrap_or_else(|| Path::new("/")).join("_.sql");
+            let target_sql = path
+                .parent()
+                .unwrap_or_else(|| Path::new("/"))
+                .join("_.sql");
             if store.contains(&target_sql).await? {
                 Ok(Execute(target_sql))
             } else {
