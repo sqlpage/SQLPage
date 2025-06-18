@@ -117,7 +117,17 @@ where
 {
     if path_and_query.path().ends_with(FORWARD_SLASH) {
         path.push(INDEX);
-        find_file_or_not_found(&path, SQL_EXTENSION, store).await
+        match find_file_or_not_found(&path, SQL_EXTENSION, store).await {
+            Ok(NotFound) => {
+                let target_sql = path.parent().unwrap_or_else(|| Path::new("/")).join("_.sql");
+                if store.contains(&target_sql).await? {
+                    Ok(Execute(target_sql))
+                } else {
+                    Ok(NotFound)
+                }
+            }
+            result => result,
+        }
     } else {
         let path_with_ext = path.with_extension(SQL_EXTENSION);
         match find_file(&path_with_ext, SQL_EXTENSION, store).await? {
@@ -156,9 +166,7 @@ where
     T: FileStore,
 {
     let mut parent = path.parent();
-    debug!("Starting search for 404 or index file from: {}", path.display());
     while let Some(p) = parent {
-        debug!("Checking parent path: {}", p.display());
         let target_404 = p.join(NOT_FOUND);
         if store.contains(&target_404).await? {
             return Ok(CustomNotFound(target_404));
