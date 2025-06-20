@@ -1,0 +1,7 @@
+[env]
+# To use built-in math functions, this compile time flag must be set
+# See https://www.sqlite.org/draft/lang_mathfunc.html as a reference
+# According to Cargo docs this will not overwrite any env var that was already
+# set by the user, and this is a good thing. If the user already set some
+# LIBSQLITE3_FLAGS, he probably knows what he is doing.
+LIBSQLITE3_FLAGS = "-DSQLITE_ENABLE_MATH_FUNCTIONS"
