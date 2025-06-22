@@ -19,7 +19,7 @@ SQLPage implements variables in the following way:
 
 When sending a POST request, most often by sending a form with the
 [form component](/component.sql?component=form), the form data is made
-available as variables prefixed by a semi-colon.
+available as variables prefixed by a colon.
 
 So when this form is sent:
 
