@@ -21,7 +21,13 @@ that is greater than the previous one.
 Use commands like `ALTER TABLE` to update the schema declaratively instead of modifying the existing `CREATE TABLE`
 statements.
 
-If you try to edit an existing migration, SQLPage will not run it again, will detect
+If you try to edit an existing migration, SQLPage will not run it again, it will detect that the migration has already executed. Also, if the migration is different than the one that was executed, SQLPage will throw an error as the database structure must match.
+
+## Creating migrations on the command line
+
+You can create a migration directly with sqlpage by running the command "sqlpage create-migration [migration_name]"
+
+For example if you run 'sqlpage create-migration "Example Migration 1"' on the command line, you will find a new file under "sqlpage/migrations" folder called "[timestamp]_example_migration_1.sql" where timestamp is the current time when you ran the command.
 
 ## Running migrations
 
