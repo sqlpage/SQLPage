@@ -25,7 +25,7 @@ If you try to edit an existing migration, SQLPage will not run it again, it will
 
 ## Creating migrations on the command line
 
-You can create a migration directly with sqlpage by running the command "sqlpage create-migration [migration_name]"
+You can create a migration directly with sqlpage by running the command `sqlpage create-migration [migration_name]`
 
 For example if you run 'sqlpage create-migration "Example Migration 1"' on the command line, you will find a new file under "sqlpage/migrations" folder called "[timestamp]_example_migration_1.sql" where timestamp is the current time when you ran the command.
 
