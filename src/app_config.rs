@@ -22,6 +22,20 @@ pub struct Cli {
     /// The path to the configuration file.
     #[clap(short = 'c', long)]
     pub config_file: Option<PathBuf>,
+
+    /// Subcommands for additional functionality.
+    #[clap(subcommand)]
+    pub command: Option<Commands>,
+}
+
+/// Enum for subcommands.
+#[derive(Parser)]
+pub enum Commands {
+    /// Create a new migration file.
+    CreateMigration {
+        /// Name of the migration.
+        migration_name: String,
+    },
 }
 
 #[cfg(not(feature = "lambda-web"))]
@@ -686,6 +700,7 @@ mod test {
             web_root: Some(PathBuf::from(".")),
             config_dir: None,
             config_file: None,
+            command: None,
         };
 
         let config = AppConfig::from_cli(&cli).unwrap();
@@ -726,6 +741,7 @@ mod test {
             web_root: None,
             config_dir: None,
             config_file: Some(config_file_path.clone()),
+            command: None,
         };
 
         let config = AppConfig::from_cli(&cli).unwrap();
@@ -744,6 +760,7 @@ mod test {
             web_root: Some(cli_web_dir.clone()),
             config_dir: None,
             config_file: Some(config_file_path),
+            command: None,
         };
 
         let config = AppConfig::from_cli(&cli_with_web_root).unwrap();
@@ -773,6 +790,7 @@ mod test {
             web_root: None,
             config_dir: None,
             config_file: None,
+            command: None,
         };
 
         let config = AppConfig::from_cli(&cli).unwrap();
