@@ -3,6 +3,7 @@
 ## unreleased
  - added support for the MONEY and SMALLMONEY types in MSSQL.
  - include [math functions](https://sqlite.org/lang_mathfunc.html) in the builtin sqlite3 database. 
+ - update the SQL parser to [v0.57](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.57.0.md)
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.

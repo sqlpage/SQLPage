@@ -1068,6 +1068,7 @@ fn expr_to_statement(expr: Expr) -> Statement {
         for_clause: None,
         settings: None,
         format_clause: None,
+        pipe_operators: Vec::new(),
     }))
 }
 
