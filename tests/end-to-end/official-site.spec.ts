@@ -194,3 +194,22 @@ test("form component documentation", async ({ page }) => {
     page.getByRole("heading", { name: /chart/i, level: 1 }),
   ).toBeVisible();
 });
+
+test("modal", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=modal#component`);
+  // get the button that opens the modal
+  const openButton = page.getByRole("button", { name: "Open a simple modal" });
+  await openButton.click();
+
+  const modal = page.getByRole("dialog", { label: "A modal box" });
+  await expect(modal).toBeVisible();
+
+  // close the modal
+  await page.keyboard.press("Escape");
+  await expect(modal).not.toBeVisible();
+
+  await openButton.click();
+  await expect(modal).toBeVisible();
+  await modal.getByRole("button", { label: "Close" }).first().click();
+  await expect(modal).not.toBeVisible();
+});

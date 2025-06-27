@@ -26,7 +26,7 @@ INSERT INTO example(component, description, properties) VALUES
         {"component": "modal","id": "my_modal","title": "A modal box","close": "Close"},
         {"contents":"I''m a modal window, and I allow you to display additional information or help for the user."},
         {"component": "button"},
-        {"title":"Open","modal":"my_modal"}
+        {"title":"Open a simple modal","modal":"my_modal"}
         ]')
     ),
     ('modal',
@@ -40,7 +40,7 @@ INSERT INTO example(component, description, properties) VALUES
             "embed":"/examples/form.sql?_sqlpage_embed"
         },
         {"component": "button"},
-        {"title":"Open","modal":"my_embed_form_modal"}
+        {"title":"Open a modal with a form","modal":"my_embed_form_modal"}
         ]')
     ),
     ('modal',
@@ -54,7 +54,7 @@ INSERT INTO example(component, description, properties) VALUES
             "embed":"/examples/chart.sql?_sqlpage_embed"
         },
         {"component": "button"},
-        {"title":"Open","modal":"my_embed_chart_modal"}
+        {"title":"Open a modal with a chart","modal":"my_embed_chart_modal"}
         ]')
     ),
     ('modal',
@@ -71,7 +71,7 @@ INSERT INTO example(component, description, properties) VALUES
             "height":"350"
         },
         {"component": "button"},
-        {"title":"Open","modal":"my_embed_video_modal"}
+        {"title":"Open a modal with a video","modal":"my_embed_video_modal"}
         ]')
     );
 

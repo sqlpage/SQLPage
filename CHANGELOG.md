@@ -9,6 +9,7 @@
    ❯ ./sqlpage create-migration my_new_table
     Migration file created: sqlpage/migrations/20250627095944_my_new_table.sql
    ```  
+ - New [modal](https://sql-page.com/component.sql?component=modal) component
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
