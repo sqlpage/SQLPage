@@ -4,6 +4,11 @@
  - added support for the MONEY and SMALLMONEY types in MSSQL.
  - include [math functions](https://sqlite.org/lang_mathfunc.html) in the builtin sqlite3 database. 
  - update the SQL parser to [v0.57](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.57.0.md)
+ - the sqlpage binary can now help you create new empty migration files from the command line:
+   ```
+   ❯ ./sqlpage create-migration my_new_table
+    Migration file created: sqlpage/migrations/20250627095944_my_new_table.sql
+   ```  
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
