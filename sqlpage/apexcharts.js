@@ -63,14 +63,8 @@ sqlpage_chart = (() => {
     const pointers = series.map((_) => 0); // Index of current data point in each series
     const x_at = (series_idx) =>
       series[series_idx].data[pointers[series_idx]].x;
-    let series_idxs = Array.from({ length: series.length }, (_, i) => i);
-    while (true) {
-      // indices of series that have data points left
-      series_idxs = series_idxs.filter(
-        (i) => pointers[i] < series[i].data.length,
-      );
-      if (series_idxs.length === 0) break;
-
+    const series_idxs = series.flatMap((s, i) => (s.data.length ? i : []));
+    while (series_idxs.length > 0) {
       let idx_of_xmin = series_idxs[0];
       for (const series_idx of series_idxs) {
         if (x_at(series_idx) < x_at(idx_of_xmin)) idx_of_xmin = series_idx;
@@ -79,6 +73,9 @@ sqlpage_chart = (() => {
       const new_category = x_at(idx_of_xmin);
       if (!categoriesSet.has(new_category)) categoriesSet.add(new_category);
       pointers[idx_of_xmin]++;
+      if (pointers[idx_of_xmin] >= series[idx_of_xmin].data.length) {
+        series_idxs.splice(series_idxs.indexOf(idx_of_xmin), 1);
+      }
     }
     // Create a map of category -> value for each series and rebuild
     return series.map((s) => {
