@@ -164,7 +164,7 @@ sqlpage_chart = (() => {
             : data.type === "pie"
               ? (value, { seriesIndex, w }) =>
                   `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
-              : (value) => value.toLocaleString(),
+              : (value, { seriesIndex, w }) => value?.toLocaleString?.() || value,
       },
       fill: {
         type: data.type === "area" ? "gradient" : "solid",
