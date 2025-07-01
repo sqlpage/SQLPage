@@ -10,6 +10,7 @@
     Migration file created: sqlpage/migrations/20250627095944_my_new_table.sql
    ```  
  - New [modal](https://sql-page.com/component.sql?component=modal) component
+ - In bar charts: Sort chart categories by name instead of first appearance. This is useful when displaying cumulative bar charts with some series missing data for some x values.
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.

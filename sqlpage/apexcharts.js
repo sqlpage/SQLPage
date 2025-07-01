@@ -40,7 +40,7 @@ sqlpage_chart = (() => {
   /**
    * Aligns series data points by their x-axis categories, ensuring all series have data points
    * for each unique category. Missing values are filled with zeros.
-   * Categories are ordered by their first appearance across all series.
+   * Categories are ordered by their name.
    *
    * @example
    * // Input series:
@@ -49,10 +49,10 @@ sqlpage_chart = (() => {
    *   { name: "B", data: [{x: "X1", y: 25}, {x: "X2", y: 20}] }
    * ];
    *
-   * // Output after align_categories (orderedCategories will be ["X2", "X3", "X1"]):
+   * // Output after align_categories (orderedCategories will be ["X1","X2", "X3"]):
    * // [
-   * //   { name: "A", data: [{x: "X2", y: 10}, {x: "X3", y: 30}, {x: "X1", y: 0}] },
-   * //   { name: "B", data: [{x: "X2", y: 20}, {x: "X3", y: 0}, {x: "X1", y: 25}] }
+   * //   { name: "A", data: [{x: "X1", y: 0}, {x: "X2", y: 10}, {x: "X3", y: 30}] },
+   * //   { name: "B", data: [{x: "X1", y: 25}, {x: "X2", y: 20}, {x: "X3", y: 0}] }
    * // ]
    *
    * @param {(Series[string])[]} series - Array of series objects, each containing name and data points
@@ -60,20 +60,25 @@ sqlpage_chart = (() => {
    */
   function align_categories(series) {
     const categoriesSet = new Set();
-    const pointers = series.map((_) => 0);
+    const pointers = series.map((_) => 0); // Index of current data point in each series
+    const x_at = (series_idx) =>
+      series[series_idx].data[pointers[series_idx]].x;
+    let series_idxs = Array.from({ length: series.length }, (_, i) => i);
     while (true) {
-      const series_idxs = series.flatMap((series, i) =>
-        pointers[i] < series.data.length ? [i] : [],
+      // indices of series that have data points left
+      series_idxs = series_idxs.filter(
+        (i) => pointers[i] < series[i].data.length,
       );
       if (series_idxs.length === 0) break;
-      const min_ptr = Math.min(...series_idxs.map((i) => pointers[i]));
-      const min_series_idx =
-        series_idxs.find((i) => pointers[i] === min_ptr) | 0;
-      const min_series = series[min_series_idx];
-      const min_point = min_series.data[min_ptr];
-      const new_category = min_point.x;
+
+      let idx_of_xmin = series_idxs[0];
+      for (const series_idx of series_idxs) {
+        if (x_at(series_idx) < x_at(idx_of_xmin)) idx_of_xmin = series_idx;
+      }
+
+      const new_category = x_at(idx_of_xmin);
       if (!categoriesSet.has(new_category)) categoriesSet.add(new_category);
-      pointers[min_series_idx]++;
+      pointers[idx_of_xmin]++;
     }
     // Create a map of category -> value for each series and rebuild
     return series.map((s) => {
@@ -164,7 +169,8 @@ sqlpage_chart = (() => {
             : data.type === "pie"
               ? (value, { seriesIndex, w }) =>
                   `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
-              : (value, { seriesIndex, w }) => value?.toLocaleString?.() || value,
+              : (value, { seriesIndex, w }) =>
+                  value?.toLocaleString?.() || value,
       },
       fill: {
         type: data.type === "area" ? "gradient" : "solid",
