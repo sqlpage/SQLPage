@@ -24,7 +24,6 @@ This guide will help you set up single sign-on using OpenID connect with SQLPage
 Here are the setup guides for
 [Google](https://developers.google.com/identity/openid-connect/openid-connect),
 [Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app),
-[GitHub](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps),
 and [Keycloak](https://www.keycloak.org/getting-started/getting-started-docker) (self-hosted).
 
 ### Register Your Application
