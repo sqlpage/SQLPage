@@ -1,6 +1,6 @@
+use chrono::Utc;
 use clap::Parser;
 use std::path::Path;
-use chrono::Utc;
 
 use crate::app_config::AppConfig;
 
@@ -21,10 +21,7 @@ impl SubCommand {
         match self {
             SubCommand::CreateMigration { migration_name } => {
                 // Pass configuration_directory from app_config
-                create_migration_file(
-                    migration_name,
-                    &app_config.configuration_directory,
-                ).await?;
+                create_migration_file(migration_name, &app_config.configuration_directory).await?;
                 Ok(())
             }
         }

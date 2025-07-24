@@ -1,7 +1,7 @@
+use crate::cli::arguments::{parse_cli, Cli};
 use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
-use crate::cli::arguments::{Cli, parse_cli};
 use config::Config;
 use openidconnect::IssuerUrl;
 use percent_encoding::AsciiSet;
