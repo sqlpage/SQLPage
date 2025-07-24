@@ -229,6 +229,8 @@ pub struct AppConfig {
     #[serde(default = "default_oidc_scopes")]
     pub oidc_scopes: String,
 
+    /// Defines a list of Endpoints which should be skipped by oidc Authorization
+    #[serde(default = "default_oidc_skip_endpoints")]
     pub oidc_skip_endpoints: Vec<String>,
 
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
@@ -574,6 +576,10 @@ fn default_oidc_client_id() -> String {
 
 fn default_oidc_scopes() -> String {
     "openid email profile".to_string()
+}
+
+fn default_oidc_skip_endpoints() -> Vec<String> {
+    Vec::new()
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
