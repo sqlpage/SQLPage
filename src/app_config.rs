@@ -201,9 +201,13 @@ pub struct AppConfig {
     #[serde(default = "default_oidc_scopes")]
     pub oidc_scopes: String,
 
-    /// Defines a list of Endpoints which should be skipped by oidc Authorization
-    #[serde(default = "default_oidc_skip_endpoints")]
-    pub oidc_skip_endpoints: Vec<String>,
+    /// Defines a list of path prefixes that should be protected by OIDC authentication.
+    /// By default, all paths are protected.
+    /// If you specify a list of prefixes, only requests whose path starts with one of the prefixes will require authentication.
+    /// For example, if you set this to `["/private"]`, then requests to `/private/some_page.sql` will require authentication,
+    /// but requests to `/index.sql` will not.
+    #[serde(default = "default_oidc_protected_paths")]
+    pub oidc_protected_paths: Vec<String>,
 
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
     /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
@@ -550,8 +554,8 @@ fn default_oidc_scopes() -> String {
     "openid email profile".to_string()
 }
 
-fn default_oidc_skip_endpoints() -> Vec<String> {
-    Vec::new()
+fn default_oidc_protected_paths() -> Vec<String> {
+    vec!["/".to_string()]
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]

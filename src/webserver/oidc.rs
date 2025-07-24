@@ -48,7 +48,7 @@ pub struct OidcConfig {
     pub issuer_url: IssuerUrl,
     pub client_id: String,
     pub client_secret: String,
-    pub skip_endpoints: Vec<String>,
+    pub protected_paths: Vec<String>,
     pub app_host: String,
     pub scopes: Vec<Scope>,
 }
@@ -61,7 +61,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
         let client_secret = config.oidc_client_secret.as_ref().ok_or(Some(
             "The \"oidc_client_secret\" setting is required to authenticate with the OIDC provider",
         ))?;
-        let skip_endpoints: Vec<String> = config.oidc_skip_endpoints.clone();
+        let protected_paths: Vec<String> = config.oidc_protected_paths.clone();
 
         let app_host = get_app_host(config);
 
@@ -69,7 +69,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
             issuer_url: issuer_url.clone(),
             client_id: config.oidc_client_id.clone(),
             client_secret: client_secret.clone(),
-            skip_endpoints,
+            protected_paths,
             scopes: config
                 .oidc_scopes
                 .split_whitespace()
@@ -245,9 +245,12 @@ where
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
 
-        let skip_endpoints = self.oidc_state.config.skip_endpoints.clone();
-        if skip_endpoints.iter().any(|path| path == request.path()) {
-            log::debug!("The requestpath is in OIDC_SKIP_ENDPOINTS. No Authorization will be done");
+        let protected_paths = &self.oidc_state.config.protected_paths;
+        if !protected_paths.iter().any(|path| request.path().starts_with(path)) {
+            log::debug!(
+                "The request path {} is not in a protected path, skipping OIDC authentication",
+                request.path()
+            );
             let future = self.service.call(request);
             return Box::pin(async move {
                 let response = future.await?;

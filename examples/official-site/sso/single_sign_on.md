@@ -1,6 +1,5 @@
 # Setting Up Single Sign-On in SQLPage
 
-
 When you want to add user authentication to your SQLPage application, you have two main options:
 
 1. The [authentication component](/component.sql?component=authentication):
@@ -60,9 +59,7 @@ Create or edit `sqlpage/sqlpage.json` to add the following configuration keys:
 When you restart your SQLPage instance, it should automatically contact
 the identity provider, find its login URL, and the public keys that will be used to check the validity of its identity tokens.
 
-The next time an user loads page on your SQLPage website, they will be redirected to 
-the provider's login page. Upon successful login, they will be redirected back to
-the page they were initially requesting on your website.
+By default, all pages on your website will now require users to log in.
 
 ## Access User Information in Your SQL
 
@@ -88,6 +85,27 @@ insert into page_visits
 values
   (sqlpage.path(), sqlpage.user_info('sub'));
 ```
+
+## Restricting authentication to a specific set of pages
+
+Sometimes, you don't want to protect your entire website with a login, but only a specific section.
+You can achieve this by adding the `oidc_protected_paths` option to your `sqlpage.json` file.
+
+This option takes a list of URL prefixes. If a user requests a page whose address starts with one of these prefixes, they will be required to log in.
+
+**Example:** Protect only pages in the `/admin` folder.
+
+```json
+{
+  "oidc_issuer_url": "https://accounts.google.com",
+  "oidc_client_id": "your-client-id",
+  "oidc_client_secret": "your-client-secret",
+  "host": "localhost:8080",
+  "oidc_protected_paths": ["/admin"]
+}
+```
+
+In this example, a user visiting `/admin/dashboard.sql` will be prompted to log in, while a user visiting `/index.sql` will not.
 
 ## Going to Production
 
