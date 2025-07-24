@@ -246,16 +246,15 @@ where
         log::trace!("Started OIDC middleware request handling");
 
         let protected_paths = &self.oidc_state.config.protected_paths;
-        if !protected_paths.iter().any(|path| request.path().starts_with(path)) {
+        if !protected_paths
+            .iter()
+            .any(|path| request.path().starts_with(path))
+        {
             log::debug!(
                 "The request path {} is not in a protected path, skipping OIDC authentication",
                 request.path()
             );
-            let future = self.service.call(request);
-            return Box::pin(async move {
-                let response = future.await?;
-                Ok(response)
-            });
+            return Box::pin(self.service.call(request));
         }
 
         let oidc_client = Arc::clone(&self.oidc_state.client);
