@@ -71,7 +71,7 @@ fn create_migration_file(
     let snake_case_name = migration_name
         .replace(|c: char| !c.is_alphanumeric(), "_")
         .to_lowercase();
-    let file_name = format!("{}_{}.sql", timestamp, snake_case_name);
+    let file_name = format!("{timestamp}_{snake_case_name}.sql");
     let migrations_dir = Path::new(configuration_directory).join("migrations");
 
     if !migrations_dir.exists() {
@@ -82,7 +82,7 @@ fn create_migration_file(
     let mut counter = 1;
 
     while migrations_dir.join(&unique_file_name).exists() {
-        unique_file_name = format!("{}_{}_{}.sql", timestamp, snake_case_name, counter);
+        unique_file_name = format!("{timestamp}_{snake_case_name}_{counter}.sql");
         counter += 1;
     }
 
@@ -104,6 +104,6 @@ fn create_migration_file(
         display_path_str = display_path_str.trim_start_matches("\\\\?\\").to_string();
     }
     display_path_str = display_path_str.replace('\\', "/");
-    println!("Migration file created: {}", display_path_str);
+    println!("Migration file created: {display_path_str}");
     Ok(())
 }
