@@ -1,7 +1,7 @@
 use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
 use anyhow::Context;
-use clap::Parser;
+use crate::cli::arguments::{Cli, parse_cli};
 use config::Config;
 use openidconnect::IssuerUrl;
 use percent_encoding::AsciiSet;
@@ -9,34 +9,6 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
-
-#[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
-pub struct Cli {
-    /// The directory where the .sql files are located.
-    #[clap(short, long)]
-    pub web_root: Option<PathBuf>,
-    /// The directory where the sqlpage.json configuration, the templates, and the migrations are located.
-    #[clap(short = 'd', long)]
-    pub config_dir: Option<PathBuf>,
-    /// The path to the configuration file.
-    #[clap(short = 'c', long)]
-    pub config_file: Option<PathBuf>,
-
-    /// Subcommands for additional functionality.
-    #[clap(subcommand)]
-    pub command: Option<Commands>,
-}
-
-/// Enum for subcommands.
-#[derive(Parser)]
-pub enum Commands {
-    /// Create a new migration file.
-    CreateMigration {
-        /// Name of the migration.
-        migration_name: String,
-    },
-}
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
@@ -154,8 +126,8 @@ impl AppConfig {
     }
 }
 
-pub fn load_from_cli() -> anyhow::Result<AppConfig> {
-    let cli = Cli::parse();
+pub fn load_config() -> anyhow::Result<AppConfig> {
+    let cli = parse_cli()?;
     AppConfig::from_cli(&cli)
 }
 
@@ -652,23 +624,6 @@ mod test {
             ),
             "/%00%01%02%03%04%05%06%07%08%0B%0C%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%20!%22%23$%&'()*+,-./0123456789:;%3C=%3E%3F@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~%7F/"
         );
-    }
-
-    #[test]
-    fn test_cli_argument_parsing() {
-        let cli = Cli::parse_from([
-            "sqlpage",
-            "--web-root",
-            "/path/to/web",
-            "--config-dir",
-            "/path/to/config",
-            "--config-file",
-            "/path/to/config.json",
-        ]);
-
-        assert_eq!(cli.web_root, Some(PathBuf::from("/path/to/web")));
-        assert_eq!(cli.config_dir, Some(PathBuf::from("/path/to/config")));
-        assert_eq!(cli.config_file, Some(PathBuf::from("/path/to/config.json")));
     }
 
     #[test]
