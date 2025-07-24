@@ -79,6 +79,7 @@ pub mod template_helpers;
 pub mod templates;
 pub mod utils;
 pub mod webserver;
+pub mod cli;
 
 use crate::app_config::AppConfig;
 use crate::filesystem::FileSystem;
