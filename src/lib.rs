@@ -71,6 +71,7 @@
 extern crate core;
 
 pub mod app_config;
+pub mod cli;
 pub mod dynamic_component;
 pub mod file_cache;
 pub mod filesystem;
@@ -79,7 +80,6 @@ pub mod template_helpers;
 pub mod templates;
 pub mod utils;
 pub mod webserver;
-pub mod cli;
 
 use crate::app_config::AppConfig;
 use crate::filesystem::FileSystem;
