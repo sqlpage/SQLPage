@@ -90,15 +90,11 @@ select 'text' as component, 'Welcome, ' || sqlpage.user_info('name') || '!' as c
 
 The demo includes several SQL files that demonstrate different aspects of OIDC integration:
 
-1. `index.sql`: Shows how to:
-   - Display user information using `sqlpage.user_info('email')`
-   - Show all available user information using `sqlpage.id_token()`
+1. `index.sql`: A public page that shows a welcome message and a login button. If the user is logged in, it displays their email and a link to the protected page.
 
-2. `protected.sql`: Demonstrates a page that is accessible to authenticated users
+2. `protected.sql`: A page that is only accessible to authenticated users. It displays the user's information.
 
-3. `logout.sql`: Shows how to:
-   - Remove the authentication cookie
-   - Redirect to the OIDC provider's logout endpoint
+3. `logout.sql`: Logs the user out by removing the authentication cookie and redirecting to the OIDC provider's logout page.
 
 ### Docker Setup
 
