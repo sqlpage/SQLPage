@@ -245,7 +245,7 @@ where
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
 
-        let skip_endpoints = self.oidc_state.config.skip_endpoints;
+        let skip_endpoints = self.oidc_state.config.skip_endpoints.clone();
         if skip_endpoints.iter().any(|path| path == request.path()) {
             log::debug!("The requestpath is in OIDC_SKIP_ENDPOINTS. No Authorization will be done");
             let future = self.service.call(request);
