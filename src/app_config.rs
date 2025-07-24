@@ -229,6 +229,8 @@ pub struct AppConfig {
     #[serde(default = "default_oidc_scopes")]
     pub oidc_scopes: String,
 
+    pub oidc_skip_endpoints: Vec<String>,
+
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
     /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
     /// server's IP address.

@@ -48,6 +48,7 @@ pub struct OidcConfig {
     pub issuer_url: IssuerUrl,
     pub client_id: String,
     pub client_secret: String,
+    pub skip_endpoints: Vec<String>,
     pub app_host: String,
     pub scopes: Vec<Scope>,
 }
@@ -60,6 +61,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
         let client_secret = config.oidc_client_secret.as_ref().ok_or(Some(
             "The \"oidc_client_secret\" setting is required to authenticate with the OIDC provider",
         ))?;
+        let skip_endpoints: Vec<String> = config.oidc_skip_endpoints.clone();
 
         let app_host = get_app_host(config);
 
@@ -67,6 +69,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
             issuer_url: issuer_url.clone(),
             client_id: config.oidc_client_id.clone(),
             client_secret: client_secret.clone(),
+            skip_endpoints,
             scopes: config
                 .oidc_scopes
                 .split_whitespace()
@@ -241,6 +244,17 @@ where
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
+
+        let skip_endpoints = self.oidc_state.config.skip_endpoints;
+        if skip_endpoints.iter().any(|path| path == request.path()) {
+            log::debug!("The requestpath is in OIDC_SKIP_ENDPOINTS. No Authorization will be done");
+            let future = self.service.call(request);
+            return Box::pin(async move {
+                let response = future.await?;
+                Ok(response)
+            });
+        }
+
         let oidc_client = Arc::clone(&self.oidc_state.client);
         match get_authenticated_user_info(&oidc_client, &request) {
             Ok(Some(claims)) => {
