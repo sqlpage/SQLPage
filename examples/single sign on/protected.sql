@@ -1,8 +1,15 @@
-select 'card' as component, 'My secure protected page' as title, 1 as columns;
+set user_email = sqlpage.user_info('email');
 
-select 
-    'Secret video' as title,
-    'https://www.youtube.com/embed/mXdgmSdaXkg' as embed,
-    'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' as allow,
-    'iframe'         as embed_mode,
-    '700'            as height;
+select 'shell' as component, 'My secure app' as title,
+    'logout' as menu_item;
+
+select 'text' as component,
+    'You're in !' as title,
+    'You are logged in as *`' || $user_email || '`*.\nYou have access to this protected page.
+
+![open door](/assets/welcome.jpeg)'
+    as contents_md;
+
+select 'list' as component;
+select key as title, value as description
+from json_each(sqlpage.user_info_token());

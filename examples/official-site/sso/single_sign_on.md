@@ -107,6 +107,19 @@ This option takes a list of URL prefixes. If a user requests a page whose addres
 
 In this example, a user visiting `/admin/dashboard.sql` will be prompted to log in, while a user visiting `/index.sql` will not.
 
+### Creating a public login page
+
+A common pattern is to have a public home page with a "Login" button that redirects users to a protected area.
+
+With the configuration above, you can create a public page `login.sql` that is not in a protected path. This page can contain a simple link to a protected resource, for instance `/admin/index.sql`:
+
+```sql
+select 'list' as component, 'actions' as title;
+select 'Login' as title, '/admin' as link, 'login' as icon;
+```
+
+When a non-authenticated user clicks this "Login" link, SQLPage will automatically redirect them to your identity provider's login page. After they successfully authenticate, they will be sent back to the page they originally requested (`/admin/index.sql`).
+
 ## Going to Production
 
 When deploying to production:
