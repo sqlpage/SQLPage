@@ -181,7 +181,11 @@ pub struct OidcService<S> {
     oidc_state: Arc<OidcState>,
 }
 
-impl<S> OidcService<S> {
+impl<S> OidcService<S>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
+    S::Future: 'static,
+{
     pub fn new(service: S, oidc_state: Arc<OidcState>) -> Self {
         Self {
             service,
@@ -197,6 +201,20 @@ impl<S> OidcService<S> {
         if request.path() == SQLPAGE_REDIRECT_URI {
             log::debug!("The request is the OIDC callback");
             return self.handle_oidc_callback(request);
+        }
+
+        if !self
+            .oidc_state
+            .config
+            .protected_paths
+            .iter()
+            .any(|path| request.path().starts_with(path))
+        {
+            log::debug!(
+                "The request path {} is not in a protected path, skipping OIDC authentication",
+                request.path()
+            );
+            return Box::pin(self.service.call(request));
         }
 
         log::debug!("Redirecting to OIDC provider");
@@ -244,18 +262,6 @@ where
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
-
-        let protected_paths = &self.oidc_state.config.protected_paths;
-        if !protected_paths
-            .iter()
-            .any(|path| request.path().starts_with(path))
-        {
-            log::debug!(
-                "The request path {} is not in a protected path, skipping OIDC authentication",
-                request.path()
-            );
-            return Box::pin(self.service.call(request));
-        }
 
         let oidc_client = Arc::clone(&self.oidc_state.client);
         match get_authenticated_user_info(&oidc_client, &request) {
