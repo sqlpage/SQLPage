@@ -2,4 +2,4 @@ oidc_issuer_url: http://localhost:8181/realms/sqlpage_demo
 oidc_client_id: sqlpage
 oidc_client_secret: qiawfnYrYzsmoaOZT28rRjPPRamfvrYr # For a safer setup, use environment variables to store this
 oidc_protected_paths:
-  - /protected.sql
+  - /protected

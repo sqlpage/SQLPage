@@ -20,7 +20,7 @@ Depending on your use case, you can choose the appropriate protocol for your app
 To run the demo, you just need docker and docker-compose installed on your machine. Then, run the following commands:
 
 ```bash
-docker-compose up
+docker compose up --watch
 ```
 
 This will start a Keycloak server and a SQLPage server. You can access the SQLPage application at http://localhost:8080.
@@ -115,4 +115,3 @@ The demo uses Docker Compose to set up both SQLPage and Keycloak. The configurat
 - [SQLPage OIDC Documentation](https://sql-page.com/sso)
 - [OpenID Connect](https://openid.net/connect/)
 - [Authorization Code Flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth)
-

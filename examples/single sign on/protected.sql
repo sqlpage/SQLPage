@@ -4,8 +4,10 @@ select 'shell' as component, 'My secure app' as title,
     'logout' as menu_item;
 
 select 'text' as component,
-    'You're in !' as title,
-    'You are logged in as *`' || $user_email || '`*.\nYou have access to this protected page.
+    'You''re in, '|| sqlpage.user_info('name') || ' !' as title,
+    'You are logged in as *`' || $user_email || '`*.
+
+You have access to this protected page.
 
 ![open door](/assets/welcome.jpeg)'
     as contents_md;

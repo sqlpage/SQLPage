@@ -25,6 +25,10 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+    develop:
+      watch:
+        - action: restart
+          path: ./sqlpage/
 
   keycloak:
     build:
