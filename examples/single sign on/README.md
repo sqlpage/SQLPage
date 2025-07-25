@@ -20,7 +20,7 @@ Depending on your use case, you can choose the appropriate protocol for your app
 To run the demo, you just need docker and docker-compose installed on your machine. Then, run the following commands:
 
 ```bash
-docker-compose up
+docker compose up --watch
 ```
 
 This will start a Keycloak server and a SQLPage server. You can access the SQLPage application at http://localhost:8080.
@@ -46,14 +46,12 @@ SQLPage has built-in support for OIDC authentication since v0.35.
 This project demonstrates how to use it with the free and open source [Keycloak](https://www.keycloak.org/) OIDC provider.
 You can easily replace Keycloak with another OIDC provider, such as Google, or your enterprise OIDC provider, by following the steps in the [Configuration](#configuration) section.
 
-### Important Note About OIDC Protection
+### Public and Protected Pages
 
-When using SQLPage's built-in OIDC support, the entire website is protected behind authentication. This means:
-- All pages require users to be logged in
-- There is no way to have public pages alongside protected pages
-- Users will be automatically redirected to the OIDC provider's login page when accessing any page
+By default, SQLPage's built-in OIDC support protects the entire website. However, you can configure it to have a mix of public and protected pages using the `oidc_protected_paths` option in your `sqlpage.json` file.
 
-If you need to have a mix of public and protected pages, you should use the [authentication component](/component.sql?component=authentication) instead.
+This allows you to create a public-facing area (like a homepage with a login button) and a separate protected area for authenticated users.
+
 
 ### Configuration
 
@@ -65,7 +63,8 @@ you need to configure it in your `sqlpage.json` file:
   "oidc_issuer_url": "https://your-keycloak-server/auth/realms/your-realm",
   "oidc_client_id": "your-client-id",
   "oidc_client_secret": "your-client-secret",
-  "host": "localhost:8080"
+  "host": "localhost:8080",
+  "oidc_protected_paths": ["/protected"]
 }
 ```
 
@@ -91,15 +90,11 @@ select 'text' as component, 'Welcome, ' || sqlpage.user_info('name') || '!' as c
 
 The demo includes several SQL files that demonstrate different aspects of OIDC integration:
 
-1. `index.sql`: Shows how to:
-   - Display user information using `sqlpage.user_info('email')`
-   - Show all available user information using `sqlpage.id_token()`
+1. `index.sql`: A public page that shows a welcome message and a login button. If the user is logged in, it displays their email and a link to the protected page.
 
-2. `protected.sql`: Demonstrates a page that is accessible to authenticated users
+2. `protected.sql`: A page that is only accessible to authenticated users. It displays the user's information.
 
-3. `logout.sql`: Shows how to:
-   - Remove the authentication cookie
-   - Redirect to the OIDC provider's logout endpoint
+3. `logout.sql`: Logs the user out by removing the authentication cookie and redirecting to the OIDC provider's logout page.
 
 ### Docker Setup
 
@@ -120,4 +115,3 @@ The demo uses Docker Compose to set up both SQLPage and Keycloak. The configurat
 - [SQLPage OIDC Documentation](https://sql-page.com/sso)
 - [OpenID Connect](https://openid.net/connect/)
 - [Authorization Code Flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth)
-

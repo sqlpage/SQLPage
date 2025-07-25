@@ -9,6 +9,8 @@
 services:
   sqlpage:
     image: lovasoa/sqlpage:main # Use the latest development version of SQLPage
+    build:
+      context: ../..
     volumes:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage
@@ -23,6 +25,10 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+    develop:
+      watch:
+        - action: restart
+          path: ./sqlpage/
 
   keycloak:
     build:

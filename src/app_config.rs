@@ -201,6 +201,28 @@ pub struct AppConfig {
     #[serde(default = "default_oidc_scopes")]
     pub oidc_scopes: String,
 
+    /// Defines a list of path prefixes that should be protected by OIDC authentication.
+    /// By default, all paths are protected.
+    /// If you specify a list of prefixes, only requests whose path starts with one of the prefixes will require authentication.
+    /// For example, if you set this to `["/private"]`, then requests to `/private/some_page.sql` will require authentication,
+    /// but requests to `/index.sql` will not.
+    /// NOTE: `OIDC_PUBLIC_PATHS` takes precedence over `OIDC_PROTECTED_PATHS`.
+    /// For example, if you have `["/private"]` on the `protected_paths` like before, but also `["/private/public"]` on the `public_paths`, then `/private` requires authentication, but `/private/public` requires not authentication.
+    /// You cannot make a path inside a public path private again. So expanding the previous example, if you now add `/private/public/private_again`, then this path will still be accessible.
+    #[serde(default = "default_oidc_protected_paths")]
+    pub oidc_protected_paths: Vec<String>,
+
+    /// Defines path prefixes to exclude from OIDC authentication.
+    /// By default, no paths are excluded.
+    /// Paths matching these prefixes will not require authentication.
+    /// For example, if set to `["/public"]`, requests to `/public/some_page.sql` will not require authentication,
+    /// but requests to `/index.sql` will still require it.
+    /// To make `/protected/public.sql` public while protecting its containing directory,
+    /// set `oidc_public_paths` to `["/protected/public.sql"]` and `oidc_protected_paths` to `["/protected"]`.
+    /// Be aware that any path starting with `/protected/public.sql` (e.g., `/protected/public.sql.backup`) will also become public.
+    #[serde(default)]
+    pub oidc_public_paths: Vec<String>,
+
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
     /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
     /// server's IP address.
@@ -544,6 +566,10 @@ fn default_oidc_client_id() -> String {
 
 fn default_oidc_scopes() -> String {
     "openid email profile".to_string()
+}
+
+fn default_oidc_protected_paths() -> Vec<String> {
+    vec!["/".to_string()]
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
