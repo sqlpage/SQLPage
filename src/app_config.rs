@@ -212,13 +212,14 @@ pub struct AppConfig {
     #[serde(default = "default_oidc_protected_paths")]
     pub oidc_protected_paths: Vec<String>,
 
-    /// Defines a list of path prefixes that should be ignored by OIDC authentication
-    /// By default, now paths will be ignored.
-    /// If you specify a list of prefixes, requests whose path starts with one of the prefixes will be not require authentication.
-    /// For example, if set this to `["/public"]`, then requests to `/public/some_page.sql` will not require authentication,
-    /// but requests to `/index.sql` will.
-    /// If you still want to make `/index.sql` public, but leave the rest of the folder protected, then append `["/index.sql"]`. But keep in mind that if you have a directory that starts with `index.sql` that it will also be public.
-    #[serde(default = "default_oidc_public_paths")]
+    /// Defines path prefixes to exclude from OIDC authentication.
+    /// By default, no paths are excluded.
+    /// Paths matching these prefixes will not require authentication.
+    /// For example, if set to `["/public"]`, requests to `/public/some_page.sql` will not require authentication,
+    /// but requests to `/index.sql` will still require it.
+    /// To make `/protected/public.sql` public while protecting its containing directory,
+    /// set `oidc_public_paths` to `["/protected/public.sql"]` and `oidc_protected_paths` to `["/protected"]`.
+    /// Be aware that any path starting with `/protected/public.sql` (e.g., `/protected/public.sql.backup`) will also become public.
     pub oidc_public_paths: Vec<String>,
 
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
@@ -568,10 +569,6 @@ fn default_oidc_scopes() -> String {
 
 fn default_oidc_protected_paths() -> Vec<String> {
     vec!["/".to_string()]
-}
-
-fn default_oidc_public_paths() -> Vec<String> {
-    vec![]
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
