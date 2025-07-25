@@ -2,4 +2,6 @@ oidc_issuer_url: http://localhost:8181/realms/sqlpage_demo
 oidc_client_id: sqlpage
 oidc_client_secret: qiawfnYrYzsmoaOZT28rRjPPRamfvrYr # For a safer setup, use environment variables to store this
 oidc_protected_paths:
-  - /protected
+  - /protected # Makes the website root is publicly accessible, requiring authentication only for the /protected path
+oidc_public_paths:
+  - /protected/public # Adds an exception for the /protected/public path, which is publicly accessible too

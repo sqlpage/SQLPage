@@ -8,7 +8,7 @@ SELECT 'hero' as component,
     'Log in' as link_text,
     'Welcome' as title,
     'You are currently browsing as a guest. Log in to access the protected page.' as description,
-    'https://images.pexels.com/photos/954599/pexels-photo-954599.jpeg' as image
+    '/protected/public/hello.jpeg' as image
 WHERE $email IS NULL;
 
 -- For logged-in users
