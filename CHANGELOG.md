@@ -11,6 +11,12 @@
    ```  
  - New [modal](https://sql-page.com/component.sql?component=modal) component
  - In bar charts: Sort chart categories by name instead of first appearance. This is useful when displaying cumulative bar charts with some series missing data for some x values.
+ - Updated tabler to v1.4 https://github.com/tabler/tabler/releases/tag/%40tabler%2Fcore%401.4.0
+ - Updated tabler-icons to v3.34 (19 new icons) https://tabler.io/changelog#/changelog/tabler-icons-3.34
+ - Added support for partially private sites when using OIDC single sign-on: 
+  - The same SQLPage application can now have both publicly accessible and private pages accessible to users authenticated with SSO.
+  - This allows easily creating a "log in page" that redirects to the OIDC provider.
+  - See the [configuration](./configuration.md) for `oidc_protected_paths`
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
