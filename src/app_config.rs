@@ -206,8 +206,20 @@ pub struct AppConfig {
     /// If you specify a list of prefixes, only requests whose path starts with one of the prefixes will require authentication.
     /// For example, if you set this to `["/private"]`, then requests to `/private/some_page.sql` will require authentication,
     /// but requests to `/index.sql` will not.
+    /// NOTE: `OIDC_PUBLIC_PATHS` takes precedence over `OIDC_PROTECTED_PATHS`.
+    /// For example, if you have `["/private"]` on the `protected_paths` like before, but also `["/private/public"]` on the `public_paths`, then `/private` requires authentication, but `/private/public` requires not authentication.
+    /// You cannot make a path inside a public path private again. So expanding the previous example, if you now add `/private/public/private_again`, then this path will still be accessible.
     #[serde(default = "default_oidc_protected_paths")]
     pub oidc_protected_paths: Vec<String>,
+
+    /// Defines a list of path prefixes that should be ignored by OIDC authentication
+    /// By default, now paths will be ignored.
+    /// If you specify a list of prefixes, requests whose path starts with one of the prefixes will be not require authentication.
+    /// For example, if set this to `["/public"]`, then requests to `/public/some_page.sql` will not require authentication,
+    /// but requests to `/index.sql` will.
+    /// If you still want to make `/index.sql` public, but leave the rest of the folder protected, then append `["/index.sql"]`. But keep in mind that if you have a directory that starts with `index.sql` that it will also be public.
+    #[serde(default = "default_oidc_public_paths")]
+    pub oidc_public_paths: Vec<String>,
 
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
     /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
@@ -556,6 +568,10 @@ fn default_oidc_scopes() -> String {
 
 fn default_oidc_protected_paths() -> Vec<String> {
     vec!["/".to_string()]
+}
+
+fn default_oidc_public_paths() -> Vec<String> {
+    vec![]
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]

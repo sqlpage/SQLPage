@@ -49,6 +49,7 @@ pub struct OidcConfig {
     pub client_id: String,
     pub client_secret: String,
     pub protected_paths: Vec<String>,
+    pub public_paths: Vec<String>,
     pub app_host: String,
     pub scopes: Vec<Scope>,
 }
@@ -62,6 +63,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
             "The \"oidc_client_secret\" setting is required to authenticate with the OIDC provider",
         ))?;
         let protected_paths: Vec<String> = config.oidc_protected_paths.clone();
+        let public_paths: Vec<String> = config.oidc_public_paths.clone();
 
         let app_host = get_app_host(config);
 
@@ -70,6 +72,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
             client_id: config.oidc_client_id.clone(),
             client_secret: client_secret.clone(),
             protected_paths,
+            public_paths,
             scopes: config
                 .oidc_scopes
                 .split_whitespace()
@@ -201,6 +204,20 @@ where
         if request.path() == SQLPAGE_REDIRECT_URI {
             log::debug!("The request is the OIDC callback");
             return self.handle_oidc_callback(request);
+        }
+
+        if self
+            .oidc_state
+            .config
+            .public_paths
+            .iter()
+            .any(|path| request.path().starts_with(path))
+        {
+            log::debug!(
+                "The request path {} is in a public path, skipping OIDC authentication",
+                request.path()
+            );
+            return Box::pin(self.service.call(request));
         }
 
         if !self
