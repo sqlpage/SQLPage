@@ -83,6 +83,14 @@ impl TryFrom<&AppConfig> for OidcConfig {
     }
 }
 
+impl OidcConfig {
+    #[must_use]
+    pub fn is_public_path(&self, path: &str) -> bool {
+        !self.protected_paths.iter().any(|p| path.starts_with(p))
+            || self.public_paths.iter().any(|p| path.starts_with(p))
+    }
+}
+
 fn get_app_host(config: &AppConfig) -> String {
     if let Some(host) = &config.host {
         return host.clone();
@@ -206,29 +214,9 @@ where
             return self.handle_oidc_callback(request);
         }
 
-        if self
-            .oidc_state
-            .config
-            .public_paths
-            .iter()
-            .any(|path| request.path().starts_with(path))
-        {
+        if self.oidc_state.config.is_public_path(request.path()) {
             log::debug!(
-                "The request path {} is in a public path, skipping OIDC authentication",
-                request.path()
-            );
-            return Box::pin(self.service.call(request));
-        }
-
-        if !self
-            .oidc_state
-            .config
-            .protected_paths
-            .iter()
-            .any(|path| request.path().starts_with(path))
-        {
-            log::debug!(
-                "The request path {} is not in a protected path, skipping OIDC authentication",
+                "The request path {} is not in a public path, skipping OIDC authentication",
                 request.path()
             );
             return Box::pin(self.service.call(request));
