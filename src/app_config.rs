@@ -220,6 +220,7 @@ pub struct AppConfig {
     /// To make `/protected/public.sql` public while protecting its containing directory,
     /// set `oidc_public_paths` to `["/protected/public.sql"]` and `oidc_protected_paths` to `["/protected"]`.
     /// Be aware that any path starting with `/protected/public.sql` (e.g., `/protected/public.sql.backup`) will also become public.
+    #[serde(default)]
     pub oidc_public_paths: Vec<String>,
 
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
