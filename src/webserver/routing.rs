@@ -474,8 +474,8 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn no_extension_site_prefix_and_no_corresponding_file_with_custom_404_does_not_redirect()
-        {
+        async fn no_extension_site_prefix_and_no_corresponding_file_with_custom_404_does_not_redirect(
+        ) {
             let actual = do_route("/prefix/folder", Default, Some("/prefix/")).await;
             let expected = custom_not_found("404.sql");
 
