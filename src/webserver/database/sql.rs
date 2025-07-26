@@ -1059,6 +1059,7 @@ fn expr_to_statement(expr: Expr) -> Statement {
                 value_table_mode: None,
                 connect_by: None,
                 flavor: SelectFlavor::Standard,
+                exclude: None,
             },
         ))),
         order_by: None,

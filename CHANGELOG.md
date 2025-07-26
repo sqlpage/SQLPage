@@ -18,6 +18,7 @@
   - This allows easily creating a "log in page" that redirects to the OIDC provider.
   - See the [configuration](./configuration.md) for `oidc_protected_paths`
 - Chart component: accept numerical values passed as strings in pie charts.
+- updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.58.0.md
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
