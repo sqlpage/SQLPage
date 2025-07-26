@@ -14,11 +14,39 @@
  - Updated tabler to v1.4 https://github.com/tabler/tabler/releases/tag/%40tabler%2Fcore%401.4.0
  - Updated tabler-icons to v3.34 (19 new icons) https://tabler.io/changelog#/changelog/tabler-icons-3.34
  - Added support for partially private sites when using OIDC single sign-on: 
-  - The same SQLPage application can now have both publicly accessible and private pages accessible to users authenticated with SSO.
-  - This allows easily creating a "log in page" that redirects to the OIDC provider.
-  - See the [configuration](./configuration.md) for `oidc_protected_paths`
+   - The same SQLPage application can now have both publicly accessible and private pages accessible to users authenticated with SSO.
+   - This allows easily creating a "log in page" that redirects to the OIDC provider.
+   - See the [configuration](./configuration.md) for `oidc_protected_paths`
 - Chart component: accept numerical values passed as strings in pie charts.
 - updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.58.0.md
+  * **Postgres text search types**: allows `tsquery` and `tsvector` data types
+    ```sql
+    SELECT 'OpenAI'::text @@ 'open:*'::tsquery;
+    ```
+  * **LIMIT in subqueries**: fixes parsing of `LIMIT` inside subselects
+    ```sql
+    SELECT id FROM (SELECT id FROM users ORDER BY id LIMIT 5) AS sub;
+    ```
+  * **MySQL `MEMBER OF`**: JSON array membership test
+    ```sql
+    SELECT 17 MEMBER OF('[23, "abc", 17, "ab", 10]')
+    ```
+  * **Join precedence fix**: corrects interpretation of mixed `JOIN` types without join conditions
+    ```sql
+    SELECT * FROM t1 NATURAL JOIN t2
+    ```
+  * **Unicode identifiers**: allows non‑ASCII names in MySQL/Postgres/SQLite
+    ```sql
+    SELECT 用户 AS chinese_name FROM accounts;
+    ```
+  * **Regex and `LIKE` operator fixes**: allow using `~` and `LIKE` with arrays
+    ```sql
+    select a ~ any(array['x']);
+    ```
+  * MSSQL output and default keywords in `EXEC` statements
+    ```sql
+    EXECUTE dbo.proc1 DEFAULT
+    ```
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
