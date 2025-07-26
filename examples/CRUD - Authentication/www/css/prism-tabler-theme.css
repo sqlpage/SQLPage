@@ -72,14 +72,14 @@
 }
 
 .token {
-  transition: .3s;
+  transition: 0.3s;
 }
 
 code::selection,
 code ::selection {
   background: var(--tblr-yellow);
   color: var(--tblr-gray-900);
-  border-radius: .1em;
+  border-radius: 0.1em;
 }
 
 code .token.keyword::selection,

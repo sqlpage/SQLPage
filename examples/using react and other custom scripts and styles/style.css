@@ -18,15 +18,21 @@
 @keyframes neon-glow {
   0%,
   100% {
-    text-shadow: 0 0 10px #fa2dd1, 0 0 20px #b30890, 2px 3px 30px #ff00cc;
+    text-shadow:
+      0 0 10px #fa2dd1,
+      0 0 20px #b30890,
+      2px 3px 30px #ff00cc;
   }
   50% {
-    text-shadow: 0 0 1px #e48fd3, 0 0 2px #ca28aa, 0 0 8px #ff00cc;
+    text-shadow:
+      0 0 1px #e48fd3,
+      0 0 2px #ca28aa,
+      0 0 8px #ff00cc;
   }
 }
 
 #funky_text:hover {
-  animation: neon-glow .5s ease-in-out infinite;
+  animation: neon-glow 0.5s ease-in-out infinite;
 }
 
 #funky_text * {

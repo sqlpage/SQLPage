@@ -20,7 +20,8 @@
   --tblr-border-color-translucent: hsla(225deg 27% 19% / 0.7);
 
   /* Text secondary RGB */
-  --tblr-text-secondary-rgb: 204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */
+  --tblr-text-secondary-rgb:
+    204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */
 
   /* Code colors */
   --tblr-code-color: hsl(225deg 45.4% 76.93%); /* Light code text for dark theme */
@@ -40,10 +41,10 @@
   --tblr-link-hover-color: hsl(212, 70%, 85%) !important; /* Supernova */
 
   /* Ethereal shadows */
-  --tblr-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px
-    rgba(66, 153, 225, 0.15);
-  --tblr-box-shadow-dropdown: 0px 8px 24px rgba(0, 0, 0, 0.25), 1px 9px 20px
-    rgba(174, 62, 201, 0.15);
+  --tblr-box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px rgba(66, 153, 225, 0.15);
+  --tblr-box-shadow-dropdown:
+    0px 8px 24px rgba(0, 0, 0, 0.25), 1px 9px 20px rgba(174, 62, 201, 0.15);
 
   /* Pure white emphasis */
   --tblr-emphasis-color: #ffffff;
