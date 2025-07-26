@@ -107,7 +107,7 @@ function table_parse_data(table_el, sort_buttons) {
     const cells = tr_el.getElementsByTagName("td");
     return {
       el: tr_el,
-      sort_keys: sort_buttons.map((btn_el, idx) => {
+      sort_keys: sort_buttons.map((_btn_el, idx) => {
         const str = cells[idx]?.textContent;
         const num = is_num[idx] ? Number.parseFloat(str) : Number.NaN;
         return { num, str };

@@ -1,7 +1,7 @@
 // Here we are using React and ReactDOM directly, but this file could be a compiled
 // version of a React component written in JSX.
 
-function MyComponent({ greeting_name }) {
+function _MyComponent({ greeting_name }) {
   const [count, setCount] = React.useState(0);
   return React.createElement(
     "button",

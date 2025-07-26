@@ -230,6 +230,7 @@ function traverseMdastNode(node, delta, attributes = {}) {
       break;
 
     case "listItem": {
+      // biome-ignore lint/correctness/noUnusedVariables: object destructuring with a spread
       const { list, ...listItemChildrenAttributes } = attributes;
 
       for (const child of node.children || []) {

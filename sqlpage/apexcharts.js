@@ -128,8 +128,8 @@ sqlpage_chart = (() => {
     const categories =
       series.length > 0 && typeof series[0].data[0].x === "string";
     if (data.type === "pie") {
-      labels = data.points.map(([name, x, y]) => x || name);
-      series = data.points.map(([name, x, y]) => Number.parseFloat(y));
+      labels = data.points.map(([name, x, _y]) => x || name);
+      series = data.points.map(([_name, _x, y]) => Number.parseFloat(y));
     } else if (categories && data.type === "bar" && series.length > 1)
       series = align_categories(series);
 
@@ -166,8 +166,7 @@ sqlpage_chart = (() => {
             : data.type === "pie"
               ? (value, { seriesIndex, w }) =>
                   `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
-              : (value, { seriesIndex, w }) =>
-                  value?.toLocaleString?.() || value,
+              : (value) => value?.toLocaleString?.() || value,
       },
       fill: {
         type: data.type === "area" ? "gradient" : "solid",
@@ -260,7 +259,7 @@ sqlpage_chart = (() => {
     c.removeAttribute("data-pre-init");
   }
 
-  function bubbleTooltip({ series, seriesIndex, dataPointIndex, w }) {
+  function bubbleTooltip({ seriesIndex, dataPointIndex, w }) {
     const { name, data } = w.config.series[seriesIndex];
     const point = data[dataPointIndex];
 
