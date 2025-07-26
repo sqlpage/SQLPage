@@ -122,7 +122,35 @@ where
         let path_with_ext = path.with_extension(SQL_EXTENSION);
         match find_file(&path_with_ext, SQL_EXTENSION, store).await? {
             Some(action) => Ok(action),
-            None => Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH))),
+            None => {
+                // Before redirecting to add trailing slash, check if the result would be a 404
+                let mut path_with_slash = path.clone();
+                path_with_slash.push(INDEX);
+                match find_file(&path_with_slash, SQL_EXTENSION, store).await? {
+                    Some(_) => {
+                        // There's an index.sql file, so redirect to trailing slash
+                        Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
+                    }
+                    None => {
+                        // No index.sql file found. Check if this would result in a custom 404
+                        let not_found_result = find_not_found(&path_with_slash, store).await?;
+                        match not_found_result {
+                            CustomNotFound(_) => {
+                                // There's a custom 404.sql that would handle this, don't redirect
+                                Ok(not_found_result)
+                            }
+                            NotFound => {
+                                // No custom 404, so redirect to trailing slash for consistency
+                                Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
+                            }
+                            Execute(_) | Redirect(_) | Serve(_) => {
+                                // These shouldn't happen from find_not_found, but handle them
+                                Ok(not_found_result)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -332,6 +360,22 @@ mod tests {
 
             assert_eq!(expected, actual);
         }
+
+        #[tokio::test]
+        async fn no_extension_path_that_would_result_in_404_does_not_redirect() {
+            let actual = do_route("/nonexistent", Default, None).await;
+            let expected = custom_not_found("404.sql");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn no_extension_path_that_would_result_in_404_does_not_redirect_with_site_prefix() {
+            let actual = do_route("/prefix/nonexistent", Default, Some("/prefix/")).await;
+            let expected = custom_not_found("404.sql");
+
+            assert_eq!(expected, actual);
+        }
     }
 
     mod not_found {
@@ -402,8 +446,8 @@ mod tests {
     }
 
     mod redirect {
-        use super::StoreConfig::Default;
-        use super::{do_route, redirect};
+        use super::StoreConfig::{Default, Empty};
+        use super::{custom_not_found, do_route, redirect};
 
         #[tokio::test]
         async fn path_without_site_prefix_redirects_to_site_prefix() {
@@ -414,26 +458,34 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn no_extension_and_no_corresponding_file_redirects_with_trailing_slash() {
+        async fn no_extension_and_no_corresponding_file_with_custom_404_does_not_redirect() {
             let actual = do_route("/folder", Default, None).await;
-            let expected = redirect("/folder/");
+            let expected = custom_not_found("404.sql");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
-        async fn no_extension_no_corresponding_file_redirects_with_trailing_slash_and_query() {
+        async fn no_extension_no_corresponding_file_with_custom_404_does_not_redirect_with_query() {
             let actual = do_route("/folder?misc=1&foo=bar", Default, None).await;
-            let expected = redirect("/folder/?misc=1&foo=bar");
+            let expected = custom_not_found("404.sql");
 
             assert_eq!(expected, actual);
         }
 
         #[tokio::test]
-        async fn no_extension_site_prefix_and_no_corresponding_file_redirects_with_trailing_slash()
+        async fn no_extension_site_prefix_and_no_corresponding_file_with_custom_404_does_not_redirect()
         {
             let actual = do_route("/prefix/folder", Default, Some("/prefix/")).await;
-            let expected = redirect("/prefix/folder/");
+            let expected = custom_not_found("404.sql");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn no_extension_redirects_when_no_custom_404_available() {
+            let actual = do_route("/folder", Empty, None).await;
+            let expected = redirect("/folder/");
 
             assert_eq!(expected, actual);
         }
