@@ -129,7 +129,7 @@ sqlpage_chart = (() => {
       series.length > 0 && typeof series[0].data[0].x === "string";
     if (data.type === "pie") {
       labels = data.points.map(([name, x, y]) => x || name);
-      series = data.points.map(([name, x, y]) => y);
+      series = data.points.map(([name, x, y]) => Number.parseFloat(y));
     } else if (categories && data.type === "bar" && series.length > 1)
       series = align_categories(series);
 

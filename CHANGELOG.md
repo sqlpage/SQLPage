@@ -17,6 +17,7 @@
   - The same SQLPage application can now have both publicly accessible and private pages accessible to users authenticated with SSO.
   - This allows easily creating a "log in page" that redirects to the OIDC provider.
   - See the [configuration](./configuration.md) for `oidc_protected_paths`
+- Chart component: accept numerical values passed as strings in pie charts.
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
