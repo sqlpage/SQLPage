@@ -47,6 +47,7 @@
     ```sql
     EXECUTE dbo.proc1 DEFAULT
     ```
+- The file-based routing system was improved. Now, requests to `/xxx` redirect to `/xxx/` only if `/xxx/index.sql` exists.
 
 ## v0.35.2
  - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
