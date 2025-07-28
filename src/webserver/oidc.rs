@@ -15,9 +15,9 @@ use anyhow::{anyhow, Context};
 use awc::Client;
 use chrono::Utc;
 use openidconnect::{
-    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, CsrfToken, EndpointMaybeSet,
+    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndpointMaybeSet,
     EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
-    TokenResponse, Audience,
+    TokenResponse,
 };
 use serde::{Deserialize, Serialize};
 
@@ -687,17 +687,17 @@ fn create_custom_id_token_verifier<'a>(
 ) -> openidconnect::IdTokenVerifier<'a, openidconnect::core::CoreJsonWebKey> {
     let client_id = config.client_id.clone();
     let additional_trusted_audiences = config.additional_trusted_audiences.clone();
-    
+
     oidc_client
         .id_token_verifier()
         .set_other_audience_verifier_fn(move |aud: &Audience| -> bool {
             let aud_str = aud.as_str();
-            
+
             // Always allow the client ID itself as an audience
             if aud_str == client_id {
                 return true;
             }
-            
+
             match &additional_trusted_audiences {
                 // Default behavior: allow all additional audiences for compatibility
                 None => true,
@@ -714,7 +714,7 @@ mod tests {
     #[test]
     fn test_audience_verification_logic() {
         let client_id = "test-client-123";
-        
+
         // Test 1: Default behavior (None) - should allow any additional audiences
         let config = OidcConfig {
             issuer_url: IssuerUrl::new("https://example.com".to_string()).unwrap(),
@@ -726,14 +726,14 @@ mod tests {
             scopes: vec![],
             additional_trusted_audiences: None,
         };
-        
+
         // Test the logic that would be used in set_other_audience_verifier_fn
         let verifier_fn = |aud_str: &str, config: &OidcConfig| -> bool {
             // Always allow the client ID itself as an audience
             if aud_str == config.client_id {
                 return true;
             }
-            
+
             match &config.additional_trusted_audiences {
                 // Default behavior: allow all additional audiences for compatibility
                 None => true,
@@ -749,7 +749,7 @@ mod tests {
         // Test 2: Empty list (strictest) - only allow client ID
         let mut strict_config = config.clone();
         strict_config.additional_trusted_audiences = Some(vec![]);
-        
+
         assert!(verifier_fn(client_id, &strict_config)); // Client ID should be allowed
         assert!(!verifier_fn("some-other-audience", &strict_config)); // Additional audience should be rejected
 
@@ -759,7 +759,7 @@ mod tests {
             "api.example.com".to_string(),
             "service.example.com".to_string(),
         ]);
-        
+
         assert!(verifier_fn(client_id, &specific_config)); // Client ID should be allowed
         assert!(verifier_fn("api.example.com", &specific_config)); // Listed audience should be allowed
         assert!(verifier_fn("service.example.com", &specific_config)); // Listed audience should be allowed
