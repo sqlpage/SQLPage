@@ -167,19 +167,28 @@ fn get_app_host(config: &AppConfig) -> String {
 pub struct OidcState {
     pub config: Arc<OidcConfig>,
     cached_provider: Arc<RwLock<CachedProvider>>,
-    http_client: Arc<Client>,
 }
 
 impl OidcState {
+    /// Get the current OIDC client, checking if cache is stale but not attempting refresh
+    pub fn get_client(&self) -> OidcClient {
+        // For now, we'll use a simple approach - get the current client
+        // In a production system, you might want to check if cache is stale
+        // and trigger an async refresh task
+        futures_util::executor::block_on(async {
+            self.cached_provider.read().await.client.clone()
+        })
+    }
+
     /// Get the current OIDC client, refreshing if stale and possible
-    pub async fn get_client(&self) -> OidcClient {
+    pub async fn get_client_with_refresh(&self, app_config: &AppConfig) -> OidcClient {
         // Try to refresh if cache is stale and we haven't tried recently
         {
             let cache = self.cached_provider.read().await;
             if cache.is_stale() && cache.can_refresh() {
                 // Release read lock before attempting refresh
                 drop(cache);
-                if let Err(e) = self.refresh_provider().await {
+                if let Err(e) = self.refresh_provider(app_config).await {
                     log::warn!("Failed to refresh OIDC provider: {}", e);
                 }
             }
@@ -189,7 +198,7 @@ impl OidcState {
     }
 
     /// Refresh provider metadata and client from the OIDC provider
-    async fn refresh_provider(&self) -> anyhow::Result<()> {
+    async fn refresh_provider(&self, app_config: &AppConfig) -> anyhow::Result<()> {
         let mut cache = self.cached_provider.write().await;
 
         // Double-check we can refresh (another thread might have just done it)
@@ -204,8 +213,9 @@ impl OidcState {
             self.config.issuer_url
         );
 
+        let http_client = make_http_client(app_config)?;
         let new_metadata =
-            discover_provider_metadata(&self.http_client, self.config.issuer_url.clone()).await?;
+            discover_provider_metadata(&http_client, self.config.issuer_url.clone()).await?;
         let new_client = make_oidc_client(&self.config, new_metadata.clone())?;
 
         cache.update(new_client, new_metadata);
@@ -224,7 +234,7 @@ pub async fn initialize_oidc_state(
         Err(Some(e)) => return Err(anyhow::anyhow!(e)),
     };
 
-    let http_client = Arc::new(make_http_client(app_config)?);
+    let http_client = make_http_client(app_config)?;
 
     // Initial metadata discovery
     let provider_metadata =
@@ -234,7 +244,6 @@ pub async fn initialize_oidc_state(
     let oidc_state = Arc::new(OidcState {
         config: oidc_cfg,
         cached_provider: Arc::new(RwLock::new(CachedProvider::new(client, provider_metadata))),
-        http_client,
     });
 
     Ok(Some(oidc_state))
@@ -329,7 +338,7 @@ where
     }
 
     log::debug!("Redirecting to OIDC provider");
-    let client = oidc_state.get_client().await;
+    let client = oidc_state.get_client();
     let response = build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
     Ok(request.into_response(response))
 }
@@ -338,7 +347,7 @@ async fn handle_oidc_callback(
     oidc_state: Arc<OidcState>,
     request: ServiceRequest,
 ) -> Result<ServiceResponse<BoxBody>, Error> {
-    let oidc_client = oidc_state.get_client().await;
+    let oidc_client = oidc_state.get_client();
     let query_string = request.query_string();
     match process_oidc_callback(&oidc_client, query_string, &request).await {
         Ok(response) => Ok(request.into_response(response)),
@@ -353,7 +362,7 @@ async fn handle_oidc_callback(
 
 impl<S> Service<ServiceRequest> for OidcService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + Clone,
     S::Future: 'static,
 {
     type Response = ServiceResponse<BoxBody>;
@@ -369,7 +378,7 @@ where
         let service = self.service.clone();
 
         Box::pin(async move {
-            let oidc_client = oidc_state.get_client().await;
+            let oidc_client = oidc_state.get_client();
             match get_authenticated_user_info(&oidc_client, &request) {
                 Ok(Some(claims)) => {
                     log::trace!(
