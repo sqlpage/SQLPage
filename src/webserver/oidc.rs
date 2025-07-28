@@ -703,7 +703,7 @@ fn validate_redirect_url(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{validate_redirect_url, AuthUrlParams, OidcLoginState};
-    use actix_web::{http::Method, test};
+    use actix_web::test;
     use openidconnect::{CsrfToken, Nonce};
 
     #[test]
@@ -716,9 +716,7 @@ mod tests {
 
     #[test]
     async fn test_build_safe_redirect_url_without_query_params() {
-        let req = test::TestRequest::with_uri("/page.sql")
-            .method(Method::GET)
-            .to_srv_request();
+        let req = test::TestRequest::with_uri("/page.sql").to_srv_request();
 
         let result = OidcLoginState::build_safe_redirect_url(&req);
         assert_eq!(result, "/page.sql");
@@ -727,7 +725,6 @@ mod tests {
     #[test]
     async fn test_build_safe_redirect_url_with_special_characters() {
         let req = test::TestRequest::with_uri("/page.sql?param=hello%20world&special=%26%3D")
-            .method(Method::GET)
             .to_srv_request();
 
         let result = OidcLoginState::build_safe_redirect_url(&req);
@@ -737,9 +734,7 @@ mod tests {
     #[test]
     async fn test_build_safe_redirect_url_handles_root_path() {
         // TestRequest with invalid relative path defaults to "/"
-        let req = test::TestRequest::with_uri("page.sql")
-            .method(Method::GET)
-            .to_srv_request();
+        let req = test::TestRequest::with_uri("page.sql").to_srv_request();
 
         let result = OidcLoginState::build_safe_redirect_url(&req);
         // TestRequest normalizes invalid URI to root path
@@ -773,7 +768,6 @@ mod tests {
     #[test]
     async fn test_oidc_login_state_preserves_query_parameters() {
         let req = test::TestRequest::with_uri("/dashboard.sql?user_id=123&filter=active")
-            .method(Method::GET)
             .to_srv_request();
 
         let auth_params = AuthUrlParams {
