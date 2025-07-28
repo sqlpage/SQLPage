@@ -3,7 +3,7 @@
 //!
 //! ## Routing Rules
 //!
-//! SQLPage follows a file-based routing system with the following precedence:
+//! `SQLPage` follows a file-based routing system with the following precedence:
 //!
 //! ### 1. Site Prefix Handling
 //! - If a `site_prefix` is configured and the request path doesn't start with it, redirect to the prefixed path
@@ -31,7 +31,7 @@
 //!
 //! ### 3. Error Handling (404 cases)
 //!
-//! When a requested file is not found, SQLPage looks for custom 404 handlers:
+//! When a requested file is not found, `SQLPage` looks for custom 404 handlers:
 //!
 //! - Starting from the requested path's directory, walk up the directory tree
 //! - Look for `404.sql` in each parent directory  
@@ -541,7 +541,7 @@ mod tests {
             Default => Store::with_default_contents(),
             Empty => Store::empty(),
             File(file) => Store::new(file),
-            Custom(files) => Store::with_files(files),
+            Custom(files) => Store::with_files(&files),
         };
         let config = match prefix {
             None => Config::default(),
@@ -612,9 +612,9 @@ mod tests {
             self.contents.contains(&normalized_path)
         }
 
-        fn with_files(files: Vec<&str>) -> Self {
+        fn with_files(files: &[&str]) -> Self {
             Self {
-                contents: files.iter().map(|s| s.to_string()).collect(),
+                contents: files.iter().map(|s| (*s).to_string()).collect(),
             }
         }
     }
