@@ -24,12 +24,14 @@ SELECT 'text' as type,
     'Search for components, parameters, functions...' as placeholder,
     $search as value;
 
+set escaped_search = '"' || replace($search, '"', '""') || '"';
+
 SELECT 'text' as component,
     CASE 
         WHEN $search IS NULL THEN 'Enter a search term above to find documentation about components, parameters, functions, and blog posts.'
         WHEN NOT EXISTS (
             SELECT 1 FROM documentation_fts 
-            WHERE documentation_fts = $search
+            WHERE documentation_fts = $escaped_search
         ) THEN 'No results found for "' || $search || '".'
         ELSE NULL
     END as contents;
@@ -96,7 +98,7 @@ WITH search_results AS (
         rank
     FROM documentation_fts
     WHERE $search IS NOT NULL 
-    AND documentation_fts = $search
+    AND documentation_fts = $escaped_search
 )
 SELECT 
     max(title) as title,
