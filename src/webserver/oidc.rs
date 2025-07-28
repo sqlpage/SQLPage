@@ -167,7 +167,6 @@ fn get_app_host(config: &AppConfig) -> String {
 pub struct OidcState {
     pub config: Arc<OidcConfig>,
     cached_provider: Arc<RwLock<CachedProvider>>,
-    app_config: Arc<AppConfig>,
 }
 
 impl OidcState {
@@ -199,7 +198,7 @@ impl OidcState {
     }
 
     /// Refresh provider metadata and client from the OIDC provider
-    async fn refresh_provider(&self) -> anyhow::Result<()> {
+    async fn refresh_provider(&self, http_client: &awc::Client) -> anyhow::Result<()> {
         let mut cache = self.cached_provider.write().await;
 
         // Double-check we can refresh (another thread might have just done it)
@@ -214,9 +213,8 @@ impl OidcState {
             self.config.issuer_url
         );
 
-        let http_client = make_http_client(&self.app_config)?;
         let new_metadata =
-            discover_provider_metadata(&http_client, self.config.issuer_url.clone()).await?;
+            discover_provider_metadata(http_client, self.config.issuer_url.clone()).await?;
         let new_client = make_oidc_client(&self.config, new_metadata.clone())?;
 
         cache.update(new_client, new_metadata);
