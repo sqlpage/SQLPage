@@ -1,3 +1,73 @@
+//! This module determines how incoming HTTP requests are mapped to
+//! SQL files for execution, static assets for serving, or error pages.
+//!
+//! ## Routing Rules
+//!
+//! SQLPage follows a file-based routing system with the following precedence:
+//!
+//! ### 1. Site Prefix Handling
+//! - If a `site_prefix` is configured and the request path doesn't start with it, redirect to the prefixed path
+//! - All subsequent routing operates on the path after stripping the prefix
+//!
+//! ### 2. Path Resolution (in order of precedence)
+//!
+//! #### Paths ending with `/` (directories):
+//! - Look for `index.sql` in that directory
+//! - If found: **Execute** the SQL file
+//! - If not found: Look for custom 404 handlers (see Error Handling below)
+//!
+//! #### Paths with `.sql` extension:
+//! - If the file exists: **Execute** the SQL file  
+//! - If not found: Look for custom 404 handlers (see Error Handling below)
+//!
+//! #### Paths with other extensions (assets):
+//! - If the file exists: **Serve** the static file
+//! - If not found: Look for custom 404 handlers (see Error Handling below)
+//!
+//! #### Paths without extension:
+//! - First, try to find `{path}.sql` and **Execute** if found
+//! - If no SQL file found but `{path}/index.sql` exists: **Redirect** to `{path}/`
+//! - Otherwise: Look for custom 404 handlers (see Error Handling below)
+//!
+//! ### 3. Error Handling (404 cases)
+//!
+//! When a requested file is not found, SQLPage looks for custom 404 handlers:
+//!
+//! - Starting from the requested path's directory, walk up the directory tree
+//! - Look for `404.sql` in each parent directory  
+//! - If found: **Execute** the custom 404 SQL file
+//! - If no custom 404 found anywhere: Return default **404 Not Found** response
+//!
+//! ## Examples
+//!
+//! ```text
+//! Request: GET /
+//! Result: Execute index.sql
+//!
+//! Request: GET /users
+//! - If users.sql exists: Execute users.sql  
+//! - Else if users/index.sql exists: Redirect to /users/
+//! - Else if 404.sql exists: Execute 404.sql
+//! - Else: Default 404
+//!
+//! Request: GET /users/
+//! - If users/index.sql exists: Execute users/index.sql
+//! - Else if users/404.sql exists: Execute users/404.sql  
+//! - Else if 404.sql exists: Execute 404.sql
+//! - Else: Default 404
+//!
+//! Request: GET /api/users.sql  
+//! - If api/users.sql exists: Execute api/users.sql
+//! - Else if api/404.sql exists: Execute api/404.sql
+//! - Else if 404.sql exists: Execute 404.sql  
+//! - Else: Default 404
+//!
+//! Request: GET /favicon.ico
+//! - If favicon.ico exists: Serve favicon.ico
+//! - Else if 404.sql exists: Execute 404.sql
+//! - Else: Default 404
+//! ```
+
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
 use crate::{file_cache::FileCache, AppState};
@@ -120,35 +190,13 @@ where
         find_file_or_not_found(&path, SQL_EXTENSION, store).await
     } else {
         let path_with_ext = path.with_extension(SQL_EXTENSION);
-        match find_file(&path_with_ext, SQL_EXTENSION, store).await? {
-            Some(action) => Ok(action),
-            None => {
-                // Before redirecting to add trailing slash, check if the result would be a 404
-                let mut path_with_slash = path.clone();
-                path_with_slash.push(INDEX);
-                match find_file(&path_with_slash, SQL_EXTENSION, store).await? {
-                    Some(_) => {
-                        // There's an index.sql file, so redirect to trailing slash
-                        Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
-                    }
-                    None => {
-                        // No index.sql file found. Check if this would result in a custom 404
-                        let not_found_result = find_not_found(&path_with_slash, store).await?;
-                        match not_found_result {
-                            CustomNotFound(_) => {
-                                // There's a custom 404.sql that would handle this, don't redirect
-                                Ok(not_found_result)
-                            }
-                            NotFound => {
-                                // No custom 404, so redirect to trailing slash for consistency
-                                Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
-                            }
-                            Execute(_) | Redirect(_) | Serve(_) => {
-                                // These shouldn't happen from find_not_found, but handle them
-                                Ok(not_found_result)
-                            }
-                        }
-                    }
+        match find_file_or_not_found(&path_with_ext, SQL_EXTENSION, store).await? {
+            Execute(x) => Ok(Execute(x)),
+            other_action => {
+                if store.contains(&path.join(INDEX)).await? {
+                    Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
+                } else {
+                    Ok(other_action)
                 }
             }
         }
@@ -218,7 +266,7 @@ mod tests {
     use std::default::Default as StdDefault;
     use std::path::{Path, PathBuf};
     use std::str::FromStr;
-    use StoreConfig::{Default, Empty, File};
+    use StoreConfig::{Custom, Default, Empty, File};
 
     mod execute {
         use super::StoreConfig::{Default, File};
@@ -447,7 +495,7 @@ mod tests {
 
     mod redirect {
         use super::StoreConfig::{Default, Empty};
-        use super::{custom_not_found, do_route, redirect};
+        use super::{custom_not_found, default_not_found, do_route, redirect};
 
         #[tokio::test]
         async fn path_without_site_prefix_redirects_to_site_prefix() {
@@ -483,11 +531,8 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn no_extension_redirects_when_no_custom_404_available() {
-            let actual = do_route("/folder", Empty, None).await;
-            let expected = redirect("/folder/");
-
-            assert_eq!(expected, actual);
+        async fn no_extension_returns_404_when_no_404sql_available() {
+            assert_eq!(do_route("/folder", Empty, None).await, default_not_found());
         }
     }
 
@@ -496,6 +541,7 @@ mod tests {
             Default => Store::with_default_contents(),
             Empty => Store::empty(),
             File(file) => Store::new(file),
+            Custom(files) => Store::with_files(files),
         };
         let config = match prefix {
             None => Config::default(),
@@ -530,6 +576,7 @@ mod tests {
         Default,
         Empty,
         File(&'static str),
+        Custom(Vec<&'static str>),
     }
 
     struct Store {
@@ -564,6 +611,12 @@ mod tests {
             dbg!(&normalized_path, &self.contents);
             self.contents.contains(&normalized_path)
         }
+
+        fn with_files(files: Vec<&str>) -> Self {
+            Self {
+                contents: files.iter().map(|s| s.to_string()).collect(),
+            }
+        }
     }
 
     impl FileStore for Store {
@@ -592,6 +645,82 @@ mod tests {
     impl StdDefault for Config {
         fn default() -> Self {
             Self::new("/")
+        }
+    }
+
+    mod specific_configuration {
+        use crate::webserver::routing::tests::default_not_found;
+
+        use super::StoreConfig::Custom;
+        use super::{custom_not_found, do_route, execute, redirect, RoutingAction};
+
+        async fn route_with_index_and_folder_404(path: &str) -> RoutingAction {
+            do_route(
+                path,
+                Custom(vec![
+                    "index.sql",
+                    "folder/404.sql",
+                    "folder_with_index/index.sql",
+                ]),
+                None,
+            )
+            .await
+        }
+
+        #[tokio::test]
+        async fn root_path_executes_index() {
+            let actual = route_with_index_and_folder_404("/").await;
+            let expected = execute("index.sql");
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn index_sql_path_executes_index() {
+            let actual = route_with_index_and_folder_404("/index.sql").await;
+            let expected = execute("index.sql");
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn folder_without_trailing_slash_redirects() {
+            let actual = route_with_index_and_folder_404("/folder_with_index").await;
+            let expected = redirect("/folder_with_index/");
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn folder_without_trailing_slash_without_index_does_not_redirect() {
+            let actual = route_with_index_and_folder_404("/folder").await;
+            let expected = default_not_found();
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn folder_with_trailing_slash_executes_custom_404() {
+            let actual = route_with_index_and_folder_404("/folder/").await;
+            let expected = custom_not_found("folder/404.sql");
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn folder_xxx_executes_custom_404() {
+            let actual = route_with_index_and_folder_404("/folder/xxx").await;
+            let expected = custom_not_found("folder/404.sql");
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn folder_xxx_with_query_executes_custom_404() {
+            let actual = route_with_index_and_folder_404("/folder/xxx?x=1").await;
+            let expected = custom_not_found("folder/404.sql");
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn folder_nested_path_executes_custom_404() {
+            let actual = route_with_index_and_folder_404("/folder/xxx/yyy").await;
+            let expected = custom_not_found("folder/404.sql");
+            assert_eq!(expected, actual);
         }
     }
 }
