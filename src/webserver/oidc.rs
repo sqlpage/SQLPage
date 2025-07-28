@@ -181,14 +181,14 @@ impl OidcState {
     }
 
     /// Get the current OIDC client, refreshing if stale and possible
-    pub async fn get_client_with_refresh(&self) -> OidcClient {
+    pub async fn get_client_with_refresh(&self, http_client: &awc::Client) -> OidcClient {
         // Try to refresh if cache is stale and we haven't tried recently
         {
             let cache = self.cached_provider.read().await;
             if cache.is_stale() && cache.can_refresh() {
                 // Release read lock before attempting refresh
                 drop(cache);
-                if let Err(e) = self.refresh_provider().await {
+                if let Err(e) = self.refresh_provider(http_client).await {
                     log::warn!("Failed to refresh OIDC provider: {}", e);
                 }
             }
@@ -243,7 +243,6 @@ pub async fn initialize_oidc_state(
     let oidc_state = Arc::new(OidcState {
         config: oidc_cfg,
         cached_provider: Arc::new(RwLock::new(CachedProvider::new(client, provider_metadata))),
-        app_config: Arc::new(app_config.clone()),
     });
 
     Ok(Some(oidc_state))
@@ -338,7 +337,20 @@ where
     }
 
     log::debug!("Redirecting to OIDC provider");
-    let client = oidc_state.get_client();
+    
+    // Get HTTP client from app data for potential cache refresh
+    let http_client = match get_http_client_from_appdata(&request) {
+        Ok(client) => client,
+        Err(e) => {
+            log::error!("Failed to get HTTP client from app data: {}", e);
+            // Fall back to cached client without refresh
+            let client = oidc_state.get_client();
+            let response = build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
+            return Ok(request.into_response(response));
+        }
+    };
+    
+    let client = oidc_state.get_client_with_refresh(http_client).await;
     let response = build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
     Ok(request.into_response(response))
 }
@@ -347,7 +359,19 @@ async fn handle_oidc_callback(
     oidc_state: Arc<OidcState>,
     request: ServiceRequest,
 ) -> Result<ServiceResponse<BoxBody>, Error> {
-    let oidc_client = oidc_state.get_client();
+    // Get HTTP client from app data for potential cache refresh
+    let http_client = match get_http_client_from_appdata(&request) {
+        Ok(client) => client,
+        Err(e) => {
+            log::error!("Failed to get HTTP client from app data: {}", e);
+            // Fall back to cached client without refresh
+            let oidc_client = oidc_state.get_client();
+            let resp = build_auth_provider_redirect_response(&oidc_client, &oidc_state.config, &request);
+            return Ok(request.into_response(resp));
+        }
+    };
+    
+    let oidc_client = oidc_state.get_client_with_refresh(http_client).await;
     let query_string = request.query_string();
     match process_oidc_callback(&oidc_client, query_string, &request).await {
         Ok(response) => Ok(request.into_response(response)),
@@ -378,7 +402,39 @@ where
         let service = self.service.clone();
 
         Box::pin(async move {
-            let oidc_client = oidc_state.get_client();
+            // Get HTTP client from app data for potential cache refresh
+            let http_client = match get_http_client_from_appdata(&request) {
+                Ok(client) => client,
+                Err(e) => {
+                    log::error!("Failed to get HTTP client from app data: {}", e);
+                    // Fall back to cached client without refresh
+                    let oidc_client = oidc_state.get_client();
+                    match get_authenticated_user_info(&oidc_client, &request) {
+                        Ok(Some(claims)) => {
+                            log::trace!("Storing authenticated user info in request extensions: {claims:?}");
+                            request.extensions_mut().insert(claims);
+                            let future = service.call(request);
+                            return future.await;
+                        }
+                        Ok(None) => {
+                            log::trace!("No authenticated user found");
+                            return handle_unauthenticated_request(oidc_state, request, service).await;
+                        }
+                        Err(e) => {
+                            log::debug!(
+                                "{:?}",
+                                e.context(
+                                    "An auth cookie is present but could not be verified. \
+                                 Redirecting to OIDC provider to re-authenticate."
+                                )
+                            );
+                            return handle_unauthenticated_request(oidc_state, request, service).await;
+                        }
+                    }
+                }
+            };
+            
+            let oidc_client = oidc_state.get_client_with_refresh(http_client).await;
             match get_authenticated_user_info(&oidc_client, &request) {
                 Ok(Some(claims)) => {
                     log::trace!(
