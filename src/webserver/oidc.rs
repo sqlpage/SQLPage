@@ -167,6 +167,7 @@ fn get_app_host(config: &AppConfig) -> String {
 pub struct OidcState {
     pub config: Arc<OidcConfig>,
     cached_provider: Arc<RwLock<CachedProvider>>,
+    app_config: Arc<AppConfig>,
 }
 
 impl OidcState {
@@ -181,14 +182,14 @@ impl OidcState {
     }
 
     /// Get the current OIDC client, refreshing if stale and possible
-    pub async fn get_client_with_refresh(&self, app_config: &AppConfig) -> OidcClient {
+    pub async fn get_client_with_refresh(&self) -> OidcClient {
         // Try to refresh if cache is stale and we haven't tried recently
         {
             let cache = self.cached_provider.read().await;
             if cache.is_stale() && cache.can_refresh() {
                 // Release read lock before attempting refresh
                 drop(cache);
-                if let Err(e) = self.refresh_provider(app_config).await {
+                if let Err(e) = self.refresh_provider().await {
                     log::warn!("Failed to refresh OIDC provider: {}", e);
                 }
             }
@@ -198,7 +199,7 @@ impl OidcState {
     }
 
     /// Refresh provider metadata and client from the OIDC provider
-    async fn refresh_provider(&self, app_config: &AppConfig) -> anyhow::Result<()> {
+    async fn refresh_provider(&self) -> anyhow::Result<()> {
         let mut cache = self.cached_provider.write().await;
 
         // Double-check we can refresh (another thread might have just done it)
@@ -213,7 +214,7 @@ impl OidcState {
             self.config.issuer_url
         );
 
-        let http_client = make_http_client(app_config)?;
+        let http_client = make_http_client(&self.app_config)?;
         let new_metadata =
             discover_provider_metadata(&http_client, self.config.issuer_url.clone()).await?;
         let new_client = make_oidc_client(&self.config, new_metadata.clone())?;
@@ -244,6 +245,7 @@ pub async fn initialize_oidc_state(
     let oidc_state = Arc::new(OidcState {
         config: oidc_cfg,
         cached_provider: Arc::new(RwLock::new(CachedProvider::new(client, provider_metadata))),
+        app_config: Arc::new(app_config.clone()),
     });
 
     Ok(Some(oidc_state))
