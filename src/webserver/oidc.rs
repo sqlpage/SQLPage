@@ -1,5 +1,11 @@
 use std::future::ready;
-use std::{future::Future, pin::Pin, str::FromStr, sync::Arc, time::{Duration, Instant}};
+use std::{
+    future::Future,
+    pin::Pin,
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use crate::webserver::http_client::get_http_client_from_appdata;
 use crate::{app_config::AppConfig, AppState};
@@ -32,53 +38,43 @@ const SQLPAGE_STATE_COOKIE_NAME: &str = "sqlpage_oidc_state";
 
 // Cache configuration based on industry best practices
 const PROVIDER_METADATA_CACHE_DURATION: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours
-const PROVIDER_METADATA_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60); // 1 hour
 const MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60); // 5 minutes (rate limiting)
 
 #[derive(Clone, Debug)]
-struct CachedProviderMetadata {
+struct CachedProvider {
+    client: OidcClient,
     metadata: openidconnect::core::CoreProviderMetadata,
     cached_at: Instant,
-    last_refresh_attempt: Option<Instant>,
+    last_refresh_attempt: Instant,
 }
 
-impl CachedProviderMetadata {
-    fn new(metadata: openidconnect::core::CoreProviderMetadata) -> Self {
+impl CachedProvider {
+    fn new(client: OidcClient, metadata: openidconnect::core::CoreProviderMetadata) -> Self {
+        let now = Instant::now();
         Self {
+            client,
             metadata,
-            cached_at: Instant::now(),
-            last_refresh_attempt: None,
+            cached_at: now,
+            last_refresh_attempt: now,
         }
     }
 
-    fn is_expired(&self) -> bool {
+    fn is_stale(&self) -> bool {
         self.cached_at.elapsed() > PROVIDER_METADATA_CACHE_DURATION
     }
 
-    fn should_refresh(&self) -> bool {
-        // Refresh if the cache is older than refresh interval
-        if self.cached_at.elapsed() > PROVIDER_METADATA_REFRESH_INTERVAL {
-            return true;
-        }
-        false
+    fn can_refresh(&self) -> bool {
+        self.last_refresh_attempt.elapsed() > MIN_REFRESH_INTERVAL
     }
 
-    fn can_attempt_refresh(&self) -> bool {
-        // Rate limit refresh attempts to prevent excessive requests
-        match self.last_refresh_attempt {
-            Some(last_attempt) => last_attempt.elapsed() > MIN_REFRESH_INTERVAL,
-            None => true,
-        }
+    fn update(&mut self, client: OidcClient, metadata: openidconnect::core::CoreProviderMetadata) {
+        self.client = client;
+        self.metadata = metadata;
+        self.cached_at = Instant::now();
     }
 
     fn mark_refresh_attempt(&mut self) {
-        self.last_refresh_attempt = Some(Instant::now());
-    }
-
-    fn update_metadata(&mut self, metadata: openidconnect::core::CoreProviderMetadata) {
-        self.metadata = metadata;
-        self.cached_at = Instant::now();
-        self.last_refresh_attempt = None;
+        self.last_refresh_attempt = Instant::now();
     }
 }
 
@@ -170,106 +166,52 @@ fn get_app_host(config: &AppConfig) -> String {
 
 pub struct OidcState {
     pub config: Arc<OidcConfig>,
-    client: Arc<RwLock<OidcClient>>,
-    cached_metadata: Arc<RwLock<Option<CachedProviderMetadata>>>,
+    cached_provider: Arc<RwLock<CachedProvider>>,
     http_client: Arc<Client>,
 }
 
 impl OidcState {
-    /// Get the current OIDC client, refreshing if necessary
-    pub async fn get_client(&self) -> Arc<OidcClient> {
-        let should_refresh = {
-            let cache = self.cached_metadata.read().await;
-            match cache.as_ref() {
-                Some(cached) => cached.is_expired() || (cached.should_refresh() && cached.can_attempt_refresh()),
-                None => true,
-            }
-        };
-
-        if should_refresh {
-            if let Err(e) = self.refresh_provider_metadata().await {
-                log::warn!("Failed to refresh OIDC provider metadata: {}", e);
-                // Continue with current client if available
-            }
-        }
-
-        Arc::new(self.client.read().await.clone())
-    }
-
-    /// Get the current provider metadata, refreshing if necessary
-    pub async fn get_provider_metadata(&self) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
-        let should_refresh = {
-            let cache = self.cached_metadata.read().await;
-            match cache.as_ref() {
-                Some(cached) => cached.is_expired() || (cached.should_refresh() && cached.can_attempt_refresh()),
-                None => true,
-            }
-        };
-
-        if should_refresh {
-            if let Err(e) = self.refresh_provider_metadata().await {
-                log::warn!("Failed to refresh OIDC provider metadata: {}", e);
-                // Continue with cached data if available
-            }
-        }
-
-        let cache = self.cached_metadata.read().await;
-        match cache.as_ref() {
-            Some(cached) if !cached.is_expired() => Ok(cached.metadata.clone()),
-            Some(cached) => {
-                log::warn!("OIDC provider metadata cache has expired, but refresh failed. Using stale data.");
-                Ok(cached.metadata.clone())
-            }
-            None => Err(anyhow!("No OIDC provider metadata available and refresh failed")),
-        }
-    }
-
-    /// Refresh provider metadata from the OIDC provider
-    pub async fn refresh_provider_metadata(&self) -> anyhow::Result<()> {
-        // Mark refresh attempt to prevent excessive requests
+    /// Get the current OIDC client, refreshing if stale and possible
+    pub async fn get_client(&self) -> OidcClient {
+        // Try to refresh if cache is stale and we haven't tried recently
         {
-            let mut cache = self.cached_metadata.write().await;
-            if let Some(cached) = cache.as_mut() {
-                if !cached.can_attempt_refresh() {
-                    return Err(anyhow!("Rate limited: too soon since last refresh attempt"));
+            let cache = self.cached_provider.read().await;
+            if cache.is_stale() && cache.can_refresh() {
+                // Release read lock before attempting refresh
+                drop(cache);
+                if let Err(e) = self.refresh_provider().await {
+                    log::warn!("Failed to refresh OIDC provider: {}", e);
                 }
-                cached.mark_refresh_attempt();
             }
         }
 
-        log::debug!("Refreshing OIDC provider metadata for {}", self.config.issuer_url);
-        
-        let new_metadata = discover_provider_metadata(&self.http_client, self.config.issuer_url.clone()).await?;
-        
-        // Create new client with updated metadata
-        let new_client = make_oidc_client(&self.config, new_metadata.clone())?;
-        
-        // Update both cache and client atomically
-        let mut cache = self.cached_metadata.write().await;
-        let mut client = self.client.write().await;
-        
-        match cache.as_mut() {
-            Some(cached) => cached.update_metadata(new_metadata),
-            None => *cache = Some(CachedProviderMetadata::new(new_metadata)),
-        }
-        
-        *client = new_client;
-
-        log::debug!("Successfully refreshed OIDC provider metadata and client");
-        Ok(())
+        self.cached_provider.read().await.client.clone()
     }
 
-    /// Start background task to periodically refresh metadata
-    pub fn start_background_refresh(state: Arc<OidcState>) {
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(PROVIDER_METADATA_REFRESH_INTERVAL);
-            loop {
-                interval.tick().await;
-                if let Err(e) = state.refresh_provider_metadata().await {
-                    log::warn!("Background refresh of OIDC provider metadata failed: {}", e);
-                }
-            }
-        });
+    /// Refresh provider metadata and client from the OIDC provider
+    async fn refresh_provider(&self) -> anyhow::Result<()> {
+        let mut cache = self.cached_provider.write().await;
+
+        // Double-check we can refresh (another thread might have just done it)
+        if !cache.can_refresh() {
+            return Ok(());
+        }
+
+        cache.mark_refresh_attempt();
+
+        log::debug!(
+            "Refreshing OIDC provider metadata for {}",
+            self.config.issuer_url
+        );
+
+        let new_metadata =
+            discover_provider_metadata(&self.http_client, self.config.issuer_url.clone()).await?;
+        let new_client = make_oidc_client(&self.config, new_metadata.clone())?;
+
+        cache.update(new_client, new_metadata);
+
+        log::debug!("Successfully refreshed OIDC provider");
+        Ok(())
     }
 }
 
@@ -283,20 +225,17 @@ pub async fn initialize_oidc_state(
     };
 
     let http_client = Arc::new(make_http_client(app_config)?);
-    
+
     // Initial metadata discovery
-    let provider_metadata = discover_provider_metadata(&http_client, oidc_cfg.issuer_url.clone()).await?;
+    let provider_metadata =
+        discover_provider_metadata(&http_client, oidc_cfg.issuer_url.clone()).await?;
     let client = make_oidc_client(&oidc_cfg, provider_metadata.clone())?;
 
     let oidc_state = Arc::new(OidcState {
         config: oidc_cfg,
-        client: Arc::new(RwLock::new(client)),
-        cached_metadata: Arc::new(RwLock::new(Some(CachedProviderMetadata::new(provider_metadata)))),
+        cached_provider: Arc::new(RwLock::new(CachedProvider::new(client, provider_metadata))),
         http_client,
     });
-
-    // Start background refresh task
-    OidcState::start_background_refresh(Arc::clone(&oidc_state));
 
     Ok(Some(oidc_state))
 }
@@ -364,58 +303,51 @@ where
             oidc_state,
         }
     }
+}
 
-    fn handle_unauthenticated_request(
-        &self,
-        request: ServiceRequest,
-    ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        log::debug!("Handling unauthenticated request to {}", request.path());
-        if request.path() == SQLPAGE_REDIRECT_URI {
-            log::debug!("The request is the OIDC callback");
-            return self.handle_oidc_callback(request);
-        }
+async fn handle_unauthenticated_request<S>(
+    oidc_state: Arc<OidcState>,
+    request: ServiceRequest,
+    service: S,
+) -> Result<ServiceResponse<BoxBody>, Error>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
+{
+    log::debug!("Handling unauthenticated request to {}", request.path());
 
-        if self.oidc_state.config.is_public_path(request.path()) {
-            log::debug!(
-                "The request path {} is not in a public path, skipping OIDC authentication",
-                request.path()
-            );
-            return Box::pin(self.service.call(request));
-        }
-
-        log::debug!("Redirecting to OIDC provider");
-
-        let oidc_state = Arc::clone(&self.oidc_state);
-        Box::pin(async move {
-            let client = oidc_state.get_client().await;
-            let response = build_auth_provider_redirect_response(
-                &client,
-                &oidc_state.config,
-                &request,
-            );
-            Ok(request.into_response(response))
-        })
+    if request.path() == SQLPAGE_REDIRECT_URI {
+        log::debug!("The request is the OIDC callback");
+        return handle_oidc_callback(oidc_state, request).await;
     }
 
-    fn handle_oidc_callback(
-        &self,
-        request: ServiceRequest,
-    ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        let oidc_state = Arc::clone(&self.oidc_state);
+    if oidc_state.config.is_public_path(request.path()) {
+        log::debug!(
+            "The request path {} is public, skipping OIDC authentication",
+            request.path()
+        );
+        return service.call(request).await;
+    }
 
-        Box::pin(async move {
-            let oidc_client = oidc_state.get_client().await;
-            let query_string = request.query_string();
-            match process_oidc_callback(&oidc_client, query_string, &request).await {
-                Ok(response) => Ok(request.into_response(response)),
-                Err(e) => {
-                    log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    let resp =
-                        build_auth_provider_redirect_response(&oidc_client, &oidc_state.config, &request);
-                    Ok(request.into_response(resp))
-                }
-            }
-        })
+    log::debug!("Redirecting to OIDC provider");
+    let client = oidc_state.get_client().await;
+    let response = build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
+    Ok(request.into_response(response))
+}
+
+async fn handle_oidc_callback(
+    oidc_state: Arc<OidcState>,
+    request: ServiceRequest,
+) -> Result<ServiceResponse<BoxBody>, Error> {
+    let oidc_client = oidc_state.get_client().await;
+    let query_string = request.query_string();
+    match process_oidc_callback(&oidc_client, query_string, &request).await {
+        Ok(response) => Ok(request.into_response(response)),
+        Err(e) => {
+            log::error!("Failed to process OIDC callback with params {query_string}: {e}");
+            let resp =
+                build_auth_provider_redirect_response(&oidc_client, &oidc_state.config, &request);
+            Ok(request.into_response(resp))
+        }
     }
 }
 
@@ -433,31 +365,36 @@ where
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
 
-        let oidc_client = Arc::clone(&self.oidc_state.client);
-        match get_authenticated_user_info(&oidc_client, &request) {
-            Ok(Some(claims)) => {
-                log::trace!("Storing authenticated user info in request extensions: {claims:?}");
-                request.extensions_mut().insert(claims);
-            }
-            Ok(None) => {
-                log::trace!("No authenticated user found");
-                return self.handle_unauthenticated_request(request);
-            }
-            Err(e) => {
-                log::debug!(
-                    "{:?}",
-                    e.context(
-                        "An auth cookie is present but could not be verified. \
-                     Redirecting to OIDC provider to re-authenticate."
-                    )
-                );
-                return self.handle_unauthenticated_request(request);
-            }
-        }
-        let future = self.service.call(request);
+        let oidc_state = Arc::clone(&self.oidc_state);
+        let service = self.service.clone();
+
         Box::pin(async move {
-            let response = future.await?;
-            Ok(response)
+            let oidc_client = oidc_state.get_client().await;
+            match get_authenticated_user_info(&oidc_client, &request) {
+                Ok(Some(claims)) => {
+                    log::trace!(
+                        "Storing authenticated user info in request extensions: {claims:?}"
+                    );
+                    request.extensions_mut().insert(claims);
+                    let future = service.call(request);
+                    let response = future.await?;
+                    Ok(response)
+                }
+                Ok(None) => {
+                    log::trace!("No authenticated user found");
+                    handle_unauthenticated_request(oidc_state, request, service).await
+                }
+                Err(e) => {
+                    log::debug!(
+                        "{:?}",
+                        e.context(
+                            "An auth cookie is present but could not be verified. \
+                         Redirecting to OIDC provider to re-authenticate."
+                        )
+                    );
+                    handle_unauthenticated_request(oidc_state, request, service).await
+                }
+            }
         })
     }
 }
