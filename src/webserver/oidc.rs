@@ -171,13 +171,11 @@ pub struct OidcState {
 
 impl OidcState {
     /// Get the current OIDC client, checking if cache is stale but not attempting refresh
-    pub fn get_client(&self) -> OidcClient {
+    pub async fn get_client(&self) -> OidcClient {
         // For now, we'll use a simple approach - get the current client
         // In a production system, you might want to check if cache is stale
         // and trigger an async refresh task
-        futures_util::executor::block_on(async {
-            self.cached_provider.read().await.client.clone()
-        })
+        self.cached_provider.read().await.client.clone()
     }
 
     /// Get the current OIDC client, refreshing if stale and possible
@@ -344,7 +342,7 @@ where
         Err(e) => {
             log::error!("Failed to get HTTP client from app data: {}", e);
             // Fall back to cached client without refresh
-            let client = oidc_state.get_client();
+            let client = oidc_state.get_client().await;
             let response = build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
             return Ok(request.into_response(response));
         }
@@ -365,7 +363,7 @@ async fn handle_oidc_callback(
         Err(e) => {
             log::error!("Failed to get HTTP client from app data: {}", e);
             // Fall back to cached client without refresh
-            let oidc_client = oidc_state.get_client();
+            let oidc_client = oidc_state.get_client().await;
             let resp = build_auth_provider_redirect_response(&oidc_client, &oidc_state.config, &request);
             return Ok(request.into_response(resp));
         }
@@ -408,7 +406,7 @@ where
                 Err(e) => {
                     log::error!("Failed to get HTTP client from app data: {}", e);
                     // Fall back to cached client without refresh
-                    let oidc_client = oidc_state.get_client();
+                    let oidc_client = oidc_state.get_client().await;
                     match get_authenticated_user_info(&oidc_client, &request) {
                         Ok(Some(claims)) => {
                             log::trace!("Storing authenticated user info in request extensions: {claims:?}");
