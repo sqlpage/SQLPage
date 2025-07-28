@@ -665,12 +665,12 @@ impl OidcLoginState {
         if query.is_empty() {
             safe_path.to_string()
         } else {
-            format!("{}?{}", safe_path, query)
+            format!("{safe_path}?{query}")
         }
     }
 }
 
-fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie {
+fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie<'_> {
     let state = OidcLoginState::new(request, auth_url);
     let state_json = serde_json::to_string(&state).unwrap();
     Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
@@ -695,31 +695,27 @@ fn validate_redirect_url(url: &str) -> String {
     if url.starts_with('/') && !url.starts_with("//") {
         url.to_string()
     } else {
-        log::warn!(
-            "Invalid redirect URL '{}', redirecting to root instead",
-            url
-        );
+        log::warn!("Invalid redirect URL '{url}', redirecting to root instead");
         "/".to_string()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{validate_redirect_url, AuthUrlParams, OidcLoginState};
     use actix_web::{http::Method, test};
+    use openidconnect::{CsrfToken, Nonce};
 
     #[test]
-    fn test_build_safe_redirect_url_with_query_params() {
-        let req = test::TestRequest::with_uri("/page.sql?param=1&param2=value")
-            .method(Method::GET)
-            .to_srv_request();
+    async fn test_build_safe_redirect_url_with_query_params() {
+        let req = test::TestRequest::with_uri("/page.sql?param=1&param2=value").to_srv_request();
 
         let result = OidcLoginState::build_safe_redirect_url(&req);
         assert_eq!(result, "/page.sql?param=1&param2=value");
     }
 
     #[test]
-    fn test_build_safe_redirect_url_without_query_params() {
+    async fn test_build_safe_redirect_url_without_query_params() {
         let req = test::TestRequest::with_uri("/page.sql")
             .method(Method::GET)
             .to_srv_request();
@@ -729,7 +725,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_safe_redirect_url_with_special_characters() {
+    async fn test_build_safe_redirect_url_with_special_characters() {
         let req = test::TestRequest::with_uri("/page.sql?param=hello%20world&special=%26%3D")
             .method(Method::GET)
             .to_srv_request();
@@ -739,19 +735,19 @@ mod tests {
     }
 
     #[test]
-    fn test_build_safe_redirect_url_handles_non_absolute_paths() {
-        // TestRequest with relative path not starting with '/'
+    async fn test_build_safe_redirect_url_handles_root_path() {
+        // TestRequest with invalid relative path defaults to "/"
         let req = test::TestRequest::with_uri("page.sql")
             .method(Method::GET)
             .to_srv_request();
 
         let result = OidcLoginState::build_safe_redirect_url(&req);
-        // Should work fine since TestRequest normalizes to absolute path
-        assert_eq!(result, "/page.sql");
+        // TestRequest normalizes invalid URI to root path
+        assert_eq!(result, "/");
     }
 
     #[test]
-    fn test_validate_redirect_url_valid_paths() {
+    async fn test_validate_redirect_url_valid_paths() {
         assert_eq!(validate_redirect_url("/page.sql"), "/page.sql");
         assert_eq!(
             validate_redirect_url("/page.sql?param=1"),
@@ -762,7 +758,7 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_redirect_url_invalid_paths() {
+    async fn test_validate_redirect_url_invalid_paths() {
         // Protocol-relative URLs are dangerous
         assert_eq!(validate_redirect_url("//evil.com/path"), "/");
 
@@ -775,7 +771,7 @@ mod tests {
     }
 
     #[test]
-    fn test_oidc_login_state_preserves_query_parameters() {
+    async fn test_oidc_login_state_preserves_query_parameters() {
         let req = test::TestRequest::with_uri("/dashboard.sql?user_id=123&filter=active")
             .method(Method::GET)
             .to_srv_request();
