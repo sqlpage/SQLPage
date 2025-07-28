@@ -252,6 +252,30 @@ where
             }
         })
     }
+
+    fn handle_authenticated_oidc_callback(
+        &self,
+        request: ServiceRequest,
+    ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+        Box::pin(async move {
+            log::debug!("Handling OIDC callback for already authenticated user");
+            
+            // Try to get the initial URL from the state cookie
+            let redirect_url = match get_state_from_cookie(&request) {
+                Ok(state) => {
+                    log::debug!("Found initial URL in state: {}", state.initial_url);
+                    state.initial_url
+                }
+                Err(e) => {
+                    log::debug!("Could not get state from cookie (user might have been redirected from elsewhere): {e}. Redirecting to /");
+                    "/".to_string()
+                }
+            };
+            
+            let response = build_redirect_response(redirect_url);
+            Ok(request.into_response(response))
+        })
+    }
 }
 
 impl<S> Service<ServiceRequest> for OidcService<S>
@@ -267,6 +291,12 @@ where
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
+
+        // Handle OIDC callback URL even for authenticated users
+        if request.path() == SQLPAGE_REDIRECT_URI {
+            log::debug!("The request is the OIDC callback for an authenticated user");
+            return self.handle_authenticated_oidc_callback(request);
+        }
 
         let oidc_client = Arc::clone(&self.oidc_state.client);
         match get_authenticated_user_info(&oidc_client, &request) {
