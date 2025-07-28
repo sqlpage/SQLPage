@@ -254,12 +254,11 @@ where
     }
 
     fn handle_authenticated_oidc_callback(
-        &self,
         request: ServiceRequest,
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
         Box::pin(async move {
             log::debug!("Handling OIDC callback for already authenticated user");
-            
+
             // Try to get the initial URL from the state cookie
             let redirect_url = match get_state_from_cookie(&request) {
                 Ok(state) => {
@@ -271,7 +270,7 @@ where
                     "/".to_string()
                 }
             };
-            
+
             let response = build_redirect_response(redirect_url);
             Ok(request.into_response(response))
         })
@@ -295,7 +294,7 @@ where
         // Handle OIDC callback URL even for authenticated users
         if request.path() == SQLPAGE_REDIRECT_URI {
             log::debug!("The request is the OIDC callback for an authenticated user");
-            return self.handle_authenticated_oidc_callback(request);
+            return Self::handle_authenticated_oidc_callback(request);
         }
 
         let oidc_client = Arc::clone(&self.oidc_state.client);
@@ -680,7 +679,7 @@ impl OidcLoginState {
     }
 }
 
-fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie {
+fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie<'_> {
     let state = OidcLoginState::new(request, auth_url);
     let state_json = serde_json::to_string(&state).unwrap();
     Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
