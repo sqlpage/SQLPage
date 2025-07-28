@@ -1,0 +1,32 @@
+# Example SQLPage configuration for providers with multiple audiences
+# This configuration shows how to handle OIDC providers like ZITADEL, Azure AD, etc.
+# that include multiple audience values in their JWT tokens.
+
+oidc_issuer_url: https://your-provider.example.com
+oidc_client_id: sqlpage
+oidc_client_secret: your-client-secret-here
+
+# Option 1: Default behavior (comment out or omit this line)
+# By default, SQLPage allows any additional audiences for maximum compatibility
+# This works with most providers that add multiple audiences
+# oidc_additional_trusted_audiences: 
+
+# Option 2: Strict mode - only allow client ID as audience
+# Uncomment the line below to only allow your client ID in the audience
+# oidc_additional_trusted_audiences: []
+
+# Option 3: Specific trusted audiences
+# Only allow specific additional audiences beyond your client ID
+oidc_additional_trusted_audiences:
+  - api.yourapp.com
+  - service.yourapp.com
+  - mobile.yourapp.com
+
+# Standard path protection configuration
+oidc_protected_paths:
+  - /protected
+oidc_public_paths:
+  - /protected/public
+
+# Host configuration for redirect URLs
+host: localhost:8080

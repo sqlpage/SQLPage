@@ -74,6 +74,29 @@ The configuration parameters are:
 - `oidc_client_secret`: The secret key for your SQLPage application
 - `host`: The web address where your application is accessible
 
+#### Handling Multiple Audiences
+
+Some OIDC providers (like ZITADEL, Azure AD, etc.) include multiple audience values in their JWT tokens. SQLPage handles this automatically by default, allowing any additional audiences as long as your client ID is present in the audience list.
+
+If you need more control over which audiences are trusted, you can configure this:
+
+```json
+{
+  "oidc_issuer_url": "https://your-provider.com",
+  "oidc_client_id": "your-client-id",
+  "oidc_client_secret": "your-client-secret",
+  "host": "localhost:8080",
+  "oidc_additional_trusted_audiences": ["api.yourapp.com", "service.yourapp.com"]
+}
+```
+
+Audience configuration options:
+- **Not set (default)**: Allow any additional audiences for maximum compatibility
+- **Empty array `[]`**: Only allow your client ID as audience (strictest security)
+- **Specific list**: Only allow the listed additional audiences plus your client ID
+
+This is particularly useful for enterprise environments where tokens may contain multiple services as audiences.
+
 ### Accessing User Information
 
 Once OIDC is configured, you can access information about the authenticated user in your SQL files using these functions:

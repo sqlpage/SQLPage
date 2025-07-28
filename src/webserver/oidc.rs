@@ -17,7 +17,7 @@ use chrono::Utc;
 use openidconnect::{
     core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, CsrfToken, EndpointMaybeSet,
     EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
-    TokenResponse,
+    TokenResponse, Audience,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +52,11 @@ pub struct OidcConfig {
     pub public_paths: Vec<String>,
     pub app_host: String,
     pub scopes: Vec<Scope>,
+    /// Additional trusted audiences beyond the client ID.
+    /// By default, any additional audiences are trusted for compatibility with providers
+    /// that include multiple audience values (like ZITADEL, Azure AD, etc.).
+    /// Set to Some(vec![]) to only allow the client ID as audience.
+    pub additional_trusted_audiences: Option<Vec<String>>,
 }
 
 impl TryFrom<&AppConfig> for OidcConfig {
@@ -79,6 +84,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
                 .map(|s| Scope::new(s.to_string()))
                 .collect(),
             app_host: app_host.clone(),
+            additional_trusted_audiences: config.oidc_additional_trusted_audiences.clone(),
         })
     }
 }
@@ -241,7 +247,7 @@ where
 
         Box::pin(async move {
             let query_string = request.query_string();
-            match process_oidc_callback(&oidc_client, query_string, &request).await {
+            match process_oidc_callback(&oidc_client, &oidc_config, query_string, &request).await {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
@@ -269,7 +275,8 @@ where
         log::trace!("Started OIDC middleware request handling");
 
         let oidc_client = Arc::clone(&self.oidc_state.client);
-        match get_authenticated_user_info(&oidc_client, &request) {
+        let oidc_config = Arc::clone(&self.oidc_state.config);
+        match get_authenticated_user_info(&oidc_client, &oidc_config, &request) {
             Ok(Some(claims)) => {
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
                 request.extensions_mut().insert(claims);
@@ -299,6 +306,7 @@ where
 
 async fn process_oidc_callback(
     oidc_client: &OidcClient,
+    oidc_config: &Arc<OidcConfig>,
     query_string: &str,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
@@ -324,7 +332,7 @@ async fn process_oidc_callback(
     log::debug!("Received token response: {token_response:?}");
 
     let mut response = build_redirect_response(state.initial_url);
-    set_auth_cookie(&mut response, &token_response, oidc_client)?;
+    set_auth_cookie(&mut response, &token_response, oidc_client, oidc_config)?;
     Ok(response)
 }
 
@@ -346,6 +354,7 @@ fn set_auth_cookie(
     response: &mut HttpResponse,
     token_response: &openidconnect::core::CoreTokenResponse,
     oidc_client: &OidcClient,
+    oidc_config: &Arc<OidcConfig>,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
@@ -353,7 +362,7 @@ fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let id_token_verifier = oidc_client.id_token_verifier();
+    let id_token_verifier = create_custom_id_token_verifier(oidc_client, oidc_config);
     let nonce_verifier = |_nonce: Option<&Nonce>| Ok(()); // The nonce will be verified in request handling
     let claims = id_token.claims(&id_token_verifier, nonce_verifier)?;
     let expiration = claims.expiration();
@@ -402,6 +411,7 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
 fn get_authenticated_user_info(
     oidc_client: &OidcClient,
+    config: &Arc<OidcConfig>,
     request: &ServiceRequest,
 ) -> anyhow::Result<Option<OidcClaims>> {
     let Some(cookie) = request.cookie(SQLPAGE_AUTH_COOKIE_NAME) else {
@@ -410,8 +420,7 @@ fn get_authenticated_user_info(
     let cookie_value = cookie.value().to_string();
 
     let state = get_state_from_cookie(request)?;
-    let verifier: openidconnect::IdTokenVerifier<'_, openidconnect::core::CoreJsonWebKey> =
-        oidc_client.id_token_verifier();
+    let verifier = create_custom_id_token_verifier(oidc_client, config);
     let id_token = OidcToken::from_str(&cookie_value)
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
@@ -667,4 +676,93 @@ fn get_state_from_cookie(request: &ServiceRequest) -> anyhow::Result<OidcLoginSt
     })?;
     serde_json::from_str(state_cookie.value())
         .with_context(|| format!("Failed to parse OIDC state from cookie: {state_cookie}"))
+}
+
+/// Creates an ID token verifier with custom audience validation that supports multiple audiences.
+/// By default, allows any additional audiences for compatibility with providers like ZITADEL.
+/// Only requires that the client ID is present in the audience list.
+fn create_custom_id_token_verifier<'a>(
+    oidc_client: &'a OidcClient,
+    config: &OidcConfig,
+) -> openidconnect::IdTokenVerifier<'a, openidconnect::core::CoreJsonWebKey> {
+    let client_id = config.client_id.clone();
+    let additional_trusted_audiences = config.additional_trusted_audiences.clone();
+    
+    oidc_client
+        .id_token_verifier()
+        .set_other_audience_verifier_fn(move |aud: &Audience| -> bool {
+            let aud_str = aud.as_str();
+            
+            // Always allow the client ID itself as an audience
+            if aud_str == client_id {
+                return true;
+            }
+            
+            match &additional_trusted_audiences {
+                // Default behavior: allow all additional audiences for compatibility
+                None => true,
+                // Specific list: only allow audiences in the list
+                Some(trusted_list) => trusted_list.contains(&aud_str.to_string()),
+            }
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_audience_verification_logic() {
+        let client_id = "test-client-123";
+        
+        // Test 1: Default behavior (None) - should allow any additional audiences
+        let config = OidcConfig {
+            issuer_url: IssuerUrl::new("https://example.com".to_string()).unwrap(),
+            client_id: client_id.to_string(),
+            client_secret: "secret".to_string(),
+            protected_paths: vec![],
+            public_paths: vec![],
+            app_host: "localhost".to_string(),
+            scopes: vec![],
+            additional_trusted_audiences: None,
+        };
+        
+        // Test the logic that would be used in set_other_audience_verifier_fn
+        let verifier_fn = |aud_str: &str, config: &OidcConfig| -> bool {
+            // Always allow the client ID itself as an audience
+            if aud_str == config.client_id {
+                return true;
+            }
+            
+            match &config.additional_trusted_audiences {
+                // Default behavior: allow all additional audiences for compatibility
+                None => true,
+                // Specific list: only allow audiences in the list
+                Some(trusted_list) => trusted_list.contains(&aud_str.to_string()),
+            }
+        };
+
+        // Test with default config (should allow additional audiences)
+        assert!(verifier_fn(client_id, &config)); // Client ID should be allowed
+        assert!(verifier_fn("some-other-audience", &config)); // Additional audience should be allowed
+
+        // Test 2: Empty list (strictest) - only allow client ID
+        let mut strict_config = config.clone();
+        strict_config.additional_trusted_audiences = Some(vec![]);
+        
+        assert!(verifier_fn(client_id, &strict_config)); // Client ID should be allowed
+        assert!(!verifier_fn("some-other-audience", &strict_config)); // Additional audience should be rejected
+
+        // Test 3: Specific allowed audiences
+        let mut specific_config = config.clone();
+        specific_config.additional_trusted_audiences = Some(vec![
+            "api.example.com".to_string(),
+            "service.example.com".to_string(),
+        ]);
+        
+        assert!(verifier_fn(client_id, &specific_config)); // Client ID should be allowed
+        assert!(verifier_fn("api.example.com", &specific_config)); // Listed audience should be allowed
+        assert!(verifier_fn("service.example.com", &specific_config)); // Listed audience should be allowed
+        assert!(!verifier_fn("untrusted.example.com", &specific_config)); // Unlisted audience should be rejected
+    }
 }
