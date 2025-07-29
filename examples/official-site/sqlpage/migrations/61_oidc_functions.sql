@@ -151,22 +151,6 @@ If you''re not getting the information you expect:
 4. Check your OIDC provider''s documentation for the exact claim names they use
 
 Remember: If the user is not logged in or the requested information is not available, this function returns NULL.
-
-## Handling Multiple Audiences
-
-Some OpenID Connect providers (like ZITADEL, Azure AD, etc.) include multiple audience values in their JWT tokens. 
-SQLPage handles this automatically by default, allowing any additional audiences as long as your client ID is present in the audience list.
-
-If you need to restrict which additional audiences are trusted, you can configure this in your `sqlpage.json`:
-
-```json
-{
-  "oidc_additional_trusted_audiences": ["api.example.com", "service.example.com"]
-}
-```
-
-Set `oidc_additional_trusted_audiences` to an empty array `[]` to only allow your client ID as the audience (strictest security).
-Leave it unset (default) to allow any additional audiences (maximum compatibility).
 '
     );
 
