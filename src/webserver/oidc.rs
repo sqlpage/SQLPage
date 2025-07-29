@@ -291,17 +291,17 @@ where
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
 
-        // Handle OIDC callback URL even for authenticated users
-        if request.path() == SQLPAGE_REDIRECT_URI {
-            log::debug!("The request is the OIDC callback for an authenticated user");
-            return Self::handle_authenticated_oidc_callback(request);
-        }
-
         let oidc_client = Arc::clone(&self.oidc_state.client);
         match get_authenticated_user_info(&oidc_client, &request) {
             Ok(Some(claims)) => {
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
                 request.extensions_mut().insert(claims);
+                
+                // Handle OIDC callback URL for authenticated users
+                if request.path() == SQLPAGE_REDIRECT_URI {
+                    log::debug!("The request is the OIDC callback for an authenticated user");
+                    return Self::handle_authenticated_oidc_callback(request);
+                }
             }
             Ok(None) => {
                 log::trace!("No authenticated user found");
