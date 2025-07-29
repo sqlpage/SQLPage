@@ -254,6 +254,19 @@ where
     }
 }
 
+/// When an user has already authenticated (potentially in another tab), we ignore the callback and redirect to the initial URL.
+fn handle_authenticated_oidc_callback(
+    request: ServiceRequest,
+) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+    let redirect_url = match get_state_from_cookie(&request) {
+        Ok(state) => state.initial_url,
+        Err(_) => "/".to_string(),
+    };
+    log::debug!("OIDC callback received for authenticated user. Redirecting to {redirect_url}");
+    let response = request.into_response(build_redirect_response(redirect_url));
+    Box::pin(ready(Ok(response)))
+}
+
 impl<S> Service<ServiceRequest> for OidcService<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
@@ -271,6 +284,9 @@ where
         let oidc_client = Arc::clone(&self.oidc_state.client);
         match get_authenticated_user_info(&oidc_client, &request) {
             Ok(Some(claims)) => {
+                if request.path() == SQLPAGE_REDIRECT_URI {
+                    return handle_authenticated_oidc_callback(request);
+                }
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
                 request.extensions_mut().insert(claims);
             }
