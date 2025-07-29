@@ -1,7 +1,7 @@
 set user_email = sqlpage.user_info('email');
 
 select 'shell' as component, 'My secure app' as title,
-    'logout' as menu_item;
+    json_object('title', 'Log Out', 'link', '/logout') as menu_item;
 
 select 'text' as component,
     'You''re in, '|| sqlpage.user_info('name') || ' !' as title,
