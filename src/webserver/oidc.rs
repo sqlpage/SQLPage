@@ -296,7 +296,7 @@ where
             Ok(Some(claims)) => {
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
                 request.extensions_mut().insert(claims);
-                
+
                 // Handle OIDC callback URL for authenticated users
                 if request.path() == SQLPAGE_REDIRECT_URI {
                     log::debug!("The request is the OIDC callback for an authenticated user");
