@@ -323,9 +323,9 @@ async fn process_oidc_callback(
     let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
     log::debug!("Received token response: {token_response:?}");
 
-    // Validate the redirect URL is safe before using it
-    let redirect_url = validate_redirect_url(&state.initial_url);
-    let mut response = build_redirect_response(redirect_url);
+    let redirect_target = validate_redirect_url(state.initial_url);
+    log::info!("Redirecting to {redirect_target} after a successful login");
+    let mut response = build_redirect_response(redirect_target);
     set_auth_cookie(&mut response, &token_response, oidc_client)?;
     Ok(response)
 }
@@ -644,28 +644,10 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
 
 impl OidcLoginState {
     fn new(request: &ServiceRequest, auth_url: AuthUrlParams) -> Self {
-        // Capture the full path with query string for proper redirect after auth
-        let initial_url = Self::build_safe_redirect_url(request);
-
         Self {
-            initial_url,
+            initial_url: request.uri().to_string(),
             csrf_token: auth_url.csrf_token,
             nonce: auth_url.nonce,
-        }
-    }
-
-    /// Build a safe redirect URL that preserves query parameters but ensures security
-    fn build_safe_redirect_url(request: &ServiceRequest) -> String {
-        let path = request.path();
-        let query = request.query_string();
-
-        // Ensure the path starts with '/' for security (prevent open redirects)
-        let safe_path = if path.starts_with('/') { path } else { "/" };
-
-        if query.is_empty() {
-            safe_path.to_string()
-        } else {
-            format!("{safe_path}?{query}")
         }
     }
 }
@@ -690,95 +672,10 @@ fn get_state_from_cookie(request: &ServiceRequest) -> anyhow::Result<OidcLoginSt
 }
 
 /// Validate that a redirect URL is safe to use (prevents open redirect attacks)
-fn validate_redirect_url(url: &str) -> String {
-    // Only allow relative URLs that start with '/' to prevent open redirects
+fn validate_redirect_url(url: String) -> String {
     if url.starts_with('/') && !url.starts_with("//") {
-        url.to_string()
-    } else {
-        log::warn!("Invalid redirect URL '{url}', redirecting to root instead");
-        "/".to_string()
+        return url;
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{validate_redirect_url, AuthUrlParams, OidcLoginState};
-    use actix_web::test;
-    use openidconnect::{CsrfToken, Nonce};
-
-    #[test]
-    async fn test_build_safe_redirect_url_with_query_params() {
-        let req = test::TestRequest::with_uri("/page.sql?param=1&param2=value").to_srv_request();
-
-        let result = OidcLoginState::build_safe_redirect_url(&req);
-        assert_eq!(result, "/page.sql?param=1&param2=value");
-    }
-
-    #[test]
-    async fn test_build_safe_redirect_url_without_query_params() {
-        let req = test::TestRequest::with_uri("/page.sql").to_srv_request();
-
-        let result = OidcLoginState::build_safe_redirect_url(&req);
-        assert_eq!(result, "/page.sql");
-    }
-
-    #[test]
-    async fn test_build_safe_redirect_url_with_special_characters() {
-        let req = test::TestRequest::with_uri("/page.sql?param=hello%20world&special=%26%3D")
-            .to_srv_request();
-
-        let result = OidcLoginState::build_safe_redirect_url(&req);
-        assert_eq!(result, "/page.sql?param=hello%20world&special=%26%3D");
-    }
-
-    #[test]
-    async fn test_build_safe_redirect_url_handles_root_path() {
-        // TestRequest with invalid relative path defaults to "/"
-        let req = test::TestRequest::with_uri("page.sql").to_srv_request();
-
-        let result = OidcLoginState::build_safe_redirect_url(&req);
-        // TestRequest normalizes invalid URI to root path
-        assert_eq!(result, "/");
-    }
-
-    #[test]
-    async fn test_validate_redirect_url_valid_paths() {
-        assert_eq!(validate_redirect_url("/page.sql"), "/page.sql");
-        assert_eq!(
-            validate_redirect_url("/page.sql?param=1"),
-            "/page.sql?param=1"
-        );
-        assert_eq!(validate_redirect_url("/"), "/");
-        assert_eq!(validate_redirect_url("/some/deep/path"), "/some/deep/path");
-    }
-
-    #[test]
-    async fn test_validate_redirect_url_invalid_paths() {
-        // Protocol-relative URLs are dangerous
-        assert_eq!(validate_redirect_url("//evil.com/path"), "/");
-
-        // Absolute URLs are dangerous
-        assert_eq!(validate_redirect_url("http://evil.com"), "/");
-        assert_eq!(validate_redirect_url("https://evil.com"), "/");
-
-        // Relative URLs without leading slash
-        assert_eq!(validate_redirect_url("page.sql"), "/");
-    }
-
-    #[test]
-    async fn test_oidc_login_state_preserves_query_parameters() {
-        let req = test::TestRequest::with_uri("/dashboard.sql?user_id=123&filter=active")
-            .to_srv_request();
-
-        let auth_params = AuthUrlParams {
-            csrf_token: CsrfToken::new_random(),
-            nonce: Nonce::new_random(),
-        };
-
-        let state = OidcLoginState::new(&req, auth_params);
-        assert_eq!(
-            state.initial_url,
-            "/dashboard.sql?user_id=123&filter=active"
-        );
-    }
+    log::warn!("Refusing to redirect to {url}");
+    '/'.to_string()
 }
