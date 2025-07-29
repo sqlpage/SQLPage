@@ -679,7 +679,7 @@ impl OidcLoginState {
     }
 }
 
-fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie<'_> {
+fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie {
     let state = OidcLoginState::new(request, auth_url);
     let state_json = serde_json::to_string(&state).unwrap();
     Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
