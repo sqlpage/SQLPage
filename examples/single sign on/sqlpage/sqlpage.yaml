@@ -1,7 +1,6 @@
-oidc_issuer_url: http://localhost:8181/realms/sqlpage_demo
-oidc_client_id: sqlpage
+oidc_issuer_url: http://localhost:8181/realms/sqlpage_demo # Given by keycloak as the "OpenID Endpoint Configuration" url.
+oidc_client_id: sqlpage # configured in keycloak (http://localhost:8181/admin/master/console/#/sqlpage_demo/clients/a2bec2b8-f850-405e-9f26-59063ffa6f08/settings)
 oidc_client_secret: qiawfnYrYzsmoaOZT28rRjPPRamfvrYr # For a safer setup, use environment variables to store this
-oidc_protected_paths:
-  - /protected # Makes the website root is publicly accessible, requiring authentication only for the /protected path
-oidc_public_paths:
-  - /protected/public # Adds an exception for the /protected/public path, which is publicly accessible too
+oidc_protected_paths: ["/protected"] # Makes the website root is publicly accessible, requiring authentication only for the /protected path
+oidc_public_paths: ["/protected/public"] # Adds an exception for the /protected/public path, which is publicly accessible too
+oidc_additional_trusted_audiences: [] # For increased security, reject any token that has more than just the client ID in the "aud" claim
