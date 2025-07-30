@@ -170,12 +170,16 @@ pub struct OidcState {
 }
 
 impl OidcState {
-    /// Get the current OIDC client, checking if cache is stale but not attempting refresh
+    /// Get the current OIDC client without attempting refresh
     pub async fn get_client(&self) -> OidcClient {
-        // For now, we'll use a simple approach - get the current client
-        // In a production system, you might want to check if cache is stale
-        // and trigger an async refresh task
-        self.cached_provider.read().await.client.clone()
+        let cache = self.cached_provider.read().await;
+        if cache.is_stale() {
+            log::warn!(
+                "OIDC provider metadata is stale (age: {:?}). Consider using get_client_with_refresh() for automatic refresh.",
+                cache.age()
+            );
+        }
+        cache.client.clone()
     }
 
     /// Get the current OIDC client, refreshing if stale and possible
