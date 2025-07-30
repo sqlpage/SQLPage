@@ -335,7 +335,7 @@ where
     }
 
     log::debug!("Redirecting to OIDC provider");
-    
+
     // Get HTTP client from app data for potential cache refresh
     let http_client = match get_http_client_from_appdata(&request) {
         Ok(client) => client,
@@ -343,11 +343,12 @@ where
             log::error!("Failed to get HTTP client from app data: {}", e);
             // Fall back to cached client without refresh
             let client = oidc_state.get_client().await;
-            let response = build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
+            let response =
+                build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
             return Ok(request.into_response(response));
         }
     };
-    
+
     let client = oidc_state.get_client_with_refresh(http_client).await;
     let response = build_auth_provider_redirect_response(&client, &oidc_state.config, &request);
     Ok(request.into_response(response))
@@ -364,11 +365,12 @@ async fn handle_oidc_callback(
             log::error!("Failed to get HTTP client from app data: {}", e);
             // Fall back to cached client without refresh
             let oidc_client = oidc_state.get_client().await;
-            let resp = build_auth_provider_redirect_response(&oidc_client, &oidc_state.config, &request);
+            let resp =
+                build_auth_provider_redirect_response(&oidc_client, &oidc_state.config, &request);
             return Ok(request.into_response(resp));
         }
     };
-    
+
     let oidc_client = oidc_state.get_client_with_refresh(http_client).await;
     let query_string = request.query_string();
     match process_oidc_callback(&oidc_client, query_string, &request).await {
@@ -409,14 +411,17 @@ where
                     let oidc_client = oidc_state.get_client().await;
                     match get_authenticated_user_info(&oidc_client, &request) {
                         Ok(Some(claims)) => {
-                            log::trace!("Storing authenticated user info in request extensions: {claims:?}");
+                            log::trace!(
+                                "Storing authenticated user info in request extensions: {claims:?}"
+                            );
                             request.extensions_mut().insert(claims);
                             let future = service.call(request);
                             return future.await;
                         }
                         Ok(None) => {
                             log::trace!("No authenticated user found");
-                            return handle_unauthenticated_request(oidc_state, request, service).await;
+                            return handle_unauthenticated_request(oidc_state, request, service)
+                                .await;
                         }
                         Err(e) => {
                             log::debug!(
@@ -426,12 +431,13 @@ where
                                  Redirecting to OIDC provider to re-authenticate."
                                 )
                             );
-                            return handle_unauthenticated_request(oidc_state, request, service).await;
+                            return handle_unauthenticated_request(oidc_state, request, service)
+                                .await;
                         }
                     }
                 }
             };
-            
+
             let oidc_client = oidc_state.get_client_with_refresh(http_client).await;
             match get_authenticated_user_info(&oidc_client, &request) {
                 Ok(Some(claims)) => {
