@@ -269,6 +269,19 @@ where
     }
 }
 
+/// When an user has already authenticated (potentially in another tab), we ignore the callback and redirect to the initial URL.
+fn handle_authenticated_oidc_callback(
+    request: ServiceRequest,
+) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+    let redirect_url = match get_state_from_cookie(&request) {
+        Ok(state) => state.initial_url,
+        Err(_) => "/".to_string(),
+    };
+    log::debug!("OIDC callback received for authenticated user. Redirecting to {redirect_url}");
+    let response = request.into_response(build_redirect_response(redirect_url));
+    Box::pin(ready(Ok(response)))
+}
+
 impl<S> Service<ServiceRequest> for OidcService<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
@@ -287,6 +300,9 @@ where
         let oidc_config = Arc::clone(&self.oidc_state.config);
         match get_authenticated_user_info(&oidc_client, &oidc_config, &request) {
             Ok(Some(claims)) => {
+                if request.path() == SQLPAGE_REDIRECT_URI {
+                    return handle_authenticated_oidc_callback(request);
+                }
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
                 request.extensions_mut().insert(claims);
             }
@@ -340,7 +356,9 @@ async fn process_oidc_callback(
     let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
     log::debug!("Received token response: {token_response:?}");
 
-    let mut response = build_redirect_response(state.initial_url);
+    let redirect_target = validate_redirect_url(state.initial_url);
+    log::info!("Redirecting to {redirect_target} after a successful login");
+    let mut response = build_redirect_response(redirect_target);
     set_auth_cookie(&mut response, &token_response, oidc_client, oidc_config)?;
     Ok(response)
 }
@@ -661,7 +679,7 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
 impl OidcLoginState {
     fn new(request: &ServiceRequest, auth_url: AuthUrlParams) -> Self {
         Self {
-            initial_url: request.path().to_string(),
+            initial_url: request.uri().to_string(),
             csrf_token: auth_url.csrf_token,
             nonce: auth_url.nonce,
         }
@@ -708,4 +726,13 @@ impl AudienceVerifier {
             trusted_set.contains(aud.as_str())
         }
     }
+}
+
+/// Validate that a redirect URL is safe to use (prevents open redirect attacks)
+fn validate_redirect_url(url: String) -> String {
+    if url.starts_with('/') && !url.starts_with("//") {
+        return url;
+    }
+    log::warn!("Refusing to redirect to {url}");
+    '/'.to_string()
 }
