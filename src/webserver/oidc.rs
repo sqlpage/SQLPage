@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::future::ready;
 use std::{
     future::Future,
@@ -21,7 +22,7 @@ use anyhow::{anyhow, Context};
 use awc::Client;
 use chrono::Utc;
 use openidconnect::{
-    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, CsrfToken, EndpointMaybeSet,
+    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndpointMaybeSet,
     EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
     TokenResponse,
 };
@@ -35,6 +36,20 @@ type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
 const SQLPAGE_STATE_COOKIE_NAME: &str = "sqlpage_oidc_state";
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct OidcAdditionalClaims(pub(crate) serde_json::Map<String, serde_json::Value>);
+
+impl openidconnect::AdditionalClaims for OidcAdditionalClaims {}
+type OidcToken = openidconnect::IdToken<
+    OidcAdditionalClaims,
+    openidconnect::core::CoreGenderClaim,
+    openidconnect::core::CoreJweContentEncryptionAlgorithm,
+    openidconnect::core::CoreJwsSigningAlgorithm,
+>;
+pub type OidcClaims =
+    openidconnect::IdTokenClaims<OidcAdditionalClaims, openidconnect::core::CoreGenderClaim>;
 
 // Cache configuration based on industry best practices
 const PROVIDER_METADATA_CACHE_DURATION: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours
@@ -78,19 +93,28 @@ impl CachedProvider {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct OidcAdditionalClaims(pub(crate) serde_json::Map<String, serde_json::Value>);
+/// Given an audience, verify if it is trusted. The `client_id` is always trusted, independently of this function.
+#[derive(Clone, Debug)]
+pub struct AudienceVerifier(Option<HashSet<String>>);
 
-impl openidconnect::AdditionalClaims for OidcAdditionalClaims {}
-type OidcToken = openidconnect::IdToken<
-    OidcAdditionalClaims,
-    openidconnect::core::CoreGenderClaim,
-    openidconnect::core::CoreJweContentEncryptionAlgorithm,
-    openidconnect::core::CoreJwsSigningAlgorithm,
->;
-pub type OidcClaims =
-    openidconnect::IdTokenClaims<OidcAdditionalClaims, openidconnect::core::CoreGenderClaim>;
+impl AudienceVerifier {
+    /// JWT audiences (aud claim) are always required to contain the `client_id`, but they can also contain additional audiences.
+    /// By default we allow any additional audience.
+    /// The user can restrict the allowed additional audiences by providing a list of trusted audiences.
+    fn new(additional_trusted_audiences: Option<Vec<String>>) -> Self {
+        AudienceVerifier(additional_trusted_audiences.map(HashSet::from_iter))
+    }
+
+    /// Returns a function that given an audience, verifies if it is trusted.
+    fn as_fn(&self) -> impl Fn(&Audience) -> bool + '_ {
+        move |aud: &Audience| -> bool {
+            let Some(trusted_set) = &self.0 else {
+                return true;
+            };
+            trusted_set.contains(aud.as_str())
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
@@ -101,6 +125,7 @@ pub struct OidcConfig {
     pub public_paths: Vec<String>,
     pub app_host: String,
     pub scopes: Vec<Scope>,
+    pub additional_audience_verifier: AudienceVerifier,
 }
 
 impl TryFrom<&AppConfig> for OidcConfig {
@@ -128,6 +153,9 @@ impl TryFrom<&AppConfig> for OidcConfig {
                 .map(|s| Scope::new(s.to_string()))
                 .collect(),
             app_host: app_host.clone(),
+            additional_audience_verifier: AudienceVerifier::new(
+                config.oidc_additional_trusted_audiences.clone(),
+            ),
         })
     }
 }
@@ -137,6 +165,16 @@ impl OidcConfig {
     pub fn is_public_path(&self, path: &str) -> bool {
         !self.protected_paths.iter().any(|p| path.starts_with(p))
             || self.public_paths.iter().any(|p| path.starts_with(p))
+    }
+
+    /// Creates a custom ID token verifier that supports multiple issuers
+    fn create_id_token_verifier<'a>(
+        &'a self,
+        oidc_client: &'a OidcClient,
+    ) -> openidconnect::IdTokenVerifier<'a, openidconnect::core::CoreJsonWebKey> {
+        oidc_client
+            .id_token_verifier()
+            .set_other_audience_verifier_fn(self.additional_audience_verifier.as_fn())
     }
 }
 
@@ -377,7 +415,7 @@ async fn handle_oidc_callback(
 
     let oidc_client = oidc_state.get_client_with_refresh(http_client).await;
     let query_string = request.query_string();
-    match process_oidc_callback(&oidc_client, query_string, &request).await {
+    match process_oidc_callback(&oidc_client, &oidc_state.config, query_string, &request).await {
         Ok(response) => Ok(request.into_response(response)),
         Err(e) => {
             log::error!("Failed to process OIDC callback with params {query_string}: {e}");
@@ -386,6 +424,19 @@ async fn handle_oidc_callback(
             Ok(request.into_response(resp))
         }
     }
+}
+
+/// When an user has already authenticated (potentially in another tab), we ignore the callback and redirect to the initial URL.
+fn handle_authenticated_oidc_callback(
+    request: ServiceRequest,
+) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+    let redirect_url = match get_state_from_cookie(&request) {
+        Ok(state) => state.initial_url,
+        Err(_) => "/".to_string(),
+    };
+    log::debug!("OIDC callback received for authenticated user. Redirecting to {redirect_url}");
+    let response = request.into_response(build_redirect_response(redirect_url));
+    Box::pin(ready(Ok(response)))
 }
 
 impl<S> Service<ServiceRequest> for OidcService<S>
@@ -404,7 +455,6 @@ where
 
         let oidc_state = Arc::clone(&self.oidc_state);
         let service = self.service.clone();
-
         Box::pin(async move {
             // Get HTTP client from app data for potential cache refresh
             let http_client = match get_http_client_from_appdata(&request) {
@@ -413,8 +463,11 @@ where
                     log::error!("Failed to get HTTP client from app data: {}", e);
                     // Fall back to cached client without refresh
                     let oidc_client = oidc_state.get_client().await;
-                    match get_authenticated_user_info(&oidc_client, &request) {
+                    match get_authenticated_user_info(&oidc_client, &oidc_state.config, &request) {
                         Ok(Some(claims)) => {
+                            if request.path() == SQLPAGE_REDIRECT_URI {
+                                return handle_authenticated_oidc_callback(request);
+                            }
                             log::trace!(
                                 "Storing authenticated user info in request extensions: {claims:?}"
                             );
@@ -443,8 +496,11 @@ where
             };
 
             let oidc_client = oidc_state.get_client_with_refresh(http_client).await;
-            match get_authenticated_user_info(&oidc_client, &request) {
+            match get_authenticated_user_info(&oidc_client, &oidc_state.config, &request) {
                 Ok(Some(claims)) => {
+                    if request.path() == SQLPAGE_REDIRECT_URI {
+                        return handle_authenticated_oidc_callback(request);
+                    }
                     log::trace!(
                         "Storing authenticated user info in request extensions: {claims:?}"
                     );
@@ -474,6 +530,7 @@ where
 
 async fn process_oidc_callback(
     oidc_client: &OidcClient,
+    oidc_config: &Arc<OidcConfig>,
     query_string: &str,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
@@ -498,8 +555,10 @@ async fn process_oidc_callback(
     let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
     log::debug!("Received token response: {token_response:?}");
 
-    let mut response = build_redirect_response(state.initial_url);
-    set_auth_cookie(&mut response, &token_response, oidc_client)?;
+    let redirect_target = validate_redirect_url(state.initial_url);
+    log::info!("Redirecting to {redirect_target} after a successful login");
+    let mut response = build_redirect_response(redirect_target);
+    set_auth_cookie(&mut response, &token_response, oidc_client, oidc_config)?;
     Ok(response)
 }
 
@@ -521,6 +580,7 @@ fn set_auth_cookie(
     response: &mut HttpResponse,
     token_response: &openidconnect::core::CoreTokenResponse,
     oidc_client: &OidcClient,
+    oidc_config: &Arc<OidcConfig>,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
@@ -528,7 +588,7 @@ fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let id_token_verifier = oidc_client.id_token_verifier();
+    let id_token_verifier = oidc_config.create_id_token_verifier(oidc_client);
     let nonce_verifier = |_nonce: Option<&Nonce>| Ok(()); // The nonce will be verified in request handling
     let claims = id_token.claims(&id_token_verifier, nonce_verifier)?;
     let expiration = claims.expiration();
@@ -577,6 +637,7 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
 fn get_authenticated_user_info(
     oidc_client: &OidcClient,
+    config: &Arc<OidcConfig>,
     request: &ServiceRequest,
 ) -> anyhow::Result<Option<OidcClaims>> {
     let Some(cookie) = request.cookie(SQLPAGE_AUTH_COOKIE_NAME) else {
@@ -585,8 +646,7 @@ fn get_authenticated_user_info(
     let cookie_value = cookie.value().to_string();
 
     let state = get_state_from_cookie(request)?;
-    let verifier: openidconnect::IdTokenVerifier<'_, openidconnect::core::CoreJsonWebKey> =
-        oidc_client.id_token_verifier();
+    let verifier = config.create_id_token_verifier(oidc_client);
     let id_token = OidcToken::from_str(&cookie_value)
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
@@ -818,7 +878,7 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
 impl OidcLoginState {
     fn new(request: &ServiceRequest, auth_url: AuthUrlParams) -> Self {
         Self {
-            initial_url: request.path().to_string(),
+            initial_url: request.uri().to_string(),
             csrf_token: auth_url.csrf_token,
             nonce: auth_url.nonce,
         }
@@ -842,4 +902,13 @@ fn get_state_from_cookie(request: &ServiceRequest) -> anyhow::Result<OidcLoginSt
     })?;
     serde_json::from_str(state_cookie.value())
         .with_context(|| format!("Failed to parse OIDC state from cookie: {state_cookie}"))
+}
+
+/// Validate that a redirect URL is safe to use (prevents open redirect attacks)
+fn validate_redirect_url(url: String) -> String {
+    if url.starts_with('/') && !url.starts_with("//") {
+        return url;
+    }
+    log::warn!("Refusing to redirect to {url}");
+    '/'.to_string()
 }

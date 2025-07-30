@@ -223,6 +223,14 @@ pub struct AppConfig {
     #[serde(default)]
     pub oidc_public_paths: Vec<String>,
 
+    /// Additional trusted audiences for OIDC JWT tokens, beyond the client ID.
+    /// By default (when None), all additional audiences are trusted for compatibility
+    /// with providers that include multiple audience values (like ZITADEL, Azure AD, etc.).
+    /// Set to an empty list to only allow the client ID as audience.
+    /// Set to a specific list to only allow those specific additional audiences.
+    #[serde(default)]
+    pub oidc_additional_trusted_audiences: Option<Vec<String>>,
+
     /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
     /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
     /// server's IP address.
