@@ -131,15 +131,15 @@ fn get_app_host(config: &AppConfig) -> String {
 }
 
 pub struct OidcState {
-    pub config: Arc<OidcConfig>,
-    pub client: Arc<OidcClient>,
+    pub config: OidcConfig,
+    pub client: OidcClient,
 }
 
 pub async fn initialize_oidc_state(
     app_config: &AppConfig,
 ) -> anyhow::Result<Option<Arc<OidcState>>> {
     let oidc_cfg = match OidcConfig::try_from(app_config) {
-        Ok(c) => Arc::new(c),
+        Ok(c) => c,
         Err(None) => return Ok(None), // OIDC not configured
         Err(Some(e)) => return Err(anyhow::anyhow!(e)),
     };
@@ -151,7 +151,7 @@ pub async fn initialize_oidc_state(
 
     Ok(Some(Arc::new(OidcState {
         config: oidc_cfg,
-        client: Arc::new(client),
+        client,
     })))
 }
 
@@ -251,17 +251,26 @@ where
         &self,
         request: ServiceRequest,
     ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        let oidc_client = Arc::clone(&self.oidc_state.client);
-        let oidc_config = Arc::clone(&self.oidc_state.config);
+        let oidc_state = Arc::clone(&self.oidc_state);
 
         Box::pin(async move {
             let query_string = request.query_string();
-            match process_oidc_callback(&oidc_client, &oidc_config, query_string, &request).await {
+            match process_oidc_callback(
+                &oidc_state.client,
+                &oidc_state.config,
+                query_string,
+                &request,
+            )
+            .await
+            {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    let resp =
-                        build_auth_provider_redirect_response(&oidc_client, &oidc_config, &request);
+                    let resp = build_auth_provider_redirect_response(
+                        &oidc_state.client,
+                        &oidc_state.config,
+                        &request,
+                    );
                     Ok(request.into_response(resp))
                 }
             }
@@ -296,9 +305,9 @@ where
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
 
-        let oidc_client = Arc::clone(&self.oidc_state.client);
-        let oidc_config = Arc::clone(&self.oidc_state.config);
-        match get_authenticated_user_info(&oidc_client, &oidc_config, &request) {
+        let oidc_client = &self.oidc_state.client;
+        let oidc_config = &self.oidc_state.config;
+        match get_authenticated_user_info(oidc_client, oidc_config, &request) {
             Ok(Some(claims)) => {
                 if request.path() == SQLPAGE_REDIRECT_URI {
                     return handle_authenticated_oidc_callback(request);
@@ -331,7 +340,7 @@ where
 
 async fn process_oidc_callback(
     oidc_client: &OidcClient,
-    oidc_config: &Arc<OidcConfig>,
+    oidc_config: &OidcConfig,
     query_string: &str,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
@@ -381,7 +390,7 @@ fn set_auth_cookie(
     response: &mut HttpResponse,
     token_response: &openidconnect::core::CoreTokenResponse,
     oidc_client: &OidcClient,
-    oidc_config: &Arc<OidcConfig>,
+    oidc_config: &OidcConfig,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
@@ -418,7 +427,7 @@ fn set_auth_cookie(
 
 fn build_auth_provider_redirect_response(
     oidc_client: &OidcClient,
-    oidc_config: &Arc<OidcConfig>,
+    oidc_config: &OidcConfig,
     request: &ServiceRequest,
 ) -> HttpResponse {
     let AuthUrl { url, params } = build_auth_url(oidc_client, &oidc_config.scopes);
@@ -438,7 +447,7 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
 fn get_authenticated_user_info(
     oidc_client: &OidcClient,
-    config: &Arc<OidcConfig>,
+    config: &OidcConfig,
     request: &ServiceRequest,
 ) -> anyhow::Result<Option<OidcClaims>> {
     let Some(cookie) = request.cookie(SQLPAGE_AUTH_COOKIE_NAME) else {
@@ -546,7 +555,7 @@ impl std::error::Error for AwcWrapperError {
 }
 
 fn make_oidc_client(
-    config: &Arc<OidcConfig>,
+    config: &OidcConfig,
     provider_metadata: openidconnect::core::CoreProviderMetadata,
 ) -> anyhow::Result<OidcClient> {
     let client_id = openidconnect::ClientId::new(config.client_id.clone());
