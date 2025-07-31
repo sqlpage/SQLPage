@@ -132,7 +132,14 @@ fn get_app_host(config: &AppConfig) -> String {
 
 pub struct OidcState {
     pub config: OidcConfig,
-    pub client: OidcClient,
+    client: OidcClient,
+}
+
+impl OidcState {
+    pub async fn get_client(&self) -> &OidcClient {
+        todo!();
+        &self.client
+    }
 }
 
 pub async fn initialize_oidc_state(
@@ -239,12 +246,15 @@ where
 
         log::debug!("Redirecting to OIDC provider");
 
-        let response = build_auth_provider_redirect_response(
-            &self.oidc_state.client,
-            &self.oidc_state.config,
-            &request,
-        );
-        Box::pin(async move { Ok(request.into_response(response)) })
+        let oidc_state = Arc::clone(&self.oidc_state);
+        Box::pin(async move {
+            let response = build_auth_provider_redirect_response(
+                oidc_state.get_client().await,
+                &oidc_state.config,
+                &request,
+            );
+            Ok(request.into_response(response))
+        })
     }
 
     fn handle_oidc_callback(
@@ -255,22 +265,13 @@ where
 
         Box::pin(async move {
             let query_string = request.query_string();
-            match process_oidc_callback(
-                &oidc_state.client,
-                &oidc_state.config,
-                query_string,
-                &request,
-            )
-            .await
-            {
+            let client = oidc_state.get_client().await;
+            match process_oidc_callback(client, &oidc_state.config, query_string, &request).await {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    let resp = build_auth_provider_redirect_response(
-                        &oidc_state.client,
-                        &oidc_state.config,
-                        &request,
-                    );
+                    let resp =
+                        build_auth_provider_redirect_response(client, &oidc_state.config, &request);
                     Ok(request.into_response(resp))
                 }
             }
@@ -305,9 +306,7 @@ where
     fn call(&self, request: ServiceRequest) -> Self::Future {
         log::trace!("Started OIDC middleware request handling");
 
-        let oidc_client = &self.oidc_state.client;
-        let oidc_config = &self.oidc_state.config;
-        match get_authenticated_user_info(oidc_client, oidc_config, &request) {
+        match get_authenticated_user_info(&self.oidc_state, &request) {
             Ok(Some(claims)) => {
                 if request.path() == SQLPAGE_REDIRECT_URI {
                     return handle_authenticated_oidc_callback(request);
@@ -330,11 +329,7 @@ where
                 return self.handle_unauthenticated_request(request);
             }
         }
-        let future = self.service.call(request);
-        Box::pin(async move {
-            let response = future.await?;
-            Ok(response)
-        })
+        Box::pin(self.service.call(request))
     }
 }
 
@@ -446,8 +441,7 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
 
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
 fn get_authenticated_user_info(
-    oidc_client: &OidcClient,
-    config: &OidcConfig,
+    oidc_state: &Arc<OidcState>,
     request: &ServiceRequest,
 ) -> anyhow::Result<Option<OidcClaims>> {
     let Some(cookie) = request.cookie(SQLPAGE_AUTH_COOKIE_NAME) else {
@@ -456,6 +450,8 @@ fn get_authenticated_user_info(
     let cookie_value = cookie.value().to_string();
 
     let state = get_state_from_cookie(request)?;
+    let config = oidc_state.config;
+    let oidc_client = oidc_state.get_client().await;
     let verifier = config.create_id_token_verifier(oidc_client);
     let id_token = OidcToken::from_str(&cookie_value)
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
