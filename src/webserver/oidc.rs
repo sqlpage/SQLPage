@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 use std::future::ready;
+use std::ops::Deref;
+use std::time::{Duration, Instant};
 use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
 use crate::webserver::http_client::get_http_client_from_appdata;
@@ -15,12 +17,15 @@ use actix_web::{
 use anyhow::{anyhow, Context};
 use awc::Client;
 use chrono::Utc;
+use openidconnect::core::CoreJsonWebKey;
+use openidconnect::IdTokenVerifier;
 use openidconnect::{
     core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndpointMaybeSet,
     EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
     TokenResponse,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
 
 use super::http_client::make_http_client;
 
@@ -99,7 +104,7 @@ impl OidcConfig {
     fn create_id_token_verifier<'a>(
         &'a self,
         oidc_client: &'a OidcClient,
-    ) -> openidconnect::IdTokenVerifier<'a, openidconnect::core::CoreJsonWebKey> {
+    ) -> IdTokenVerifier<'a, CoreJsonWebKey> {
         oidc_client
             .id_token_verifier()
             .set_other_audience_verifier_fn(self.additional_audience_verifier.as_fn())
@@ -130,15 +135,78 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
-pub struct OidcState {
-    pub config: OidcConfig,
+pub struct ClientWithTime {
     client: OidcClient,
+    last_update: Instant,
 }
 
+pub struct OidcState {
+    pub config: OidcConfig,
+    app_config: AppConfig,
+    client: Mutex<ClientWithTime>,
+}
+
+const OIDC_CLIENT_REFRESH_INTERVAL: Duration = Duration::from_secs(600);
+
 impl OidcState {
-    pub async fn get_client(&self) -> &OidcClient {
-        todo!();
-        &self.client
+    pub async fn new(oidc_cfg: OidcConfig, app_config: AppConfig) -> anyhow::Result<Self> {
+        let http_client = make_http_client(&app_config)?;
+        let client = build_oidc_client(&oidc_cfg, &http_client).await?;
+
+        Ok(Self {
+            config: oidc_cfg,
+            app_config,
+            client: Mutex::new(ClientWithTime {
+                client,
+                last_update: Instant::now(),
+            }),
+        })
+    }
+
+    async fn refresh(&self) {
+        let Ok(http_client) = make_http_client(&self.app_config) else {
+            log::error!("Failed to create HTTP client");
+            return;
+        };
+        match build_oidc_client(&self.config, &http_client).await {
+            Ok(client) => {
+                *self.client.lock().expect("oidc client") = ClientWithTime {
+                    client,
+                    last_update: Instant::now(),
+                };
+            }
+            Err(e) => {
+                log::error!("Failed to refresh OIDC client: {e}");
+            }
+        }
+    }
+
+    /// Gets a reference to the oidc client, potentially generating a new one if needed
+    pub async fn get_client(&self) -> impl Deref<Target = ClientWithTime> + '_ {
+        {
+            let client_lock = self.client.lock().expect("oidc client");
+            if client_lock.last_update.elapsed() < OIDC_CLIENT_REFRESH_INTERVAL {
+                return client_lock;
+            }
+        }
+        self.refresh().await;
+        self.client.lock().expect("oidc client")
+    }
+
+    fn get_token_claims(
+        &self,
+        id_token: &OidcToken,
+        state: &OidcLoginState,
+    ) -> anyhow::Result<OidcClaims> {
+        // Do not refresh the client on every check
+        let client = &self.client.lock().expect("oidc client").client;
+        let verifier = self.config.create_id_token_verifier(client);
+        let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, &state.nonce);
+        let claims: OidcClaims = id_token
+            .claims(&verifier, nonce_verifier)
+            .with_context(|| format!("Could not verify the ID token: {id_token:?}"))?
+            .clone();
+        Ok(claims)
     }
 }
 
@@ -151,15 +219,19 @@ pub async fn initialize_oidc_state(
         Err(Some(e)) => return Err(anyhow::anyhow!(e)),
     };
 
-    let http_client = make_http_client(app_config)?;
-    let provider_metadata =
-        discover_provider_metadata(&http_client, oidc_cfg.issuer_url.clone()).await?;
-    let client = make_oidc_client(&oidc_cfg, provider_metadata)?;
+    Ok(Some(Arc::new(
+        OidcState::new(oidc_cfg, app_config.clone()).await?,
+    )))
+}
 
-    Ok(Some(Arc::new(OidcState {
-        config: oidc_cfg,
-        client,
-    })))
+async fn build_oidc_client(
+    oidc_cfg: &OidcConfig,
+    http_client: &Client,
+) -> anyhow::Result<OidcClient> {
+    let provider_metadata =
+        discover_provider_metadata(http_client, oidc_cfg.issuer_url.clone()).await?;
+    let client = make_oidc_client(oidc_cfg, provider_metadata)?;
+    Ok(client)
 }
 
 pub struct OidcMiddleware {
@@ -249,7 +321,7 @@ where
         let oidc_state = Arc::clone(&self.oidc_state);
         Box::pin(async move {
             let response = build_auth_provider_redirect_response(
-                oidc_state.get_client().await,
+                &oidc_state.get_client().await.client,
                 &oidc_state.config,
                 &request,
             );
@@ -266,12 +338,17 @@ where
         Box::pin(async move {
             let query_string = request.query_string();
             let client = oidc_state.get_client().await;
-            match process_oidc_callback(client, &oidc_state.config, query_string, &request).await {
+            match process_oidc_callback(&client.client, &oidc_state.config, query_string, &request)
+                .await
+            {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    let resp =
-                        build_auth_provider_redirect_response(client, &oidc_state.config, &request);
+                    let resp = build_auth_provider_redirect_response(
+                        &client.client,
+                        &oidc_state.config,
+                        &request,
+                    );
                     Ok(request.into_response(resp))
                 }
             }
@@ -448,19 +525,11 @@ fn get_authenticated_user_info(
         return Ok(None);
     };
     let cookie_value = cookie.value().to_string();
-
-    let state = get_state_from_cookie(request)?;
-    let config = oidc_state.config;
-    let oidc_client = oidc_state.get_client().await;
-    let verifier = config.create_id_token_verifier(oidc_client);
     let id_token = OidcToken::from_str(&cookie_value)
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
-    let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, &state.nonce);
-    let claims: OidcClaims = id_token
-        .claims(&verifier, nonce_verifier)
-        .with_context(|| format!("Could not verify the ID token: {cookie_value:?}"))?
-        .clone();
+    let state = get_state_from_cookie(request)?;
+    let claims = oidc_state.get_token_claims(&id_token, &state)?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
