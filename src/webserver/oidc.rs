@@ -34,6 +34,7 @@ type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
 const SQLPAGE_STATE_COOKIE_NAME: &str = "sqlpage_oidc_state";
+const OIDC_CLIENT_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -146,8 +147,6 @@ pub struct OidcState {
     client: Mutex<ClientWithTime>,
 }
 
-const OIDC_CLIENT_REFRESH_INTERVAL: Duration = Duration::from_secs(600);
-
 impl OidcState {
     pub async fn new(oidc_cfg: OidcConfig, app_config: AppConfig) -> anyhow::Result<Self> {
         let http_client = make_http_client(&app_config)?;
@@ -189,10 +188,12 @@ impl OidcState {
                 return client_lock;
             }
         }
+        log::debug!("OIDC client is older than {OIDC_CLIENT_REFRESH_INTERVAL:?}, refreshing...");
         self.refresh().await;
         self.client.lock().expect("oidc client")
     }
 
+    /// Validate and decode the claims of an OIDC token, without refreshing the client.
     fn get_token_claims(
         &self,
         id_token: &OidcToken,
@@ -228,8 +229,8 @@ async fn build_oidc_client(
     oidc_cfg: &OidcConfig,
     http_client: &Client,
 ) -> anyhow::Result<OidcClient> {
-    let provider_metadata =
-        discover_provider_metadata(http_client, oidc_cfg.issuer_url.clone()).await?;
+    let issuer_url = oidc_cfg.issuer_url.clone();
+    let provider_metadata = discover_provider_metadata(http_client, issuer_url.clone()).await?;
     let client = make_oidc_client(oidc_cfg, provider_metadata)?;
     Ok(client)
 }
