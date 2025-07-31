@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::future::ready;
-use std::ops::Deref;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
@@ -32,7 +32,7 @@ use openidconnect::{
     StandardTokenResponse,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 use super::http_client::make_http_client;
 
@@ -188,7 +188,7 @@ impl OidcState {
     }
 
     /// Gets a reference to the oidc client, potentially generating a new one if needed
-    pub async fn get_client(&self) -> impl Deref<Target = ClientWithTime> + '_ {
+    pub async fn get_client(&self) -> MutexGuard<'_, ClientWithTime> {
         {
             let client_lock = self.client.lock().expect("oidc client");
             if client_lock.last_update.elapsed() < OIDC_CLIENT_REFRESH_INTERVAL {
@@ -290,7 +290,7 @@ where
 
 #[derive(Clone)]
 pub struct OidcService<S> {
-    service: S,
+    service: Rc<S>,
     oidc_state: Arc<OidcState>,
 }
 
@@ -301,56 +301,72 @@ where
 {
     pub fn new(service: S, oidc_state: Arc<OidcState>) -> Self {
         Self {
-            service,
+            service: Rc::new(service),
             oidc_state,
         }
     }
+}
 
-    fn handle_unauthenticated_request(
-        &self,
-        request: ServiceRequest,
-    ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        log::debug!("Handling unauthenticated request to {}", request.path());
-        if request.path() == SQLPAGE_REDIRECT_URI {
-            log::debug!("The request is the OIDC callback");
-            return self.handle_oidc_callback(request);
+enum MiddlewareResponse {
+    Forward(ServiceRequest),
+    Respond(ServiceResponse),
+}
+
+async fn handle_request(
+    oidc_state: &OidcState,
+    request: ServiceRequest,
+) -> actix_web::Result<MiddlewareResponse> {
+    log::trace!("Started OIDC middleware request handling");
+    let response = match get_authenticated_user_info(oidc_state, &request) {
+        Ok(Some(claims)) => {
+            if request.path() != SQLPAGE_REDIRECT_URI {
+                log::trace!("Storing authenticated user info in request extensions: {claims:?}");
+                request.extensions_mut().insert(claims);
+                return Ok(MiddlewareResponse::Forward(request));
+            }
+            handle_authenticated_oidc_callback(request).await
         }
-
-        if self.oidc_state.config.is_public_path(request.path()) {
-            log::debug!(
-                "The request path {} is not in a public path, skipping OIDC authentication",
-                request.path()
-            );
-            return Box::pin(self.service.call(request));
+        Ok(None) => {
+            log::trace!("No authenticated user found");
+            handle_unauthenticated_request(oidc_state, request).await
         }
+        Err(e) => {
+            log::debug!("An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}");
+            handle_unauthenticated_request(oidc_state, request).await
+        }
+    };
+    response.map(MiddlewareResponse::Respond)
+}
 
-        log::debug!("Redirecting to OIDC provider");
-
-        let oidc_state = Arc::clone(&self.oidc_state);
-        Box::pin(async move {
-            let response = build_auth_provider_redirect_response(&oidc_state, &request);
-            Ok(request.into_response(response))
-        })
+async fn handle_unauthenticated_request(
+    oidc_state: &OidcState,
+    request: ServiceRequest,
+) -> Result<ServiceResponse<BoxBody>, Error> {
+    log::debug!("Handling unauthenticated request to {}", request.path());
+    if request.path() == SQLPAGE_REDIRECT_URI {
+        log::debug!("The request is the OIDC callback");
+        return handle_oidc_callback(oidc_state, request).await;
     }
 
-    fn handle_oidc_callback(
-        &self,
-        request: ServiceRequest,
-    ) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
-        let oidc_state = Arc::clone(&self.oidc_state);
+    log::debug!("Redirecting to OIDC provider");
 
-        Box::pin(async move {
-            let query_string = request.query_string();
-            match process_oidc_callback(&oidc_state, query_string, &request).await {
-                Ok(response) => Ok(request.into_response(response)),
-                Err(e) => {
-                    log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    oidc_state.refresh().await;
-                    let resp = build_auth_provider_redirect_response(&oidc_state, &request);
-                    Ok(request.into_response(resp))
-                }
-            }
-        })
+    let response = build_auth_provider_redirect_response(oidc_state, &request);
+    Ok(request.into_response(response))
+}
+
+async fn handle_oidc_callback(
+    oidc_state: &OidcState,
+    request: ServiceRequest,
+) -> Result<ServiceResponse<BoxBody>, Error> {
+    let query_string = request.query_string();
+    match process_oidc_callback(oidc_state, query_string, &request).await {
+        Ok(response) => Ok(request.into_response(response)),
+        Err(e) => {
+            log::error!("Failed to process OIDC callback with params {query_string}: {e}");
+            oidc_state.refresh().await;
+            let resp = build_auth_provider_redirect_response(oidc_state, &request);
+            Ok(request.into_response(resp))
+        }
     }
 }
 
@@ -369,7 +385,7 @@ fn handle_authenticated_oidc_callback(
 
 impl<S> Service<ServiceRequest> for OidcService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
     S::Future: 'static,
 {
     type Response = ServiceResponse<BoxBody>;
@@ -379,32 +395,18 @@ where
     forward_ready!(service);
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
-        log::trace!("Started OIDC middleware request handling");
-
-        match get_authenticated_user_info(&self.oidc_state, &request) {
-            Ok(Some(claims)) => {
-                if request.path() == SQLPAGE_REDIRECT_URI {
-                    return handle_authenticated_oidc_callback(request);
-                }
-                log::trace!("Storing authenticated user info in request extensions: {claims:?}");
-                request.extensions_mut().insert(claims);
-            }
-            Ok(None) => {
-                log::trace!("No authenticated user found");
-                return self.handle_unauthenticated_request(request);
-            }
-            Err(e) => {
-                log::debug!(
-                    "{:?}",
-                    e.context(
-                        "An auth cookie is present but could not be verified. \
-                     Redirecting to OIDC provider to re-authenticate."
-                    )
-                );
-                return self.handle_unauthenticated_request(request);
-            }
+        if self.oidc_state.config.is_public_path(request.path()) {
+            return Box::pin(self.service.call(request));
         }
-        Box::pin(self.service.call(request))
+        let srv = Rc::clone(&self.service);
+        let oidc_state = Arc::clone(&self.oidc_state);
+        Box::pin(async move {
+            match handle_request(&oidc_state, request).await {
+                Ok(MiddlewareResponse::Respond(response)) => Ok(response),
+                Ok(MiddlewareResponse::Forward(request)) => srv.call(request).await,
+                Err(err) => Err(err),
+            }
+        })
     }
 }
 
@@ -512,7 +514,7 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
 
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
 fn get_authenticated_user_info(
-    oidc_state: &Arc<OidcState>,
+    oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> anyhow::Result<Option<OidcClaims>> {
     let Some(cookie) = request.cookie(SQLPAGE_AUTH_COOKIE_NAME) else {
