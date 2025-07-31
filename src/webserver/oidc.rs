@@ -17,12 +17,19 @@ use actix_web::{
 use anyhow::{anyhow, Context};
 use awc::Client;
 use chrono::Utc;
-use openidconnect::core::CoreJsonWebKey;
-use openidconnect::IdTokenVerifier;
+use openidconnect::core::{
+    CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
+    CoreJweContentEncryptionAlgorithm, CoreJwsSigningAlgorithm, CoreRevocableToken,
+    CoreRevocationErrorResponse, CoreTokenIntrospectionResponse, CoreTokenType,
+};
 use openidconnect::{
     core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndpointMaybeSet,
     EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
     TokenResponse,
+};
+use openidconnect::{
+    EmptyExtraTokenFields, IdTokenFields, IdTokenVerifier, StandardErrorResponse,
+    StandardTokenResponse,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
@@ -197,12 +204,12 @@ impl OidcState {
     fn get_token_claims(
         &self,
         id_token: &OidcToken,
-        state: &OidcLoginState,
+        state: Option<&OidcLoginState>,
     ) -> anyhow::Result<OidcClaims> {
         // Do not refresh the client on every check
         let client = &self.client.lock().expect("oidc client").client;
         let verifier = self.config.create_id_token_verifier(client);
-        let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, &state.nonce);
+        let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, state);
         let claims: OidcClaims = id_token
             .claims(&verifier, nonce_verifier)
             .with_context(|| format!("Could not verify the ID token: {id_token:?}"))?
@@ -321,11 +328,7 @@ where
 
         let oidc_state = Arc::clone(&self.oidc_state);
         Box::pin(async move {
-            let response = build_auth_provider_redirect_response(
-                &oidc_state.get_client().await.client,
-                &oidc_state.config,
-                &request,
-            );
+            let response = build_auth_provider_redirect_response(&oidc_state, &request);
             Ok(request.into_response(response))
         })
     }
@@ -338,18 +341,12 @@ where
 
         Box::pin(async move {
             let query_string = request.query_string();
-            let client = oidc_state.get_client().await;
-            match process_oidc_callback(&client.client, &oidc_state.config, query_string, &request)
-                .await
-            {
+            match process_oidc_callback(&oidc_state, query_string, &request).await {
                 Ok(response) => Ok(request.into_response(response)),
                 Err(e) => {
                     log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-                    let resp = build_auth_provider_redirect_response(
-                        &client.client,
-                        &oidc_state.config,
-                        &request,
-                    );
+                    oidc_state.refresh().await;
+                    let resp = build_auth_provider_redirect_response(&oidc_state, &request);
                     Ok(request.into_response(resp))
                 }
             }
@@ -412,8 +409,7 @@ where
 }
 
 async fn process_oidc_callback(
-    oidc_client: &OidcClient,
-    oidc_config: &OidcConfig,
+    oidc_state: &OidcState,
     query_string: &str,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
@@ -434,14 +430,15 @@ async fn process_oidc_callback(
         return Err(anyhow!("Invalid CSRF token: {}", params.state.secret()));
     }
 
+    let client = oidc_state.get_client().await;
     log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
-    let token_response = exchange_code_for_token(oidc_client, http_client, params).await?;
+    let token_response = exchange_code_for_token(&client.client, http_client, params).await?;
     log::debug!("Received token response: {token_response:?}");
 
     let redirect_target = validate_redirect_url(state.initial_url);
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
-    set_auth_cookie(&mut response, &token_response, oidc_client, oidc_config)?;
+    set_auth_cookie(&mut response, &token_response, oidc_state)?;
     Ok(response)
 }
 
@@ -449,7 +446,7 @@ async fn exchange_code_for_token(
     oidc_client: &OidcClient,
     http_client: &awc::Client,
     oidc_callback_params: OidcCallbackParams,
-) -> anyhow::Result<openidconnect::core::CoreTokenResponse> {
+) -> anyhow::Result<OidcTokenResponse> {
     let token_response = oidc_client
         .exchange_code(openidconnect::AuthorizationCode::new(
             oidc_callback_params.code,
@@ -461,9 +458,8 @@ async fn exchange_code_for_token(
 
 fn set_auth_cookie(
     response: &mut HttpResponse,
-    token_response: &openidconnect::core::CoreTokenResponse,
-    oidc_client: &OidcClient,
-    oidc_config: &OidcConfig,
+    token_response: &OidcTokenResponse,
+    oidc_state: &OidcState,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
@@ -471,9 +467,7 @@ fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let id_token_verifier = oidc_config.create_id_token_verifier(oidc_client);
-    let nonce_verifier = |_nonce: Option<&Nonce>| Ok(()); // The nonce will be verified in request handling
-    let claims = id_token.claims(&id_token_verifier, nonce_verifier)?;
+    let claims = oidc_state.get_token_claims(id_token, None)?;
     let expiration = claims.expiration();
     let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
 
@@ -499,11 +493,10 @@ fn set_auth_cookie(
 }
 
 fn build_auth_provider_redirect_response(
-    oidc_client: &OidcClient,
-    oidc_config: &OidcConfig,
+    oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> HttpResponse {
-    let AuthUrl { url, params } = build_auth_url(oidc_client, &oidc_config.scopes);
+    let AuthUrl { url, params } = build_auth_url(oidc_state);
     let state_cookie = create_state_cookie(request, params);
     HttpResponse::TemporaryRedirect()
         .append_header(("Location", url.to_string()))
@@ -530,7 +523,7 @@ fn get_authenticated_user_info(
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
     let state = get_state_from_cookie(request)?;
-    let claims = oidc_state.get_token_claims(&id_token, &state)?;
+    let claims = oidc_state.get_token_claims(&id_token, Some(&state))?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
@@ -606,7 +599,30 @@ impl std::fmt::Display for AwcWrapperError {
         std::fmt::Display::fmt(&self.0, f)
     }
 }
-type OidcClient = openidconnect::core::CoreClient<
+
+type OidcTokenResponse = StandardTokenResponse<
+    IdTokenFields<
+        OidcAdditionalClaims,
+        EmptyExtraTokenFields,
+        CoreGenderClaim,
+        CoreJweContentEncryptionAlgorithm,
+        CoreJwsSigningAlgorithm,
+    >,
+    CoreTokenType,
+>;
+
+type OidcClient = openidconnect::Client<
+    OidcAdditionalClaims,
+    CoreAuthDisplay,
+    CoreGenderClaim,
+    CoreJweContentEncryptionAlgorithm,
+    CoreJsonWebKey,
+    CoreAuthPrompt,
+    StandardErrorResponse<CoreErrorResponseType>,
+    OidcTokenResponse,
+    CoreTokenIntrospectionResponse,
+    CoreRevocableToken,
+    CoreRevocationErrorResponse,
     EndpointSet,
     EndpointNotSet,
     EndpointNotSet,
@@ -614,6 +630,7 @@ type OidcClient = openidconnect::core::CoreClient<
     EndpointMaybeSet,
     EndpointMaybeSet,
 >;
+
 impl std::error::Error for AwcWrapperError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.0.source()
@@ -650,12 +667,9 @@ fn make_oidc_client(
         ))?;
     }
     log::info!("OIDC redirect URL for {}: {redirect_url}", config.client_id);
-    let client = openidconnect::core::CoreClient::from_provider_metadata(
-        provider_metadata,
-        client_id,
-        Some(client_secret),
-    )
-    .set_redirect_uri(redirect_url);
+    let client =
+        OidcClient::from_provider_metadata(provider_metadata, client_id, Some(client_secret))
+            .set_redirect_uri(redirect_url);
 
     Ok(client)
 }
@@ -676,10 +690,13 @@ struct AuthUrlParams {
     nonce: Nonce,
 }
 
-fn build_auth_url(oidc_client: &OidcClient, scopes: &[Scope]) -> AuthUrl {
+fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
     let nonce_source = Nonce::new_random();
     let hashed_nonce = Nonce::new(hash_nonce(&nonce_source));
-    let (url, csrf_token, _nonce) = oidc_client
+    let scopes = &oidc_state.config.scopes;
+    let client_lock = oidc_state.client.lock().unwrap();
+    let (url, csrf_token, _nonce) = client_lock
+        .client
         .authorize_url(
             CoreAuthenticationFlow::AuthorizationCode,
             CsrfToken::new_random,
@@ -722,9 +739,15 @@ fn hash_nonce(nonce: &Nonce) -> String {
     hash.to_string()
 }
 
-fn check_nonce(id_token_nonce: Option<&Nonce>, state_nonce: &Nonce) -> Result<(), String> {
+fn check_nonce(
+    id_token_nonce: Option<&Nonce>,
+    login_state: Option<&OidcLoginState>,
+) -> Result<(), String> {
+    let Some(state) = login_state else {
+        return Ok(()); // No login state, no nonce to check
+    };
     match id_token_nonce {
-        Some(id_token_nonce) => nonce_matches(id_token_nonce, state_nonce),
+        Some(id_token_nonce) => nonce_matches(id_token_nonce, &state.nonce),
         None => Err("No nonce found in the ID token".to_string()),
     }
 }
