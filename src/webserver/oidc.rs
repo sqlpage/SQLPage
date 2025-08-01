@@ -208,7 +208,7 @@ impl OidcState {
         let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, state);
         let claims: OidcClaims = id_token
             .into_claims(&verifier, nonce_verifier)
-            .with_context(|| format!("Could not verify the ID token"))?;
+            .map_err(|e| anyhow::anyhow!("Could not verify the ID token: {}", e))?;
         Ok(claims)
     }
 }
