@@ -364,7 +364,6 @@ async fn handle_oidc_callback(
         Ok(response) => Ok(request.into_response(response)),
         Err(e) => {
             log::error!("Failed to process OIDC callback with params {query_string}: {e}");
-            oidc_state.refresh().await;
             let resp = build_auth_provider_redirect_response(oidc_state, &request).await;
             Ok(request.into_response(resp))
         }
