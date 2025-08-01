@@ -178,7 +178,7 @@ impl OidcState {
                     last_update: Instant::now(),
                 }
             }
-            Err(e) => log::error!("Failed to refresh OIDC client: {e}"),
+            Err(e) => log::error!("Failed to refresh OIDC client: {e:#}"),
         }
     }
 
@@ -375,12 +375,13 @@ async fn handle_unauthenticated_request(
 async fn handle_oidc_callback(
     oidc_state: &OidcState,
     request: ServiceRequest,
-) -> Result<ServiceResponse<BoxBody>, Error> {
+) -> actix_web::Result<ServiceResponse> {
     let query_string = request.query_string();
     match process_oidc_callback(oidc_state, query_string, &request).await {
         Ok(response) => Ok(request.into_response(response)),
         Err(e) => {
-            log::error!("Failed to process OIDC callback with params {query_string}: {e}");
+            log::error!("Failed to process OIDC callback with params {query_string}: {e:#}");
+            oidc_state.refresh_on_error(&request).await;
             let resp = build_auth_provider_redirect_response(oidc_state, &request).await;
             Ok(request.into_response(resp))
         }
@@ -483,11 +484,8 @@ async fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let claims = oidc_state
-        .get_token_claims(id_token.clone(), None)
-        .await
-        .context("Invalid token returned by OIDC provider")?;
-    let expiration = claims.expiration();
+    let claims_res = oidc_state.get_token_claims(id_token.clone(), None).await;
+    let expiration = claims_res.context("Parsing ID token claims")?.expiration();
     let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
 
     let id_token_str = id_token.to_string();
@@ -847,7 +845,7 @@ impl AudienceVerifier {
 
 /// Validate that a redirect URL is safe to use (prevents open redirect attacks)
 fn validate_redirect_url(url: String) -> String {
-    if url.starts_with('/') && !url.starts_with("//") {
+    if url.starts_with('/') && !url.starts_with("//") && !url.starts_with(SQLPAGE_REDIRECT_URI) {
         return url;
     }
     log::warn!("Refusing to redirect to {url}");
