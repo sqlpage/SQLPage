@@ -150,7 +150,6 @@ pub struct ClientWithTime {
 
 pub struct OidcState {
     pub config: OidcConfig,
-    app_config: AppConfig,
     client: RwLock<ClientWithTime>,
 }
 
@@ -161,7 +160,6 @@ impl OidcState {
 
         Ok(Self {
             config: oidc_cfg,
-            app_config,
             client: RwLock::new(ClientWithTime {
                 client,
                 last_update: Instant::now(),
@@ -169,37 +167,32 @@ impl OidcState {
         })
     }
 
-    async fn refresh(&self) {
-        let Ok(http_client) = make_http_client(&self.app_config) else {
-            log::error!("Failed to create HTTP client");
-            return;
-        };
-        let mut write_guard = self.client.write().await;
-        match build_oidc_client(&self.config, &http_client).await {
-            Ok(client) => {
-                *write_guard = ClientWithTime {
-                    client,
+    async fn refresh(&self, service_request: &ServiceRequest) {
+        match build_oidc_client_from_appdata(&self.config, service_request).await {
+            Ok(http_client) => {
+                *self.client.write().await = ClientWithTime {
+                    client: http_client,
                     last_update: Instant::now(),
-                };
+                }
             }
-            Err(e) => {
-                log::error!("Failed to refresh OIDC client: {e}");
-            }
+            Err(e) => log::error!("Failed to refresh OIDC client: {e}"),
+        }
+    }
+
+    /// Refreshes the OIDC client from the provider metadata URL if it has expired.
+    /// Most providers update their signing keys periodically.
+    pub async fn refresh_if_expired(&self, service_request: &ServiceRequest) {
+        if self.client.read().await.last_update.elapsed() > OIDC_CLIENT_REFRESH_INTERVAL {
+            self.refresh(service_request).await;
         }
     }
 
     /// Gets a reference to the oidc client, potentially generating a new one if needed
     pub async fn get_client(&self) -> RwLockReadGuard<'_, OidcClient> {
-        {
-            let client_lock = self.client.read().await;
-            if client_lock.last_update.elapsed() < OIDC_CLIENT_REFRESH_INTERVAL {
-                return RwLockReadGuard::map(client_lock, |ClientWithTime { client, .. }| client);
-            }
-        }
-        log::debug!("OIDC client is older than {OIDC_CLIENT_REFRESH_INTERVAL:?}, refreshing...");
-        self.refresh().await;
-        let with_time = self.client.read().await;
-        RwLockReadGuard::map(with_time, |ClientWithTime { client, .. }| client)
+        RwLockReadGuard::map(
+            self.client.read().await,
+            |ClientWithTime { client, .. }| client,
+        )
     }
 
     /// Validate and decode the claims of an OIDC token, without refreshing the client.
@@ -208,8 +201,7 @@ impl OidcState {
         id_token: &OidcToken,
         state: Option<&OidcLoginState>,
     ) -> anyhow::Result<OidcClaims> {
-        // Do not refresh the client on every check
-        let client = &self.client.read().await.client;
+        let client = &self.get_client().await;
         let verifier = self.config.create_id_token_verifier(client);
         let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, state);
         let claims: OidcClaims = id_token
@@ -232,6 +224,14 @@ pub async fn initialize_oidc_state(
     Ok(Some(Arc::new(
         OidcState::new(oidc_cfg, app_config.clone()).await?,
     )))
+}
+
+async fn build_oidc_client_from_appdata(
+    cfg: &OidcConfig,
+    req: &ServiceRequest,
+) -> anyhow::Result<OidcClient> {
+    let http_client = get_http_client_from_appdata(req)?;
+    build_oidc_client(cfg, http_client).await
 }
 
 async fn build_oidc_client(
@@ -319,6 +319,7 @@ async fn handle_request(
     request: ServiceRequest,
 ) -> actix_web::Result<MiddlewareResponse> {
     log::trace!("Started OIDC middleware request handling");
+    oidc_state.refresh_if_expired(&request).await;
     let response = match get_authenticated_user_info(oidc_state, &request).await {
         Ok(Some(claims)) => {
             if request.path() != SQLPAGE_REDIRECT_URI {
