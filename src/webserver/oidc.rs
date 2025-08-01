@@ -16,7 +16,6 @@ use actix_web::{
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
-use base64::write;
 use chrono::Utc;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
@@ -323,14 +322,15 @@ async fn handle_request(
 ) -> actix_web::Result<MiddlewareResponse> {
     log::trace!("Started OIDC middleware request handling");
     oidc_state.refresh_if_expired(&request).await;
-    let response = match get_authenticated_user_info(oidc_state, &request).await {
+    match get_authenticated_user_info(oidc_state, &request).await {
         Ok(Some(claims)) => {
             if request.path() != SQLPAGE_REDIRECT_URI {
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
                 request.extensions_mut().insert(claims);
                 return Ok(MiddlewareResponse::Forward(request));
             }
-            handle_authenticated_oidc_callback(request).await
+            let response = handle_authenticated_oidc_callback(request);
+            Ok(MiddlewareResponse::Respond(response))
         }
         Ok(None) => {
             log::trace!("No authenticated user found");
@@ -340,24 +340,28 @@ async fn handle_request(
             log::debug!("An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}");
             handle_unauthenticated_request(oidc_state, request).await
         }
-    };
-    response.map(MiddlewareResponse::Respond)
+    }
 }
 
 async fn handle_unauthenticated_request(
     oidc_state: &OidcState,
     request: ServiceRequest,
-) -> Result<ServiceResponse<BoxBody>, Error> {
+) -> actix_web::Result<MiddlewareResponse> {
     log::debug!("Handling unauthenticated request to {}", request.path());
     if request.path() == SQLPAGE_REDIRECT_URI {
         log::debug!("The request is the OIDC callback");
-        return handle_oidc_callback(oidc_state, request).await;
+        let response = handle_oidc_callback(oidc_state, request).await?;
+        return Ok(MiddlewareResponse::Respond(response));
+    }
+
+    if oidc_state.config.is_public_path(request.path()) {
+        return Ok(MiddlewareResponse::Forward(request));
     }
 
     log::debug!("Redirecting to OIDC provider");
 
     let response = build_auth_provider_redirect_response(oidc_state, &request).await;
-    Ok(request.into_response(response))
+    Ok(MiddlewareResponse::Respond(request.into_response(response)))
 }
 
 async fn handle_oidc_callback(
@@ -376,16 +380,13 @@ async fn handle_oidc_callback(
 }
 
 /// When an user has already authenticated (potentially in another tab), we ignore the callback and redirect to the initial URL.
-fn handle_authenticated_oidc_callback(
-    request: ServiceRequest,
-) -> LocalBoxFuture<Result<ServiceResponse<BoxBody>, Error>> {
+fn handle_authenticated_oidc_callback(request: ServiceRequest) -> ServiceResponse {
     let redirect_url = match get_state_from_cookie(&request) {
         Ok(state) => state.initial_url,
         Err(_) => "/".to_string(),
     };
     log::debug!("OIDC callback received for authenticated user. Redirecting to {redirect_url}");
-    let response = request.into_response(build_redirect_response(redirect_url));
-    Box::pin(ready(Ok(response)))
+    request.into_response(build_redirect_response(redirect_url))
 }
 
 impl<S> Service<ServiceRequest> for OidcService<S>
@@ -400,9 +401,6 @@ where
     forward_ready!(service);
 
     fn call(&self, request: ServiceRequest) -> Self::Future {
-        if self.oidc_state.config.is_public_path(request.path()) {
-            return Box::pin(self.service.call(request));
-        }
         let srv = Rc::clone(&self.service);
         let oidc_state = Arc::clone(&self.oidc_state);
         Box::pin(async move {
