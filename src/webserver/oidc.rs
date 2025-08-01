@@ -368,7 +368,8 @@ async fn handle_unauthenticated_request(
 
     log::debug!("Redirecting to OIDC provider");
 
-    let response = build_auth_provider_redirect_response(oidc_state, &request).await;
+    let initial_url = request.uri().to_string();
+    let response = build_auth_provider_redirect_response(oidc_state, initial_url).await;
     Ok(MiddlewareResponse::Respond(request.into_response(response)))
 }
 
@@ -380,9 +381,11 @@ async fn handle_oidc_callback(
     match process_oidc_callback(oidc_state, query_string, &request).await {
         Ok(response) => Ok(request.into_response(response)),
         Err(e) => {
-            log::error!("Failed to process OIDC callback with params {query_string}: {e:#}");
+            let redirect_url =
+                get_state_from_cookie(&request).map_or_else(|_| "/".into(), |s| s.initial_url);
+            log::error!("Failed to process OIDC callback. Refreshing oidc provider metadata, then redirecting to {redirect_url}: {e:#}");
             oidc_state.refresh_on_error(&request).await;
-            let resp = build_auth_provider_redirect_response(oidc_state, &request).await;
+            let resp = build_auth_provider_redirect_response(oidc_state, redirect_url).await;
             Ok(request.into_response(resp))
         }
     }
@@ -511,10 +514,11 @@ async fn set_auth_cookie(
 
 async fn build_auth_provider_redirect_response(
     oidc_state: &OidcState,
-    request: &ServiceRequest,
+    initial_url: String,
 ) -> HttpResponse {
     let AuthUrl { url, params } = build_auth_url(oidc_state).await;
-    let state_cookie = create_state_cookie(request, params);
+    let state = OidcLoginState::new(initial_url, params);
+    let state_cookie = create_state_cookie(&state);
     HttpResponse::TemporaryRedirect()
         .append_header(("Location", url.to_string()))
         .cookie(state_cookie)
@@ -730,20 +734,6 @@ async fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct OidcLoginState {
-    /// The URL to redirect to after the login process is complete.
-    #[serde(rename = "u")]
-    initial_url: String,
-    /// The CSRF token to use for the login process.
-    #[serde(rename = "c")]
-    csrf_token: CsrfToken,
-    /// The source nonce to use for the login process. It must be checked against the hash
-    /// stored in the ID token.
-    #[serde(rename = "n")]
-    nonce: Nonce,
-}
-
 fn hash_nonce(nonce: &Nonce) -> String {
     use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
     let salt = SaltString::generate(&mut OsRng);
@@ -791,19 +781,32 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
     Ok(())
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct OidcLoginState {
+    /// The URL to redirect to after the login process is complete.
+    #[serde(rename = "u")]
+    initial_url: String,
+    /// The CSRF token to use for the login process.
+    #[serde(rename = "c")]
+    csrf_token: CsrfToken,
+    /// The source nonce to use for the login process. It must be checked against the hash
+    /// stored in the ID token.
+    #[serde(rename = "n")]
+    nonce: Nonce,
+}
+
 impl OidcLoginState {
-    fn new(request: &ServiceRequest, auth_url: AuthUrlParams) -> Self {
+    fn new(initial_url: String, auth_url: AuthUrlParams) -> Self {
         Self {
-            initial_url: request.uri().to_string(),
+            initial_url,
             csrf_token: auth_url.csrf_token,
             nonce: auth_url.nonce,
         }
     }
 }
 
-fn create_state_cookie(request: &ServiceRequest, auth_url: AuthUrlParams) -> Cookie {
-    let state = OidcLoginState::new(request, auth_url);
-    let state_json = serde_json::to_string(&state).unwrap();
+fn create_state_cookie(login_state: &OidcLoginState) -> Cookie {
+    let state_json = serde_json::to_string(login_state).unwrap();
     Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
         .secure(true)
         .http_only(true)
