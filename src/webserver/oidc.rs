@@ -189,16 +189,17 @@ impl OidcState {
     }
 
     /// Gets a reference to the oidc client, potentially generating a new one if needed
-    pub async fn get_client(&self) -> RwLockReadGuard<'_, ClientWithTime> {
+    pub async fn get_client(&self) -> RwLockReadGuard<'_, OidcClient> {
         {
             let client_lock = self.client.read().await;
             if client_lock.last_update.elapsed() < OIDC_CLIENT_REFRESH_INTERVAL {
-                return client_lock;
+                return RwLockReadGuard::map(client_lock, |ClientWithTime { client, .. }| client);
             }
         }
         log::debug!("OIDC client is older than {OIDC_CLIENT_REFRESH_INTERVAL:?}, refreshing...");
         self.refresh().await;
-        self.client.read().await
+        let with_time = self.client.read().await;
+        RwLockReadGuard::map(with_time, |ClientWithTime { client, .. }| client)
     }
 
     /// Validate and decode the claims of an OIDC token, without refreshing the client.
@@ -434,7 +435,7 @@ async fn process_oidc_callback(
 
     let client = oidc_state.get_client().await;
     log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
-    let token_response = exchange_code_for_token(&client.client, http_client, params).await?;
+    let token_response = exchange_code_for_token(&client, http_client, params).await?;
     log::debug!("Received token response: {token_response:?}");
 
     let redirect_target = validate_redirect_url(state.initial_url);
@@ -698,7 +699,6 @@ async fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
     let scopes = &oidc_state.config.scopes;
     let client_lock = oidc_state.get_client().await;
     let (url, csrf_token, _nonce) = client_lock
-        .client
         .authorize_url(
             CoreAuthenticationFlow::AuthorizationCode,
             CsrfToken::new_random,
