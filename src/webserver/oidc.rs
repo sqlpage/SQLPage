@@ -200,16 +200,15 @@ impl OidcState {
     /// Validate and decode the claims of an OIDC token, without refreshing the client.
     async fn get_token_claims(
         &self,
-        id_token: &OidcToken,
+        id_token: OidcToken,
         state: Option<&OidcLoginState>,
     ) -> anyhow::Result<OidcClaims> {
         let client = &self.get_client().await;
         let verifier = self.config.create_id_token_verifier(client);
         let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, state);
         let claims: OidcClaims = id_token
-            .claims(&verifier, nonce_verifier)
-            .with_context(|| format!("Could not verify the ID token: {id_token:?}"))?
-            .clone();
+            .into_claims(&verifier, nonce_verifier)
+            .with_context(|| format!("Could not verify the ID token"))?;
         Ok(claims)
     }
 }
@@ -472,7 +471,7 @@ async fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let claims = oidc_state.get_token_claims(id_token, None).await?;
+    let claims = oidc_state.get_token_claims(id_token.clone(), None).await?;
     let expiration = claims.expiration();
     let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
 
@@ -528,7 +527,8 @@ async fn get_authenticated_user_info(
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
     let state = get_state_from_cookie(request)?;
-    let claims = oidc_state.get_token_claims(&id_token, Some(&state)).await?;
+    log::debug!("Verifying id token: {id_token:?}");
+    let claims = oidc_state.get_token_claims(id_token, Some(&state)).await?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
