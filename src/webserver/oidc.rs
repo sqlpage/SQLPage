@@ -32,7 +32,7 @@ use openidconnect::{
     StandardTokenResponse,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::{Mutex, MutexGuard};
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use super::http_client::make_http_client;
 
@@ -151,7 +151,7 @@ pub struct ClientWithTime {
 pub struct OidcState {
     pub config: OidcConfig,
     app_config: AppConfig,
-    client: Mutex<ClientWithTime>,
+    client: RwLock<ClientWithTime>,
 }
 
 impl OidcState {
@@ -162,7 +162,7 @@ impl OidcState {
         Ok(Self {
             config: oidc_cfg,
             app_config,
-            client: Mutex::new(ClientWithTime {
+            client: RwLock::new(ClientWithTime {
                 client,
                 last_update: Instant::now(),
             }),
@@ -174,9 +174,10 @@ impl OidcState {
             log::error!("Failed to create HTTP client");
             return;
         };
+        let mut write_guard = self.client.write().await;
         match build_oidc_client(&self.config, &http_client).await {
             Ok(client) => {
-                *self.client.lock().expect("oidc client") = ClientWithTime {
+                *write_guard = ClientWithTime {
                     client,
                     last_update: Instant::now(),
                 };
@@ -188,26 +189,26 @@ impl OidcState {
     }
 
     /// Gets a reference to the oidc client, potentially generating a new one if needed
-    pub async fn get_client(&self) -> MutexGuard<'_, ClientWithTime> {
+    pub async fn get_client(&self) -> RwLockReadGuard<'_, ClientWithTime> {
         {
-            let client_lock = self.client.lock().expect("oidc client");
+            let client_lock = self.client.read().await;
             if client_lock.last_update.elapsed() < OIDC_CLIENT_REFRESH_INTERVAL {
                 return client_lock;
             }
         }
         log::debug!("OIDC client is older than {OIDC_CLIENT_REFRESH_INTERVAL:?}, refreshing...");
         self.refresh().await;
-        self.client.lock().expect("oidc client")
+        self.client.read().await
     }
 
     /// Validate and decode the claims of an OIDC token, without refreshing the client.
-    fn get_token_claims(
+    async fn get_token_claims(
         &self,
         id_token: &OidcToken,
         state: Option<&OidcLoginState>,
     ) -> anyhow::Result<OidcClaims> {
         // Do not refresh the client on every check
-        let client = &self.client.lock().expect("oidc client").client;
+        let client = &self.client.read().await.client;
         let verifier = self.config.create_id_token_verifier(client);
         let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, state);
         let claims: OidcClaims = id_token
@@ -317,7 +318,7 @@ async fn handle_request(
     request: ServiceRequest,
 ) -> actix_web::Result<MiddlewareResponse> {
     log::trace!("Started OIDC middleware request handling");
-    let response = match get_authenticated_user_info(oidc_state, &request) {
+    let response = match get_authenticated_user_info(oidc_state, &request).await {
         Ok(Some(claims)) => {
             if request.path() != SQLPAGE_REDIRECT_URI {
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
@@ -350,7 +351,7 @@ async fn handle_unauthenticated_request(
 
     log::debug!("Redirecting to OIDC provider");
 
-    let response = build_auth_provider_redirect_response(oidc_state, &request);
+    let response = build_auth_provider_redirect_response(oidc_state, &request).await;
     Ok(request.into_response(response))
 }
 
@@ -364,7 +365,7 @@ async fn handle_oidc_callback(
         Err(e) => {
             log::error!("Failed to process OIDC callback with params {query_string}: {e}");
             oidc_state.refresh().await;
-            let resp = build_auth_provider_redirect_response(oidc_state, &request);
+            let resp = build_auth_provider_redirect_response(oidc_state, &request).await;
             Ok(request.into_response(resp))
         }
     }
@@ -440,7 +441,7 @@ async fn process_oidc_callback(
     let redirect_target = validate_redirect_url(state.initial_url);
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
-    set_auth_cookie(&mut response, &token_response, oidc_state)?;
+    set_auth_cookie(&mut response, &token_response, oidc_state).await?;
     Ok(response)
 }
 
@@ -458,7 +459,7 @@ async fn exchange_code_for_token(
     Ok(token_response)
 }
 
-fn set_auth_cookie(
+async fn set_auth_cookie(
     response: &mut HttpResponse,
     token_response: &OidcTokenResponse,
     oidc_state: &OidcState,
@@ -469,7 +470,7 @@ fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let claims = oidc_state.get_token_claims(id_token, None)?;
+    let claims = oidc_state.get_token_claims(id_token, None).await?;
     let expiration = claims.expiration();
     let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
 
@@ -494,11 +495,11 @@ fn set_auth_cookie(
     Ok(())
 }
 
-fn build_auth_provider_redirect_response(
+async fn build_auth_provider_redirect_response(
     oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> HttpResponse {
-    let AuthUrl { url, params } = build_auth_url(oidc_state);
+    let AuthUrl { url, params } = build_auth_url(oidc_state).await;
     let state_cookie = create_state_cookie(request, params);
     HttpResponse::TemporaryRedirect()
         .append_header(("Location", url.to_string()))
@@ -513,7 +514,7 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
 }
 
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
-fn get_authenticated_user_info(
+async fn get_authenticated_user_info(
     oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> anyhow::Result<Option<OidcClaims>> {
@@ -525,7 +526,7 @@ fn get_authenticated_user_info(
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
     let state = get_state_from_cookie(request)?;
-    let claims = oidc_state.get_token_claims(&id_token, Some(&state))?;
+    let claims = oidc_state.get_token_claims(&id_token, Some(&state)).await?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
@@ -692,11 +693,11 @@ struct AuthUrlParams {
     nonce: Nonce,
 }
 
-fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
+async fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
     let nonce_source = Nonce::new_random();
     let hashed_nonce = Nonce::new(hash_nonce(&nonce_source));
     let scopes = &oidc_state.config.scopes;
-    let client_lock = oidc_state.client.lock().unwrap();
+    let client_lock = oidc_state.get_client().await;
     let (url, csrf_token, _nonce) = client_lock
         .client
         .authorize_url(
