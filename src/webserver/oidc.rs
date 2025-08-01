@@ -16,6 +16,7 @@ use actix_web::{
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
+use base64::write;
 use chrono::Utc;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
@@ -168,9 +169,11 @@ impl OidcState {
     }
 
     async fn refresh(&self, service_request: &ServiceRequest) {
+        // Obtain a write lock to prevent concurrent OIDC client refreshes.
+        let mut write_guard = self.client.write().await;
         match build_oidc_client_from_appdata(&self.config, service_request).await {
             Ok(http_client) => {
-                *self.client.write().await = ClientWithTime {
+                *write_guard = ClientWithTime {
                     client: http_client,
                     last_update: Instant::now(),
                 }
