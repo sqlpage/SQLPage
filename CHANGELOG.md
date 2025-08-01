@@ -1,9 +1,8 @@
 # CHANGELOG.md
 
-## unreleased
+## v0.36.0
  - added support for the MONEY and SMALLMONEY types in MSSQL.
  - include [math functions](https://sqlite.org/lang_mathfunc.html) in the builtin sqlite3 database. 
- - update the SQL parser to [v0.57](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.57.0.md)
  - the sqlpage binary can now help you create new empty migration files from the command line:
    ```
    ❯ ./sqlpage create-migration my_new_table
@@ -18,7 +17,7 @@
    - This allows easily creating a "log in page" that redirects to the OIDC provider.
    - See the [configuration](./configuration.md) for `oidc_protected_paths`
 - Chart component: accept numerical values passed as strings in pie charts.
-- updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.58.0.md
+- updated sql parser: [v0.57](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.57.0.md)  [v0.58](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.58.0.md)
   * **Postgres text search types**: allows `tsquery` and `tsvector` data types
     ```sql
     SELECT 'OpenAI'::text @@ 'open:*'::tsquery;
