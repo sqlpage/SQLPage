@@ -41,7 +41,8 @@ type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
 const SQLPAGE_STATE_COOKIE_NAME: &str = "sqlpage_oidc_state";
-const OIDC_CLIENT_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
+const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
+const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -184,7 +185,14 @@ impl OidcState {
     /// Refreshes the OIDC client from the provider metadata URL if it has expired.
     /// Most providers update their signing keys periodically.
     pub async fn refresh_if_expired(&self, service_request: &ServiceRequest) {
-        if self.client.read().await.last_update.elapsed() > OIDC_CLIENT_REFRESH_INTERVAL {
+        if self.client.read().await.last_update.elapsed() > OIDC_CLIENT_MAX_REFRESH_INTERVAL {
+            self.refresh(service_request).await;
+        }
+    }
+
+    /// When an authentication error is encountered, refresh the OIDC client info faster
+    pub async fn refresh_on_error(&self, service_request: &ServiceRequest) {
+        if self.client.read().await.last_update.elapsed() > OIDC_CLIENT_MIN_REFRESH_INTERVAL {
             self.refresh(service_request).await;
         }
     }
@@ -337,6 +345,7 @@ async fn handle_request(
         }
         Err(e) => {
             log::debug!("An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}");
+            oidc_state.refresh_on_error(&request).await;
             handle_unauthenticated_request(oidc_state, request).await
         }
     }
@@ -419,7 +428,7 @@ async fn process_oidc_callback(
 ) -> anyhow::Result<HttpResponse> {
     let http_client = get_http_client_from_appdata(request)?;
 
-    let state = get_state_from_cookie(request)?;
+    let state = get_state_from_cookie(request).context("Failed to read oidc state cookie")?;
 
     let params = Query::<OidcCallbackParams>::from_query(query_string)
         .with_context(|| {
@@ -442,7 +451,9 @@ async fn process_oidc_callback(
     let redirect_target = validate_redirect_url(state.initial_url);
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
-    set_auth_cookie(&mut response, &token_response, oidc_state).await?;
+    set_auth_cookie(&mut response, &token_response, oidc_state)
+        .await
+        .context("Failed to set auth cookie")?;
     Ok(response)
 }
 
@@ -456,7 +467,8 @@ async fn exchange_code_for_token(
             oidc_callback_params.code,
         ))?
         .request_async(&AwcHttpClient::from_client(http_client))
-        .await?;
+        .await
+        .context("Failed to exchange code for token")?;
     Ok(token_response)
 }
 
@@ -471,7 +483,10 @@ async fn set_auth_cookie(
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
 
-    let claims = oidc_state.get_token_claims(id_token.clone(), None).await?;
+    let claims = oidc_state
+        .get_token_claims(id_token.clone(), None)
+        .await
+        .context("Invalid token returned by OIDC provider")?;
     let expiration = claims.expiration();
     let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
 
