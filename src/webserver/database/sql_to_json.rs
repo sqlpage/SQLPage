@@ -220,6 +220,42 @@ mod tests {
         Ok(())
     }
 
+    /// Postgres encodes values differently in prepared statements and in "simple" queries
+    /// <https://www.postgresql.org/docs/9.1/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY>
+    #[actix_web::test]
+    async fn test_postgres_prepared_types() -> anyhow::Result<()> {
+        let Some(db_url) = db_specific_test("postgres") else {
+            return Ok(());
+        };
+        let mut c = sqlx::AnyConnection::connect(&db_url).await?;
+        let row = sqlx::query(
+            "SELECT
+                '2024-03-14'::DATE as date,
+                '13:14:15'::TIME as time,
+                '2024-03-14 13:14:15+02:00'::TIMESTAMPTZ as timestamptz,
+                INTERVAL '-01:02:03' as time_interval,
+                '{\"key\": \"value\"}'::JSON as json,
+                1234.56::MONEY as money_val
+            where $1",
+        )
+        .bind(true)
+        .fetch_one(&mut c)
+        .await?;
+
+        expect_json_object_equal(
+            &row_to_json(&row),
+            &serde_json::json!({
+                "date": "2024-03-14",
+                "time": "13:14:15",
+                "timestamptz": "2024-03-14T11:14:15+00:00",
+                "time_interval": "-01:02:03",
+                "json": {"key": "value"},
+                "money_val": "" // TODO: fix this bug: https://github.com/sqlpage/SQLPage/issues/983
+            }),
+        );
+        Ok(())
+    }
+
     #[actix_web::test]
     async fn test_mysql_types() -> anyhow::Result<()> {
         let db_url = db_specific_test("mysql").or_else(|| db_specific_test("mariadb"));
