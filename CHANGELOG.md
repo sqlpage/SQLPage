@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## v0.36.1
+ - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
+
 ## v0.36.0
  - added support for the MONEY and SMALLMONEY types in MSSQL.
  - include [math functions](https://sqlite.org/lang_mathfunc.html) in the builtin sqlite3 database. 

@@ -53,13 +53,16 @@ fn decode_raw<'a, T: Decode<'a, sqlx::any::Any> + Default>(
 }
 
 pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'r>) -> Value {
+    use AnyTypeInfoKind::{Mssql, MySql};
     let raw_value = get_ref();
     let type_info = raw_value.type_info();
     let type_name = type_info.name();
     log::trace!("Decoding a value of type {type_name:?} (type info: {type_info:?})");
+    let AnyTypeInfo(ref db_type) = *type_info;
     match type_name {
-        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" | "MONEY"
-        | "SMALLMONEY" => decode_raw::<f64>(raw_value).into(),
+        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" => {
+            decode_raw::<f64>(raw_value).into()
+        }
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
         | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
         "INT" | "INT4" | "INTEGER" | "MEDIUMINT" | "YEAR" => decode_raw::<i32>(raw_value).into(),
@@ -69,15 +72,11 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             decode_raw::<u32>(raw_value).into()
         }
         "BOOL" | "BOOLEAN" => decode_raw::<bool>(raw_value).into(),
-        "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::Mssql(_))) => {
+        "BIT" if matches!(db_type, Mssql(_)) => decode_raw::<bool>(raw_value).into(),
+        "BIT" if matches!(db_type, MySql(mysql_type) if mysql_type.max_size() == Some(1)) => {
             decode_raw::<bool>(raw_value).into()
         }
-        "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::MySql(ref mysql_type)) if mysql_type.max_size() == Some(1)) => {
-            decode_raw::<bool>(raw_value).into()
-        }
-        "BIT" if matches!(*type_info, AnyTypeInfo(AnyTypeInfoKind::MySql(_))) => {
-            decode_raw::<u64>(raw_value).into()
-        }
+        "BIT" if matches!(db_type, MySql(_)) => decode_raw::<u64>(raw_value).into(),
         "DATE" => decode_raw::<chrono::NaiveDate>(raw_value)
             .to_string()
             .into(),
@@ -93,6 +92,9 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             .format("%FT%T%.f")
             .to_string()
             .into(),
+        "MONEY" | "SMALLMONEY" if matches!(db_type, Mssql(_)) => {
+            decode_raw::<f64>(raw_value).into()
+        }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode_raw::<Value>(raw_value),
         // Deserialize as a string by default
         _ => decode_raw::<String>(raw_value).into(),
@@ -212,7 +214,7 @@ mod tests {
                 "jsonb": {"key": "value"},
                 "age_interval": "2 mons 13 days",
                 "justified_interval": "1 year 2 mons 3 days",
-                "money_val": 0.0 // TODO: fix this. This should be 1234.56
+                "money_val": "$1,234.56"
             }),
         );
         Ok(())
