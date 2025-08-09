@@ -2,6 +2,8 @@
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
+   - The recommended way to display money values in postgres is still to format them in the way you expect in SQL. See https://github.com/sqlpage/SQLPage/issues/983
+ - updated dependencies
 
 ## v0.36.0
  - added support for the MONEY and SMALLMONEY types in MSSQL.
