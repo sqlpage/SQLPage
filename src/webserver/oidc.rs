@@ -805,7 +805,7 @@ impl OidcLoginState {
     }
 }
 
-fn create_state_cookie(login_state: &OidcLoginState) -> Cookie {
+fn create_state_cookie(login_state: &OidcLoginState) -> Cookie<'_> {
     let state_json = serde_json::to_string(login_state).unwrap();
     Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
         .secure(true)
