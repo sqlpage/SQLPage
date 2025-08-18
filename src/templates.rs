@@ -57,7 +57,7 @@ impl AsyncFromStrWithState for SplitTemplate {
         source: &str,
         source_path: &Path,
     ) -> anyhow::Result<Self> {
-        log::debug!("Compiling template {:?}", source_path);
+        log::debug!("Compiling template \"{}\"", source_path.display());
         let tpl = Template::compile_with_name(source, "SQLPage component".to_string())?;
         Ok(split_template(tpl))
     }

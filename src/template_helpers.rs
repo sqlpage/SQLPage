@@ -704,7 +704,7 @@ mod tests {
         }
     }
 
-    fn as_args(contents: &Value) -> [PathAndJson; 1] {
+    fn as_args(contents: &Value) -> [PathAndJson<'_>; 1] {
         [as_helper_arg(CONTENT_KEY, contents)]
     }
 
