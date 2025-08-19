@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased
+ - We now cryptographically sign the Windows app during releases, which proves the file hasn’t been tampered with. Once the production certificate is active, Windows will show a "verified publisher" and should stop showing screens saying "This app might harm your device", "Windows protected your PC" or "Are you sure you want to run this application ?". 
+   - Thanks to https://signpath.io for providing us with a windows signing certificate !
+
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
    - The recommended way to display money values in postgres is still to format them in the way you expect in SQL. See https://github.com/sqlpage/SQLPage/issues/983
