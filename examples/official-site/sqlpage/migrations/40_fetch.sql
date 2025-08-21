@@ -87,6 +87,7 @@ The fetch function accepts either a URL string, or a JSON object with the follow
  - `timeout_ms`: The maximum time to wait for the request, in milliseconds. Defaults to 5000.
  - `username`: Optional username for HTTP Basic Authentication. Introduced in version 0.33.0.
  - `password`: Optional password for HTTP Basic Authentication. Only used if username is provided. Introduced in version 0.33.0.
+ - `response_encoding`: Optional charset to use for decoding the response body. Defaults to `utf8`, or `base64` if the response contains binary data. All [standard web encodings](https://encoding.spec.whatwg.org/#concept-encoding-get) are supported, plus `hex`, `base64`, and `base64url`. Introduced in version 0.37.0.
 
 # Error handling and reading response headers
 

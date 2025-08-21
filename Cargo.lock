@@ -3714,7 +3714,7 @@ dependencies = [
 
 [[package]]
 name = "sqlpage"
-version = "0.36.1"
+version = "0.37.0"
 dependencies = [
  "actix-multipart",
  "actix-rt",
@@ -3732,6 +3732,7 @@ dependencies = [
  "config",
  "csv-async",
  "dotenvy",
+ "encoding_rs",
  "env_logger",
  "futures-util",
  "handlebars",

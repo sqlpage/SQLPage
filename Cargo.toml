@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.36.1"
+version = "0.37.0"
 edition = "2021"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -73,6 +73,7 @@ awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
 clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false }
+encoding_rs = "0.8.35"
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
