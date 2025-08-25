@@ -111,12 +111,10 @@ to your identity provider and your application code never executes.
 This keeps attackers outside your SSO realm from reaching your app,
 even if a vulnerability exists in your own code.
 
-By default, all pages are protected. You can scope access using the
-`oidc_protected_paths` and `oidc_public_paths` settings. See the
-[configuration documentation](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#openid-connect-oidc-authentication).
-Once authenticated, access user claims with
-[`sqlpage.user_info()`](/functions.sql?function=user_info) or inspect the full token with
-[`sqlpage.user_info_token()`](/functions.sql?function=user_info_token).
+By default, all pages are protected when single sign-on is enabled.
+Once authenticated, you can access user claims with
+[`sqlpage.user_info()`](/functions.sql?function=user_info)
+to further restrict what users see based on who they are.
 
 ## Protection against [CSRF attacks](https://en.wikipedia.org/wiki/Cross-site_request_forgery)
 
