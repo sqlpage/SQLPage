@@ -158,26 +158,43 @@ pub(super) async fn extract_req_param<'a>(
         // sync functions
         StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),
-        StmtParam::PostOrGet(x) => if let Some(v) = request.post_variables.get(x) {
-            log::warn!("Deprecation warning! ${x} was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :{x} instead.");
-            Some(v)
-        } else {
-            request.get_variables.get(x)
+        StmtParam::PostOrGet(x) => {
+            let post_val = request.post_variables.get(x);
+            let get_val = request.get_variables.get(x);
+            if let Some(v) = post_val {
+                if let Some(get_val) = get_val {
+                    log::warn!(
+                        "Deprecation warning! There is both a URL parameter named '{x}' with value '{get_val}' and a form field named '{x}' with value '{v}'. \
+                        SQLPage is using the value from the form submission, but this is ambiguous, can lead to unexpected behavior, and will stop working in a future version of SQLPage. \
+                        To fix this, please rename the URL parameter to something else, and reference the form field with :{x}."
+                    );
+                } else {
+                    log::warn!("Deprecation warning! ${x} was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :{x} instead.");
+                }
+                Some(v.as_json_str())
+            } else {
+                get_val.map(SingleOrVec::as_json_str)
+            }
         }
-        .map(SingleOrVec::as_json_str),
         StmtParam::Error(x) => anyhow::bail!("{}", x),
         StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
         StmtParam::Null => None,
         StmtParam::Concat(args) => concat_params(&args[..], request, db_connection).await?,
-        StmtParam::JsonObject(args) => json_object_params(&args[..], request, db_connection).await?,
+        StmtParam::JsonObject(args) => {
+            json_object_params(&args[..], request, db_connection).await?
+        }
         StmtParam::JsonArray(args) => json_array_params(&args[..], request, db_connection).await?,
         StmtParam::Coalesce(args) => coalesce_params(&args[..], request, db_connection).await?,
-        StmtParam::FunctionCall(func) => func.evaluate(request, db_connection).await.with_context(|| {
-            format!(
-                "Error in function call {func}.\nExpected {:#}",
-                func.function
-            )
-        })?,
+        StmtParam::FunctionCall(func) => {
+            func.evaluate(request, db_connection)
+                .await
+                .with_context(|| {
+                    format!(
+                        "Error in function call {func}.\nExpected {:#}",
+                        func.function
+                    )
+                })?
+        }
     })
 }
 

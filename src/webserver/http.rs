@@ -275,6 +275,25 @@ pub enum SingleOrVec {
     Vec(Vec<String>),
 }
 
+impl std::fmt::Display for SingleOrVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SingleOrVec::Single(x) => write!(f, "{x}"),
+            SingleOrVec::Vec(v) => {
+                write!(f, "[")?;
+                let mut it = v.iter();
+                if let Some(first) = it.next() {
+                    write!(f, "{first}")?;
+                }
+                for item in it {
+                    write!(f, ", {item}")?;
+                }
+                write!(f, "]")
+            }
+        }
+    }
+}
+
 impl SingleOrVec {
     pub(crate) fn merge(&mut self, other: Self) {
         match (self, other) {

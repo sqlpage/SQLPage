@@ -5,6 +5,7 @@
   - All [standard web encodings](https://encoding.spec.whatwg.org/#concept-encoding-get) are supported.
   - Additionally, `base64` can be specified to decode binary data as base64 (compatible with [data URI](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs))
   - By default, the old behavior of the `fetch_with_meta` function is preserved: the response body is decoded as `utf-8` if possible, otherwise the response is encoded in `base64`.
+ - Added a specific warning when a URL parameter and a form field have the same name. The previous general warning about referencing form fields with the `$var` syntax was confusing in that case.
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
