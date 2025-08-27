@@ -6,6 +6,10 @@
   - Additionally, `base64` can be specified to decode binary data as base64 (compatible with [data URI](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs))
   - By default, the old behavior of the `fetch_with_meta` function is preserved: the response body is decoded as `utf-8` if possible, otherwise the response is encoded in `base64`.
  - Added a specific warning when a URL parameter and a form field have the same name. The previous general warning about referencing form fields with the `$var` syntax was confusing in that case.
+ - [modal](https://sql-page.com/component.sql?component=modal) component: allow opening modals with a simple link.
+   - This allows you to trigger modals from any other component, including tables, maps, forms, lists and more.
+   - Since modals have their own url inside the page, you can now link to a modal from another page, and if you refresh a page while the modal is open, the modal will stay open.
+   - modals now have an `open` parameter to open the modal automatically when the page is loaded.
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0

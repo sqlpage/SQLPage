@@ -332,21 +332,37 @@ add_init_fn(sqlpage_form);
 add_init_fn(load_scripts);
 
 function init_bootstrap_components(event) {
-  if (window.bootstrap) {
-    const fragment = event.target;
-    for (const el of fragment.querySelectorAll('[data-bs-toggle="tooltip"]')) {
-      new bootstrap.Tooltip(el);
-    }
-    for (const el of fragment.querySelectorAll('[data-bs-toggle="popover"]')) {
-      new bootstrap.Popover(el);
-    }
-    for (const el of fragment.querySelectorAll('[data-bs-toggle="dropdown"]')) {
-      new bootstrap.Dropdown(el);
-    }
-    for (const el of fragment.querySelectorAll('[data-bs-ride="carousel"]')) {
-      new bootstrap.Carousel(el);
-    }
+  const bootstrap = window.bootstrap || window.tabler.bootstrap;
+  const fragment = event.target;
+  for (const el of fragment.querySelectorAll('[data-bs-toggle="tooltip"]')) {
+    new bootstrap.Tooltip(el);
+  }
+  for (const el of fragment.querySelectorAll('[data-bs-toggle="popover"]')) {
+    new bootstrap.Popover(el);
+  }
+  for (const el of fragment.querySelectorAll('[data-bs-toggle="dropdown"]')) {
+    new bootstrap.Dropdown(el);
+  }
+  for (const el of fragment.querySelectorAll('[data-bs-ride="carousel"]')) {
+    new bootstrap.Carousel(el);
   }
 }
 
 document.addEventListener("fragment-loaded", init_bootstrap_components);
+
+function open_modal_for_hash() {
+  const hash = window.location.hash.substring(1);
+  if (!hash) return;
+  const modal = document.getElementById(hash);
+  const classes = modal.classList;
+  if (!modal || !classes.contains("modal")) return;
+  const bootstrap_modal =
+    window.tabler.bootstrap.Modal.getOrCreateInstance(modal);
+  bootstrap_modal.show();
+  modal.addEventListener("hidden.bs.modal", () => {
+    window.history.replaceState(null, "", "#");
+  });
+}
+
+window.addEventListener("hashchange", open_modal_for_hash);
+window.addEventListener("DOMContentLoaded", open_modal_for_hash);
