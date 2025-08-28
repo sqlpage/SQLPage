@@ -2,7 +2,10 @@ select 'http_header' as component,
     'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     '<https://sql-page.com/safety>; rel="canonical"' as "Link";
 
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
+    'title', 'Security in SQLPage: SSO, protection against SQLi, XSS, CSRF, and more'
+)) as properties
+FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'hero' as component,
     'SQLPage''s security guarantees' as title,
