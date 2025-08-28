@@ -118,6 +118,7 @@ impl HeaderContext {
             Some(HeaderComponent::Csv) => self.csv(&data).await,
             Some(HeaderComponent::Cookie) => self.add_cookie(&data).map(PageContext::Header),
             Some(HeaderComponent::Authentication) => self.authentication(data).await,
+            Some(HeaderComponent::Download) => self.download(&data),
             None => self.start_body(data).await,
         }
     }
@@ -325,6 +326,38 @@ impl HeaderContext {
         };
         self.has_status = true;
         Ok(PageContext::Close(http_response))
+    }
+
+    fn download(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
+        if let Some(filename) = get_object_str(options, "filename") {
+            self.response.insert_header((
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{filename}\""),
+            ));
+        }
+        let data_url = get_object_str(options, "data_url")
+            .with_context(|| "The download component requires a 'data_url' property")?;
+        let rest = data_url
+            .strip_prefix("data:")
+            .with_context(|| "Invalid data URL: missing 'data:' prefix")?;
+        let (mut content_type, data) = rest
+            .split_once(',')
+            .with_context(|| "Invalid data URL: missing comma")?;
+        let mut body_bytes: Cow<[u8]> = percent_encoding::percent_decode(data.as_bytes()).into();
+        if let Some(stripped) = content_type.strip_suffix(";base64") {
+            content_type = stripped;
+            body_bytes =
+                base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &body_bytes)
+                    .with_context(|| "Invalid base64 data in data URL")?
+                    .into();
+        }
+        if !content_type.is_empty() {
+            self.response
+                .insert_header((header::CONTENT_TYPE, content_type));
+        }
+        Ok(PageContext::Close(
+            self.response.body(body_bytes.into_owned()),
+        ))
     }
 
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext> {
@@ -1074,6 +1107,7 @@ enum HeaderComponent {
     Csv,
     Cookie,
     Authentication,
+    Download,
 }
 
 impl TryFrom<&str> for HeaderComponent {
@@ -1087,6 +1121,7 @@ impl TryFrom<&str> for HeaderComponent {
             "csv" => Ok(Self::Csv),
             "cookie" => Ok(Self::Cookie),
             "authentication" => Ok(Self::Authentication),
+            "download" => Ok(Self::Download),
             _ => Err(()),
         }
     }

@@ -10,6 +10,7 @@
    - This allows you to trigger modals from any other component, including tables, maps, forms, lists and more.
    - Since modals have their own url inside the page, you can now link to a modal from another page, and if you refresh a page while the modal is open, the modal will stay open.
    - modals now have an `open` parameter to open the modal automatically when the page is loaded.
+ - New [download](https://sql-page.com/component.sql?component=download) component to let the user download files. The files may be stored as BLOBs in the database, local files on the server, or may be fetched from a different server.
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
