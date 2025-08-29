@@ -1,4 +1,5 @@
 use crate::utils::add_value_to_map;
+use crate::webserver::database::blob_to_data_url;
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde_json::{self, Map, Value};
 use sqlx::any::{AnyRow, AnyTypeInfo, AnyTypeInfoKind};
@@ -97,7 +98,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode_raw::<Value>(raw_value),
         "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => {
-            vec_to_data_uri_value(&decode_raw::<Vec<u8>>(raw_value))
+            blob_to_data_url::vec_to_data_uri_value(&decode_raw::<Vec<u8>>(raw_value))
         }
         // Deserialize as a string by default
         _ => decode_raw::<String>(raw_value).into(),
@@ -112,19 +113,6 @@ pub fn row_to_string(row: &AnyRow) -> Option<String> {
         serde_json::Value::Null => None,
         other => Some(other.to_string()),
     }
-}
-
-/// Converts binary data to a data URL string.
-/// This function is used by both SQL type conversion and file reading functions.
-/// Automatically detects common file types based on magic bytes.
-pub fn vec_to_data_uri(bytes: &[u8]) -> String {
-    crate::webserver::database::blob_to_data_url::vec_to_data_uri(bytes)
-}
-
-/// Converts binary data to a data URL JSON value.
-/// This is a convenience function for SQL type conversion.
-pub fn vec_to_data_uri_value(bytes: &[u8]) -> Value {
-    Value::String(vec_to_data_uri(bytes))
 }
 
 #[cfg(test)]
