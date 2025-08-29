@@ -2,6 +2,7 @@ use super::RequestInfo;
 use crate::webserver::{
     database::{
         execute_queries::DbConn, sqlpage_functions::url_parameter_deserializer::URLParameters,
+        sql_to_json::vec_to_data_uri_with_mime,
     },
     http::SingleOrVec,
     http_client::make_http_client,
@@ -504,12 +505,7 @@ async fn read_file_as_data_url<'a>(
         || Cow::Owned(mime_guess_from_filename(&file_path)),
         Cow::Borrowed,
     );
-    let mut data_url = format!("data:{mime};base64,");
-    base64::Engine::encode_string(
-        &base64::engine::general_purpose::STANDARD,
-        bytes,
-        &mut data_url,
-    );
+    let data_url = vec_to_data_uri_with_mime(bytes, &mime.to_string());
     Ok(Some(Cow::Owned(data_url)))
 }
 
