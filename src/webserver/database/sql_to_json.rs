@@ -96,7 +96,9 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             decode_raw::<f64>(raw_value).into()
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode_raw::<Value>(raw_value),
-        "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => vec_to_data_uri_value(decode_raw::<Vec<u8>>(raw_value)),
+        "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => {
+            vec_to_data_uri_value(decode_raw::<Vec<u8>>(raw_value))
+        }
         // Deserialize as a string by default
         _ => decode_raw::<String>(raw_value).into(),
     }
@@ -481,7 +483,10 @@ mod tests {
 
         // Test with simple text
         let result = vec_to_data_uri(b"Hello World".to_vec());
-        assert_eq!(result, "data:application/octet-stream;base64,SGVsbG8gV29ybGQ=");
+        assert_eq!(
+            result,
+            "data:application/octet-stream;base64,SGVsbG8gV29ybGQ="
+        );
 
         // Test with binary data
         let binary_data = vec![0, 1, 2, 255, 254, 253];
