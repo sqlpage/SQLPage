@@ -97,7 +97,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode_raw::<Value>(raw_value),
         "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => {
-            vec_to_data_uri_value(decode_raw::<Vec<u8>>(raw_value))
+            vec_to_data_uri_value(&decode_raw::<Vec<u8>>(raw_value))
         }
         // Deserialize as a string by default
         _ => decode_raw::<String>(raw_value).into(),
@@ -116,17 +116,17 @@ pub fn row_to_string(row: &AnyRow) -> Option<String> {
 
 /// Converts binary data to a data URL string.
 /// This function is used by both SQL type conversion and file reading functions.
-pub fn vec_to_data_uri(bytes: Vec<u8>) -> String {
+pub fn vec_to_data_uri(bytes: &[u8]) -> String {
     vec_to_data_uri_with_mime(bytes, "application/octet-stream")
 }
 
 /// Converts binary data to a data URL string with a specific MIME type.
 /// This function is used by both SQL type conversion and file reading functions.
-pub fn vec_to_data_uri_with_mime(bytes: Vec<u8>, mime_type: &str) -> String {
-    let mut data_url = format!("data:{};base64,", mime_type);
+pub fn vec_to_data_uri_with_mime(bytes: &[u8], mime_type: &str) -> String {
+    let mut data_url = format!("data:{mime_type};base64,");
     base64::Engine::encode_string(
         &base64::engine::general_purpose::STANDARD,
-        &bytes,
+        bytes,
         &mut data_url,
     );
     data_url
@@ -134,7 +134,7 @@ pub fn vec_to_data_uri_with_mime(bytes: Vec<u8>, mime_type: &str) -> String {
 
 /// Converts binary data to a data URL JSON value.
 /// This is a convenience function for SQL type conversion.
-pub fn vec_to_data_uri_value(bytes: Vec<u8>) -> Value {
+pub fn vec_to_data_uri_value(bytes: &[u8]) -> Value {
     Value::String(vec_to_data_uri(bytes))
 }
 
@@ -478,41 +478,41 @@ mod tests {
     #[test]
     fn test_vec_to_data_uri() {
         // Test with empty bytes
-        let result = vec_to_data_uri(vec![]);
+        let result = vec_to_data_uri(&[]);
         assert_eq!(result, "data:application/octet-stream;base64,");
 
         // Test with simple text
-        let result = vec_to_data_uri(b"Hello World".to_vec());
+        let result = vec_to_data_uri(b"Hello World");
         assert_eq!(
             result,
             "data:application/octet-stream;base64,SGVsbG8gV29ybGQ="
         );
 
         // Test with binary data
-        let binary_data = vec![0, 1, 2, 255, 254, 253];
-        let result = vec_to_data_uri(binary_data);
+        let binary_data = [0, 1, 2, 255, 254, 253];
+        let result = vec_to_data_uri(&binary_data);
         assert_eq!(result, "data:application/octet-stream;base64,AAEC//79");
     }
 
     #[test]
     fn test_vec_to_data_uri_with_mime() {
         // Test with custom MIME type
-        let result = vec_to_data_uri_with_mime(b"Hello".to_vec(), "text/plain");
+        let result = vec_to_data_uri_with_mime(b"Hello", "text/plain");
         assert_eq!(result, "data:text/plain;base64,SGVsbG8=");
 
         // Test with image MIME type
-        let result = vec_to_data_uri_with_mime(vec![255, 216, 255], "image/jpeg");
+        let result = vec_to_data_uri_with_mime(&[255, 216, 255], "image/jpeg");
         assert_eq!(result, "data:image/jpeg;base64,/9j/");
 
         // Test with empty bytes and custom MIME
-        let result = vec_to_data_uri_with_mime(vec![], "application/json");
+        let result = vec_to_data_uri_with_mime(&[], "application/json");
         assert_eq!(result, "data:application/json;base64,");
     }
 
     #[test]
     fn test_vec_to_data_uri_value() {
         // Test that it returns a JSON string value
-        let result = vec_to_data_uri_value(b"test".to_vec());
+        let result = vec_to_data_uri_value(b"test");
         match result {
             Value::String(s) => assert_eq!(s, "data:application/octet-stream;base64,dGVzdA=="),
             _ => panic!("Expected String value"),
