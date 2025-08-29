@@ -121,12 +121,6 @@ pub fn vec_to_data_uri(bytes: &[u8]) -> String {
     crate::webserver::database::blob_to_data_url::vec_to_data_uri(bytes)
 }
 
-/// Converts binary data to a data URL string with a specific MIME type.
-/// This function is used by both SQL type conversion and file reading functions.
-pub fn vec_to_data_uri_with_mime(bytes: &[u8], mime_type: &str) -> String {
-    crate::webserver::database::blob_to_data_url::vec_to_data_uri_with_mime(bytes, mime_type)
-}
-
 /// Converts binary data to a data URL JSON value.
 /// This is a convenience function for SQL type conversion.
 pub fn vec_to_data_uri_value(bytes: &[u8]) -> Value {
@@ -469,8 +463,6 @@ mod tests {
         );
         Ok(())
     }
-
-
 
     fn expect_json_object_equal(actual: &Value, expected: &Value) {
         use std::fmt::Write;

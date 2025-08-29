@@ -1,7 +1,6 @@
 /// Detects MIME type based on file signatures (magic bytes).
 /// Returns the most appropriate MIME type for common file formats.
-#[must_use]
-pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
+#[must_use] pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
     if bytes.is_empty() {
         return "application/octet-stream";
     }
@@ -71,16 +70,14 @@ pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
 /// Converts binary data to a data URL string.
 /// This function is used by both SQL type conversion and file reading functions.
 /// Automatically detects common file types based on magic bytes.
-#[must_use]
-pub fn vec_to_data_uri(bytes: &[u8]) -> String {
+#[must_use] pub fn vec_to_data_uri(bytes: &[u8]) -> String {
     let mime_type = detect_mime_type(bytes);
     vec_to_data_uri_with_mime(bytes, mime_type)
 }
 
 /// Converts binary data to a data URL string with a specific MIME type.
 /// This function is used by both SQL type conversion and file reading functions.
-#[must_use]
-pub fn vec_to_data_uri_with_mime(bytes: &[u8], mime_type: &str) -> String {
+#[must_use] pub fn vec_to_data_uri_with_mime(bytes: &[u8], mime_type: &str) -> String {
     let mut data_url = format!("data:{mime_type};base64,");
     base64::Engine::encode_string(
         &base64::engine::general_purpose::STANDARD,
@@ -92,8 +89,7 @@ pub fn vec_to_data_uri_with_mime(bytes: &[u8], mime_type: &str) -> String {
 
 /// Converts binary data to a data URL JSON value.
 /// This is a convenience function for SQL type conversion.
-#[must_use]
-pub fn vec_to_data_uri_value(bytes: &[u8]) -> serde_json::Value {
+#[must_use] pub fn vec_to_data_uri_value(bytes: &[u8]) -> serde_json::Value {
     serde_json::Value::String(vec_to_data_uri(bytes))
 }
 
@@ -191,9 +187,7 @@ mod tests {
         // Test that it returns a JSON string value
         let result = vec_to_data_uri_value(b"test");
         match result {
-            serde_json::Value::String(s) => {
-                assert_eq!(s, "data:application/octet-stream;base64,dGVzdA==")
-            }
+            serde_json::Value::String(s) => assert_eq!(s, "data:application/octet-stream;base64,dGVzdA=="),
             _ => panic!("Expected String value"),
         }
     }
