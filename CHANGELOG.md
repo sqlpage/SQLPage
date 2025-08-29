@@ -16,6 +16,10 @@
    - **MySQL/MariaDB**: supports `BLOB` columns
    - **MSSQL**: Extended support for `VARBINARY`, `BIGVARBINARY`, `BINARY`, and `IMAGE` columns
    - **SQLite**: Full support for `BLOB` columns
+   - **Smart MIME Type Detection**: Automatic detection of common file types based on magic bytes:
+     - **Images**: PNG, JPEG/JPG, GIF, BMP, WebP, SVG
+     - **Documents**: PDF, DOCX, XLSX, PPTX
+     - **Data**: JSON, XML, ZIP archives
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0

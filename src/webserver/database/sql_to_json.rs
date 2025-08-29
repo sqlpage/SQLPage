@@ -116,8 +116,100 @@ pub fn row_to_string(row: &AnyRow) -> Option<String> {
 
 /// Converts binary data to a data URL string.
 /// This function is used by both SQL type conversion and file reading functions.
+/// Automatically detects common file types based on magic bytes.
 pub fn vec_to_data_uri(bytes: &[u8]) -> String {
-    vec_to_data_uri_with_mime(bytes, "application/octet-stream")
+    let mime_type = detect_mime_type(bytes);
+    vec_to_data_uri_with_mime(bytes, mime_type)
+}
+
+/// Detects MIME type based on file signatures (magic bytes).
+/// Returns the most appropriate MIME type for common file formats.
+pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
+    if bytes.is_empty() {
+        return "application/octet-stream";
+    }
+
+    // Check for PNG (Portable Network Graphics)
+    if bytes.len() >= 8 && &bytes[0..8] == &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
+        return "image/png";
+    }
+
+    // Check for JPEG (Joint Photographic Experts Group)
+    if bytes.len() >= 2 && &bytes[0..2] == &[0xFF, 0xD8] {
+        return "image/jpeg";
+    }
+
+    // Check for GIF (Graphics Interchange Format)
+    if bytes.len() >= 6 {
+        if &bytes[0..6] == &[0x47, 0x49, 0x46, 0x38, 0x37, 0x61] || // GIF87a
+           &bytes[0..6] == &[0x47, 0x49, 0x46, 0x38, 0x39, 0x61] {  // GIF89a
+            return "image/gif";
+        }
+    }
+
+    // Check for BMP (Bitmap)
+    if bytes.len() >= 2 && &bytes[0..2] == &[0x42, 0x4D] {
+        return "image/bmp";
+    }
+
+    // Check for WebP
+    if bytes.len() >= 12 && &bytes[0..4] == &[0x52, 0x49, 0x46, 0x46] &&
+       &bytes[8..12] == &[0x57, 0x45, 0x42, 0x50] {
+        return "image/webp";
+    }
+
+    // Check for PDF (Portable Document Format)
+    if bytes.len() >= 4 && &bytes[0..4] == &[0x25, 0x50, 0x44, 0x46] {
+        return "application/pdf";
+    }
+
+    // Check for ZIP (including DOCX, XLSX, etc.)
+    if bytes.len() >= 4 && &bytes[0..4] == &[0x50, 0x4B, 0x03, 0x04] {
+        // Check for specific ZIP-based formats
+        if bytes.len() >= 50 {
+            let content = String::from_utf8_lossy(&bytes[30..50]);
+            if content.contains("word/") {
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            }
+            if content.contains("xl/") {
+                return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            }
+            if content.contains("ppt/") {
+                return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            }
+        }
+        return "application/zip";
+    }
+
+    // Check for JSON (simple heuristic)
+    if bytes.len() >= 2 {
+        let start = String::from_utf8_lossy(&bytes[..bytes.len().min(10)]);
+        let trimmed = start.trim();
+        if trimmed.starts_with('{') || trimmed.starts_with('[') {
+            return "application/json";
+        }
+    }
+
+    // Check for SVG (Scalable Vector Graphics) - must come before XML
+    if bytes.len() >= 5 {
+        let start = String::from_utf8_lossy(&bytes[..bytes.len().min(100)]);
+        let trimmed = start.trim_start();
+        if trimmed.starts_with("<svg") {
+            return "image/svg+xml";
+        }
+    }
+
+    // Check for XML - must come after SVG to avoid conflicts
+    if bytes.len() >= 5 {
+        let start = String::from_utf8_lossy(&bytes[..bytes.len().min(20)]);
+        let trimmed = start.trim_start();
+        if trimmed.starts_with("<?xml") || trimmed.starts_with('<') {
+            return "application/xml";
+        }
+    }
+
+    // Default fallback
+    "application/octet-stream"
 }
 
 /// Converts binary data to a data URL string with a specific MIME type.
@@ -492,6 +584,74 @@ mod tests {
         let binary_data = [0, 1, 2, 255, 254, 253];
         let result = vec_to_data_uri(&binary_data);
         assert_eq!(result, "data:application/octet-stream;base64,AAEC//79");
+    }
+
+    #[test]
+    fn test_detect_mime_type() {
+        // Test empty data
+        assert_eq!(detect_mime_type(&[]), "application/octet-stream");
+
+        // Test PNG
+        let png_data = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        assert_eq!(detect_mime_type(&png_data), "image/png");
+
+        // Test JPEG
+        let jpeg_data = [0xFF, 0xD8, 0xFF, 0xE0];
+        assert_eq!(detect_mime_type(&jpeg_data), "image/jpeg");
+
+        // Test GIF87a
+        let gif87a_data = [0x47, 0x49, 0x46, 0x38, 0x37, 0x61];
+        assert_eq!(detect_mime_type(&gif87a_data), "image/gif");
+
+        // Test GIF89a
+        let gif89a_data = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61];
+        assert_eq!(detect_mime_type(&gif89a_data), "image/gif");
+
+        // Test BMP
+        let bmp_data = [0x42, 0x4D, 0x00, 0x00];
+        assert_eq!(detect_mime_type(&bmp_data), "image/bmp");
+
+        // Test PDF
+        let pdf_data = [0x25, 0x50, 0x44, 0x46, 0x2D];
+        assert_eq!(detect_mime_type(&pdf_data), "application/pdf");
+
+        // Test SVG
+        let svg_data = b"<svg xmlns=\"http://www.w3.org/2000/svg\">";
+        assert_eq!(detect_mime_type(svg_data), "image/svg+xml");
+
+        // Test XML (non-SVG)
+        let xml_data = b"<?xml version=\"1.0\"?><root><data>test</data></root>";
+        assert_eq!(detect_mime_type(xml_data), "application/xml");
+
+        // Test JSON
+        let json_data = b"{\"key\": \"value\"}";
+        assert_eq!(detect_mime_type(json_data), "application/json");
+
+        // Test ZIP
+        let zip_data = [0x50, 0x4B, 0x03, 0x04];
+        assert_eq!(detect_mime_type(&zip_data), "application/zip");
+
+        // Test unknown data
+        let unknown_data = [0x00, 0x01, 0x02, 0x03];
+        assert_eq!(detect_mime_type(&unknown_data), "application/octet-stream");
+    }
+
+    #[test]
+    fn test_vec_to_data_uri_with_auto_detection() {
+        // Test PNG auto-detection
+        let png_data = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00];
+        let result = vec_to_data_uri(&png_data);
+        assert!(result.starts_with("data:image/png;base64,"));
+
+        // Test JPEG auto-detection
+        let jpeg_data = [0xFF, 0xD8, 0xFF, 0xE0, 0x00];
+        let result = vec_to_data_uri(&jpeg_data);
+        assert!(result.starts_with("data:image/jpeg;base64,"));
+
+        // Test PDF auto-detection
+        let pdf_data = [0x25, 0x50, 0x44, 0x46, 0x2D, 0x00];
+        let result = vec_to_data_uri(&pdf_data);
+        assert!(result.starts_with("data:application/pdf;base64,"));
     }
 
     #[test]
