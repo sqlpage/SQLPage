@@ -2,6 +2,7 @@ mod connect;
 mod csv_import;
 pub mod execute_queries;
 pub mod migrations;
+pub mod mime_detection;
 mod sql;
 mod sqlpage_functions;
 mod syntax_tree;
