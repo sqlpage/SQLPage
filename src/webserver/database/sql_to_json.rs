@@ -122,50 +122,32 @@ pub fn vec_to_data_uri(bytes: &[u8]) -> String {
     vec_to_data_uri_with_mime(bytes, mime_type)
 }
 
-/// Detects MIME type based on file signatures (magic bytes).
-/// Returns the most appropriate MIME type for common file formats.
 pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
     if bytes.is_empty() {
         return "application/octet-stream";
     }
 
-    // Check for PNG (Portable Network Graphics)
-    if bytes.len() >= 8 && &bytes[0..8] == &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
+    if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
         return "image/png";
     }
-
-    // Check for JPEG (Joint Photographic Experts Group)
-    if bytes.len() >= 2 && &bytes[0..2] == &[0xFF, 0xD8] {
+    if bytes.starts_with(&[0xFF, 0xD8]) {
         return "image/jpeg";
     }
-
-    // Check for GIF (Graphics Interchange Format)
-    if bytes.len() >= 6 {
-        if &bytes[0..6] == &[0x47, 0x49, 0x46, 0x38, 0x37, 0x61] || // GIF87a
-           &bytes[0..6] == &[0x47, 0x49, 0x46, 0x38, 0x39, 0x61] {  // GIF89a
-            return "image/gif";
-        }
+    if bytes.starts_with(&[0x47, 0x49, 0x46, 0x38, 0x37, 0x61]) ||
+       bytes.starts_with(&[0x47, 0x49, 0x46, 0x38, 0x39, 0x61]) {
+        return "image/gif";
     }
-
-    // Check for BMP (Bitmap)
-    if bytes.len() >= 2 && &bytes[0..2] == &[0x42, 0x4D] {
+    if bytes.starts_with(&[0x42, 0x4D]) {
         return "image/bmp";
     }
-
-    // Check for WebP
-    if bytes.len() >= 12 && &bytes[0..4] == &[0x52, 0x49, 0x46, 0x46] &&
+    if bytes.starts_with(&[0x52, 0x49, 0x46, 0x46]) && bytes.len() >= 12 &&
        &bytes[8..12] == &[0x57, 0x45, 0x42, 0x50] {
         return "image/webp";
     }
-
-    // Check for PDF (Portable Document Format)
-    if bytes.len() >= 4 && &bytes[0..4] == &[0x25, 0x50, 0x44, 0x46] {
+    if bytes.starts_with(&[0x25, 0x50, 0x44, 0x46]) {
         return "application/pdf";
     }
-
-    // Check for ZIP (including DOCX, XLSX, etc.)
-    if bytes.len() >= 4 && &bytes[0..4] == &[0x50, 0x4B, 0x03, 0x04] {
-        // Check for specific ZIP-based formats
+    if bytes.starts_with(&[0x50, 0x4B, 0x03, 0x04]) {
         if bytes.len() >= 50 {
             let content = String::from_utf8_lossy(&bytes[30..50]);
             if content.contains("word/") {
@@ -181,34 +163,19 @@ pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
         return "application/zip";
     }
 
-    // Check for JSON (simple heuristic)
-    if bytes.len() >= 2 {
-        let start = String::from_utf8_lossy(&bytes[..bytes.len().min(10)]);
-        let trimmed = start.trim();
-        if trimmed.starts_with('{') || trimmed.starts_with('[') {
-            return "application/json";
-        }
+    let start = String::from_utf8_lossy(&bytes[..bytes.len().min(100)]);
+    let trimmed = start.trim_start();
+
+    if trimmed.starts_with("<svg") {
+        return "image/svg+xml";
+    }
+    if trimmed.starts_with("<?xml") || trimmed.starts_with('<') {
+        return "application/xml";
+    }
+    if trimmed.starts_with('{') || trimmed.starts_with('[') {
+        return "application/json";
     }
 
-    // Check for SVG (Scalable Vector Graphics) - must come before XML
-    if bytes.len() >= 5 {
-        let start = String::from_utf8_lossy(&bytes[..bytes.len().min(100)]);
-        let trimmed = start.trim_start();
-        if trimmed.starts_with("<svg") {
-            return "image/svg+xml";
-        }
-    }
-
-    // Check for XML - must come after SVG to avoid conflicts
-    if bytes.len() >= 5 {
-        let start = String::from_utf8_lossy(&bytes[..bytes.len().min(20)]);
-        let trimmed = start.trim_start();
-        if trimmed.starts_with("<?xml") || trimmed.starts_with('<') {
-            return "application/xml";
-        }
-    }
-
-    // Default fallback
     "application/octet-stream"
 }
 
