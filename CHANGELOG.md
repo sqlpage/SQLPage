@@ -11,14 +11,11 @@
    - Since modals have their own url inside the page, you can now link to a modal from another page, and if you refresh a page while the modal is open, the modal will stay open.
    - modals now have an `open` parameter to open the modal automatically when the page is loaded.
  - New [download](https://sql-page.com/component.sql?component=download) component to let the user download files. The files may be stored as BLOBs in the database, local files on the server, or may be fetched from a different server.
- - **Enhanced BLOB Support**: Comprehensive improvements to binary data handling across all supported databases:
-   - **PostgreSQL**: Full support for `BYTEA` columns with automatic conversion to data URLs
-   - **MySQL/MariaDB**: Full support for `BLOB` columns with automatic conversion to data URLs
-   - **MSSQL**: Extended support for `VARBINARY`, `BIGVARBINARY`, `BINARY`, and `IMAGE` columns with automatic conversion to data URLs
-   - **SQLite**: Full support for `BLOB` columns with automatic conversion to data URLs
-   - **Unified API**: All blob data is now consistently converted to data URLs with base64 encoding, eliminating code duplication
-   - **Cross-Database Compatibility**: Blob functionality now works identically across all supported database backends
-   - **Comprehensive Testing**: Added blob tests for all database types ensuring reliable functionality
+ - Enhanced BLOB Support. You can now return binary data (BLOBs) directly to sqlpage, and it will automatically convert them to data URLs. This allows you to use database BLOBs directly wherever a link is expected, including in the new download component.
+   - **PostgreSQL**: supports `BYTEA` columns
+   - **MySQL/MariaDB**: supports `BLOB` columns
+   - **MSSQL**: Extended support for `VARBINARY`, `BIGVARBINARY`, `BINARY`, and `IMAGE` columns
+   - **SQLite**: Full support for `BLOB` columns
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
