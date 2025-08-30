@@ -20,6 +20,7 @@
      select username as title, avatar_blob as image_url
      from users;
      ```
+ - When a sql file is saved with the wrong character encoding (not UTF8), SQLPage now displays a helpful error messages that points to exactly where in the file the problem is.
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0

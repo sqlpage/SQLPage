@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
 use sqlx::postgres::types::PgTimeTz;
 use sqlx::{Postgres, Statement, Type};
+use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
@@ -64,10 +65,22 @@ impl FileSystem {
         priviledged: bool,
     ) -> anyhow::Result<String> {
         let bytes = self.read_file(app_state, path, priviledged).await?;
-        String::from_utf8(bytes).with_context(|| {
-            format!(
-                "The file at {} contains invalid UTF8 characters",
-                path.display()
+        String::from_utf8(bytes).map_err(|utf8_err| {
+            let invalid_idx = utf8_err.utf8_error().valid_up_to();
+            let bytes = utf8_err.into_bytes();
+            let valid_prefix = String::from_utf8_lossy(&bytes[..invalid_idx]);
+            let line_num = valid_prefix.lines().count();
+            let mut bad_seq = valid_prefix.lines().last().unwrap_or_default().to_string();
+            let bad_char_idx = bad_seq.len() + 1;
+            for b in bytes[invalid_idx..].iter().take(8) {
+                write!(&mut bad_seq, "\\x{b:02X}").unwrap();
+            }
+
+            let display_path = path.display();
+            anyhow::format_err!(
+                "SQLPage expects all sql files to be encoded in UTF-8. \
+                The file \"{display_path}\" contains the following invalid UTF-8 byte sequence around line {line_num} character {bad_char_idx}: \"{bad_seq}\". \
+                Please convert the file to UTF-8.",
             )
         })
     }
