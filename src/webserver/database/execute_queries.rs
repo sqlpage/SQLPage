@@ -251,7 +251,7 @@ async fn take_connection<'a>(
         Err(e) => {
             let db_name = db.connection.any_kind();
             let active_count = db.connection.size();
-            let err_msg = format!("Unable to acquire a {db_name:?} database connection to execute the SQL file. The connection pool currently has {active_count} active connections.");
+            let err_msg = format!("Unable to connect to {db_name:?}. The connection pool currently has {active_count} active connections.");
             Err(anyhow::Error::new(e).context(err_msg))
         }
     }
