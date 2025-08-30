@@ -104,7 +104,7 @@
                         >
                         {{#if empty_option}}<option value="">{{empty_option}}</option>{{/if}}
                         {{#each (parse_json options)}}
-                            <option value="{{value}}" {{#if (or (eq ../value value) selected)}}selected{{/if}}>{{label}}</option>
+                            <option value="{{value}}" {{#if (or (loose_eq ../value value) selected)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                         </select>
                     {{else}}

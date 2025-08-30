@@ -22,6 +22,16 @@
      ```
  - When a sql file is saved with the wrong character encoding (not UTF8), SQLPage now displays a helpful error messages that points to exactly where in the file the problem is.
  - More visual error messages: errors that occured before (such as file access issues) used to generate plain text messages that looked scary to non-technical users. All errors are now displayed nicely in the browser.
+ - The form component now considers numbers and their string representation as equal when comparing the `value` parameter and the values from the `options` parameter in dropdowns. This makes it easier to use variables (which are always strings) in the value parameter in order to preserve a dropdown field value across page reloads. The following is now valid:
+    - ```sql
+      select 'form' as component;
+      select 
+          'select' as type,
+          true as create_new,
+          true as dropdown,
+          '2' as value, -- passed as text even if the option values are passed as integers
+          '[{"label": "A", "value": 1}, {"label": "B", "value": 2}]' as options;
+      ```
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0

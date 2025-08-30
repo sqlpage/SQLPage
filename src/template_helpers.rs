@@ -37,6 +37,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "plus", plus_helper as HH);
     register_helper(h, "minus", minus_helper as HH);
     h.register_helper("sum", Box::new(sum_helper));
+    register_helper(h, "loose_eq", loose_eq_helper as HH);
     register_helper(h, "starts_with", starts_with_helper as HH);
 
     // to_array: convert a value to a single-element array. If the value is already an array, return it as-is.
@@ -472,6 +473,16 @@ fn sum_helper<'reg, 'rc>(
     Ok(())
 }
 
+/// Compare two values loosely, i.e. treat all values as strings. (42 == "42")
+fn loose_eq_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
+    match (a, b) {
+        (JsonValue::String(a), JsonValue::String(b)) => a == b,
+        (JsonValue::String(a), non_str) => a == &non_str.to_string(),
+        (non_str, JsonValue::String(b)) => &non_str.to_string() == b,
+        (a, b) => a == b,
+    }
+    .into()
+}
 /// Helper that returns the first argument with the given truthiness, or the last argument if none have it.
 /// Equivalent to a && b && c && ... if the truthiness is false,
 /// or a || b || c || ... if the truthiness is true.
