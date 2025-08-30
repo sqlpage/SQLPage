@@ -8,7 +8,7 @@ use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
-use crate::{app_config, AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
+use crate::{AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
@@ -170,7 +170,7 @@ async fn render_sql(
 
     let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state))
         .await
-        .map_err(|e| anyhow_err_to_actix(e, app_state.config.environment))?;
+        .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
@@ -206,16 +206,17 @@ async fn render_sql(
                     .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
             }
             Err(err) => {
-                send_anyhow_error(&err, resp_send, app_state.config.environment);
+                send_anyhow_error(&err, resp_send, &app_state);
             }
         }
     });
     resp_recv.await.map_err(ErrorInternalServerError)
 }
 
-fn anyhow_err_to_actix_resp(e: &anyhow::Error, env: app_config::DevOrProd) -> HttpResponse {
+fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse {
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
     let mut body = "Sorry, but we were not able to process your request.\n\n".to_owned();
+    let env = state.config.environment;
     if env.is_prod() {
         body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
         log::error!("{e:#}");
@@ -254,17 +255,17 @@ fn anyhow_err_to_actix_resp(e: &anyhow::Error, env: app_config::DevOrProd) -> Ht
 fn send_anyhow_error(
     e: &anyhow::Error,
     resp_send: tokio::sync::oneshot::Sender<HttpResponse>,
-    env: app_config::DevOrProd,
+    state: &AppState,
 ) {
     log::error!("An error occurred before starting to send the response body: {e:#}");
     resp_send
-        .send(anyhow_err_to_actix_resp(e, env))
+        .send(anyhow_err_to_actix_resp(e, state))
         .unwrap_or_else(|_| log::error!("could not send headers"));
 }
 
-fn anyhow_err_to_actix(e: anyhow::Error, env: app_config::DevOrProd) -> actix_web::Error {
+fn anyhow_err_to_actix(e: anyhow::Error, state: &AppState) -> actix_web::Error {
     log::error!("{e:#}");
-    let resp = anyhow_err_to_actix_resp(&e, env);
+    let resp = anyhow_err_to_actix_resp(&e, state);
     actix_web::error::InternalError::from_response(e, resp).into()
 }
 
@@ -331,7 +332,7 @@ async fn process_sql_request(
         .get_with_privilege(app_state, &sql_path, false)
         .await
         .with_context(|| format!("Unable to get SQL file \"{}\"", sql_path.display()))
-        .map_err(|e| anyhow_err_to_actix(e, app_state.config.environment))?;
+        .map_err(|e| anyhow_err_to_actix(e, app_state))?;
     render_sql(req, sql_file).await
 }
 
@@ -348,7 +349,7 @@ async fn serve_file(
             .modified_since(state, path.as_ref(), since, false)
             .await
             .with_context(|| format!("Unable to get modification time of file {path:?}"))
-            .map_err(|e| anyhow_err_to_actix(e, state.config.environment))?;
+            .map_err(|e| anyhow_err_to_actix(e, state))?;
         if !modified {
             return Ok(HttpResponse::NotModified().finish());
         }
@@ -358,7 +359,7 @@ async fn serve_file(
         .read_file(state, path.as_ref(), false)
         .await
         .with_context(|| format!("Unable to read file {path:?}"))
-        .map_err(|e| anyhow_err_to_actix(e, state.config.environment))
+        .map_err(|e| anyhow_err_to_actix(e, state))
         .map(|b| {
             HttpResponse::Ok()
                 .insert_header(
@@ -391,7 +392,7 @@ pub async fn main_handler(
             let e = e.context(format!(
                 "Unable to calculate the routing action for: {path_and_query:?}"
             ));
-            return Err(anyhow_err_to_actix(e, app_state.config.environment));
+            return Err(anyhow_err_to_actix(e, app_state));
         }
     };
     match routing_action {
