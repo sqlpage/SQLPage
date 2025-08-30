@@ -2,39 +2,65 @@
 
 use std::path::PathBuf;
 
+use crate::render::get_backtrace_as_strings;
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::error::UrlencodedError;
 use actix_web::http::{header, StatusCode};
 use actix_web::{HttpRequest, HttpResponse};
 use actix_web::{HttpResponseBuilder, ResponseError};
+use handlebars::{Renderable, StringOutput};
+use serde_json::json;
+
+fn error_to_html_string(app_state: &AppState, err: &anyhow::Error) -> anyhow::Result<String> {
+    let mut out = StringOutput::new();
+    let shell_template = app_state.all_templates.get_static_template("shell")?;
+    let error_template = app_state.all_templates.get_static_template("error")?;
+    let registry = &app_state.all_templates.handlebars;
+    let shell_ctx = handlebars::Context::null();
+    let data = if app_state.config.environment.is_prod() {
+        json!(null)
+    } else {
+        json!({
+            "description": err.to_string(),
+            "backtrace": get_backtrace_as_strings(err),
+            "note": "You can hide error messages like this one from your users by setting the 'environment' configuration option to 'production'.",
+        })
+    };
+    let err_ctx = handlebars::Context::wraps(data)?;
+    let rc = &mut handlebars::RenderContext::new(None);
+
+    // Open the shell component
+    shell_template
+        .before_list
+        .render(registry, &shell_ctx, rc, &mut out)?;
+
+    // Open the error component
+    error_template
+        .before_list
+        .render(registry, &err_ctx, rc, &mut out)?;
+    // Close the error component
+    error_template
+        .after_list
+        .render(registry, &err_ctx, rc, &mut out)?;
+
+    // Close the shell component
+    shell_template
+        .after_list
+        .render(registry, &shell_ctx, rc, &mut out)?;
+
+    Ok(out.into_string()?)
+}
 
 fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse {
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
-    let mut body = "Sorry, but we were not able to process your request.\n\n".to_owned();
-    let env = state.config.environment;
-    if env.is_prod() {
-        body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
-        log::error!("{e:#}");
-    } else {
-        use std::fmt::Write;
-        write!(
-            body,
-            "Below are detailed debugging information which may contain sensitive data. \n\
-        Set environment to \"production\" in the configuration file to hide this information. \n\n\
-        {e:?}"
-        )
-        .unwrap();
-    }
     resp.insert_header((
         header::CONTENT_TYPE,
         header::HeaderValue::from_static("text/plain; charset=utf-8"),
     ));
 
     if let Some(status_err @ &ErrorWithStatus { .. }) = e.downcast_ref() {
-        status_err
-            .error_response()
-            .set_body(actix_web::body::BoxBody::new(body))
+        status_err.error_response()
     } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
         use rand::Rng;
         resp.status(StatusCode::TOO_MANY_REQUESTS)
@@ -42,9 +68,27 @@ fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse
                 header::RETRY_AFTER,
                 header::HeaderValue::from(rand::rng().random_range(1..=15)),
             ))
-            .body("The database is currently too busy to handle your request. Please try again later.\n\n".to_owned() + &body)
+            .body("The database is currently too busy to handle your request. Please try again later.".to_owned())
     } else {
-        resp.body(body)
+        match error_to_html_string(state, e) {
+            Ok(body) => {
+                resp.insert_header((
+                    header::CONTENT_TYPE,
+                    header::HeaderValue::from_static("text/html; charset=utf-8"),
+                ));
+                resp.body(body)
+            }
+            Err(second_err) => {
+                log::error!("Unable to render error: {e:#}");
+                resp.body(format!(
+                    "A second error occurred while rendering the error page: \n\n\
+                Initial error: \n\
+                {e:#}\n\n\
+                Second error: \n\
+                {second_err:#}"
+                ))
+            }
+        }
     }
 }
 

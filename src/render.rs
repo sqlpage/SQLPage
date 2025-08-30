@@ -131,7 +131,7 @@ impl HeaderContext {
         let data = json!({
             "component": "error",
             "description": err.to_string(),
-            "backtrace": get_backtrace(&err),
+            "backtrace": get_backtrace_as_strings(&err),
         });
         self.start_body(data).await
     }
@@ -389,16 +389,6 @@ async fn verify_password_async(
         Ok(hash.verify_password(phfs, password))
     })
     .await?
-}
-
-fn get_backtrace(error: &anyhow::Error) -> Vec<String> {
-    let mut backtrace = vec![];
-    let mut source = error.source();
-    while let Some(s) = source {
-        backtrace.push(format!("{s}"));
-        source = s.source();
-    }
-    backtrace
 }
 
 fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {
@@ -781,7 +771,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
             json!({
                 "query_number": self.current_statement,
                 "description": error.to_string(),
-                "backtrace": get_backtrace(error),
+                "backtrace": get_backtrace_as_strings(error),
                 "note": "You can hide error messages like this one from your users by setting the 'environment' configuration option to 'production'."
             })
         };
@@ -893,6 +883,16 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         self.handle_result_and_log(&res).await;
         self.writer
     }
+}
+
+pub(super) fn get_backtrace_as_strings(error: &anyhow::Error) -> Vec<String> {
+    let mut backtrace = vec![];
+    let mut source = error.source();
+    while let Some(s) = source {
+        backtrace.push(format!("{s}"));
+        source = s.source();
+    }
+    backtrace
 }
 
 struct HandlebarWriterOutput<W: std::io::Write>(W);

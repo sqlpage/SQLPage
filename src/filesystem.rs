@@ -78,8 +78,9 @@ impl FileSystem {
 
             let display_path = path.display();
             anyhow::format_err!(
-                "SQLPage expects all sql files to be encoded in UTF-8. \
-                The file \"{display_path}\" contains the following invalid UTF-8 byte sequence around line {line_num} character {bad_char_idx}: \"{bad_seq}\". \
+                "SQLPage expects all sql files to be encoded in UTF-8. \n\
+                In \"{display_path}\", around line {line_num} character {bad_char_idx}, the following invalid UTF-8 byte sequence was found: \n\
+                \"{bad_seq}\". \n\
                 Please convert the file to UTF-8.",
             )
         })

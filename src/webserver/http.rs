@@ -275,7 +275,7 @@ async fn process_sql_request(
         .sql_file_cache
         .get_with_privilege(app_state, &sql_path, false)
         .await
-        .with_context(|| format!("Unable to get SQL file \"{}\"", sql_path.display()))
+        .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
         .map_err(|e| anyhow_err_to_actix(e, app_state))?;
     render_sql(req, sql_file).await
 }
