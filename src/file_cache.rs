@@ -174,7 +174,8 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                     let cached: Cached<T> = static_file.make_fresh();
                     Ok(cached)
                 } else {
-                    Err(e).with_context(|| format!("Couldn't load {} into cache", path.display()))
+                    Err(e)
+                        .with_context(|| format!("Couldn't load \"{}\" into cache", path.display()))
                 }
             }
             Err(e) => {
