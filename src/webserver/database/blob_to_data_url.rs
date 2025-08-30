@@ -181,7 +181,7 @@ mod tests {
         let result = vec_to_data_uri_value(b"test");
         match result {
             serde_json::Value::String(s) => {
-                assert_eq!(s, "data:application/octet-stream;base64,dGVzdA==")
+                assert_eq!(s, "data:application/octet-stream;base64,dGVzdA==");
             }
             _ => panic!("Expected String value"),
         }
