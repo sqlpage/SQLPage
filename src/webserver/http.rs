@@ -231,7 +231,7 @@ fn anyhow_err_to_actix_resp(e: &anyhow::Error, env: app_config::DevOrProd) -> Ht
     }
     resp.insert_header((
         header::CONTENT_TYPE,
-        header::HeaderValue::from_static("text/plain"),
+        header::HeaderValue::from_static("text/plain; charset=utf-8"),
     ));
 
     if let Some(status_err @ &ErrorWithStatus { .. }) = e.downcast_ref() {
