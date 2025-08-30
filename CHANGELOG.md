@@ -11,15 +11,15 @@
    - Since modals have their own url inside the page, you can now link to a modal from another page, and if you refresh a page while the modal is open, the modal will stay open.
    - modals now have an `open` parameter to open the modal automatically when the page is loaded.
  - New [download](https://sql-page.com/component.sql?component=download) component to let the user download files. The files may be stored as BLOBs in the database, local files on the server, or may be fetched from a different server.
- - Enhanced BLOB Support. You can now return binary data (BLOBs) directly to sqlpage, and it will automatically convert them to data URLs. This allows you to use database BLOBs directly wherever a link is expected, including in the new download component.
-   - **PostgreSQL**: supports `BYTEA` columns
-   - **MySQL/MariaDB**: supports `BLOB` columns
-   - **MSSQL**: Extended support for `VARBINARY`, `BIGVARBINARY`, `BINARY`, and `IMAGE` columns
-   - **SQLite**: Full support for `BLOB` columns
-   - **Smart MIME Type Detection**: Automatic detection of common file types based on magic bytes:
-     - **Images**: PNG, JPEG/JPG, GIF, BMP, WebP, SVG
-     - **Documents**: PDF, DOCX, XLSX, PPTX
-     - **Data**: JSON, XML, ZIP archives
+ - **Enhanced BLOB Support**. You can now return binary data (BLOBs) directly to sqlpage, and it will automatically convert them to data URLs. This allows you to use database BLOBs directly wherever a link is expected, including in the new download component.
+   - supports columns of type `BYTEA` (PostgreSQL), `BLOB` (MySQL, SQLite), `VARBINARY` and `IMAGE` (mssql)
+   - Automatic detection of common file types based on magic bytes
+   - This means you can use a BLOB wherever an image url is expected. For instance:
+     ```sql
+     select 'list' as component;
+     select username as title, avatar_blob as image_url
+     from users;
+     ```
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
