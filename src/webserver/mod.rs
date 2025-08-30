@@ -31,6 +31,7 @@
 
 pub mod content_security_policy;
 pub mod database;
+mod error;
 pub mod error_with_status;
 pub mod http;
 pub mod http_client;
