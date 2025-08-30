@@ -2,10 +2,6 @@
 /// Returns the most appropriate MIME type for common file formats.
 #[must_use]
 pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
-    if bytes.is_empty() {
-        return "application/octet-stream";
-    }
-
     // PNG: 89 50 4E 47 0D 0A 1A 0A
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return "image/png";
@@ -48,21 +44,14 @@ pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
         return "application/zip";
     }
 
-    // Text-based formats - check first few bytes for ASCII patterns
-    if !bytes.is_empty() {
-        match bytes[0] {
-            b'<' => {
-                if bytes.len() >= 4 && bytes.starts_with(b"<svg") {
-                    return "image/svg+xml";
-                }
-                if bytes.len() >= 5 && bytes.starts_with(b"<?xml") {
-                    return "application/xml";
-                }
-                return "application/xml";
-            }
-            b'{' | b'[' => return "application/json",
-            _ => {}
-        }
+    if bytes.starts_with(b"<?xml") {
+        return "application/xml";
+    }
+    if bytes.starts_with(b"<svg") || bytes.starts_with(b"<!DOCTYPE svg") {
+        return "image/svg+xml";
+    }
+    if bytes.starts_with(b"{") || bytes.starts_with(b"[") {
+        return "application/json";
     }
 
     "application/octet-stream"
