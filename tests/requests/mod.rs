@@ -78,6 +78,26 @@ async fn test_request_body_base64() -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_download_data_url() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/requests/request_download_test.sql")
+        .await?
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let ct = resp.headers().get("content-type").unwrap();
+    assert_eq!(ct, "text/plain");
+    let content_disposition = resp.headers().get("content-disposition").unwrap();
+    assert_eq!(
+        content_disposition,
+        "attachment; filename=\"my text file.txt\""
+    );
+    let body = test::read_body(resp).await;
+    assert_eq!(&body, &b"Hello download!"[..]);
+    Ok(())
+}
+
+#[actix_web::test]
 async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
     let long_string = "a".repeat(123454);
     let req = get_request_to("/tests/components/display_form_field.sql")

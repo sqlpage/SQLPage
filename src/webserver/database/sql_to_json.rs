@@ -1,4 +1,5 @@
 use crate::utils::add_value_to_map;
+use crate::webserver::database::blob_to_data_url;
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde_json::{self, Map, Value};
 use sqlx::any::{AnyRow, AnyTypeInfo, AnyTypeInfoKind};
@@ -96,6 +97,9 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             decode_raw::<f64>(raw_value).into()
         }
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode_raw::<Value>(raw_value),
+        "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => {
+            blob_to_data_url::vec_to_data_uri_value(&decode_raw::<Vec<u8>>(raw_value))
+        }
         // Deserialize as a string by default
         _ => decode_raw::<String>(raw_value).into(),
     }
@@ -171,7 +175,7 @@ mod tests {
         };
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
         let row = sqlx::query(
-            "SELECT 
+            "SELECT
                 42::INT2 as small_int,
                 42::INT4 as integer,
                 42::INT8 as big_int,
@@ -189,7 +193,8 @@ mod tests {
                 '{\"key\": \"value\"}'::JSONB as jsonb,
                 age('2024-03-14'::timestamp, '2024-01-01'::timestamp) as age_interval,
                 justify_interval(interval '1 year 2 months 3 days') as justified_interval,
-                1234.56::MONEY as money_val",
+                1234.56::MONEY as money_val,
+                '\\x68656c6c6f20776f726c64'::BYTEA as blob_data",
         )
         .fetch_one(&mut c)
         .await?;
@@ -214,7 +219,8 @@ mod tests {
                 "jsonb": {"key": "value"},
                 "age_interval": "2 mons 13 days",
                 "justified_interval": "1 year 2 mons 3 days",
-                "money_val": "$1,234.56"
+                "money_val": "$1,234.56",
+                "blob_data": "data:application/octet-stream;base64,aGVsbG8gd29ybGQ="
             }),
         );
         Ok(())
@@ -235,7 +241,8 @@ mod tests {
                 '2024-03-14 13:14:15+02:00'::TIMESTAMPTZ as timestamptz,
                 INTERVAL '-01:02:03' as time_interval,
                 '{\"key\": \"value\"}'::JSON as json,
-                1234.56::MONEY as money_val
+                1234.56::MONEY as money_val,
+                '\\x74657374'::BYTEA as blob_data
             where $1",
         )
         .bind(true)
@@ -250,7 +257,8 @@ mod tests {
                 "timestamptz": "2024-03-14T11:14:15+00:00",
                 "time_interval": "-01:02:03",
                 "json": {"key": "value"},
-                "money_val": "" // TODO: fix this bug: https://github.com/sqlpage/SQLPage/issues/983
+                "money_val": "", // TODO: fix this bug: https://github.com/sqlpage/SQLPage/issues/983
+                "blob_data": "data:application/octet-stream;base64,dGVzdA=="
             }),
         );
         Ok(())
@@ -287,9 +295,10 @@ mod tests {
                 year_val YEAR,
                 char_val CHAR(10),
                 varchar_val VARCHAR(50),
-                text_val TEXT
-            ) AS 
-            SELECT 
+                text_val TEXT,
+                blob_val BLOB
+            ) AS
+            SELECT
                 127 as tiny_int,
                 32767 as small_int,
                 8388607 as medium_int,
@@ -311,7 +320,8 @@ mod tests {
                 2024 as year_val,
                 'CHAR' as char_val,
                 'VARCHAR' as varchar_val,
-                'TEXT' as text_val",
+                'TEXT' as text_val,
+                x'626c6f62' as blob_val",
         )
         .execute(&mut c)
         .await?;
@@ -344,7 +354,8 @@ mod tests {
                 "year_val": 2024,
                 "char_val": "CHAR",
                 "varchar_val": "VARCHAR",
-                "text_val": "TEXT"
+                "text_val": "TEXT",
+                "blob_val": "data:application/octet-stream;base64,YmxvYg=="
             }),
         );
 
@@ -375,7 +386,7 @@ mod tests {
                 "integer": 42,
                 "real": 42.25,
                 "string": "xxx",
-                "blob": "hello world",
+                "blob": "data:application/octet-stream;base64,aGVsbG8gd29ybGQ=",
             }),
         );
         Ok(())
@@ -388,7 +399,7 @@ mod tests {
         };
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
         let row = sqlx::query(
-            "SELECT 
+            "SELECT
                 CAST(1 AS BIT) as true_bit,
                 CAST(0 AS BIT) as false_bit,
                 CAST(NULL AS BIT) as null_bit,
@@ -407,7 +418,8 @@ mod tests {
                 N'Unicode String' as nvarchar,
                 'ASCII String' as varchar,
                 CAST(1234.56 AS MONEY) as money_val,
-                CAST(12.34 AS SMALLMONEY) as small_money_val",
+                CAST(12.34 AS SMALLMONEY) as small_money_val,
+                CAST(0x6D7373716C AS VARBINARY(10)) as blob_data",
         )
         .fetch_one(&mut c)
         .await?;
@@ -433,7 +445,8 @@ mod tests {
                 "nvarchar": "Unicode String",
                 "varchar": "ASCII String",
                 "money_val": 1234.56,
-                "small_money_val": 12.34
+                "small_money_val": 12.34,
+                "blob_data": "data:application/octet-stream;base64,bXNzcWw="
             }),
         );
         Ok(())

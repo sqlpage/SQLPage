@@ -1,7 +1,8 @@
 use super::RequestInfo;
 use crate::webserver::{
     database::{
-        execute_queries::DbConn, sqlpage_functions::url_parameter_deserializer::URLParameters,
+        blob_to_data_url::vec_to_data_uri_with_mime, execute_queries::DbConn,
+        sqlpage_functions::url_parameter_deserializer::URLParameters,
     },
     http::SingleOrVec,
     http_client::make_http_client,
@@ -11,6 +12,7 @@ use crate::webserver::{
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use mime_guess::mime;
+use std::fmt::Write;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
 
 super::function_definition_macro::sqlpage_functions! {
@@ -213,11 +215,44 @@ async fn fetch(
             )
         })?
         .to_vec();
-    let response_str = String::from_utf8(body).with_context(
-        || format!("Unable to convert the response from {} to a string. Only UTF-8 responses are supported.", http_request.url),
-    )?;
+    let response_str = decode_response(body, http_request.response_encoding.as_deref())?;
     log::debug!("Fetch response: {response_str}");
     Ok(response_str)
+}
+
+fn decode_response(response: Vec<u8>, encoding: Option<&str>) -> anyhow::Result<String> {
+    match encoding {
+        Some("base64") => Ok(base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            response,
+        )),
+        Some("base64url") => Ok(base64::Engine::encode(
+            &base64::engine::general_purpose::URL_SAFE,
+            response,
+        )),
+        Some("hex") => Ok(response.into_iter().fold(String::new(), |mut acc, byte| {
+            write!(&mut acc, "{byte:02x}").unwrap();
+            acc
+        })),
+        Some(encoding_label) => Ok(encoding_rs::Encoding::for_label(encoding_label.as_bytes())
+            .with_context(|| format!("Invalid encoding name: {encoding_label}"))?
+            .decode(&response)
+            .0
+            .into_owned()),
+        None => {
+            let body_str = String::from_utf8(response);
+            match body_str {
+                Ok(body_str) => Ok(body_str),
+                Err(decoding_error) => {
+                    log::warn!("fetch(...) response is not UTF-8 and no encoding was specified. Decoding the response as base64. Please explicitly set the encoding to \"base64\" if this is the expected behavior.");
+                    Ok(base64::Engine::encode(
+                        &base64::engine::general_purpose::STANDARD,
+                        decoding_error.into_bytes(),
+                    ))
+                }
+            }
+        }
+    }
 }
 
 async fn fetch_with_meta(
@@ -270,27 +305,15 @@ async fn fetch_with_meta(
             match response.body().await {
                 Ok(body) => {
                     let body_bytes = body.to_vec();
-                    let body_str = String::from_utf8(body_bytes);
-
-                    match body_str {
-                        Ok(body_str) if is_json => {
-                            obj.serialize_entry(
-                                "body",
-                                &serde_json::value::RawValue::from_string(body_str)?,
-                            )?;
-                        }
-                        Ok(body_str) => {
-                            obj.serialize_entry("body", &body_str)?;
-                        }
-                        Err(utf8_err) => {
-                            let mut base64_string = String::new();
-                            base64::Engine::encode_string(
-                                &base64::engine::general_purpose::STANDARD,
-                                utf8_err.as_bytes(),
-                                &mut base64_string,
-                            );
-                            obj.serialize_entry("body", &base64_string)?;
-                        }
+                    let body_str =
+                        decode_response(body_bytes, http_request.response_encoding.as_deref())?;
+                    if is_json {
+                        obj.serialize_entry(
+                            "json_body",
+                            &serde_json::value::RawValue::from_string(body_str)?,
+                        )?;
+                    } else {
+                        obj.serialize_entry("body", &body_str)?;
                     }
                 }
                 Err(e) => {
@@ -482,12 +505,7 @@ async fn read_file_as_data_url<'a>(
         || Cow::Owned(mime_guess_from_filename(&file_path)),
         Cow::Borrowed,
     );
-    let mut data_url = format!("data:{mime};base64,");
-    base64::Engine::encode_string(
-        &base64::engine::general_purpose::STANDARD,
-        bytes,
-        &mut data_url,
-    );
+    let data_url = vec_to_data_uri_with_mime(&bytes, &mime.to_string());
     Ok(Some(Cow::Owned(data_url)))
 }
 

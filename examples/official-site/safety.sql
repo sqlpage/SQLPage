@@ -2,7 +2,10 @@ select 'http_header' as component,
     'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     '<https://sql-page.com/safety>; rel="canonical"' as "Link";
 
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
+    'title', 'Security in SQLPage: SSO, protection against SQLi, XSS, CSRF, and more'
+)) as properties
+FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'hero' as component,
     'SQLPage''s security guarantees' as title,
@@ -86,23 +89,35 @@ parameter of the [`shell`](documentation.sql?component=shell#component) componen
 
 ## Authentication
 
-SQLPage provides an [authentication](/documentation.sql?component=authentication#component) component that allows you to
-restrict access to some pages of your website to authenticated users.
+Use either the built-in username/password or Single Sign-On; both follow safe defaults.
 
-It also provides useful built-in functions such as 
-[`sqlpage.basic_auth_username()`](/functions.sql?function=basic_auth_username#function), 
-[`sqlpage.basic_auth_password()`](/functions.sql?function=basic_auth_password#function) and 
-[`sqlpage.hash_password()`](/functions.sql?function=hash_password#function)
-to help you implement your authentication system entirely in SQL.
+### Built-in username/password
 
-The components and functions provided by SQLPage are designed to be used by non-technical users,
-and to respect [security best practices](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) by default.
-Passwords are [hashed with a salt](https://en.wikipedia.org/wiki/Salt_(cryptography)) using the
-[argon2](https://en.wikipedia.org/wiki/Argon2) algorithm.
+SQLPage provides an [authentication](/documentation.sql?component=authentication#component) component to protect pages,
+with helpers like [`sqlpage.basic_auth_username()`](/functions.sql?function=basic_auth_username#function),
+[`sqlpage.basic_auth_password()`](/functions.sql?function=basic_auth_password#function), and
+[`sqlpage.hash_password()`](/functions.sql?function=hash_password#function).
+Passwords are salted and hashed with [argon2](https://en.wikipedia.org/wiki/Argon2),
+following [best practices](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 
-However, if you implement your own session management system using the [`cookie` component](/documentation.sql?component=cookie#component),
-you should be careful to follow the [OWASP session management best practices](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#cookies).
-Implementing your own session management system is not recommended if you are a non-technical user and don''t have a good understanding of web security.
+### Session management
+
+If you implement your own sessions using the [`cookie` component](/documentation.sql?component=cookie#component),
+follow the [OWASP recommendations](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#cookies).
+Avoid rolling your own unless you fully understand web security.
+
+### Single Sign-On (OIDC)
+
+When OIDC is enabled, SQLPage validates a signed identity token on every request
+before any of your SQL runs. Without a successful login, requests are redirected
+to your identity provider and your application code never executes.
+This keeps attackers outside your SSO realm from reaching your app,
+even if a vulnerability exists in your own code.
+
+By default, all pages are protected when single sign-on is enabled.
+Once authenticated, you can access user claims with
+[`sqlpage.user_info()`](/functions.sql?function=user_info)
+to further restrict what users see based on who they are.
 
 ## Protection against [CSRF attacks](https://en.wikipedia.org/wiki/Cross-site_request_forgery)
 

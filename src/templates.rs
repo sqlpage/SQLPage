@@ -57,7 +57,7 @@ impl AsyncFromStrWithState for SplitTemplate {
         source: &str,
         source_path: &Path,
     ) -> anyhow::Result<Self> {
-        log::debug!("Compiling template {:?}", source_path);
+        log::debug!("Compiling template \"{}\"", source_path.display());
         let tpl = Template::compile_with_name(source, "SQLPage component".to_string())?;
         Ok(split_template(tpl))
     }
@@ -110,24 +110,33 @@ impl AllTemplates {
         Ok(())
     }
 
+    fn template_path(name: &str) -> PathBuf {
+        let mut path: PathBuf =
+            PathBuf::with_capacity(TEMPLATES_DIR.len() + 1 + name.len() + ".handlebars".len());
+        path.push(TEMPLATES_DIR);
+        path.push(name);
+        path.set_extension("handlebars");
+        path
+    }
+
     pub async fn get_template(
         &self,
         app_state: &AppState,
         name: &str,
     ) -> anyhow::Result<Arc<SplitTemplate>> {
         use anyhow::Context;
-        let mut path: PathBuf =
-            PathBuf::with_capacity(TEMPLATES_DIR.len() + 1 + name.len() + ".handlebars".len());
-        path.push(TEMPLATES_DIR);
-        path.push(name);
-        path.set_extension("handlebars");
+        let path = Self::template_path(name);
         self.split_templates
             .get(app_state, &path)
             .await
             .with_context(|| format!("Unable to get the component '{name}'"))
     }
-}
 
+    pub fn get_static_template(&self, name: &str) -> anyhow::Result<Arc<SplitTemplate>> {
+        let path = Self::template_path(name);
+        self.split_templates.get_static(&path)
+    }
+}
 #[test]
 fn test_split_template() {
     let template = Template::compile(

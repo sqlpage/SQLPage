@@ -8,7 +8,7 @@ use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::ErrorWithStatus;
-use crate::{app_config, AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
+use crate::{AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
@@ -17,8 +17,8 @@ use actix_web::web::PayloadConfig;
 use actix_web::{
     dev::ServiceResponse, middleware, middleware::Logger, web, App, HttpResponse, HttpServer,
 };
-use actix_web::{HttpResponseBuilder, ResponseError};
 
+use super::error::{anyhow_err_to_actix, bind_error, send_anyhow_error};
 use super::http_client::make_http_client;
 use super::https::make_auto_rustls_config;
 use super::oidc::OidcMiddleware;
@@ -170,7 +170,7 @@ async fn render_sql(
 
     let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state))
         .await
-        .map_err(|e| anyhow_err_to_actix(e, app_state.config.environment))?;
+        .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
@@ -206,66 +206,11 @@ async fn render_sql(
                     .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
             }
             Err(err) => {
-                send_anyhow_error(&err, resp_send, app_state.config.environment);
+                send_anyhow_error(&err, resp_send, &app_state);
             }
         }
     });
     resp_recv.await.map_err(ErrorInternalServerError)
-}
-
-fn anyhow_err_to_actix_resp(e: &anyhow::Error, env: app_config::DevOrProd) -> HttpResponse {
-    let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
-    let mut body = "Sorry, but we were not able to process your request.\n\n".to_owned();
-    if env.is_prod() {
-        body.push_str("Contact the administrator for more information. A detailed error message has been logged.");
-        log::error!("{e:#}");
-    } else {
-        use std::fmt::Write;
-        write!(
-            body,
-            "Below are detailed debugging information which may contain sensitive data. \n\
-        Set environment to \"production\" in the configuration file to hide this information. \n\n\
-        {e:?}"
-        )
-        .unwrap();
-    }
-    resp.insert_header((
-        header::CONTENT_TYPE,
-        header::HeaderValue::from_static("text/plain"),
-    ));
-
-    if let Some(status_err @ &ErrorWithStatus { .. }) = e.downcast_ref() {
-        status_err
-            .error_response()
-            .set_body(actix_web::body::BoxBody::new(body))
-    } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
-        use rand::Rng;
-        resp.status(StatusCode::TOO_MANY_REQUESTS)
-            .insert_header((
-                header::RETRY_AFTER,
-                header::HeaderValue::from(rand::rng().random_range(1..=15)),
-            ))
-            .body("The database is currently too busy to handle your request. Please try again later.\n\n".to_owned() + &body)
-    } else {
-        resp.body(body)
-    }
-}
-
-fn send_anyhow_error(
-    e: &anyhow::Error,
-    resp_send: tokio::sync::oneshot::Sender<HttpResponse>,
-    env: app_config::DevOrProd,
-) {
-    log::error!("An error occurred before starting to send the response body: {e:#}");
-    resp_send
-        .send(anyhow_err_to_actix_resp(e, env))
-        .unwrap_or_else(|_| log::error!("could not send headers"));
-}
-
-fn anyhow_err_to_actix(e: anyhow::Error, env: app_config::DevOrProd) -> actix_web::Error {
-    log::error!("{e:#}");
-    let resp = anyhow_err_to_actix_resp(&e, env);
-    actix_web::error::InternalError::from_response(e, resp).into()
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
@@ -273,6 +218,25 @@ fn anyhow_err_to_actix(e: anyhow::Error, env: app_config::DevOrProd) -> actix_we
 pub enum SingleOrVec {
     Single(String),
     Vec(Vec<String>),
+}
+
+impl std::fmt::Display for SingleOrVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SingleOrVec::Single(x) => write!(f, "{x}"),
+            SingleOrVec::Vec(v) => {
+                write!(f, "[")?;
+                let mut it = v.iter();
+                if let Some(first) = it.next() {
+                    write!(f, "{first}")?;
+                }
+                for item in it {
+                    write!(f, ", {item}")?;
+                }
+                write!(f, "]")
+            }
+        }
+    }
 }
 
 impl SingleOrVec {
@@ -311,8 +275,8 @@ async fn process_sql_request(
         .sql_file_cache
         .get_with_privilege(app_state, &sql_path, false)
         .await
-        .with_context(|| format!("Unable to get SQL file \"{}\"", sql_path.display()))
-        .map_err(|e| anyhow_err_to_actix(e, app_state.config.environment))?;
+        .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
+        .map_err(|e| anyhow_err_to_actix(e, app_state))?;
     render_sql(req, sql_file).await
 }
 
@@ -329,7 +293,7 @@ async fn serve_file(
             .modified_since(state, path.as_ref(), since, false)
             .await
             .with_context(|| format!("Unable to get modification time of file {path:?}"))
-            .map_err(|e| anyhow_err_to_actix(e, state.config.environment))?;
+            .map_err(|e| anyhow_err_to_actix(e, state))?;
         if !modified {
             return Ok(HttpResponse::NotModified().finish());
         }
@@ -339,7 +303,7 @@ async fn serve_file(
         .read_file(state, path.as_ref(), false)
         .await
         .with_context(|| format!("Unable to read file {path:?}"))
-        .map_err(|e| anyhow_err_to_actix(e, state.config.environment))
+        .map_err(|e| anyhow_err_to_actix(e, state))
         .map(|b| {
             HttpResponse::Ok()
                 .insert_header(
@@ -372,7 +336,7 @@ pub async fn main_handler(
             let e = e.context(format!(
                 "Unable to calculate the routing action for: {path_and_query:?}"
             ));
-            return Err(anyhow_err_to_actix(e, app_state.config.environment));
+            return Err(anyhow_err_to_actix(e, app_state));
         }
     };
     match routing_action {
@@ -481,19 +445,7 @@ pub fn create_app(
 pub fn form_config(app_state: &web::Data<AppState>) -> web::FormConfig {
     web::FormConfig::default()
         .limit(app_state.config.max_uploaded_file_size)
-        .error_handler(|decode_err, _req| {
-            match decode_err {
-                actix_web::error::UrlencodedError::Overflow { size, limit } => {
-                    actix_web::error::ErrorPayloadTooLarge(
-                        format!(
-                            "The submitted form data size ({size} bytes) exceeds the maximum allowed upload size ({limit} bytes). \
-                            You can increase this limit by setting max_uploaded_file_size in the configuration file.",
-                        ),
-                    )
-                }
-                _ => actix_web::Error::from(decode_err),
-            }
-        })
+        .error_handler(super::error::handle_form_error)
 }
 
 #[must_use]
@@ -597,34 +549,6 @@ fn log_welcome_message(config: &AppConfig) {
         Create your pages with SQL files in:\n{computer} {web_root}\n\n\
         Happy coding! {rocket}"
     );
-}
-
-fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> anyhow::Error {
-    let (ip, port) = (listen_on.ip(), listen_on.port());
-    // Let's try to give a more helpful error message in common cases
-    let ctx = match e.kind() {
-        std::io::ErrorKind::AddrInUse => format!(
-            "Another program is already using port {port} (maybe {} ?). \
-            You can either stop that program or change the port in the configuration file.",
-            if port == 80 || port == 443 {
-                "Apache or Nginx"
-            } else {
-                "another instance of SQLPage"
-            },
-        ),
-        std::io::ErrorKind::PermissionDenied => format!(
-            "You do not have permission to bind to {ip} on port {port}. \
-            You can either run SQLPage as root with sudo, give it the permission to bind to low ports with `sudo setcap cap_net_bind_service=+ep {executable_path}`, \
-            or change the port in the configuration file.",
-            executable_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("sqlpage.bin")).display(),
-        ),
-        std::io::ErrorKind::AddrNotAvailable => format!(
-            "The IP address {ip} does not exist on this computer. \
-            You can change the value of listen_on in the configuration file.",
-        ),
-        _ => format!("Unable to bind to {ip} on port {port}"),
-    };
-    anyhow::anyhow!(e).context(ctx)
 }
 
 #[cfg(target_family = "unix")]

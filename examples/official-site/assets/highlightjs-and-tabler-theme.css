@@ -39,6 +39,7 @@
   /* Luminous links */
   --tblr-link-color: hsl(212, 70%, 75%) !important; /* Star glow */
   --tblr-link-hover-color: hsl(212, 70%, 85%) !important; /* Supernova */
+  --tblr-carousel-caption-color: var(--tblr-muted-color);
 
   /* Ethereal shadows */
   --tblr-box-shadow:

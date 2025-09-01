@@ -1,3 +1,4 @@
+pub mod blob_to_data_url;
 mod connect;
 mod csv_import;
 pub mod execute_queries;

@@ -108,6 +108,13 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         self.get_with_privilege(app_state, path, true).await
     }
 
+    pub fn get_static(&self, path: &Path) -> anyhow::Result<Arc<T>> {
+        self.static_files
+            .get(path)
+            .map(|cached| Arc::clone(&cached.content))
+            .ok_or_else(|| anyhow::anyhow!("File {} not found in static files", path.display()))
+    }
+
     /// Gets a file from the cache, or loads it from the file system if it's not there
     /// The privileged parameter is used to determine whether the access should be denied
     /// if the file is in the sqlpage/ config directory
@@ -174,7 +181,8 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                     let cached: Cached<T> = static_file.make_fresh();
                     Ok(cached)
                 } else {
-                    Err(e).with_context(|| format!("Couldn't load {} into cache", path.display()))
+                    Err(e)
+                        .with_context(|| format!("Couldn't load \"{}\" into cache", path.display()))
                 }
             }
             Err(e) => {

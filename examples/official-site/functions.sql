@@ -3,7 +3,9 @@ select 'http_header' as component,
             iif($function is not null, sqlpage.link('functions', json_object('function', $function)), 'functions.sql')
     ) as "Link";
 
-select 'dynamic' as component, properties
+select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
+    'title', coalesce($function || ' - ', '') || 'SQLPage Functions Documentation'
+)) as properties
 FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'breadcrumb' as component;

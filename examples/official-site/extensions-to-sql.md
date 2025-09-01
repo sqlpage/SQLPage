@@ -206,3 +206,52 @@ SET post_id = COALESCE($post_id, 0);
 -- Prepared statement (SQLite syntax)
 SELECT COALESCE(CAST(?1 AS TEXT), 0)
 ```
+
+# Data types
+
+Each database has its own rich set of data types.
+The data modal in SQLPage itself is simpler, mainly composed of text strings and json objects.
+
+### From the user to SQLPage
+
+Form fields and URL parameters may contain arrays. These are converted to JSON strings before processing.
+
+For instance, Loading `users.sql?user[]=Tim&user[]=Tom` will result in a single variable `$user` with the textual value `["Tim", "Tom"]`.
+
+### From SQLPage to the database
+
+SQLPage sends only text strings (`VARCHAR`) and `NULL`s to the database, since these are the only possible variable and function return values.
+
+### From the database to SQLPage
+
+Each row of data returned by a SQL query is converted to a JSON object before being passed to components.
+
+- Each column becomes a key in the json object. If a row has two columns of the same name, they become an array in the json object.
+- Each value is converted to the closest JSON value
+  - all number types map to json numbers, booleans to booleans, and `NULL` to `null`,
+  - all text types map to json strings
+  - date and time types map to json strings containing ISO datetime values
+  - binary values (BLOBs) map to json strings containing [data URLs](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Schemes/data)
+
+#### Example
+
+The following PostgreSQL query:
+
+```sql
+select
+    1 as one,
+    'x' as my_array, 'y' as my_array,
+    now() as today,
+    '<svg></svg>'::bytea as my_image;
+```
+
+will result in the following JSON object being passed to components for rendering
+
+```json
+{
+    "one" : 1,
+    "my_array" : ["x","y"],
+    "today":"2025-08-30T06:40:13.894918+00:00",
+    "my_image":"data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+}
+```

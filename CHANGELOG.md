@@ -1,8 +1,39 @@
 # CHANGELOG.md
 
-## unreleased
+## v0.37.0
  - We now cryptographically sign the Windows app during releases, which proves the file hasn’t been tampered with. Once the production certificate is active, Windows will show a "verified publisher" and should stop showing screens saying "This app might harm your device", "Windows protected your PC" or "Are you sure you want to run this application ?". 
    - Thanks to https://signpath.io for providing us with a windows signing certificate !
+ - Added a new parameter `encoding` to the [fetch](https://sql-page.com/functions.sql?function=fetch) function:
+  - All [standard web encodings](https://encoding.spec.whatwg.org/#concept-encoding-get) are supported.
+  - Additionally, `base64` can be specified to decode binary data as base64 (compatible with [data URI](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs))
+  - By default, the old behavior of the `fetch_with_meta` function is preserved: the response body is decoded as `utf-8` if possible, otherwise the response is encoded in `base64`.
+ - Added a specific warning when a URL parameter and a form field have the same name. The previous general warning about referencing form fields with the `$var` syntax was confusing in that case.
+ - [modal](https://sql-page.com/component.sql?component=modal) component: allow opening modals with a simple link.
+   - This allows you to trigger modals from any other component, including tables, maps, forms, lists and more.
+   - Since modals have their own url inside the page, you can now link to a modal from another page, and if you refresh a page while the modal is open, the modal will stay open.
+   - modals now have an `open` parameter to open the modal automatically when the page is loaded.
+ - New [download](https://sql-page.com/component.sql?component=download) component to let the user download files. The files may be stored as BLOBs in the database, local files on the server, or may be fetched from a different server.
+ - **Enhanced BLOB Support**. You can now return binary data (BLOBs) directly to sqlpage, and it will automatically convert them to data URLs. This allows you to use database BLOBs directly wherever a link is expected, including in the new download component.
+   - supports columns of type `BYTEA` (PostgreSQL), `BLOB` (MySQL, SQLite), `VARBINARY` and `IMAGE` (mssql)
+   - Automatic detection of common file types based on magic bytes
+   - This means you can use a BLOB wherever an image url is expected. For instance:
+     ```sql
+     select 'list' as component;
+     select username as title, avatar_blob as image_url
+     from users;
+     ```
+ - When a sql file is saved with the wrong character encoding (not UTF8), SQLPage now displays a helpful error messages that points to exactly where in the file the problem is.
+ - More visual error messages: errors that occured before (such as file access issues) used to generate plain text messages that looked scary to non-technical users. All errors are now displayed nicely in the browser.
+ - The form component now considers numbers and their string representation as equal when comparing the `value` parameter and the values from the `options` parameter in dropdowns. This makes it easier to use variables (which are always strings) in the value parameter in order to preserve a dropdown field value across page reloads. The following is now valid:
+    - ```sql
+      select 'form' as component;
+      select 
+          'select' as type,
+          true as create_new,
+          true as dropdown,
+          '2' as value, -- passed as text even if the option values are passed as integers
+          '[{"label": "A", "value": 1}, {"label": "B", "value": 2}]' as options;
+      ```
 
 ## v0.36.1
  - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0

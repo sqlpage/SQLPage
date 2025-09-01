@@ -38,6 +38,7 @@ pub(super) struct HttpFetchRequest<'b> {
     #[serde(borrow)]
     pub body: Option<Cow<'b, serde_json::value::RawValue>>,
     pub timeout_ms: Option<u64>,
+    pub response_encoding: Option<Cow<'b, str>>,
 }
 
 fn deserialize_map_to_vec_pairs<'de, D: serde::Deserializer<'de>>(
@@ -78,6 +79,7 @@ impl<'a> BorrowFromStr<'a> for HttpFetchRequest<'a> {
                 password: None,
                 body: None,
                 timeout_ms: None,
+                response_encoding: None,
             }
         } else {
             match s {
@@ -104,6 +106,7 @@ impl HttpFetchRequest<'_> {
             timeout_ms: self.timeout_ms,
             username: self.username.map(Cow::into_owned).map(Cow::Owned),
             password: self.password.map(Cow::into_owned).map(Cow::Owned),
+            response_encoding: self.response_encoding.map(Cow::into_owned).map(Cow::Owned),
         }
     }
 }

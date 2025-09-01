@@ -4,6 +4,11 @@
 # DATABASE_URL='postgres://root:Password123!@localhost/sqlpage'
 # DATABASE_URL='mssql://root:Password123!@localhost/sqlpage'
 # DATABASE_URL='mysql://root:Password123!@localhost/sqlpage'
+
+# Run for instance:
+# docker compose up postgres
+# and in another terminal:
+# DATABASE_URL='db_url' cargo test
 services:
   web:
     build: { context: "." }
