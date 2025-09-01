@@ -54,10 +54,7 @@ fn error_to_html_string(app_state: &AppState, err: &anyhow::Error) -> anyhow::Re
 
 fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse {
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
-    resp.insert_header((
-        header::CONTENT_TYPE,
-        header::HeaderValue::from_static("text/plain; charset=utf-8"),
-    ));
+    resp.insert_header((header::CONTENT_TYPE, header::ContentType::plaintext()));
 
     if let Some(status_err @ &ErrorWithStatus { .. }) = e.downcast_ref() {
         status_err.error_response()
@@ -72,10 +69,7 @@ fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse
     } else {
         match error_to_html_string(state, e) {
             Ok(body) => {
-                resp.insert_header((
-                    header::CONTENT_TYPE,
-                    header::HeaderValue::from_static("text/html; charset=utf-8"),
-                ));
+                resp.insert_header((header::CONTENT_TYPE, header::ContentType::html()));
                 resp.body(body)
             }
             Err(second_err) => {
