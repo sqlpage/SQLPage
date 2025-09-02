@@ -322,3 +322,10 @@ We welcome contributions! SQLPage is built with Rust and uses
 vanilla javascript for its frontend parts.
 
 Check out our [Contributing Guide](./CONTRIBUTING.md) for detailed instructions on development setup, testing, and pull request process.
+
+# Code signing policy
+
+Our windows binaries are digitally signed, so they should be recognized as safe by Windows.
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). [Contributors](https://github.com/sqlpage/SQLPage/graphs/contributors), [Owners](https://github.com/orgs/sqlpage/people?query=role%3Aowner).
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it

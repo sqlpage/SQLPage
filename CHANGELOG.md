@@ -1,6 +1,8 @@
 # CHANGELOG.md
 
 ## v0.37.0
+ - We now cryptographically sign the Windows app during releases, which proves the file hasn’t been tampered with. Once the production certificate is active, Windows will show a "verified publisher" and should stop showing screens saying "This app might harm your device", "Windows protected your PC" or "Are you sure you want to run this application ?". 
+   - Thanks to https://signpath.io for providing us with a windows signing certificate !
  - Added a new parameter `encoding` to the [fetch](https://sql-page.com/functions.sql?function=fetch) function:
   - All [standard web encodings](https://encoding.spec.whatwg.org/#concept-encoding-get) are supported.
   - Additionally, `base64` can be specified to decode binary data as base64 (compatible with [data URI](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs))

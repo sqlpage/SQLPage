@@ -11,6 +11,7 @@ name: Create Release
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   build-macos-windows:
@@ -35,7 +36,39 @@ jobs:
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       - name: Build
         run: cargo build --profile superoptimized --locked --target ${{ matrix.target }}
-      - uses: actions/upload-artifact@v4
+      - name: Upload unsigned Windows artifact
+        if: matrix.os == 'windows-latest'
+        id: upload_unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-windows
+          path: target/${{ matrix.target }}/superoptimized/sqlpage.exe
+          if-no-files-found: error
+
+      - name: Submit signing request to SignPath
+        if: matrix.os == 'windows-latest'
+        id: signpath
+        uses: signpath/github-action-submit-signing-request@v1.1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: '45fd8443-c7ca-4d29-a68b-608948185335'
+          project-slug: 'sqlpage'
+          signing-policy-slug: 'release-signing'
+          github-artifact-id: ${{ steps.upload_unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: './signed-windows'
+
+      - name: Upload signed Windows artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlpage windows-latest
+          path: signed-windows/sqlpage.exe
+          if-no-files-found: error
+
+      - name: Upload artifact (non-Windows)
+        if: matrix.os != 'windows-latest'
+        uses: actions/upload-artifact@v4
         with:
           name: sqlpage ${{ matrix.os }}
           path: target/${{ matrix.target }}/superoptimized/sqlpage${{ matrix.binary_extension }}
