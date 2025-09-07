@@ -457,7 +457,7 @@ mod tests {
                 "money_val": 1234.56,
                 "small_money_val": 12.34,
                 "blob_data": "data:application/octet-stream;base64,bXNzcWw=",
-                "unique_identifier": "6F9619FF-8B86-D011-B42D-00C04FC964FF"
+                "unique_identifier": "6f9619ff-8b86-d011-b42d-00c04fc964ff"
             }),
         );
         Ok(())
