@@ -372,11 +372,14 @@ async fn link<'a>(
 ) -> anyhow::Result<String> {
     let mut url = file.into_owned();
     if let Some(parameters) = parameters {
-        url.push('?');
         let encoded = serde_json::from_str::<URLParameters>(&parameters).with_context(|| {
             format!("link: invalid URL parameters: not a valid json object:\n{parameters}")
         })?;
-        url.push_str(encoded.get());
+        let encoded_str = encoded.get();
+        if !encoded_str.is_empty() {
+            url.push('?');
+            url.push_str(encoded_str);
+        }
     }
     if let Some(hash) = hash {
         url.push('#');

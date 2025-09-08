@@ -2,6 +2,7 @@
 
 ## O.37.1
  - fixed decoding of UUID values
+ - Fixed handling of NULL values in `sqlpage.link`. They were encoded as the string `'null'` instead of being omitted from the link's parameters.
 
 ## v0.37.0
  - We now cryptographically sign the Windows app during releases, which proves the file hasn’t been tampered with. Once the production certificate is active, Windows will show a "verified publisher" and should stop showing screens saying "This app might harm your device", "Windows protected your PC" or "Are you sure you want to run this application ?". 

@@ -48,8 +48,10 @@ impl<'de> Deserialize<'de> for URLParameters {
                     map.next_entry::<Cow<str>, Cow<serde_json::value::RawValue>>()?
                 {
                     let value = value.get();
-                    if let Ok(str_val) = serde_json::from_str::<Cow<str>>(value) {
-                        out.push_kv(&key, &str_val);
+                    if let Ok(str_val) = serde_json::from_str::<Option<Cow<str>>>(value) {
+                        if let Some(str_val) = str_val {
+                            out.push_kv(&key, &str_val);
+                        }
                     } else if let Ok(vec_val) =
                         serde_json::from_str::<Vec<serde_json::Value>>(value)
                     {
@@ -94,6 +96,18 @@ fn test_url_parameters_deserializer() {
         url_parameters.0,
         "x=hello%20world&num=123&arr[]=1&arr[]=2&arr[]=3"
     );
+}
+
+#[test]
+fn test_url_parameters_null() {
+    use serde_json::json;
+    let json = json!({
+        "null_should_be_omitted": null,
+        "x": "hello",
+    });
+
+    let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
+    assert_eq!(url_parameters.0, "x=hello");
 }
 
 #[test]
