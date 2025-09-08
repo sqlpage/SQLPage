@@ -96,6 +96,9 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
         "MONEY" | "SMALLMONEY" if matches!(db_type, Mssql(_)) => {
             decode_raw::<f64>(raw_value).into()
         }
+        "UUID" | "UNIQUEIDENTIFIER" => decode_raw::<sqlx::types::uuid::Uuid>(raw_value)
+            .to_string()
+            .into(),
         "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode_raw::<Value>(raw_value),
         "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => {
             blob_to_data_url::vec_to_data_uri_value(&decode_raw::<Vec<u8>>(raw_value))
@@ -194,7 +197,9 @@ mod tests {
                 age('2024-03-14'::timestamp, '2024-01-01'::timestamp) as age_interval,
                 justify_interval(interval '1 year 2 months 3 days') as justified_interval,
                 1234.56::MONEY as money_val,
-                '\\x68656c6c6f20776f726c64'::BYTEA as blob_data",
+                '\\x68656c6c6f20776f726c64'::BYTEA as blob_data,
+                '550e8400-e29b-41d4-a716-446655440000'::UUID as uuid
+            ",
         )
         .fetch_one(&mut c)
         .await?;
@@ -220,7 +225,8 @@ mod tests {
                 "age_interval": "2 mons 13 days",
                 "justified_interval": "1 year 2 mons 3 days",
                 "money_val": "$1,234.56",
-                "blob_data": "data:application/octet-stream;base64,aGVsbG8gd29ybGQ="
+                "blob_data": "data:application/octet-stream;base64,aGVsbG8gd29ybGQ=",
+                "uuid": "550e8400-e29b-41d4-a716-446655440000"
             }),
         );
         Ok(())
@@ -242,7 +248,8 @@ mod tests {
                 INTERVAL '-01:02:03' as time_interval,
                 '{\"key\": \"value\"}'::JSON as json,
                 1234.56::MONEY as money_val,
-                '\\x74657374'::BYTEA as blob_data
+                '\\x74657374'::BYTEA as blob_data,
+                '550e8400-e29b-41d4-a716-446655440000'::UUID as uuid
             where $1",
         )
         .bind(true)
@@ -258,7 +265,8 @@ mod tests {
                 "time_interval": "-01:02:03",
                 "json": {"key": "value"},
                 "money_val": "", // TODO: fix this bug: https://github.com/sqlpage/SQLPage/issues/983
-                "blob_data": "data:application/octet-stream;base64,dGVzdA=="
+                "blob_data": "data:application/octet-stream;base64,dGVzdA==",
+                "uuid": "550e8400-e29b-41d4-a716-446655440000",
             }),
         );
         Ok(())
@@ -419,7 +427,9 @@ mod tests {
                 'ASCII String' as varchar,
                 CAST(1234.56 AS MONEY) as money_val,
                 CAST(12.34 AS SMALLMONEY) as small_money_val,
-                CAST(0x6D7373716C AS VARBINARY(10)) as blob_data",
+                CAST(0x6D7373716C AS VARBINARY(10)) as blob_data,
+                CONVERT(UNIQUEIDENTIFIER, '6F9619FF-8B86-D011-B42D-00C04FC964FF') as unique_identifier
+            "
         )
         .fetch_one(&mut c)
         .await?;
@@ -446,7 +456,8 @@ mod tests {
                 "varchar": "ASCII String",
                 "money_val": 1234.56,
                 "small_money_val": 12.34,
-                "blob_data": "data:application/octet-stream;base64,bXNzcWw="
+                "blob_data": "data:application/octet-stream;base64,bXNzcWw=",
+                "unique_identifier": "6f9619ff-8b86-d011-b42d-00c04fc964ff"
             }),
         );
         Ok(())
