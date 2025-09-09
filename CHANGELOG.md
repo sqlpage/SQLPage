@@ -3,6 +3,7 @@
 ## O.37.1
  - fixed decoding of UUID values
  - Fixed handling of NULL values in `sqlpage.link`. They were encoded as the string `'null'` instead of being omitted from the link's parameters.
+ - Enable submenu autoclosing (on click) in the shell. This is not ideal, but this prevents a bug introduced in v0.36.0 where the page would scroll back to the top when clicking anywhere on the page after navigating from a submenu. The next version will fix this properly. See https://github.com/sqlpage/SQLPage/issues/1011
 
 ## v0.37.0
  - We now cryptographically sign the Windows app during releases, which proves the file hasn’t been tampered with. Once the production certificate is active, Windows will show a "verified publisher" and should stop showing screens saying "This app might harm your device", "Windows protected your PC" or "Are you sure you want to run this application ?". 
