@@ -22,17 +22,6 @@ td > p {
   margin-bottom: 0 !important;
 }
 
-/* https://github.com/tabler/tabler/issues/1648 */
-* {
-  scrollbar-color: var(--tblr-primary) var(--tblr-bg-surface-dark) !important;
-}
-::-webkit-scrollbar {
-  width: 4px !important;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--tblr-primary) !important;
-}
-
 .text-secondary a {
   color: inherit;
   text-decoration: underline;
