@@ -649,6 +649,9 @@ pub struct HtmlRenderContext<W: std::io::Write> {
 const DEFAULT_COMPONENT: &str = "table";
 const PAGE_SHELL_COMPONENT: &str = "shell";
 const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
+const LOG_COMPONENT: &str = "log";
+const LOG_MESSAGE_KEY: &str = "message";
+const LOG_PRIORITY_KEY: &str = "priority";
 
 impl<W: std::io::Write> HtmlRenderContext<W> {
     pub async fn new(
@@ -721,6 +724,64 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
+    fn is_log_component(component: &str) -> bool {
+        component.starts_with(LOG_COMPONENT)
+    }
+
+    fn string_to_log_level(log_level_string: &str) -> log::Level {
+        match log_level_string {
+            "error" => log::Level::Error,
+            "warn" => log::Level::Warn,
+            "trace" => log::Level::Trace,
+            "debug" => log::Level::Debug,
+            _ => log::Level::Info,
+        }
+    }
+
+    async fn handle_component(&mut self, comp_str: &str, data: &JsonValue) -> anyhow::Result<()> {
+        if Self::is_shell_component(comp_str) {
+            bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
+        }
+
+        log::debug!("{comp_str}");
+
+        if Self::is_log_component(comp_str) {
+            log::debug!("{data}");
+            let object_map: &serde_json::Map<String, JsonValue> = match data {
+                JsonValue::Object(object) => object,
+                _ => {
+                    return Err(anyhow::anyhow!("expected a JsonObject"));
+                }
+            };
+
+            let log_level: log::Level = match object_map.get(LOG_PRIORITY_KEY) {
+                Some(Value::String(priority)) => {
+                    Self::string_to_log_level(priority.clone().as_str())
+                }
+                _ => log::Level::Info,
+            };
+
+            if let Some(value) = object_map.get(LOG_MESSAGE_KEY) {
+                log::log!(log_level, "{value}");
+            } else {
+                return Err(anyhow::anyhow!("no Message was defined"));
+            }
+
+            return Ok(());
+        }
+
+        match self.open_component_with_data(comp_str, &data).await {
+            Ok(_) => Ok(()),
+            Err(err) => match HeaderComponent::try_from(comp_str) {
+                Ok(_) => bail!("The {comp_str} component cannot be used after data has already been sent to the client's browser. \n\
+                                This component must be used before any other component. \n\
+                                    To fix this, either move the call to the '{comp_str}' component to the top of the SQL file, \n\
+                                or create a new SQL file where '{comp_str}' is the first component."),
+                Err(()) => Err(err),
+            },
+        }
+    }
+
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         let new_component = get_object_str(data, "component");
         let current_component = self
@@ -728,20 +789,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
             .as_ref()
             .map(SplitTemplateRenderer::name);
         if let Some(comp_str) = new_component {
-            if Self::is_shell_component(comp_str) {
-                bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
-            }
-
-            match self.open_component_with_data(comp_str, &data).await {
-                Ok(_) => (),
-                Err(err) => match HeaderComponent::try_from(comp_str) {
-                    Ok(_) => bail!("The {comp_str} component cannot be used after data has already been sent to the client's browser. \n\
-                                    This component must be used before any other component. \n\
-                                     To fix this, either move the call to the '{comp_str}' component to the top of the SQL file, \n\
-                                    or create a new SQL file where '{comp_str}' is the first component."),
-                    Err(()) => return Err(err),
-                },
-            }
+            self.handle_component(comp_str, data).await?;
         } else if current_component.is_none() {
             self.open_component_with_data(DEFAULT_COMPONENT, &JsonValue::Null)
                 .await?;
