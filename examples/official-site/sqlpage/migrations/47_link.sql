@@ -26,16 +26,17 @@ select
 from products;
 ```
 
-Using `sqlpage.link` is better than manually constructing the URL with `CONCAT(''product?product_name='', name)`,
-because it ensures that the URL is properly encoded.
-The former works when the product name contains special characters like `&`, while the latter would break the URL.
-
 In `product.sql`, you can then use `$product_name` to get the name of the product from the URL parameter:
 
 ```sql
-select ''text'' as component;
-select CONCAT(''Product: '', $product_name) as contents;
+select ''hero'' as component, $product_name as title, product_info as description
+from products
+where name = $product_name;
 ```
+
+> You could also have manually constructed the URL with `CONCAT(''product?product_name='', name)`,
+> but using `sqlpage.link` is better because it ensures that the URL is properly encoded.
+> `sqlpage.link` will work even if the product name contains special characters like `&`, while `CONCAT(...)` would break the URL.
 
 ### Parameters
  - `file` (TEXT): The name of the SQLPage file to link to.
