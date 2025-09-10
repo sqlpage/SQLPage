@@ -22,7 +22,8 @@ In `index.sql`, you can use the `link` function to generate the URL of the produ
 select ''list'' as component;
 select
     name as title,
-    sqlpage.link(''product'', json_object(''product_name'', name)) as link;
+    sqlpage.link(''product'', json_object(''product_name'', name)) as link
+from products;
 ```
 
 Using `sqlpage.link` is better than manually constructing the URL with `CONCAT(''product?product_name='', name)`,
