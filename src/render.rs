@@ -727,15 +727,23 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         if let Some(priority) = get_object_str(data, "priority") {
             if let Ok(level) = log::Level::from_str(priority) {
                 log_level = level;
-                }
             }
-            _ => log::Level::Info,
-        };
+        }
+
+        let target = format!(
+            "sqlpage::log from file \"{}\" in statement {}",
+            self.request_context.source_path.display(),
+            self.current_statement
+        );
 
         if let Some(message) = get_object_str(data, "message") {
             log::log!(target: &target, log_level, "{message}");
         } else {
-            return Err(anyhow::anyhow!("no message was defined for log component"));
+            return Err(anyhow::anyhow!(
+                "message undefined for log in \"{}\" in statement {}",
+                self.request_context.source_path.display(),
+                self.current_statement
+            ));
         }
 
         Ok(())

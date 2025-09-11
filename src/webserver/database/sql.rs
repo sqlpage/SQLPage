@@ -25,7 +25,7 @@ use std::str::FromStr;
 #[derive(Default)]
 pub struct ParsedSqlFile {
     pub(super) statements: Vec<ParsedStatement>,
-    pub(super) source_path: PathBuf,
+    pub source_path: PathBuf,
 }
 
 impl ParsedSqlFile {

@@ -44,6 +44,7 @@ use tokio::sync::mpsc;
 #[derive(Clone)]
 pub struct RequestContext {
     pub is_embedded: bool,
+    pub source_path: PathBuf,
     pub content_security_policy: ContentSecurityPolicy,
 }
 
@@ -174,9 +175,11 @@ async fn render_sql(
     log::debug!("Received a request with the following parameters: {req_param:?}");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
+    let source_path: PathBuf = sql_file.source_path.clone();
     actix_web::rt::spawn(async move {
         let request_context = RequestContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
+            source_path,
             content_security_policy: ContentSecurityPolicy::with_random_nonce(),
         };
         let mut conn = None;
