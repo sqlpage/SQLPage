@@ -148,6 +148,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     Ok(ResponseWithWriter::FinishedResponse { http_response })
 }
 
+#[allow(clippy::large_enum_variant)]
 enum ResponseWithWriter<S> {
     RenderStream {
         http_response: HttpResponse,
