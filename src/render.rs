@@ -758,7 +758,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         if let Some(value) = object_map.get(LOG_MESSAGE_KEY) {
             log::log!(target: LOG_TARGET, log_level, "{value}");
         } else {
-            return Err(anyhow::anyhow!("no message was defined"));
+            return Err(anyhow::anyhow!("no message was defined for log component"));
         }
 
         Ok(())
