@@ -652,6 +652,8 @@ const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
 const LOG_COMPONENT: &str = "log";
 const LOG_MESSAGE_KEY: &str = "message";
 const LOG_PRIORITY_KEY: &str = "priority";
+// without the "sqlpage::" prefix it does not log at all.
+const LOG_TARGET: &str = "sqlpage::logger";
 
 impl<W: std::io::Write> HtmlRenderContext<W> {
     pub async fn new(
@@ -738,36 +740,37 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         }
     }
 
+    fn handle_log_component(data: &JsonValue) -> anyhow::Result<()> {
+        let object_map: &serde_json::Map<String, JsonValue> = match data {
+            JsonValue::Object(object) => object,
+            _ => {
+                return Err(anyhow::anyhow!("expected a JsonObject"));
+            }
+        };
+
+        let log_level: log::Level = match object_map.get(LOG_PRIORITY_KEY) {
+            Some(Value::String(priority)) => {
+                Self::string_to_log_level(priority.clone().to_lowercase().as_str())
+            }
+            _ => log::Level::Info,
+        };
+
+        if let Some(value) = object_map.get(LOG_MESSAGE_KEY) {
+            log::log!(target: LOG_TARGET, log_level, "{value}");
+        } else {
+            return Err(anyhow::anyhow!("no message was defined"));
+        }
+
+        Ok(())
+    }
+
     async fn handle_component(&mut self, comp_str: &str, data: &JsonValue) -> anyhow::Result<()> {
         if Self::is_shell_component(comp_str) {
             bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
         }
 
-        log::debug!("{comp_str}");
-
         if Self::is_log_component(comp_str) {
-            log::debug!("{data}");
-            let object_map: &serde_json::Map<String, JsonValue> = match data {
-                JsonValue::Object(object) => object,
-                _ => {
-                    return Err(anyhow::anyhow!("expected a JsonObject"));
-                }
-            };
-
-            let log_level: log::Level = match object_map.get(LOG_PRIORITY_KEY) {
-                Some(Value::String(priority)) => {
-                    Self::string_to_log_level(priority.clone().as_str())
-                }
-                _ => log::Level::Info,
-            };
-
-            if let Some(value) = object_map.get(LOG_MESSAGE_KEY) {
-                log::log!(log_level, "{value}");
-            } else {
-                return Err(anyhow::anyhow!("no Message was defined"));
-            }
-
-            return Ok(());
+            return Self::handle_log_component(data);
         }
 
         match self.open_component_with_data(comp_str, &data).await {
