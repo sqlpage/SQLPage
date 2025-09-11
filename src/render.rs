@@ -730,12 +730,16 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
-    async fn handle_component(&mut self, comp_str: &str, data: &JsonValue) -> anyhow::Result<()> {
-        if Self::is_shell_component(comp_str) {
-            bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
+    async fn handle_component(
+        &mut self,
+        component_name: &str,
+        data: &JsonValue,
+    ) -> anyhow::Result<()> {
+        if Self::is_shell_component(component_name) {
+            bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", component_name);
         }
 
-        if comp_str == "log" {
+        if component_name == "log" {
             return handle_log_component(
                 &self.request_context.source_path,
                 Some(self.current_statement),
@@ -743,13 +747,13 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
             );
         }
 
-        match self.open_component_with_data(comp_str, &data).await {
+        match self.open_component_with_data(component_name, &data).await {
             Ok(_) => Ok(()),
-            Err(err) => match HeaderComponent::try_from(comp_str) {
-                Ok(_) => bail!("The {comp_str} component cannot be used after data has already been sent to the client's browser. \n\
+            Err(err) => match HeaderComponent::try_from(component_name) {
+                Ok(_) => bail!("The {component_name} component cannot be used after data has already been sent to the client's browser. \n\
                                 This component must be used before any other component. \n\
-                                    To fix this, either move the call to the '{comp_str}' component to the top of the SQL file, \n\
-                                or create a new SQL file where '{comp_str}' is the first component."),
+                                    To fix this, either move the call to the '{component_name}' component to the top of the SQL file, \n\
+                                or create a new SQL file where '{component_name}' is the first component."),
                 Err(()) => Err(err),
             },
         }
@@ -761,8 +765,8 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
             .current_component
             .as_ref()
             .map(SplitTemplateRenderer::name);
-        if let Some(comp_str) = new_component {
-            self.handle_component(comp_str, data).await?;
+        if let Some(component_name) = new_component {
+            self.handle_component(component_name, data).await?;
         } else if current_component.is_none() {
             self.open_component_with_data(DEFAULT_COMPONENT, &JsonValue::Null)
                 .await?;
