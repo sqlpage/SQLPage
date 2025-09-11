@@ -650,11 +650,6 @@ pub struct HtmlRenderContext<W: std::io::Write> {
 const DEFAULT_COMPONENT: &str = "table";
 const PAGE_SHELL_COMPONENT: &str = "shell";
 const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
-const LOG_COMPONENT: &str = "log";
-const LOG_MESSAGE_KEY: &str = "message";
-const LOG_PRIORITY_KEY: &str = "priority";
-// without the "sqlpage::" prefix it does not log at all.
-const LOG_TARGET: &str = "sqlpage::logger";
 
 impl<W: std::io::Write> HtmlRenderContext<W> {
     pub async fn new(
@@ -727,31 +722,18 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
-    fn is_log_component(component: &str) -> bool {
-        component.starts_with(LOG_COMPONENT)
-    }
-
-    fn handle_log_component(data: &JsonValue) -> anyhow::Result<()> {
-        let object_map: &serde_json::Map<String, JsonValue> = match data {
-            JsonValue::Object(object) => object,
-            _ => {
-                return Err(anyhow::anyhow!("expected a JsonObject"));
-            }
-        };
-
-        let log_level: log::Level = match object_map.get(LOG_PRIORITY_KEY) {
-            Some(Value::String(priority)) => {
-                if let Ok(level) = log::Level::from_str(&priority.clone()) {
-                    level
-                } else {
-                    log::Level::Info
+    fn handle_log_component(&self, data: &JsonValue) -> anyhow::Result<()> {
+        let mut log_level = log::Level::Info;
+        if let Some(priority) = get_object_str(data, "priority") {
+            if let Ok(level) = log::Level::from_str(priority) {
+                log_level = level;
                 }
             }
             _ => log::Level::Info,
         };
 
-        if let Some(value) = object_map.get(LOG_MESSAGE_KEY) {
-            log::log!(target: LOG_TARGET, log_level, "{value}");
+        if let Some(message) = get_object_str(data, "message") {
+            log::log!(target: &target, log_level, "{message}");
         } else {
             return Err(anyhow::anyhow!("no message was defined for log component"));
         }
@@ -764,8 +746,8 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
             bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
         }
 
-        if Self::is_log_component(comp_str) {
-            return Self::handle_log_component(data);
+        if comp_str == "log" {
+            return self.handle_log_component(data);
         }
 
         match self.open_component_with_data(comp_str, &data).await {
