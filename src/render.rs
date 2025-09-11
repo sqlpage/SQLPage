@@ -58,6 +58,7 @@ use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::io::Write;
+use std::str::FromStr;
 use std::sync::Arc;
 
 pub enum PageContext {
@@ -730,16 +731,6 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         component.starts_with(LOG_COMPONENT)
     }
 
-    fn string_to_log_level(log_level_string: &str) -> log::Level {
-        match log_level_string {
-            "error" => log::Level::Error,
-            "warn" => log::Level::Warn,
-            "trace" => log::Level::Trace,
-            "debug" => log::Level::Debug,
-            _ => log::Level::Info,
-        }
-    }
-
     fn handle_log_component(data: &JsonValue) -> anyhow::Result<()> {
         let object_map: &serde_json::Map<String, JsonValue> = match data {
             JsonValue::Object(object) => object,
@@ -750,7 +741,11 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
 
         let log_level: log::Level = match object_map.get(LOG_PRIORITY_KEY) {
             Some(Value::String(priority)) => {
-                Self::string_to_log_level(priority.clone().to_lowercase().as_str())
+                if let Ok(level) = log::Level::from_str(&priority.clone()) {
+                    level
+                } else {
+                    log::Level::Info
+                }
             }
             _ => log::Level::Info,
         };
