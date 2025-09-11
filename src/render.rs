@@ -57,6 +57,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::convert::TryFrom;
+use std::fmt::Write as _;
 use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
@@ -910,35 +911,16 @@ fn handle_log_component(
     current_statement: Option<usize>,
     data: &JsonValue,
 ) -> anyhow::Result<()> {
-    let mut log_level = log::Level::Info;
-    if let Some(priority) = get_object_str(data, "priority") {
-        if let Ok(level) = log::Level::from_str(priority) {
-            log_level = level;
-        }
+    let priority = get_object_str(data, "priority").unwrap_or("info");
+    let log_level = log::Level::from_str(priority).with_context(|| "Invalid log priority value")?;
+
+    let mut target = format!("sqlpage::log from \"{}\"", source_path.display());
+    if let Some(current_statement) = current_statement {
+        write!(&mut target, " statement {current_statement}")?;
     }
 
-    let current_statement_string = if let Some(option) = current_statement {
-        &format!("statement {option}")
-    } else {
-        "header"
-    };
-
-    let target = format!(
-        "sqlpage::log from file \"{}\" in {}",
-        source_path.display(),
-        current_statement_string
-    );
-
-    if let Some(message) = get_object_str(data, "message") {
-        log::log!(target: &target, log_level, "{message}");
-    } else {
-        return Err(anyhow::anyhow!(
-            "message undefined for log in \"{}\" in {}",
-            source_path.display(),
-            current_statement_string
-        ));
-    }
-
+    let message = get_object_str(data, "message").context("log: missing property 'message'")?;
+    log::log!(target: &target, log_level, "{message}");
     Ok(())
 }
 
