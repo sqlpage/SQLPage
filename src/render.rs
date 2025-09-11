@@ -58,6 +58,7 @@ use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::io::Write;
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -120,6 +121,7 @@ impl HeaderContext {
             Some(HeaderComponent::Cookie) => self.add_cookie(&data).map(PageContext::Header),
             Some(HeaderComponent::Authentication) => self.authentication(data).await,
             Some(HeaderComponent::Download) => self.download(&data),
+            Some(HeaderComponent::Log) => self.log(&data),
             None => self.start_body(data).await,
         }
     }
@@ -359,6 +361,11 @@ impl HeaderContext {
         Ok(PageContext::Close(
             self.response.body(body_bytes.into_owned()),
         ))
+    }
+
+    fn log(self, data: &JsonValue) -> anyhow::Result<PageContext> {
+        handle_log_component(&self.request_context.source_path, Option::None, data)?;
+        Ok(PageContext::Header(self))
     }
 
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext> {
@@ -722,40 +729,17 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
-    fn handle_log_component(&self, data: &JsonValue) -> anyhow::Result<()> {
-        let mut log_level = log::Level::Info;
-        if let Some(priority) = get_object_str(data, "priority") {
-            if let Ok(level) = log::Level::from_str(priority) {
-                log_level = level;
-            }
-        }
-
-        let target = format!(
-            "sqlpage::log from file \"{}\" in statement {}",
-            self.request_context.source_path.display(),
-            self.current_statement
-        );
-
-        if let Some(message) = get_object_str(data, "message") {
-            log::log!(target: &target, log_level, "{message}");
-        } else {
-            return Err(anyhow::anyhow!(
-                "message undefined for log in \"{}\" in statement {}",
-                self.request_context.source_path.display(),
-                self.current_statement
-            ));
-        }
-
-        Ok(())
-    }
-
     async fn handle_component(&mut self, comp_str: &str, data: &JsonValue) -> anyhow::Result<()> {
         if Self::is_shell_component(comp_str) {
             bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
         }
 
         if comp_str == "log" {
-            return self.handle_log_component(data);
+            return handle_log_component(
+                &self.request_context.source_path,
+                Some(self.current_statement),
+                data,
+            );
         }
 
         match self.open_component_with_data(comp_str, &data).await {
@@ -919,6 +903,43 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         self.handle_result_and_log(&res).await;
         self.writer
     }
+}
+
+fn handle_log_component(
+    source_path: &Path,
+    current_statement: Option<usize>,
+    data: &JsonValue,
+) -> anyhow::Result<()> {
+    let mut log_level = log::Level::Info;
+    if let Some(priority) = get_object_str(data, "priority") {
+        if let Ok(level) = log::Level::from_str(priority) {
+            log_level = level;
+        }
+    }
+
+    let current_statement_string = if let Some(option) = current_statement {
+        &format!("statement {option}")
+    } else {
+        "header"
+    };
+
+    let target = format!(
+        "sqlpage::log from file \"{}\" in {}",
+        source_path.display(),
+        current_statement_string
+    );
+
+    if let Some(message) = get_object_str(data, "message") {
+        log::log!(target: &target, log_level, "{message}");
+    } else {
+        return Err(anyhow::anyhow!(
+            "message undefined for log in \"{}\" in {}",
+            source_path.display(),
+            current_statement_string
+        ));
+    }
+
+    Ok(())
 }
 
 pub(super) fn get_backtrace_as_strings(error: &anyhow::Error) -> Vec<String> {
@@ -1144,6 +1165,7 @@ enum HeaderComponent {
     Cookie,
     Authentication,
     Download,
+    Log,
 }
 
 impl TryFrom<&str> for HeaderComponent {
@@ -1158,6 +1180,7 @@ impl TryFrom<&str> for HeaderComponent {
             "cookie" => Ok(Self::Cookie),
             "authentication" => Ok(Self::Authentication),
             "download" => Ok(Self::Download),
+            "log" => Ok(Self::Log),
             _ => Err(()),
         }
     }
