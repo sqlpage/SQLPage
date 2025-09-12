@@ -57,7 +57,10 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::convert::TryFrom;
+use std::fmt::Write as _;
 use std::io::Write;
+use std::path::Path;
+use std::str::FromStr;
 use std::sync::Arc;
 
 pub enum PageContext {
@@ -119,6 +122,7 @@ impl HeaderContext {
             Some(HeaderComponent::Cookie) => self.add_cookie(&data).map(PageContext::Header),
             Some(HeaderComponent::Authentication) => self.authentication(data).await,
             Some(HeaderComponent::Download) => self.download(&data),
+            Some(HeaderComponent::Log) => self.log(&data),
             None => self.start_body(data).await,
         }
     }
@@ -358,6 +362,11 @@ impl HeaderContext {
         Ok(PageContext::Close(
             self.response.body(body_bytes.into_owned()),
         ))
+    }
+
+    fn log(self, data: &JsonValue) -> anyhow::Result<PageContext> {
+        handle_log_component(&self.request_context.source_path, Option::None, data)?;
+        Ok(PageContext::Header(self))
     }
 
     async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext> {
@@ -721,27 +730,43 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         component.starts_with(PAGE_SHELL_COMPONENT)
     }
 
+    async fn handle_component(
+        &mut self,
+        component_name: &str,
+        data: &JsonValue,
+    ) -> anyhow::Result<()> {
+        if Self::is_shell_component(component_name) {
+            bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", component_name);
+        }
+
+        if component_name == "log" {
+            return handle_log_component(
+                &self.request_context.source_path,
+                Some(self.current_statement),
+                data,
+            );
+        }
+
+        match self.open_component_with_data(component_name, &data).await {
+            Ok(_) => Ok(()),
+            Err(err) => match HeaderComponent::try_from(component_name) {
+                Ok(_) => bail!("The {component_name} component cannot be used after data has already been sent to the client's browser. \n\
+                                This component must be used before any other component. \n\
+                                    To fix this, either move the call to the '{component_name}' component to the top of the SQL file, \n\
+                                or create a new SQL file where '{component_name}' is the first component."),
+                Err(()) => Err(err),
+            },
+        }
+    }
+
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         let new_component = get_object_str(data, "component");
         let current_component = self
             .current_component
             .as_ref()
             .map(SplitTemplateRenderer::name);
-        if let Some(comp_str) = new_component {
-            if Self::is_shell_component(comp_str) {
-                bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", comp_str);
-            }
-
-            match self.open_component_with_data(comp_str, &data).await {
-                Ok(_) => (),
-                Err(err) => match HeaderComponent::try_from(comp_str) {
-                    Ok(_) => bail!("The {comp_str} component cannot be used after data has already been sent to the client's browser. \n\
-                                    This component must be used before any other component. \n\
-                                     To fix this, either move the call to the '{comp_str}' component to the top of the SQL file, \n\
-                                    or create a new SQL file where '{comp_str}' is the first component."),
-                    Err(()) => return Err(err),
-                },
-            }
+        if let Some(component_name) = new_component {
+            self.handle_component(component_name, data).await?;
         } else if current_component.is_none() {
             self.open_component_with_data(DEFAULT_COMPONENT, &JsonValue::Null)
                 .await?;
@@ -883,6 +908,24 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         self.handle_result_and_log(&res).await;
         self.writer
     }
+}
+
+fn handle_log_component(
+    source_path: &Path,
+    current_statement: Option<usize>,
+    data: &JsonValue,
+) -> anyhow::Result<()> {
+    let priority = get_object_str(data, "priority").unwrap_or("info");
+    let log_level = log::Level::from_str(priority).with_context(|| "Invalid log priority value")?;
+
+    let mut target = format!("sqlpage::log from \"{}\"", source_path.display());
+    if let Some(current_statement) = current_statement {
+        write!(&mut target, " statement {current_statement}")?;
+    }
+
+    let message = get_object_str(data, "message").context("log: missing property 'message'")?;
+    log::log!(target: &target, log_level, "{message}");
+    Ok(())
 }
 
 pub(super) fn get_backtrace_as_strings(error: &anyhow::Error) -> Vec<String> {
@@ -1108,6 +1151,7 @@ enum HeaderComponent {
     Cookie,
     Authentication,
     Download,
+    Log,
 }
 
 impl TryFrom<&str> for HeaderComponent {
@@ -1122,6 +1166,7 @@ impl TryFrom<&str> for HeaderComponent {
             "cookie" => Ok(Self::Cookie),
             "authentication" => Ok(Self::Authentication),
             "download" => Ok(Self::Download),
+            "log" => Ok(Self::Log),
             _ => Err(()),
         }
     }
