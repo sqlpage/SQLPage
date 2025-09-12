@@ -1,10 +1,10 @@
-INSERT INTO components(name, icon, description) VALUES 
-('log', 'logs', 'A Component to log a message to the Servers STDOUT or Log file on page load')
+INSERT INTO component(name, icon, description) VALUES 
+('log', 'logs', 'A Component to log a message to the Servers STDOUT or Log file on page load');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'log', * FROM (VALUES
-    -- item level
-    ('message', 'The message that needs to be logged', 'ANY', FALSE, FALSE),
-    ('priority', 'The priority which the message should be logged with. Possible values are [''trace'', ''debug'', ''info'', ''warn'', ''error''] and are not case sensitive. If this value is missing or not matching any possible values, the default priority will be ''info''.', 'TEXT', FALSE, TRUE)
+    -- top level
+    ('message', 'The message that needs to be logged', 'TEXT', TRUE, FALSE),
+    ('priority', 'The priority which the message should be logged with. Possible values are [''trace'', ''debug'', ''info'', ''warn'', ''error''] and are not case sensitive. If this value is missing or not matching any possible values, the default priority will be ''info''.', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description) VALUES
