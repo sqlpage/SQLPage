@@ -915,8 +915,8 @@ fn handle_log_component(
     current_statement: Option<usize>,
     data: &JsonValue,
 ) -> anyhow::Result<()> {
-    let priority = get_object_str(data, "priority").unwrap_or("info");
-    let log_level = log::Level::from_str(priority).with_context(|| "Invalid log priority value")?;
+    let level_name = get_object_str(data, "level").unwrap_or("info");
+    let log_level = log::Level::from_str(level_name).with_context(|| "Invalid log level value")?;
 
     let mut target = format!("sqlpage::log from \"{}\"", source_path.display());
     if let Some(current_statement) = current_statement {
