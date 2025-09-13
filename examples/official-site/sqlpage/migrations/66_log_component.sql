@@ -1,5 +1,5 @@
-INSERT INTO component(name, icon, description) VALUES 
-('log', 'logs', 'A component that writes messages to the server logs.
+INSERT INTO component(name, icon, introduced_in_version, description) VALUES 
+('log', 'logs', '0.37.1', 'A component that writes messages to the server logs.
 When a page runs, it prints your message to the terminal/console (standard error).
 Use it to track what happens and troubleshoot issues.
 
