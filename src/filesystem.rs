@@ -144,14 +144,18 @@ impl FileSystem {
             for (i, component) in path.components().enumerate() {
                 if let Component::Normal(c) = component {
                     if i == 0 && c.eq_ignore_ascii_case("sqlpage") {
-                        anyhow::bail!(ErrorWithStatus {
+                        return Err(ErrorWithStatus {
                             status: actix_web::http::StatusCode::FORBIDDEN,
+                        })
+                        .with_context(|| {
+                            "The /sqlpage/ path prefix is reserved for internal use. It is not public."
                         });
                     }
                     if c.as_encoded_bytes().starts_with(b".") {
-                        anyhow::bail!(ErrorWithStatus {
+                        return Err(ErrorWithStatus {
                             status: actix_web::http::StatusCode::FORBIDDEN,
-                        });
+                        })
+                        .with_context(|| "Directory traversal is not allowed");
                     }
                 } else {
                     anyhow::bail!(

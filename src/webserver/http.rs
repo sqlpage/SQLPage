@@ -338,7 +338,7 @@ pub async fn main_handler(
         Ok(action) => action,
         Err(e) => {
             let e = e.context(format!(
-                "The server cannot provide what you were asking for. \n\
+                "The server was unable to fulfill your request. \n\
                 The following page is not accessible: {path_and_query:?}"
             ));
             return Err(anyhow_err_to_actix(e, app_state));
