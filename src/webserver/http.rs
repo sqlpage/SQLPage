@@ -338,7 +338,8 @@ pub async fn main_handler(
         Ok(action) => action,
         Err(e) => {
             let e = e.context(format!(
-                "Unable to calculate the routing action for: {path_and_query:?}"
+                "The server cannot provide what you were asking for. \n\
+                The following page is not accessible: {path_and_query:?}"
             ));
             return Err(anyhow_err_to_actix(e, app_state));
         }
