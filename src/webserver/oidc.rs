@@ -323,21 +323,18 @@ enum MiddlewareResponse {
     Respond(ServiceResponse),
 }
 
-async fn handle_request(
-    oidc_state: &OidcState,
-    request: ServiceRequest,
-) -> actix_web::Result<MiddlewareResponse> {
+async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> MiddlewareResponse {
     log::trace!("Started OIDC middleware request handling");
     oidc_state.refresh_if_expired(&request).await;
     match get_authenticated_user_info(oidc_state, &request).await {
         Ok(Some(claims)) => {
-            if request.path() != SQLPAGE_REDIRECT_URI {
+            if request.path() == SQLPAGE_REDIRECT_URI {
+                MiddlewareResponse::Respond(handle_authenticated_oidc_callback(request))
+            } else {
                 log::trace!("Storing authenticated user info in request extensions: {claims:?}");
                 request.extensions_mut().insert(claims);
-                return Ok(MiddlewareResponse::Forward(request));
+                MiddlewareResponse::Forward(request)
             }
-            let response = handle_authenticated_oidc_callback(request);
-            Ok(MiddlewareResponse::Respond(response))
         }
         Ok(None) => {
             log::trace!("No authenticated user found");
@@ -354,39 +351,36 @@ async fn handle_request(
 async fn handle_unauthenticated_request(
     oidc_state: &OidcState,
     request: ServiceRequest,
-) -> actix_web::Result<MiddlewareResponse> {
+) -> MiddlewareResponse {
     log::debug!("Handling unauthenticated request to {}", request.path());
     if request.path() == SQLPAGE_REDIRECT_URI {
         log::debug!("The request is the OIDC callback");
-        let response = handle_oidc_callback(oidc_state, request).await?;
-        return Ok(MiddlewareResponse::Respond(response));
+        let response = handle_oidc_callback(oidc_state, request).await;
+        return MiddlewareResponse::Respond(response);
     }
 
     if oidc_state.config.is_public_path(request.path()) {
-        return Ok(MiddlewareResponse::Forward(request));
+        return MiddlewareResponse::Forward(request);
     }
 
     log::debug!("Redirecting to OIDC provider");
 
     let initial_url = request.uri().to_string();
     let response = build_auth_provider_redirect_response(oidc_state, initial_url).await;
-    Ok(MiddlewareResponse::Respond(request.into_response(response)))
+    MiddlewareResponse::Respond(request.into_response(response))
 }
 
-async fn handle_oidc_callback(
-    oidc_state: &OidcState,
-    request: ServiceRequest,
-) -> actix_web::Result<ServiceResponse> {
+async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
     let query_string = request.query_string();
     match process_oidc_callback(oidc_state, query_string, &request).await {
-        Ok(response) => Ok(request.into_response(response)),
+        Ok(response) => request.into_response(response),
         Err(e) => {
             let redirect_url =
                 get_state_from_cookie(&request).map_or_else(|_| "/".into(), |s| s.initial_url);
             log::error!("Failed to process OIDC callback. Refreshing oidc provider metadata, then redirecting to {redirect_url}: {e:#}");
             oidc_state.refresh_on_error(&request).await;
             let resp = build_auth_provider_redirect_response(oidc_state, redirect_url).await;
-            Ok(request.into_response(resp))
+            request.into_response(resp)
         }
     }
 }
@@ -417,9 +411,8 @@ where
         let oidc_state = Arc::clone(&self.oidc_state);
         Box::pin(async move {
             match handle_request(&oidc_state, request).await {
-                Ok(MiddlewareResponse::Respond(response)) => Ok(response),
-                Ok(MiddlewareResponse::Forward(request)) => srv.call(request).await,
-                Err(err) => Err(err),
+                MiddlewareResponse::Respond(response) => Ok(response),
+                MiddlewareResponse::Forward(request) => srv.call(request).await,
             }
         })
     }
