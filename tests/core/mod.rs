@@ -174,7 +174,7 @@ async fn test_official_website_basic_auth_example() {
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     assert!(
-        body_str.contains("not authorized"),
+        body_str.contains("Unauthorized"),
         "{body_str}\nexpected to contain Unauthorized"
     );
 }
