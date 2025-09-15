@@ -8,7 +8,7 @@ use crate::AppState;
 use actix_web::error::UrlencodedError;
 use actix_web::http::{header, StatusCode};
 use actix_web::{HttpRequest, HttpResponse};
-use actix_web::{HttpResponseBuilder, ResponseError};
+use actix_web::HttpResponseBuilder;
 use handlebars::{Renderable, StringOutput};
 use serde_json::json;
 

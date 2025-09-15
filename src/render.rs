@@ -44,13 +44,12 @@
 use crate::templates::SplitTemplate;
 use crate::webserver::http::RequestContext;
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
-use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::http::header::ContentType;
 use actix_web::http::{header, StatusCode};
-use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
+use actix_web::{HttpResponse, HttpResponseBuilder};
 use anyhow::{bail, format_err, Context as AnyhowContext};
 use awc::cookie::time::Duration;
 use handlebars::{BlockContext, JsonValue, RenderError, Renderable};
