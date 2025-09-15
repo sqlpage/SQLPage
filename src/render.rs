@@ -44,10 +44,10 @@
 use crate::templates::SplitTemplate;
 use crate::webserver::http::RequestContext;
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
+use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::cookie::time::OffsetDateTime;
-use actix_web::http::header::ContentType;
 use actix_web::http::{header, StatusCode};
 use actix_web::{HttpResponse, HttpResponseBuilder};
 use anyhow::{bail, format_err, Context as AnyhowContext};
@@ -323,15 +323,9 @@ impl HeaderContext {
                     Redirecting to the login page...",
                 )
         } else {
-            let mut resp_builder = actix_web::HttpResponse::build(StatusCode::UNAUTHORIZED);
-            resp_builder.content_type(ContentType::plaintext());
-            resp_builder.insert_header((
-                header::WWW_AUTHENTICATE,
-                header::HeaderValue::from_static(
-                    "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
-                ),
-            ));
-            resp_builder.body("Sorry, but you are not authorized to access this page.")
+            anyhow::bail!(ErrorWithStatus {
+                status: StatusCode::UNAUTHORIZED
+            })
         };
         self.has_status = true;
         Ok(PageContext::Close(http_response))

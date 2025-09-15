@@ -7,8 +7,8 @@ use crate::webserver::ErrorWithStatus;
 use crate::AppState;
 use actix_web::error::UrlencodedError;
 use actix_web::http::{header, StatusCode};
-use actix_web::{HttpRequest, HttpResponse};
 use actix_web::HttpResponseBuilder;
+use actix_web::{HttpRequest, HttpResponse};
 use handlebars::{Renderable, StringOutput};
 use serde_json::json;
 
@@ -58,6 +58,12 @@ fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse
 
     if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
         resp.status(status);
+        if status == StatusCode::UNAUTHORIZED {
+            resp.append_header((
+                header::WWW_AUTHENTICATE,
+                "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
+            ));
+        }
     } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
         use rand::Rng;
         resp.status(StatusCode::TOO_MANY_REQUESTS).insert_header((

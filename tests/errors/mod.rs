@@ -4,6 +4,7 @@ use actix_web::{
 };
 
 use crate::common::req_path;
+mod basic_auth;
 
 #[actix_web::test]
 async fn test_privileged_paths_are_not_accessible() {
