@@ -56,32 +56,29 @@ fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
     resp.insert_header((header::CONTENT_TYPE, header::ContentType::plaintext()));
 
-    if let Some(status_err @ &ErrorWithStatus { .. }) = e.downcast_ref() {
-        status_err.error_response()
+    if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
+        resp.status(status);
     } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
         use rand::Rng;
-        resp.status(StatusCode::TOO_MANY_REQUESTS)
-            .insert_header((
-                header::RETRY_AFTER,
-                header::HeaderValue::from(rand::rng().random_range(1..=15)),
-            ))
-            .body("The database is currently too busy to handle your request. Please try again later.".to_owned())
-    } else {
-        match error_to_html_string(state, e) {
-            Ok(body) => {
-                resp.insert_header((header::CONTENT_TYPE, header::ContentType::html()));
-                resp.body(body)
-            }
-            Err(second_err) => {
-                log::error!("Unable to render error: {e:#}");
-                resp.body(format!(
-                    "A second error occurred while rendering the error page: \n\n\
+        resp.status(StatusCode::TOO_MANY_REQUESTS).insert_header((
+            header::RETRY_AFTER,
+            header::HeaderValue::from(rand::rng().random_range(1..=15)),
+        ));
+    }
+    match error_to_html_string(state, e) {
+        Ok(body) => {
+            resp.insert_header((header::CONTENT_TYPE, header::ContentType::html()));
+            resp.body(body)
+        }
+        Err(second_err) => {
+            log::error!("Unable to render error: {e:#}");
+            resp.body(format!(
+                "A second error occurred while rendering the error page: \n\n\
                 Initial error: \n\
                 {e:#}\n\n\
                 Second error: \n\
                 {second_err:#}"
-                ))
-            }
+            ))
         }
     }
 }
