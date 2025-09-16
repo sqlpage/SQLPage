@@ -43,6 +43,7 @@
 
 use crate::templates::SplitTemplate;
 use crate::webserver::http::RequestContext;
+use crate::webserver::http_request_info::RequestInfo;
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
@@ -80,7 +81,7 @@ pub enum PageContext {
 /// Handles the first SQL statements, before the headers have been sent to
 pub struct HeaderContext {
     app_state: Arc<AppState>,
-    request_context: RequestContext,
+    request_context: Arc<RequestInfo>,
     pub writer: ResponseWriter,
     response: HttpResponseBuilder,
     has_status: bool,
@@ -90,7 +91,7 @@ impl HeaderContext {
     #[must_use]
     pub fn new(
         app_state: Arc<AppState>,
-        request_context: RequestContext,
+        request_context: Arc<RequestInfo>,
         writer: ResponseWriter,
     ) -> Self {
         let mut response = HttpResponseBuilder::new(StatusCode::OK);
@@ -364,7 +365,7 @@ impl HeaderContext {
     }
 
     fn log(self, data: &JsonValue) -> anyhow::Result<PageContext> {
-        handle_log_component(&self.request_context.source_path, Option::None, data)?;
+        handle_log_component(&self.request_context, Option::None, data)?;
         Ok(PageContext::Header(self))
     }
 
@@ -651,7 +652,7 @@ pub struct HtmlRenderContext<W: std::io::Write> {
     current_component: Option<SplitTemplateRenderer>,
     shell_renderer: SplitTemplateRenderer,
     current_statement: usize,
-    request_context: RequestContext,
+    request_context: Arc<RequestInfo>,
 }
 
 const DEFAULT_COMPONENT: &str = "table";
@@ -661,7 +662,7 @@ const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
 impl<W: std::io::Write> HtmlRenderContext<W> {
     pub async fn new(
         app_state: Arc<AppState>,
-        request_context: RequestContext,
+        request_context: Arc<RequestInfo>,
         mut writer: W,
         initial_row: JsonValue,
     ) -> anyhow::Result<HtmlRenderContext<W>> {
@@ -669,12 +670,13 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
 
         let mut initial_rows = vec![Cow::Borrowed(&initial_row)];
 
+        let is_embedded = request_context.is_embedded();
         if !initial_rows
             .first()
             .and_then(|c| get_object_str(c, "component"))
             .is_some_and(Self::is_shell_component)
         {
-            let default_shell = if request_context.is_embedded {
+            let default_shell = if is_embedded {
                 FRAGMENT_SHELL_COMPONENT
             } else {
                 PAGE_SHELL_COMPONENT
@@ -692,7 +694,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
             .expect("shell row should exist at this point");
         let mut shell_component =
             get_object_str(&shell_row, "component").expect("shell should exist");
-        if request_context.is_embedded && shell_component != FRAGMENT_SHELL_COMPONENT {
+        if is_embedded && shell_component != FRAGMENT_SHELL_COMPONENT {
             log::warn!(
                 "Embedded pages cannot use a shell component! Ignoring the '{shell_component}' component and its properties: {shell_row}"
             );
@@ -739,11 +741,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         }
 
         if component_name == "log" {
-            return handle_log_component(
-                &self.request_context.source_path,
-                Some(self.current_statement),
-                data,
-            );
+            return handle_log_component(&self.request_context, Some(self.current_statement), data);
         }
 
         match self.open_component_with_data(component_name, &data).await {
@@ -910,14 +908,14 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
 }
 
 fn handle_log_component(
-    source_path: &Path,
+    request_context: &RequestInfo,
     current_statement: Option<usize>,
     data: &JsonValue,
 ) -> anyhow::Result<()> {
     let level_name = get_object_str(data, "level").unwrap_or("info");
     let log_level = log::Level::from_str(level_name).with_context(|| "Invalid log level value")?;
 
-    let mut target = format!("sqlpage::log from \"{}\"", source_path.display());
+    let mut target = format!("sqlpage::log from \"{}\"", request_context.path);
     if let Some(current_statement) = current_statement {
         write!(&mut target, " statement {current_statement}")?;
     }

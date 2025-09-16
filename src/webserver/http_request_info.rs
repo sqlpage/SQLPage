@@ -1,3 +1,4 @@
+use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::AppState;
 use actix_multipart::form::bytes::Bytes;
 use actix_multipart::form::tempfile::TempFile;
@@ -42,6 +43,7 @@ pub struct RequestInfo {
     pub clone_depth: u8,
     pub raw_body: Option<Vec<u8>>,
     pub oidc_claims: Option<OidcClaims>,
+    pub content_security_policy: ContentSecurityPolicy,
 }
 
 impl RequestInfo {
@@ -62,7 +64,12 @@ impl RequestInfo {
             clone_depth: self.clone_depth + 1,
             raw_body: self.raw_body.clone(),
             oidc_claims: self.oidc_claims.clone(),
+            content_security_policy: self.content_security_policy.clone(),
         }
+    }
+    
+    pub fn is_embedded(&self) -> bool {
+        self.get_variables.contains_key("_sqlpage_embed")
     }
 }
 
@@ -123,6 +130,7 @@ pub(crate) async fn extract_request_info(
         clone_depth: 0,
         raw_body,
         oidc_claims,
+        content_security_policy: ContentSecurityPolicy::with_random_nonce()
     })
 }
 
