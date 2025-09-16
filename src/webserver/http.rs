@@ -6,7 +6,7 @@ use crate::render::{AnyRenderBodyContext, HeaderContext, PageContext};
 use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
-use crate::webserver::http_request_info::extract_request_info;
+use crate::webserver::http_request_info::{extract_request_info, RequestInfo};
 use crate::webserver::ErrorWithStatus;
 use crate::{AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
@@ -97,12 +97,12 @@ async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRe
 async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     app_state: Arc<AppState>,
     database_entries: S,
-    request_context: RequestContext,
+    request_params: Arc<RequestInfo>,
 ) -> anyhow::Result<ResponseWithWriter<S>> {
     let chan_size = app_state.config.max_pending_rows;
     let (sender, receiver) = mpsc::channel(chan_size);
     let writer = ResponseWriter::new(sender);
-    let mut head_context = HeaderContext::new(app_state, request_context, writer);
+    let mut head_context = HeaderContext::new(app_state, request_params, writer);
     let mut stream = Box::pin(database_entries);
     while let Some(item) = stream.next().await {
         let page_context = match item {
@@ -173,24 +173,20 @@ async fn render_sql(
     let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state))
         .await
         .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
-    log::debug!("Received a request with the following parameters: {req_param:?}");
+    let sql_path = &sql_file.source_path;
+    log::debug!("Received a request to {sql_path:?} with the following parameters: {req_param:?}");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
-    let source_path: PathBuf = sql_file.source_path.clone();
     actix_web::rt::spawn(async move {
-        let request_context = RequestContext {
-            is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
-            source_path,
-            content_security_policy: ContentSecurityPolicy::with_random_nonce(),
-        };
         let mut conn = None;
         let database_entries_stream =
             stream_query_results_with_conn(&sql_file, &mut req_param, &mut conn);
         let database_entries_stream = stop_at_first_error(database_entries_stream);
+        let req_param = Arc::new(req_param);
         let response_with_writer = build_response_header_and_stream(
             Arc::clone(&app_state),
             database_entries_stream,
-            request_context,
+            Arc::clone(&req_param),
         )
         .await;
         match response_with_writer {
