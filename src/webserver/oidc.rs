@@ -6,6 +6,7 @@ use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
 use crate::webserver::http_client::get_http_client_from_appdata;
 use crate::{app_config::AppConfig, AppState};
+use actix_web::http::header;
 use actix_web::{
     body::BoxBody,
     cookie::Cookie,
@@ -520,7 +521,7 @@ async fn build_auth_provider_redirect_response(
     let nonce_cookie = create_nonce_cookie(&params.nonce);
     let redirect_cookie = create_redirect_cookie(&params.csrf_token, initial_url);
     HttpResponse::TemporaryRedirect()
-        .append_header(("Location", url.to_string()))
+        .append_header((header::LOCATION, url.to_string()))
         .cookie(nonce_cookie)
         .cookie(redirect_cookie)
         .body("Redirecting...")
@@ -794,24 +795,22 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct OidcNonceState {
-    #[serde(rename = "n")]
-    nonce: Nonce,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct OidcRedirectState {
-    #[serde(rename = "u")]
-    initial_url: String,
-}
-
 fn create_nonce_cookie(nonce: &Nonce) -> Cookie<'_> {
-    let nonce_state = OidcNonceState {
-        nonce: nonce.clone(),
-    };
-    let nonce_json = serde_json::to_string(&nonce_state).unwrap();
-    Cookie::build(SQLPAGE_NONCE_COOKIE_NAME, nonce_json)
+    Cookie::build(SQLPAGE_NONCE_COOKIE_NAME, nonce.secret())
+        .secure(true)
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .path("/")
+        .finish()
+}
+
+fn create_redirect_cookie<'a>(csrf_token: &CsrfToken, initial_url: &'a str) -> Cookie<'a> {
+    let cookie_name = format!(
+        "{}{}",
+        SQLPAGE_REDIRECT_URL_COOKIE_PREFIX,
+        csrf_token.secret()
+    );
+    Cookie::build(cookie_name, initial_url)
         .secure(true)
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
@@ -820,32 +819,11 @@ fn create_nonce_cookie(nonce: &Nonce) -> Cookie<'_> {
         .finish()
 }
 
-fn create_redirect_cookie(csrf_token: &CsrfToken, initial_url: &str) -> Cookie<'static> {
-    let redirect_state = OidcRedirectState {
-        initial_url: initial_url.to_string(),
-    };
-    let redirect_json = serde_json::to_string(&redirect_state).unwrap();
-    let cookie_name = format!(
-        "{}{}",
-        SQLPAGE_REDIRECT_URL_COOKIE_PREFIX,
-        csrf_token.secret()
-    );
-    Cookie::build(cookie_name, redirect_json)
-        .secure(true)
-        .http_only(true)
-        .same_site(actix_web::cookie::SameSite::Lax)
-        .path("/")
-        .max_age(actix_web::cookie::time::Duration::minutes(5))
-        .finish()
-}
-
 fn get_nonce_from_cookie(request: &ServiceRequest) -> anyhow::Result<Nonce> {
     let cookie = request
         .cookie(SQLPAGE_NONCE_COOKIE_NAME)
         .with_context(|| format!("No {SQLPAGE_NONCE_COOKIE_NAME} cookie found"))?;
-    let nonce_state: OidcNonceState = serde_json::from_str(cookie.value())
-        .with_context(|| format!("Failed to parse nonce from cookie: {cookie}"))?;
-    Ok(nonce_state.nonce)
+    Ok(Nonce::new(cookie.value().to_string()))
 }
 
 fn get_redirect_url_cookie(
