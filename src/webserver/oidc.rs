@@ -17,7 +17,6 @@ use actix_web::{
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
-use chrono::Utc;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
     CoreJweContentEncryptionAlgorithm, CoreJwsSigningAlgorithm, CoreRevocableToken,
@@ -45,6 +44,8 @@ const SQLPAGE_NONCE_COOKIE_NAME: &str = "sqlpage_oidc_nonce";
 const SQLPAGE_REDIRECT_URL_COOKIE_PREFIX: &str = "sqlpage_oidc_redirect_url_";
 const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
+const AUTH_COOKIE_EXPIRATION: awc::cookie::time::Duration =
+    actix_web::cookie::time::Duration::days(7);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -211,7 +212,7 @@ impl OidcState {
     async fn get_token_claims(
         &self,
         id_token: OidcToken,
-        expected_nonce: Option<&Nonce>,
+        expected_nonce: &Nonce,
     ) -> anyhow::Result<OidcClaims> {
         let client = &self.get_client().await;
         let verifier = self.config.create_id_token_verifier(client);
@@ -452,9 +453,7 @@ async fn process_oidc_callback(
     let redirect_target = validate_redirect_url(redirect_url_cookie.value().to_string());
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
-    set_auth_cookie(&mut response, &token_response, oidc_state)
-        .await
-        .context("Failed to set auth cookie")?;
+    set_auth_cookie(&mut response, &token_response).context("Failed to set auth cookie")?;
 
     // Clean up the state-specific cookie after successful authentication
     response.add_removal_cookie(&redirect_url_cookie)?;
@@ -477,20 +476,15 @@ async fn exchange_code_for_token(
     Ok(token_response)
 }
 
-async fn set_auth_cookie(
+fn set_auth_cookie(
     response: &mut HttpResponse,
     token_response: &OidcTokenResponse,
-    oidc_state: &OidcState,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
     let id_token = token_response
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
-
-    let claims_res = oidc_state.get_token_claims(id_token.clone(), None).await;
-    let expiration = claims_res.context("Parsing ID token claims")?.expiration();
-    let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
 
     let id_token_str = id_token.to_string();
     log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
@@ -504,7 +498,7 @@ async fn set_auth_cookie(
     let cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token_str)
         .secure(true)
         .http_only(true)
-        .max_age(actix_web::cookie::time::Duration::seconds(max_age_seconds))
+        .max_age(AUTH_COOKIE_EXPIRATION)
         .same_site(actix_web::cookie::SameSite::Lax)
         .path("/")
         .finish();
@@ -545,11 +539,9 @@ async fn get_authenticated_user_info(
     let id_token = OidcToken::from_str(&cookie_value)
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
-    // Try to get nonce from cookies if this is a callback request
     let nonce = get_nonce_from_cookie(request)?;
-
     log::debug!("Verifying id token: {id_token:?}");
-    let claims = oidc_state.get_token_claims(id_token, Some(&nonce)).await?;
+    let claims = oidc_state.get_token_claims(id_token, &nonce).await?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
@@ -750,15 +742,9 @@ fn hash_nonce(nonce: &Nonce) -> String {
     hash.to_string()
 }
 
-fn check_nonce(
-    id_token_nonce: Option<&Nonce>,
-    expected_nonce: Option<&Nonce>,
-) -> Result<(), String> {
-    let Some(expected) = expected_nonce else {
-        return Ok(()); // No expected nonce, no validation needed
-    };
+fn check_nonce(id_token_nonce: Option<&Nonce>, expected_nonce: &Nonce) -> Result<(), String> {
     match id_token_nonce {
-        Some(id_token_nonce) => nonce_matches(id_token_nonce, expected),
+        Some(id_token_nonce) => nonce_matches(id_token_nonce, expected_nonce),
         None => Err("No nonce found in the ID token".to_string()),
     }
 }
@@ -790,6 +776,7 @@ fn create_nonce_cookie(nonce: &Nonce) -> Cookie<'_> {
         .secure(true)
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
+        .max_age(AUTH_COOKIE_EXPIRATION)
         .path("/")
         .finish()
 }
