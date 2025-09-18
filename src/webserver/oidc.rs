@@ -546,20 +546,10 @@ async fn get_authenticated_user_info(
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
     // Try to get nonce from cookies if this is a callback request
-    let nonce = if request.path() == SQLPAGE_REDIRECT_URI {
-        if let Ok(_params) = Query::<OidcCallbackParams>::from_query(request.query_string()) {
-            get_nonce_from_cookie(request).ok()
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let nonce = get_nonce_from_cookie(request)?;
 
     log::debug!("Verifying id token: {id_token:?}");
-    let claims = oidc_state
-        .get_token_claims(id_token, nonce.as_ref())
-        .await?;
+    let claims = oidc_state.get_token_claims(id_token, Some(&nonce)).await?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
