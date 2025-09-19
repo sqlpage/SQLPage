@@ -807,8 +807,7 @@ fn get_redirect_url_cookie(
     request: &ServiceRequest,
     csrf_token: &CsrfToken,
 ) -> anyhow::Result<Cookie<'static>> {
-    let state = csrf_token.secret();
-    let cookie_name = format!("{SQLPAGE_REDIRECT_URL_COOKIE_PREFIX}{state}");
+    let cookie_name = SQLPAGE_REDIRECT_URL_COOKIE_PREFIX.to_owned() + csrf_token.secret();
     request
         .cookie(&cookie_name)
         .with_context(|| format!("No {cookie_name} cookie found"))
