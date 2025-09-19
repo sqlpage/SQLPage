@@ -6,6 +6,7 @@ use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
 use crate::webserver::http_client::get_http_client_from_appdata;
 use crate::{app_config::AppConfig, AppState};
+use actix_web::http::header;
 use actix_web::{
     body::BoxBody,
     cookie::Cookie,
@@ -16,7 +17,6 @@ use actix_web::{
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
-use chrono::Utc;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
     CoreJweContentEncryptionAlgorithm, CoreJwsSigningAlgorithm, CoreRevocableToken,
@@ -40,9 +40,12 @@ type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
-const SQLPAGE_STATE_COOKIE_NAME: &str = "sqlpage_oidc_state";
+const SQLPAGE_NONCE_COOKIE_NAME: &str = "sqlpage_oidc_nonce";
+const SQLPAGE_REDIRECT_URL_COOKIE_PREFIX: &str = "sqlpage_oidc_redirect_url_";
 const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
+const AUTH_COOKIE_EXPIRATION: awc::cookie::time::Duration =
+    actix_web::cookie::time::Duration::days(7);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -209,11 +212,11 @@ impl OidcState {
     async fn get_token_claims(
         &self,
         id_token: OidcToken,
-        state: Option<&OidcLoginState>,
+        expected_nonce: &Nonce,
     ) -> anyhow::Result<OidcClaims> {
         let client = &self.get_client().await;
         let verifier = self.config.create_id_token_verifier(client);
-        let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, state);
+        let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, expected_nonce);
         let claims: OidcClaims = id_token
             .into_claims(&verifier, nonce_verifier)
             .map_err(|e| anyhow::anyhow!("Could not verify the ID token: {}", e))?;
@@ -366,7 +369,7 @@ async fn handle_unauthenticated_request(
     log::debug!("Redirecting to OIDC provider");
 
     let initial_url = request.uri().to_string();
-    let response = build_auth_provider_redirect_response(oidc_state, initial_url).await;
+    let response = build_auth_provider_redirect_response(oidc_state, &initial_url).await;
     MiddlewareResponse::Respond(request.into_response(response))
 }
 
@@ -375,11 +378,9 @@ async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -
     match process_oidc_callback(oidc_state, query_string, &request).await {
         Ok(response) => request.into_response(response),
         Err(e) => {
-            let redirect_url =
-                get_state_from_cookie(&request).map_or_else(|_| "/".into(), |s| s.initial_url);
-            log::error!("Failed to process OIDC callback. Refreshing oidc provider metadata, then redirecting to {redirect_url}: {e:#}");
+            log::error!("Failed to process OIDC callback. Refreshing oidc provider metadata, then redirecting to home page: {e:#}");
             oidc_state.refresh_on_error(&request).await;
-            let resp = build_auth_provider_redirect_response(oidc_state, redirect_url).await;
+            let resp = build_auth_provider_redirect_response(oidc_state, "/").await;
             request.into_response(resp)
         }
     }
@@ -387,10 +388,18 @@ async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -
 
 /// When an user has already authenticated (potentially in another tab), we ignore the callback and redirect to the initial URL.
 fn handle_authenticated_oidc_callback(request: ServiceRequest) -> ServiceResponse {
-    let redirect_url = match get_state_from_cookie(&request) {
-        Ok(state) => state.initial_url,
-        Err(_) => "/".to_string(),
-    };
+    // Try to get redirect URL from query params if available
+    let redirect_url = Query::<OidcCallbackParams>::from_query(request.query_string())
+        .with_context(|| "Failed to parse OIDC callback parameters in authenticated callback")
+        .and_then(|params| get_redirect_url_cookie(&request, &params.state))
+        .map_or_else(
+            |e| {
+                log::warn!("No redirect URL cookie: {e:#}");
+                "/".to_string()
+            },
+            |cookie| cookie.value().to_string(),
+        );
+
     log::debug!("OIDC callback received for authenticated user. Redirecting to {redirect_url}");
     request.into_response(build_redirect_response(redirect_url))
 }
@@ -425,8 +434,6 @@ async fn process_oidc_callback(
 ) -> anyhow::Result<HttpResponse> {
     let http_client = get_http_client_from_appdata(request)?;
 
-    let state = get_state_from_cookie(request).context("Failed to read oidc state cookie")?;
-
     let params = Query::<OidcCallbackParams>::from_query(query_string)
         .with_context(|| {
             format!(
@@ -435,22 +442,23 @@ async fn process_oidc_callback(
         })?
         .into_inner();
 
-    if state.csrf_token.secret() != params.state.secret() {
-        log::debug!("CSRF token mismatch: expected {state:?}, got {params:?}");
-        return Err(anyhow!("Invalid CSRF token: {}", params.state.secret()));
-    }
+    let mut redirect_url_cookie = get_redirect_url_cookie(request, &params.state)
+        .with_context(|| "Failed to read redirect URL from cookie")?;
 
     let client = oidc_state.get_client().await;
     log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
-    let token_response = exchange_code_for_token(&client, http_client, params).await?;
+    let token_response = exchange_code_for_token(&client, http_client, params.clone()).await?;
     log::debug!("Received token response: {token_response:?}");
 
-    let redirect_target = validate_redirect_url(state.initial_url);
+    let redirect_target = validate_redirect_url(redirect_url_cookie.value().to_string());
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
-    set_auth_cookie(&mut response, &token_response, oidc_state)
-        .await
-        .context("Failed to set auth cookie")?;
+    set_auth_cookie(&mut response, &token_response).context("Failed to set auth cookie")?;
+
+    // Clean up the state-specific cookie after successful authentication
+    redirect_url_cookie.set_path("/");
+    response.add_removal_cookie(&redirect_url_cookie)?;
+
     Ok(response)
 }
 
@@ -469,20 +477,15 @@ async fn exchange_code_for_token(
     Ok(token_response)
 }
 
-async fn set_auth_cookie(
+fn set_auth_cookie(
     response: &mut HttpResponse,
     token_response: &OidcTokenResponse,
-    oidc_state: &OidcState,
 ) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
     let id_token = token_response
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
-
-    let claims_res = oidc_state.get_token_claims(id_token.clone(), None).await;
-    let expiration = claims_res.context("Parsing ID token claims")?.expiration();
-    let max_age_seconds = expiration.signed_duration_since(Utc::now()).num_seconds();
 
     let id_token_str = id_token.to_string();
     log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
@@ -496,7 +499,7 @@ async fn set_auth_cookie(
     let cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, id_token_str)
         .secure(true)
         .http_only(true)
-        .max_age(actix_web::cookie::time::Duration::seconds(max_age_seconds))
+        .max_age(AUTH_COOKIE_EXPIRATION)
         .same_site(actix_web::cookie::SameSite::Lax)
         .path("/")
         .finish();
@@ -507,14 +510,15 @@ async fn set_auth_cookie(
 
 async fn build_auth_provider_redirect_response(
     oidc_state: &OidcState,
-    initial_url: String,
+    initial_url: &str,
 ) -> HttpResponse {
     let AuthUrl { url, params } = build_auth_url(oidc_state).await;
-    let state = OidcLoginState::new(initial_url, params);
-    let state_cookie = create_state_cookie(&state);
+    let nonce_cookie = create_nonce_cookie(&params.nonce);
+    let redirect_cookie = create_redirect_cookie(&params.csrf_token, initial_url);
     HttpResponse::TemporaryRedirect()
-        .append_header(("Location", url.to_string()))
-        .cookie(state_cookie)
+        .append_header((header::LOCATION, url.to_string()))
+        .cookie(nonce_cookie)
+        .cookie(redirect_cookie)
         .body("Redirecting...")
 }
 
@@ -536,9 +540,9 @@ async fn get_authenticated_user_info(
     let id_token = OidcToken::from_str(&cookie_value)
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
-    let state = get_state_from_cookie(request)?;
+    let nonce = get_nonce_from_cookie(request)?;
     log::debug!("Verifying id token: {id_token:?}");
-    let claims = oidc_state.get_token_claims(id_token, Some(&state)).await?;
+    let claims = oidc_state.get_token_claims(id_token, &nonce).await?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
@@ -689,7 +693,7 @@ fn make_oidc_client(
     Ok(client)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct OidcCallbackParams {
     code: String,
     state: CsrfToken,
@@ -739,15 +743,9 @@ fn hash_nonce(nonce: &Nonce) -> String {
     hash.to_string()
 }
 
-fn check_nonce(
-    id_token_nonce: Option<&Nonce>,
-    login_state: Option<&OidcLoginState>,
-) -> Result<(), String> {
-    let Some(state) = login_state else {
-        return Ok(()); // No login state, no nonce to check
-    };
+fn check_nonce(id_token_nonce: Option<&Nonce>, expected_nonce: &Nonce) -> Result<(), String> {
     match id_token_nonce {
-        Some(id_token_nonce) => nonce_matches(id_token_nonce, &state.nonce),
+        Some(id_token_nonce) => nonce_matches(id_token_nonce, expected_nonce),
         None => Err("No nonce found in the ID token".to_string()),
     }
 }
@@ -774,46 +772,42 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct OidcLoginState {
-    /// The URL to redirect to after the login process is complete.
-    #[serde(rename = "u")]
-    initial_url: String,
-    /// The CSRF token to use for the login process.
-    #[serde(rename = "c")]
-    csrf_token: CsrfToken,
-    /// The source nonce to use for the login process. It must be checked against the hash
-    /// stored in the ID token.
-    #[serde(rename = "n")]
-    nonce: Nonce,
-}
-
-impl OidcLoginState {
-    fn new(initial_url: String, auth_url: AuthUrlParams) -> Self {
-        Self {
-            initial_url,
-            csrf_token: auth_url.csrf_token,
-            nonce: auth_url.nonce,
-        }
-    }
-}
-
-fn create_state_cookie(login_state: &OidcLoginState) -> Cookie<'_> {
-    let state_json = serde_json::to_string(login_state).unwrap();
-    Cookie::build(SQLPAGE_STATE_COOKIE_NAME, state_json)
+fn create_nonce_cookie(nonce: &Nonce) -> Cookie<'_> {
+    Cookie::build(SQLPAGE_NONCE_COOKIE_NAME, nonce.secret())
         .secure(true)
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
+        .max_age(AUTH_COOKIE_EXPIRATION)
         .path("/")
         .finish()
 }
 
-fn get_state_from_cookie(request: &ServiceRequest) -> anyhow::Result<OidcLoginState> {
-    let state_cookie = request.cookie(SQLPAGE_STATE_COOKIE_NAME).with_context(|| {
-        format!("No {SQLPAGE_STATE_COOKIE_NAME} cookie found for {SQLPAGE_REDIRECT_URI}")
-    })?;
-    serde_json::from_str(state_cookie.value())
-        .with_context(|| format!("Failed to parse OIDC state from cookie: {state_cookie}"))
+fn create_redirect_cookie<'a>(csrf_token: &CsrfToken, initial_url: &'a str) -> Cookie<'a> {
+    let cookie_name = SQLPAGE_REDIRECT_URL_COOKIE_PREFIX.to_owned() + csrf_token.secret();
+    Cookie::build(cookie_name, initial_url)
+        .secure(true)
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .path("/")
+        .max_age(actix_web::cookie::time::Duration::minutes(10))
+        .finish()
+}
+
+fn get_nonce_from_cookie(request: &ServiceRequest) -> anyhow::Result<Nonce> {
+    let cookie = request
+        .cookie(SQLPAGE_NONCE_COOKIE_NAME)
+        .with_context(|| format!("No {SQLPAGE_NONCE_COOKIE_NAME} cookie found"))?;
+    Ok(Nonce::new(cookie.value().to_string()))
+}
+
+fn get_redirect_url_cookie(
+    request: &ServiceRequest,
+    csrf_token: &CsrfToken,
+) -> anyhow::Result<Cookie<'static>> {
+    let cookie_name = SQLPAGE_REDIRECT_URL_COOKIE_PREFIX.to_owned() + csrf_token.secret();
+    request
+        .cookie(&cookie_name)
+        .with_context(|| format!("No {cookie_name} cookie found"))
 }
 
 /// Given an audience, verify if it is trusted. The `client_id` is always trusted, independently of this function.
