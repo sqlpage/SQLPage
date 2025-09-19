@@ -416,14 +416,21 @@ async fn process_oidc_callback(
     let mut redirect_url_cookie = get_redirect_url_cookie(request, &params.state)?;
     let client = oidc_state.get_client().await;
     let http_client = get_http_client_from_appdata(request)?;
-    let token_response = exchange_code_for_token(&client, http_client, params.clone()).await?;
-    log::debug!("Received token response: {token_response:?}");
-
+    let id_token = exchange_code_for_token(&client, http_client, params.clone()).await?;
+    log::debug!("Received token response: {id_token:?}");
+    let nonce = get_nonce_from_cookie(request)?;
     let redirect_target = validate_redirect_url(redirect_url_cookie.value().to_string());
 
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
-    set_auth_cookie(&mut response, &token_response).context("Failed to set auth cookie")?;
+    set_auth_cookie(&mut response, &id_token).context("Failed to set auth cookie")?;
+    let claims = oidc_state
+        .get_token_claims(id_token, &nonce)
+        .await
+        .context("The identity provider returned an invalid ID token")?;
+    log::debug!("{} successfully logged in", claims.subject().as_str());
+    let nonce_cookie = create_nonce_cookie(&nonce);
+    response.add_cookie(&nonce_cookie)?;
     redirect_url_cookie.set_path("/"); // Required to clean up the cookie
     response.add_removal_cookie(&redirect_url_cookie)?;
     Ok(response)
@@ -433,7 +440,7 @@ async fn exchange_code_for_token(
     oidc_client: &OidcClient,
     http_client: &awc::Client,
     oidc_callback_params: OidcCallbackParams,
-) -> anyhow::Result<OidcTokenResponse> {
+) -> anyhow::Result<OidcToken> {
     let token_response = oidc_client
         .exchange_code(openidconnect::AuthorizationCode::new(
             oidc_callback_params.code,
@@ -441,19 +448,15 @@ async fn exchange_code_for_token(
         .request_async(&AwcHttpClient::from_client(http_client))
         .await
         .context("Failed to exchange code for token")?;
-    Ok(token_response)
-}
-
-fn set_auth_cookie(
-    response: &mut HttpResponse,
-    token_response: &OidcTokenResponse,
-) -> anyhow::Result<()> {
     let access_token = token_response.access_token();
     log::trace!("Received access token: {}", access_token.secret());
     let id_token = token_response
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
+    Ok(id_token.clone())
+}
 
+fn set_auth_cookie(response: &mut HttpResponse, id_token: &OidcToken) -> anyhow::Result<()> {
     let id_token_str = id_token.to_string();
     log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
     let id_token_size_kb = id_token_str.len() / 1024;
