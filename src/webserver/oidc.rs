@@ -442,7 +442,7 @@ async fn process_oidc_callback(
         })?
         .into_inner();
 
-    let redirect_url_cookie = get_redirect_url_cookie(request, &params.state)
+    let mut redirect_url_cookie = get_redirect_url_cookie(request, &params.state)
         .with_context(|| "Failed to read redirect URL from cookie")?;
 
     let client = oidc_state.get_client().await;
@@ -456,6 +456,7 @@ async fn process_oidc_callback(
     set_auth_cookie(&mut response, &token_response).context("Failed to set auth cookie")?;
 
     // Clean up the state-specific cookie after successful authentication
+    redirect_url_cookie.set_path("/");
     response.add_removal_cookie(&redirect_url_cookie)?;
 
     Ok(response)
