@@ -329,15 +329,17 @@ enum MiddlewareResponse {
 async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> MiddlewareResponse {
     log::trace!("Started OIDC middleware request handling");
     oidc_state.refresh_if_expired(&request).await;
+
+    if request.path() == SQLPAGE_REDIRECT_URI {
+        let response = handle_oidc_callback(oidc_state, request).await;
+        return MiddlewareResponse::Respond(response);
+    }
+
     match get_authenticated_user_info(oidc_state, &request).await {
         Ok(Some(claims)) => {
-            if request.path() == SQLPAGE_REDIRECT_URI {
-                MiddlewareResponse::Respond(handle_authenticated_oidc_callback(request))
-            } else {
-                log::trace!("Storing authenticated user info in request extensions: {claims:?}");
-                request.extensions_mut().insert(claims);
-                MiddlewareResponse::Forward(request)
-            }
+            log::trace!("Storing authenticated user info in request extensions: {claims:?}");
+            request.extensions_mut().insert(claims);
+            MiddlewareResponse::Forward(request)
         }
         Ok(None) => {
             log::trace!("No authenticated user found");
@@ -356,11 +358,6 @@ async fn handle_unauthenticated_request(
     request: ServiceRequest,
 ) -> MiddlewareResponse {
     log::debug!("Handling unauthenticated request to {}", request.path());
-    if request.path() == SQLPAGE_REDIRECT_URI {
-        log::debug!("The request is the OIDC callback");
-        let response = handle_oidc_callback(oidc_state, request).await;
-        return MiddlewareResponse::Respond(response);
-    }
 
     if oidc_state.config.is_public_path(request.path()) {
         return MiddlewareResponse::Forward(request);
@@ -374,8 +371,7 @@ async fn handle_unauthenticated_request(
 }
 
 async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
-    let query_string = request.query_string();
-    match process_oidc_callback(oidc_state, query_string, &request).await {
+    match process_oidc_callback(oidc_state, &request).await {
         Ok(response) => request.into_response(response),
         Err(e) => {
             log::error!("Failed to process OIDC callback. Refreshing oidc provider metadata, then redirecting to home page: {e:#}");
@@ -384,24 +380,6 @@ async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -
             request.into_response(resp)
         }
     }
-}
-
-/// When an user has already authenticated (potentially in another tab), we ignore the callback and redirect to the initial URL.
-fn handle_authenticated_oidc_callback(request: ServiceRequest) -> ServiceResponse {
-    // Try to get redirect URL from query params if available
-    let redirect_url = Query::<OidcCallbackParams>::from_query(request.query_string())
-        .with_context(|| "Failed to parse OIDC callback parameters in authenticated callback")
-        .and_then(|params| get_redirect_url_cookie(&request, &params.state))
-        .map_or_else(
-            |e| {
-                log::warn!("No redirect URL cookie: {e:#}");
-                "/".to_string()
-            },
-            |cookie| cookie.value().to_string(),
-        );
-
-    log::debug!("OIDC callback received for authenticated user. Redirecting to {redirect_url}");
-    request.into_response(build_redirect_response(redirect_url))
 }
 
 impl<S> Service<ServiceRequest> for OidcService<S>
@@ -429,36 +407,25 @@ where
 
 async fn process_oidc_callback(
     oidc_state: &OidcState,
-    query_string: &str,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
-    let http_client = get_http_client_from_appdata(request)?;
-
-    let params = Query::<OidcCallbackParams>::from_query(query_string)
-        .with_context(|| {
-            format!(
-                "{SQLPAGE_REDIRECT_URI}: failed to parse OIDC callback parameters from {query_string}"
-            )
-        })?
+    let params = Query::<OidcCallbackParams>::from_query(request.query_string())
+        .with_context(|| format!("{SQLPAGE_REDIRECT_URI}: invalid url parameters"))?
         .into_inner();
-
-    let mut redirect_url_cookie = get_redirect_url_cookie(request, &params.state)
-        .with_context(|| "Failed to read redirect URL from cookie")?;
-
-    let client = oidc_state.get_client().await;
     log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
+    let mut redirect_url_cookie = get_redirect_url_cookie(request, &params.state)?;
+    let client = oidc_state.get_client().await;
+    let http_client = get_http_client_from_appdata(request)?;
     let token_response = exchange_code_for_token(&client, http_client, params.clone()).await?;
     log::debug!("Received token response: {token_response:?}");
 
     let redirect_target = validate_redirect_url(redirect_url_cookie.value().to_string());
+
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
     set_auth_cookie(&mut response, &token_response).context("Failed to set auth cookie")?;
-
-    // Clean up the state-specific cookie after successful authentication
-    redirect_url_cookie.set_path("/");
+    redirect_url_cookie.set_path("/"); // Required to clean up the cookie
     response.add_removal_cookie(&redirect_url_cookie)?;
-
     Ok(response)
 }
 
