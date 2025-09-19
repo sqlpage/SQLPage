@@ -806,16 +806,12 @@ fn get_nonce_from_cookie(request: &ServiceRequest) -> anyhow::Result<Nonce> {
 fn get_redirect_url_cookie(
     request: &ServiceRequest,
     csrf_token: &CsrfToken,
-) -> Result<Cookie<'static>, anyhow::Error> {
-    let cookie_name = format!(
-        "{}{}",
-        SQLPAGE_REDIRECT_URL_COOKIE_PREFIX,
-        csrf_token.secret()
-    );
-    let cookie = request
+) -> anyhow::Result<Cookie<'static>> {
+    let state = csrf_token.secret();
+    let cookie_name = format!("{SQLPAGE_REDIRECT_URL_COOKIE_PREFIX}{state}");
+    request
         .cookie(&cookie_name)
-        .with_context(|| format!("No {cookie_name} cookie found"))?;
-    Ok(cookie)
+        .with_context(|| format!("No {cookie_name} cookie found"))
 }
 
 /// Given an audience, verify if it is trusted. The `client_id` is always trusted, independently of this function.
