@@ -800,8 +800,8 @@ struct LoginFlowState<'a> {
 }
 
 fn parse_login_flow_state<'a>(cookie: &'a Cookie<'_>) -> anyhow::Result<LoginFlowState<'a>> {
-    Ok(serde_json::from_str(cookie.value())
-        .with_context(|| format!("Invalid login flow state cookie: {}", cookie.value()))?)
+    serde_json::from_str(cookie.value())
+        .with_context(|| format!("Invalid login flow state cookie: {}", cookie.value()))
 }
 
 /// Given an audience, verify if it is trusted. The `client_id` is always trusted, independently of this function.
