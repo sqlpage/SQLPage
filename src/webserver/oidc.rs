@@ -783,11 +783,7 @@ fn create_nonce_cookie(nonce: &Nonce) -> Cookie<'_> {
 }
 
 fn create_redirect_cookie<'a>(csrf_token: &CsrfToken, initial_url: &'a str) -> Cookie<'a> {
-    let cookie_name = format!(
-        "{}{}",
-        SQLPAGE_REDIRECT_URL_COOKIE_PREFIX,
-        csrf_token.secret()
-    );
+    let cookie_name = SQLPAGE_REDIRECT_URL_COOKIE_PREFIX.to_owned() + csrf_token.secret();
     Cookie::build(cookie_name, initial_url)
         .secure(true)
         .http_only(true)
