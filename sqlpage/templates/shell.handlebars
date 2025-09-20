@@ -81,7 +81,7 @@
     {{#if rss}}
         <link rel="alternate" type="application/rss+xml" title="{{title}}" href="{{rss}}">
     {{/if}}
-    <meta name="generator" content="SQLPage" />
+    <meta name="generator" content="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}" />
     {{#if social_image}}
         <meta property="og:image" content="{{social_image}}" />
     {{/if}}
