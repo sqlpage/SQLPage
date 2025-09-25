@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use crate::webserver::database::SupportedDatabase;
+use crate::webserver::database::{DbInfo, SupportedDatabase};
 use anyhow::Context;
 use futures_util::StreamExt;
 use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
 use sqlx::{
-    any::{AnyArguments, AnyConnectionKind},
+    any::{AnyArguments, AnyConnectionKind, AnyKind},
     AnyConnection, Arguments, Executor, PgConnection,
 };
 use tokio::io::AsyncRead;
@@ -144,7 +144,6 @@ pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImpo
 
 pub(super) async fn run_csv_import(
     db: &mut AnyConnection,
-    dbms: SupportedDatabase,
     csv_import: &CsvImport,
     request: &RequestInfo,
 ) -> anyhow::Result<()> {
@@ -175,7 +174,7 @@ pub(super) async fn run_csv_import(
         AnyConnectionKind::Postgres(pg_connection) => {
             run_csv_import_postgres(pg_connection, csv_import, buffered).await
         }
-        _ => run_csv_import_insert(db, dbms, csv_import, buffered).await,
+        _ => run_csv_import_insert(db, csv_import, buffered).await,
     }
     .with_context(|| {
         let table_name = &csv_import.table_name;
@@ -218,11 +217,10 @@ async fn run_csv_import_postgres(
 
 async fn run_csv_import_insert(
     db: &mut AnyConnection,
-    dbms: SupportedDatabase,
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
 ) -> anyhow::Result<()> {
-    let insert_stmt = create_insert_stmt(dbms, csv_import);
+    let insert_stmt = create_insert_stmt(db.kind(), csv_import);
     log::debug!("CSV data insert statement: {insert_stmt}");
     let mut reader = make_csv_reader(csv_import, file);
     let col_idxs = compute_column_indices(&mut reader, csv_import).await?;
@@ -259,13 +257,13 @@ async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
     Ok(col_idxs)
 }
 
-fn create_insert_stmt(dbms: SupportedDatabase, csv_import: &CsvImport) -> String {
+fn create_insert_stmt(db_kind: AnyKind, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
     let placeholders = csv_import
         .columns
         .iter()
         .enumerate()
-        .map(|(i, _)| make_placeholder(dbms, i + 1))
+        .map(|(i, _)| make_placeholder(db_kind, i + 1))
         .fold(String::new(), |mut acc, f| {
             if !acc.is_empty() {
                 acc.push_str(", ");
@@ -376,7 +374,7 @@ async fn test_end_to_end() {
         .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
     let file = csv.as_bytes();
-    run_csv_import_insert(&mut conn, SupportedDatabase::Sqlite, &csv_import, file)
+    run_csv_import_insert(&mut conn, &csv_import, file)
         .await
         .unwrap();
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")

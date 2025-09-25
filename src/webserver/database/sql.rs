@@ -5,6 +5,7 @@ use super::syntax_tree::StmtParam;
 use super::SupportedDatabase;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::webserver::database::error_highlighting::quote_source_with_highlight;
+use crate::webserver::database::DbInfo;
 use crate::{AppState, Database};
 use async_trait::async_trait;
 use sqlparser::ast::helpers::attached_token::AttachedToken;
@@ -18,6 +19,7 @@ use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
 use sqlparser::tokenizer::{TokenWithSpan, Tokenizer};
+use sqlx::any::AnyKind;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -31,9 +33,9 @@ pub struct ParsedSqlFile {
 impl ParsedSqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> ParsedSqlFile {
-        let dialect = dialect_for_db(db.database_type);
         log::debug!("Parsing SQL file {}", source_path.display());
-        let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
+        let dialect = dialect_for_db(db.info.database_type);
+        let parsed_statements = match parse_sql(&db.info, dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err, source_path),
         };
@@ -118,10 +120,12 @@ pub(super) enum SimpleSelectValue {
 }
 
 fn parse_sql<'a>(
+    db_info: &'a DbInfo,
     dialect: &'a dyn Dialect,
     sql: &'a str,
 ) -> anyhow::Result<impl Iterator<Item = ParsedStatement> + 'a> {
-    log::trace!("Parsing SQL: {sql}");
+    log::trace!("Parsing {} SQL: {sql}", db_info.dbms_name);
+
     let tokens = Tokenizer::new(dialect, sql)
         .tokenize_with_location()
         .map_err(|err| {
@@ -129,14 +133,13 @@ fn parse_sql<'a>(
             anyhow::Error::new(err).context(format!("The SQLPage parser could not understand the SQL file. Tokenization failed. Please check for syntax errors:\n{}", quote_source_with_highlight(sql, location.line, location.column)))
         })?;
     let mut parser = Parser::new(dialect).with_tokens_with_locations(tokens);
-    let dbms = kind_of_dialect(dialect);
     let mut has_error = false;
     Ok(std::iter::from_fn(move || {
         if has_error {
             // Return the first error and ignore the rest
             return None;
         }
-        let statement = parse_single_statement(&mut parser, dbms, sql);
+        let statement = parse_single_statement(&mut parser, db_info, sql);
         if let Some(ParsedStatement::Error(_)) = &statement {
             has_error = true;
         }
@@ -144,9 +147,10 @@ fn parse_sql<'a>(
     }))
 }
 
-fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, dbms: SupportedDatabase) {
-    if let Some((_, DbPlaceHolder::Positional { placeholder })) =
-        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == dbms)
+fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, kind: AnyKind) {
+    if let Some((_, DbPlaceHolder::Positional { placeholder })) = DB_PLACEHOLDERS
+        .iter()
+        .find(|(placeholder_kind, _)| *placeholder_kind == kind)
     {
         let mut new_params = Vec::new();
         let mut query = stmt.query.clone();
@@ -166,7 +170,7 @@ fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, dbms: Support
 
 fn parse_single_statement(
     parser: &mut Parser<'_>,
-    dbms: SupportedDatabase,
+    db_info: &DbInfo,
     source_sql: &str,
 ) -> Option<ParsedStatement> {
     if parser.peek_token() == EOF {
@@ -181,8 +185,9 @@ fn parse_single_statement(
     while parser.consume_token(&SemiColon) {
         semicolon = true;
     }
-    let mut params = ParameterExtractor::extract_parameters(&mut stmt, dbms);
-    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, dbms) {
+    let mut params = ParameterExtractor::extract_parameters(&mut stmt, db_info.clone());
+    let dbms = db_info.database_type;
+    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_info) {
         return Some(parsed);
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
@@ -210,7 +215,7 @@ fn parse_single_statement(
         delayed_functions,
         json_columns,
     };
-    transform_to_positional_placeholders(&mut stmt_with_params, dbms);
+    transform_to_positional_placeholders(&mut stmt_with_params, db_info.kind);
     log::debug!("Final transformed statement: {}", stmt_with_params.query);
     Some(ParsedStatement::StmtWithParams(stmt_with_params))
 }
@@ -473,7 +478,7 @@ fn is_simple_select_placeholder(e: &Expr) -> bool {
 fn extract_set_variable(
     stmt: &mut Statement,
     params: &mut Vec<StmtParam>,
-    dbms: SupportedDatabase,
+    db_info: &DbInfo,
 ) -> Option<ParsedStatement> {
     if let Statement::Set(Set::SingleAssignment {
         variable: ObjectName(name),
@@ -496,7 +501,7 @@ fn extract_set_variable(
             if let Err(err) = validate_function_calls(&select_stmt) {
                 return Some(ParsedStatement::Error(err));
             }
-            let json_columns = extract_json_columns(&select_stmt, dbms);
+            let json_columns = extract_json_columns(&select_stmt, db_info.database_type);
             let mut value = StmtWithParams {
                 query: select_stmt.to_string(),
                 query_position: extract_query_start(&select_stmt),
@@ -504,7 +509,7 @@ fn extract_set_variable(
                 delayed_functions,
                 json_columns,
             };
-            transform_to_positional_placeholders(&mut value, dbms);
+            transform_to_positional_placeholders(&mut value, db_info.kind);
             return Some(ParsedStatement::SetVariable { variable, value });
         }
     }
@@ -512,7 +517,7 @@ fn extract_set_variable(
 }
 
 struct ParameterExtractor {
-    dbms: SupportedDatabase,
+    db_info: DbInfo,
     parameters: Vec<StmtParam>,
 }
 
@@ -522,25 +527,25 @@ pub enum DbPlaceHolder {
     Positional { placeholder: &'static str },
 }
 
-pub const DB_PLACEHOLDERS: [(SupportedDatabase, DbPlaceHolder); 5] = [
+pub const DB_PLACEHOLDERS: [(AnyKind, DbPlaceHolder); 5] = [
     (
-        SupportedDatabase::Sqlite,
+        AnyKind::Sqlite,
         DbPlaceHolder::PrefixedNumber { prefix: "?" },
     ),
     (
-        SupportedDatabase::Postgres,
+        AnyKind::Postgres,
         DbPlaceHolder::PrefixedNumber { prefix: "$" },
     ),
     (
-        SupportedDatabase::MySql,
+        AnyKind::MySql,
         DbPlaceHolder::Positional { placeholder: "?" },
     ),
     (
-        SupportedDatabase::Mssql,
+        AnyKind::Mssql,
         DbPlaceHolder::PrefixedNumber { prefix: "@p" },
     ),
     (
-        SupportedDatabase::Generic,
+        AnyKind::Odbc,
         DbPlaceHolder::Positional { placeholder: "?" },
     ),
 ];
@@ -549,9 +554,10 @@ pub const DB_PLACEHOLDERS: [(SupportedDatabase, DbPlaceHolder); 5] = [
 /// And then replace it with the actual placeholder during statement rewriting.
 const TEMP_PLACEHOLDER_PREFIX: &str = "@SQLPAGE_TEMP";
 
-fn get_placeholder_prefix(dbms: SupportedDatabase) -> &'static str {
-    if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) =
-        DB_PLACEHOLDERS.iter().find(|(kind, _prefix)| *kind == dbms)
+fn get_placeholder_prefix(kind: AnyKind) -> &'static str {
+    if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) = DB_PLACEHOLDERS
+        .iter()
+        .find(|(placeholder_kind, _prefix)| *placeholder_kind == kind)
     {
         prefix
     } else {
@@ -562,10 +568,10 @@ fn get_placeholder_prefix(dbms: SupportedDatabase) -> &'static str {
 impl ParameterExtractor {
     fn extract_parameters(
         sql_ast: &mut sqlparser::ast::Statement,
-        dbms: SupportedDatabase,
+        db_info: DbInfo,
     ) -> Vec<StmtParam> {
         let mut this = Self {
-            dbms,
+            db_info,
             parameters: vec![],
         };
         let _ = sql_ast.visit(&mut this);
@@ -588,8 +594,8 @@ impl ParameterExtractor {
     }
 
     fn make_placeholder_for_index(&self, index: usize) -> Expr {
-        let name = make_tmp_placeholder(self.dbms, index);
-        let data_type = match self.dbms {
+        let name = make_tmp_placeholder(self.db_info.kind, index);
+        let data_type = match self.db_info.database_type {
             SupportedDatabase::MySql => DataType::Char(None),
             SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
             _ => DataType::Text,
@@ -608,7 +614,7 @@ impl ParameterExtractor {
     }
 
     fn is_own_placeholder(&self, param: &str) -> bool {
-        let prefix = get_placeholder_prefix(self.dbms);
+        let prefix = get_placeholder_prefix(self.db_info.kind);
         if let Some(param) = param.strip_prefix(prefix) {
             if let Ok(index) = param.parse::<usize>() {
                 return index <= self.parameters.len() + 1;
@@ -826,9 +832,9 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 
 #[inline]
 #[must_use]
-pub fn make_tmp_placeholder(dbms: SupportedDatabase, arg_number: usize) -> String {
+pub fn make_tmp_placeholder(kind: AnyKind, arg_number: usize) -> String {
     let prefix = if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) =
-        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == dbms)
+        DB_PLACEHOLDERS.iter().find(|(db_typ, _)| *db_typ == kind)
     {
         prefix
     } else {
@@ -888,7 +894,7 @@ impl VisitorMut for ParameterExtractor {
                 left,
                 op: BinaryOperator::StringConcat,
                 right,
-            } if self.dbms == SupportedDatabase::Mssql => {
+            } if self.db_info.database_type == SupportedDatabase::Mssql => {
                 let left = std::mem::replace(left.as_mut(), Expr::value(Value::Null));
                 let right = std::mem::replace(right.as_mut(), Expr::value(Value::Null));
                 *value = Expr::Function(Function {
@@ -912,7 +918,7 @@ impl VisitorMut for ParameterExtractor {
             Expr::Cast {
                 kind: kind @ CastKind::DoubleColon,
                 ..
-            } if self.dbms != SupportedDatabase::Postgres => {
+            } if self.db_info.database_type != SupportedDatabase::Postgres => {
                 log::warn!("Casting with '::' is not supported on your database. \
                 For backwards compatibility with older SQLPage versions, we will transform it to CAST(... AS ...).");
                 *kind = CastKind::Cast;
