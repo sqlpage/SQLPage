@@ -3,7 +3,8 @@ use crate::webserver::{make_placeholder, Database};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use sqlx::any::{AnyKind, AnyStatement, AnyTypeInfo};
+use sqlx::any::{AnyStatement, AnyTypeInfo};
+use crate::webserver::database::SupportedDatabase;
 use sqlx::postgres::types::PgTimeTz;
 use sqlx::{Postgres, Statement, Type};
 use std::fmt::Write;
@@ -27,7 +28,7 @@ impl FileSystem {
                         You can host sql files directly in your database by creating the following table: \n\
                         {} \n\
                         The error while trying to use the database file system is: {e:#}",
-                        DbFsQueries::get_create_table_sql(db.connection.any_kind())
+                        DbFsQueries::get_create_table_sql(db.database_type)
                     );
                     None
                 }
@@ -206,32 +207,32 @@ pub struct DbFsQueries {
 
 impl DbFsQueries {
     #[must_use]
-    pub fn get_create_table_sql(db_kind: AnyKind) -> &'static str {
-        match db_kind {
-            AnyKind::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
-            AnyKind::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    pub fn get_create_table_sql(dbms: SupportedDatabase) -> &'static str {
+        match dbms {
+            SupportedDatabase::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
+            SupportedDatabase::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
         }
     }
 
     async fn init(db: &Database) -> anyhow::Result<Self> {
         log::debug!("Initializing database filesystem queries");
-        let db_kind = db.connection.any_kind();
+        let dbms = db.database_type;
         Ok(Self {
-            was_modified: Self::make_was_modified_query(db, db_kind).await?,
-            read_file: Self::make_read_file_query(db, db_kind).await?,
-            exists: Self::make_exists_query(db, db_kind).await?,
+            was_modified: Self::make_was_modified_query(db, dbms).await?,
+            read_file: Self::make_read_file_query(db, dbms).await?,
+            exists: Self::make_exists_query(db, dbms).await?,
         })
     }
 
     async fn make_was_modified_query(
         db: &Database,
-        db_kind: AnyKind,
+        dbms: SupportedDatabase,
     ) -> anyhow::Result<AnyStatement<'static>> {
         let was_modified_query = format!(
             "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
-            make_placeholder(db_kind, 1),
-            make_placeholder(db_kind, 2)
+            make_placeholder(dbms, 1),
+            make_placeholder(dbms, 2)
         );
         let param_types: &[AnyTypeInfo; 2] = &[
             PgTimeTz::type_info().into(),
@@ -243,11 +244,11 @@ impl DbFsQueries {
 
     async fn make_read_file_query(
         db: &Database,
-        db_kind: AnyKind,
+        dbms: SupportedDatabase,
     ) -> anyhow::Result<AnyStatement<'static>> {
         let read_file_query = format!(
             "SELECT contents from sqlpage_files WHERE path = {}",
-            make_placeholder(db_kind, 1),
+            make_placeholder(dbms, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         log::debug!("Preparing the database filesystem read_file_query: {read_file_query}");
@@ -256,11 +257,11 @@ impl DbFsQueries {
 
     async fn make_exists_query(
         db: &Database,
-        db_kind: AnyKind,
+        dbms: SupportedDatabase,
     ) -> anyhow::Result<AnyStatement<'static>> {
         let exists_query = format!(
             "SELECT 1 from sqlpage_files WHERE path = {}",
-            make_placeholder(db_kind, 1),
+            make_placeholder(dbms, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         db.prepare_with(&exists_query, param_types).await
@@ -356,11 +357,11 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_str())
         .await?;
 
-    let db_kind = state.db.connection.any_kind();
+    let dbms = state.db.database_type;
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
-        make_placeholder(db_kind, 1),
-        make_placeholder(db_kind, 2)
+        make_placeholder(dbms, 1),
+        make_placeholder(dbms, 2)
     );
     sqlx::query(&insert_sql)
         .bind("unit test file.txt")

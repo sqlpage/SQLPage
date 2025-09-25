@@ -17,7 +17,7 @@ use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
 use sqlparser::tokenizer::{TokenWithSpan, Tokenizer};
-use sqlx::any::AnyKind;
+use super::SupportedDatabase;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -31,7 +31,7 @@ pub struct ParsedSqlFile {
 impl ParsedSqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> ParsedSqlFile {
-        let dialect = dialect_for_db(db.connection.any_kind());
+        let dialect = dialect_for_db(db.database_type);
         log::debug!("Parsing SQL file {}", source_path.display());
         let parsed_statements = match parse_sql(dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
@@ -129,14 +129,14 @@ fn parse_sql<'a>(
             anyhow::Error::new(err).context(format!("The SQLPage parser could not understand the SQL file. Tokenization failed. Please check for syntax errors:\n{}", quote_source_with_highlight(sql, location.line, location.column)))
         })?;
     let mut parser = Parser::new(dialect).with_tokens_with_locations(tokens);
-    let db_kind = kind_of_dialect(dialect);
+    let dbms = kind_of_dialect(dialect);
     let mut has_error = false;
     Ok(std::iter::from_fn(move || {
         if has_error {
             // Return the first error and ignore the rest
             return None;
         }
-        let statement = parse_single_statement(&mut parser, db_kind, sql);
+        let statement = parse_single_statement(&mut parser, dbms, sql);
         if let Some(ParsedStatement::Error(_)) = &statement {
             has_error = true;
         }
@@ -144,9 +144,9 @@ fn parse_sql<'a>(
     }))
 }
 
-fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, db_kind: AnyKind) {
+fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, dbms: SupportedDatabase) {
     if let Some((_, DbPlaceHolder::Positional { placeholder })) =
-        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == db_kind)
+        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == dbms)
     {
         let mut new_params = Vec::new();
         let mut query = stmt.query.clone();
@@ -166,7 +166,7 @@ fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, db_kind: AnyK
 
 fn parse_single_statement(
     parser: &mut Parser<'_>,
-    db_kind: AnyKind,
+    dbms: SupportedDatabase,
     source_sql: &str,
 ) -> Option<ParsedStatement> {
     if parser.peek_token() == EOF {
@@ -181,8 +181,8 @@ fn parse_single_statement(
     while parser.consume_token(&SemiColon) {
         semicolon = true;
     }
-    let mut params = ParameterExtractor::extract_parameters(&mut stmt, db_kind);
-    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_kind) {
+    let mut params = ParameterExtractor::extract_parameters(&mut stmt, dbms);
+    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, dbms) {
         return Some(parsed);
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
@@ -198,7 +198,7 @@ fn parse_single_statement(
             "Invalid SQLPage function call found in:\n{stmt}"
         ))));
     }
-    let json_columns = extract_json_columns(&stmt, db_kind);
+    let json_columns = extract_json_columns(&stmt, dbms);
     let query = format!(
         "{stmt}{semicolon}",
         semicolon = if semicolon { ";" } else { "" }
@@ -210,7 +210,7 @@ fn parse_single_statement(
         delayed_functions,
         json_columns,
     };
-    transform_to_positional_placeholders(&mut stmt_with_params, db_kind);
+    transform_to_positional_placeholders(&mut stmt_with_params, dbms);
     log::debug!("Final transformed statement: {}", stmt_with_params.query);
     Some(ParsedStatement::StmtWithParams(stmt_with_params))
 }
@@ -237,26 +237,26 @@ fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement
     )))
 }
 
-fn dialect_for_db(db_kind: AnyKind) -> Box<dyn Dialect> {
-    match db_kind {
-        AnyKind::Postgres | AnyKind::Odbc => Box::new(PostgreSqlDialect {}), // Default to PostgreSQL dialect for ODBC
-        AnyKind::Mssql => Box::new(MsSqlDialect {}),
-        AnyKind::MySql => Box::new(MySqlDialect {}),
-        AnyKind::Sqlite => Box::new(SQLiteDialect {}),
+fn dialect_for_db(dbms: SupportedDatabase) -> Box<dyn Dialect> {
+    match dbms {
+        SupportedDatabase::Postgres | SupportedDatabase::Generic => Box::new(PostgreSqlDialect {}), // Default to PostgreSQL dialect for Generic
+        SupportedDatabase::Mssql => Box::new(MsSqlDialect {}),
+        SupportedDatabase::MySql => Box::new(MySqlDialect {}),
+        SupportedDatabase::Sqlite => Box::new(SQLiteDialect {}),
     }
 }
 
-fn kind_of_dialect(dialect: &dyn Dialect) -> AnyKind {
+fn kind_of_dialect(dialect: &dyn Dialect) -> SupportedDatabase {
     if dialect.is::<PostgreSqlDialect>() {
-        AnyKind::Postgres
+        SupportedDatabase::Postgres
     } else if dialect.is::<MsSqlDialect>() {
-        AnyKind::Mssql
+        SupportedDatabase::Mssql
     } else if dialect.is::<MySqlDialect>() {
-        AnyKind::MySql
+        SupportedDatabase::MySql
     } else if dialect.is::<SQLiteDialect>() {
-        AnyKind::Sqlite
+        SupportedDatabase::Sqlite
     } else {
-        unreachable!("Unknown dialect")
+        SupportedDatabase::Generic
     }
 }
 
@@ -473,7 +473,7 @@ fn is_simple_select_placeholder(e: &Expr) -> bool {
 fn extract_set_variable(
     stmt: &mut Statement,
     params: &mut Vec<StmtParam>,
-    db_kind: AnyKind,
+    dbms: SupportedDatabase,
 ) -> Option<ParsedStatement> {
     if let Statement::Set(Set::SingleAssignment {
         variable: ObjectName(name),
@@ -496,7 +496,7 @@ fn extract_set_variable(
             if let Err(err) = validate_function_calls(&select_stmt) {
                 return Some(ParsedStatement::Error(err));
             }
-            let json_columns = extract_json_columns(&select_stmt, db_kind);
+            let json_columns = extract_json_columns(&select_stmt, dbms);
             let mut value = StmtWithParams {
                 query: select_stmt.to_string(),
                 query_position: extract_query_start(&select_stmt),
@@ -504,7 +504,7 @@ fn extract_set_variable(
                 delayed_functions,
                 json_columns,
             };
-            transform_to_positional_placeholders(&mut value, db_kind);
+            transform_to_positional_placeholders(&mut value, dbms);
             return Some(ParsedStatement::SetVariable { variable, value });
         }
     }
@@ -512,7 +512,7 @@ fn extract_set_variable(
 }
 
 struct ParameterExtractor {
-    db_kind: AnyKind,
+    dbms: SupportedDatabase,
     parameters: Vec<StmtParam>,
 }
 
@@ -522,22 +522,26 @@ pub enum DbPlaceHolder {
     Positional { placeholder: &'static str },
 }
 
-pub const DB_PLACEHOLDERS: [(AnyKind, DbPlaceHolder); 4] = [
+pub const DB_PLACEHOLDERS: [(SupportedDatabase, DbPlaceHolder); 5] = [
     (
-        AnyKind::Sqlite,
+        SupportedDatabase::Sqlite,
         DbPlaceHolder::PrefixedNumber { prefix: "?" },
     ),
     (
-        AnyKind::Postgres,
+        SupportedDatabase::Postgres,
         DbPlaceHolder::PrefixedNumber { prefix: "$" },
     ),
     (
-        AnyKind::MySql,
+        SupportedDatabase::MySql,
         DbPlaceHolder::Positional { placeholder: "?" },
     ),
     (
-        AnyKind::Mssql,
+        SupportedDatabase::Mssql,
         DbPlaceHolder::PrefixedNumber { prefix: "@p" },
+    ),
+    (
+        SupportedDatabase::Generic,
+        DbPlaceHolder::Positional { placeholder: "?" },
     ),
 ];
 
@@ -545,10 +549,10 @@ pub const DB_PLACEHOLDERS: [(AnyKind, DbPlaceHolder); 4] = [
 /// And then replace it with the actual placeholder during statement rewriting.
 const TEMP_PLACEHOLDER_PREFIX: &str = "@SQLPAGE_TEMP";
 
-fn get_placeholder_prefix(db_kind: AnyKind) -> &'static str {
+fn get_placeholder_prefix(dbms: SupportedDatabase) -> &'static str {
     if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) = DB_PLACEHOLDERS
         .iter()
-        .find(|(kind, _prefix)| *kind == db_kind)
+        .find(|(kind, _prefix)| *kind == dbms)
     {
         prefix
     } else {
@@ -559,10 +563,10 @@ fn get_placeholder_prefix(db_kind: AnyKind) -> &'static str {
 impl ParameterExtractor {
     fn extract_parameters(
         sql_ast: &mut sqlparser::ast::Statement,
-        db_kind: AnyKind,
+        dbms: SupportedDatabase,
     ) -> Vec<StmtParam> {
         let mut this = Self {
-            db_kind,
+            dbms,
             parameters: vec![],
         };
         let _ = sql_ast.visit(&mut this);
@@ -585,10 +589,10 @@ impl ParameterExtractor {
     }
 
     fn make_placeholder_for_index(&self, index: usize) -> Expr {
-        let name = make_tmp_placeholder(self.db_kind, index);
-        let data_type = match self.db_kind {
-            AnyKind::MySql => DataType::Char(None),
-            AnyKind::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
+        let name = make_tmp_placeholder(self.dbms, index);
+        let data_type = match self.dbms {
+            SupportedDatabase::MySql => DataType::Char(None),
+            SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
             _ => DataType::Text,
         };
         let value = Expr::value(Value::Placeholder(name));
@@ -605,7 +609,7 @@ impl ParameterExtractor {
     }
 
     fn is_own_placeholder(&self, param: &str) -> bool {
-        let prefix = get_placeholder_prefix(self.db_kind);
+        let prefix = get_placeholder_prefix(self.dbms);
         if let Some(param) = param.strip_prefix(prefix) {
             if let Ok(index) = param.parse::<usize>() {
                 return index <= self.parameters.len() + 1;
@@ -823,9 +827,9 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 
 #[inline]
 #[must_use]
-pub fn make_tmp_placeholder(db_kind: AnyKind, arg_number: usize) -> String {
+pub fn make_tmp_placeholder(dbms: SupportedDatabase, arg_number: usize) -> String {
     let prefix = if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) =
-        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == db_kind)
+        DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == dbms)
     {
         prefix
     } else {
@@ -885,7 +889,7 @@ impl VisitorMut for ParameterExtractor {
                 left,
                 op: BinaryOperator::StringConcat,
                 right,
-            } if self.db_kind == AnyKind::Mssql => {
+            } if self.dbms == SupportedDatabase::Mssql => {
                 let left = std::mem::replace(left.as_mut(), Expr::value(Value::Null));
                 let right = std::mem::replace(right.as_mut(), Expr::value(Value::Null));
                 *value = Expr::Function(Function {
@@ -909,7 +913,7 @@ impl VisitorMut for ParameterExtractor {
             Expr::Cast {
                 kind: kind @ CastKind::DoubleColon,
                 ..
-            } if self.db_kind != AnyKind::Postgres => {
+            } if self.dbms != SupportedDatabase::Postgres => {
                 log::warn!("Casting with '::' is not supported on your database. \
                 For backwards compatibility with older SQLPage versions, we will transform it to CAST(... AS ...).");
                 *kind = CastKind::Cast;
@@ -960,9 +964,9 @@ fn sqlpage_func_name(func_name_parts: &[ObjectNamePart]) -> &str {
     }
 }
 
-fn extract_json_columns(stmt: &Statement, db_kind: AnyKind) -> Vec<String> {
+fn extract_json_columns(stmt: &Statement, dbms: SupportedDatabase) -> Vec<String> {
     // Only extract JSON columns for databases without native JSON support
-    if matches!(db_kind, AnyKind::Postgres | AnyKind::Mssql) {
+    if matches!(dbms, SupportedDatabase::Postgres | SupportedDatabase::Mssql) {
         return Vec::new();
     }
 
@@ -1094,7 +1098,7 @@ mod test {
     fn test_statement_rewrite() {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Postgres);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
         // $a -> $1
         // $x -> $2
         // sqlpage.cookie(...) -> $3
@@ -1118,7 +1122,7 @@ mod test {
     #[test]
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Sqlite);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Sqlite);
         assert_eq!(
             ast.to_string(),
             "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
@@ -1132,11 +1136,11 @@ mod test {
         );
     }
 
-    const ALL_DIALECTS: &[(&dyn Dialect, AnyKind)] = &[
-        (&PostgreSqlDialect {}, AnyKind::Postgres),
-        (&MsSqlDialect {}, AnyKind::Mssql),
-        (&MySqlDialect {}, AnyKind::MySql),
-        (&SQLiteDialect {}, AnyKind::Sqlite),
+    const ALL_DIALECTS: &[(&dyn Dialect, SupportedDatabase)] = &[
+        (&PostgreSqlDialect {}, SupportedDatabase::Postgres),
+        (&MsSqlDialect {}, SupportedDatabase::Mssql),
+        (&MySqlDialect {}, SupportedDatabase::MySql),
+        (&SQLiteDialect {}, SupportedDatabase::Sqlite),
     ];
 
     #[test]
@@ -1218,7 +1222,7 @@ mod test {
         for &(dialect, kind) in ALL_DIALECTS {
             let sql = "select sqlpage.fetch($x)";
             let mut ast = parse_stmt(sql, dialect);
-            let parameters = ParameterExtractor::extract_parameters(&mut ast, kind);
+            let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
             assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
@@ -1233,9 +1237,9 @@ mod test {
     #[test]
     fn test_set_variable() {
         let sql = "set x = $y";
-        for &(dialect, db_kind) in ALL_DIALECTS {
+        for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, db_kind, sql);
+            let stmt = parse_single_statement(&mut parser, dbms, sql);
             if let Some(ParsedStatement::SetVariable {
                 variable,
                 value: StmtWithParams { query, params, .. },
@@ -1257,31 +1261,31 @@ mod test {
     #[test]
     fn is_own_placeholder() {
         assert!(ParameterExtractor {
-            db_kind: AnyKind::Postgres,
+            dbms: SupportedDatabase::Postgres,
             parameters: vec![]
         }
         .is_own_placeholder("$1"));
 
         assert!(ParameterExtractor {
-            db_kind: AnyKind::Postgres,
+            dbms: SupportedDatabase::Postgres,
             parameters: vec![StmtParam::Get("x".to_string())]
         }
         .is_own_placeholder("$2"));
 
         assert!(!ParameterExtractor {
-            db_kind: AnyKind::Postgres,
+            dbms: SupportedDatabase::Postgres,
             parameters: vec![]
         }
         .is_own_placeholder("$2"));
 
         assert!(ParameterExtractor {
-            db_kind: AnyKind::Sqlite,
+            dbms: SupportedDatabase::Sqlite,
             parameters: vec![]
         }
         .is_own_placeholder("?1"));
 
         assert!(!ParameterExtractor {
-            db_kind: AnyKind::Sqlite,
+            dbms: SupportedDatabase::Sqlite,
             parameters: vec![]
         }
         .is_own_placeholder("$1"));
@@ -1293,7 +1297,7 @@ mod test {
             "select '' || $1 from [a schema].[a table]",
             &MsSqlDialect {},
         );
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, AnyKind::Mssql);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Mssql);
         assert_eq!(
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
@@ -1368,9 +1372,9 @@ mod test {
     #[test]
     fn test_extract_set_variable() {
         let sql = "set x = 42";
-        for &(dialect, db_kind) in ALL_DIALECTS {
+        for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, db_kind, sql);
+            let stmt = parse_single_statement(&mut parser, dbms, sql);
             if let Some(ParsedStatement::SetVariable {
                 variable,
                 value: StmtWithParams { query, params, .. },
@@ -1462,7 +1466,7 @@ mod test {
     ";
 
         let stmt = parse_postgres_stmt(sql);
-        let json_columns = extract_json_columns(&stmt, AnyKind::Sqlite);
+        let json_columns = extract_json_columns(&stmt, SupportedDatabase::Sqlite);
 
         assert_eq!(
             json_columns,
@@ -1477,9 +1481,9 @@ mod test {
     #[test]
     fn test_set_variable_with_sqlpage_function() {
         let sql = "set x = sqlpage.url_encode(some_db_function())";
-        for &(dialect, db_kind) in ALL_DIALECTS {
+        for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, db_kind, sql);
+            let stmt = parse_single_statement(&mut parser, dbms, sql);
             let Some(ParsedStatement::SetVariable {
                 variable,
                 value:
@@ -1523,7 +1527,7 @@ mod test {
         "#;
 
         let stmt = parse_stmt(sql, &SQLiteDialect {});
-        let json_columns = extract_json_columns(&stmt, AnyKind::Sqlite);
+        let json_columns = extract_json_columns(&stmt, SupportedDatabase::Sqlite);
 
         assert!(json_columns.contains(&"item".to_string()));
         assert!(!json_columns.contains(&"title".to_string()));
@@ -1565,7 +1569,7 @@ mod test {
             delayed_functions: vec![],
             json_columns: vec![],
         };
-        transform_to_positional_placeholders(&mut stmt, AnyKind::MySql);
+        transform_to_positional_placeholders(&mut stmt, SupportedDatabase::MySql);
         assert_eq!(
             stmt.query,
             "select \
@@ -1603,9 +1607,9 @@ mod test {
     #[test]
     fn test_set_variable_error_handling() {
         let sql = "set x = db_function(sqlpage.fetch(other_db_function()))";
-        for &(dialect, db_kind) in ALL_DIALECTS {
+        for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, db_kind, sql);
+            let stmt = parse_single_statement(&mut parser, dbms, sql);
             if let Some(ParsedStatement::Error(err)) = stmt {
                 assert!(
                     err.to_string().contains("Invalid SQLPage function call"),

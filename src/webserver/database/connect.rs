@@ -1,14 +1,16 @@
 use std::{mem::take, time::Duration};
 
 use super::Database;
-use crate::{app_config::AppConfig, ON_CONNECT_FILE, ON_RESET_FILE};
+use crate::{
+    app_config::AppConfig, webserver::database::SupportedDatabase, ON_CONNECT_FILE, ON_RESET_FILE,
+};
 use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::{
-    any::{Any, AnyConnectOptions, AnyKind},
+    any::{Any, AnyConnectOptions},
     pool::PoolOptions,
     sqlite::{Function, SqliteFunctionCtx},
-    ConnectOptions, Executor,
+    ConnectOptions, Connection, Executor,
 };
 
 impl Database {
@@ -33,8 +35,11 @@ impl Database {
         set_custom_connect_options(&mut connect_options, config);
         log::debug!("Connecting to database: {database_url}");
         let mut retries = config.database_connection_retries;
-        let connection = loop {
-            match Self::create_pool_options(config, connect_options.kind())
+        // Try to determine database type from connection string first
+        let kind_str = format!("{:?}", connect_options.kind()).to_lowercase();
+        let database_type = SupportedDatabase::from_dbms_name(&kind_str);
+        let pool = loop {
+            match Self::create_pool_options(config, database_type)
                 .connect_with(connect_options.clone())
                 .await
             {
@@ -50,35 +55,39 @@ impl Database {
                 }
             }
         };
-        log::debug!("Initialized database pool: {connection:#?}");
-        Ok(Database { connection })
+        let _dbms_name: String = pool.acquire().await?.dbms_name().await?;
+        log::debug!("Initialized database pool: {pool:#?}");
+        Ok(Database {
+            connection: pool,
+            database_type,
+        })
     }
 
-    fn create_pool_options(config: &AppConfig, db_kind: AnyKind) -> PoolOptions<Any> {
+    fn create_pool_options(config: &AppConfig, dbms: SupportedDatabase) -> PoolOptions<Any> {
         let mut pool_options = PoolOptions::new()
             .max_connections(if let Some(max) = config.max_database_pool_connections {
                 max
             } else {
                 // Different databases have a different number of max concurrent connections allowed by default
-                match db_kind {
-                    AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for ODBC
-                    AnyKind::MySql => 75,
-                    AnyKind::Sqlite => {
+                match dbms {
+                    SupportedDatabase::Postgres | SupportedDatabase::Generic => 50, // Default to PostgreSQL-like limits for Generic
+                    SupportedDatabase::MySql => 75,
+                    SupportedDatabase::Sqlite => {
                         if config.database_url.contains(":memory:") {
                             128
                         } else {
                             16
                         }
                     }
-                    AnyKind::Mssql => 100,
+                    SupportedDatabase::Mssql => 100,
                 }
             })
             .idle_timeout(
                 config
                     .database_connection_idle_timeout_seconds
                     .map(Duration::from_secs_f64)
-                    .or_else(|| match db_kind {
-                        AnyKind::Sqlite => None,
+                    .or_else(|| match dbms {
+                        SupportedDatabase::Sqlite => None,
                         _ => Some(Duration::from_secs(30 * 60)),
                     }),
             )
@@ -86,8 +95,8 @@ impl Database {
                 config
                     .database_connection_max_lifetime_seconds
                     .map(Duration::from_secs_f64)
-                    .or_else(|| match db_kind {
-                        AnyKind::Sqlite => None,
+                    .or_else(|| match dbms {
+                        SupportedDatabase::Sqlite => None,
                         _ => Some(Duration::from_secs(60 * 60)),
                     }),
             )

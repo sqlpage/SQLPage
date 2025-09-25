@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.37.1"
+version = "0.38.0-beta.1"
 edition = "2021"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -8,12 +8,7 @@ license = "MIT"
 homepage = "https://sql-page.com/"
 repository = "https://github.com/sqlpage/SQLPage"
 documentation = "https://docs.rs/sqlpage"
-include = [
-    "/src",
-    "/README.md",
-    "/build.rs",
-    "/sqlpage",
-]
+include = ["/src", "/README.md", "/build.rs", "/sqlpage"]
 
 [profile.superoptimized]
 inherits = "release"
@@ -23,7 +18,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.49-beta", default-features = false, features = [
+sqlx = { package = "sqlx-oldapi", version = "0.6.49-beta.2", default-features = false, features = [
     "any",
     "runtime-tokio-rustls",
     "migrate",
@@ -50,7 +45,10 @@ anyhow = "1"
 serde = "1"
 serde_json = { version = "1.0.82", features = ["preserve_order", "raw_value"] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.59.0", default-features = false, features = ["std", "visitor",] }
+sqlparser = { version = "0.59.0", default-features = false, features = [
+    "std",
+    "visitor",
+] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"

@@ -6,9 +6,10 @@ use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
 use sqlx::{
-    any::{AnyArguments, AnyConnectionKind, AnyKind},
+    any::{AnyArguments, AnyConnectionKind},
     AnyConnection, Arguments, Executor, PgConnection,
 };
+use crate::webserver::database::SupportedDatabase;
 use tokio::io::AsyncRead;
 
 use crate::webserver::http_request_info::RequestInfo;
@@ -143,6 +144,7 @@ pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImpo
 
 pub(super) async fn run_csv_import(
     db: &mut AnyConnection,
+    dbms: SupportedDatabase,
     csv_import: &CsvImport,
     request: &RequestInfo,
 ) -> anyhow::Result<()> {
@@ -173,7 +175,7 @@ pub(super) async fn run_csv_import(
         AnyConnectionKind::Postgres(pg_connection) => {
             run_csv_import_postgres(pg_connection, csv_import, buffered).await
         }
-        _ => run_csv_import_insert(db, csv_import, buffered).await,
+        _ => run_csv_import_insert(db, dbms, csv_import, buffered).await,
     }
     .with_context(|| {
         let table_name = &csv_import.table_name;
@@ -216,10 +218,11 @@ async fn run_csv_import_postgres(
 
 async fn run_csv_import_insert(
     db: &mut AnyConnection,
+    dbms: SupportedDatabase,
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
 ) -> anyhow::Result<()> {
-    let insert_stmt = create_insert_stmt(db.kind(), csv_import);
+    let insert_stmt = create_insert_stmt(dbms, csv_import);
     log::debug!("CSV data insert statement: {insert_stmt}");
     let mut reader = make_csv_reader(csv_import, file);
     let col_idxs = compute_column_indices(&mut reader, csv_import).await?;
@@ -256,13 +259,13 @@ async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
     Ok(col_idxs)
 }
 
-fn create_insert_stmt(kind: AnyKind, csv_import: &CsvImport) -> String {
+fn create_insert_stmt(dbms: SupportedDatabase, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
     let placeholders = csv_import
         .columns
         .iter()
         .enumerate()
-        .map(|(i, _)| make_placeholder(kind, i + 1))
+        .map(|(i, _)| make_placeholder(dbms, i + 1))
         .fold(String::new(), |mut acc, f| {
             if !acc.is_empty() {
                 acc.push_str(", ");
@@ -328,7 +331,7 @@ fn test_make_statement() {
         escape: None,
         uploaded_file: "my_file.csv".into(),
     };
-    let insert_stmt = create_insert_stmt(AnyKind::Postgres, &csv_import);
+    let insert_stmt = create_insert_stmt(SupportedDatabase::Postgres, &csv_import);
     assert_eq!(
         insert_stmt,
         "INSERT INTO my_table (col1, col2) VALUES ($1, $2)"
