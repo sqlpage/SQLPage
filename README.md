@@ -128,6 +128,7 @@ select
 - [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *YugabyteDB*, *CockroachDB* and *Aurora*.
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 - [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server), and all compatible databases and providers such as *Azure SQL* and *Amazon RDS*.
+- **ODBC-compatible databases** such as *Oracle*, *Snowflake*, *BigQuery*, *IBM DB2*, and many others through ODBC drivers.
 
 ## Get started
 
@@ -174,6 +175,34 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 - [Install homebrew](https://brew.sh/)
 - In a terminal, run the following commands:
   - `brew install sqlpage`
+
+
+### ODBC Setup
+
+You can skip this section if you want to use one of the built-in database drivers (SQLite, PostgreSQL, MySQL, Microsoft SQL Server).
+
+SQLPage supports ODBC connections to connect to databases that don't have native drivers, such as Oracle, Snowflake, BigQuery, IBM DB2, and many others.
+
+ODBC support requires an ODBC driver manager and appropriate database drivers to be installed on your system.
+
+#### Install ODBC
+
+ - On windows, it's installed by default.
+ - On linux: `sudo apt-get install -y unixodbc odbcinst unixodbc-common libodbcinst2`
+ - On mac: `brew install unixodbc`
+
+
+#### Install your ODBC database driver
+  - [DuckDB](https://duckdb.org/docs/stable/clients/odbc/overview.html)
+  - [Snowflake](https://docs.snowflake.com/en/developer-guide/odbc/odbc)
+  - [BigQuery](https://cloud.google.com/bigquery/docs/reference/odbc-jdbc-drivers)
+  - For other databases, follow your database's official odbc install instructions.
+
+#### Connect to your database
+
+ - Find your connection string. You can use https://www.connectionstrings.com/
+ - Use it in the [DATABASE_URL configuration option](./configuration.md)
+
 
 ## How it works
 
