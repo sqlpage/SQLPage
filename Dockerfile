@@ -11,12 +11,14 @@ RUN apt-get update && \
     elif [ "$TARGETARCH" = "arm64" ]; then \
         echo aarch64-unknown-linux-gnu > TARGET && \
         echo aarch64-linux-gnu-gcc > LINKER && \
-        apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross unixodbc-dev freetds-dev && \
+        dpkg --add-architecture arm64 && apt-get update && \
+        apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross unixodbc-dev:arm64 freetds-dev:arm64 && \
         cp /usr/aarch64-linux-gnu/lib/libgcc_s.so.1 .; \
     elif [ "$TARGETARCH" = "arm" ]; then \
         echo armv7-unknown-linux-gnueabihf > TARGET && \
         echo arm-linux-gnueabihf-gcc > LINKER && \
-        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 unixodbc-dev freetds-dev && \
+        dpkg --add-architecture armhf && apt-get update && \
+        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 unixodbc-dev:armhf freetds-dev:armhf && \
         cargo install --force --locked bindgen-cli && \
         echo "-I/usr/lib/gcc-cross/arm-linux-gnueabihf/12/include -I/usr/arm-linux-gnueabihf/include" > BINDGEN_EXTRA_CLANG_ARGS; \
         cp /usr/arm-linux-gnueabihf/lib/libgcc_s.so.1 .; \
