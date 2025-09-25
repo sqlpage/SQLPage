@@ -86,7 +86,7 @@ pub fn display_stmt_db_error(
     anyhow::Error::new(NiceDatabaseError {
         source_file: source_file.to_path_buf(),
         db_err,
-        query: stmt.query.to_string(),
+        query: stmt.query.clone(),
         query_position: Some(stmt.query_position),
     })
 }

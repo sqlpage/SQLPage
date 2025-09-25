@@ -177,7 +177,7 @@ pub(super) async fn extract_req_param<'a>(
             }
         }
         StmtParam::Error(x) => anyhow::bail!("{}", x),
-        StmtParam::Literal(x) => Some(Cow::Owned(x.to_string())),
+        StmtParam::Literal(x) => Some(Cow::Owned(x.clone())),
         StmtParam::Null => None,
         StmtParam::Concat(args) => concat_params(&args[..], request, db_connection).await?,
         StmtParam::JsonObject(args) => {

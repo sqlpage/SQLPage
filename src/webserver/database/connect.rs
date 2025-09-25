@@ -61,7 +61,7 @@ impl Database {
             } else {
                 // Different databases have a different number of max concurrent connections allowed by default
                 match db_kind {
-                    AnyKind::Postgres => 50,
+                    AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for ODBC
                     AnyKind::MySql => 75,
                     AnyKind::Sqlite => {
                         if config.database_url.contains(":memory:") {

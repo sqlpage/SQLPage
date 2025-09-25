@@ -23,7 +23,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.48", default-features = false, features = [
+sqlx = { package = "sqlx-oldapi", version = "0.6.49-beta", default-features = false, features = [
     "any",
     "runtime-tokio-rustls",
     "migrate",
@@ -31,6 +31,7 @@ sqlx = { package = "sqlx-oldapi", version = "0.6.48", default-features = false, 
     "postgres",
     "mysql",
     "mssql",
+    "odbc",
     "chrono",
     "json",
     "uuid",

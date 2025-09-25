@@ -768,7 +768,7 @@ async fn user_info<'a>(
         "iat" => Some(claims.issue_time().timestamp().to_string()),
         "sub" => Some(claims.subject().to_string()),
         "auth_time" => claims.auth_time().map(|t| t.timestamp().to_string()),
-        "nonce" => claims.nonce().map(|n| n.secret().to_string()), // Assuming Nonce has secret()
+        "nonce" => claims.nonce().map(|n| n.secret().clone()), // Assuming Nonce has secret()
         "acr" => claims.auth_context_ref().map(|acr| acr.to_string()),
         // amr requires serialization: handled separately if needed
         "azp" => claims.authorized_party().map(|azp| azp.to_string()),

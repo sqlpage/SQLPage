@@ -239,7 +239,7 @@ fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement
 
 fn dialect_for_db(db_kind: AnyKind) -> Box<dyn Dialect> {
     match db_kind {
-        AnyKind::Postgres => Box::new(PostgreSqlDialect {}),
+        AnyKind::Postgres | AnyKind::Odbc => Box::new(PostgreSqlDialect {}), // Default to PostgreSQL dialect for ODBC
         AnyKind::Mssql => Box::new(MsSqlDialect {}),
         AnyKind::MySql => Box::new(MySqlDialect {}),
         AnyKind::Sqlite => Box::new(SQLiteDialect {}),
