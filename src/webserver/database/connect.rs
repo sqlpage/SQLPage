@@ -2,7 +2,9 @@ use std::{mem::take, time::Duration};
 
 use super::Database;
 use crate::{
-    app_config::AppConfig, webserver::database::SupportedDatabase, ON_CONNECT_FILE, ON_RESET_FILE,
+    app_config::AppConfig,
+    webserver::database::{DbInfo, SupportedDatabase},
+    ON_CONNECT_FILE, ON_RESET_FILE,
 };
 use anyhow::Context;
 use futures_util::future::BoxFuture;
@@ -59,7 +61,11 @@ impl Database {
         log::debug!("Initialized {dbms_name} database pool: {pool:#?}");
         Ok(Database {
             connection: pool,
-            database_type,
+            info: DbInfo {
+                dbms_name,
+                database_type,
+                kind: db_kind,
+            },
         })
     }
 

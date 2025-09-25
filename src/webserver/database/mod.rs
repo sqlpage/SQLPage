@@ -12,9 +12,10 @@ mod sql_to_json;
 
 pub use sql::ParsedSqlFile;
 use sql::{DbPlaceHolder, DB_PLACEHOLDERS};
+use sqlx::any::AnyKind;
 // SupportedDatabase is defined in this module
 
-/// Supported database types in `SQLPage`
+/// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SupportedDatabase {
     Sqlite,
@@ -52,7 +53,16 @@ impl SupportedDatabase {
 
 pub struct Database {
     pub connection: sqlx::AnyPool,
+    pub info: DbInfo,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct DbInfo {
+    pub dbms_name: String,
+    /// The actual database we are connected to. Can be "Generic" when using an unknown ODBC driver
     pub database_type: SupportedDatabase,
+    /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use database_type to know what database we are actually using.
+    pub kind: AnyKind,
 }
 
 impl Database {
@@ -78,7 +88,7 @@ impl std::fmt::Display for Database {
 
 #[inline]
 #[must_use]
-pub fn make_placeholder(dbms: SupportedDatabase, arg_number: usize) -> String {
+pub fn make_placeholder(dbms: AnyKind, arg_number: usize) -> String {
     if let Some((_, placeholder)) = DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == dbms) {
         match *placeholder {
             DbPlaceHolder::PrefixedNumber { prefix } => format!("{prefix}{arg_number}"),

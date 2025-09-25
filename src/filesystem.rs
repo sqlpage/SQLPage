@@ -28,7 +28,7 @@ impl FileSystem {
                         You can host sql files directly in your database by creating the following table: \n\
                         {} \n\
                         The error while trying to use the database file system is: {e:#}",
-                        DbFsQueries::get_create_table_sql(db.database_type)
+                        DbFsQueries::get_create_table_sql(db.info.database_type)
                     );
                     None
                 }
@@ -217,22 +217,18 @@ impl DbFsQueries {
 
     async fn init(db: &Database) -> anyhow::Result<Self> {
         log::debug!("Initializing database filesystem queries");
-        let dbms = db.database_type;
         Ok(Self {
-            was_modified: Self::make_was_modified_query(db, dbms).await?,
-            read_file: Self::make_read_file_query(db, dbms).await?,
-            exists: Self::make_exists_query(db, dbms).await?,
+            was_modified: Self::make_was_modified_query(db).await?,
+            read_file: Self::make_read_file_query(db).await?,
+            exists: Self::make_exists_query(db).await?,
         })
     }
 
-    async fn make_was_modified_query(
-        db: &Database,
-        dbms: SupportedDatabase,
-    ) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_was_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
         let was_modified_query = format!(
             "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
-            make_placeholder(dbms, 1),
-            make_placeholder(dbms, 2)
+            make_placeholder(db.info.kind, 1),
+            make_placeholder(db.info.kind, 2)
         );
         let param_types: &[AnyTypeInfo; 2] = &[
             PgTimeTz::type_info().into(),
@@ -242,26 +238,20 @@ impl DbFsQueries {
         db.prepare_with(&was_modified_query, param_types).await
     }
 
-    async fn make_read_file_query(
-        db: &Database,
-        dbms: SupportedDatabase,
-    ) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_read_file_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
         let read_file_query = format!(
             "SELECT contents from sqlpage_files WHERE path = {}",
-            make_placeholder(dbms, 1),
+            make_placeholder(db.info.kind, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         log::debug!("Preparing the database filesystem read_file_query: {read_file_query}");
         db.prepare_with(&read_file_query, param_types).await
     }
 
-    async fn make_exists_query(
-        db: &Database,
-        dbms: SupportedDatabase,
-    ) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_exists_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
         let exists_query = format!(
             "SELECT 1 from sqlpage_files WHERE path = {}",
-            make_placeholder(dbms, 1),
+            make_placeholder(db.info.kind, 1),
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         db.prepare_with(&exists_query, param_types).await
