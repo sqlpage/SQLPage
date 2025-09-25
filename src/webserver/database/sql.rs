@@ -1220,7 +1220,7 @@ mod test {
 
     #[test]
     fn test_sqlpage_function_with_argument() {
-        for &(dialect, kind) in ALL_DIALECTS {
+        for &(dialect, _kind) in ALL_DIALECTS {
             let sql = "select sqlpage.fetch($x)";
             let mut ast = parse_stmt(sql, dialect);
             let parameters =
