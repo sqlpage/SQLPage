@@ -46,7 +46,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        database: ["postgres", "mysql", "mssql"]
+        include:
+          - database: postgres
+            container: postgres
+            db_url: "postgres://root:Password123!@127.0.0.1/sqlpage"
+          - database: mysql
+            container: mysql
+            db_url: "mysql://root:Password123!@127.0.0.1/sqlpage"
+          - database: mssql
+            container: mssql
+            db_url: "mssql://root:Password123!@127.0.0.1/sqlpage"
+          - database: odbc
+            container: postgres
+            db_url: "Driver={PostgreSQL};Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!"
+            setup_odbc: true
     steps:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
@@ -55,16 +68,21 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev freetds-dev
+      - name: Setup ODBC for testing
+        if: matrix.setup_odbc
+        run: |
+          # Install PostgreSQL ODBC driver (automatically registers the driver)
+          sudo apt-get install -y odbc-postgresql
       - name: Start database container
-        run: docker compose up --wait ${{ matrix.database }}
+        run: docker compose up --wait ${{ matrix.container }}
       - name: Show container logs
         if: failure()
-        run: docker compose logs ${{ matrix.database }}
+        run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
         run: cargo test
         env:
-          DATABASE_URL: ${{ matrix.database }}://root:Password123!@127.0.0.1/sqlpage
+          DATABASE_URL: ${{ matrix.db_url }}
           RUST_BACKTRACE: 1
           RUST_LOG: sqlpage=debug
 

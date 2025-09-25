@@ -66,7 +66,7 @@ If you have a `.env` file in the current directory or in any of its parent direc
 
 The `database_url` parameter sets all the connection parameters for the database, including
 
- - the database engine type (`sqlite`, `postgres`, `mysql`, `mssql`, etc.)
+ - the database engine type (`sqlite`, `postgres`, `mysql`, `mssql`, or ODBC connection strings)
  - the username and password
  - the host (or ip adress) and port
  - the database name
@@ -86,6 +86,26 @@ A full connection string for a PostgreSQL database might look like this:
 ```
 postgres://my_user:p%40ss@localhost:5432/my_database?sslmode=verify-ca&sslrootcert=/path/to/ca.pem&sslcert=/path/to/cert.pem&sslkey=/path/to/key.pem&application_name=my_application
 ```
+
+#### ODBC Connection Strings
+
+For ODBC-compatible databases (Oracle, Snowflake, BigQuery, IBM DB2, etc.), you can use ODBC connection strings directly:
+
+```bash
+# Using a Data Source Name (DSN)
+DATABASE_URL="DSN=MyDatabase"
+
+# Using inline connection parameters
+DATABASE_URL="Driver={PostgreSQL};Server=localhost;Port=5432;Database=mydb;UID=myuser;PWD=mypassword"
+
+# Oracle example
+DATABASE_URL="Driver={Oracle ODBC Driver};Server=localhost:1521/XE;UID=hr;PWD=password"
+
+# Snowflake example
+DATABASE_URL="Driver={SnowflakeDSIIDriver};Server=account.snowflakecomputing.com;Database=mydb;UID=user;PWD=password"
+```
+
+ODBC drivers must be installed and configured on your system. On Linux, you typically need `unixodbc` and the appropriate database-specific ODBC driver.
 
 If the `database_password` configuration parameter is set, it will override any password specified in the `database_url`.
 It does not need to be percent-encoded.
