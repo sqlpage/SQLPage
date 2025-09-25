@@ -57,8 +57,6 @@ RUN addgroup --gid 1000 --system sqlpage && \
 ENV SQLPAGE_WEB_ROOT=/var/www
 ENV SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage
 WORKDIR /var/www
-# Ensure /lib64 is a real directory (not a symlink) so that copying dependencies succeeds during COPY below
-RUN if [ -L /lib64 ]; then rm /lib64 && mkdir /lib64; fi
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
 COPY --from=builder /usr/src/sqlpage/libgcc_s.so.1 /lib/libgcc_s.so.1
 COPY --from=builder /usr/src/sqlpage/deps/ /
