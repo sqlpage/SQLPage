@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::webserver::database::SupportedDatabase;
 use anyhow::Context;
 use futures_util::StreamExt;
 use sqlparser::ast::{
@@ -9,7 +10,6 @@ use sqlx::{
     any::{AnyArguments, AnyConnectionKind},
     AnyConnection, Arguments, Executor, PgConnection,
 };
-use crate::webserver::database::SupportedDatabase;
 use tokio::io::AsyncRead;
 
 use crate::webserver::http_request_info::RequestInfo;

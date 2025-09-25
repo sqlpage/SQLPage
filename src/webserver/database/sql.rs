@@ -2,6 +2,7 @@ use super::csv_import::{extract_csv_copy_statement, CsvImport};
 use super::sqlpage_functions::functions::SqlPageFunctionName;
 use super::sqlpage_functions::{are_params_extractable, func_call_to_param};
 use super::syntax_tree::StmtParam;
+use super::SupportedDatabase;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::webserver::database::error_highlighting::quote_source_with_highlight;
 use crate::{AppState, Database};
@@ -17,7 +18,6 @@ use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
 use sqlparser::tokenizer::{TokenWithSpan, Tokenizer};
-use super::SupportedDatabase;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -550,9 +550,8 @@ pub const DB_PLACEHOLDERS: [(SupportedDatabase, DbPlaceHolder); 5] = [
 const TEMP_PLACEHOLDER_PREFIX: &str = "@SQLPAGE_TEMP";
 
 fn get_placeholder_prefix(dbms: SupportedDatabase) -> &'static str {
-    if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) = DB_PLACEHOLDERS
-        .iter()
-        .find(|(kind, _prefix)| *kind == dbms)
+    if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) =
+        DB_PLACEHOLDERS.iter().find(|(kind, _prefix)| *kind == dbms)
     {
         prefix
     } else {
@@ -1098,7 +1097,8 @@ mod test {
     fn test_statement_rewrite() {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
+        let parameters =
+            ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
         // $a -> $1
         // $x -> $2
         // sqlpage.cookie(...) -> $3
@@ -1122,7 +1122,8 @@ mod test {
     #[test]
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Sqlite);
+        let parameters =
+            ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Sqlite);
         assert_eq!(
             ast.to_string(),
             "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
@@ -1222,7 +1223,8 @@ mod test {
         for &(dialect, kind) in ALL_DIALECTS {
             let sql = "select sqlpage.fetch($x)";
             let mut ast = parse_stmt(sql, dialect);
-            let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
+            let parameters =
+                ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
             assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
