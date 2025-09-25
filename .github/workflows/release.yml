@@ -83,6 +83,10 @@ jobs:
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
       - uses: actions/checkout@v4
+      - name: Install ODBC dependencies
+        run: |
+          yum update -y
+          yum install -y unixODBC-devel freetds-devel
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
