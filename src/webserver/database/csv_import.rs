@@ -376,7 +376,7 @@ async fn test_end_to_end() {
         .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
     let file = csv.as_bytes();
-    run_csv_import_insert(&mut conn, &csv_import, file)
+    run_csv_import_insert(&mut conn, SupportedDatabase::Sqlite, &csv_import, file)
         .await
         .unwrap();
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")

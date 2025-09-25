@@ -350,7 +350,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use sqlx::Executor;
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
-    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.connection.any_kind());
+    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.database_type);
     state
         .db
         .connection

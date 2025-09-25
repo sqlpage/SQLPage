@@ -48,7 +48,7 @@ async fn test_routing_with_db_fs() {
     let state = AppState::init(&config).await.unwrap();
 
     let create_table_sql =
-        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.connection.any_kind());
+        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.database_type);
     state
         .db
         .connection
