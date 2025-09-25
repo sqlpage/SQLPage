@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::{
-    any::{Any, AnyConnectOptions},
+    any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
     sqlite::{Function, SqliteFunctionCtx},
     ConnectOptions, Connection, Executor,
@@ -35,11 +35,9 @@ impl Database {
         set_custom_connect_options(&mut connect_options, config);
         log::debug!("Connecting to database: {database_url}");
         let mut retries = config.database_connection_retries;
-        // Try to determine database type from connection string first
-        let kind_str = format!("{:?}", connect_options.kind()).to_lowercase();
-        let database_type = SupportedDatabase::from_dbms_name(&kind_str);
+        let db_kind = connect_options.kind();
         let pool = loop {
-            match Self::create_pool_options(config, database_type)
+            match Self::create_pool_options(config, db_kind)
                 .connect_with(connect_options.clone())
                 .await
             {
@@ -55,39 +53,41 @@ impl Database {
                 }
             }
         };
-        let _dbms_name: String = pool.acquire().await?.dbms_name().await?;
-        log::debug!("Initialized database pool: {pool:#?}");
+        let dbms_name: String = pool.acquire().await?.dbms_name().await?;
+        let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
+
+        log::debug!("Initialized {dbms_name} database pool: {pool:#?}");
         Ok(Database {
             connection: pool,
             database_type,
         })
     }
 
-    fn create_pool_options(config: &AppConfig, dbms: SupportedDatabase) -> PoolOptions<Any> {
+    fn create_pool_options(config: &AppConfig, kind: AnyKind) -> PoolOptions<Any> {
         let mut pool_options = PoolOptions::new()
             .max_connections(if let Some(max) = config.max_database_pool_connections {
                 max
             } else {
                 // Different databases have a different number of max concurrent connections allowed by default
-                match dbms {
-                    SupportedDatabase::Postgres | SupportedDatabase::Generic => 50, // Default to PostgreSQL-like limits for Generic
-                    SupportedDatabase::MySql => 75,
-                    SupportedDatabase::Sqlite => {
+                match kind {
+                    AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for Generic
+                    AnyKind::MySql => 75,
+                    AnyKind::Sqlite => {
                         if config.database_url.contains(":memory:") {
                             128
                         } else {
                             16
                         }
                     }
-                    SupportedDatabase::Mssql => 100,
+                    AnyKind::Mssql => 100,
                 }
             })
             .idle_timeout(
                 config
                     .database_connection_idle_timeout_seconds
                     .map(Duration::from_secs_f64)
-                    .or_else(|| match dbms {
-                        SupportedDatabase::Sqlite => None,
+                    .or_else(|| match kind {
+                        AnyKind::Sqlite => None,
                         _ => Some(Duration::from_secs(30 * 60)),
                     }),
             )
@@ -95,8 +95,8 @@ impl Database {
                 config
                     .database_connection_max_lifetime_seconds
                     .map(Duration::from_secs_f64)
-                    .or_else(|| match dbms {
-                        SupportedDatabase::Sqlite => None,
+                    .or_else(|| match kind {
+                        AnyKind::Sqlite => None,
                         _ => Some(Duration::from_secs(60 * 60)),
                     }),
             )
