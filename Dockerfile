@@ -42,7 +42,9 @@ RUN touch src/main.rs && \
         --target $(cat TARGET) \
         --config target.$(cat TARGET).linker='"'$(cat LINKER)'"' \
         --profile superoptimized && \
-    mv target/$(cat TARGET)/superoptimized/sqlpage sqlpage.bin
+    mv target/$(cat TARGET)/superoptimized/sqlpage sqlpage.bin && \
+    mkdir -p deps && \
+    ldd sqlpage.bin | awk '($3 ~ /^\//) {print $3} ($1 ~ /^\//) {print $1}' | sort -u | xargs -I '{}' cp --parents '{}' deps/
 
 FROM busybox:glibc
 RUN addgroup --gid 1000 --system sqlpage && \
@@ -55,6 +57,7 @@ ENV SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage
 WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
 COPY --from=builder /usr/src/sqlpage/libgcc_s.so.1 /lib/libgcc_s.so.1
+COPY --from=builder /usr/src/sqlpage/deps/ /
 USER sqlpage
 COPY --from=builder --chown=sqlpage:sqlpage /usr/src/sqlpage/sqlpage/sqlpage.db sqlpage/sqlpage.db
 EXPOSE 8080
