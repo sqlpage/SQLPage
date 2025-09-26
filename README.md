@@ -200,7 +200,7 @@ ODBC support requires an ODBC driver manager and appropriate database drivers to
 
 #### Connect to your database
 
- - Find your connection string. You can use https://www.connectionstrings.com/
+ - Find your [connection string](https://www.connectionstrings.com/). It will look like this: `Driver={SnowflakeDSIIDriver};Server=xyz.snowflakecomputing.com;Database=MY_DB;Schema=PUBLIC;UID=my_user;PWD=my_password`
  - Use it in the [DATABASE_URL configuration option](./configuration.md)
 
 
