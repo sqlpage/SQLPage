@@ -251,20 +251,6 @@ fn dialect_for_db(dbms: SupportedDatabase) -> Box<dyn Dialect> {
     }
 }
 
-fn kind_of_dialect(dialect: &dyn Dialect) -> SupportedDatabase {
-    if dialect.is::<PostgreSqlDialect>() {
-        SupportedDatabase::Postgres
-    } else if dialect.is::<MsSqlDialect>() {
-        SupportedDatabase::Mssql
-    } else if dialect.is::<MySqlDialect>() {
-        SupportedDatabase::MySql
-    } else if dialect.is::<SQLiteDialect>() {
-        SupportedDatabase::Sqlite
-    } else {
-        SupportedDatabase::Generic
-    }
-}
-
 fn map_param(mut name: String) -> StmtParam {
     if name.is_empty() {
         return StmtParam::PostOrGet(name);
@@ -1103,8 +1089,9 @@ mod test {
     fn test_statement_rewrite() {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
+        let db_info = create_test_db_info(SupportedDatabase::Postgres);
         let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
+            ParameterExtractor::extract_parameters(&mut ast, db_info);
         // $a -> $1
         // $x -> $2
         // sqlpage.cookie(...) -> $3
@@ -1128,8 +1115,9 @@ mod test {
     #[test]
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
+        let db_info = create_test_db_info(SupportedDatabase::Sqlite);
         let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Sqlite);
+            ParameterExtractor::extract_parameters(&mut ast, db_info);
         assert_eq!(
             ast.to_string(),
             "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
@@ -1149,6 +1137,21 @@ mod test {
         (&MySqlDialect {}, SupportedDatabase::MySql),
         (&SQLiteDialect {}, SupportedDatabase::Sqlite),
     ];
+
+    fn create_test_db_info(database_type: SupportedDatabase) -> DbInfo {
+        let (dbms_name, kind) = match database_type {
+            SupportedDatabase::Postgres => ("PostgreSQL".to_string(), AnyKind::Postgres),
+            SupportedDatabase::Mssql => ("Microsoft SQL Server".to_string(), AnyKind::Mssql),
+            SupportedDatabase::MySql => ("MySQL".to_string(), AnyKind::MySql),
+            SupportedDatabase::Sqlite => ("SQLite".to_string(), AnyKind::Sqlite),
+            SupportedDatabase::Generic => ("Generic".to_string(), AnyKind::Postgres), // fallback
+        };
+        DbInfo {
+            dbms_name,
+            database_type,
+            kind,
+        }
+    }
 
     #[test]
     fn test_extract_toplevel_delayed_functions() {
@@ -1186,7 +1189,8 @@ mod test {
         // The order of the function arguments should be preserved
         // Otherwise the statement parameters will be bound to the wrong arguments
         let sql = "select $a as a, sqlpage.exec('xxx', x = $b) as b, $c as c from t";
-        let all = parse_sql(&PostgreSqlDialect {}, sql)
+        let db_info = create_test_db_info(SupportedDatabase::Postgres);
+        let all = parse_sql(&db_info, &PostgreSqlDialect {}, sql)
             .unwrap()
             .collect::<Vec<_>>();
         assert_eq!(all.len(), 1);
@@ -1229,8 +1233,9 @@ mod test {
         for &(dialect, _kind) in ALL_DIALECTS {
             let sql = "select sqlpage.fetch($x)";
             let mut ast = parse_stmt(sql, dialect);
+            let db_info = create_test_db_info(SupportedDatabase::Postgres);
             let parameters =
-                ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Postgres);
+                ParameterExtractor::extract_parameters(&mut ast, db_info);
             assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
@@ -1247,7 +1252,8 @@ mod test {
         let sql = "set x = $y";
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, dbms, sql);
+            let db_info = create_test_db_info(dbms);
+            let stmt = parse_single_statement(&mut parser, &db_info, sql);
             if let Some(ParsedStatement::SetVariable {
                 variable,
                 value: StmtWithParams { query, params, .. },
@@ -1269,31 +1275,31 @@ mod test {
     #[test]
     fn is_own_placeholder() {
         assert!(ParameterExtractor {
-            dbms: SupportedDatabase::Postgres,
+            db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![]
         }
         .is_own_placeholder("$1"));
 
         assert!(ParameterExtractor {
-            dbms: SupportedDatabase::Postgres,
+            db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![StmtParam::Get("x".to_string())]
         }
         .is_own_placeholder("$2"));
 
         assert!(!ParameterExtractor {
-            dbms: SupportedDatabase::Postgres,
+            db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![]
         }
         .is_own_placeholder("$2"));
 
         assert!(ParameterExtractor {
-            dbms: SupportedDatabase::Sqlite,
+            db_info: create_test_db_info(SupportedDatabase::Sqlite),
             parameters: vec![]
         }
         .is_own_placeholder("?1"));
 
         assert!(!ParameterExtractor {
-            dbms: SupportedDatabase::Sqlite,
+            db_info: create_test_db_info(SupportedDatabase::Sqlite),
             parameters: vec![]
         }
         .is_own_placeholder("$1"));
@@ -1305,7 +1311,8 @@ mod test {
             "select '' || $1 from [a schema].[a table]",
             &MsSqlDialect {},
         );
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, SupportedDatabase::Mssql);
+        let db_info = create_test_db_info(SupportedDatabase::Mssql);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info);
         assert_eq!(
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
@@ -1345,8 +1352,20 @@ mod test {
         for &dialect in dialects {
             use SimpleSelectValue::{Dynamic, Static};
             use StmtParam::PostOrGet;
+            use std::any::Any;
 
-            let parsed: Vec<ParsedStatement> = parse_sql(dialect, sql).unwrap().collect();
+            let db_info = if dialect.type_id() == (&PostgreSqlDialect {}).type_id() {
+                create_test_db_info(SupportedDatabase::Postgres)
+            } else if dialect.type_id() == (&SQLiteDialect {}).type_id() {
+                create_test_db_info(SupportedDatabase::Sqlite)
+            } else if dialect.type_id() == (&MySqlDialect {}).type_id() {
+                create_test_db_info(SupportedDatabase::MySql)
+            } else if dialect.type_id() == (&MsSqlDialect {}).type_id() {
+                create_test_db_info(SupportedDatabase::Mssql)
+            } else {
+                create_test_db_info(SupportedDatabase::Generic)
+            };
+            let parsed: Vec<ParsedStatement> = parse_sql(&db_info, dialect, sql).unwrap().collect();
             match &parsed[..] {
                 [ParsedStatement::StaticSimpleSelect(q)] => assert_eq!(
                     q,
@@ -1382,7 +1401,8 @@ mod test {
         let sql = "set x = 42";
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, dbms, sql);
+            let db_info = create_test_db_info(dbms);
+            let stmt = parse_single_statement(&mut parser, &db_info, sql);
             if let Some(ParsedStatement::SetVariable {
                 variable,
                 value: StmtWithParams { query, params, .. },
@@ -1491,7 +1511,8 @@ mod test {
         let sql = "set x = sqlpage.url_encode(some_db_function())";
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, dbms, sql);
+            let db_info = create_test_db_info(dbms);
+            let stmt = parse_single_statement(&mut parser, &db_info, sql);
             let Some(ParsedStatement::SetVariable {
                 variable,
                 value:
@@ -1577,7 +1598,7 @@ mod test {
             delayed_functions: vec![],
             json_columns: vec![],
         };
-        transform_to_positional_placeholders(&mut stmt, SupportedDatabase::MySql);
+        transform_to_positional_placeholders(&mut stmt, AnyKind::MySql);
         assert_eq!(
             stmt.query,
             "select \
@@ -1617,7 +1638,8 @@ mod test {
         let sql = "set x = db_function(sqlpage.fetch(other_db_function()))";
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let stmt = parse_single_statement(&mut parser, dbms, sql);
+            let db_info = create_test_db_info(dbms);
+            let stmt = parse_single_statement(&mut parser, &db_info, sql);
             if let Some(ParsedStatement::Error(err)) = stmt {
                 assert!(
                     err.to_string().contains("Invalid SQLPage function call"),

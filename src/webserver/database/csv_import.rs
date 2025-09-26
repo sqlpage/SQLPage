@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::webserver::database::{DbInfo, SupportedDatabase};
 use anyhow::Context;
 use futures_util::StreamExt;
 use sqlparser::ast::{
@@ -329,7 +328,7 @@ fn test_make_statement() {
         escape: None,
         uploaded_file: "my_file.csv".into(),
     };
-    let insert_stmt = create_insert_stmt(SupportedDatabase::Postgres, &csv_import);
+    let insert_stmt = create_insert_stmt(AnyKind::Postgres, &csv_import);
     assert_eq!(
         insert_stmt,
         "INSERT INTO my_table (col1, col2) VALUES ($1, $2)"
