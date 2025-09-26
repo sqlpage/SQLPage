@@ -128,7 +128,14 @@ select
 - [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *YugabyteDB*, *CockroachDB* and *Aurora*.
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 - [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server), and all compatible databases and providers such as *Azure SQL* and *Amazon RDS*.
-- **ODBC-compatible databases** such as *ClickHouse*, *MongoDB*, *DuckDB*, *Oracle*, *Snowflake*, *BigQuery*, *IBM DB2*, and many others through ODBC drivers.
+- Any **ODBC-compatible database**, such as
+[*ClickHouse*](https://github.com/ClickHouse/clickhouse-odbc),
+[*MongoDB*](https://www.mongodb.com/docs/atlas/data-federation/query/sql/drivers/odbc/connect),
+[*DuckDB*](https://duckdb.org/docs/stable/clients/odbc/overview.html),
+[*Oracle*](https://www.oracle.com/database/technologies/releasenote-odbc-ic.html),
+[*Snowflake*](https://docs.snowflake.com/en/developer-guide/odbc/odbc),
+[*BigQuery*](https://cloud.google.com/bigquery/docs/reference/odbc-jdbc-drivers),
+[*IBM DB2*](https://www.ibm.com/support/pages/db2-odbc-cli-driver-download-and-installation-information), and many others through their respective ODBC drivers.
 
 ## Get started
 
