@@ -81,18 +81,9 @@ async fn run_sql_test(
     let test_file_path = test_file.to_string_lossy().replace('\\', "/");
     let stem = test_file.file_stem().unwrap().to_str().unwrap();
 
-    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string());
-    let db_type = if db_url.starts_with("postgres") {
-        "postgres"
-    } else if db_url.starts_with("mysql") || db_url.starts_with("mariadb") {
-        "mysql"
-    } else if db_url.starts_with("mssql") {
-        "mssql"
-    } else if db_url.starts_with("sqlite") {
-        "sqlite"
-    } else {
-        panic!("Unknown database type in DATABASE_URL: {db_url}");
-    };
+    let app_state = app_data.get_ref();
+    let db = &app_state.db;
+    let db_type = format!("{:?}", db.info.database_type).to_lowercase();
 
     if stem.contains(&format!("_no{db_type}")) {
         return Ok(TestResult::Skipped(format!(
