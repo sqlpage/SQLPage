@@ -302,7 +302,7 @@ fn debug_row(r: &AnyRow) {
 }
 
 fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
-    let mut e = anyhow!("{source_file:?} contains a syntax error preventing SQLPage from parsing and preparing its SQL statements.");
+    let mut e = anyhow!("{} contains a syntax error preventing SQLPage from parsing and preparing its SQL statements.", source_file.display());
     for c in err.chain().rev() {
         e = e.context(c.to_string());
     }

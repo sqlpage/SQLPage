@@ -18,8 +18,8 @@ impl AppConfig {
         let mut config = if let Some(config_file) = &cli.config_file {
             if !config_file.is_file() {
                 return Err(anyhow::anyhow!(
-                    "Configuration file does not exist: {:?}",
-                    config_file
+                    "Configuration file does not exist: {}",
+                    config_file.display()
                 ));
             }
             log::debug!("Loading configuration from file: {}", config_file.display());
@@ -85,14 +85,14 @@ impl AppConfig {
     fn validate(&self) -> anyhow::Result<()> {
         if !self.web_root.is_dir() {
             return Err(anyhow::anyhow!(
-                "Web root is not a valid directory: {:?}",
-                self.web_root
+                "Web root is not a valid directory: {}",
+                self.web_root.display()
             ));
         }
         if !self.configuration_directory.is_dir() {
             return Err(anyhow::anyhow!(
-                "Configuration directory is not a valid directory: {:?}",
-                self.configuration_directory
+                "Configuration directory is not a valid directory: {}",
+                self.configuration_directory.display()
             ));
         }
         if self.database_connection_acquire_timeout_seconds <= 0.0 {

@@ -347,7 +347,7 @@ pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Op
         let phf = argon2::Argon2::default();
         let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
         let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
-            .map_err(|e| anyhow!("Unable to hash password: {}", e))?;
+            .map_err(|e| anyhow!("Unable to hash password: {e}"))?;
         Ok(password_hash.to_string())
     })
     .await?
