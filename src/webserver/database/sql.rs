@@ -1090,8 +1090,7 @@ mod test {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
         let db_info = create_test_db_info(SupportedDatabase::Postgres);
-        let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, db_info);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info);
         // $a -> $1
         // $x -> $2
         // sqlpage.cookie(...) -> $3
@@ -1116,8 +1115,7 @@ mod test {
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
         let db_info = create_test_db_info(SupportedDatabase::Sqlite);
-        let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, db_info);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info);
         assert_eq!(
             ast.to_string(),
             "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
@@ -1234,8 +1232,7 @@ mod test {
             let sql = "select sqlpage.fetch($x)";
             let mut ast = parse_stmt(sql, dialect);
             let db_info = create_test_db_info(SupportedDatabase::Postgres);
-            let parameters =
-                ParameterExtractor::extract_parameters(&mut ast, db_info);
+            let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info);
             assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
@@ -1350,17 +1347,17 @@ mod test {
             &MsSqlDialect {},
         ];
         for &dialect in dialects {
+            use std::any::Any;
             use SimpleSelectValue::{Dynamic, Static};
             use StmtParam::PostOrGet;
-            use std::any::Any;
 
-            let db_info = if dialect.type_id() == (&PostgreSqlDialect {}).type_id() {
+            let db_info = if dialect.type_id() == (PostgreSqlDialect {}).type_id() {
                 create_test_db_info(SupportedDatabase::Postgres)
-            } else if dialect.type_id() == (&SQLiteDialect {}).type_id() {
+            } else if dialect.type_id() == (SQLiteDialect {}).type_id() {
                 create_test_db_info(SupportedDatabase::Sqlite)
-            } else if dialect.type_id() == (&MySqlDialect {}).type_id() {
+            } else if dialect.type_id() == (MySqlDialect {}).type_id() {
                 create_test_db_info(SupportedDatabase::MySql)
-            } else if dialect.type_id() == (&MsSqlDialect {}).type_id() {
+            } else if dialect.type_id() == (MsSqlDialect {}).type_id() {
                 create_test_db_info(SupportedDatabase::Mssql)
             } else {
                 create_test_db_info(SupportedDatabase::Generic)
