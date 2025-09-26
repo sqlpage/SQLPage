@@ -16,8 +16,8 @@ RUN apt-get update && \
         dpkg --add-architecture arm64 && apt-get update && \
         apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross unixodbc-dev:arm64 && \
         cp /usr/aarch64-linux-gnu/lib/libgcc_s.so.1 .; \
-        cp /usr/aarch64-linux-gnu/lib/libodbc.so.2 .; \
-        cp /usr/aarch64-linux-gnu/lib/libltdl.so.7 .; \
+        cp /usr/lib/aarch64-linux-gnu/libodbc.so.2 .; \
+        cp /usr/lib/aarch64-linux-gnu/libltdl.so.7 .; \
     elif [ "$TARGETARCH" = "arm" ]; then \
         echo armv7-unknown-linux-gnueabihf > TARGET && \
         echo arm-linux-gnueabihf-gcc > LINKER && \
@@ -26,8 +26,8 @@ RUN apt-get update && \
         cargo install --force --locked bindgen-cli && \
         echo "-I/usr/lib/gcc-cross/arm-linux-gnueabihf/12/include -I/usr/arm-linux-gnueabihf/include" > BINDGEN_EXTRA_CLANG_ARGS; \
         cp /usr/arm-linux-gnueabihf/lib/libgcc_s.so.1 .; \
-        cp /usr/arm-linux-gnueabihf/lib/libodbc.so.2 .; \
-        cp /usr/arm-linux-gnueabihf/lib/libltdl.so.7 .; \
+        cp /usr/lib/arm-linux-gnueabihf/libodbc.so.2 .; \
+        cp /usr/lib/arm-linux-gnueabihf/libltdl.so.7 .; \
     else \
         echo "Unsupported cross compilation target: $TARGETARCH"; \
         exit 1; \
