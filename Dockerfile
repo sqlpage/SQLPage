@@ -3,35 +3,34 @@ WORKDIR /usr/src/sqlpage
 ARG TARGETARCH
 ARG BUILDARCH
 RUN apt-get update && \
+    mkdir -p /opt/sqlpage-libs && \
     if [ "$TARGETARCH" = "$BUILDARCH" ]; then \
         rustup target list --installed > TARGET && \
         echo gcc > LINKER && \
-        apt-get install -y gcc libgcc-s1 cmake unixodbc-dev && \
-        cp /lib/*/libgcc_s.so.1 .; \
-        cp /lib/*/libodbc.so.2 .; \
-        cp /lib/*/libltdl.so.7 .; \
+        apt-get install -y gcc libgcc-s1 cmake unixodbc-dev libodbc2 libltdl7 && \
+        LIBDIR="/lib/*"; \
+        USRLIBDIR="/usr/lib/*"; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
         echo aarch64-unknown-linux-gnu > TARGET && \
         echo aarch64-linux-gnu-gcc > LINKER && \
         dpkg --add-architecture arm64 && apt-get update && \
-        apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross unixodbc-dev:arm64 && \
-        cp /usr/aarch64-linux-gnu/lib/libgcc_s.so.1 .; \
-        cp /usr/lib/aarch64-linux-gnu/libodbc.so.2 .; \
-        cp /usr/lib/aarch64-linux-gnu/libltdl.so.7 .; \
+        apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross unixodbc-dev:arm64 libodbc2:arm64 libltdl7:arm64 && \
+        LIBDIR="/lib/aarch64-linux-gnu"; \
+        USRLIBDIR="/usr/lib/aarch64-linux-gnu"; \
     elif [ "$TARGETARCH" = "arm" ]; then \
         echo armv7-unknown-linux-gnueabihf > TARGET && \
         echo arm-linux-gnueabihf-gcc > LINKER && \
         dpkg --add-architecture armhf && apt-get update && \
-        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 unixodbc-dev:armhf && \
+        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 unixodbc-dev:armhf libodbc2:armhf libltdl7:armhf && \
         cargo install --force --locked bindgen-cli && \
         echo "-I/usr/lib/gcc-cross/arm-linux-gnueabihf/12/include -I/usr/arm-linux-gnueabihf/include" > BINDGEN_EXTRA_CLANG_ARGS; \
-        cp /usr/arm-linux-gnueabihf/lib/libgcc_s.so.1 .; \
-        cp /usr/lib/arm-linux-gnueabihf/libodbc.so.2 .; \
-        cp /usr/lib/arm-linux-gnueabihf/libltdl.so.7 .; \
+        LIBDIR="/lib/arm-linux-gnueabihf"; \
+        USRLIBDIR="/usr/lib/arm-linux-gnueabihf"; \
     else \
         echo "Unsupported cross compilation target: $TARGETARCH"; \
         exit 1; \
     fi && \
+    cp $LIBDIR/libgcc_s.so.1 $USRLIBDIR/libodbc.so.2 $USRLIBDIR/libltdl.so.7 /opt/sqlpage-libs/ && \
     rustup target add $(cat TARGET) && \
     cargo init .
 
@@ -62,7 +61,7 @@ ENV SQLPAGE_WEB_ROOT=/var/www
 ENV SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage
 WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
-COPY --from=builder /usr/src/sqlpage/*.so.* /lib/
+COPY --from=builder /opt/sqlpage-libs/* /lib/
 USER sqlpage
 COPY --from=builder --chown=sqlpage:sqlpage /usr/src/sqlpage/sqlpage/sqlpage.db sqlpage/sqlpage.db
 EXPOSE 8080
