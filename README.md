@@ -128,7 +128,7 @@ select
 - [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *YugabyteDB*, *CockroachDB* and *Aurora*.
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 - [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server), and all compatible databases and providers such as *Azure SQL* and *Amazon RDS*.
-- **ODBC-compatible databases** such as *Oracle*, *Snowflake*, *BigQuery*, *IBM DB2*, and many others through ODBC drivers.
+- **ODBC-compatible databases** such as *ClickHouse*, *MongoDB*, *DuckDB*, *Oracle*, *Snowflake*, *BigQuery*, *IBM DB2*, and many others through ODBC drivers.
 
 ## Get started
 
