@@ -211,7 +211,7 @@ impl HeaderContext {
             Some("none") => actix_web::cookie::SameSite::None,
             Some("lax") => actix_web::cookie::SameSite::Lax,
             None | Some("strict") => actix_web::cookie::SameSite::Strict, // strict by default
-            Some(other) => bail!("Cookie: invalid value for same_site: {}", other),
+            Some(other) => bail!("Cookie: invalid value for same_site: {other}"),
         });
         let secure = obj.get("secure");
         cookie.set_secure(secure != Some(&json!(false)) && secure != Some(&json!(0)));
@@ -392,7 +392,7 @@ async fn verify_password_async(
 ) -> Result<Result<(), password_hash::Error>, anyhow::Error> {
     tokio::task::spawn_blocking(move || {
         let hash = password_hash::PasswordHash::new(&password_hash)
-            .map_err(|e| anyhow::anyhow!("invalid value for the password_hash property: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("invalid value for the password_hash property: {e}"))?;
         let phfs = &[&argon2::Argon2::default() as &dyn password_hash::PasswordVerifier];
         Ok(hash.verify_password(phfs, password))
     })
@@ -735,7 +735,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         data: &JsonValue,
     ) -> anyhow::Result<()> {
         if Self::is_shell_component(component_name) {
-            bail!("There cannot be more than a single shell per page. You are trying to open the {} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.", component_name);
+            bail!("There cannot be more than a single shell per page. You are trying to open the {component_name} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.");
         }
 
         if component_name == "log" {

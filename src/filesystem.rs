@@ -160,8 +160,9 @@ impl FileSystem {
                     }
                 } else {
                     anyhow::bail!(
-                    "Unsupported path: {path:?}. Path component '{component:?}' is not allowed."
-                );
+                        "Unsupported path: {}. Path component '{component:?}' is not allowed.",
+                        path.display()
+                    );
                 }
             }
         }

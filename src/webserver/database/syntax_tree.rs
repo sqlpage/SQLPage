@@ -176,7 +176,7 @@ pub(super) async fn extract_req_param<'a>(
                 get_val.map(SingleOrVec::as_json_str)
             }
         }
-        StmtParam::Error(x) => anyhow::bail!("{}", x),
+        StmtParam::Error(x) => anyhow::bail!("{x}"),
         StmtParam::Literal(x) => Some(Cow::Owned(x.clone())),
         StmtParam::Null => None,
         StmtParam::Concat(args) => concat_params(&args[..], request, db_connection).await?,
