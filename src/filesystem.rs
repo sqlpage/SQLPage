@@ -340,14 +340,14 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use sqlx::Executor;
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
-    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.database_type);
+    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type);
     state
         .db
         .connection
         .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_str())
         .await?;
 
-    let dbms = state.db.database_type;
+    let dbms = state.db.info.kind;
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
         make_placeholder(dbms, 1),

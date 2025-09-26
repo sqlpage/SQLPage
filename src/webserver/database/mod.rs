@@ -57,11 +57,11 @@ pub struct Database {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct DbInfo {
+pub struct DbInfo {
     pub dbms_name: String,
     /// The actual database we are connected to. Can be "Generic" when using an unknown ODBC driver
     pub database_type: SupportedDatabase,
-    /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use database_type to know what database we are actually using.
+    /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
     pub kind: AnyKind,
 }
 
