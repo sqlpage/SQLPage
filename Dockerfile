@@ -21,9 +21,10 @@ RUN apt-get update && \
         echo armv7-unknown-linux-gnueabihf > TARGET && \
         echo arm-linux-gnueabihf-gcc > LINKER && \
         dpkg --add-architecture armhf && apt-get update && \
-        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 unixodbc-dev:armhf libodbc2:armhf libltdl7:armhf && \
+        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 clang unixodbc-dev:armhf libodbc2:armhf libltdl7:armhf && \
         cargo install --force --locked bindgen-cli && \
-        echo "-I/usr/lib/gcc-cross/arm-linux-gnueabihf/12/include -I/usr/arm-linux-gnueabihf/include" > BINDGEN_EXTRA_CLANG_ARGS; \
+        SYSROOT=$(arm-linux-gnueabihf-gcc -print-sysroot); \
+        echo "--sysroot=$SYSROOT -I$SYSROOT/usr/include -I$SYSROOT/usr/include/arm-linux-gnueabihf" > BINDGEN_EXTRA_CLANG_ARGS; \
         LIBDIR="/lib/arm-linux-gnueabihf"; \
         USRLIBDIR="/usr/lib/arm-linux-gnueabihf"; \
     else \
