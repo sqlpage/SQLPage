@@ -109,8 +109,8 @@ impl HeaderContext {
     }
     pub async fn handle_row(self, data: JsonValue) -> anyhow::Result<PageContext> {
         log::debug!("Handling header row: {data}");
-        let comp_opt =
-            get_object_str(&data, "component").and_then(|s| HeaderComponent::try_from(s).ok());
+        let comp_opt = get_object_str_lower_or_upper(&data, "component", "COMPONENT")
+            .and_then(|s| HeaderComponent::try_from(s).ok());
         match comp_opt {
             Some(HeaderComponent::StatusCode) => self.status_code(&data).map(PageContext::Header),
             Some(HeaderComponent::HttpHeader) => {
@@ -141,9 +141,7 @@ impl HeaderContext {
     }
 
     fn status_code(mut self, data: &JsonValue) -> anyhow::Result<Self> {
-        let status_code = data
-            .as_object()
-            .and_then(|m| m.get("status"))
+        let status_code = get_object_value_lower_or_upper(data, "status", "STATUS")
             .with_context(|| "status_code component requires a status")?
             .as_u64()
             .with_context(|| "status must be a number")?;
@@ -157,7 +155,7 @@ impl HeaderContext {
     fn add_http_header(mut self, data: &JsonValue) -> anyhow::Result<Self> {
         let obj = data.as_object().with_context(|| "expected object")?;
         for (name, value) in obj {
-            if name == "component" {
+            if name.eq_ignore_ascii_case("component") {
                 continue;
             }
             let value_str = value
@@ -173,25 +171,23 @@ impl HeaderContext {
     }
 
     fn add_cookie(mut self, data: &JsonValue) -> anyhow::Result<Self> {
-        let obj = data.as_object().with_context(|| "expected object")?;
-        let name = obj
-            .get("name")
-            .and_then(JsonValue::as_str)
+        data.as_object().with_context(|| "expected object")?;
+        let name = get_object_str_lower_or_upper(data, "name", "NAME")
             .with_context(|| "cookie name must be a string")?;
         let mut cookie = actix_web::cookie::Cookie::named(name);
 
-        let path = obj.get("path").and_then(JsonValue::as_str);
+        let path = get_object_str_lower_or_upper(data, "path", "PATH");
         if let Some(path) = path {
             cookie.set_path(path);
         } else {
             cookie.set_path("/");
         }
-        let domain = obj.get("domain").and_then(JsonValue::as_str);
+        let domain = get_object_str_lower_or_upper(data, "domain", "DOMAIN");
         if let Some(domain) = domain {
             cookie.set_domain(domain);
         }
 
-        let remove = obj.get("remove");
+        let remove = get_object_value_lower_or_upper(data, "remove", "REMOVE");
         if remove == Some(&json!(true)) || remove == Some(&json!(1)) {
             cookie.make_removal();
             self.response.cookie(cookie);
@@ -199,29 +195,27 @@ impl HeaderContext {
             return Ok(self);
         }
 
-        let value = obj
-            .get("value")
-            .and_then(JsonValue::as_str)
+        let value = get_object_str_lower_or_upper(data, "value", "VALUE")
             .with_context(|| "The 'value' property of the cookie component is required (unless 'remove' is set) and must be a string.")?;
         cookie.set_value(value);
-        let http_only = obj.get("http_only");
+        let http_only = get_object_value_lower_or_upper(data, "http_only", "HTTP_ONLY");
         cookie.set_http_only(http_only != Some(&json!(false)) && http_only != Some(&json!(0)));
-        let same_site = obj.get("same_site").and_then(Value::as_str);
+        let same_site = get_object_str_lower_or_upper(data, "same_site", "SAME_SITE");
         cookie.set_same_site(match same_site {
             Some("none") => actix_web::cookie::SameSite::None,
             Some("lax") => actix_web::cookie::SameSite::Lax,
             None | Some("strict") => actix_web::cookie::SameSite::Strict, // strict by default
             Some(other) => bail!("Cookie: invalid value for same_site: {other}"),
         });
-        let secure = obj.get("secure");
+        let secure = get_object_value_lower_or_upper(data, "secure", "SECURE");
         cookie.set_secure(secure != Some(&json!(false)) && secure != Some(&json!(0)));
-        if let Some(max_age_json) = obj.get("max_age") {
+        if let Some(max_age_json) = get_object_value_lower_or_upper(data, "max_age", "MAX_AGE") {
             let seconds = max_age_json
                 .as_i64()
                 .ok_or_else(|| anyhow::anyhow!("max_age must be a number, not {max_age_json}"))?;
             cookie.set_max_age(Duration::seconds(seconds));
         }
-        let expires = obj.get("expires");
+        let expires = get_object_value_lower_or_upper(data, "expires", "EXPIRES");
         if let Some(expires) = expires {
             cookie.set_expires(actix_web::cookie::Expiration::DateTime(match expires {
                 JsonValue::String(s) => OffsetDateTime::parse(s, &Rfc3339)?,
@@ -240,7 +234,7 @@ impl HeaderContext {
     fn redirect(mut self, data: &JsonValue) -> anyhow::Result<HttpResponse> {
         self.response.status(StatusCode::FOUND);
         self.has_status = true;
-        let link = get_object_str(data, "link")
+        let link = get_object_str_lower_or_upper(data, "link", "LINK")
             .with_context(|| "The redirect component requires a 'link' property")?;
         self.response.insert_header((header::LOCATION, link));
         let response = self.response.body(());
@@ -251,7 +245,7 @@ impl HeaderContext {
     fn json(mut self, data: &JsonValue) -> anyhow::Result<PageContext> {
         self.response
             .insert_header((header::CONTENT_TYPE, "application/json"));
-        if let Some(contents) = data.get("contents") {
+        if let Some(contents) = get_object_value_lower_or_upper(data, "contents", "CONTENTS") {
             let json_response = if let Some(s) = contents.as_str() {
                 s.as_bytes().to_owned()
             } else {
@@ -259,7 +253,7 @@ impl HeaderContext {
             };
             Ok(PageContext::Close(self.response.body(json_response)))
         } else {
-            let body_type = get_object_str(data, "type");
+            let body_type = get_object_str_lower_or_upper(data, "type", "TYPE");
             let json_renderer = match body_type {
                 None | Some("array") => JsonBodyRenderer::new_array(self.writer),
                 Some("jsonlines") => JsonBodyRenderer::new_jsonlines(self.writer),
@@ -284,8 +278,8 @@ impl HeaderContext {
     async fn csv(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         self.response
             .insert_header((header::CONTENT_TYPE, "text/csv; charset=utf-8"));
-        if let Some(filename) =
-            get_object_str(options, "filename").or_else(|| get_object_str(options, "title"))
+        if let Some(filename) = get_object_str_lower_or_upper(options, "filename", "FILENAME")
+            .or_else(|| get_object_str_lower_or_upper(options, "title", "TITLE"))
         {
             let extension = if filename.contains('.') { "" } else { ".csv" };
             self.response.insert_header((
@@ -303,8 +297,8 @@ impl HeaderContext {
     }
 
     async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext> {
-        let password_hash = take_object_str(&mut data, "password_hash");
-        let password = take_object_str(&mut data, "password");
+        let password_hash = take_object_str_lower_or_upper(&mut data, "password_hash", "PASSWORD_HASH");
+        let password = take_object_str_lower_or_upper(&mut data, "password", "PASSWORD");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
             log::debug!("Authentication with password_hash = {password_hash:?}");
             match verify_password_async(password_hash, password).await? {
@@ -314,7 +308,7 @@ impl HeaderContext {
         }
         log::debug!("Authentication failed");
         // The authentication failed
-        let http_response: HttpResponse = if let Some(link) = get_object_str(&data, "link") {
+        let http_response: HttpResponse = if let Some(link) = get_object_str_lower_or_upper(&data, "link", "LINK") {
             self.response
                 .status(StatusCode::FOUND)
                 .insert_header((header::LOCATION, link))
@@ -332,13 +326,13 @@ impl HeaderContext {
     }
 
     fn download(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
-        if let Some(filename) = get_object_str(options, "filename") {
+        if let Some(filename) = get_object_str_lower_or_upper(options, "filename", "FILENAME") {
             self.response.insert_header((
                 header::CONTENT_DISPOSITION,
                 format!("attachment; filename=\"{filename}\""),
             ));
         }
-        let data_url = get_object_str(options, "data_url")
+        let data_url = get_object_str_lower_or_upper(options, "data_url", "DATA_URL")
             .with_context(|| "The download component requires a 'data_url' property")?;
         let rest = data_url
             .strip_prefix("data:")
@@ -410,6 +404,39 @@ fn take_object_str(json: &mut JsonValue, key: &str) -> Option<String> {
         JsonValue::String(s) => Some(s),
         _ => None,
     }
+}
+
+#[inline]
+fn get_object_value_lower_or_upper<'a>(json: &'a JsonValue, lower: &str, upper: &str) -> Option<&'a JsonValue> {
+    json.as_object()
+        .and_then(|obj| obj.get(lower).or_else(|| obj.get(upper)))
+}
+
+#[inline]
+fn get_object_str_lower_or_upper<'a>(json: &'a JsonValue, lower: &str, upper: &str) -> Option<&'a str> {
+    get_object_value_lower_or_upper(json, lower, upper).and_then(JsonValue::as_str)
+}
+
+#[inline]
+fn take_object_str_lower_or_upper(json: &mut JsonValue, lower: &str, upper: &str) -> Option<String> {
+    if let Some(v) = json.get_mut(lower) {
+        match v.take() {
+            JsonValue::String(s) => return Some(s),
+            other => {
+                // put it back if not a string
+                *v = other;
+            }
+        }
+    }
+    if let Some(v) = json.get_mut(upper) {
+        match v.take() {
+            JsonValue::String(s) => return Some(s),
+            other => {
+                *v = other;
+            }
+        }
+    }
+    None
 }
 
 /**
@@ -553,26 +580,25 @@ impl CsvBodyRenderer {
         options: &JsonValue,
     ) -> anyhow::Result<CsvBodyRenderer> {
         let mut builder = csv_async::AsyncWriterBuilder::new();
-        if let Some(separator) = get_object_str(options, "separator") {
+        if let Some(separator) = get_object_str_lower_or_upper(options, "separator", "SEPARATOR") {
             let &[separator_byte] = separator.as_bytes() else {
                 bail!("Invalid csv separator: {separator:?}. It must be a single byte.");
             };
             builder.delimiter(separator_byte);
         }
-        if let Some(quote) = get_object_str(options, "quote") {
+        if let Some(quote) = get_object_str_lower_or_upper(options, "quote", "QUOTE") {
             let &[quote_byte] = quote.as_bytes() else {
                 bail!("Invalid csv quote: {quote:?}. It must be a single byte.");
             };
             builder.quote(quote_byte);
         }
-        if let Some(escape) = get_object_str(options, "escape") {
+        if let Some(escape) = get_object_str_lower_or_upper(options, "escape", "ESCAPE") {
             let &[escape_byte] = escape.as_bytes() else {
                 bail!("Invalid csv escape: {escape:?}. It must be a single byte.");
             };
             builder.escape(escape_byte);
         }
-        if options
-            .get("bom")
+        if get_object_value_lower_or_upper(options, "bom", "BOM")
             .and_then(JsonValue::as_bool)
             .unwrap_or(false)
         {
@@ -671,7 +697,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
 
         if !initial_rows
             .first()
-            .and_then(|c| get_object_str(c, "component"))
+            .and_then(|c| get_object_str_lower_or_upper(c, "component", "COMPONENT"))
             .is_some_and(Self::is_shell_component)
         {
             let default_shell = if request_context.is_embedded {
@@ -690,8 +716,8 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         let shell_row = rows_iter
             .next()
             .expect("shell row should exist at this point");
-        let mut shell_component =
-            get_object_str(&shell_row, "component").expect("shell should exist");
+        let mut shell_component = get_object_str_lower_or_upper(&shell_row, "component", "COMPONENT")
+            .expect("shell should exist");
         if request_context.is_embedded && shell_component != FRAGMENT_SHELL_COMPONENT {
             log::warn!(
                 "Embedded pages cannot use a shell component! Ignoring the '{shell_component}' component and its properties: {shell_row}"
@@ -759,7 +785,7 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
     }
 
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
-        let new_component = get_object_str(data, "component");
+        let new_component = get_object_str_lower_or_upper(data, "component", "COMPONENT");
         let current_component = self
             .current_component
             .as_ref()
@@ -914,7 +940,7 @@ fn handle_log_component(
     current_statement: Option<usize>,
     data: &JsonValue,
 ) -> anyhow::Result<()> {
-    let level_name = get_object_str(data, "level").unwrap_or("info");
+    let level_name = get_object_str_lower_or_upper(data, "level", "LEVEL").unwrap_or("info");
     let log_level = log::Level::from_str(level_name).with_context(|| "Invalid log level value")?;
 
     let mut target = format!("sqlpage::log from \"{}\"", source_path.display());
@@ -922,7 +948,7 @@ fn handle_log_component(
         write!(&mut target, " statement {current_statement}")?;
     }
 
-    let message = get_object_str(data, "message").context("log: missing property 'message'")?;
+    let message = get_object_str_lower_or_upper(data, "message", "MESSAGE").context("log: missing property 'message'")?;
     log::log!(target: &target, log_level, "{message}");
     Ok(())
 }

@@ -77,9 +77,17 @@ fn expand_dynamic_stack(stack: &mut Vec<anyhow::Result<JsonValue>>) {
 /// if row.component == 'dynamic', return Some(row.properties), otherwise return None
 #[inline]
 fn extract_dynamic_properties(data: &mut JsonValue) -> anyhow::Result<Option<JsonValue>> {
-    let component = data.get("component").and_then(|v| v.as_str());
+    // Support full uppercase/lowercase property names without allocations
+    let component = data
+        .get("component")
+        .or_else(|| data.get("COMPONENT"))
+        .and_then(|v| v.as_str());
     if component == Some("dynamic") {
-        let Some(properties) = data.get_mut("properties").map(JsonValue::take) else {
+        let Some(properties) = data
+            .get_mut("properties")
+            .or_else(|| data.get_mut("PROPERTIES"))
+            .map(JsonValue::take)
+        else {
             anyhow::bail!(
                 "The dynamic component requires a property named \"properties\". \
                 Instead, it received the following: {data}"
