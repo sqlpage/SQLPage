@@ -127,7 +127,7 @@ mod tests {
 
     fn setup_logging() {
         let _ = env_logger::builder()
-            .filter_level(log::LevelFilter::Trace)
+            .parse_default_env()
             .is_test(true)
             .try_init();
     }
