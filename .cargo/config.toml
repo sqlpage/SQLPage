@@ -5,3 +5,6 @@
 # set by the user, and this is a good thing. If the user already set some
 # LIBSQLITE3_FLAGS, he probably knows what he is doing.
 LIBSQLITE3_FLAGS = "-DSQLITE_ENABLE_MATH_FUNCTIONS"
+
+[build]
+rustflags = ["-C", "link-arg=-Wl,-rpath=$ORIGIN/lib"]

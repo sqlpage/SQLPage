@@ -105,7 +105,7 @@ DATABASE_URL="Driver={Oracle ODBC Driver};Server=localhost:1521/XE;UID=hr;PWD=pa
 DATABASE_URL="Driver={SnowflakeDSIIDriver};Server=account.snowflakecomputing.com;Database=mydb;UID=user;PWD=password"
 ```
 
-ODBC drivers must be installed and configured on your system. On Linux, you typically need `unixodbc` and the appropriate database-specific ODBC driver.
+ODBC drivers must be installed and configured on your system. On Linux, the `unixODBC` driver manager is statically linked into the SQLPage binary, so you usually only need to install and configure the database-specific ODBC driver for your target database (for example Snowflake, Oracle, DuckDB...).
 
 If the `database_password` configuration parameter is set, it will override any password specified in the `database_url`.
 It does not need to be percent-encoded.

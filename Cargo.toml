@@ -49,6 +49,7 @@ sqlparser = { version = "0.59.0", default-features = false, features = [
     "std",
     "visitor",
 ] }
+odbc-sys = { version = "0.27", features = ["static"] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
