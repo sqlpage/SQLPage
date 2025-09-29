@@ -68,9 +68,9 @@ ENV SQLPAGE_WEB_ROOT=/var/www
 ENV SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage
 WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
-# Provide runtime helper libs next to the binary for rpath=$ORIGIN/lib
-RUN mkdir -p /usr/local/bin/lib
-COPY --from=builder /opt/sqlpage-libs/* /usr/local/bin/lib/
+# Provide runtime helper libs next to the binary for rpath=$ORIGIN/sqlpage
+RUN mkdir -p /usr/local/bin/sqlpage
+COPY --from=builder /opt/sqlpage-libs/* /usr/local/bin/sqlpage/
 USER sqlpage
 COPY --from=builder --chown=sqlpage:sqlpage /usr/src/sqlpage/sqlpage/sqlpage.db sqlpage/sqlpage.db
 EXPOSE 8080
