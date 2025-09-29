@@ -11,7 +11,7 @@ use futures_util::future::BoxFuture;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
-    sqlite::{Function, SqliteFunctionCtx},
+    sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
     ConnectOptions, Connection, Executor,
 };
 
@@ -206,15 +206,22 @@ fn add_on_connection_handler(
 
 fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfig) {
     if let Some(sqlite_options) = options.as_sqlite_mut() {
-        for extension_name in &config.sqlite_extensions {
-            log::info!("Loading SQLite extension: {extension_name}");
-            *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
-        }
-        *sqlite_options = std::mem::take(sqlite_options)
-            .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()))
-            .function(make_sqlite_fun("upper", str::to_uppercase))
-            .function(make_sqlite_fun("lower", str::to_lowercase));
+        set_custom_connect_options_sqlite(sqlite_options, config);
     }
+}
+
+fn set_custom_connect_options_sqlite(
+    sqlite_options: &mut SqliteConnectOptions,
+    config: &AppConfig,
+) {
+    for extension_name in &config.sqlite_extensions {
+        log::info!("Loading SQLite extension: {extension_name}");
+        *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
+    }
+    *sqlite_options = std::mem::take(sqlite_options)
+        .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()))
+        .function(make_sqlite_fun("upper", str::to_uppercase))
+        .function(make_sqlite_fun("lower", str::to_lowercase));
 }
 
 fn make_sqlite_fun(name: &str, f: fn(&str) -> String) -> Function {
