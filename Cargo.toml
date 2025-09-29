@@ -49,7 +49,6 @@ sqlparser = { version = "0.59.0", default-features = false, features = [
     "std",
     "visitor",
 ] }
-odbc-sys = { version = "0.27", features = ["static"] }
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
@@ -79,3 +78,10 @@ rustls = "0.23"
 actix-rt = "2.8"
 libflate = "2"
 futures-util = "0.3.21"
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+# Enable static linking of unixODBC only on Linux/Unix, not on Windows/macOS
+odbc-sys = { version = "0.27", features = ["static"] }
+
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+odbc-sys = { version = "0.27" }

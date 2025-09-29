@@ -7,4 +7,13 @@
 LIBSQLITE3_FLAGS = "-DSQLITE_ENABLE_MATH_FUNCTIONS"
 
 [build]
+rustflags = []
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-Wl,-rpath=$ORIGIN/sqlpage:$ORIGIN/lib"]
+
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-Wl,-rpath=$ORIGIN/sqlpage:$ORIGIN/lib"]
+
+[target.armv7-unknown-linux-gnueabihf]
 rustflags = ["-C", "link-arg=-Wl,-rpath=$ORIGIN/sqlpage:$ORIGIN/lib"]
