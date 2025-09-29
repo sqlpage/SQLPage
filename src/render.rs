@@ -54,7 +54,7 @@ use anyhow::{bail, format_err, Context as AnyhowContext};
 use awc::cookie::time::Duration;
 use handlebars::{BlockContext, JsonValue, RenderError, Renderable};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt::Write as _;

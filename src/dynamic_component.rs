@@ -83,11 +83,14 @@ fn extract_dynamic_properties(data: &mut JsonValue) -> anyhow::Result<Option<Jso
         .or_else(|| data.get("COMPONENT"))
         .and_then(|v| v.as_str());
     if component == Some("dynamic") {
-        let Some(properties) = data
-            .get_mut("properties")
-            .or_else(|| data.get_mut("PROPERTIES"))
-            .map(JsonValue::take)
-        else {
+        let properties_opt = if let Some(v) = data.get_mut("properties") {
+            Some(v.take())
+        } else if let Some(v) = data.get_mut("PROPERTIES") {
+            Some(v.take())
+        } else {
+            None
+        };
+        let Some(properties) = properties_opt else {
             anyhow::bail!(
                 "The dynamic component requires a property named \"properties\". \
                 Instead, it received the following: {data}"
