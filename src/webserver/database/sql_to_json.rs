@@ -149,24 +149,24 @@ mod tests {
         let db_url = test_database_url();
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
         let row = sqlx::query(
-            "SELECT \
-            123.456 as one_value, \
-            1 as two_values, \
-            2 as two_values, \
-            'x' as three_values, \
-            'y' as three_values, \
-            'z' as three_values \
-        ",
+            r#"SELECT
+                123.456 as "ONE_VALUE",
+                1 as "TWO_VALUES",
+                2 as "TWO_VALUES",
+                'x' as "THREE_VALUES",
+                'y' as "THREE_VALUES",
+                'z' as "THREE_VALUES"
+        "#,
         )
         .fetch_one(&mut c)
         .await?;
-        assert_eq!(
-            row_to_json(&row),
-            serde_json::json!({
-                "one_value": 123.456,
-                "two_values": [1,2],
-                "three_values": ["x","y","z"],
-            })
+        expect_json_object_equal(
+            &row_to_json(&row),
+            &serde_json::json!({
+                "ONE_VALUE": 123.456,
+                "TWO_VALUES": [1,2],
+                "THREE_VALUES": ["x","y","z"],
+            }),
         );
         Ok(())
     }
@@ -466,7 +466,7 @@ mod tests {
     fn expect_json_object_equal(actual: &Value, expected: &Value) {
         use std::fmt::Write;
 
-        if actual == expected {
+        if json_values_equal(actual, expected) {
             return;
         }
         let actual = actual.as_object().unwrap();
@@ -480,7 +480,7 @@ mod tests {
         for key in all_keys {
             let actual_value = actual.get(key).unwrap_or(&Value::Null);
             let expected_value = expected.get(key).unwrap_or(&Value::Null);
-            if actual_value == expected_value {
+            if json_values_equal(actual_value, expected_value) {
                 continue;
             }
             writeln!(
@@ -493,5 +493,34 @@ mod tests {
             actual, expected,
             "JSON objects are not equal:\n\n{comparison_string}"
         );
+    }
+
+    /// Compare JSON values, treating integers and floats that are numerically equal as equal
+    fn json_values_equal(a: &Value, b: &Value) -> bool {
+        use Value::*;
+
+        match (a, b) {
+            (Null, Null) => true,
+            (Bool(a), Bool(b)) => a == b,
+            (Number(a), Number(b)) => {
+                // Treat integers and floats as equal if they represent the same numerical value
+                a.as_f64() == b.as_f64()
+            }
+            (String(a), String(b)) => a == b,
+            (Array(a), Array(b)) => {
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| json_values_equal(a, b))
+            }
+            (Object(a), Object(b)) => {
+                if a.len() != b.len() {
+                    return false;
+                }
+                a.iter().all(|(key, value)| {
+                    b.get(key).map_or(false, |expected_value| {
+                        json_values_equal(value, expected_value)
+                    })
+                })
+            }
+            _ => false,
+        }
     }
 }

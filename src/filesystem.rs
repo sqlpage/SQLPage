@@ -342,13 +342,12 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
     let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    state
-        .db
-        .connection
-        .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_str())
-        .await?;
+    let db = &state.db;
+    let conn = &db.connection;
+    conn.execute("DROP TABLE IF EXISTS sqlpage_files").await?;
+    conn.execute(create_table_sql).await?;
 
-    let dbms = state.db.info.kind;
+    let dbms = db.info.kind;
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
         make_placeholder(dbms, 1),
@@ -357,10 +356,10 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     sqlx::query(&insert_sql)
         .bind("unit test file.txt")
         .bind("Héllö world! 😀".as_bytes())
-        .execute(&state.db.connection)
+        .execute(conn)
         .await?;
 
-    let fs = FileSystem::init("/", &state.db).await;
+    let fs = FileSystem::init("/", &db).await;
     let actual = fs
         .read_to_string(&state, "unit test file.txt".as_ref(), false)
         .await?;
