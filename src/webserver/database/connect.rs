@@ -239,9 +239,13 @@ fn make_sqlite_fun(name: &str, f: fn(&str) -> String) -> Function {
     })
 }
 
-fn set_custom_connect_options_odbc(odbc_options: &mut OdbcConnectOptions, _config: &AppConfig) {
+fn set_custom_connect_options_odbc(odbc_options: &mut OdbcConnectOptions, config: &AppConfig) {
     // Allow fetching very large text fields when using ODBC by removing the max column size limit
-    *odbc_options = std::mem::take(odbc_options).max_column_size(None);
+    let batch_size = config.max_pending_rows.clamp(1, 1024);
+    odbc_options.batch_size(batch_size);
+    log::trace!("ODBC batch size set to {batch_size}");
+    // Disables ODBC batching, but avoids truncation of large text fields
+    odbc_options.max_column_size(None);
 }
 
 fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
