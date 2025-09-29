@@ -359,7 +359,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         .execute(conn)
         .await?;
 
-    let fs = FileSystem::init("/", &db).await;
+    let fs = FileSystem::init("/", db).await;
     let actual = fs
         .read_to_string(&state, "unit test file.txt".as_ref(), false)
         .await?;

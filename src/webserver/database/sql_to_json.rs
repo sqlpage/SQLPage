@@ -515,9 +515,8 @@ mod tests {
                     return false;
                 }
                 a.iter().all(|(key, value)| {
-                    b.get(key).map_or(false, |expected_value| {
-                        json_values_equal(value, expected_value)
-                    })
+                    b.get(key)
+                        .is_some_and(|expected_value| json_values_equal(value, expected_value))
                 })
             }
             _ => false,
