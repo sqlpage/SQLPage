@@ -297,7 +297,8 @@ impl HeaderContext {
     }
 
     async fn authentication(mut self, mut data: JsonValue) -> anyhow::Result<PageContext> {
-        let password_hash = take_object_str_lower_or_upper(&mut data, "password_hash", "PASSWORD_HASH");
+        let password_hash =
+            take_object_str_lower_or_upper(&mut data, "password_hash", "PASSWORD_HASH");
         let password = take_object_str_lower_or_upper(&mut data, "password", "PASSWORD");
         if let (Some(password), Some(password_hash)) = (password, password_hash) {
             log::debug!("Authentication with password_hash = {password_hash:?}");
@@ -308,19 +309,20 @@ impl HeaderContext {
         }
         log::debug!("Authentication failed");
         // The authentication failed
-        let http_response: HttpResponse = if let Some(link) = get_object_str_lower_or_upper(&data, "link", "LINK") {
-            self.response
-                .status(StatusCode::FOUND)
-                .insert_header((header::LOCATION, link))
-                .body(
-                    "Sorry, but you are not authorized to access this page. \
+        let http_response: HttpResponse =
+            if let Some(link) = get_object_str_lower_or_upper(&data, "link", "LINK") {
+                self.response
+                    .status(StatusCode::FOUND)
+                    .insert_header((header::LOCATION, link))
+                    .body(
+                        "Sorry, but you are not authorized to access this page. \
                     Redirecting to the login page...",
-                )
-        } else {
-            anyhow::bail!(ErrorWithStatus {
-                status: StatusCode::UNAUTHORIZED
-            })
-        };
+                    )
+            } else {
+                anyhow::bail!(ErrorWithStatus {
+                    status: StatusCode::UNAUTHORIZED
+                })
+            };
         self.has_status = true;
         Ok(PageContext::Close(http_response))
     }
@@ -407,18 +409,30 @@ fn take_object_str(json: &mut JsonValue, key: &str) -> Option<String> {
 }
 
 #[inline]
-fn get_object_value_lower_or_upper<'a>(json: &'a JsonValue, lower: &str, upper: &str) -> Option<&'a JsonValue> {
+fn get_object_value_lower_or_upper<'a>(
+    json: &'a JsonValue,
+    lower: &str,
+    upper: &str,
+) -> Option<&'a JsonValue> {
     json.as_object()
         .and_then(|obj| obj.get(lower).or_else(|| obj.get(upper)))
 }
 
 #[inline]
-fn get_object_str_lower_or_upper<'a>(json: &'a JsonValue, lower: &str, upper: &str) -> Option<&'a str> {
+fn get_object_str_lower_or_upper<'a>(
+    json: &'a JsonValue,
+    lower: &str,
+    upper: &str,
+) -> Option<&'a str> {
     get_object_value_lower_or_upper(json, lower, upper).and_then(JsonValue::as_str)
 }
 
 #[inline]
-fn take_object_str_lower_or_upper(json: &mut JsonValue, lower: &str, upper: &str) -> Option<String> {
+fn take_object_str_lower_or_upper(
+    json: &mut JsonValue,
+    lower: &str,
+    upper: &str,
+) -> Option<String> {
     if let Some(v) = json.get_mut(lower) {
         match v.take() {
             JsonValue::String(s) => return Some(s),
@@ -716,8 +730,9 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         let shell_row = rows_iter
             .next()
             .expect("shell row should exist at this point");
-        let mut shell_component = get_object_str_lower_or_upper(&shell_row, "component", "COMPONENT")
-            .expect("shell should exist");
+        let mut shell_component =
+            get_object_str_lower_or_upper(&shell_row, "component", "COMPONENT")
+                .expect("shell should exist");
         if request_context.is_embedded && shell_component != FRAGMENT_SHELL_COMPONENT {
             log::warn!(
                 "Embedded pages cannot use a shell component! Ignoring the '{shell_component}' component and its properties: {shell_row}"
@@ -948,7 +963,8 @@ fn handle_log_component(
         write!(&mut target, " statement {current_statement}")?;
     }
 
-    let message = get_object_str_lower_or_upper(data, "message", "MESSAGE").context("log: missing property 'message'")?;
+    let message = get_object_str_lower_or_upper(data, "message", "MESSAGE")
+        .context("log: missing property 'message'")?;
     log::log!(target: &target, log_level, "{message}");
     Ok(())
 }
