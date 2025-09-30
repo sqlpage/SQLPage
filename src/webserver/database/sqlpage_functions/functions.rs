@@ -757,14 +757,14 @@ async fn hmac<'a>(
     };
 
     let algorithm = algorithm.as_deref().unwrap_or("sha256");
-    
+
     // Parse algorithm and output format (e.g., "sha256" or "sha256-base64")
     let (hash_algo, output_format) = if let Some((algo, format)) = algorithm.split_once('-') {
         (algo, format)
     } else {
         (algorithm, "hex")
     };
-    
+
     let result = match hash_algo.to_lowercase().as_str() {
         "sha256" => {
             let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes())
@@ -787,15 +787,11 @@ async fn hmac<'a>(
 
     // Convert to requested output format
     let output = match output_format.to_lowercase().as_str() {
-        "hex" => {
-            result.into_iter().fold(String::new(), |mut acc, byte| {
-                write!(&mut acc, "{byte:02x}").unwrap();
-                acc
-            })
-        }
-        "base64" => {
-            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, result)
-        }
+        "hex" => result.into_iter().fold(String::new(), |mut acc, byte| {
+            write!(&mut acc, "{byte:02x}").unwrap();
+            acc
+        }),
+        "base64" => base64::Engine::encode(&base64::engine::general_purpose::STANDARD, result),
         _ => {
             anyhow::bail!(
                 "Unsupported output format: {output_format}. Supported formats: hex, base64"
