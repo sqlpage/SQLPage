@@ -32,6 +32,7 @@ super::function_definition_macro::sqlpage_functions! {
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
     headers((&RequestInfo));
+    hmac(data: Option<Cow<str>>, key: Option<Cow<str>>, algorithm: Option<Cow<str>>);
 
     user_info_token((&RequestInfo));
     link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
@@ -738,8 +739,117 @@ async fn headers(request: &RequestInfo) -> String {
     serde_json::to_string(&request.headers).unwrap_or_default()
 }
 
+/// Computes the HMAC (Hash-based Message Authentication Code) of the input data
+/// using the specified key and hashing algorithm.
+async fn hmac<'a>(
+    data: Option<Cow<'a, str>>,
+    key: Option<Cow<'a, str>>,
+    algorithm: Option<Cow<'a, str>>,
+) -> anyhow::Result<Option<String>> {
+    use hmac::{Hmac, Mac};
+    use sha2::{Sha256, Sha512};
+
+    let Some(data) = data else {
+        return Ok(None);
+    };
+    let Some(key) = key else {
+        return Ok(None);
+    };
+
+    let algorithm = algorithm.as_deref().unwrap_or("sha256");
+    let result = match algorithm.to_lowercase().as_str() {
+        "sha256" => {
+            let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes())
+                .map_err(|e| anyhow!("Invalid HMAC key: {e}"))?;
+            mac.update(data.as_bytes());
+            mac.finalize().into_bytes().to_vec()
+        }
+        "sha512" => {
+            let mut mac = Hmac::<Sha512>::new_from_slice(key.as_bytes())
+                .map_err(|e| anyhow!("Invalid HMAC key: {e}"))?;
+            mac.update(data.as_bytes());
+            mac.finalize().into_bytes().to_vec()
+        }
+        _ => {
+            anyhow::bail!(
+                "Unsupported HMAC algorithm: {algorithm}. Supported algorithms: sha256, sha512"
+            )
+        }
+    };
+
+    // Convert to hexadecimal string
+    let hex_result = result.into_iter().fold(String::new(), |mut acc, byte| {
+        write!(&mut acc, "{byte:02x}").unwrap();
+        acc
+    });
+
+    Ok(Some(hex_result))
+}
+
 async fn client_ip(request: &RequestInfo) -> Option<String> {
     Some(request.client_ip?.to_string())
+}
+
+#[tokio::test]
+async fn test_hmac_sha256() {
+    // Test vector from RFC 4231 (HMAC test vectors)
+    let result = hmac(
+        Some(Cow::Borrowed("The quick brown fox jumps over the lazy dog")),
+        Some(Cow::Borrowed("key")),
+        Some(Cow::Borrowed("sha256")),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    
+    // This is the expected HMAC-SHA256 output for the given input
+    assert_eq!(
+        result,
+        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+    );
+}
+
+#[tokio::test]
+async fn test_hmac_null_handling() {
+    // Test NULL data
+    let result = hmac(None, Some(Cow::Borrowed("key")), Some(Cow::Borrowed("sha256")))
+        .await
+        .unwrap();
+    assert!(result.is_none());
+
+    // Test NULL key
+    let result = hmac(
+        Some(Cow::Borrowed("data")),
+        None,
+        Some(Cow::Borrowed("sha256")),
+    )
+    .await
+    .unwrap();
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_hmac_default_algorithm() {
+    // Test that default algorithm is sha256
+    let result_default = hmac(
+        Some(Cow::Borrowed("test")),
+        Some(Cow::Borrowed("key")),
+        None,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    let result_explicit = hmac(
+        Some(Cow::Borrowed("test")),
+        Some(Cow::Borrowed("key")),
+        Some(Cow::Borrowed("sha256")),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(result_default, result_explicit);
 }
 
 /// Returns the ID token claims as a JSON object.
