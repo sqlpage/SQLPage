@@ -792,15 +792,19 @@ async fn client_ip(request: &RequestInfo) -> Option<String> {
 
 #[tokio::test]
 async fn test_hmac() {
+    // Test vector from RFC 4231 - HMAC-SHA256
     let result = hmac(
-        Some(Cow::Borrowed("test")),
+        Some(Cow::Borrowed("The quick brown fox jumps over the lazy dog")),
         Some(Cow::Borrowed("key")),
         Some(Cow::Borrowed("sha256")),
     )
     .await
     .unwrap()
     .unwrap();
-    assert_eq!(result.len(), 64); // SHA-256 produces 32 bytes = 64 hex chars
+    assert_eq!(
+        result,
+        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+    );
 }
 
 /// Returns the ID token claims as a JSON object.
