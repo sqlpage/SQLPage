@@ -757,7 +757,15 @@ async fn hmac<'a>(
     };
 
     let algorithm = algorithm.as_deref().unwrap_or("sha256");
-    let result = match algorithm.to_lowercase().as_str() {
+    
+    // Parse algorithm and output format (e.g., "sha256" or "sha256-base64")
+    let (hash_algo, output_format) = if let Some((algo, format)) = algorithm.split_once('-') {
+        (algo, format)
+    } else {
+        (algorithm, "hex")
+    };
+    
+    let result = match hash_algo.to_lowercase().as_str() {
         "sha256" => {
             let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes())
                 .map_err(|e| anyhow!("Invalid HMAC key: {e}"))?;
@@ -772,18 +780,30 @@ async fn hmac<'a>(
         }
         _ => {
             anyhow::bail!(
-                "Unsupported HMAC algorithm: {algorithm}. Supported algorithms: sha256, sha512"
+                "Unsupported HMAC algorithm: {hash_algo}. Supported algorithms: sha256, sha512"
             )
         }
     };
 
-    // Convert to hexadecimal string
-    let hex_result = result.into_iter().fold(String::new(), |mut acc, byte| {
-        write!(&mut acc, "{byte:02x}").unwrap();
-        acc
-    });
+    // Convert to requested output format
+    let output = match output_format.to_lowercase().as_str() {
+        "hex" => {
+            result.into_iter().fold(String::new(), |mut acc, byte| {
+                write!(&mut acc, "{byte:02x}").unwrap();
+                acc
+            })
+        }
+        "base64" => {
+            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, result)
+        }
+        _ => {
+            anyhow::bail!(
+                "Unsupported output format: {output_format}. Supported formats: hex, base64"
+            )
+        }
+    };
 
-    Ok(Some(hex_result))
+    Ok(Some(output))
 }
 
 async fn client_ip(request: &RequestInfo) -> Option<String> {

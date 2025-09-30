@@ -6,7 +6,7 @@
    - Generate tamper-proof tokens for API authentication
    - Secure download links and temporary access codes
    - Supports SHA-256 (default) and SHA-512 algorithms
-   - Returns hexadecimal string representation of HMAC
+   - Output formats: hexadecimal (default) or base64 (e.g., `sha256-base64`)
    - See the [function documentation](https://sql-page.com/functions.sql?function=hmac) for detailed examples
 
 ## v0.37.1
