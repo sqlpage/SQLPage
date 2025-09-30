@@ -216,7 +216,7 @@ impl DbFsQueries {
         match dbms {
             SupportedDatabase::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
             SupportedDatabase::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
-            SupportedDatabase::Snowflake => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            SupportedDatabase::Snowflake => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY, last_modified TIMESTAMP_TZ DEFAULT CONVERT_TIMEZONE('UTC', CURRENT_TIMESTAMP()));",
             _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
         }
     }
@@ -381,6 +381,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let was_modified = fs
         .modified_since(&state, "unit test file.txt".as_ref(), one_hour_ago, false)
         .await?;
+
     assert!(was_modified, "File should be modified since one hour ago");
 
     let was_modified = fs
