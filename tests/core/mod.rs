@@ -1,5 +1,8 @@
 use actix_web::{http::StatusCode, test};
-use sqlpage::{webserver, AppState};
+use sqlpage::{
+    webserver::{self, make_placeholder},
+    AppState,
+};
 use sqlx::Executor as _;
 
 use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
@@ -47,20 +50,20 @@ async fn test_routing_with_db_fs() {
     config.site_prefix = "/prefix/".to_string();
     let state = AppState::init(&config).await.unwrap();
 
+    let drop_sql = "DROP TABLE IF EXISTS sqlpage_files";
+    state.db.connection.execute(drop_sql).await.unwrap();
     let create_table_sql =
         sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    state
-        .db
-        .connection
-        .execute(format!("DROP TABLE IF EXISTS sqlpage_files; {create_table_sql}").as_ref())
+    state.db.connection.execute(create_table_sql).await.unwrap();
+    let insert_sql = format!(
+        "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', {})",
+        make_placeholder(state.db.info.kind, 1)
+    );
+    sqlx::query(&insert_sql)
+        .bind("select ''text'' as component, ''Hi from db !'' AS contents;".as_bytes())
+        .execute(&state.db.connection)
         .await
         .unwrap();
-
-    let insert_sql = match state.db.connection.any_kind() {
-        sqlx::any::AnyKind::Mssql => "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', CONVERT(VARBINARY(MAX), 'select ''text'' as component, ''Hi from db !'' AS contents;'))",
-        _ => "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', 'select ''text'' as component, ''Hi from db !'' AS contents;')"
-    };
-    state.db.connection.execute(insert_sql).await.unwrap();
 
     let state = AppState::init(&config).await.unwrap();
     let app_data = actix_web::web::Data::new(state);

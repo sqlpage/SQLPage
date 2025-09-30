@@ -43,7 +43,7 @@ async fn test_csv_body() -> actix_web::Result<()> {
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     assert_eq!(
         body_str,
-        "id;msg\n0;Hello World !\n1;\"Tu gères ';' et '\"\"' ?\"\n"
+        "ID;MSG\n0;Hello World !\n1;\"Tu gères ';' et '\"\"' ?\"\n"
     );
     Ok(())
 }
