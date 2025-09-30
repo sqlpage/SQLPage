@@ -45,6 +45,10 @@ impl FileSystem {
     ) -> anyhow::Result<bool> {
         let local_path = self.safe_local_path(app_state, path, priviledged)?;
         let local_result = file_modified_since_local(&local_path, since).await;
+        log::trace!(
+            "Local file {} modified since {since:?} ? {local_result:?}",
+            local_path.display()
+        );
         match (local_result, &self.db_fs_queries) {
             (Ok(modified), _) => Ok(modified),
             (Err(e), Some(db_fs)) if e.kind() == ErrorKind::NotFound => {
@@ -212,6 +216,7 @@ impl DbFsQueries {
         match dbms {
             SupportedDatabase::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
             SupportedDatabase::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            SupportedDatabase::Snowflake => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
         }
     }
@@ -278,16 +283,20 @@ impl DbFsQueries {
             self.was_modified.sql(),
             (since, path)
         );
-        query
+        let was_modified_i32 = query
             .fetch_optional(&app_state.db.connection)
             .await
-            .map(|modified| modified == Some((1,)))
             .with_context(|| {
                 format!(
                     "Unable to check when {} was last modified in the database",
                     path.display()
                 )
-            })
+            })?;
+        log::trace!(
+            "DB File {} was modified result: {was_modified_i32:?}",
+            path.display()
+        );
+        Ok(was_modified_i32 == Some((1,)))
     }
 
     async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
@@ -345,6 +354,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let db = &state.db;
     let conn = &db.connection;
     conn.execute("DROP TABLE IF EXISTS sqlpage_files").await?;
+    log::debug!("Creating table sqlpage_files: {create_table_sql}");
     conn.execute(create_table_sql).await?;
 
     let dbms = db.info.kind;
