@@ -1,2 +1,1 @@
-SELECT 'text' as component;
-SELECT 'HMAC SHA-512: ' || sqlpage.hmac('Hello, World!', 'secret-key', 'sha512') as contents;
+SELECT 'text' as component, 'It works ! HMAC SHA-512: ' || sqlpage.hmac('Hello, World!', 'secret-key', 'sha512') as contents;
