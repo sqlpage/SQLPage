@@ -665,9 +665,9 @@ dependencies = [
 
 [[package]]
 name = "aws-lc-sys"
-version = "0.32.1"
+version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ba2e2516bdf37af57fc6ff047855f54abad0066e5c4fdaaeb76dabb2e05bcf5"
+checksum = "a2b715a6010afb9e457ca2b7c9d2b9c344baa8baed7b38dc476034c171b32575"
 dependencies = [
  "bindgen",
  "cc",
@@ -1020,9 +1020,9 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.15.17"
+version = "0.15.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "680d3ac2fe066c43300ec831c978871e50113a708d58ab13d231bd92deca5adb"
+checksum = "180e549344080374f9b32ed41bf3b6b57885ff6a289367b3dbc10eea8acc1918"
 dependencies = [
  "async-trait",
  "convert_case 0.6.0",
@@ -3894,9 +3894,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.6"
+version = "0.103.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8572f3c2cb9934231157b45499fc41e1f58c589fdfb81a844ba873265e80f8eb"
+checksum = "e10b3f4191e8a80e6b43eebabfac91e5dcecebb27a71f04e820c47ec41d314bf"
 dependencies = [
  "aws-lc-rs",
  "ring",
@@ -4324,8 +4324,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.49-beta.5"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#09fbc4574fd475a0c2fa9fd1b626be06d8598cd0"
+version = "0.6.49-beta.6"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
 dependencies = [
  "ahash",
  "atoi",
@@ -4387,8 +4387,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.49-beta.5"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#09fbc4574fd475a0c2fa9fd1b626be06d8598cd0"
+version = "0.6.49-beta.6"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
 dependencies = [
  "dotenvy",
  "either",
@@ -4406,8 +4406,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.49-beta.5"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#09fbc4574fd475a0c2fa9fd1b626be06d8598cd0"
+version = "0.6.49-beta.6"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -4415,8 +4415,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt-oldapi"
-version = "0.6.49-beta.5"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#09fbc4574fd475a0c2fa9fd1b626be06d8598cd0"
+version = "0.6.49-beta.6"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
 dependencies = [
  "once_cell",
  "tokio",
