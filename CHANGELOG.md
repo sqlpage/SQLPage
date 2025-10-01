@@ -1,5 +1,14 @@
 # CHANGELOG.md
 
+## v0.38.0
+ - Added a new `sqlpage.hmac()` function for cryptographic HMAC (Hash-based Message Authentication Code) operations.
+   - Create and verify secure signatures for webhooks (Shopify, Stripe, GitHub, etc.)
+   - Generate tamper-proof tokens for API authentication
+   - Secure download links and temporary access codes
+   - Supports SHA-256 (default) and SHA-512 algorithms
+   - Output formats: hexadecimal (default) or base64 (e.g., `sha256-base64`)
+   - See the [function documentation](https://sql-page.com/functions.sql?function=hmac) for detailed examples
+
 ## v0.37.1
  - fixed decoding of UUID values
  - Fixed handling of NULL values in `sqlpage.link`. They were encoded as the string `'null'` instead of being omitted from the link's parameters.

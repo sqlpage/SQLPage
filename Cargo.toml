@@ -61,6 +61,8 @@ actix-web-httpauth = "0.8.0"
 rand = "0.9.0"
 actix-multipart = "0.7.2"
 base64 = "0.22"
+hmac = "0.12"
+sha2 = "0.10"
 rustls-acme = "0.14"
 dotenvy = "0.15.7"
 csv-async = { version = "1.2.6", features = ["tokio"] }
