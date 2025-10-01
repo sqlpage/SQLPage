@@ -52,7 +52,7 @@ impl ParsedSqlFile {
         Self {
             statements: vec![ParsedStatement::Error(
                 e.into()
-                    .context(format!("While parsing file {}", source_path.display())),
+                    .context(format!("Error parsing file {}", source_path.display())),
             )],
             source_path: source_path.to_path_buf(),
         }
