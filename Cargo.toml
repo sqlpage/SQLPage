@@ -28,6 +28,7 @@ sqlx = { package = "sqlx-oldapi", git = "https://github.com/sqlpage/sqlx-oldapi"
     "mssql",
     "odbc",
     "chrono",
+    "bigdecimal",
     "json",
     "uuid",
 ] }
@@ -52,6 +53,7 @@ sqlparser = { version = "0.59.0", default-features = false, features = [
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
+bigdecimal = "0.4.8"
 include_dir = "0.7.2"
 config = { version = "0.15.4", features = ["json"] }
 markdown = { version = "1.0.0-alpha.23", features = ["log"] }

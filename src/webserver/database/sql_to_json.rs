@@ -1,5 +1,6 @@
 use crate::utils::add_value_to_map;
 use crate::webserver::database::blob_to_data_url;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde_json::{self, Map, Value};
 use sqlx::any::{AnyRow, AnyTypeInfo, AnyTypeInfoKind};
@@ -61,8 +62,18 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     log::trace!("Decoding a value of type {type_name:?} (type info: {type_info:?})");
     let AnyTypeInfo(ref db_type) = *type_info;
     match type_name {
-        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" => {
-            decode_raw::<f64>(raw_value).into()
+        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" => decode_raw::<f64>(raw_value).into(),
+        "NUMERIC" | "DECIMAL" => {
+            let decimal = decode_raw::<BigDecimal>(raw_value);
+            if decimal.is_integer() {
+                if let Some(int) = decimal.to_i64() {
+                    return int.into();
+                }
+            }
+            if let Some(float) = decimal.to_f64() {
+                return float.into();
+            }
+            decimal.to_string().into()
         }
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
         | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
