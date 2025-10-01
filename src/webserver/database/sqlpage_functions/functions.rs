@@ -32,7 +32,7 @@ super::function_definition_macro::sqlpage_functions! {
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
     headers((&RequestInfo));
-    hmac(data: Option<Cow<str>>, key: Option<Cow<str>>, algorithm: Option<Cow<str>>);
+    hmac(data: Cow<str>, key: Cow<str>, algorithm: Option<Cow<str>>);
 
     user_info_token((&RequestInfo));
     link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
@@ -742,19 +742,12 @@ async fn headers(request: &RequestInfo) -> String {
 /// Computes the HMAC (Hash-based Message Authentication Code) of the input data
 /// using the specified key and hashing algorithm.
 async fn hmac<'a>(
-    data: Option<Cow<'a, str>>,
-    key: Option<Cow<'a, str>>,
+    data: Cow<'a, str>,
+    key: Cow<'a, str>,
     algorithm: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<String>> {
     use hmac::{Hmac, Mac};
     use sha2::{Sha256, Sha512};
-
-    let Some(data) = data else {
-        return Ok(None);
-    };
-    let Some(key) = key else {
-        return Ok(None);
-    };
 
     let algorithm = algorithm.as_deref().unwrap_or("sha256");
 
@@ -810,8 +803,8 @@ async fn client_ip(request: &RequestInfo) -> Option<String> {
 async fn test_hmac() {
     // Test vector from RFC 4231 - HMAC-SHA256
     let result = hmac(
-        Some(Cow::Borrowed("The quick brown fox jumps over the lazy dog")),
-        Some(Cow::Borrowed("key")),
+        Cow::Borrowed("The quick brown fox jumps over the lazy dog"),
+        Cow::Borrowed("key"),
         Some(Cow::Borrowed("sha256")),
     )
     .await

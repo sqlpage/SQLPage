@@ -1,23 +1,25 @@
 -- HMAC function documentation and examples
-
-INSERT INTO sqlpage_functions (
+INSERT INTO
+    sqlpage_functions (
         "name",
         "introduced_in_version",
         "icon",
         "description_md"
     )
-VALUES (
+VALUES
+    (
         'hmac',
         '0.38.0',
         'shield-lock',
-        'Creates a unique "signature" for your data using a secret key. This signature proves that the data hasn''t been tampered with and comes from someone who knows the secret.
-
-Think of it like a wax seal on a letter - only someone with the right seal (your secret key) can create it, and if someone changes the letter, the seal won''t match anymore.
+        'Creates a unique "signature" for some data using a secret key.
+This signature proves that the data hasn''t been tampered with and comes from someone who knows the secret.
 
 ### What is HMAC used for?
 
-**HMAC** (Hash-based Message Authentication Code) is commonly used to:
- - **Verify webhooks**: Check that notifications from services like Shopify, Stripe, or GitHub are genuine
+[**HMAC**](https://en.wikipedia.org/wiki/HMAC) (Hash-based Message Authentication Code) is commonly used to:
+ - **Verify webhooks**: Use HMAC to ensure only a given external service can call a given endpoint in your application.
+The service signs their request with a secret key, and you verify the signature before processing the data they sent you.
+Used for instance by [Stripe](https://docs.stripe.com/webhooks?verify=verify-manually), and [Shopify](https://shopify.dev/docs/apps/build/webhooks/subscribe/https#step-2-validate-the-origin-of-your-webhook-to-ensure-its-coming-from-shopify).
  - **Secure API requests**: Prove that an API request comes from an authorized source
  - **Generate secure tokens**: Create temporary access codes for downloads or password resets
  - **Protect data**: Ensure data hasn''t been modified during transmission
@@ -35,98 +37,98 @@ The `sqlpage.hmac` function takes three inputs:
 
 It returns a signature string. If someone changes even one letter in your data, the signature will be completely different.
 
-### Example 1: Verify Shopify Webhooks
+### Example: Verify a Webhooks signature
 
-When Shopify sends you a webhook (like when someone places an order), it includes a signature. Here''s how to verify it''s really from Shopify:
+When Shopify sends you a webhook (like when someone places an order), it includes a signature. Here''s how to verify it''s really from Shopify.
+This supposes you store the secret key in an [environment variable](https://en.wikipedia.org/wiki/Environment_variable) named `WEBHOOK_SECRET`.
 
 ```sql
--- Shopify includes the signature in the X-Shopify-Hmac-SHA256 header
--- and sends the webhook data in the request body
+SET body = sqlpage.request_body();
+SET secret = sqlpage.environment_variable(''WEBHOOK_SECRET'');
+SET expected_signature = sqlpage.hmac($body, $secret, ''sha256'');
+SET actual_signature =  sqlpage.header(''X-Webhook-Signature'');
 
--- First, verify the signature - redirect to error page if invalid
-SELECT ''redirect'' as component,
-  ''/error.sql?message='' || sqlpage.url_encode(''Invalid webhook signature'') as link
-WHERE sqlpage.hmac(
-        sqlpage.request_body(),
-        sqlpage.environment_variable(''SHOPIFY_WEBHOOK_SECRET''),
-        ''sha256-base64''
-      ) != sqlpage.header(''X-Shopify-Hmac-SHA256'');
+-- redirect to an error page and stop execution if the signature does not match
+SELECT
+    ''redirect'' as component,
+    ''/error.sql?err=bad_webhook_signature'' as link
+WHERE $actual_signature IS DISTINCT FROM $expected_signature;
 
--- If we reach here, the signature is valid - process the order:
-INSERT INTO orders (order_data, received_at)
-VALUES (sqlpage.request_body(), datetime(''now''));
+-- If we reach here, the signature is valid - process the order
+INSERT INTO orders (order_data) VALUES ($body);
 
-SELECT ''text'' as component,
-  ''✅ Webhook verified and processed successfully!'' as contents;
+SELECT ''json'' as component, ''jsonlines'' as type;
+SELECT ''success'' as status;
 ```
 
-### Example 2: Create Secure Download Links
+### Example: Time-limited links
 
-Generate a token that expires after 1 hour:
+You can create links that will be valid only for a limited time by including a signature in them.
+Let''s say we have a `download.sql` page we want to link to,
+but we don''t want it to be accessible to anyone who can find the link.
+Sign `file_id|expires_at` with a secret. Accept only if not expired and the signature matches.
 
-```sql
--- Create a download token
-INSERT INTO download_tokens (file_id, token, expires_at)
-VALUES (
-    :file_id,
-    sqlpage.hmac(
-        :file_id || ''|'' || datetime(''now'', ''+1 hour''),
-        sqlpage.environment_variable(''DOWNLOAD_SECRET''),
-        ''sha256''
-    ),
-    datetime(''now'', ''+1 hour'')
-);
-```
-
-### Example 3: Sign API Requests
-
-Prove your API request is authentic:
+#### Generate a signed link
 
 ```sql
--- Create a signature for your API call
-SELECT sqlpage.hmac(
-    ''user_id=123&action=update&timestamp='' || strftime(''%s'', ''now''),
-    ''my-secret-api-key'',
+SET expires_at = datetime(''now'', ''+1 hour'');
+SET token = sqlpage.hmac(
+    $file_id || ''|'' || $expires_at,
+    sqlpage.environment_variable(''DOWNLOAD_SECRET''),
     ''sha256''
-) as api_signature;
+);
+SELECT ''/download.sql?file_id='' || $file_id || ''&expires_at='' || $expires_at || ''&token='' || $token AS link;
 ```
 
-### Important Security Tips
+#### Verify the signed link
 
- - **Keep your secret key safe**: Store it in environment variables using `sqlpage.environment_variable()`, never hardcode it in your SQL files
- - **Use strong keys**: Your secret should be long and random (at least 32 characters)
- - **The signature is case-sensitive**: Even one wrong letter means the signature won''t match
- - **Algorithms**: Use `sha256` for most cases (it''s the default), or `sha512` for extra security
- - **Output formats**: Use `hex` (default) for most cases, or `base64` when the service expects base64 (like Shopify)
- - **NULL handling**: If your data or key is NULL, the function returns NULL
+```sql
+SET expected = sqlpage.hmac(
+    $file_id || ''|'' || $expires_at,
+    sqlpage.environment_variable(''DOWNLOAD_SECRET''),
+    ''sha256''
+);
+SELECT ''redirect'' AS component, ''/error.sql?err=expired'' AS link
+WHERE $expected IS DISTINCT FROM $token OR $expires_at < datetime(''now'');
+
+-- serve the file
+```
+
+### Important Security Notes
+
+ - **Keep your secret key safe**: If your secret leaks, anyone can forge signatures and access protected pages
+ - **The signature is case-sensitive**: Even a single wrong letter means the signature won''t match
+ - **NULL handling**: Always use `IS DISTINCT FROM`, not `=` to check for hmac matches. In SQL `SELECT ''redirect'' as component WHERE sqlpage.hmac(...) != $signature` will not redirect if `$signature` is NULL (the signature is absent). Use `SELECT ''redirect'' as component WHERE sqlpage.hmac(...) IS DISTINCT FROM $signature` instead.
 '
     );
 
-INSERT INTO sqlpage_function_parameters (
+INSERT INTO
+    sqlpage_function_parameters (
         "function",
         "index",
         "name",
         "description_md",
         "type"
     )
-VALUES (
+VALUES
+    (
         'hmac',
         1,
         'data',
-        'The input data to compute the HMAC for. Can be any text string.',
+        'The input data to compute the HMAC for. Can be any text string. Cannot be NULL.',
         'TEXT'
     ),
     (
         'hmac',
         2,
         'key',
-        'The secret key used to compute the HMAC. Should be kept confidential.',
+        'The secret key used to compute the HMAC. Should be kept confidential. Cannot be NULL.',
         'TEXT'
     ),
     (
         'hmac',
         3,
         'algorithm',
-        'The hash algorithm and output format. Optional, defaults to `sha256` (hex output). Supported values: `sha256`, `sha256-base64`, `sha512`, `sha512-base64`.',
+        'The hash algorithm and output format. Optional, defaults to `sha256` (hex output). Supported values: `sha256`, `sha256-base64`, `sha512`, `sha512-base64`. Defaults to `sha256`.',
         'TEXT'
     );

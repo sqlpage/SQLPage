@@ -1,24 +1,17 @@
 -- Webhook HMAC signature validation example
 -- This simulates receiving a webhook with HMAC signature in header
-
--- Redirect to error page if signature is missing
-SELECT 'redirect' as component,
-    '/error.sql?message=' || sqlpage.url_encode('Missing webhook signature') as link
-WHERE sqlpage.header('X-Webhook-Signature') IS NULL;
-
 -- Redirect to error page if signature is invalid
-SELECT 'redirect' as component,
-    '/error.sql?message=' || sqlpage.url_encode('Invalid webhook signature') as link
-WHERE sqlpage.hmac(
-    sqlpage.request_body(),
-    sqlpage.environment_variable('WEBHOOK_SECRET'),
-    'sha256-base64'
-) != sqlpage.header('X-Webhook-Signature');
+-- test this with: curl localhost:8080/tests/webhook_hmac_validation.sql -H 'X-Webhook-Signature: 260b3b5ead84843645588af82d5d2c3fe24c598a950d36c45438c3a5f5bb941c' -H 'Content-Type: application/json' --data-raw '{"order_id":12345,"total":"99.99"}' -v
+SET body = sqlpage.request_body();
+SET secret = sqlpage.environment_variable('WEBHOOK_SECRET');
+SET expected_signature = sqlpage.hmac($body, $secret, 'sha256');
+SET actual_signature =  sqlpage.header('X-Webhook-Signature');
+
+SELECT
+    'redirect' as component,
+    '/error.sql?err=bad_webhook_signature' as link
+WHERE $actual_signature IS DISTINCT FROM $expected_signature;
 
 -- If we reach here, signature is valid - return success
-SELECT 'json' as component;
-SELECT json_object(
-    'status', 'success',
-    'message', 'Webhook signature verified',
-    'body', sqlpage.request_body()
-) as contents;
+SELECT 'json' as component, 'jsonlines' as type;
+select 'Webhook signature is valid !' as msg;

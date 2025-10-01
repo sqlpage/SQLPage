@@ -9,7 +9,7 @@ async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
 
     let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
-    let invalid_signature = "invalid_signature_base64==";
+    let invalid_signature = "96a5f6f65c85a2d4d1f3a37813ab2c0b44041bdc17691fbb0884e3eb52b7c54b";
 
     let req = get_request_to("/tests/webhook_hmac_validation.sql")
         .await?
@@ -30,20 +30,10 @@ async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     let location = resp
         .headers()
         .get("location")
-        .expect("Should have Location header");
-    let location_str = location.to_str().unwrap();
-    assert!(
-        location_str.contains("/error.sql"),
-        "Should redirect to error page, got: {}",
-        location_str
-    );
-    assert!(
-        location_str.contains("Invalid+webhook+signature")
-            || location_str.contains("Invalid%20webhook%20signature"),
-        "Error message should mention invalid signature, got: {}",
-        location_str
-    );
-
+        .expect("Should have Location header")
+        .to_str()
+        .unwrap();
+    assert_eq!(location, "/error.sql?err=bad_webhook_signature");
     Ok(())
 }
 
@@ -53,52 +43,25 @@ async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
     std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
 
     let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
-
-    // Calculate the correct HMAC signature using the same algorithm
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
-    let mut mac = Hmac::<Sha256>::new_from_slice(b"test-secret-key").unwrap();
-    mac.update(webhook_body.as_bytes());
-    let result = mac.finalize();
-    let valid_signature =
-        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, result.into_bytes());
+    let valid_signature = "260b3b5ead84843645588af82d5d2c3fe24c598a950d36c45438c3a5f5bb941c";
 
     let req = get_request_to("/tests/webhook_hmac_validation.sql")
         .await?
         .insert_header(("content-type", "application/json"))
-        .insert_header(("X-Webhook-Signature", valid_signature.as_str()))
+        .insert_header(("X-Webhook-Signature", valid_signature))
         .set_payload(webhook_body)
         .to_srv_request();
 
     let resp = main_handler(req).await?;
 
     // Should return success when signature is valid
+    assert_eq!(resp.status(), StatusCode::OK, "200 resp for signed req");
+    assert!(!resp.headers().contains_key("location"), "no redirect");
+
     assert_eq!(
-        resp.status(),
-        StatusCode::OK,
-        "Expected OK status for valid signature"
+        test::read_body_json::<serde_json::Value, _>(resp).await,
+        serde_json::json! ({"msg": "Webhook signature is valid !"})
     );
-
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
-
-    // Should contain success message
-    assert!(
-        body_str.contains("success") || body_str.contains("Success"),
-        "Response should indicate success, got: {}",
-        body_str
-    );
-    assert!(
-        body_str.contains("Webhook signature verified"),
-        "Response should confirm signature verification, got: {}",
-        body_str
-    );
-    assert!(
-        body_str.contains("order_id"),
-        "Response should contain the webhook body, got: {}",
-        body_str
-    );
-
     Ok(())
 }
 
@@ -118,23 +81,13 @@ async fn test_webhook_hmac_missing_signature() -> actix_web::Result<()> {
 
     let resp = main_handler(req).await?;
 
-    // Should redirect to error page when signature is missing
-    assert!(
-        resp.status() == StatusCode::FOUND || resp.status() == StatusCode::SEE_OTHER,
-        "Expected redirect (302 or 303) when signature header is missing, got: {}",
-        resp.status()
-    );
-
     let location = resp
         .headers()
         .get("location")
-        .expect("Should have Location header");
-    let location_str = location.to_str().unwrap();
-    assert!(
-        location_str.contains("/error.sql"),
-        "Should redirect to error page, got: {}",
-        location_str
-    );
+        .expect("Should have Location header")
+        .to_str()
+        .unwrap();
+    assert_eq!(location, "/error.sql?err=bad_webhook_signature");
 
     Ok(())
 }
