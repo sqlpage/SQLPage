@@ -84,7 +84,6 @@ jobs:
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           RUST_BACKTRACE: 1
-          RUST_LOG: sqlpage=debug
 
   windows_test:
     runs-on: windows-latest
