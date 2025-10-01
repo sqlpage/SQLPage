@@ -52,7 +52,7 @@ SET actual_signature =  sqlpage.header(''X-Webhook-Signature'');
 SELECT
     ''redirect'' as component,
     ''/error.sql?err=bad_webhook_signature'' as link
-WHERE $actual_signature IS DISTINCT FROM $expected_signature;
+WHERE $actual_signature != $expected_signature OR $actual_signature IS NULL;
 
 -- If we reach here, the signature is valid - process the order
 INSERT INTO orders (order_data) VALUES ($body);
@@ -89,7 +89,7 @@ SET expected = sqlpage.hmac(
     ''sha256''
 );
 SELECT ''redirect'' AS component, ''/error.sql?err=expired'' AS link
-WHERE $expected IS DISTINCT FROM $token OR $expires_at < datetime(''now'');
+WHERE $expected != $token OR $token IS NULL OR $expires_at < datetime(''now'');
 
 -- serve the file
 ```
@@ -98,7 +98,10 @@ WHERE $expected IS DISTINCT FROM $token OR $expires_at < datetime(''now'');
 
  - **Keep your secret key safe**: If your secret leaks, anyone can forge signatures and access protected pages
  - **The signature is case-sensitive**: Even a single wrong letter means the signature won''t match
- - **NULL handling**: Always use `IS DISTINCT FROM`, not `=` to check for hmac matches. In SQL `SELECT ''redirect'' as component WHERE sqlpage.hmac(...) != $signature` will not redirect if `$signature` is NULL (the signature is absent). Use `SELECT ''redirect'' as component WHERE sqlpage.hmac(...) IS DISTINCT FROM $signature` instead.
+ - **NULL handling**: Always use `IS DISTINCT FROM`, not `=` to check for hmac matches.
+   - `SELECT ''redirect'' as component WHERE sqlpage.hmac(...) != $signature` will not redirect if `$signature` is NULL (the signature is absent).
+   - `SELECT ''redirect'' as component WHERE sqlpage.hmac(...) IS DISTINCT FROM $signature` checks for both NULL and non-NULL values (but is not available in all SQL dialects).
+   - `SELECT ''redirect'' as component WHERE sqlpage.hmac(...) != $signature OR $signature IS NULL` is the most portable solution.
 '
     );
 

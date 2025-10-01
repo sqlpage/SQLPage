@@ -10,7 +10,7 @@ SET actual_signature =  sqlpage.header('X-Webhook-Signature');
 SELECT
     'redirect' as component,
     '/error.sql?err=bad_webhook_signature' as link
-WHERE $actual_signature IS DISTINCT FROM $expected_signature;
+WHERE $actual_signature != $expected_signature OR $actual_signature IS NULL;
 
 -- If we reach here, signature is valid - return success
 SELECT 'json' as component, 'jsonlines' as type;
