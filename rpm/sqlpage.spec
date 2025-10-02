@@ -7,6 +7,9 @@ License:        MIT
 URL:            https://sql-page.com
 Source0:        https://github.com/sqlpage/SQLPage/archive/v%{version}.tar.gz
 
+# Disable automatic shebang mangling - Rust source files use #! for attributes, not shebangs
+%undefine __brp_mangle_shebangs
+
 BuildRequires:  rust >= 1.70
 BuildRequires:  cargo >= 1.70
 BuildRequires:  openssl-devel
