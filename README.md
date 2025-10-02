@@ -190,7 +190,7 @@ You can skip this section if you want to use one of the built-in database driver
 
 SQLPage supports ODBC connections to connect to databases that don't have native drivers, such as Oracle, Snowflake, BigQuery, IBM DB2, and many others.
 
-On Linux, the SQLPage binary and Docker image now statically link against the `unixODBC` driver manager, so you generally do not need to install `unixodbc` on the host anymore. You still need to install the database-specific ODBC driver for the database you want to connect to. SQLPage also searches for drivers in a `sqlpage/` directory placed next to the executable (rpath includes `$ORIGIN/sqlpage`). You can drop driver `.so` files there when packaging a self-contained application.
+On Linux, SQLPage supports both dynamic and static ODBC linking. The Docker image uses the system `unixODBC` (dynamic). Release binaries can be built with static ODBC linking by enabling the `odbc-static` feature. You still need to install or provide the database-specific ODBC driver for the database you want to connect to. SQLPage also searches for drivers in a `sqlpage/` directory placed next to the executable (rpath includes `$ORIGIN/sqlpage`).
 
 #### Install ODBC
 

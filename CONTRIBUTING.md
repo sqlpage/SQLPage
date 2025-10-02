@@ -37,6 +37,33 @@ cargo build --release
 
 The resulting executable will be in `target/release/sqlpage`.
 
+### ODBC build modes
+
+SQLPage supports three additive build modes for ODBC. Choose the mode via Cargo features:
+
+- Dynamic ODBC (default):
+  - Works on Linux, macOS and Windows (Windows has ODBC built-in).
+  - Command:
+    ```bash
+    cargo build               # or: cargo build --features odbc-dynamic
+    ```
+- Static ODBC (Linux only):
+  - Statically links the ODBC driver manager; simplifies distribution.
+  - Command:
+    ```bash
+    cargo build --features odbc-static
+    ```
+- No ODBC:
+  - Disables ODBC support entirely.
+  - Command:
+    ```bash
+    cargo build --no-default-features
+    ```
+
+Notes:
+- When cross-compiling in Docker, headers come from the base image (e.g. `unixodbc-dev`).
+- Runtime rpath on Linux includes `$ORIGIN/sqlpage:$ORIGIN/lib` so you can colocate drivers next to the binary when needed.
+
 ## Code Style and Linting
 
 ### Rust
@@ -198,8 +225,6 @@ git checkout -b feature/your-feature-name
    - Build Docker images for multiple architectures
    - Run frontend linting with Biome
    - Test against multiple databases (PostgreSQL, MySQL, MSSQL)
-
-5. Wait for review and address any feedback
 
 ## Release Process
 
