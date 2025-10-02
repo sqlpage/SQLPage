@@ -8,14 +8,14 @@ use crate::{
 };
 use anyhow::Context;
 use futures_util::future::BoxFuture;
+#[cfg(feature = "odbc")]
+use sqlx::odbc::OdbcConnectOptions;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
     sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
     ConnectOptions, Connection, Executor,
 };
-#[cfg(feature = "odbc")]
-use sqlx::odbc::OdbcConnectOptions;
 
 impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
