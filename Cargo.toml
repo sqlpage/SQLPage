@@ -17,6 +17,16 @@ lto = "fat"
 panic = "abort"
 codegen-units = 2
 
+[features]
+# Build variants
+# - default (odbc-dynamic): ODBC enabled, dynamically linked (works on Linux, macOS, Windows)
+# - odbc-static: ODBC enabled, statically linked to the driver manager (Linux only)
+# - disable ODBC entirely: use `--no-default-features`
+default = ["odbc-dynamic"]
+odbc = ["sqlx/odbc"]
+odbc-dynamic = ["odbc"]
+odbc-static = ["odbc", "odbc-sys/static"]
+
 [dependencies]
 sqlx = { package = "sqlx-oldapi", git = "https://github.com/sqlpage/sqlx-oldapi", version = "0.6.49-beta.6", default-features = false, features = [
     "any",
@@ -26,7 +36,6 @@ sqlx = { package = "sqlx-oldapi", git = "https://github.com/sqlpage/sqlx-oldapi"
     "postgres",
     "mysql",
     "mssql",
-    "odbc",
     "chrono",
     "bigdecimal",
     "json",
@@ -75,6 +84,7 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false }
 encoding_rs = "0.8.35"
+odbc-sys = { version = "0.27", optional = true }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
@@ -84,8 +94,4 @@ libflate = "2"
 futures-util = "0.3.21"
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
-# Enable static linking of unixODBC only on Linux/Unix, not on Windows/macOS
-odbc-sys = { version = "0.27", features = ["static"] }
-
-[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
-odbc-sys = { version = "0.27" }
+odbc-sys = { version = "0.27", optional = true, features = [] }
