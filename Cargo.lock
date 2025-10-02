@@ -4339,7 +4339,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
 dependencies = [
  "ahash",
  "atoi",
@@ -4403,7 +4403,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
 dependencies = [
  "dotenvy",
  "either",
@@ -4422,7 +4422,7 @@ dependencies = [
 [[package]]
 name = "sqlx-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -4431,7 +4431,7 @@ dependencies = [
 [[package]]
 name = "sqlx-rt-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#802691867337b112e332288c011d45b390dc3757"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
 dependencies = [
  "once_cell",
  "tokio",
@@ -4789,9 +4789,9 @@ checksum = "bc7d623258602320d5c55d1bc22793b57daff0ec7efc270ea7d55ce1d5f5471c"
 
 [[package]]
 name = "typenum"
-version = "1.18.0"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
+checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 
 [[package]]
 name = "ucd-trie"
