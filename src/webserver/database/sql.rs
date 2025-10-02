@@ -15,7 +15,9 @@ use sqlparser::ast::{
     SelectFlavor, SelectItem, Set, SetExpr, Spanned, Statement, Value, ValueWithSpan, Visit,
     VisitMut, Visitor, VisitorMut,
 };
-use sqlparser::dialect::{Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect};
+use sqlparser::dialect::{
+    Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
+};
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
 use sqlparser::tokenizer::{TokenWithSpan, Tokenizer};
@@ -50,7 +52,7 @@ impl ParsedSqlFile {
         Self {
             statements: vec![ParsedStatement::Error(
                 e.into()
-                    .context(format!("While parsing file {}", source_path.display())),
+                    .context(format!("Error parsing file {}", source_path.display())),
             )],
             source_path: source_path.to_path_buf(),
         }
@@ -248,6 +250,7 @@ fn dialect_for_db(dbms: SupportedDatabase) -> Box<dyn Dialect> {
         SupportedDatabase::Mssql => Box::new(MsSqlDialect {}),
         SupportedDatabase::MySql => Box::new(MySqlDialect {}),
         SupportedDatabase::Sqlite => Box::new(SQLiteDialect {}),
+        SupportedDatabase::Snowflake => Box::new(SnowflakeDialect {}),
     }
 }
 
@@ -1137,15 +1140,15 @@ mod test {
     ];
 
     fn create_test_db_info(database_type: SupportedDatabase) -> DbInfo {
-        let (dbms_name, kind) = match database_type {
-            SupportedDatabase::Postgres => ("PostgreSQL".to_string(), AnyKind::Postgres),
-            SupportedDatabase::Mssql => ("Microsoft SQL Server".to_string(), AnyKind::Mssql),
-            SupportedDatabase::MySql => ("MySQL".to_string(), AnyKind::MySql),
-            SupportedDatabase::Sqlite => ("SQLite".to_string(), AnyKind::Sqlite),
-            SupportedDatabase::Generic => ("Generic".to_string(), AnyKind::Postgres), // fallback
+        let kind = match database_type {
+            SupportedDatabase::Postgres => AnyKind::Postgres,
+            SupportedDatabase::Mssql => AnyKind::Mssql,
+            SupportedDatabase::MySql => AnyKind::MySql,
+            SupportedDatabase::Sqlite => AnyKind::Sqlite,
+            _ => AnyKind::Odbc,
         };
         DbInfo {
-            dbms_name,
+            dbms_name: database_type.display_name().to_string(),
             database_type,
             kind,
         }

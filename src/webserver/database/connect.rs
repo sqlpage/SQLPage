@@ -10,6 +10,7 @@ use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
+    odbc::OdbcConnectOptions,
     pool::PoolOptions,
     sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
     ConnectOptions, Connection, Executor,
@@ -208,6 +209,9 @@ fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfi
     if let Some(sqlite_options) = options.as_sqlite_mut() {
         set_custom_connect_options_sqlite(sqlite_options, config);
     }
+    if let Some(odbc_options) = options.as_odbc_mut() {
+        set_custom_connect_options_odbc(odbc_options, config);
+    }
 }
 
 fn set_custom_connect_options_sqlite(
@@ -235,6 +239,15 @@ fn make_sqlite_fun(name: &str, f: fn(&str) -> String) -> Function {
     })
 }
 
+fn set_custom_connect_options_odbc(odbc_options: &mut OdbcConnectOptions, config: &AppConfig) {
+    // Allow fetching very large text fields when using ODBC by removing the max column size limit
+    let batch_size = config.max_pending_rows.clamp(1, 1024);
+    odbc_options.batch_size(batch_size);
+    log::trace!("ODBC batch size set to {batch_size}");
+    // Disables ODBC batching, but avoids truncation of large text fields
+    odbc_options.max_column_size(None);
+}
+
 fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
     if let Some(opts) = options.as_postgres_mut() {
         *opts = take(opts).password(password);
@@ -242,6 +255,10 @@ fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
         *opts = take(opts).password(password);
     } else if let Some(opts) = options.as_mssql_mut() {
         *opts = take(opts).password(password);
+    } else if let Some(_opts) = options.as_odbc_mut() {
+        log::warn!(
+			"Setting a password for an ODBC connection is not supported via separate config; include credentials in the DSN or connection string"
+		);
     } else if let Some(_opts) = options.as_sqlite_mut() {
         log::warn!("Setting a password for a SQLite database is not supported");
     } else {

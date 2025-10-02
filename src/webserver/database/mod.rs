@@ -22,6 +22,7 @@ pub enum SupportedDatabase {
     Postgres,
     MySql,
     Mssql,
+    Snowflake,
     Generic,
 }
 
@@ -34,6 +35,7 @@ impl SupportedDatabase {
             "postgres" | "postgresql" => Self::Postgres,
             "mysql" | "mariadb" => Self::MySql,
             "mssql" | "sql server" | "microsoft sql server" => Self::Mssql,
+            "snowflake" => Self::Snowflake,
             _ => Self::Generic,
         }
     }
@@ -46,6 +48,7 @@ impl SupportedDatabase {
             Self::Postgres => "PostgreSQL",
             Self::MySql => "MySQL",
             Self::Mssql => "Microsoft SQL Server",
+            Self::Snowflake => "Snowflake",
             Self::Generic => "Generic",
         }
     }

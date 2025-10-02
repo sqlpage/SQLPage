@@ -1,8 +1,9 @@
 use crate::utils::add_value_to_map;
 use crate::webserver::database::blob_to_data_url;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde_json::{self, Map, Value};
-use sqlx::any::{AnyRow, AnyTypeInfo, AnyTypeInfoKind};
+use sqlx::any::{AnyColumn, AnyRow, AnyTypeInfo, AnyTypeInfoKind};
 use sqlx::Decode;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
@@ -12,11 +13,25 @@ pub fn row_to_json(row: &AnyRow) -> Value {
     let columns = row.columns();
     let mut map = Map::new();
     for col in columns {
-        let key = col.name().to_string();
+        let key = canonical_col_name(col);
         let value: Value = sql_to_json(row, col);
         map = add_value_to_map(map, (key, value));
     }
     Object(map)
+}
+
+fn canonical_col_name(col: &AnyColumn) -> String {
+    // Some databases fold all unquoted identifiers to uppercase but SQLPage uses lowercase property names
+    if matches!(col.type_info().0, AnyTypeInfoKind::Odbc(_))
+        && col
+            .name()
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c == '_')
+    {
+        col.name().to_ascii_lowercase()
+    } else {
+        col.name().to_owned()
+    }
 }
 
 pub fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
@@ -61,8 +76,18 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     log::trace!("Decoding a value of type {type_name:?} (type info: {type_info:?})");
     let AnyTypeInfo(ref db_type) = *type_info;
     match type_name {
-        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" | "NUMERIC" | "DECIMAL" => {
-            decode_raw::<f64>(raw_value).into()
+        "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" => decode_raw::<f64>(raw_value).into(),
+        "NUMERIC" | "DECIMAL" => {
+            let decimal = decode_raw::<BigDecimal>(raw_value);
+            if decimal.is_integer() {
+                if let Some(int) = decimal.to_i64() {
+                    return int.into();
+                }
+            }
+            if let Some(float) = decimal.to_f64() {
+                return float.into();
+            }
+            decimal.to_string().into()
         }
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
         | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
@@ -127,7 +152,7 @@ mod tests {
 
     fn setup_logging() {
         let _ = env_logger::builder()
-            .filter_level(log::LevelFilter::Trace)
+            .parse_default_env()
             .is_test(true)
             .try_init();
     }
@@ -149,24 +174,24 @@ mod tests {
         let db_url = test_database_url();
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
         let row = sqlx::query(
-            "SELECT \
-            123.456 as one_value, \
-            1 as two_values, \
-            2 as two_values, \
-            'x' as three_values, \
-            'y' as three_values, \
-            'z' as three_values \
+            "SELECT
+                123.456 as one_value,
+                1 as two_values,
+                2 as two_values,
+                'x' as three_values,
+                'y' as three_values,
+                'z' as three_values
         ",
         )
         .fetch_one(&mut c)
         .await?;
-        assert_eq!(
-            row_to_json(&row),
-            serde_json::json!({
+        expect_json_object_equal(
+            &row_to_json(&row),
+            &serde_json::json!({
                 "one_value": 123.456,
                 "two_values": [1,2],
                 "three_values": ["x","y","z"],
-            })
+            }),
         );
         Ok(())
     }
@@ -466,7 +491,7 @@ mod tests {
     fn expect_json_object_equal(actual: &Value, expected: &Value) {
         use std::fmt::Write;
 
-        if actual == expected {
+        if json_values_equal(actual, expected) {
             return;
         }
         let actual = actual.as_object().unwrap();
@@ -480,7 +505,7 @@ mod tests {
         for key in all_keys {
             let actual_value = actual.get(key).unwrap_or(&Value::Null);
             let expected_value = expected.get(key).unwrap_or(&Value::Null);
-            if actual_value == expected_value {
+            if json_values_equal(actual_value, expected_value) {
                 continue;
             }
             writeln!(
@@ -493,5 +518,127 @@ mod tests {
             actual, expected,
             "JSON objects are not equal:\n\n{comparison_string}"
         );
+    }
+
+    #[actix_web::test]
+    async fn test_canonical_col_name_variations() -> anyhow::Result<()> {
+        let db_url = test_database_url();
+        let mut c = sqlx::AnyConnection::connect(&db_url).await?;
+
+        // Test various column name formats to ensure canonical_col_name works correctly
+        let row = sqlx::query(
+            r#"SELECT
+                42 as "UPPERCASE_COL",
+                42 as "lowercase_col",
+                42 as "Mixed_Case_Col",
+                42 as "COL_WITH_123_NUMBERS",
+                42 as "col-with-dashes",
+                42 as "col with spaces",
+                42 as "_UNDERSCORE_PREFIX",
+                42 as "123_NUMBER_PREFIX"
+        "#,
+        )
+        .fetch_one(&mut c)
+        .await?;
+
+        let json_result = row_to_json(&row);
+
+        // For ODBC databases, uppercase columns should be converted to lowercase
+        // For other databases, names should remain as-is
+        let expected_json = if c.kind() == sqlx::any::AnyKind::Odbc {
+            // ODBC database - uppercase should be converted to lowercase
+            serde_json::json!({
+                "uppercase_col": 42,
+                "lowercase_col": 42,
+                "Mixed_Case_Col": 42,
+                "COL_WITH_123_NUMBERS": 42,
+                "col-with-dashes": 42,
+                "col with spaces": 42,
+                "_underscore_prefix": 42,
+                "123_NUMBER_PREFIX": 42
+            })
+        } else {
+            // Non-ODBC database - names remain as-is
+            serde_json::json!({
+                "UPPERCASE_COL": 42,
+                "lowercase_col": 42,
+                "Mixed_Case_Col": 42,
+                "COL_WITH_123_NUMBERS": 42,
+                "col-with-dashes": 42,
+                "col with spaces": 42,
+                "_UNDERSCORE_PREFIX": 42,
+                "123_NUMBER_PREFIX": 42
+            })
+        };
+
+        expect_json_object_equal(&json_result, &expected_json);
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_row_to_json_edge_cases() -> anyhow::Result<()> {
+        let db_url = test_database_url();
+        let mut c = sqlx::AnyConnection::connect(&db_url).await?;
+
+        // Test edge cases for row_to_json
+        let row = sqlx::query(
+            "SELECT
+                NULL as null_col,
+                '' as empty_string,
+                0 as zero_value,
+                -42 as negative_int,
+                1.23456 as my_float,
+                'special_chars_!@#$%^&*()' as special_chars,
+                'line1
+line2' as multiline_string
+        ",
+        )
+        .fetch_one(&mut c)
+        .await?;
+
+        let json_result = row_to_json(&row);
+
+        let expected_json = serde_json::json!({
+            "null_col": null,
+            "empty_string": "",
+            "zero_value": 0,
+            "negative_int": -42,
+            "my_float": 1.23456,
+            "special_chars": "special_chars_!@#$%^&*()",
+            "multiline_string": "line1\nline2"
+        });
+
+        expect_json_object_equal(&json_result, &expected_json);
+
+        Ok(())
+    }
+
+    /// Compare JSON values, treating integers and floats that are numerically equal as equal
+    fn json_values_equal(a: &Value, b: &Value) -> bool {
+        use Value::*;
+
+        match (a, b) {
+            (Null, Null) => true,
+            (Bool(a), Bool(b)) => a == b,
+            (Number(a), Number(b)) => {
+                // Treat integers and floats as equal if they represent the same numerical value
+                a.as_f64() == b.as_f64()
+            }
+            (String(a), String(b)) => a == b,
+            (Array(a), Array(b)) => {
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| json_values_equal(a, b))
+            }
+            (Object(a), Object(b)) => {
+                if a.len() != b.len() {
+                    return false;
+                }
+                a.iter().all(|(key, value)| {
+                    b.get(key)
+                        .is_some_and(|expected_value| json_values_equal(value, expected_value))
+                })
+            }
+            _ => false,
+        }
     }
 }

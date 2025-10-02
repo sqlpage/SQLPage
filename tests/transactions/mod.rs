@@ -1,14 +1,17 @@
 use actix_web::{http::StatusCode, test};
-use sqlpage::webserver::http::main_handler;
+use sqlpage::webserver::{database::SupportedDatabase, http::main_handler};
 
 use crate::common::{get_request_to_with_data, make_app_data};
 
 #[actix_web::test]
 async fn test_transaction_error() -> actix_web::Result<()> {
     let data = make_app_data().await;
-    let path = match data.db.to_string().to_lowercase().as_str() {
-        "mysql" => "/tests/transactions/failed_transaction_mysql.sql",
-        "mssql" => "/tests/transactions/failed_transaction_mssql.sql",
+    let path = match data.db.info.database_type {
+        SupportedDatabase::MySql => "/tests/transactions/failed_transaction_mysql.sql",
+        SupportedDatabase::Mssql => "/tests/transactions/failed_transaction_mssql.sql",
+        SupportedDatabase::Snowflake => {
+            return Ok(()); //snowflake doesn't support transactions
+        }
         _ => "/tests/transactions/failed_transaction.sql",
     };
     let req = get_request_to_with_data(path, data.clone())

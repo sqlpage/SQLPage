@@ -153,7 +153,7 @@ fn assert_it_works_tests(body: &str, lowercase_body: &str, test_file: &std::path
 
     assert!(
         body.contains("It works !"),
-        "{body}\n❌ Error in file {test_file:?} ❌\n",
+        "{body}\n❌ Error in file {test_file:?} ❌\nShould contain: 'It works !'",
     );
     assert!(
         !lowercase_body.contains("error"),
