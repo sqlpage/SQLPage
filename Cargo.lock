@@ -4339,7 +4339,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#e3ca4c35d51d1c9353c684d422a85b60abdc7f51"
 dependencies = [
  "ahash",
  "atoi",
@@ -4403,7 +4403,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#e3ca4c35d51d1c9353c684d422a85b60abdc7f51"
 dependencies = [
  "dotenvy",
  "either",
@@ -4422,7 +4422,7 @@ dependencies = [
 [[package]]
 name = "sqlx-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#e3ca4c35d51d1c9353c684d422a85b60abdc7f51"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -4431,7 +4431,7 @@ dependencies = [
 [[package]]
 name = "sqlx-rt-oldapi"
 version = "0.6.49-beta.6"
-source = "git+https://github.com/sqlpage/sqlx-oldapi#6d3ed6bff8fc83417b8c6c2f6fc5ac6c63b4246a"
+source = "git+https://github.com/sqlpage/sqlx-oldapi#e3ca4c35d51d1c9353c684d422a85b60abdc7f51"
 dependencies = [
  "once_cell",
  "tokio",
