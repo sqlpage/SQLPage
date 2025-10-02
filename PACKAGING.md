@@ -145,6 +145,9 @@ dch -v $(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/
 # Build package
 dpkg-buildpackage -us -uc -b
 
+# If building in an environment where Rust isn't installed via dpkg packages:
+# dpkg-buildpackage -us -uc -b -d
+
 # Check package
 lintian ../sqlpage_*.deb
 ```

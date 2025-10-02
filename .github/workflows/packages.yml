@@ -91,6 +91,9 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
+      - name: Install git for checkout
+        run: dnf install -y git
+      
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -106,8 +109,7 @@ jobs:
             openssl-devel \
             systemd-rpm-macros \
             unixODBC-devel \
-            freetds-devel \
-            git
+            freetds-devel
       
       - name: Set up RPM build tree
         run: rpmdev-setuptree

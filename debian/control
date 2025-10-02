@@ -2,6 +2,7 @@ Source: sqlpage
 Section: web
 Priority: optional
 Maintainer: SQLPage Contributors <sqlpage@sql-page.com>
+# Note: cargo/rustc listed for local builds; CI uses -d flag with toolchain action
 Build-Depends: debhelper-compat (= 13),
                cargo (>= 1.70),
                rustc (>= 1.70),
