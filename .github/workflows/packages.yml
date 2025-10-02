@@ -60,8 +60,8 @@ jobs:
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           sed -i "1s/.*/sqlpage ($VERSION-1) unstable; urgency=medium/" debian/changelog
           
-          # Build package
-          dpkg-buildpackage -us -uc -b
+          # Build package (use -d to bypass build dependency checks since Rust is provided by CI)
+          dpkg-buildpackage -us -uc -b -d
       
       - name: Run lintian checks
         run: |
