@@ -113,9 +113,14 @@ jobs:
           name: sqlpage aws lambda serverless image
           path: sqlpage-aws-lambda.zip
 
+  build-packages:
+    name: Build DEB and RPM packages
+    uses: ./.github/workflows/packages.yml
+    secrets: inherit
+
   create_release:
     name: Create Github Release
-    needs: [build-macos-windows, build-linux, build-aws]
+    needs: [build-macos-windows, build-linux, build-aws, build-packages]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -143,6 +148,9 @@ jobs:
             sqlpage-linux.tgz
             sqlpage-macos.tgz
             sqlpage aws lambda serverless image/sqlpage-aws-lambda.zip
+            debian-package/*.deb
+            rpm-package/*.rpm
+            srpm-package/*.rpm
 
   cargo_publish:
     name: Publish to crates.io

@@ -1,0 +1,33 @@
+Source: sqlpage
+Section: web
+Priority: optional
+Maintainer: SQLPage Contributors <sqlpage@sql-page.com>
+Build-Depends: debhelper-compat (= 13),
+               cargo (>= 1.70),
+               rustc (>= 1.70),
+               libssl-dev,
+               pkg-config,
+               unixodbc-dev,
+               freetds-dev
+Standards-Version: 4.6.2
+Homepage: https://sql-page.com
+Vcs-Browser: https://github.com/sqlpage/SQLPage
+Vcs-Git: https://github.com/sqlpage/SQLPage.git
+Rules-Requires-Root: no
+
+Package: sqlpage
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, unixodbc
+Recommends: sqlite3 | postgresql-client | mariadb-client
+Description: SQL-only webapp builder
+ SQLPage is a web server that takes .sql files and formats the query
+ results using pre-made configurable professional-looking components.
+ .
+ With SQLPage, you write simple .sql files containing queries to your
+ database to select, group, update, insert, and delete your data, and
+ you get good-looking clean webpages displaying your data as text,
+ lists, grids, plots, and forms.
+ .
+ Supported databases include SQLite, PostgreSQL, MySQL, Microsoft SQL
+ Server, and any ODBC-compatible database such as ClickHouse, MongoDB,
+ DuckDB, Oracle, Snowflake, BigQuery, and IBM DB2.

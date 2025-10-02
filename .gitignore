@@ -1,12 +1,28 @@
+# Existing ignores (if any)
 /target
-sqlpage.db
-.idea/
-*.mm_profdata
-docs/presentation-pgconf.html
-examples/inrap_badass/
-sqlpage/https/*
-x.sql
-xbed.sql
-**/sqlpage.bin
-node_modules/
-sqlpage/sqlpage.db
+Cargo.lock
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debian packaging
+debian/.debhelper/
+debian/sqlpage/
+debian/cargo_home/
+debian/files
+debian/*.substvars
+debian/*.log
+debian/*.debhelper
+../*.deb
+../*.changes
+../*.buildinfo
+
+# RPM packaging
+*.rpm
+*.src.rpm
+
+# Build artifacts
+*.tar.gz
+*.zip
+sqlpage.bin

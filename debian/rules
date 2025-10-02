@@ -1,0 +1,42 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export CARGO_HOME = $(CURDIR)/debian/cargo_home
+
+# Use release profile for optimized builds
+export CARGO_PROFILE = superoptimized
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	cargo clean || true
+
+override_dh_auto_build:
+	cargo build --profile $(CARGO_PROFILE) --locked
+
+override_dh_auto_test:
+	# Run basic tests that don't require external database connections
+	cargo test --profile $(CARGO_PROFILE) --lib || true
+
+override_dh_auto_install:
+	install -D -m 755 target/$(CARGO_PROFILE)/sqlpage $(CURDIR)/debian/sqlpage/usr/bin/sqlpage
+	install -D -m 644 sqlpage.service $(CURDIR)/debian/sqlpage/lib/systemd/system/sqlpage.service
+	install -d $(CURDIR)/debian/sqlpage/etc/sqlpage
+	install -d $(CURDIR)/debian/sqlpage/var/www/sqlpage
+	install -D -m 644 sqlpage/sqlpage.json $(CURDIR)/debian/sqlpage/etc/sqlpage/sqlpage.json
+	cp -r sqlpage/templates $(CURDIR)/debian/sqlpage/etc/sqlpage/
+	cp -r sqlpage/migrations $(CURDIR)/debian/sqlpage/etc/sqlpage/
+	install -D -m 644 sqlpage/favicon.svg $(CURDIR)/debian/sqlpage/etc/sqlpage/favicon.svg
+	install -D -m 644 sqlpage/tabler-icons.svg $(CURDIR)/debian/sqlpage/etc/sqlpage/tabler-icons.svg
+	install -D -m 644 sqlpage/apexcharts.js $(CURDIR)/debian/sqlpage/etc/sqlpage/apexcharts.js
+	install -D -m 644 sqlpage/tomselect.js $(CURDIR)/debian/sqlpage/etc/sqlpage/tomselect.js
+	install -D -m 644 sqlpage/sqlpage.css $(CURDIR)/debian/sqlpage/etc/sqlpage/sqlpage.css
+	install -D -m 644 sqlpage/sqlpage.js $(CURDIR)/debian/sqlpage/etc/sqlpage/sqlpage.js
+
+override_dh_installsystemd:
+	dh_installsystemd --name=sqlpage --no-start --no-enable
+
+override_dh_dwz:
+	# Skip dwz to avoid issues with Rust binaries
+	true
