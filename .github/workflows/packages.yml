@@ -120,7 +120,9 @@ jobs:
       - name: Update spec file version
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          sed -i "s/^Version:.*/Version:        ${VERSION}/" rpm/sqlpage.spec
+          # RPM doesn't allow hyphens in Version field, convert to tilde for pre-releases
+          RPM_VERSION=$(echo "$VERSION" | sed 's/-/~/')
+          sed -i "s/^Version:.*/Version:        ${RPM_VERSION}/" rpm/sqlpage.spec
           cp rpm/sqlpage.spec ~/rpmbuild/SPECS/
       
       - name: Create source tarball

@@ -171,8 +171,8 @@ When a version tag (v*) is pushed:
 ### Version Scheme
 
 - **DEB:** `0.38.0~beta.1-1` (tilde for pre-release ordering)
-- **RPM:** `0.38.0-0.1.beta.1` (0.1 for beta releases)
-- Both sync with `Cargo.toml` version
+- **RPM:** `0.38.0~beta.1-1` (tilde for pre-release, RPM doesn't allow hyphens in Version)
+- Both sync with `Cargo.toml` version, converting hyphens to tildes for package compatibility
 
 ### Future Enhancements (Not Implemented)
 

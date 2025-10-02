@@ -47,7 +47,6 @@ if [ -d "debian" ]; then
         "debian/control"
         "debian/rules"
         "debian/changelog"
-        "debian/compat"
         "debian/copyright"
     )
     
