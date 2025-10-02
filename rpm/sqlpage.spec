@@ -39,7 +39,7 @@ DuckDB, Oracle, Snowflake, BigQuery, and IBM DB2.
 
 %build
 export CARGO_HOME=$(pwd)/.cargo
-cargo build --profile superoptimized --locked --release
+cargo build --profile superoptimized --locked
 
 %install
 rm -rf %{buildroot}

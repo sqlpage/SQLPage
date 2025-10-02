@@ -5,10 +5,17 @@ case "$1" in
     configure)
         # Create sqlpage user if it doesn't exist
         if ! getent passwd sqlpage >/dev/null; then
-            adduser --system --group --home /var/www/sqlpage \
-                --no-create-home --disabled-password \
-                --shell /usr/sbin/nologin \
-                --gecos "SQLPage web server" sqlpage
+            # Try adduser first (Debian/Ubuntu), fall back to useradd (minimal containers)
+            if command -v adduser >/dev/null 2>&1; then
+                adduser --system --group --home /var/www/sqlpage \
+                    --no-create-home --disabled-password \
+                    --shell /usr/sbin/nologin \
+                    --gecos "SQLPage web server" sqlpage
+            else
+                useradd --system --user-group --home-dir /var/www/sqlpage \
+                    --no-create-home --shell /usr/sbin/nologin \
+                    --comment "SQLPage web server" sqlpage
+            fi
         fi
 
         # Set ownership and permissions
