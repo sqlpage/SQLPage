@@ -92,6 +92,3 @@ rustls = "0.23"
 actix-rt = "2.8"
 libflate = "2"
 futures-util = "0.3.21"
-
-[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
-odbc-sys = { version = "0.27", optional = true, features = [] }
