@@ -98,6 +98,9 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory /__w/SQLPage/SQLPage
+      
       - name: Install build dependencies
         run: |
           dnf install -y \
@@ -123,7 +126,6 @@ jobs:
       - name: Create source tarball
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          git config --global --add safe.directory /__w/SQLPage/SQLPage
           git archive --format=tar.gz --prefix="SQLPage-${VERSION}/" \
             -o ~/rpmbuild/SOURCES/sqlpage-${VERSION}.tar.gz HEAD
       
