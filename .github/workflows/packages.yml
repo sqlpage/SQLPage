@@ -63,27 +63,35 @@ jobs:
           # Build package (use -d to bypass build dependency checks since Rust is provided by CI)
           dpkg-buildpackage -us -uc -b -d
       
+      - name: Collect build artifacts
+        run: |
+          mkdir -p build-output
+          mv ../*.deb build-output/ || true
+          mv ../*.changes build-output/ || true
+          mv ../*.buildinfo build-output/ || true
+          ls -lh build-output/
+      
       - name: Run lintian checks
         run: |
-          lintian --no-tag-display-limit ../*.deb || true
+          lintian --no-tag-display-limit build-output/*.deb || true
       
       - name: List package contents
         run: |
-          dpkg-deb --contents ../*.deb
-          dpkg-deb --info ../*.deb
+          dpkg-deb --contents build-output/*.deb
+          dpkg-deb --info build-output/*.deb
       
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
         with:
           name: debian-package
-          path: ../*.deb
+          path: build-output/*.deb
           if-no-files-found: error
       
       - name: Upload DEB changes
         uses: actions/upload-artifact@v4
         with:
           name: debian-changes
-          path: ../*.changes
+          path: build-output/*.changes
           if-no-files-found: warn
 
   build-rpm:
@@ -128,8 +136,10 @@ jobs:
       - name: Create source tarball
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          git archive --format=tar.gz --prefix="SQLPage-${VERSION}/" \
-            -o ~/rpmbuild/SOURCES/sqlpage-${VERSION}.tar.gz HEAD
+          RPM_VERSION=$(echo "$VERSION" | sed 's/-/~/')
+          # Create tarball with version prefix matching spec file Source0
+          git archive --format=tar.gz --prefix="SQLPage-${RPM_VERSION}/" \
+            -o ~/rpmbuild/SOURCES/v${RPM_VERSION}.tar.gz HEAD
       
       - name: Build RPM package
         run: |
