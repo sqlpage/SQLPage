@@ -32,33 +32,10 @@ DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test # all dbms
 - Components: defined in `./sqlpage/templates/*.handlebars`
 - Functions: `src/webserver/database/sqlpage_functions/functions.rs` registered with `make_function!`.
 - Components and functions are documented in [official website](./examples/official-site/sqlpage/migrations/); one migration per component and per function.
-- ```sql
-   CREATE TABLE component(
-       name TEXT PRIMARY KEY,
-       description TEXT NOT NULL,
-       icon TEXT, -- icon name from tabler icon
-       introduced_in_version TEXT
-   );
-
-   CREATE TABLE parameter_type(name TEXT PRIMARY KEY);
-   INSERT INTO parameter_type(name) VALUES ('BOOLEAN'), ('COLOR'), ('HTML'), ('ICON'), ('INTEGER'), ('JSON'), ('REAL'), ('TEXT'), ('TIMESTAMP'), ('URL');
-
-   CREATE TABLE parameter(
-       top_level BOOLEAN DEFAULT FALSE,
-       name TEXT,
-       component TEXT REFERENCES component(name) ON DELETE CASCADE,
-       description TEXT,
-       description_md TEXT,
-       type TEXT REFERENCES parameter_type(name) ON DELETE CASCADE,
-       optional BOOLEAN DEFAULT FALSE,
-   );
-
-   CREATE TABLE example(
-       component TEXT REFERENCES component(name) ON DELETE CASCADE,
-       description TEXT,
-       properties JSON,
-   );
-  ```
+  - tables
+    - `component(name,description,icon,introduced_in_version)` -- icon name from tabler icon
+    - `parameter(top_level BOOLEAN, name, component REFERENCES component(name), description, description_md, type, optional BOOLEAN)` parameter types: BOOLEAN, COLOR, HTML, ICON, INTEGER, JSON, REAL, TEXT, TIMESTAMP, URL
+    - `example(component REFERENCES component(name), description, properties JSON)`
 - [Configuration](./configuration.md): see [AppConfig](./src/app_config.rs)
 - Routing: file-based in `src/webserver/routing.rs`; not found handled via `src/default_404.sql`.
 - Follow patterns from similar modules before introducing new abstractions.
