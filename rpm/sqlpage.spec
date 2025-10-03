@@ -57,6 +57,7 @@ install -D -m 644 sqlpage.service %{buildroot}%{_unitdir}/sqlpage.service
 install -d %{buildroot}%{_sysconfdir}/sqlpage
 install -d %{buildroot}%{_sharedstatedir}/sqlpage
 install -d %{buildroot}/var/www/sqlpage
+install -d %{buildroot}/var/log/sqlpage
 
 install -D -m 644 sqlpage/sqlpage.json %{buildroot}%{_sysconfdir}/sqlpage/sqlpage.json
 cp -r sqlpage/templates %{buildroot}%{_sysconfdir}/sqlpage/
