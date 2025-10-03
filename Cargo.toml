@@ -80,7 +80,7 @@ encoding_rs = "0.8.35"
 odbc-sys = { version = "0.27", features = ["iodbc", "static"] }
 
 [target.'cfg(any(target_os = "windows"))'.dependencies]
-odbc-sys = { version = "0.27", features = ["iodbc", "static"] }
+odbc-sys = { version = "0.27", features = [] }
 
 [patch.crates-io]
 odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch = "main" } # see https://github.com/pacman82/odbc-sys/pull/60
