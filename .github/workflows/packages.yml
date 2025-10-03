@@ -97,7 +97,7 @@ jobs:
   build-rpm:
     name: Build RPM Package
     runs-on: ubuntu-latest
-    container: fedora:latest
+    container: rockylinux:8  # Use Rocky Linux 8 for maximum glibc compatibility (glibc 2.28)
     steps:
       - name: Install git for checkout
         run: dnf install -y git
