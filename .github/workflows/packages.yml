@@ -256,13 +256,13 @@ jobs:
       - name: Install package
         run: |
           ls -la
-          find . -name "*.rpm" -type f
+          ls -la x86_64/ || true
           dnf install -y ./x86_64/*.rpm
       
       - name: Verify installation
         run: |
           sqlpage --version
-          which sqlpage
+          command -v sqlpage
           rpm -q sqlpage
           test -f /usr/bin/sqlpage
           test -d /etc/sqlpage
@@ -304,13 +304,13 @@ jobs:
       - name: Install package
         run: |
           ls -la
-          find . -name "*.rpm" -type f
+          ls -la x86_64/ || true
           yum install -y ./x86_64/*.rpm
       
       - name: Verify installation
         run: |
           sqlpage --version
-          which sqlpage
+          command -v sqlpage
           rpm -q sqlpage
           test -f /usr/bin/sqlpage
           test -d /etc/sqlpage
