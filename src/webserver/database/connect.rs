@@ -8,7 +8,6 @@ use crate::{
 };
 use anyhow::Context;
 use futures_util::future::BoxFuture;
-#[cfg(feature = "odbc")]
 use sqlx::odbc::OdbcConnectOptions;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
@@ -210,11 +209,9 @@ fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfi
     if let Some(sqlite_options) = options.as_sqlite_mut() {
         set_custom_connect_options_sqlite(sqlite_options, config);
     }
-    #[cfg(feature = "odbc")]
-    {
-        if let Some(odbc_options) = options.as_odbc_mut() {
-            set_custom_connect_options_odbc(odbc_options, config);
-        }
+
+    if let Some(odbc_options) = options.as_odbc_mut() {
+        set_custom_connect_options_odbc(odbc_options, config);
     }
 }
 
@@ -243,7 +240,6 @@ fn make_sqlite_fun(name: &str, f: fn(&str) -> String) -> Function {
     })
 }
 
-#[cfg(feature = "odbc")]
 fn set_custom_connect_options_odbc(odbc_options: &mut OdbcConnectOptions, config: &AppConfig) {
     // Allow fetching very large text fields when using ODBC by removing the max column size limit
     let batch_size = config.max_pending_rows.clamp(1, 1024);
