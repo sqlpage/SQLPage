@@ -256,7 +256,8 @@ jobs:
       - name: Install package
         run: |
           ls -la
-          dnf install -y ./*.rpm
+          find . -name "*.rpm" -type f
+          dnf install -y ./x86_64/*.rpm
       
       - name: Verify installation
         run: |
@@ -303,7 +304,8 @@ jobs:
       - name: Install package
         run: |
           ls -la
-          yum install -y ./*.rpm
+          find . -name "*.rpm" -type f
+          yum install -y ./x86_64/*.rpm
       
       - name: Verify installation
         run: |
