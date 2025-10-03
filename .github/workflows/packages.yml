@@ -97,10 +97,10 @@ jobs:
   build-rpm:
     name: Build RPM Package
     runs-on: ubuntu-latest
-    container: rockylinux:8  # Use Rocky Linux 8 for maximum glibc compatibility (glibc 2.28)
+    container: quay.io/pypa/manylinux_2_28_x86_64  # Maximum glibc compatibility (glibc 2.28)
     steps:
       - name: Install git for checkout
-        run: dnf install -y git
+        run: yum install -y git
       
       - uses: actions/checkout@v4
         with:
@@ -111,16 +111,22 @@ jobs:
       
       - name: Install build dependencies
         run: |
-          dnf install -y \
+          yum update -y
+          yum install -y \
             rpm-build \
             rpmdevtools \
-            rpmlint \
-            rust \
-            cargo \
             openssl-devel \
-            systemd-rpm-macros \
+            systemd \
             unixODBC-devel \
             freetds-devel
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+      
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       
       - name: Set up RPM build tree
         run: rpmdev-setuptree
