@@ -77,7 +77,7 @@ openidconnect = { version = "4.0.0", default-features = false }
 encoding_rs = "0.8.35"
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
-odbc-sys = { version = "0.27", features = ["iodbc", "static"] }
+odbc-sys = { version = "0.27", features = ["static"] }
 
 [target.'cfg(any(target_os = "windows"))'.dependencies]
 odbc-sys = { version = "0.27", features = [] }
