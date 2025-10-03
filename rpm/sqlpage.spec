@@ -10,6 +10,7 @@ Source0:        https://github.com/sqlpage/SQLPage/archive/v%{version}.tar.gz
 # Disable automatic shebang mangling - Rust source files use #! for attributes, not shebangs
 %undefine __brp_mangle_shebangs
 
+# Note: cargo/rust listed for local builds; CI uses --nodeps flag with toolchain action
 BuildRequires:  rust >= 1.70
 BuildRequires:  cargo >= 1.70
 BuildRequires:  openssl-devel

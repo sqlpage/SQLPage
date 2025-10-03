@@ -149,7 +149,8 @@ jobs:
       
       - name: Build RPM package
         run: |
-          rpmbuild -ba ~/rpmbuild/SPECS/sqlpage.spec
+          # Use --nodeps to bypass build dependency checks since Rust is provided by CI
+          rpmbuild -ba --nodeps ~/rpmbuild/SPECS/sqlpage.spec
       
       - name: Run rpmlint checks
         run: |
