@@ -255,7 +255,8 @@ jobs:
       
       - name: Install package
         run: |
-          dnf install -y ./sqlpage*.rpm
+          ls -la
+          dnf install -y ./*.rpm
       
       - name: Verify installation
         run: |
@@ -301,7 +302,8 @@ jobs:
       
       - name: Install package
         run: |
-          yum install -y ./sqlpage*.rpm
+          ls -la
+          yum install -y ./*.rpm
       
       - name: Verify installation
         run: |
