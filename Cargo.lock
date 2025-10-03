@@ -3123,8 +3123,10 @@ dependencies = [
 [[package]]
 name = "odbc-sys"
 version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acb069b57ebbad5234fb7197af7ee0c40daceb3946a86fa8d3f7a38393bf2770"
+source = "git+https://github.com/sqlpage/odbc-sys?branch=main#0b5489e7b07d45e6b126f5a57ed6c301f022d2da"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "oid-registry"

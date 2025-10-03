@@ -86,6 +86,12 @@ openidconnect = { version = "4.0.0", default-features = false }
 encoding_rs = "0.8.35"
 odbc-sys = { version = "0.27", optional = true }
 
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+odbc-sys = { version = "0.27", optional = true, features = ["iodbc", "static"] }
+
+[patch.crates-io]
+odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch = "main" }
+
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
 rustls = "0.23"
