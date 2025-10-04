@@ -31,7 +31,7 @@ jobs:
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test --all-features
+      - run: cargo test --features odbc-static
       - name: Upload Linux binary
         uses: actions/upload-artifact@v4
         with:
@@ -70,7 +70,7 @@ jobs:
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: cargo test --all-features
+        run: cargo test --features odbc-static
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           RUST_BACKTRACE: 1

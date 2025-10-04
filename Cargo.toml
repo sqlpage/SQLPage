@@ -81,6 +81,7 @@ odbc-sys = { version = "0.27", features = [], optional = false }
 [features]
 default = []
 odbc-static = ["odbc-sys/static"]
+lambda-web = ["dep:lambda-web", "odbc-static"]
 
 
 [patch.crates-io]
