@@ -194,12 +194,6 @@ On Linux, SQLPage supports both dynamic and static ODBC linking. The Docker imag
 Linux and MacOS release binaries are built with a statically linked unixODBC.
 You still need to install or provide the database-specific ODBC driver for the database you want to connect to.
 
-#### Install ODBC
-
- - On windows, it's installed by default.
- - On linux, the driver manager is bundled with SQLPage; install only your database driver's package.
- - On mac: `brew install unixodbc`
-
 
 #### Install your ODBC database driver
   - [DuckDB](https://duckdb.org/docs/stable/clients/odbc/overview.html)

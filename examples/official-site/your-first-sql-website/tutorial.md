@@ -91,6 +91,7 @@ Later, when you want to deploy your website online, you can switch back to a per
 - a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/postgres/struct.PgConnectOptions.html)),
 - a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mysql/struct.MySqlConnectOptions.html)),
 - a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html#method.from_str), [note about named instances](https://github.com/sqlpage/SQLPage/issues/92)),
+- any ODBC-compatible database like DuckDB, ClickHouse, Databricks, Snowflake, BigQuery, Oracle, Db2, and many more. See [ODBC database connection instructions](https://github.com/sqlpage/SQLPage#odbc-setup).
 
 > If `user` or `password` **contains special characters**, you should [**percent-encode**](https://en.wikipedia.org/wiki/Percent-encoding) them.
 >
