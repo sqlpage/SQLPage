@@ -1,6 +1,16 @@
 # CHANGELOG.md
 
 ## v0.38.0
+ - Added support for the Open Database Connectivity (ODBC) standard.
+   - This makes SQLPage compatible with many new databases, including:
+    - [*ClickHouse*](https://github.com/ClickHouse/clickhouse-odbc),
+    - [*MongoDB*](https://www.mongodb.com/docs/atlas/data-federation/query/sql/drivers/odbc/connect),
+    - [*DuckDB*](https://duckdb.org/docs/stable/clients/odbc/overview.html), and through it [many other data sources](https://duckdb.org/docs/stable/data/data_sources),
+    - [*Oracle*](https://www.oracle.com/database/technologies/releasenote-odbc-ic.html),
+    - [*Snowflake*](https://docs.snowflake.com/en/developer-guide/odbc/odbc),
+    - [*BigQuery*](https://cloud.google.com/bigquery/docs/reference/odbc-jdbc-drivers),
+    - [*IBM DB2*](https://www.ibm.com/support/pages/db2-odbc-cli-driver-download-and-installation-information),
+    - [*Trino*](https://docs.starburst.io/clients/odbc/odbc-v2.html), and through it [many other data sources](https://trino.io/docs/current/connector.html)
  - Added a new `sqlpage.hmac()` function for cryptographic HMAC (Hash-based Message Authentication Code) operations.
    - Create and verify secure signatures for webhooks (Shopify, Stripe, GitHub, etc.)
    - Generate tamper-proof tokens for API authentication
