@@ -150,5 +150,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - name: Publish to crates.io
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
