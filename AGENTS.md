@@ -3,16 +3,17 @@ HTML streamed to client
 
 ## Validation
 
+### When working on rust code
 Mandatory formatting (rust): `cargo fmt --all`
-
 Mandatory linting: `cargo clippy --all-targets --all-features -- -D warnings`
 
+### When working on css or js
 Frontend formatting: `npm run format`
 
 More about testing: see [github actions](./.github/workflows/ci.yml).
 Project structure: see [contribution guide](./CONTRIBUTING.md)
 
-Don’t reformat unrelated files. Always run tests/lints/format before stopping when you changed code.
+NEVER reformat/lint/touch files unrelated to your task. Always run tests/lints/format before stopping when you changed code.
 
 ### Testing
 
