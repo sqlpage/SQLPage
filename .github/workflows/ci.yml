@@ -27,15 +27,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: npm ci
       - run: npm test
-      - name: Install ODBC dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unixodbc-dev freetds-dev
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test
+      - run: cargo test --all-features
       - name: Upload Linux binary
         uses: actions/upload-artifact@v4
         with:
@@ -58,21 +54,15 @@ jobs:
             db_url: "mssql://root:Password123!@127.0.0.1/sqlpage"
           - database: odbc
             container: postgres
-            db_url: "Driver={PostgreSQL Unicode};Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!"
+            db_url: "Driver=/usr/lib/x86_64-linux-gnu/odbc/psqlodbcw.so;Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!"
             setup_odbc: true
     steps:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
-      - name: Install ODBC dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unixodbc-dev freetds-dev
-      - name: Setup ODBC for testing
+      - name: Install PostgreSQL ODBC driver
         if: matrix.setup_odbc
-        run: |
-          # Install PostgreSQL ODBC driver (automatically registers the driver)
-          sudo apt-get install -y odbc-postgresql
+        run: sudo apt-get install -y odbc-postgresql
       - name: Start database container
         run: docker compose up --wait ${{ matrix.container }}
       - name: Show container logs
@@ -80,7 +70,7 @@ jobs:
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: cargo test
+        run: cargo test --all-features
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           RUST_BACKTRACE: 1
