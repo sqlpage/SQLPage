@@ -83,10 +83,6 @@ jobs:
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
       - uses: actions/checkout@v4
-      - name: Install ODBC dependencies
-        run: |
-          yum update -y
-          yum install -y unixODBC-devel freetds-devel
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -94,7 +90,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       - name: Build
-        run: cargo build --profile superoptimized --locked --target x86_64-unknown-linux-gnu
+        run: cargo build --profile superoptimized --locked --target x86_64-unknown-linux-gnu --all-features
       - uses: actions/upload-artifact@v4
         with:
           name: sqlpage ubuntu-latest

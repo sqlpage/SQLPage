@@ -27,10 +27,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: npm ci
       - run: npm test
-      - name: Install ODBC dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unixodbc-dev freetds-dev
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       - run: cargo fmt --all -- --check
@@ -74,7 +70,7 @@ jobs:
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: cargo test
+        run: cargo test --all-features
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           RUST_BACKTRACE: 1
