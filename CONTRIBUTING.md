@@ -39,37 +39,22 @@ The resulting executable will be in `target/release/sqlpage`.
 
 ### ODBC build modes
 
-SQLPage supports three additive build modes for ODBC. Choose the mode via Cargo features:
+SQLPage can either be built with an integrated odbc driver manager (static linking),
+or depend on having one already installed on the system where it is running (dynamic linking).
 
-- Dynamic ODBC (default):
-  - Works on Linux, macOS and Windows (Windows has ODBC built-in).
-  - Command:
-    ```bash
-    cargo build               # or: cargo build --features odbc-dynamic
-    ```
-- Static ODBC (Linux only):
-  - Statically links the ODBC driver manager; simplifies distribution.
-  - Command:
-    ```bash
-    cargo build --features odbc-static
-    ```
-- No ODBC:
-  - Disables ODBC support entirely.
-  - Command:
-    ```bash
-    cargo build --no-default-features
-    ```
+- Dynamic ODBC (default): `cargo build`
+- Static ODBC (Linux and MacOS only): `cargo build --features odbc-static`
 
-Notes:
-- When cross-compiling in Docker, headers come from the base image (e.g. `unixodbc-dev`).
-- Runtime rpath on Linux includes `$ORIGIN/sqlpage:$ORIGIN/lib` so you can colocate drivers next to the binary when needed.
+Windows comes with ODBC pre-installed; SQLPage cannot statically link to the unixODBC driver manager on windows.
 
 ## Code Style and Linting
 
 ### Rust
+
 - Use `cargo fmt` to format your Rust code
 - Run `cargo clippy` to catch common mistakes and improve code quality
 - All code must pass the following checks:
+
 ```bash
 cargo fmt --all -- --check
 cargo clippy
@@ -82,6 +67,7 @@ We use Biome for linting and formatting of the frontend code.
 ```bash
 npx @biomejs/biome check .
 ```
+
 This will check the entire codebase (html, css, js).
 
 ## Testing
@@ -107,6 +93,7 @@ cargo test
 ```
 
 ### End-to-End Tests
+
 We use Playwright for end-to-end testing of dynamic frontend features.
 Tests are located in [`tests/end-to-end/`](./tests/end-to-end/). Key areas covered include:
 
@@ -130,6 +117,7 @@ npm run test
 ## Documentation
 
 ### Component Documentation
+
 When adding new components, comprehensive documentation is required. Example from a component documentation:
 
 ```sql
@@ -137,7 +125,7 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
     ('component_name', 'icon_name', 'Description of the component', 'version');
 
 -- Document all parameters
-INSERT INTO parameter(component, name, description, type, top_level, optional) 
+INSERT INTO parameter(component, name, description, type, top_level, optional)
 VALUES ('component_name', 'param_name', 'param_description', 'TEXT|BOOLEAN|NUMBER|JSON|ICON|COLOR', false, true);
 
 -- Include usage examples
@@ -154,6 +142,7 @@ If you are editing an existing component, edit the existing sql documentation fi
 If you are adding a new component, add a new sql file in the folder, and add the appropriate insert statements above.
 
 ### SQLPage Function Documentation
+
 When adding new SQLPage functions, document them using a SQL migrations. Example structure:
 
 ```sql
@@ -195,6 +184,7 @@ VALUES (
 ```
 
 Key elements to include in function documentation:
+
 - Clear description of the function's purpose
 - Version number where the function was introduced
 - Appropriate icon
@@ -206,11 +196,13 @@ Key elements to include in function documentation:
 ## Pull Request Process
 
 1. Create a new branch for your feature/fix:
+
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
 2. Make your changes, ensuring:
+
 - All tests pass
 - Code is properly formatted
 - New features are documented
@@ -229,6 +221,7 @@ git checkout -b feature/your-feature-name
 ## Release Process
 
 Releases are automated when pushing tags that match the pattern `v*` (e.g., `v1.0.0`). The CI pipeline will:
+
 - Build and test the code
 - Create Docker images for multiple architectures
 - Push images to Docker Hub
