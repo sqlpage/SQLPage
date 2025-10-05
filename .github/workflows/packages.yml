@@ -184,35 +184,15 @@ jobs:
         version: ["bookworm", "bullseye"]
     container: debian:${{ matrix.version }}
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Download DEB package
         uses: actions/download-artifact@v4
         with:
           name: debian-package
       
-      - name: Install package
-        run: |
-          apt-get update
-          apt-get install -y ./sqlpage*.deb
-      
-      - name: Verify installation
-        run: |
-          sqlpage --version
-          which sqlpage
-          dpkg -l | grep sqlpage
-          test -f /usr/bin/sqlpage
-          test -d /etc/sqlpage
-          test -f /etc/sqlpage/sqlpage.json
-          test -d /etc/sqlpage/templates
-          test -f /lib/systemd/system/sqlpage.service
-      
-      - name: Test service file
-        run: |
-          systemctl cat sqlpage.service || cat /lib/systemd/system/sqlpage.service
-      
-      - name: Verify user creation
-        run: |
-          id sqlpage
-          getent passwd sqlpage
+      - name: Run DEB tests
+        run: bash scripts/ci-test-deb.sh ./sqlpage*.deb
 
   test-deb-ubuntu:
     name: Test DEB on Ubuntu ${{ matrix.version }}
@@ -223,28 +203,15 @@ jobs:
         version: ["24.04", "22.04", "20.04"]
     container: ubuntu:${{ matrix.version }}
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Download DEB package
         uses: actions/download-artifact@v4
         with:
           name: debian-package
       
-      - name: Install package
-        run: |
-          apt-get update
-          apt-get install -y ./sqlpage*.deb
-      
-      - name: Verify installation
-        run: |
-          sqlpage --version
-          which sqlpage
-          dpkg -l | grep sqlpage
-          test -f /usr/bin/sqlpage
-          test -d /etc/sqlpage
-          test -f /etc/sqlpage/sqlpage.json
-      
-      - name: Test service file
-        run: |
-          systemctl cat sqlpage.service || cat /lib/systemd/system/sqlpage.service
+      - name: Run DEB tests
+        run: bash scripts/ci-test-deb.sh ./sqlpage*.deb
 
   test-rpm:
     name: Test RPM on ${{ matrix.container }}
@@ -255,18 +222,15 @@ jobs:
         container: [fedora:latest, rockylinux:8]
     container: ${{ matrix.container }}
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Download RPM package
         uses: actions/download-artifact@v4
         with:
           name: rpm-package
       
-      - name: Install package manager dependencies
-        run: yum install -y curl sudo ./x86_64/*.rpm
-
-      - name: Test SQLPage functionality
-        run: |
-          echo "SELECT 'json' as component; SELECT 1 as it_works;" > /var/www/sqlpage/index.sql
-          cd /var/www/sqlpage && sqlpage & sleep 2 && curl -sf http://localhost:8080/ | grep -q it_works && kill %1
+      - name: Run RPM tests
+        run: bash scripts/ci-test-rpm.sh ./x86_64/*.rpm
 
   publish-packages:
     name: Publish Packages to GitHub Release
