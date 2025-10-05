@@ -18,7 +18,7 @@ RUN apt-get update && \
         dpkg --add-architecture arm64 && apt-get update && \
         apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross pkg-config && \
         LIBDIR="/lib/aarch64-linux-gnu"; \
-        USRLIBDIR="/usr/lib/aarch64-linux-gnu"; \
+        USRLIBDIR="/usr/aarch64-linux-gnu/lib"; \
         HOST_TRIPLE="aarch64-linux-gnu"; \
     elif [ "$TARGETARCH" = "arm" ]; then \
         echo armv7-unknown-linux-gnueabihf > TARGET && \
@@ -29,7 +29,7 @@ RUN apt-get update && \
         SYSROOT=$(arm-linux-gnueabihf-gcc -print-sysroot); \
         echo "--sysroot=$SYSROOT -I$SYSROOT/usr/include -I$SYSROOT/usr/include/arm-linux-gnueabihf" > BINDGEN_EXTRA_CLANG_ARGS; \
         LIBDIR="/lib/arm-linux-gnueabihf"; \
-        USRLIBDIR="/usr/lib/arm-linux-gnueabihf"; \
+        USRLIBDIR="/usr/arm-linux-gnueabihf/lib"; \
         HOST_TRIPLE="arm-linux-gnueabihf"; \
     else \
         echo "Unsupported cross compilation target: $TARGETARCH"; \
