@@ -19,7 +19,6 @@ BuildRequires:  cargo >= 1.70
 BuildRequires:  openssl-devel
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  unixODBC-devel
-BuildRequires:  freetds-devel
 
 Requires:       unixODBC
 Recommends:     sqlite

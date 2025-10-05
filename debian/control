@@ -8,8 +8,7 @@ Build-Depends: debhelper-compat (= 13),
                rustc (>= 1.70),
                libssl-dev,
                pkg-config,
-               unixodbc-dev,
-               freetds-dev
+               unixodbc-dev
 Standards-Version: 4.6.2
 Homepage: https://sql-page.com
 Vcs-Browser: https://github.com/sqlpage/SQLPage

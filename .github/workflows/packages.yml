@@ -25,7 +25,7 @@ permissions:
 jobs:
   build-deb:
     name: Build Debian Package
-    runs-on: ubuntu-20.04  # Use older Ubuntu for wider glibc compatibility
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,17 +34,8 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            debhelper \
-            dh-make \
-            devscripts \
-            lintian \
-            dpkg-dev \
-            build-essential \
-            unixodbc-dev \
-            freetds-dev \
-            libssl-dev \
-            pkg-config
+          sudo apt-get install -y debhelper dpkg-dev build-essential \
+            libssl-dev pkg-config unixodbc-dev lintian
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -54,29 +45,18 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       
-      - name: Build Debian package
+      - name: Build package
         run: |
-          # Update changelog with current version
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           sed -i "1s/.*/sqlpage ($VERSION-1) unstable; urgency=medium/" debian/changelog
-          
-          # Build package (use -d to bypass build dependency checks since Rust is provided by CI)
           dpkg-buildpackage -us -uc -b -d
-      
-      - name: Collect build artifacts
-        run: |
+          
           mkdir -p build-output
-          mv ../*.deb build-output/ || true
+          mv ../*.deb build-output/
           mv ../*.changes build-output/ || true
           mv ../*.buildinfo build-output/ || true
-          ls -lh build-output/
-      
-      - name: Run lintian checks
-        run: |
+          
           lintian --no-tag-display-limit build-output/*.deb || true
-      
-      - name: List package contents
-        run: |
           dpkg-deb --contents build-output/*.deb
           dpkg-deb --info build-output/*.deb
       
@@ -97,7 +77,7 @@ jobs:
   build-rpm:
     name: Build RPM Package
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux_2_28_x86_64  # Maximum glibc compatibility (glibc 2.28)
+    container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
       - name: Install git for checkout
         run: yum install -y git
@@ -110,15 +90,7 @@ jobs:
         run: git config --global --add safe.directory /__w/SQLPage/SQLPage
       
       - name: Install build dependencies
-        run: |
-          yum update -y
-          yum install -y \
-            rpm-build \
-            rpmdevtools \
-            openssl-devel \
-            systemd \
-            unixODBC-devel \
-            freetds-devel
+        run: yum install -y rpm-build rpmdevtools openssl-devel systemd unixODBC-devel
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -128,37 +100,22 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       
-      - name: Set up RPM build tree
-        run: rpmdev-setuptree
-      
-      - name: Update spec file version
+      - name: Build package
         run: |
+          rpmdev-setuptree
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          # RPM doesn't allow hyphens in Version field, convert to tilde for pre-releases
           RPM_VERSION=$(echo "$VERSION" | sed 's/-/~/')
+          
           sed -i "s/^Version:.*/Version:        ${RPM_VERSION}/" rpm/sqlpage.spec
           cp rpm/sqlpage.spec ~/rpmbuild/SPECS/
-      
-      - name: Create source tarball
-        run: |
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          RPM_VERSION=$(echo "$VERSION" | sed 's/-/~/')
-          # Create tarball with version prefix matching spec file Source0
+          
           git archive --format=tar.gz --prefix="SQLPage-${RPM_VERSION}/" \
             -o ~/rpmbuild/SOURCES/v${RPM_VERSION}.tar.gz HEAD
-      
-      - name: Build RPM package
-        run: |
-          # Use --nodeps to bypass build dependency checks since Rust is provided by CI
+          
           rpmbuild -ba --nodeps ~/rpmbuild/SPECS/sqlpage.spec
-      
-      - name: Run rpmlint checks
-        run: |
+          
           rpmlint ~/rpmbuild/RPMS/*/sqlpage*.rpm || true
           rpmlint ~/rpmbuild/SRPMS/sqlpage*.rpm || true
-      
-      - name: List package contents
-        run: |
           rpm -qilp ~/rpmbuild/RPMS/*/sqlpage*.rpm
       
       - name: Upload RPM package
