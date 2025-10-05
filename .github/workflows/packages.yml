@@ -2,19 +2,11 @@ name: Build and Test Packages
 
 on:
   push:
-    tags:
-      - "v*"
-    branches:
-      - "main"
-      - "release-test"
+    tags: ["v*"]
+    branches: ["main", "release-test"]
   pull_request:
-    branches:
-      - "main"
-    paths:
-      - "debian/**"
-      - "rpm/**"
-      - "scripts/build-*.sh"
-      - ".github/workflows/packages.yml"
+    branches: ["main"]
+    paths: ["debian/**", "rpm/**", "scripts/build-*.sh", ".github/workflows/packages.yml"]
   workflow_dispatch:
   workflow_call:
 
@@ -24,201 +16,111 @@ permissions:
 
 jobs:
   build-deb:
-    name: Build Debian Package
+    name: Build DEB
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y debhelper dpkg-dev build-essential \
-            libssl-dev pkg-config unixodbc-dev lintian
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y debhelper dpkg-dev build-essential libssl-dev pkg-config unixodbc-dev lintian
       
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-gnu
       
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       
-      - name: Build package
-        run: |
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          sed -i "1s/.*/sqlpage ($VERSION-1) unstable; urgency=medium/" debian/changelog
-          dpkg-buildpackage -us -uc -b -d
-          
-          mkdir -p build-output
-          mv ../*.deb build-output/
-          mv ../*.changes build-output/ || true
-          mv ../*.buildinfo build-output/ || true
-          
-          lintian --no-tag-display-limit build-output/*.deb || true
-          dpkg-deb --contents build-output/*.deb
-          dpkg-deb --info build-output/*.deb
+      - name: Build
+        run: bash scripts/ci-build-deb.sh
       
-      - name: Upload DEB package
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: debian-package
           path: build-output/*.deb
-          if-no-files-found: error
-      
-      - name: Upload DEB changes
-        uses: actions/upload-artifact@v4
-        with:
-          name: debian-changes
-          path: build-output/*.changes
-          if-no-files-found: warn
 
   build-rpm:
-    name: Build RPM Package
+    name: Build RPM
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
-      - name: Install git for checkout
-        run: yum install -y git
+      - name: Setup
+        run: |
+          yum install -y git
+          git config --global --add safe.directory /__w/SQLPage/SQLPage
       
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      - name: Configure git safe directory
-        run: git config --global --add safe.directory /__w/SQLPage/SQLPage
-      
-      - name: Install build dependencies
+      - name: Install dependencies
         run: yum install -y rpm-build rpmdevtools openssl-devel systemd unixODBC-devel
       
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-gnu
       
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       
-      - name: Build package
-        run: |
-          rpmdev-setuptree
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          RPM_VERSION=$(echo "$VERSION" | sed 's/-/~/')
-          
-          sed -i "s/^Version:.*/Version:        ${RPM_VERSION}/" rpm/sqlpage.spec
-          cp rpm/sqlpage.spec ~/rpmbuild/SPECS/
-          
-          git archive --format=tar.gz --prefix="SQLPage-${RPM_VERSION}/" \
-            -o ~/rpmbuild/SOURCES/v${RPM_VERSION}.tar.gz HEAD
-          
-          rpmbuild -ba --nodeps ~/rpmbuild/SPECS/sqlpage.spec
-          
-          rpmlint ~/rpmbuild/RPMS/*/sqlpage*.rpm || true
-          rpmlint ~/rpmbuild/SRPMS/sqlpage*.rpm || true
-          rpm -qilp ~/rpmbuild/RPMS/*/sqlpage*.rpm
+      - name: Build
+        run: bash scripts/ci-build-rpm.sh
       
-      - name: Upload RPM package
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: rpm-package
           path: ~/rpmbuild/RPMS/*/sqlpage*.rpm
-          if-no-files-found: error
       
-      - name: Upload SRPM package
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: srpm-package
           path: ~/rpmbuild/SRPMS/sqlpage*.rpm
-          if-no-files-found: error
 
-  test-deb-debian:
-    name: Test DEB on Debian ${{ matrix.version }}
-    needs: build-deb
+  test:
+    name: Test ${{ matrix.pkg }} on ${{ matrix.distro }}
+    needs: [build-deb, build-rpm]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: ["bookworm", "bullseye"]
-    container: debian:${{ matrix.version }}
+        include:
+          - pkg: deb
+            distro: debian:bookworm
+          - pkg: deb
+            distro: debian:bullseye
+          - pkg: deb
+            distro: ubuntu:24.04
+          - pkg: deb
+            distro: ubuntu:22.04
+          - pkg: deb
+            distro: ubuntu:20.04
+          - pkg: rpm
+            distro: fedora:latest
+          - pkg: rpm
+            distro: rockylinux:8
+    container: ${{ matrix.distro }}
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download DEB package
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: debian-package
+          name: ${{ matrix.pkg == 'deb' && 'debian-package' || 'rpm-package' }}
       
-      - name: Run DEB tests
-        run: bash scripts/ci-test-deb.sh ./sqlpage*.deb
+      - name: Test
+        run: bash scripts/ci-test-${{ matrix.pkg }}.sh ${{ matrix.pkg == 'deb' && './sqlpage*.deb' || './x86_64/*.rpm' }}
 
-  test-deb-ubuntu:
-    name: Test DEB on Ubuntu ${{ matrix.version }}
-    needs: build-deb
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        version: ["24.04", "22.04", "20.04"]
-    container: ubuntu:${{ matrix.version }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download DEB package
-        uses: actions/download-artifact@v4
-        with:
-          name: debian-package
-      
-      - name: Run DEB tests
-        run: bash scripts/ci-test-deb.sh ./sqlpage*.deb
-
-  test-rpm:
-    name: Test RPM on ${{ matrix.container }}
-    needs: build-rpm
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        container: [fedora:latest, rockylinux:8]
-    container: ${{ matrix.container }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download RPM package
-        uses: actions/download-artifact@v4
-        with:
-          name: rpm-package
-      
-      - name: Run RPM tests
-        run: bash scripts/ci-test-rpm.sh ./x86_64/*.rpm
-
-  publish-packages:
-    name: Publish Packages to GitHub Release
-    needs: [test-deb-debian, test-deb-ubuntu, test-rpm]
+  publish:
+    name: Publish
+    needs: test
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
       
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Prepare
+        run: bash scripts/ci-publish.sh
       
-      - name: Prepare release assets
-        run: |
-          mkdir -p release-assets
-          cp debian-package/*.deb release-assets/
-          cp rpm-package/*.rpm release-assets/
-          cp srpm-package/*.rpm release-assets/
-          ls -lh release-assets/
-      
-      - name: Generate package checksums
-        run: |
-          cd release-assets
-          sha256sum * > SHA256SUMS
-          cat SHA256SUMS
-      
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release-assets/*.deb
-            release-assets/*.rpm
-            release-assets/SHA256SUMS
+          files: release-assets/*
           fail_on_unmatched_files: true
