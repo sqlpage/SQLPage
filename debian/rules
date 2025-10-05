@@ -22,6 +22,7 @@ override_dh_auto_test:
 override_dh_auto_install:
 	install -D -m 755 target/$(CARGO_PROFILE)/sqlpage $(CURDIR)/debian/sqlpage/usr/bin/sqlpage
 	install -D -m 644 sqlpage.service $(CURDIR)/debian/sqlpage/lib/systemd/system/sqlpage.service
+	install -D -m 644 sqlpage.1 $(CURDIR)/debian/sqlpage/usr/share/man/man1/sqlpage.1
 	install -d $(CURDIR)/debian/sqlpage/etc/sqlpage
 	install -d $(CURDIR)/debian/sqlpage/var/www/sqlpage
 	install -D -m 644 sqlpage/sqlpage.json $(CURDIR)/debian/sqlpage/etc/sqlpage/sqlpage.json

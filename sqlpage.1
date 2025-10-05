@@ -1,0 +1,87 @@
+.TH SQLPAGE 1 "October 2025" "SQLPage 0.38.0" "User Commands"
+.SH NAME
+sqlpage \- SQL-only webapp builder and web server
+.SH SYNOPSIS
+.B sqlpage
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B SQLPage
+is a web server that takes .sql files and formats the query results using
+pre-made configurable professional-looking components.
+.PP
+With SQLPage, you write simple .sql files containing queries to your database
+to select, group, update, insert, and delete your data, and you get
+good-looking clean webpages displaying your data as text, lists, grids, plots,
+and forms.
+.PP
+Supported databases include SQLite, PostgreSQL, MySQL, Microsoft SQL Server,
+and any ODBC-compatible database such as ClickHouse, MongoDB, DuckDB, Oracle,
+Snowflake, BigQuery, and IBM DB2.
+.SH OPTIONS
+.TP
+.BR \-\-version
+Display version information and exit.
+.TP
+.BR \-\-help
+Display help information and exit.
+.TP
+.BR \-\-config\-file =\fIPATH\fR
+Specify a custom configuration file path. If not specified, SQLPage will look
+for sqlpage.json in the current directory or in the configuration directory.
+.SH ENVIRONMENT
+.TP
+.B SQLPAGE_CONFIGURATION_DIRECTORY
+Directory containing SQLPage configuration files. Defaults to /etc/sqlpage for
+system installations.
+.TP
+.B SQLPAGE_WEB_ROOT
+Directory containing .sql files to serve. Defaults to the current working
+directory or /var/www/sqlpage for system installations.
+.TP
+.B DATABASE_URL
+Database connection string. Can also be specified in the configuration file.
+.SH FILES
+.TP
+.I /etc/sqlpage/sqlpage.json
+System-wide configuration file.
+.TP
+.I /etc/sqlpage/templates/
+Directory containing Handlebars templates for components.
+.TP
+.I /var/www/sqlpage/
+Default web root directory for .sql files.
+.TP
+.I /var/log/sqlpage/
+Log file directory when running as a system service.
+.SH EXAMPLES
+.PP
+Start SQLPage in the current directory:
+.RS
+.B sqlpage
+.RE
+.PP
+Start SQLPage with a custom configuration file:
+.RS
+.B sqlpage \-\-config\-file=/path/to/config.json
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Successful program execution.
+.TP
+.B 1
+An error occurred.
+.SH SEE ALSO
+Full documentation available at:
+.UR https://sql\-page.com
+.UE
+.PP
+GitHub repository:
+.UR https://github.com/sqlpage/SQLPage
+.UE
+.SH AUTHOR
+SQLPage Contributors <sqlpage@sql\-page.com>
+.SH COPYRIGHT
+Copyright \(co 2023-2025 SQLPage Contributors.
+.br
+License: MIT License

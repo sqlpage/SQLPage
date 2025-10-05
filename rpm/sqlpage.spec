@@ -57,6 +57,9 @@ install -D -m 755 target/superoptimized/sqlpage %{buildroot}%{_bindir}/sqlpage
 # Install systemd service
 install -D -m 644 debian/sqlpage.service %{buildroot}%{_unitdir}/sqlpage.service
 
+# Install manpage
+install -D -m 644 sqlpage.1 %{buildroot}%{_mandir}/man1/sqlpage.1
+
 # Install configuration and data files
 install -d %{buildroot}%{_sysconfdir}/sqlpage
 install -d %{buildroot}%{_sharedstatedir}/sqlpage
@@ -111,6 +114,7 @@ fi
 %doc README.md CHANGELOG.md
 %{_bindir}/sqlpage
 %{_unitdir}/sqlpage.service
+%{_mandir}/man1/sqlpage.1*
 %dir %{_sysconfdir}/sqlpage
 %config(noreplace) %{_sysconfdir}/sqlpage/sqlpage.json
 %{_sysconfdir}/sqlpage/templates/
