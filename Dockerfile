@@ -7,7 +7,7 @@ RUN apt-get update && \
     if [ "$TARGETARCH" = "$BUILDARCH" ]; then \
         rustup target list --installed > TARGET && \
         echo gcc > LINKER && \
-        apt-get install -y gcc libgcc-s1 cmake unixodbc-dev libltdl-dev pkg-config && \
+        apt-get install -y gcc libgcc-s1 cmake pkg-config && \
         LIBMULTIARCH=$(gcc -print-multiarch); \
         LIBDIR="/lib/$LIBMULTIARCH"; \
         USRLIBDIR="/usr/lib/$LIBMULTIARCH"; \
@@ -16,7 +16,7 @@ RUN apt-get update && \
         echo aarch64-unknown-linux-gnu > TARGET && \
         echo aarch64-linux-gnu-gcc > LINKER && \
         dpkg --add-architecture arm64 && apt-get update && \
-        apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross unixodbc-dev:arm64 libltdl-dev:arm64 pkg-config && \
+        apt-get install -y gcc-aarch64-linux-gnu libgcc-s1-arm64-cross pkg-config && \
         LIBDIR="/lib/aarch64-linux-gnu"; \
         USRLIBDIR="/usr/lib/aarch64-linux-gnu"; \
         HOST_TRIPLE="aarch64-linux-gnu"; \
@@ -24,7 +24,7 @@ RUN apt-get update && \
         echo armv7-unknown-linux-gnueabihf > TARGET && \
         echo arm-linux-gnueabihf-gcc > LINKER && \
         dpkg --add-architecture armhf && apt-get update && \
-        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 clang unixodbc-dev:armhf libltdl-dev:armhf pkg-config && \
+        apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross cmake libclang1 clang pkg-config && \
         cargo install --force --locked bindgen-cli && \
         SYSROOT=$(arm-linux-gnueabihf-gcc -print-sysroot); \
         echo "--sysroot=$SYSROOT -I$SYSROOT/usr/include -I$SYSROOT/usr/include/arm-linux-gnueabihf" > BINDGEN_EXTRA_CLANG_ARGS; \
@@ -35,7 +35,6 @@ RUN apt-get update && \
         echo "Unsupported cross compilation target: $TARGETARCH"; \
         exit 1; \
     fi && \
-    echo $USRLIBDIR > ODBC_LIBDIR && \
     cp $LIBDIR/libgcc_s.so.1 /opt/sqlpage-libs/ && \
     rustup target add $(cat TARGET) && \
     cargo init .
@@ -43,19 +42,19 @@ RUN apt-get update && \
 # Build dependencies (creates a layer that avoids recompiling dependencies on every build)
 COPY Cargo.toml Cargo.lock ./
 RUN BINDGEN_EXTRA_CLANG_ARGS=$(cat BINDGEN_EXTRA_CLANG_ARGS || true) \
-    RS_ODBC_LINK_SEARCH=$(cat ODBC_LIBDIR) \
     cargo build \
      --target $(cat TARGET) \
      --config target.$(cat TARGET).linker='"'$(cat LINKER)'"' \
+     --features odbc-static \
      --profile superoptimized
 
 # Build the project
 COPY . .
 RUN touch src/main.rs && \
-    RS_ODBC_LINK_SEARCH=$(cat ODBC_LIBDIR) \
     cargo build \
         --target $(cat TARGET) \
         --config target.$(cat TARGET).linker='"'$(cat LINKER)'"' \
+        --features odbc-static \
         --profile superoptimized && \
     mv target/$(cat TARGET)/superoptimized/sqlpage sqlpage.bin
 
