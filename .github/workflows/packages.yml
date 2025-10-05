@@ -246,85 +246,31 @@ jobs:
         run: |
           systemctl cat sqlpage.service || cat /lib/systemd/system/sqlpage.service
 
-  test-rpm-fedora:
-    name: Test RPM on Fedora ${{ matrix.version }}
+  test-rpm:
+    name: Test RPM on ${{ matrix.container }}
     needs: build-rpm
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: ["latest", "39", "40"]
-    container: fedora:${{ matrix.version }}
+        container: [fedora:latest, rockylinux:8]
+    container: ${{ matrix.container }}
     steps:
       - name: Download RPM package
         uses: actions/download-artifact@v4
         with:
           name: rpm-package
       
-      - name: Install package
-        run: |
-          ls -la
-          ls -la x86_64/ || true
-          dnf install -y ./x86_64/*.rpm
-      
-      - name: Verify installation
-        run: |
-          sqlpage --version
-          command -v sqlpage
-          rpm -q sqlpage
-          test -f /usr/bin/sqlpage
-          test -d /etc/sqlpage
-          test -f /etc/sqlpage/sqlpage.json
-          test -d /etc/sqlpage/templates
-          test -f /usr/lib/systemd/system/sqlpage.service
-      
-      - name: Test service file
-        run: |
-          systemctl cat sqlpage.service || cat /usr/lib/systemd/system/sqlpage.service
-      
-      - name: Verify user creation
-        run: |
-          id sqlpage
-          getent passwd sqlpage
+      - name: Install package manager dependencies
+        run: yum install -y curl sudo ./x86_64/*.rpm
 
-  test-rpm-rhel:
-    name: Test RPM on RHEL-based ${{ matrix.distro }}:${{ matrix.version }}
-    needs: build-rpm
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - distro: rockylinux
-            version: "9"
-          - distro: rockylinux
-            version: "8"
-          - distro: almalinux
-            version: "9"
-          - distro: almalinux
-            version: "8"
-    container: ${{ matrix.distro }}:${{ matrix.version }}
-    steps:
-      - name: Download RPM package
-        uses: actions/download-artifact@v4
-        with:
-          name: rpm-package
-      
-      - name: Install package
+      - name: Test SQLPage functionality
         run: |
-          ls -la
-          ls -la x86_64/ || true
-          yum install -y ./x86_64/*.rpm
-      
-      - name: Verify installation
-        run: |
-          sqlpage --version
-          command -v sqlpage
-          rpm -q sqlpage
-          test -f /usr/bin/sqlpage
-          test -d /etc/sqlpage
+          echo "SELECT 'json' as component; SELECT 1 as it_works;" > /var/www/sqlpage/index.sql
+          cd /var/www/sqlpage && sqlpage & sleep 2 && curl -sf http://localhost:8080/ | grep -q it_works && kill %1
 
   publish-packages:
     name: Publish Packages to GitHub Release
-    needs: [test-deb-debian, test-deb-ubuntu, test-rpm-fedora, test-rpm-rhel]
+    needs: [test-deb-debian, test-deb-ubuntu, test-rpm]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:

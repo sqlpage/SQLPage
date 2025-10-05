@@ -55,7 +55,7 @@ rm -rf %{buildroot}
 install -D -m 755 target/superoptimized/sqlpage %{buildroot}%{_bindir}/sqlpage
 
 # Install systemd service
-install -D -m 644 sqlpage.service %{buildroot}%{_unitdir}/sqlpage.service
+install -D -m 644 debian/sqlpage.service %{buildroot}%{_unitdir}/sqlpage.service
 
 # Install configuration and data files
 install -d %{buildroot}%{_sysconfdir}/sqlpage
