@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: sqlpage
-Upstream-Contact: SQLPage Contributors <sqlpage@sql-page.com>
+Upstream-Contact: SQLPage Contributors <contact@sql-page.com>
 Source: https://github.com/sqlpage/SQLPage
 
 Files: *

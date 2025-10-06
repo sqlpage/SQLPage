@@ -125,7 +125,7 @@ fi
 %dir %attr(750,sqlpage,sqlpage) /var/log/sqlpage
 
 %changelog
-* Thu Oct 02 2025 SQLPage Contributors <sqlpage@sql-page.com> - 0.38.0~beta.1-1
+* Thu Oct 02 2025 SQLPage Contributors <contact@sql-page.com> - 0.38.0~beta.1-1
 - Initial RPM package release
 - SQL-only webapp builder with support for multiple databases
 - Includes systemd service configuration

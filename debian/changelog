@@ -5,4 +5,4 @@ sqlpage (0.38.0-beta.1-1) unstable; urgency=medium
   * Includes systemd service configuration
   * Support for SQLite, PostgreSQL, MySQL, MS SQL Server, and ODBC
 
- -- SQLPage Contributors <sqlpage@sql-page.com>  Thu, 02 Oct 2025 00:00:00 +0000
+ -- SQLPage Contributors <contact@sql-page.com>  Thu, 02 Oct 2025 00:00:00 +0000
