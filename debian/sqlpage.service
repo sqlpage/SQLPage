@@ -9,12 +9,15 @@ User=sqlpage
 Group=sqlpage
 WorkingDirectory=/var/www/sqlpage
 ExecStart=/usr/bin/sqlpage
+
 Environment="SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage"
 Environment="SQLPAGE_WEB_ROOT=/var/www/sqlpage"
-Restart=on-failure
-RestartSec=5s
 
-# Security settings
+Restart=on-failure
+RestartSec=10s
+
+SyslogIdentifier=sqlpage
+
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
@@ -23,6 +26,11 @@ ReadWritePaths=/var/www/sqlpage /var/log/sqlpage
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
