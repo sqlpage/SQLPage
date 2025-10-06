@@ -8,9 +8,9 @@ use crate::{
 };
 use anyhow::Context;
 use futures_util::future::BoxFuture;
+use sqlx::odbc::OdbcConnectOptions;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
-    odbc::OdbcConnectOptions,
     pool::PoolOptions,
     sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
     ConnectOptions, Connection, Executor,
@@ -209,6 +209,7 @@ fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfi
     if let Some(sqlite_options) = options.as_sqlite_mut() {
         set_custom_connect_options_sqlite(sqlite_options, config);
     }
+
     if let Some(odbc_options) = options.as_odbc_mut() {
         set_custom_connect_options_odbc(odbc_options, config);
     }

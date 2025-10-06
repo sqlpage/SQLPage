@@ -190,13 +190,9 @@ You can skip this section if you want to use one of the built-in database driver
 
 SQLPage supports ODBC connections to connect to databases that don't have native drivers, such as Oracle, Snowflake, BigQuery, IBM DB2, and many others.
 
-ODBC support requires an ODBC driver manager and appropriate database drivers to be installed on your system.
-
-#### Install ODBC
-
- - On windows, it's installed by default.
- - On linux: `sudo apt-get install -y unixodbc odbcinst unixodbc-common libodbcinst2`
- - On mac: `brew install unixodbc`
+On Linux, SQLPage supports both dynamic and static ODBC linking. The Docker image uses the system `unixODBC` (dynamic).
+Linux and MacOS release binaries are built with a statically linked unixODBC.
+You still need to install or provide the database-specific ODBC driver for the database you want to connect to.
 
 
 #### Install your ODBC database driver
@@ -207,7 +203,9 @@ ODBC support requires an ODBC driver manager and appropriate database drivers to
 
 #### Connect to your database
 
- - Find your [connection string](https://www.connectionstrings.com/). It will look like this: `Driver={SnowflakeDSIIDriver};Server=xyz.snowflakecomputing.com;Database=MY_DB;Schema=PUBLIC;UID=my_user;PWD=my_password`
+ - Find your [connection string](https://www.connectionstrings.com/).
+   - It will look like this: `Driver=/opt/snowflake_odbc/lib/libSnowflake.so;Server=xyz.snowflakecomputing.com;Database=MY_DB;Schema=PUBLIC;UID=my_user;PWD=my_password`
+   - It must reference the path to the database driver you installed earlier, plus any connection parameter required by the driver itself. Follow the instructions from the driver's own documentation.
  - Use it in the [DATABASE_URL configuration option](./configuration.md)
 
 

@@ -1,4 +1,4 @@
-FROM rust:1.90-alpine as builder
+FROM rust:1.90-alpine AS builder
 RUN rustup component add clippy rustfmt
 RUN apk add --no-cache musl-dev zip
 WORKDIR /usr/src/sqlpage
@@ -13,7 +13,7 @@ RUN   mv target/release/sqlpage bootstrap && \
       ldd  bootstrap && \
       zip -9 -r deploy.zip bootstrap index.sql
 
-FROM public.ecr.aws/lambda/provided:al2 as runner
+FROM public.ecr.aws/lambda/provided:al2 AS runner
 COPY --from=builder /usr/src/sqlpage/bootstrap /main
 COPY --from=builder /usr/src/sqlpage/index.sql ./index.sql
 ENTRYPOINT ["/main"]
