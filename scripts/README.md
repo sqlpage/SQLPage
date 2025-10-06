@@ -4,8 +4,8 @@ This directory contains scripts for building and testing SQLPage packages.
 
 ## Available Scripts
 
-### `build-deb.sh`
-Builds a Debian/Ubuntu `.deb` package.
+### `ci-build-deb.sh`
+Builds a Debian/Ubuntu `.deb` package for CI environments.
 
 **Requirements:**
 - Debian or Ubuntu system (or container)
@@ -13,13 +13,13 @@ Builds a Debian/Ubuntu `.deb` package.
 
 **Usage:**
 ```bash
-./scripts/build-deb.sh
+./scripts/ci-build-deb.sh
 ```
 
-**Output:** `../sqlpage_*.deb`
+**Output:** `build-output/sqlpage_*.deb`
 
-### `build-rpm.sh`
-Builds an RPM package for Fedora, RHEL, Rocky Linux, etc.
+### `ci-build-rpm.sh`
+Builds an RPM package for Fedora, RHEL, Rocky Linux, etc. for CI environments.
 
 **Requirements:**
 - RPM-based system (or container)
@@ -27,39 +27,35 @@ Builds an RPM package for Fedora, RHEL, Rocky Linux, etc.
 
 **Usage:**
 ```bash
-./scripts/build-rpm.sh
+./scripts/ci-build-rpm.sh
 ```
 
 **Output:** `~/rpmbuild/RPMS/x86_64/sqlpage*.rpm` and `~/rpmbuild/SRPMS/sqlpage*.rpm`
 
-### `test-packages.sh`
-Tests package installation across multiple distributions using Docker.
+### `ci-test-package.sh`
+Tests package installation on a single distribution.
 
 **Requirements:**
-- Docker installed and running
-- Built packages available
+- Package file available
+- Appropriate package manager (apt/dnf/yum)
 
 **Usage:**
 ```bash
-./scripts/test-packages.sh
+./scripts/ci-test-package.sh [package-file]
 ```
 
-Tests packages on:
-- Debian: bookworm, bullseye
-- Ubuntu: 24.04, 22.04
-- Fedora: latest, 39
-- Rocky Linux: 9, 8
+Tests package installation, systemd service, and basic functionality.
 
 ## Quick Start
 
-### Building Both Package Types in Docker
+### Building Packages in Docker
 
 **Debian package:**
 ```bash
 docker run -it -v $(pwd):/workspace -w /workspace debian:bookworm bash -c "
   apt-get update && \
   apt-get install -y debhelper cargo rustc unixodbc-dev freetds-dev libssl-dev pkg-config dpkg-dev && \
-  ./scripts/build-deb.sh
+  ./scripts/ci-build-deb.sh
 "
 ```
 
@@ -67,14 +63,14 @@ docker run -it -v $(pwd):/workspace -w /workspace debian:bookworm bash -c "
 ```bash
 docker run -it -v $(pwd):/workspace -w /workspace fedora:latest bash -c "
   dnf install -y rpm-build rpmdevtools rust cargo openssl-devel unixODBC-devel freetds-devel systemd-rpm-macros git && \
-  ./scripts/build-rpm.sh
+  ./scripts/ci-build-rpm.sh
 "
 ```
 
 ## CI/CD Integration
 
 These scripts are integrated into GitHub Actions workflows:
-- `.github/workflows/packages.yml` - Main package building and testing
+- `.github/workflows/packages.yml` - Package building and testing
 - `.github/workflows/release.yml` - Release automation
 
 Packages are automatically:
