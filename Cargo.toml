@@ -18,7 +18,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", git = "https://github.com/sqlpage/sqlx-oldapi", version = "0.6.49-beta.6", default-features = false, features = [
+sqlx = { package = "sqlx-oldapi", version = "0.6.49", default-features = false, features = [
     "any",
     "runtime-tokio-rustls",
     "migrate",
@@ -75,6 +75,17 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false }
 encoding_rs = "0.8.35"
+odbc-sys = { version = "0.27", features = [], optional = false }
+
+
+[features]
+default = []
+odbc-static = ["odbc-sys/static"]
+lambda-web = ["dep:lambda-web", "odbc-static"]
+
+
+[patch.crates-io]
+odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch = "main" } # see https://github.com/pacman82/odbc-sys/pull/60
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }

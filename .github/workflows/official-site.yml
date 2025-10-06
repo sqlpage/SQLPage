@@ -8,7 +8,7 @@ on:
 concurrency: site-deploy
 
 jobs:
-  deploy:
+  deploy_official_site:
     runs-on: ubuntu-latest
     steps:
       - name: Cloning repo

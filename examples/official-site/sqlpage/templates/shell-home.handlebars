@@ -495,7 +495,7 @@
             font-weight: 500;
             background: var(--gradient-primary);
             color: rgba(255, 255, 255, 0.95);
-            text-decoration: none;
+            text-decoration: none !important;
             border-radius: 12px;
             transition: all var(--transition-slow);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -803,6 +803,343 @@
             }
         }
 
+        .compat-section {
+            position: relative;
+            background: radial-gradient(circle at 20% 20%, rgba(88, 125, 255, 0.18), transparent 50%), radial-gradient(circle at 80% 10%, rgba(255, 130, 255, 0.18), transparent 55%), linear-gradient(160deg, rgba(10, 19, 44, 0.95), rgba(7, 12, 26, 0.92));
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .compat-section::before,
+        .compat-section::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .compat-section::before {
+            background-image: radial-gradient(2px 2px at 25px 35px, rgba(255, 255, 255, 0.6), transparent), radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, 0.4), transparent), radial-gradient(1.5px 1.5px at 220px 140px, rgba(255, 255, 255, 0.55), transparent), radial-gradient(2px 2px at 320px 60px, rgba(255, 255, 255, 0.5), transparent), radial-gradient(1px 1px at 420px 180px, rgba(255, 255, 255, 0.4), transparent), radial-gradient(1.5px 1.5px at 520px 90px, rgba(255, 255, 255, 0.5), transparent);
+            background-size: 240px 220px;
+            opacity: 0.45;
+            animation: twinkle 14s linear infinite;
+        }
+
+        .compat-section::after {
+            background: radial-gradient(450px 450px at 80% 110%, rgba(63, 104, 255, 0.35), transparent 70%);
+        }
+
+        .compat-layout {
+            display: grid;
+            grid-template-columns: minmax(400px, 1fr) minmax(450px, 1.2fr);
+            gap: var(--gap-lg);
+            padding-top: calc(var(--container-padding) * 1.5);
+            padding-bottom: calc(var(--container-padding) * 1.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .compat-intro {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .compat-eyebrow {
+            font-size: 0.85rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: rgba(173, 188, 255, 0.75);
+        }
+
+        .compat-intro h2 {
+            font-size: 3.2rem;
+            line-height: 1.1;
+            color: rgba(229, 237, 255, 0.94);
+        }
+
+        .compat-intro p {
+            font-size: 1.15rem;
+            color: rgba(209, 219, 255, 0.78);
+            max-width: 90%;
+        }
+
+        .compat-highlights {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .compat-pill {
+            padding: 0.45rem 0.9rem;
+            border-radius: 999px;
+            background: rgba(99, 118, 255, 0.12);
+            border: 1px solid rgba(143, 162, 255, 0.25);
+            color: rgba(207, 221, 255, 0.78);
+            font-size: 0.85rem;
+            backdrop-filter: blur(6px);
+        }
+
+        .compat-showcase {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .compat-orbit {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin: 0 auto;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(64, 84, 182, 0.35), rgba(19, 27, 51, 0.4));
+            box-shadow: inset 0 0 40px rgba(127, 162, 255, 0.2), 0 20px 60px rgba(6, 12, 32, 0.7);
+        }
+
+        .compat-orbit::before {
+            content: "";
+            position: absolute;
+            inset: 14px;
+            border-radius: 50%;
+            border: 1px dashed rgba(162, 186, 255, 0.4);
+            animation: orbitSpin 26s linear infinite;
+        }
+
+        .compat-orbit::after {
+            content: "";
+            position: absolute;
+            inset: 44px;
+            border-radius: 50%;
+            border: 1px solid rgba(86, 112, 221, 0.2);
+            filter: blur(0.3px);
+        }
+
+        .compat-core {
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(35, 46, 98, 0.95), rgba(20, 30, 70, 0.9));
+            box-shadow: 0 0 40px rgba(150, 178, 255, 0.32);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+            color: rgba(229, 236, 255, 0.95);
+            font-size: 0.9rem;
+            line-height: 1.3;
+            backdrop-filter: blur(6px);
+            margin: auto;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .compat-node {
+            position: absolute;
+            width: 84px;
+            height: 84px;
+            border-radius: 18px;
+            background: rgba(10, 17, 36, 0.72);
+            box-shadow: 0 12px 28px rgba(2, 6, 18, 0.6), inset 0 0 24px rgba(137, 157, 255, 0.24);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(143, 166, 255, 0.35);
+            outline: 1px solid rgba(12, 18, 38, 0.6);
+            outline-offset: -4px;
+        }
+
+        .compat-node img {
+            width: 54px;
+            height: 54px;
+        }
+
+        .compat-node:nth-child(2) {
+            top: 6%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: floatNode 7s ease-in-out infinite;
+        }
+
+        .compat-node:nth-child(3) {
+            top: 50%;
+            right: 2%;
+            transform: translate(50%, -50%);
+            animation: floatNode 9s ease-in-out infinite;
+        }
+
+        .compat-node:nth-child(4) {
+            bottom: 4%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            animation: floatNode 8s ease-in-out infinite;
+        }
+
+        .compat-node:nth-child(5) {
+            top: 50%;
+            left: 2%;
+            transform: translate(-50%, -50%);
+            animation: floatNode 10s ease-in-out infinite;
+        }
+
+        .compat-card {
+            background: rgba(12, 20, 42, 0.68);
+            border-radius: 18px;
+            padding: 1.8rem;
+            border: 1px solid rgba(110, 138, 238, 0.32);
+            box-shadow: 0 18px 40px rgba(4, 8, 22, 0.6);
+            backdrop-filter: blur(12px);
+            display: grid;
+            gap: 1.2rem;
+            width: 100%;
+            max-width: 500px;
+            min-width: 380px;
+        }
+
+        .compat-card h3 {
+            font-size: 1.35rem;
+            color: rgba(228, 236, 255, 0.92);
+        }
+
+        .compat-card p {
+            font-size: 0.98rem;
+            color: rgba(204, 214, 255, 0.72);
+            line-height: 1.6;
+        }
+
+        .compat-logos {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+        }
+
+        .compat-logos .db-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            padding: 0.7rem;
+            background: rgba(19, 30, 58, 0.9);
+            border: 1px solid rgba(118, 140, 233, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .compat-logos img {
+            width: 44px;
+            height: 44px;
+        }
+
+        .compat-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 0.75rem;
+        }
+
+        .compat-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(57, 76, 162, 0.32);
+            color: rgba(225, 232, 255, 0.78);
+            font-size: 0.82rem;
+        }
+
+        @keyframes twinkle {
+            0% {
+                opacity: 0.4;
+                transform: scale(1) translate3d(0, 0, 0);
+            }
+
+            50% {
+                opacity: 0.75;
+                transform: scale(1.05) translate3d(-2%, -3%, 0);
+            }
+
+            100% {
+                opacity: 0.4;
+                transform: scale(1) translate3d(0, 0, 0);
+            }
+        }
+
+        @keyframes orbitSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes floatNode {
+            0% {
+                transform: translate3d(0, 0, 0);
+            }
+
+            50% {
+                transform: translate3d(0, -10px, 0);
+            }
+
+            100% {
+                transform: translate3d(0, 0, 0);
+            }
+        }
+
+        @media (max-width: 968px) {
+            .compat-layout {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .compat-intro p {
+                max-width: 100%;
+            }
+
+            .compat-highlights {
+                justify-content: center;
+            }
+
+            .compat-orbit {
+                width: 260px;
+                height: 260px;
+            }
+
+            .compat-node {
+                width: 74px;
+                height: 74px;
+            }
+
+            .compat-node img {
+                width: 46px;
+                height: 46px;
+            }
+
+            .compat-logos {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .compat-intro h2 {
+                font-size: 2.6rem;
+            }
+
+            .compat-logos {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .compat-card {
+                padding: 1.4rem;
+            }
+        }
+
         /* FOOTER STYLES */
         footer {
             background: linear-gradient(135deg,
@@ -1038,10 +1375,10 @@
         </div>
     </section>
 
-    <section class="feature-section">
+    <section class="feature-section" id="scalable">
         <div class="container">
             <div class="feature-content">
-                <h2 class="gradient-title">More scalable than a spreadsheet</h2>
+                <h2 class="dynamic-title">More scalable than a spreadsheet</h2>
                 <p>SQL queries sort, filter, and aggregate millions of rows in milliseconds. No more slow spreadsheet
                     formulas or memory limitations. Your app remains <a href="/performance">smooth and responsive</a>
                     even
@@ -1054,7 +1391,7 @@
         </div>
     </section>
 
-    <section class="feature-section">
+    <section class="feature-section" id="dynamic">
         <div class="container">
             <div class="feature-content">
                 <h2 class="dynamic-title">More dynamic than a dashboard</h2>
@@ -1070,6 +1407,56 @@
                 <img src="/assets/screenshots/user-creation-form.png"
                     alt="User creation form, illustrating the ability to create, edit, and delete individual data points, to go beyond simple static dashboards."
                     width="600" height="400">
+            </div>
+        </div>
+    </section>
+
+    <section class="compat-section" id="compatibility">
+        <div class="container compat-layout">
+            <div class="compat-intro">
+                <div class="compat-eyebrow">Database Compatibility</div>
+                <h2>Works with <em>your</em> database</h2>
+                <p>SQLPage connects to the database engine you already rely on today.
+                    Keep your data in place and surface it through a
+                    friendly interface that stays in sync.
+                    If you don't have a DB yet, SQLPage comes with a built-in query engine.
+                </p>
+                <div class="compat-highlights">
+                    <div class="compat-pill">SQLite built-in</div>
+                    <div class="compat-pill">MySQL &amp; MariaDB</div>
+                    <div class="compat-pill">PostgreSQL family</div>
+                    <div class="compat-pill">Microsoft SQL Server</div>
+                    <div class="compat-pill">ODBC bridge</div>
+                </div>
+            </div>
+            <div class="compat-showcase">
+                <div class="compat-orbit">
+                    <div class="compat-core" title="Native connectors for SQLite, MySQL, PostgreSQL, and SQL Server">
+                        Native connectors
+                    </div>
+                    <div class="compat-node" title="SQLite"><img src="/assets/db-sqlite.svg" alt="SQLite"></div>
+                    <div class="compat-node" title="MySQL"><img src="/assets/db-mysql.svg" alt="MySQL"></div>
+                    <div class="compat-node" title="PostgreSQL"><img src="/assets/db-postgres.svg" alt="PostgreSQL"></div>
+                    <div class="compat-node" title="Microsoft SQL Server"><img src="/assets/db-sqlserver.svg" alt="Microsoft SQL Server"></div>
+                </div>
+                <div class="compat-card">
+                    <h3>Wherever your data lives</h3>
+                    <p>Through ODBC you can plug SQLPage into any warehouses and enterprise engines.</p>
+                    <div class="compat-logos">
+                        <div class="db-logo" title="Open Database Connectivity"><img src="/assets/db-odbc.svg" alt="ODBC"></div>
+                        <div class="db-logo" title="DuckDB: fast portable in-process analytical SQL database"><img src="/assets/db-duckdb.svg" alt="DuckDB"></div>
+                        <div class="db-logo" title="ClickHouse: fast columnar database for OLAP"><img src="/assets/db-clickhouse.svg" alt="ClickHouse"></div>
+                        <div class="db-logo" title="Databricks: cloud-native data warehouse"><img src="/assets/db-databricks.svg" alt="Databricks"></div>
+                        <div class="db-logo" title="Snowflake: cloud-native data warehouse"><img src="/assets/db-snowflake.svg" alt="Snowflake"></div>
+                        <div class="db-logo" title="BigQuery: cloud-native data warehouse"><img src="/assets/db-bigquery.svg" alt="BigQuery"></div>
+                        <div class="db-logo" title="Oracle: enterprise database"><img src="/assets/db-oracle.svg" alt="Oracle"></div>
+                        <div class="db-logo" title="IBM Db2: enterprise database"><img src="/assets/db-db2.svg" alt="Db2"></div>
+                    </div>
+                    <div class="compat-badges">
+                        <span class="compat-badge">No data copy</span>
+                        <span class="compat-badge">Streams query results</span>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
