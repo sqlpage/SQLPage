@@ -29,37 +29,28 @@ log_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-# Test DEB package on Debian/Ubuntu
-test_deb() {
+# Test package using unified test script
+test_package() {
     local distro=$1
     local version=$2
-    log_info "Testing DEB package on $distro:$version"
-    
-    docker run --rm -v "$PROJECT_ROOT":/workspace "$distro:$version" bash -c "
-        set -e
-        apt-get update
-        apt-get install -y /workspace/../sqlpage*.deb
-        sqlpage --version
-        systemctl --version || true
-        dpkg -l | grep sqlpage
-        dpkg -L sqlpage
-    " && log_success "DEB test passed on $distro:$version" || log_error "DEB test failed on $distro:$version"
-}
+    local package_type=$3
+    log_info "Testing $package_type package on $distro:$version"
 
-# Test RPM package on Fedora/RHEL
-test_rpm() {
-    local distro=$1
-    local version=$2
-    log_info "Testing RPM package on $distro:$version"
-    
-    docker run --rm -v "$HOME/rpmbuild":/rpmbuild "$distro:$version" bash -c "
-        set -e
-        yum install -y /rpmbuild/RPMS/x86_64/sqlpage*.rpm || dnf install -y /rpmbuild/RPMS/x86_64/sqlpage*.rpm
-        sqlpage --version
-        systemctl --version || true
-        rpm -qi sqlpage
-        rpm -ql sqlpage
-    " && log_success "RPM test passed on $distro:$version" || log_error "RPM test failed on $distro:$version"
+    if [ "$package_type" = "deb" ]; then
+        docker run --rm -v "$PROJECT_ROOT/build-output":/packages "$distro:$version" bash -c "
+            apt-get update -qq
+            PACKAGE_FILE=\$(ls /packages/sqlpage*.deb | grep -v dbgsym | head -1)
+            echo \"Installing: \$PACKAGE_FILE\"
+            apt-get install -y \"\$PACKAGE_FILE\"
+        " && log_success "$package_type test passed on $distro:$version" || log_error "$package_type test failed on $distro:$version"
+    elif [ "$package_type" = "rpm" ]; then
+        docker run --rm -v "$HOME/rpmbuild":/rpmbuild -v "$PROJECT_ROOT/scripts":/scripts "$distro:$version" bash -c "
+            cp /scripts/ci-test-package.sh /tmp/
+            chmod +x /tmp/ci-test-package.sh
+            cd /tmp
+            ./ci-test-package.sh /rpmbuild/RPMS/x86_64/sqlpage*.rpm
+        " && log_success "$package_type test passed on $distro:$version" || log_error "$package_type test failed on $distro:$version"
+    fi
 }
 
 # Main test suite
@@ -67,23 +58,23 @@ main() {
     log_info "Starting package installation tests"
     
     # Test DEB packages
-    if [ -f "$PROJECT_ROOT/../sqlpage"*.deb ]; then
+    if ls "$PROJECT_ROOT/build-output/sqlpage"*.deb 1> /dev/null 2>&1; then
         log_info "Found DEB package, testing on multiple distributions..."
-        test_deb "debian" "bookworm"
-        test_deb "debian" "bullseye"
-        test_deb "ubuntu" "24.04"
-        test_deb "ubuntu" "22.04"
+        test_package "debian" "bookworm" "deb"
+        test_package "debian" "bullseye" "deb"
+        test_package "ubuntu" "24.04" "deb"
+        test_package "ubuntu" "22.04" "deb"
     else
         log_warn "No DEB package found, skipping DEB tests"
     fi
-    
+
     # Test RPM packages
     if [ -d "$HOME/rpmbuild/RPMS" ] && find "$HOME/rpmbuild/RPMS" -name "sqlpage*.rpm" | grep -q .; then
         log_info "Found RPM package, testing on multiple distributions..."
-        test_rpm "fedora" "latest"
-        test_rpm "fedora" "39"
-        test_rpm "rockylinux" "9"
-        test_rpm "rockylinux" "8"
+        test_package "fedora" "latest" "rpm"
+        test_package "fedora" "39" "rpm"
+        test_package "rockylinux" "9" "rpm"
+        test_package "rockylinux" "8" "rpm"
     else
         log_warn "No RPM package found, skipping RPM tests"
     fi

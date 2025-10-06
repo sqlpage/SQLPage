@@ -106,7 +106,7 @@ jobs:
           name: ${{ matrix.pkg == 'deb' && 'debian-package' || 'rpm-package' }}
       
       - name: Test
-        run: bash scripts/ci-test-${{ matrix.pkg }}.sh ${{ matrix.pkg == 'deb' && './sqlpage*.deb' || './x86_64/*.rpm' }}
+        run: bash scripts/ci-test-package.sh ${{ matrix.pkg == 'deb' && './sqlpage*.deb' || './x86_64/*.rpm' }}
 
   publish:
     name: Publish

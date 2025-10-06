@@ -1,12 +1,18 @@
-# Existing ignores (if any)
-/target
-Cargo.lock
-*.swp
-*.swo
-*~
-.DS_Store
+# Build artifacts and outputs
+/target/
+/build-output/
+/sqlpage.bin
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+*.buildinfo
+*.changes
 
-# Debian packaging
+# Rust/Cargo
+Cargo.lock
+
+# Debian packaging build artifacts
 debian/.debhelper/
 debian/sqlpage/
 debian/cargo_home/
@@ -14,15 +20,24 @@ debian/files
 debian/*.substvars
 debian/*.log
 debian/*.debhelper
-../*.deb
-../*.changes
-../*.buildinfo
+debian/debhelper-build-stamp
 
-# RPM packaging
-*.rpm
+# RPM packaging build artifacts
+rpmbuild/
 *.src.rpm
 
-# Build artifacts
-*.tar.gz
-*.zip
-sqlpage.bin
+# Editor and system files
+*.swp
+*.swo
+*~
+.DS_Store
+*.tmp
+*.temp
+
+# Node modules (if any)
+node_modules/
+
+# IDE and development files
+.vscode/
+.idea/
+*.code-workspace
