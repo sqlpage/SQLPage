@@ -18,13 +18,14 @@ jobs:
   build-deb:
     name: Build DEB
     runs-on: ubuntu-22.04
+    container: debian:bullseye
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y debhelper dpkg-dev build-essential libssl-dev pkg-config unixodbc-dev lintian
+        run: apt-get update && apt-get install -y debhelper dpkg-dev build-essential libssl-dev pkg-config unixodbc-dev lintian
       
       - uses: dtolnay/rust-toolchain@stable
         with:
