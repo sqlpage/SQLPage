@@ -39,7 +39,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: debian-package
-          path: build-output/*.deb
+          path: build-output/sqlpage_*.deb
 
   build-rpm:
     name: Build RPM
