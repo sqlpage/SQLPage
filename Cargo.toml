@@ -80,12 +80,12 @@ odbc-sys = { version = "0.27", optional = true }
 
 [features]
 default = []
-odbc-static = ["odbc-sys", "odbc-sys/static"]
+odbc-static = ["odbc-sys", "odbc-sys/unixodbc-sys"]
 lambda-web = ["dep:lambda-web", "odbc-static"]
 
 
 [patch.crates-io]
-odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", rev = "0b5489e7b07d45e6b126f5a57ed6c301f022d2da" }
+odbc-sys = { git = "https://github.com/sqlpage/odbc-sys" }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
