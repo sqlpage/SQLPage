@@ -69,7 +69,7 @@
                 <div class="row align-items-center">
                     <div class="col text-truncate">
                         {{default empty_title 'No item'}}
-                        <div class="d-block text-muted text-truncate mt-n1">
+                        <div class="d-block text-muted {{#if ../wrap}}text-wrap{{else}}text-truncate{{/if}} mt-n1">
                             {{~empty_description~}}
                             {{~#if empty_description_md~}}
                                 <div style="margin-bottom: -1rem">{{{markdown empty_description_md}}}</div>
