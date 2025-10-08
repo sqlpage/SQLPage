@@ -67,9 +67,9 @@
         {{#if (eq @row_index 0)}}
             <a href="{{default empty_link '#'}}" class="list-group-item list-group-item-action">
                 <div class="row align-items-center">
-                    <div class="col text-truncate">
+                    <div class="col {{#if ../wrap}}text-wrap{{else}}text-truncate{{/if}}">
                         {{default empty_title 'No item'}}
-                        <div class="d-block text-muted {{#if ../wrap}}text-wrap{{else}}text-truncate{{/if}} mt-n1">
+                        <div class="text-muted text-truncate{{#if ../compact}} mt-n1{{/if}}{{#if ../wrap}} text-wrap{{/if}}">
                             {{~empty_description~}}
                             {{~#if empty_description_md~}}
                                 <div style="margin-bottom: -1rem">{{{markdown empty_description_md}}}</div>

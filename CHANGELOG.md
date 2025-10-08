@@ -18,6 +18,7 @@
    - Supports SHA-256 (default) and SHA-512 algorithms
    - Output formats: hexadecimal (default) or base64 (e.g., `sha256-base64`)
    - See the [function documentation](https://sql-page.com/functions.sql?function=hmac) for detailed examples
+ - Fixed a slight spacing issue in the list components empty value display.
 
 ## v0.37.1
  - fixed decoding of UUID values
