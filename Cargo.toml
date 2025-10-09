@@ -75,17 +75,17 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false }
 encoding_rs = "0.8.35"
-odbc-sys = { version = "0.27", optional = true }
+odbc-sys = { version = "0.27.1", optional = true }
 
 
 [features]
 default = []
-odbc-static = ["odbc-sys", "odbc-sys/unixodbc-sys"]
+odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]
 lambda-web = ["dep:lambda-web", "odbc-static"]
 
 
 [patch.crates-io]
-odbc-sys = { git = "https://github.com/sqlpage/odbc-sys" }
+odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch="static-linking-error" }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
