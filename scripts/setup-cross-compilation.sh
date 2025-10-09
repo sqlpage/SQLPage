@@ -25,7 +25,7 @@ elif [ "$TARGETARCH" = "arm" ]; then
     echo "armv7-unknown-linux-gnueabihf" > /tmp/TARGET
     echo "arm-linux-gnueabihf-gcc" > /tmp/LINKER
 
-    apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross make
+    apt-get install -y gcc-arm-linux-gnueabihf libgcc-s1-armhf-cross make cmake libclang-dev
 
     cargo install --force --locked bindgen-cli
 
