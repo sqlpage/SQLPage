@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge)
+        # Remove user and group if package is purged
+        if getent passwd sqlpage >/dev/null; then
+            deluser --system sqlpage || true
+        fi
+        
+        # Remove log directory
+        rm -rf /var/log/sqlpage
+        
+        # Remove data directory if empty
+        rmdir /var/www/sqlpage 2>/dev/null || true
+        ;;
+
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
