@@ -85,7 +85,7 @@ lambda-web = ["dep:lambda-web", "odbc-static"]
 
 
 [patch.crates-io]
-odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch="static-linking-error" }
+odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch="main" }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
