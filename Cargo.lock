@@ -620,15 +620,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
-name = "autotools"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef941527c41b0fc0dd48511a8154cd5fc7e29200a0ff8b7203c5d777dbc795cf"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "awc"
 version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1953,9 +1944,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.14.7"
+version = "0.14.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
+checksum = "1dc8f7d2ded5f9209535e4b3fd4d39c002f30902ff5ce9f64e2c33d549576500"
 dependencies = [
  "typenum",
  "version_check",
@@ -3117,9 +3108,9 @@ dependencies = [
 
 [[package]]
 name = "odbc-api"
-version = "19.0.2"
+version = "19.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "564dc5b7c737a3821f60e3b9608320098a02203ab4a38be09bcd759225329554"
+checksum = "f017d3949731e436bc1bb9a1fbc34197c2f39c588cdcb60d21adb1f8dd3b8514"
 dependencies = [
  "atoi",
  "log",
@@ -3132,7 +3123,7 @@ dependencies = [
 [[package]]
 name = "odbc-sys"
 version = "0.27.3"
-source = "git+https://github.com/sqlpage/odbc-sys?branch=main#7058cbe3db200d52811d6f3bce602c7e78f58f1d"
+source = "git+https://github.com/sqlpage/odbc-sys?branch=no-autotools#ae3e15446bb2c5c191f05e7c6affc37dfd6fcabe"
 dependencies = [
  "unix-odbc",
 ]
@@ -4254,12 +4245,12 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "233504af464074f9d066d7b5416c5f9b894a5862a6506e306f7b816cdd6f1807"
+checksum = "17129e116933cf371d018bb80ae557e889637989d8638274fb25622827b03881"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4642,7 +4633,7 @@ dependencies = [
  "pin-project-lite",
  "signal-hook-registry",
  "slab",
- "socket2 0.6.0",
+ "socket2 0.6.1",
  "tokio-macros",
  "windows-sys 0.59.0",
 ]
@@ -4873,9 +4864,9 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "unix-odbc"
 version = "0.1.2"
-source = "git+https://github.com/sqlpage/odbc-sys?branch=main#7058cbe3db200d52811d6f3bce602c7e78f58f1d"
+source = "git+https://github.com/sqlpage/odbc-sys?branch=no-autotools#ae3e15446bb2c5c191f05e7c6affc37dfd6fcabe"
 dependencies = [
- "autotools",
+ "cc",
 ]
 
 [[package]]
