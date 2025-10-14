@@ -44,7 +44,11 @@ tokio = { version = "1.24.1", features = ["macros", "rt", "process", "sync"] }
 tokio-stream = "0.1.9"
 anyhow = "1"
 serde = "1"
-serde_json = { version = "1.0.82", features = ["preserve_order", "raw_value"] }
+serde_json = { version = "1.0.82", features = [
+    "preserve_order",
+    "raw_value",
+    "arbitrary_precision",
+] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
 sqlparser = { version = "0.59.0", default-features = false, features = [
     "std",
@@ -53,7 +57,7 @@ sqlparser = { version = "0.59.0", default-features = false, features = [
 async-stream = "0.3"
 async-trait = "0.1.61"
 async-recursion = "1.0.0"
-bigdecimal = "0.4.8"
+bigdecimal = { version = "0.4.8", features = ["serde-json"] }
 include_dir = "0.7.2"
 config = { version = "0.15.4", features = ["json"] }
 markdown = { version = "1.0.0-alpha.23", features = ["log"] }
@@ -85,7 +89,7 @@ lambda-web = ["dep:lambda-web", "odbc-static"]
 
 
 [patch.crates-io]
-odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch="no-autotools" }
+odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch = "no-autotools" }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }

@@ -20,6 +20,7 @@
    - See the [function documentation](https://sql-page.com/functions.sql?function=hmac) for detailed examples
  - Fixed a slight spacing issue in the list components empty value display.
  - Improved performance of setting a variable to a literal value. `SET x = 'hello'` is now executed locally by SQLPage and does not send anything to the database. This completely removes the cost of extracting static values into variables for cleaner SQL files.
+ - Enable arbitrary precision in the internal representation of numbers. This guarantees zero precision loss when the database returns very large or very small DECIMAL or NUMERIC values.
 
 ## v0.37.1
  - fixed decoding of UUID values

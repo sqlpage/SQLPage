@@ -1,6 +1,6 @@
 use crate::utils::add_value_to_map;
 use crate::webserver::database::blob_to_data_url;
-use bigdecimal::{BigDecimal, ToPrimitive};
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde_json::{self, Map, Value};
 use sqlx::any::{AnyColumn, AnyRow, AnyTypeInfo, AnyTypeInfoKind};
@@ -68,6 +68,13 @@ fn decode_raw<'a, T: Decode<'a, sqlx::any::Any> + Default>(
     }
 }
 
+fn decimal_to_json(decimal: &BigDecimal) -> Value {
+    // to_plain_string always returns a valid JSON string
+    Value::Number(serde_json::Number::from_string_unchecked(
+        decimal.normalized().to_plain_string(),
+    ))
+}
+
 pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'r>) -> Value {
     use AnyTypeInfoKind::{Mssql, MySql};
     let raw_value = get_ref();
@@ -77,18 +84,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
     let AnyTypeInfo(ref db_type) = *type_info;
     match type_name {
         "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" => decode_raw::<f64>(raw_value).into(),
-        "NUMERIC" | "DECIMAL" => {
-            let decimal = decode_raw::<BigDecimal>(raw_value);
-            if decimal.is_integer() {
-                if let Some(int) = decimal.to_i64() {
-                    return int.into();
-                }
-            }
-            if let Some(float) = decimal.to_f64() {
-                return float.into();
-            }
-            decimal.to_string().into()
-        }
+        "NUMERIC" | "DECIMAL" => decimal_to_json(&decode_raw(raw_value)),
         "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
         | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
         "INT" | "INT4" | "INTEGER" | "MEDIUMINT" | "YEAR" => decode_raw::<i32>(raw_value).into(),
@@ -209,6 +205,7 @@ mod tests {
                 42::INT8 as big_int,
                 42.25::FLOAT4 as float4,
                 42.25::FLOAT8 as float8,
+                123456789123456789123456789::NUMERIC as numeric,
                 TRUE as boolean,
                 '2024-03-14'::DATE as date,
                 '13:14:15'::TIME as time,
@@ -237,6 +234,7 @@ mod tests {
                 "big_int": 42,
                 "float4": 42.25,
                 "float8": 42.25,
+                "numeric": 123456789123456789123456789_u128,
                 "boolean": true,
                 "date": "2024-03-14",
                 "time": "13:14:15",
