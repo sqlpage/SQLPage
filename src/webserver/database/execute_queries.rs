@@ -86,6 +86,12 @@ pub fn stream_query_results_with_conn<'a>(
                         format!("Failed to set the {variable} variable to {value:?}")
                     )?;
                 },
+                ParsedStatement::StaticSimpleSet { variable, value} => {
+                    execute_set_simple_static(db_connection, request, variable, value, source_file).await
+                    .with_context(||
+                        format!("Failed to set the {variable} variable to {value:?}")
+                    )?;
+                },
                 ParsedStatement::StaticSimpleSelect(value) => {
                     for i in parse_dynamic_rows(DbItem::Row(exec_static_simple_select(value, request, db_connection).await?)) {
                         yield i;
@@ -209,6 +215,38 @@ async fn execute_set_variable_query<'a>(
         vars.insert(name.to_owned(), SingleOrVec::Single(value));
     } else {
         log::debug!("Removing variable {name}");
+        vars.remove(name);
+    }
+    Ok(())
+}
+
+async fn execute_set_simple_static<'a>(
+    db_connection: &'a mut DbConn,
+    request: &'a mut RequestInfo,
+    variable: &StmtParam,
+    value: &SimpleSelectValue,
+    _source_file: &Path,
+) -> anyhow::Result<()> {
+    let value_str = match value {
+        SimpleSelectValue::Static(json_value) => match json_value {
+            serde_json::Value::Null => None,
+            serde_json::Value::String(s) => Some(s.clone()),
+            other => Some(other.to_string()),
+        },
+        SimpleSelectValue::Dynamic(stmt_param) => {
+            extract_req_param(stmt_param, request, db_connection)
+                .await?
+                .map(std::borrow::Cow::into_owned)
+        }
+    };
+
+    let (vars, name) = vars_and_name(request, variable)?;
+
+    if let Some(value) = value_str {
+        log::debug!("Setting variable {name} to static value {value:?}");
+        vars.insert(name.to_owned(), SingleOrVec::Single(value));
+    } else {
+        log::debug!("Removing variable {name} because it was set to the literal value NULL");
         vars.remove(name);
     }
     Ok(())

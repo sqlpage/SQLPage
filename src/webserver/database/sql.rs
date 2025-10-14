@@ -111,6 +111,10 @@ pub(super) enum ParsedStatement {
         variable: StmtParam,
         value: StmtWithParams,
     },
+    StaticSimpleSet {
+        variable: StmtParam,
+        value: SimpleSelectValue,
+    },
     CsvImport(CsvImport),
     Error(anyhow::Error),
 }
@@ -142,6 +146,7 @@ fn parse_sql<'a>(
             return None;
         }
         let statement = parse_single_statement(&mut parser, db_info, sql);
+        log::debug!("Parsed statement: {statement:?}");
         if let Some(ParsedStatement::Error(_)) = &statement {
             has_error = true;
         }
@@ -182,7 +187,6 @@ fn parse_single_statement(
         Ok(stmt) => stmt,
         Err(err) => return Some(syntax_error(err, parser, source_sql)),
     };
-    log::debug!("Parsed statement: {stmt}");
     let mut semicolon = false;
     while parser.consume_token(&SemiColon) {
         semicolon = true;
@@ -404,40 +408,10 @@ fn extract_static_simple_select(
     let mut items = Vec::with_capacity(select_items.len());
     let mut params_iter = params.iter().cloned();
     for select_item in select_items {
-        use serde_json::Value::{Bool, Null, Number, String};
-        use SimpleSelectValue::{Dynamic, Static};
         let sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } = select_item else {
             return None;
         };
-        let value = match expr {
-            Expr::Value(ValueWithSpan {
-                value: Value::Boolean(b),
-                ..
-            }) => Static(Bool(*b)),
-            Expr::Value(ValueWithSpan {
-                value: Value::Number(n, _),
-                ..
-            }) => Static(Number(n.parse().ok()?)),
-            Expr::Value(ValueWithSpan {
-                value: Value::SingleQuotedString(s),
-                ..
-            }) => Static(String(s.clone())),
-            Expr::Value(ValueWithSpan {
-                value: Value::Null, ..
-            }) => Static(Null),
-            e if is_simple_select_placeholder(e) => {
-                if let Some(p) = params_iter.next() {
-                    Dynamic(p)
-                } else {
-                    log::error!("Parameter not extracted for placehorder: {expr:?}");
-                    return None;
-                }
-            }
-            other => {
-                log::trace!("Cancelling simple select optimization because of expr: {other:?}");
-                return None;
-            }
-        };
+        let value = expr_to_simple_select_val(&mut params_iter, expr)?;
         let key = alias.value.clone();
         items.push((key, value));
     }
@@ -446,6 +420,43 @@ fn extract_static_simple_select(
         return None;
     }
     Some(items)
+}
+
+fn expr_to_simple_select_val(
+    params_iter: &mut impl Iterator<Item = StmtParam>,
+    expr: &Expr,
+) -> Option<SimpleSelectValue> {
+    use serde_json::Value::{Bool, Null, Number, String};
+    use SimpleSelectValue::{Dynamic, Static};
+    Some(match expr {
+        Expr::Value(ValueWithSpan {
+            value: Value::Boolean(b),
+            ..
+        }) => Static(Bool(*b)),
+        Expr::Value(ValueWithSpan {
+            value: Value::Number(n, _),
+            ..
+        }) => Static(Number(n.parse().ok()?)),
+        Expr::Value(ValueWithSpan {
+            value: Value::SingleQuotedString(s),
+            ..
+        }) => Static(String(s.clone())),
+        Expr::Value(ValueWithSpan {
+            value: Value::Null, ..
+        }) => Static(Null),
+        e if is_simple_select_placeholder(e) => {
+            if let Some(p) = params_iter.next() {
+                Dynamic(p)
+            } else {
+                log::error!("Parameter not extracted for placehorder: {expr:?}");
+                return None;
+            }
+        }
+        other => {
+            log::trace!("Cancelling simple select optimization because of expr: {other:?}");
+            return None;
+        }
+    })
 }
 
 fn is_simple_select_placeholder(e: &Expr) -> bool {
@@ -485,6 +496,11 @@ fn extract_set_variable(
                 StmtParam::PostOrGet(std::mem::take(&mut ident.value))
             };
             let owned_expr = std::mem::replace(value, Expr::value(Value::Null));
+            let mut params_iter = params.iter().cloned();
+            if let Some(value) = expr_to_simple_select_val(&mut params_iter, &owned_expr) {
+                return Some(ParsedStatement::StaticSimpleSet { variable, value });
+            }
+
             let mut select_stmt: Statement = expr_to_statement(owned_expr);
             let delayed_functions = extract_toplevel_functions(&mut select_stmt);
             if let Err(err) = validate_function_calls(&select_stmt) {
@@ -1248,26 +1264,24 @@ mod test {
     }
 
     #[test]
-    fn test_set_variable() {
+    fn test_set_variable_to_other_variable() {
         let sql = "set x = $y";
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
             let db_info = create_test_db_info(dbms);
-            let stmt = parse_single_statement(&mut parser, &db_info, sql);
-            if let Some(ParsedStatement::SetVariable {
-                variable,
-                value: StmtWithParams { query, params, .. },
-            }) = stmt
-            {
-                assert_eq!(
-                    variable,
-                    StmtParam::PostOrGet("x".to_string()),
-                    "{dialect:?}"
-                );
-                assert!(query.starts_with("SELECT "));
-                assert_eq!(params, [StmtParam::PostOrGet("y".to_string())]);
-            } else {
-                panic!("Failed for dialect {dialect:?}: {stmt:#?}",);
+            match parse_single_statement(&mut parser, &db_info, sql) {
+                Some(ParsedStatement::StaticSimpleSet { variable, value }) => {
+                    assert_eq!(
+                        variable,
+                        StmtParam::PostOrGet("x".to_string()),
+                        "{dialect:?}"
+                    );
+                    assert_eq!(
+                        value,
+                        SimpleSelectValue::Dynamic(StmtParam::PostOrGet("y".to_string()))
+                    );
+                }
+                other => panic!("Failed for dialect {dialect:?}: {other:#?}"),
             }
         }
     }
@@ -1398,7 +1412,7 @@ mod test {
 
     #[test]
     fn test_extract_set_variable() {
-        let sql = "set x = 42";
+        let sql = "set x = CURRENT_TIMESTAMP";
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
             let db_info = create_test_db_info(dbms);
@@ -1413,10 +1427,29 @@ mod test {
                     StmtParam::PostOrGet("x".to_string()),
                     "{dialect:?}"
                 );
-                assert_eq!(query, "SELECT 42 AS sqlpage_set_expr");
+                assert_eq!(query, "SELECT CURRENT_TIMESTAMP AS sqlpage_set_expr");
                 assert!(params.is_empty());
             } else {
                 panic!("Failed for dialect {dialect:?}: {stmt:#?}",);
+            }
+        }
+    }
+
+    #[test]
+    fn test_extract_set_variable_static() {
+        let sql = "set x = 'hello'";
+        for &(dialect, dbms) in ALL_DIALECTS {
+            let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
+            let db_info = create_test_db_info(dbms);
+            match parse_single_statement(&mut parser, &db_info, sql) {
+                Some(ParsedStatement::StaticSimpleSet {
+                    variable: StmtParam::PostOrGet(var_name),
+                    value: SimpleSelectValue::Static(value),
+                }) => {
+                    assert_eq!(var_name, "x");
+                    assert_eq!(value, "hello");
+                }
+                other => panic!("Failed for dialect {dialect:?}: {other:#?}"),
             }
         }
     }
