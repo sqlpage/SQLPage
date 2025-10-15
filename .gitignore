@@ -1,12 +1,43 @@
-/target
-sqlpage.db
-.idea/
-*.mm_profdata
-docs/presentation-pgconf.html
-examples/inrap_badass/
-sqlpage/https/*
-x.sql
-xbed.sql
-**/sqlpage.bin
+# Build artifacts and outputs
+/target/
+/build-output/
+/sqlpage.bin
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+*.buildinfo
+*.changes
+
+# Rust/Cargo
+Cargo.lock
+
+# Debian packaging build artifacts
+debian/.debhelper/
+debian/sqlpage/
+debian/cargo_home/
+debian/files
+debian/*.substvars
+debian/*.log
+debian/*.debhelper
+debian/debhelper-build-stamp
+
+# RPM packaging build artifacts
+rpmbuild/
+*.src.rpm
+
+# Editor and system files
+*.swp
+*.swo
+*~
+.DS_Store
+*.tmp
+*.temp
+
+# Node modules (if any)
 node_modules/
-sqlpage/sqlpage.db
+
+# IDE and development files
+.vscode/
+.idea/
+*.code-workspace

@@ -1,0 +1,127 @@
+name: Build and Test Packages
+
+on:
+  push:
+    tags: ["v*"]
+    branches: ["main", "release-test"]
+  pull_request:
+    branches: ["main"]
+    paths: ["debian/**", "rpm/**", "scripts/build-*.sh", ".github/workflows/packages.yml"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build-deb:
+    name: Build DEB
+    runs-on: ubuntu-22.04
+    container: debian:bullseye
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install dependencies
+        run: apt-get update && apt-get install -y debhelper dpkg-dev build-essential libssl-dev pkg-config unixodbc-dev lintian
+      
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+      
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      
+      - name: Build
+        run: bash scripts/ci-build-deb.sh
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: build-output/sqlpage_*.deb
+
+  build-rpm:
+    name: Build RPM
+    runs-on: ubuntu-latest
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - name: Setup
+        run: |
+          yum install -y git
+          git config --global --add safe.directory /__w/SQLPage/SQLPage
+      
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install dependencies
+        run: yum install -y rpm-build rpmdevtools openssl-devel systemd unixODBC-devel
+      
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+      
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      
+      - name: Build
+        run: bash scripts/ci-build-rpm.sh
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: ~/rpmbuild/RPMS/*/sqlpage*.rpm
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: srpm-package
+          path: ~/rpmbuild/SRPMS/sqlpage*.rpm
+
+  test:
+    name: Test ${{ matrix.pkg }} on ${{ matrix.distro }}
+    needs: [build-deb, build-rpm]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - pkg: deb
+            distro: debian:bookworm
+          - pkg: deb
+            distro: debian:bullseye
+          - pkg: deb
+            distro: ubuntu:24.04
+          - pkg: deb
+            distro: ubuntu:22.04
+          - pkg: deb
+            distro: ubuntu:20.04
+          - pkg: rpm
+            distro: fedora:latest
+          - pkg: rpm
+            distro: rockylinux:8
+    container: ${{ matrix.distro }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.pkg == 'deb' && 'debian-package' || 'rpm-package' }}
+      
+      - name: Test
+        run: bash scripts/ci-test-package.sh ${{ matrix.pkg == 'deb' && './sqlpage*.deb' || './x86_64/*.rpm' }}
+
+  publish:
+    name: Publish
+    needs: test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      
+      - name: Prepare
+        run: bash scripts/ci-publish.sh
+      
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          fail_on_unmatched_files: true
