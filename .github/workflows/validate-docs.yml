@@ -37,7 +37,7 @@ jobs:
       run: cargo script scripts/build-simple-db.rs --dep "rusqlite={version=\"0.31\", features=[\"bundled\"]}" --dep walkdir --dep regex
     
     - name: Upload docs.sqlite artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: docs.sqlite
         path: docs.sqlite
