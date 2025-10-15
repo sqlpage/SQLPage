@@ -810,11 +810,15 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('money', 'Name of a numeric column whose values should be displayed as currency amounts, in the currency defined by the `currency` property. This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('currency', 'The ISO 4217 currency code (e.g., USD, EUR, GBP, etc.) to use when formatting monetary values.', 'TEXT', TRUE, TRUE),
     ('number_format_digits', 'Maximum number of decimal digits to display for numeric values.', 'INTEGER', TRUE, TRUE),
+    ('edit_url', 'If set, an edit button will be added to each row. The value of this property should be a URL, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row. Clicking the edit button will take the user to that URL.', 'TEXT', TRUE, TRUE),
+    ('delete_url', 'If set, a delete button will be added to each row. The value of this property should be a URL, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row. Clicking the delete button will take the user to that URL.', 'TEXT', TRUE, TRUE),
+    ('custom_actions', 'If set, a column of custom action buttons will be added to each row. The value of this property should be a JSON array of objects, each object defining a button with the following properties: `name` (the text to display on the button), `icon` (the tabler icon name or image link to display on the button), `link` (the URL to navigate to when the button is clicked, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row), and `tooltip` (optional text to display when hovering over the button).', 'JSON', TRUE, TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'COLOR', FALSE, TRUE),
     ('_sqlpage_footer', 'Sets this row as the table footer. It is recommended that this parameter is applied to the last row. Added in v0.34.0.', 'BOOLEAN', FALSE, TRUE),
-    ('_sqlpage_id', 'Sets the id of the html tabler row element. Allows you to make links targeting a specific row in a table.', 'TEXT', FALSE, TRUE)
+    ('_sqlpage_id', 'Sets the id of the html tabler row element. Allows you to make links targeting a specific row in a table.', 'TEXT', FALSE, TRUE),
+    ('_sqlpage_actions', 'Sets custom action buttons for this specific row in addition to any defined at the table level, The value of this property should be a JSON array of objects, each object defining a button with the following properties: `name` (the text to display on the button), `icon` (the tabler icon name or image link to display on the button), `link` (the URL to navigate to when the button is clicked, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row), and `tooltip` (optional text to display when hovering over the button).', 'JSON', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -994,7 +998,169 @@ GROUP BY
 This will generate a table with the stores in the first column, and the items in the following columns, with the quantity sold in each store for each item.
 
 ', NULL
+    ),
+    (
+    'table',
+'# Using row based custom actions in a table
+
+The table has a column of buttons, each button defined by the `_sqlpage_actions` column at the table level, and by the `_sqlpage_actions` property at the row level.
+
+```sql 
+    SELECT
+    name, vendor, product_number, facility_name,
+    lot_number, status, date_of_expiration,
+    --Use the unique identifier of the row as the _sqlpage_id property
+    standard_id AS _sqlpage_id,
+    --Build an array of objects, each object defining a button with the following properties: name, icon, link, tooltip
+       json_array(--SQLite specific, refer to your database documentation for the equivalent JSON functions
+       --The {id} placeholder in the link property will be replaced by the value of the _sqlpage_id property for that row.
+        json_object(''name'', ''history'', ''tooltip'', ''View Standard History'', ''link'', ''./history.sql?standard_id={id}'', ''icon'', ''history''), 
+        json_object(''name'', ''view_coa'', ''tooltip'', ''View Certificate of Analysis'', ''link'', c_of_a_path, ''icon'', ''file-type-pdf''),
+        json_object(''name'', ''edit'', ''tooltip'', ''Edit Standard'', ''link'', ''./update.sql?id={id}'', ''icon'', ''pencil''), 
+        --We want different actions based on the status of the standard, so we use a CASE statement to build the appropriate action
+            CASE
+                WHEN status = ''Available'' THEN json_object(
+                    ''name'',''Action'',
+                    ''tooltip'',''Set In Use'',
+                    ''link'',''./actions/set_in_use.sql?standard_id='' || standard_id,
+                    ''icon'',''caret-right''
+                )
+                WHEN status = ''In Use'' THEN json_object(
+                    ''name'',''Action'',
+                    ''tooltip'',''Retire Standard'',
+                    ''link'',''./actions/retire.sql?standard_id='' || standard_id,
+                    ''icon'',''test-pipe-off''
+                )
+                WHEN status = ''Retired'' THEN json_object(
+                    ''name'',''Action'',
+                    ''tooltip'',''Discard Standard'',
+                    ''link'',''./actions/discard.sql?standard_id='' || standard_id,
+                    ''icon'',''flask-off''
+                )
+                -- Include an action with no link or icon as a placeholder to keep the buttons aligned and make sure the header is correct.
+                WHEN status = ''Discarded'' THEN json_object(''name'',''Action'')
+                
+                ELSE json_object(''name'',''Action'')
+            END
+            )
+    AS _sqlpage_actions
+    FROM standard;
+    
+    ```
+
+
+    '
+    ,
+    json('[
+    {
+        "component": "table"
+    },
+    {
+        "name": "CalStd",
+        "vendor": "PharmaCo",
+        "product_number": "P1234",
+        "facility_name": "A Plant",
+        "lot_number": "T23523",
+        "status": "Available",
+        "date_of_expiration": "2026-10-13",
+        "_sqlpage_id": 32,
+        "_sqlpage_actions": [
+            {
+                "name": "history",
+                "tooltip": "View Standard History",
+                "link": "./history.sql?standard_id={id}",
+                "icon": "history"
+            },
+            {
+                "name": "view_coa",
+                "tooltip": "View Certificate of Analysis",
+                "link": "/c_of_a\\2025-09-30_22h01m21s_B69baKoz.pdf",
+                "icon": "file-type-pdf"
+            },
+            {
+                "name": "edit",
+                "tooltip": "Edit Standard",
+                "link": "./update.sql?id={id}",
+                "icon": "pencil"
+            },
+            {
+                "name": "Action",
+                "tooltip": "Set In Use",
+                "link": "./actions/set_in_use.sql?standard_id=32",
+                "icon": "caret-right"
+            }
+        ]
+    },
+    {
+        "name": "CalStd",
+        "vendor": "PharmaCo",
+        "product_number": "P1234",
+        "facility_name": "A Plant",
+        "lot_number": "T2352",
+        "status": "In Use",
+        "date_of_expiration": "2026-10-14",
+        "_sqlpage_id": 33,
+        "_sqlpage_actions": [
+            {
+                "name": "history",
+                "tooltip": "View Standard History",
+                "link": "./history.sql?standard_id={id}",
+                "icon": "history"
+            },
+            {
+                "name": "view_coa",
+                "tooltip": "View Certificate of Analysis",
+                "link": "/c_of_a\\2025-09-30_22h05m13s_cP7gqMyi.pdf",
+                "icon": "file-type-pdf"
+            },
+            {
+                "name": "edit",
+                "tooltip": "Edit Standard",
+                "link": "./update.sql?id={id}",
+                "icon": "pencil"
+            },
+            {
+                "name": "Action",
+                "tooltip": "Retire Standard",
+                "link": "./actions/retire.sql?standard_id=33",
+                "icon": "test-pipe-off"
+            }
+        ]
+    },
+    {
+        "name": "CalStd",
+        "vendor": "PharmaCo",
+        "product_number": "P1234",
+        "facility_name": "A Plant",
+        "lot_number": "A123",
+        "status": "Discarded",
+        "date_of_expiration": "2026-09-30",
+        "_sqlpage_id": 31,
+        "_sqlpage_actions": [
+            {
+                "name": "history",
+                "tooltip": "View Standard History",
+                "link": "./history.sql?standard_id={id}",
+                "icon": "history"
+            },
+            {
+                "name": "view_coa",
+                "tooltip": "View Certificate of Analysis",
+                "link": "#",
+                "icon": "file-type-pdf"
+            },
+            {
+                "name": "edit",
+                "tooltip": "Edit Standard",
+                "link": "./update.sql?id={id}",
+                "icon": "pencil"
+            },
+            null
+        ]
+    }
+]')
     );
+
 
 
 INSERT INTO component(name, icon, description) VALUES

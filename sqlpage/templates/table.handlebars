@@ -3,6 +3,7 @@
         {{#if (or search initial_search_value)}}
         <div class="p-3">
             <input
+                id="{{component_index}}-search"
                 type="search"
                 class="form-control form-control-rounded fs-6 search"
                 placeholder="{{default search_placeholder 'Search…'}}"
@@ -52,6 +53,18 @@
                                 </th>
                                 {{/if}}
                             {{/each}}
+                            {{#if ../edit_url}}<th class="_col_edit">Edit</th>{{/if}}
+                            {{#if ../delete_url}}<th class="_col_delete">Delete</th>{{/if}}
+                            {{#if ../custom_actions}}
+                                {{#each ../custom_actions}}
+                                    <th class="_col_custom">{{this.name}}</th>
+                                {{/each}}
+                            {{/if}}
+                            {{#if _sqlpage_actions}}
+                                {{#each _sqlpage_actions}}
+                                    <th class="_col_action">{{this.name}}</th>
+                                {{/each}}
+                            {{/if}}
                         </tr>
                         </thead>
                     <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
@@ -78,6 +91,38 @@
                             </td>
                             {{/if~}}
                         {{~/each~}}
+                            {{#if ../edit_url}}
+                            <td class="col-auto fs-2">
+                                <a href="{{replace ../edit_url '{id}' _sqlpage_id}}" class="align-middle link-secondary _col_edit" data-action="edit" title="Edit">
+                                    {{~icon_img 'edit'~}}
+                                </a>
+                            </td>
+                            {{/if}}
+                            {{#if ../delete_url}}
+                            <td class="col-auto fs-2">
+                                <a href="{{replace ../delete_url '{id}' _sqlpage_id}}" class="align-middle link-secondary _col_delete" data-action="delete" title="Delete">
+                                    {{~icon_img 'trash'~}}
+                                </a>
+                            </td>
+                            {{/if}}
+                            {{#if ../custom_actions}}
+                                {{#each ../custom_actions}}
+                                <td class="col-auto fs-2">
+                                    <a href="{{replace this.link '{id}' ../_sqlpage_id}}" class="align-middle link-secondary" data-action="{{this.name}}" title="{{default this.tooltip this.name}}">{{!Title property sets the tooltip text}}
+                                        {{~icon_img this.icon~}}
+                                    </a>
+                                </td>
+                                {{/each}}
+                            {{/if}}
+                            {{#if _sqlpage_actions}}
+                                {{#each _sqlpage_actions}}
+                                <td class="col-auto fs-2">
+                                    <a href="{{replace this.link '{id}' ../_sqlpage_id}}" class="align-middle link-secondary" data-action="{{this.name}}" title="{{default this.tooltip this.name}}">
+                                        {{~icon_img this.icon~}}
+                                    </a>
+                                </td>
+                                {{/each}}
+                            {{/if}}
                     </tr>
                     {{!~ 
                         After this <tr> has been rendered, if this was a footer, we need to reopen a new <tbody> 
