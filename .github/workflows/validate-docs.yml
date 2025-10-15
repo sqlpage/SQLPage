@@ -1,0 +1,44 @@
+name: Validate Documentation
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - 'scripts/**'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'scripts/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        components: rust-src
+        override: true
+    
+    - name: Install cargo-script
+      run: cargo install cargo-script
+    
+    - name: Validate documentation structure
+      run: cargo script scripts/validate-docs.rs --dep walkdir --dep regex
+    
+    - name: Check SQL syntax
+      run: cargo script scripts/check-sql.rs --dep regex --dep walkdir
+    
+    - name: Build SQLite database
+      run: cargo script scripts/build-simple-db.rs --dep "rusqlite={version=\"0.31\", features=[\"bundled\"]}" --dep walkdir --dep regex
+    
+    - name: Upload docs.sqlite artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: docs.sqlite
+        path: docs.sqlite
+        retention-days: 30
