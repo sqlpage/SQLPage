@@ -1001,87 +1001,65 @@ This will generate a table with the stores in the first column, and the items in
     ),
     (
     'table',
-'# Using row based custom actions in a table
+'## Using Action Buttons in a table.
+
+### Preset Actions: `edit_url` & `delete_url`
+Since edit and delete are common actions, the `table` component has dedicated `edit_url` and `delete_url` properties to add buttons for these actions.
+The value of these properties should be a URL, containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row.
+
+### Column with fixed action buttons
+
+You may want to add custom action buttons to your table rows, for instance to view details, download a file, or perform a custom operation.
+For this, the `table` component has a `custom_actions` property that lets you define a column of buttons, each button defined by a name, an icon, a link, and an optional tooltip.
+
+### Column with variable action buttons
+
+The `table` component also supports the row level `_sqlpage_actions` column in your data table.
+This is helpful if you want a more complex logic, for instance to disable a button on some rows, or to change the link or icon based on the row data.
+
+> WARNING!
+> If the number of array items in `_sqlpage_actions` is not consistent across all rows, the table may not render correctly.
+> You can leave blank spaces by including an object with only the `name` property.
 
 The table has a column of buttons, each button defined by the `_sqlpage_actions` column at the table level, and by the `_sqlpage_actions` property at the row level.
+### `custom_actions` & `_sqlpage_actions` JSON properties.
+Each button is defined by the following properties:
+* `name`: sets the column header and the tooltip if no tooltip is provided,
+* `tooltip`: text to display when hovering over the button,
+* `link`: the URL to navigate to when the button is clicked, possibly containing the {id} placeholder that will be replaced by the value of the `_sqlpage_id` property for that row,
+* `icon`: the tabler icon name or image link to display on the button
 
-```sql 
-    SELECT
-    name, vendor, product_number, facility_name,
-    lot_number, status, date_of_expiration,
-    --Use the unique identifier of the row as the _sqlpage_id property
-    standard_id AS _sqlpage_id,
-    --Build an array of objects, each object defining a button with the following properties: name, icon, link, tooltip
-       json_array(--SQLite specific, refer to your database documentation for the equivalent JSON functions
-       --The {id} placeholder in the link property will be replaced by the value of the _sqlpage_id property for that row.
-        json_object(''name'', ''history'', ''tooltip'', ''View Standard History'', ''link'', ''./history.sql?standard_id={id}'', ''icon'', ''history''), 
-        json_object(''name'', ''view_coa'', ''tooltip'', ''View Certificate of Analysis'', ''link'', c_of_a_path, ''icon'', ''file-type-pdf''),
-        json_object(''name'', ''edit'', ''tooltip'', ''Edit Standard'', ''link'', ''./update.sql?id={id}'', ''icon'', ''pencil''), 
-        --We want different actions based on the status of the standard, so we use a CASE statement to build the appropriate action
-            CASE
-                WHEN status = ''Available'' THEN json_object(
-                    ''name'',''Action'',
-                    ''tooltip'',''Set In Use'',
-                    ''link'',''./actions/set_in_use.sql?standard_id='' || standard_id,
-                    ''icon'',''caret-right''
-                )
-                WHEN status = ''In Use'' THEN json_object(
-                    ''name'',''Action'',
-                    ''tooltip'',''Retire Standard'',
-                    ''link'',''./actions/retire.sql?standard_id='' || standard_id,
-                    ''icon'',''test-pipe-off''
-                )
-                WHEN status = ''Retired'' THEN json_object(
-                    ''name'',''Action'',
-                    ''tooltip'',''Discard Standard'',
-                    ''link'',''./actions/discard.sql?standard_id='' || standard_id,
-                    ''icon'',''flask-off''
-                )
-                -- Include an action with no link or icon as a placeholder to keep the buttons aligned and make sure the header is correct.
-                WHEN status = ''Discarded'' THEN json_object(''name'',''Action'')
-                
-                ELSE json_object(''name'',''Action'')
-            END
-            )
-    AS _sqlpage_actions
-    FROM standard;
-    
-    ```
-
-
-    '
+### Example using all of the above
+'
     ,
     json('[
     {
-        "component": "table"
+        "component": "table",
+        "edit_url": "./update.sql?id={id}",
+        "delete_url": "./delete.sql?id={id}",
+        "custom_actions": [
+            {
+                "name": "history",
+                "tooltip": "View Standard History",
+                "link": "./history.sql?standard_id={id}",
+                "icon": "history"
+            }
+        ]
     },
     {
         "name": "CalStd",
         "vendor": "PharmaCo",
         "product_number": "P1234",
-        "facility_name": "A Plant",
         "lot_number": "T23523",
         "status": "Available",
         "date_of_expiration": "2026-10-13",
         "_sqlpage_id": 32,
         "_sqlpage_actions": [
             {
-                "name": "history",
-                "tooltip": "View Standard History",
-                "link": "./history.sql?standard_id={id}",
-                "icon": "history"
-            },
-            {
                 "name": "view_coa",
                 "tooltip": "View Certificate of Analysis",
-                "link": "/c_of_a\\2025-09-30_22h01m21s_B69baKoz.pdf",
+                "link": "/c_of_a/2025-09-30_22h01m21s_B69baKoz.pdf",
                 "icon": "file-type-pdf"
-            },
-            {
-                "name": "edit",
-                "tooltip": "Edit Standard",
-                "link": "./update.sql?id={id}",
-                "icon": "pencil"
             },
             {
                 "name": "Action",
@@ -1095,29 +1073,16 @@ The table has a column of buttons, each button defined by the `_sqlpage_actions`
         "name": "CalStd",
         "vendor": "PharmaCo",
         "product_number": "P1234",
-        "facility_name": "A Plant",
         "lot_number": "T2352",
         "status": "In Use",
         "date_of_expiration": "2026-10-14",
         "_sqlpage_id": 33,
         "_sqlpage_actions": [
             {
-                "name": "history",
-                "tooltip": "View Standard History",
-                "link": "./history.sql?standard_id={id}",
-                "icon": "history"
-            },
-            {
                 "name": "view_coa",
                 "tooltip": "View Certificate of Analysis",
-                "link": "/c_of_a\\2025-09-30_22h05m13s_cP7gqMyi.pdf",
+                "link": "/c_of_a/2025-09-30_22h05m13s_cP7gqMyi.pdf",
                 "icon": "file-type-pdf"
-            },
-            {
-                "name": "edit",
-                "tooltip": "Edit Standard",
-                "link": "./update.sql?id={id}",
-                "icon": "pencil"
             },
             {
                 "name": "Action",
@@ -1131,35 +1096,25 @@ The table has a column of buttons, each button defined by the `_sqlpage_actions`
         "name": "CalStd",
         "vendor": "PharmaCo",
         "product_number": "P1234",
-        "facility_name": "A Plant",
         "lot_number": "A123",
         "status": "Discarded",
         "date_of_expiration": "2026-09-30",
         "_sqlpage_id": 31,
         "_sqlpage_actions": [
             {
-                "name": "history",
-                "tooltip": "View Standard History",
-                "link": "./history.sql?standard_id={id}",
-                "icon": "history"
-            },
-            {
                 "name": "view_coa",
                 "tooltip": "View Certificate of Analysis",
-                "link": "#",
+                "link": "025-09-30_22h01m21s_B439baKoz.pdf",
                 "icon": "file-type-pdf"
             },
             {
-                "name": "edit",
-                "tooltip": "Edit Standard",
-                "link": "./update.sql?id={id}",
-                "icon": "pencil"
-            },
-            null
+                "name": "Action"
+            }
         ]
     }
-]')
-    );
+]'
+)
+);
 
 
 
