@@ -611,6 +611,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "autotools"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef941527c41b0fc0dd48511a8154cd5fc7e29200a0ff8b7203c5d777dbc795cf"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "awc"
 version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3073,8 +3082,9 @@ dependencies = [
 
 [[package]]
 name = "odbc-sys"
-version = "0.27.3"
-source = "git+https://github.com/sqlpage/odbc-sys?branch=no-autotools#ae3e15446bb2c5c191f05e7c6affc37dfd6fcabe"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2127e7f596b99095fe8ebb03f9fd52e32fd01a28e66eac41c1e637f963d488e"
 dependencies = [
  "unix-odbc",
 ]
@@ -4806,9 +4816,11 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "unix-odbc"
 version = "0.1.2"
-source = "git+https://github.com/sqlpage/odbc-sys?branch=no-autotools#ae3e15446bb2c5c191f05e7c6affc37dfd6fcabe"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fed7dc665cf7dfdb5b9c1fe9c8257f053be19ecad9966090acce5f574cb2eeff"
 dependencies = [
- "cc",
+ "autotools",
+ "fs_extra",
 ]
 
 [[package]]
@@ -5577,3 +5589,8 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "odbc-sys"
+version = "0.27.3"
+source = "git+https://github.com/sqlpage/odbc-sys?branch=no-autotools#ae3e15446bb2c5c191f05e7c6affc37dfd6fcabe"
