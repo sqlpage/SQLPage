@@ -24,6 +24,9 @@ jobs:
         components: rust-src
         override: true
     
+    - name: Install cargo-script
+      run: cargo install cargo-script
+    
     - name: Validate documentation structure
       run: cargo script scripts/validate-docs.rs --dep walkdir --dep regex
     
