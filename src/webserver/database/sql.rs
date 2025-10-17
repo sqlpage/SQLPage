@@ -923,7 +923,13 @@ impl VisitorMut for ParameterExtractor {
             Expr::Cast {
                 kind: kind @ CastKind::DoubleColon,
                 ..
-            } if self.db_info.database_type != SupportedDatabase::Postgres => {
+            } if ![
+                SupportedDatabase::Postgres,
+                SupportedDatabase::Snowflake,
+                SupportedDatabase::Generic,
+            ]
+            .contains(&self.db_info.database_type) =>
+            {
                 log::warn!("Casting with '::' is not supported on your database. \
                 For backwards compatibility with older SQLPage versions, we will transform it to CAST(... AS ...).");
                 *kind = CastKind::Cast;
