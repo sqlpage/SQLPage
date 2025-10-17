@@ -38,17 +38,69 @@ Key features:
 ' || (
         select
             group_concat (
-                '### [' || name || '](/component.sql?component=' || name || ')
+                '### [' || c.name || '](/component.sql?component=' || c.name || ')
 
-' || description || '
+' || c.description || '
+
+' || (
+                    select
+                        case when exists (
+                                select
+                                    1
+                                from
+                                    parameter
+                                where
+                                    component = c.name
+                                    and top_level
+                            ) then '#### Top-level parameters
+
+' || group_concat (
+                                    '- `' || name || '` (' || type || ')' || case when not optional then ' **REQUIRED**' else '' end || ': ' || description,
+                                    char(10)
+                                )
+                        else
+                            ''
+                        end
+                    from
+                        parameter
+                    where
+                        component = c.name
+                        and top_level
+                ) || '
+
+' || (
+                    select
+                        case when exists (
+                                select
+                                    1
+                                from
+                                    parameter
+                                where
+                                    component = c.name
+                                    and not top_level
+                            ) then '#### Row-level parameters
+
+' || group_concat (
+                                    '- `' || name || '` (' || type || ')' || case when not optional then ' **REQUIRED**' else '' end || ': ' || description,
+                                    char(10)
+                                )
+                        else
+                            ''
+                        end
+                    from
+                        parameter
+                    where
+                        component = c.name
+                        and not top_level
+                ) || '
 
 ',
                 ''
             )
         from
-            component
+            component c
         order by
-            name
+            c.name
     ) || '
 
 ## Functions
