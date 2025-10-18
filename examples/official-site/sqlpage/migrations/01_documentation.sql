@@ -810,11 +810,15 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('money', 'Name of a numeric column whose values should be displayed as currency amounts, in the currency defined by the `currency` property. This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('currency', 'The ISO 4217 currency code (e.g., USD, EUR, GBP, etc.) to use when formatting monetary values.', 'TEXT', TRUE, TRUE),
     ('number_format_digits', 'Maximum number of decimal digits to display for numeric values.', 'INTEGER', TRUE, TRUE),
+    ('edit_url', 'If set, an edit button will be added to each row. The value of this property should be a URL, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row. Clicking the edit button will take the user to that URL.', 'TEXT', TRUE, TRUE),
+    ('delete_url', 'If set, a delete button will be added to each row. The value of this property should be a URL, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row. Clicking the delete button will take the user to that URL.', 'TEXT', TRUE, TRUE),
+    ('custom_actions', 'If set, a column of custom action buttons will be added to each row. The value of this property should be a JSON array of objects, each object defining a button with the following properties: `name` (the text to display on the button), `icon` (the tabler icon name or image link to display on the button), `link` (the URL to navigate to when the button is clicked, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row), and `tooltip` (optional text to display when hovering over the button).', 'JSON', TRUE, TRUE),
     -- row level
     ('_sqlpage_css_class', 'For advanced users. Sets a css class on the table row. Added in v0.8.0.', 'TEXT', FALSE, TRUE),
     ('_sqlpage_color', 'Sets the background color of the row. Added in v0.8.0.', 'COLOR', FALSE, TRUE),
     ('_sqlpage_footer', 'Sets this row as the table footer. It is recommended that this parameter is applied to the last row. Added in v0.34.0.', 'BOOLEAN', FALSE, TRUE),
-    ('_sqlpage_id', 'Sets the id of the html tabler row element. Allows you to make links targeting a specific row in a table.', 'TEXT', FALSE, TRUE)
+    ('_sqlpage_id', 'Sets the id of the html tabler row element. Allows you to make links targeting a specific row in a table.', 'TEXT', FALSE, TRUE),
+    ('_sqlpage_actions', 'Sets custom action buttons for this specific row in addition to any defined at the table level, The value of this property should be a JSON array of objects, each object defining a button with the following properties: `name` (the text to display on the button), `icon` (the tabler icon name or image link to display on the button), `link` (the URL to navigate to when the button is clicked, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row), and `tooltip` (optional text to display when hovering over the button).', 'JSON', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -994,7 +998,124 @@ GROUP BY
 This will generate a table with the stores in the first column, and the items in the following columns, with the quantity sold in each store for each item.
 
 ', NULL
-    );
+    ),
+    (
+    'table',
+'## Using Action Buttons in a table.
+
+### Preset Actions: `edit_url` & `delete_url`
+Since edit and delete are common actions, the `table` component has dedicated `edit_url` and `delete_url` properties to add buttons for these actions.
+The value of these properties should be a URL, containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row.
+
+### Column with fixed action buttons
+
+You may want to add custom action buttons to your table rows, for instance to view details, download a file, or perform a custom operation.
+For this, the `table` component has a `custom_actions` property that lets you define a column of buttons, each button defined by a name, an icon, a link, and an optional tooltip.
+
+### Column with variable action buttons
+
+The `table` component also supports the row level `_sqlpage_actions` column in your data table.
+This is helpful if you want a more complex logic, for instance to disable a button on some rows, or to change the link or icon based on the row data.
+
+> WARNING!
+> If the number of array items in `_sqlpage_actions` is not consistent across all rows, the table may not render correctly.
+> You can leave blank spaces by including an object with only the `name` property.
+
+The table has a column of buttons, each button defined by the `_sqlpage_actions` column at the table level, and by the `_sqlpage_actions` property at the row level.
+### `custom_actions` & `_sqlpage_actions` JSON properties.
+Each button is defined by the following properties:
+* `name`: sets the column header and the tooltip if no tooltip is provided,
+* `tooltip`: text to display when hovering over the button,
+* `link`: the URL to navigate to when the button is clicked, possibly containing the {id} placeholder that will be replaced by the value of the `_sqlpage_id` property for that row,
+* `icon`: the tabler icon name or image link to display on the button
+
+### Example using all of the above
+'
+    ,
+    json('[
+    {
+        "component": "table",
+        "edit_url": "./update.sql?id={id}",
+        "delete_url": "./delete.sql?id={id}",
+        "custom_actions": [
+            {
+                "name": "history",
+                "tooltip": "View Standard History",
+                "link": "./history.sql?standard_id={id}",
+                "icon": "history"
+            }
+        ]
+    },
+    {
+        "name": "CalStd",
+        "vendor": "PharmaCo",
+        "product_number": "P1234",
+        "lot_number": "T23523",
+        "status": "Available",
+        "date_of_expiration": "2026-10-13",
+        "_sqlpage_id": 32,
+        "_sqlpage_actions": [
+            {
+                "name": "view_coa",
+                "tooltip": "View Certificate of Analysis",
+                "link": "/c_of_a/2025-09-30_22h01m21s_B69baKoz.pdf",
+                "icon": "file-type-pdf"
+            },
+            {
+                "name": "Action",
+                "tooltip": "Set In Use",
+                "link": "./actions/set_in_use.sql?standard_id=32",
+                "icon": "caret-right"
+            }
+        ]
+    },
+    {
+        "name": "CalStd",
+        "vendor": "PharmaCo",
+        "product_number": "P1234",
+        "lot_number": "T2352",
+        "status": "In Use",
+        "date_of_expiration": "2026-10-14",
+        "_sqlpage_id": 33,
+        "_sqlpage_actions": [
+            {
+                "name": "view_coa",
+                "tooltip": "View Certificate of Analysis",
+                "link": "/c_of_a/2025-09-30_22h05m13s_cP7gqMyi.pdf",
+                "icon": "file-type-pdf"
+            },
+            {
+                "name": "Action",
+                "tooltip": "Retire Standard",
+                "link": "./actions/retire.sql?standard_id=33",
+                "icon": "test-pipe-off"
+            }
+        ]
+    },
+    {
+        "name": "CalStd",
+        "vendor": "PharmaCo",
+        "product_number": "P1234",
+        "lot_number": "A123",
+        "status": "Discarded",
+        "date_of_expiration": "2026-09-30",
+        "_sqlpage_id": 31,
+        "_sqlpage_actions": [
+            {
+                "name": "view_coa",
+                "tooltip": "View Certificate of Analysis",
+                "link": "025-09-30_22h01m21s_B439baKoz.pdf",
+                "icon": "file-type-pdf"
+            },
+            {
+                "name": "Action"
+            }
+        ]
+    }
+]'
+)
+);
+
 
 
 INSERT INTO component(name, icon, description) VALUES
