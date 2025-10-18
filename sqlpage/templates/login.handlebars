@@ -1,0 +1,89 @@
+<div class="container {{class}}">
+    <div class="row d-flex justify-content-center">
+        <div class="col-md-6">
+            <form 
+                {{#if id}}id="{{id}}"{{/if}}
+                class="mt-3 mb-1" 
+                method="post" 
+                {{#if enctype}}enctype="{{enctype}}"{{/if}}
+                {{#if action}}
+                    action="{{action}}"
+                {{else}}
+                    {{#if id}}action="#{{id}}"{{/if}}
+                {{/if}}
+            >
+                {{#if image}}
+                    <div class="form-group d-flex justify-content-center align-items-center">
+                        <img src="{{image}}"/>
+                    </div>
+                {{/if}}
+                {{#if title}}
+                    <h1 class="text-center mb-3">{{title}}</h1>
+                {{/if}}
+                <label class="form-label">{{username}}</label>    
+                <div class="input-icon mb-3">
+                    <span class="input-icon-addon">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24"
+                            height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <circle cx="12" cy="7" r="4" />
+                            <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                        </svg>
+                    </span>
+                    <input type="text" name="username" id="username" value="" class="form-control" placeholder="{{username}}" required="required" autofocus/>
+                </div>
+                <label class="form-label">{{password}}
+                    {{#if forgot_password_text}}
+                        <span class="form-label-description"><a href="{{forgot_password_link}}">{{forgot_password_text}}</a></span> 
+                    {{/if}}
+                </label>
+                <div class="input-icon mb-3">
+                    <span class="input-icon-addon">
+                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  
+                            viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  
+                            stroke-linecap="round"  stroke-linejoin="round"  
+                            class="icon icon-tabler icons-tabler-outline icon-tabler-lock">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" />
+                                <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" />
+                                <path d="M8 11v-4a4 4 0 1 1 8 0v4" />
+                        </svg>
+                    </span>
+                    <input type="password" name="password" id="password" value="" class="form-control" placeholder="{{password}}" required="required"/>
+                </div>
+                {{#if remember_me_text}}
+                    <label class="form-check">
+                        <input class="form-check-input" id="remember" name="remember" type="checkbox" />
+                        <span class="form-check-label">{{remember_me_text}}</span>
+                    </label>   
+                {{/if}}
+                <div class="form-group d-flex justify-content-center align-items-center">
+                    <input 
+                        class="btn
+                        btn-{{default validate_color "primary"}}
+                        {{#if validate_shape}} btn-{{validate_shape}} {{/if}}
+                        {{#if validate_outline}} btn-outline-{{validate_outline}} {{/if}}
+                        {{#if validate_size}} btn-{{validate_size}} {{/if}}"
+                        type="submit" 
+                        name="submit"
+                        value="{{validate}}"/>
+                </div>
+                {{#if (or footer footer_md)}}
+                    <hr>
+                    <div class="text-center mb-0">
+                        <small class="form-hint mt-0">
+                            {{#if footer}} 
+                                {{footer}}
+                            {{else}}
+                                {{#if footer_md}}
+                                    {{{markdown footer_md}}}
+                                {{/if}}
+                            {{/if}}
+                        </small>
+                    </div>
+                {{/if}}
+            </form>
+        </div>
+    </div>
+</div>

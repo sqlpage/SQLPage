@@ -18,7 +18,8 @@ FROM (VALUES
     ('title', TRUE),
     ('tracking', TRUE),
     ('text', TRUE),
-    ('carousel', TRUE)
+    ('carousel', TRUE),
+    ('login', TRUE)
 );
 
 INSERT INTO parameter(component, top_level, name, description, type, optional) 
@@ -49,6 +50,7 @@ FROM (VALUES
     ('timeline', FALSE),
     ('title', TRUE),
     ('tracking', TRUE),
-    ('carousel', TRUE)
+    ('carousel', TRUE),
+    ('login', TRUE)
 );
 
