@@ -2,6 +2,7 @@
 
 ## v0.38.1
  - Ability to execute sql for URL paths with another extension. If you create sitemap.xml.sql, it will be executed for example.com/sitemap.xml
+ - Display source line info in errors even when the database does not return a precise error position. In this case, the entire problematic SQL statement is referenced.
 
 ## v0.38.0
  - Added support for the Open Database Connectivity (ODBC) standard.

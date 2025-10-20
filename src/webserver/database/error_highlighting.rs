@@ -27,41 +27,47 @@ impl std::fmt::Display for NiceDatabaseError {
         )?;
         if let sqlx::error::Error::Database(db_err) = &self.db_err {
             let Some(mut offset) = db_err.offset() else {
-                return write!(f, "{}", self.query);
+                write!(f, "{}", self.query)?;
+                self.show_position_info(f)?;
+                return Ok(());
             };
             for line in self.query.lines() {
                 if offset > line.len() {
                     offset -= line.len() + 1;
                 } else {
                     highlight_line_offset(f, line, offset);
-                    if let Some(query_position) = self.query_position {
-                        let start_line = query_position.start.line;
-                        let end_line = query_position.end.line;
-                        if start_line == end_line {
-                            write!(f, "{}: line {}", self.source_file.display(), start_line)?;
-                        } else {
-                            write!(
-                                f,
-                                "{}: lines {} to {}",
-                                self.source_file.display(),
-                                start_line,
-                                end_line
-                            )?;
-                        }
-                    }
+                    self.show_position_info(f)?;
                     break;
                 }
             }
             Ok(())
         } else {
-            write!(f, "{}", self.query)
+            write!(f, "{}", self.query)?;
+            self.show_position_info(f)?;
+            Ok(())
         }
+    }
+}
+
+impl NiceDatabaseError {
+    fn show_position_info(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "\n{}", self.source_file.display())?;
+        let _: () = if let Some(query_position) = self.query_position {
+            let start_line = query_position.start.line;
+            let end_line = query_position.end.line;
+            if start_line == end_line {
+                write!(f, ": line {start_line}")?;
+            } else {
+                write!(f, ": lines {start_line} to {end_line}")?;
+            }
+        };
+        Ok(())
     }
 }
 
 impl std::error::Error for NiceDatabaseError {}
 
-/// Display a database error with a highlighted line and character offset.
+/// Display a database error without any position information
 #[must_use]
 pub fn display_db_error(
     source_file: &Path,
