@@ -490,23 +490,24 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         }
         #[cfg(not(target_family = "unix"))]
         anyhow::bail!("Unix sockets are not supported on your operating system. Use listen_on instead of unix_socket.");
-    }
-    if let Some(domain) = &config.https_domain {
-        let mut listen_on_https = listen_on;
-        listen_on_https.set_port(443);
-        log::debug!("Will start HTTPS server on {listen_on_https}");
-        let config = make_auto_rustls_config(domain, config);
-        server = server
-            .bind_rustls_0_23(listen_on_https, config)
-            .map_err(|e| bind_error(e, listen_on_https))?;
-    } else if listen_on.port() == 443 {
-        bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)");
-    }
-    if listen_on.port() != 443 {
-        log::debug!("Will start HTTP server on {listen_on}");
-        server = server
-            .bind(listen_on)
-            .map_err(|e| bind_error(e, listen_on))?;
+    } else {
+        if let Some(domain) = &config.https_domain {
+            let mut listen_on_https = listen_on;
+            listen_on_https.set_port(443);
+            log::debug!("Will start HTTPS server on {listen_on_https}");
+            let config = make_auto_rustls_config(domain, config);
+            server = server
+                .bind_rustls_0_23(listen_on_https, config)
+                .map_err(|e| bind_error(e, listen_on_https))?;
+        } else if listen_on.port() == 443 {
+            bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)");
+        }
+        if listen_on.port() != 443 {
+            log::debug!("Will start HTTP server on {listen_on}");
+            server = server
+                .bind(listen_on)
+                .map_err(|e| bind_error(e, listen_on))?;
+        }
     }
 
     log_welcome_message(config);
