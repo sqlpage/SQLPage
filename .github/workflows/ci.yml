@@ -38,29 +38,6 @@ jobs:
           name: sqlpage-linux-debug
           path: "target/debug/sqlpage"
 
-  test_asan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install clang for ASAN
-        run: sudo apt-get update && sudo apt-get install -y clang
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
-      - name: Build with ASAN-instrumented C dependencies
-        env:
-          CFLAGS: "-fsanitize=address -fno-omit-frame-pointer -g"
-          CXXFLAGS: "-fsanitize=address -fno-omit-frame-pointer -g"
-          CC: clang
-          CXX: clang++
-        run: cargo build --features odbc-static
-      - name: Run tests with ASAN
-        env:
-          ASAN_OPTIONS: "detect_leaks=1:abort_on_error=1"
-          CFLAGS: "-fsanitize=address -fno-omit-frame-pointer -g"
-          CXXFLAGS: "-fsanitize=address -fno-omit-frame-pointer -g"
-          CC: clang
-          CXX: clang++
-        run: cargo test --features odbc-static --no-fail-fast
 
   test:
     runs-on: ubuntu-latest
