@@ -1035,13 +1035,13 @@ Each button is defined by the following properties:
     json('[
     {
         "component": "table",
-        "edit_url": "./update.sql?id={id}",
-        "delete_url": "./delete.sql?id={id}",
+        "edit_url": "/examples/show_variables.sql?action=edit&update_id={id}",
+        "delete_url": "/examples/show_variables.sql?action=delete&delete_id={id}",
         "custom_actions": [
             {
                 "name": "history",
                 "tooltip": "View Standard History",
-                "link": "./history.sql?standard_id={id}",
+                "link": "/examples/show_variables.sql?action=history&standard_id={id}",
                 "icon": "history"
             }
         ]
@@ -1057,14 +1057,14 @@ Each button is defined by the following properties:
         "_sqlpage_actions": [
             {
                 "name": "View PDF",
-                "tooltip": "View Certificate of Analysis",
-                "link": "/c_of_a/2025-09-30_22h01m21s_B69baKoz.pdf",
+                "tooltip": "View Presentation",
+                "link": "https://sql-page.com/pgconf/2024-sqlpage-badass.pdf",
                 "icon": "file-type-pdf"
             },
             {
                 "name": "Action",
                 "tooltip": "Set In Use",
-                "link": "./actions/set_in_use.sql?standard_id=32",
+                "link": "/examples/show_variables.sql?action=set_in_use&standard_id=32",
                 "icon": "caret-right"
             }
         ]
@@ -1080,14 +1080,14 @@ Each button is defined by the following properties:
         "_sqlpage_actions": [
             {
                 "name": "View PDF",
-                "tooltip": "View Certificate of Analysis",
-                "link": "/c_of_a/2025-09-30_22h05m13s_cP7gqMyi.pdf",
+                "tooltip": "View Presentation",
+                "link": "https://sql-page.com/pgconf/2024-sqlpage-badass.pdf",
                 "icon": "file-type-pdf"
             },
             {
                 "name": "Action",
                 "tooltip": "Retire Standard",
-                "link": "./actions/retire.sql?standard_id=33",
+                "link": "/examples/show_variables.sql?action=retire&standard_id=33",
                 "icon": "test-pipe-off"
             }
         ]
@@ -1103,8 +1103,8 @@ Each button is defined by the following properties:
         "_sqlpage_actions": [
             {
                 "name": "View PDF",
-                "tooltip": "View Certificate of Analysis",
-                "link": "025-09-30_22h01m21s_B439baKoz.pdf",
+                "tooltip": "View Presentation",
+                "link": "https://sql-page.com/pgconf/2024-sqlpage-badass.pdf",
                 "icon": "file-type-pdf"
             },
             {
