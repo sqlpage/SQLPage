@@ -20,8 +20,9 @@ use sqlparser::dialect::{
 };
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
-use sqlparser::tokenizer::{TokenWithSpan, Tokenizer};
+use sqlparser::tokenizer::{Location, Span, TokenWithSpan, Tokenizer};
 use sqlx::any::AnyKind;
+use std::fmt::Write;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -241,11 +242,29 @@ fn extract_query_start(stmt: &impl Spanned) -> SourceSpan {
 }
 
 fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement {
-    let location = parser.peek_token_no_skip().span;
-    ParsedStatement::Error(anyhow::Error::from(err).context(format!(
-        "Parsing failed: SQLPage couldn't understand the SQL file. Please check for syntax errors:\n\n{}",
-        quote_source_with_highlight(sql, location.start.line, location.start.column)
-    )))
+    let Span {
+        start: Location {
+            line: start_line,
+            column: start_column,
+        },
+        end: Location { line: end_line, .. },
+    } = parser.peek_token_no_skip().span;
+
+    let mut msg = String::from(
+        "Parsing failed: SQLPage couldn't understand the SQL file. Please check for syntax errors on ",
+    );
+    if start_line == end_line {
+        write!(&mut msg, "line {start_line}:").unwrap();
+    } else {
+        write!(&mut msg, "lines {start_line} to {end_line}:").unwrap();
+    }
+    write!(
+        &mut msg,
+        "\n{}",
+        quote_source_with_highlight(sql, start_line, start_column)
+    )
+    .unwrap();
+    ParsedStatement::Error(anyhow::Error::from(err).context(msg))
 }
 
 fn dialect_for_db(dbms: SupportedDatabase) -> Box<dyn Dialect> {
@@ -923,7 +942,13 @@ impl VisitorMut for ParameterExtractor {
             Expr::Cast {
                 kind: kind @ CastKind::DoubleColon,
                 ..
-            } if self.db_info.database_type != SupportedDatabase::Postgres => {
+            } if ![
+                SupportedDatabase::Postgres,
+                SupportedDatabase::Snowflake,
+                SupportedDatabase::Generic,
+            ]
+            .contains(&self.db_info.database_type) =>
+            {
                 log::warn!("Casting with '::' is not supported on your database. \
                 For backwards compatibility with older SQLPage versions, we will transform it to CAST(... AS ...).");
                 *kind = CastKind::Cast;

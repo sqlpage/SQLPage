@@ -22,7 +22,8 @@
 //!
 //! #### Paths with other extensions (assets):
 //! - If the file exists: **Serve** the static file
-//! - If not found: Look for custom 404 handlers (see Error Handling below)
+//! - If not found but `{path}.sql` exists: **Execute** the SQL file
+//! - If neither found: Look for custom 404 handlers (see Error Handling below)
 //!
 //! #### Paths without extension:
 //! - First, try to find `{path}.sql` and **Execute** if found
@@ -64,6 +65,13 @@
 //!
 //! Request: GET /favicon.ico
 //! - If favicon.ico exists: Serve favicon.ico
+//! - Else if 404.sql exists: Execute 404.sql
+//! - Else: Default 404
+//!
+//! Request: GET /api/data.json
+//! - If api/data.json exists: Serve api/data.json
+//! - Else if api/data.json.sql exists: Execute api/data.json.sql
+//! - Else if api/404.sql exists: Execute api/404.sql
 //! - Else if 404.sql exists: Execute 404.sql
 //! - Else: Default 404
 //! ```
@@ -140,12 +148,13 @@ where
     C: RoutingConfig,
 {
     let result = match check_path(path_and_query, config) {
-        Ok(path) => match path.extension() {
+        Ok(path) => match path.extension().and_then(|e| e.to_str()) {
+            Some(SQL_EXTENSION) => find_file_or_not_found(&path, SQL_EXTENSION, store).await?,
+            Some(extension) => match find_file(&path, extension, store).await? {
+                Some(action) => action,
+                None => calculate_route_without_extension(path_and_query, path, store).await?,
+            },
             None => calculate_route_without_extension(path_and_query, path, store).await?,
-            Some(extension) => {
-                let ext = extension.to_str().unwrap_or_default();
-                find_file_or_not_found(&path, ext, store).await?
-            }
         },
         Err(action) => action,
     };
@@ -189,7 +198,7 @@ where
         path.push(INDEX);
         find_file_or_not_found(&path, SQL_EXTENSION, store).await
     } else {
-        let path_with_ext = path.with_extension(SQL_EXTENSION);
+        let path_with_ext = PathBuf::from(format!("{}.{SQL_EXTENSION}", path.display()));
         match find_file_or_not_found(&path_with_ext, SQL_EXTENSION, store).await? {
             Execute(x) => Ok(Execute(x)),
             other_action => {
@@ -337,6 +346,22 @@ mod tests {
             )
             .await;
             let expected = execute("folder/index.sql");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn path_with_non_sql_extension_executes_sql_file() {
+            let actual = do_route("/abc.def", File("abc.def.sql"), None).await;
+            let expected = execute("abc.def.sql");
+
+            assert_eq!(expected, actual);
+        }
+
+        #[tokio::test]
+        async fn path_with_non_sql_extension_and_site_prefix_executes_sql_file() {
+            let actual = do_route("/prefix/abc.def", File("abc.def.sql"), Some("/prefix/")).await;
+            let expected = execute("abc.def.sql");
 
             assert_eq!(expected, actual);
         }
