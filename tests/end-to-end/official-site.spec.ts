@@ -213,3 +213,87 @@ test("modal", async ({ page }) => {
   await modal.getByRole("button", { label: "Close" }).first().click();
   await expect(modal).not.toBeVisible();
 });
+
+test("table action buttons - edit_url and delete_url", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=table`);
+  const tableSection = page.locator(".table-responsive", {
+    has: page.getByRole("cell", { name: "PharmaCo" }),
+  });
+
+  const editButton = tableSection.getByTitle("Edit").first();
+  await expect(editButton).toBeVisible();
+  await expect(editButton).toHaveAttribute("href", /action=edit&update_id=\d+/);
+
+  const deleteButton = tableSection.getByTitle("Delete").first();
+  await expect(deleteButton).toBeVisible();
+  await expect(deleteButton).toHaveAttribute(
+    "href",
+    /action=delete&delete_id=\d+/,
+  );
+});
+
+test("table action buttons - custom_actions", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=table`);
+  const tableSection = page.locator(".table-responsive", {
+    has: page.getByRole("cell", { name: "PharmaCo" }),
+  });
+
+  const historyButton = tableSection
+    .getByTitle("View Standard History")
+    .first();
+  await expect(historyButton).toBeVisible();
+  await expect(historyButton).toHaveAttribute(
+    "href",
+    /action=history&standard_id=\d+/,
+  );
+});
+
+test("table action buttons - _sqlpage_actions", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=table`);
+  const tableSection = page.locator(".table-responsive", {
+    has: page.getByRole("cell", { name: "PharmaCo" }),
+  });
+
+  const pdfButtons = tableSection.getByTitle("View Presentation");
+  await expect(pdfButtons.first()).toBeVisible();
+  await expect(pdfButtons).toHaveCount(3);
+
+  const firstPdfButton = pdfButtons.first();
+  await expect(firstPdfButton).toHaveAttribute(
+    "href",
+    "https://sql-page.com/pgconf/2024-sqlpage-badass.pdf",
+  );
+
+  const setInUseButton = tableSection.getByTitle("Set In Use");
+  await expect(setInUseButton).toBeVisible();
+  await expect(setInUseButton).toHaveAttribute(
+    "href",
+    /action=set_in_use&standard_id=32/,
+  );
+
+  const retireButton = tableSection.getByTitle("Retire Standard");
+  await expect(retireButton).toBeVisible();
+  await expect(retireButton).toHaveAttribute(
+    "href",
+    /action=retire&standard_id=33/,
+  );
+});
+
+test("table action buttons - disabled action", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=table`);
+  const tableSection = page.locator(".table-responsive", {
+    has: page.getByRole("cell", { name: "PharmaCo" }),
+  });
+
+  const viewPresentationButtons = tableSection.getByTitle("View Presentation");
+  await expect(viewPresentationButtons).toHaveCount(3);
+
+  const actionColumnButtons = tableSection.locator(
+    "td._col_Action a[data-action='Action']",
+  );
+  await expect(actionColumnButtons).toHaveCount(3);
+
+  const emptyActionButton = actionColumnButtons.last();
+  await expect(emptyActionButton).toHaveAttribute("href", "null");
+  await expect(emptyActionButton).toHaveAttribute("title", "Action");
+});
