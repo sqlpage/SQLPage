@@ -1010,7 +1010,7 @@ The value of these properties should be a URL, containing the `{id}` placeholder
 ### Column with fixed action buttons
 
 You may want to add custom action buttons to your table rows, for instance to view details, download a file, or perform a custom operation.
-For this, the `table` component has a `custom_actions` property that lets you define a column of buttons, each button defined by a name, an icon, a link, and an optional tooltip.
+For this, the `table` component has a `custom_actions` top-level property that lets you define a column of buttons, each button defined by a name, an icon, a link, and an optional tooltip.
 
 ### Column with variable action buttons
 
@@ -1026,7 +1026,7 @@ The table has a column of buttons, each button defined by the `_sqlpage_actions`
 Each button is defined by the following properties:
 * `name`: sets the column header and the tooltip if no tooltip is provided,
 * `tooltip`: text to display when hovering over the button,
-* `link`: the URL to navigate to when the button is clicked, possibly containing the {id} placeholder that will be replaced by the value of the `_sqlpage_id` property for that row,
+* `link`: the URL to navigate to when the button is clicked, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row,
 * `icon`: the tabler icon name or image link to display on the button
 
 ### Example using all of the above
@@ -1049,14 +1049,14 @@ Each button is defined by the following properties:
     {
         "name": "CalStd",
         "vendor": "PharmaCo",
-        "product_number": "P1234",
-        "lot_number": "T23523",
+        "Product": "P1234",
+        "lot number": "T23523",
         "status": "Available",
-        "date_of_expiration": "2026-10-13",
+        "expires on": "2026-10-13",
         "_sqlpage_id": 32,
         "_sqlpage_actions": [
             {
-                "name": "view_coa",
+                "name": "View PDF",
                 "tooltip": "View Certificate of Analysis",
                 "link": "/c_of_a/2025-09-30_22h01m21s_B69baKoz.pdf",
                 "icon": "file-type-pdf"
@@ -1072,14 +1072,14 @@ Each button is defined by the following properties:
     {
         "name": "CalStd",
         "vendor": "PharmaCo",
-        "product_number": "P1234",
-        "lot_number": "T2352",
+        "Product": "P1234",
+        "lot number": "T2352",
         "status": "In Use",
-        "date_of_expiration": "2026-10-14",
+        "expires on": "2026-10-14",
         "_sqlpage_id": 33,
         "_sqlpage_actions": [
             {
-                "name": "view_coa",
+                "name": "View PDF",
                 "tooltip": "View Certificate of Analysis",
                 "link": "/c_of_a/2025-09-30_22h05m13s_cP7gqMyi.pdf",
                 "icon": "file-type-pdf"
@@ -1095,14 +1095,14 @@ Each button is defined by the following properties:
     {
         "name": "CalStd",
         "vendor": "PharmaCo",
-        "product_number": "P1234",
-        "lot_number": "A123",
+        "Product": "P1234",
+        "lot number": "A123",
         "status": "Discarded",
-        "date_of_expiration": "2026-09-30",
+        "expires on": "2026-09-30",
         "_sqlpage_id": 31,
         "_sqlpage_actions": [
             {
-                "name": "view_coa",
+                "name": "View PDF",
                 "tooltip": "View Certificate of Analysis",
                 "link": "025-09-30_22h01m21s_B439baKoz.pdf",
                 "icon": "file-type-pdf"
