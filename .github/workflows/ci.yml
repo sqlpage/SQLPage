@@ -27,11 +27,29 @@ jobs:
       - uses: actions/checkout@v4
       - run: npm ci
       - run: npm test
+      - name: Install clang for ASAN
+        run: sudo apt-get update && sudo apt-get install -y clang
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test --features odbc-static
+      - name: Build proc-macros without ASAN first
+        run: cargo build --lib --features odbc-static
+      - name: Run tests with ASAN-instrumented C dependencies
+        env:
+          CFLAGS: "-fsanitize=address -fno-omit-frame-pointer -g"
+          CXXFLAGS: "-fsanitize=address -fno-omit-frame-pointer -g"
+          CC: clang
+          CXX: clang++
+          RUSTFLAGS: "-Clink-arg=-fsanitize=address"
+          ASAN_OPTIONS: "detect_leaks=1:abort_on_error=1"
+        run: |
+          # Find and preload ASAN runtime library so rustc can load ASAN-linked proc-macros
+          ASAN_LIB=$(clang -print-file-name=libclang_rt.asan-x86_64.so)
+          export LD_PRELOAD="$ASAN_LIB"
+          # Recompile C dependencies and binaries with ASAN instrumentation
+          cargo clean -p aws-lc-sys -p libsqlite3-sys -p zstd-sys -p sqlpage
+          cargo test --features odbc-static
       - name: Upload Linux binary
         uses: actions/upload-artifact@v4
         with:
