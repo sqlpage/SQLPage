@@ -182,7 +182,7 @@ async fn render_sql(
             .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
 
-    req_param.server_timing.borrow_mut().record("parse");
+    req_param.server_timing.borrow_mut().record("parse_req");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     let source_path: PathBuf = sql_file.source_path.clone();
