@@ -9,10 +9,12 @@ async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
     config.environment = sqlpage::app_config::DevOrProd::Production;
     let app_data = make_app_data_from_config(config).await;
 
-    let req =
-        crate::common::get_request_to_with_data("/tests/server_timing/simple_query.sql", app_data)
-            .await?
-            .to_srv_request();
+    let req = crate::common::get_request_to_with_data(
+        "/tests/sql_test_files/it_works_simple.sql",
+        app_data,
+    )
+    .await?
+    .to_srv_request();
     let resp = main_handler(req).await?;
 
     assert_eq!(resp.status(), StatusCode::OK);
@@ -29,10 +31,12 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
     config.environment = sqlpage::app_config::DevOrProd::Development;
     let app_data = make_app_data_from_config(config).await;
 
-    let req =
-        crate::common::get_request_to_with_data("/tests/server_timing/simple_query.sql", app_data)
-            .await?
-            .to_srv_request();
+    let req = crate::common::get_request_to_with_data(
+        "/tests/sql_test_files/it_works_simple.sql",
+        app_data,
+    )
+    .await?
+    .to_srv_request();
     let resp = main_handler(req).await?;
 
     assert_eq!(resp.status(), StatusCode::OK);
@@ -68,7 +72,7 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_server_timing_format() -> actix_web::Result<()> {
-    let req = get_request_to("/tests/server_timing/simple_query.sql")
+    let req = get_request_to("/tests/sql_test_files/it_works_simple.sql")
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;

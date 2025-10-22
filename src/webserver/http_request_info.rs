@@ -288,7 +288,8 @@ mod test {
             serde_json::from_str::<AppConfig>(r#"{"listen_on": "localhost:1234"}"#).unwrap();
         let mut service_request = TestRequest::default().to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data)
+        let server_timing = super::server_timing::ServerTiming::new(false);
+        let request_info = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
         assert_eq!(request_info.post_variables.len(), 0);
@@ -306,7 +307,8 @@ mod test {
             .set_payload("my_array[]=3&my_array[]=Hello%20World&repeated=1&repeated=2")
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data)
+        let server_timing = super::server_timing::ServerTiming::new(false);
+        let request_info = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
         assert_eq!(
@@ -355,7 +357,8 @@ mod test {
             )
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let request_info = extract_request_info(&mut service_request, app_data)
+        let server_timing = super::server_timing::ServerTiming::new(false);
+        let request_info = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
         assert_eq!(

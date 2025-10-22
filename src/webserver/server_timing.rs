@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::time::Instant;
 
 #[derive(Debug, Clone)]
@@ -28,8 +29,7 @@ impl ServerTiming {
         if !self.header.is_empty() {
             self.header.push_str(", ");
         }
-        use std::fmt::Write;
-        write!(&mut self.header, "{};dur={:.2}", name, duration_ms).unwrap();
+        write!(&mut self.header, "{name};dur={duration_ms:.2}").unwrap();
     }
 
     #[must_use]
