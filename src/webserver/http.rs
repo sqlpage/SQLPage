@@ -7,6 +7,7 @@ use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
+use crate::webserver::server_timing::ServerTiming;
 use crate::webserver::ErrorWithStatus;
 use crate::{AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
@@ -46,6 +47,7 @@ pub struct RequestContext {
     pub is_embedded: bool,
     pub source_path: PathBuf,
     pub content_security_policy: ContentSecurityPolicy,
+    pub server_timing: Option<ServerTiming>,
 }
 
 async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRenderBodyContext) {
@@ -104,7 +106,14 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     let writer = ResponseWriter::new(sender);
     let mut head_context = HeaderContext::new(app_state, request_context, writer);
     let mut stream = Box::pin(database_entries);
+    let mut first_row = true;
     while let Some(item) = stream.next().await {
+        if first_row {
+            if let Some(ref mut timing) = head_context.request_context.server_timing {
+                timing.record("query");
+            }
+            first_row = false;
+        }
         let page_context = match item {
             DbItem::Row(data) => head_context.handle_row(data).await?,
             DbItem::FinishedQuery => {
@@ -167,13 +176,23 @@ async fn render_sql(
     let app_state = srv_req
         .app_data::<web::Data<AppState>>()
         .ok_or_else(|| ErrorInternalServerError("no state"))?
-        .clone() // Cheap reference count increase
+        .clone()
         .into_inner();
+
+    let mut server_timing = if !app_state.config.environment.is_prod() {
+        Some(ServerTiming::new())
+    } else {
+        None
+    };
 
     let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state))
         .await
         .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
+
+    if let Some(ref mut timing) = server_timing {
+        timing.record("parse");
+    }
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     let source_path: PathBuf = sql_file.source_path.clone();
@@ -182,6 +201,7 @@ async fn render_sql(
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
             source_path,
             content_security_policy: ContentSecurityPolicy::with_random_nonce(),
+            server_timing,
         };
         let mut conn = None;
         let database_entries_stream =
