@@ -52,13 +52,13 @@ pub fn stream_query_results_with_conn<'a>(
         for res in &sql_file.statements {
             match res {
                 ParsedStatement::CsvImport(csv_import) => {
-                    let connection = take_connection(&request.app_state.db, db_connection).await?;
+                    let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::debug!("Executing CSV import: {csv_import:?}");
                     run_csv_import(connection, csv_import, request).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },
                 ParsedStatement::StmtWithParams(stmt) => {
                     let query = bind_parameters(stmt, request, db_connection).await?;
-                    let connection = take_connection(&request.app_state.db, db_connection).await?;
+                    let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
@@ -192,7 +192,7 @@ async fn execute_set_variable_query<'a>(
     source_file: &Path,
 ) -> anyhow::Result<()> {
     let query = bind_parameters(statement, request, db_connection).await?;
-    let connection = take_connection(&request.app_state.db, db_connection).await?;
+    let connection = take_connection(&request.app_state.db, db_connection, request).await?;
     log::debug!(
         "Executing query to set the {variable:?} variable: {:?}",
         query.sql
@@ -276,6 +276,7 @@ fn vars_and_name<'a, 'b>(
 async fn take_connection<'a>(
     db: &'a Database,
     conn: &'a mut DbConn,
+    request: &RequestInfo,
 ) -> anyhow::Result<&'a mut PoolConnection<sqlx::Any>> {
     if let Some(c) = conn {
         return Ok(c);
@@ -283,6 +284,7 @@ async fn take_connection<'a>(
     match db.connection.acquire().await {
         Ok(c) => {
             log::debug!("Acquired a database connection");
+            request.server_timing.borrow_mut().record("db_conn");
             *conn = Some(c);
             Ok(conn.as_mut().unwrap())
         }

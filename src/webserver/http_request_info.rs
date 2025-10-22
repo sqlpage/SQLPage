@@ -42,6 +42,7 @@ pub struct RequestInfo {
     pub clone_depth: u8,
     pub raw_body: Option<Vec<u8>>,
     pub oidc_claims: Option<OidcClaims>,
+    pub server_timing: std::cell::RefCell<super::server_timing::ServerTiming>,
 }
 
 impl RequestInfo {
@@ -62,6 +63,7 @@ impl RequestInfo {
             clone_depth: self.clone_depth + 1,
             raw_body: self.raw_body.clone(),
             oidc_claims: self.oidc_claims.clone(),
+            server_timing: std::cell::RefCell::new(self.server_timing.borrow().clone()),
         }
     }
 }
@@ -78,6 +80,7 @@ impl Clone for RequestInfo {
 pub(crate) async fn extract_request_info(
     req: &mut ServiceRequest,
     app_state: Arc<AppState>,
+    server_timing: super::server_timing::ServerTiming,
 ) -> anyhow::Result<RequestInfo> {
     let (http_req, payload) = req.parts_mut();
     let method = http_req.method().clone();
@@ -123,6 +126,7 @@ pub(crate) async fn extract_request_info(
         clone_depth: 0,
         raw_body,
         oidc_claims,
+        server_timing: std::cell::RefCell::new(server_timing),
     })
 }
 

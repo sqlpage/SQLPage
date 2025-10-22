@@ -368,13 +368,15 @@ impl HeaderContext {
         Ok(PageContext::Header(self))
     }
 
-    async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
-        if let Some(ref timing) = self.request_context.server_timing {
-            let header_value = timing.as_header_value();
-            if !header_value.is_empty() {
-                self.response.insert_header(("Server-Timing", header_value));
-            }
+    fn add_server_timing_header(&mut self) {
+        let header_value = self.request_context.server_timing.as_header_value();
+        if !header_value.is_empty() {
+            self.response.insert_header(("Server-Timing", header_value));
         }
+    }
+
+    async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
+        self.add_server_timing_header();
         let html_renderer =
             HtmlRenderContext::new(self.app_state, self.request_context, self.writer, data)
                 .await
@@ -388,12 +390,7 @@ impl HeaderContext {
     }
 
     pub fn close(mut self) -> HttpResponse {
-        if let Some(ref timing) = self.request_context.server_timing {
-            let header_value = timing.as_header_value();
-            if !header_value.is_empty() {
-                self.response.insert_header(("Server-Timing", header_value));
-            }
-        }
+        self.add_server_timing_header();
         self.response.finish()
     }
 }
