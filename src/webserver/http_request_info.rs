@@ -1,3 +1,4 @@
+use crate::webserver::server_timing::ServerTiming;
 use crate::AppState;
 use actix_multipart::form::bytes::Bytes;
 use actix_multipart::form::tempfile::TempFile;
@@ -42,7 +43,7 @@ pub struct RequestInfo {
     pub clone_depth: u8,
     pub raw_body: Option<Vec<u8>>,
     pub oidc_claims: Option<OidcClaims>,
-    pub server_timing: std::cell::RefCell<super::server_timing::ServerTiming>,
+    pub server_timing: Arc<super::server_timing::ServerTiming>,
 }
 
 impl RequestInfo {
@@ -63,7 +64,7 @@ impl RequestInfo {
             clone_depth: self.clone_depth + 1,
             raw_body: self.raw_body.clone(),
             oidc_claims: self.oidc_claims.clone(),
-            server_timing: std::cell::RefCell::new(self.server_timing.borrow().clone()),
+            server_timing: Arc::clone(&self.server_timing),
         }
     }
 }
@@ -80,7 +81,7 @@ impl Clone for RequestInfo {
 pub(crate) async fn extract_request_info(
     req: &mut ServiceRequest,
     app_state: Arc<AppState>,
-    server_timing: super::server_timing::ServerTiming,
+    server_timing: ServerTiming,
 ) -> anyhow::Result<RequestInfo> {
     let (http_req, payload) = req.parts_mut();
     let method = http_req.method().clone();
@@ -126,7 +127,7 @@ pub(crate) async fn extract_request_info(
         clone_depth: 0,
         raw_body,
         oidc_claims,
-        server_timing: std::cell::RefCell::new(server_timing),
+        server_timing: Arc::new(server_timing),
     })
 }
 
@@ -279,7 +280,7 @@ async fn is_file_field_empty(
 mod test {
     use super::super::http::SingleOrVec;
     use super::*;
-    use crate::app_config::AppConfig;
+    use crate::{app_config::AppConfig, webserver::server_timing::ServerTiming};
     use actix_web::{http::header::ContentType, test::TestRequest};
 
     #[actix_web::test]
@@ -288,7 +289,7 @@ mod test {
             serde_json::from_str::<AppConfig>(r#"{"listen_on": "localhost:1234"}"#).unwrap();
         let mut service_request = TestRequest::default().to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let server_timing = super::server_timing::ServerTiming::new(false);
+        let server_timing = ServerTiming::default();
         let request_info = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
@@ -307,7 +308,7 @@ mod test {
             .set_payload("my_array[]=3&my_array[]=Hello%20World&repeated=1&repeated=2")
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let server_timing = super::server_timing::ServerTiming::new(false);
+        let server_timing = ServerTiming::default();
         let request_info = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
@@ -357,7 +358,7 @@ mod test {
             )
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
-        let server_timing = super::server_timing::ServerTiming::new(false);
+        let server_timing = ServerTiming::enabled(false);
         let request_info = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();

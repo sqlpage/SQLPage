@@ -369,10 +369,8 @@ impl HeaderContext {
     }
 
     fn add_server_timing_header(&mut self) {
-        let header_value = self.request_context.server_timing.as_header_value();
-        if !header_value.is_empty() {
-            self.response
-                .insert_header(("Server-Timing", header_value.to_string()));
+        if let Some(header_value) = self.request_context.server_timing.header_value() {
+            self.response.insert_header(("Server-Timing", header_value));
         }
     }
 

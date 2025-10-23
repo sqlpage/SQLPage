@@ -1,4 +1,4 @@
-use actix_web::{http::StatusCode, test};
+use actix_web::http::StatusCode;
 use sqlpage::webserver::http::main_handler;
 
 use crate::common::{get_request_to, make_app_data_from_config, test_config};
@@ -32,7 +32,7 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
     let app_data = make_app_data_from_config(config).await;
 
     let req = crate::common::get_request_to_with_data(
-        "/tests/sql_test_files/it_works_simple.sql",
+        "/tests/sql_test_files/it_works_sqrt.sql",
         app_data,
     )
     .await?
@@ -46,10 +46,6 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
         .expect("Server-Timing header should be present in development mode");
     let header_value = server_timing_header.to_str().unwrap();
 
-    assert!(
-        header_value.contains("request;dur="),
-        "Should contain request timing: {header_value}"
-    );
     assert!(
         header_value.contains("sql_file;dur="),
         "Should contain sql_file timing: {header_value}"
@@ -72,7 +68,7 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_server_timing_format() -> actix_web::Result<()> {
-    let req = get_request_to("/tests/sql_test_files/it_works_simple.sql")
+    let req = get_request_to("/tests/sql_test_files/it_works_sqrt.sql")
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;

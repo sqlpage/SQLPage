@@ -47,7 +47,7 @@ pub struct RequestContext {
     pub is_embedded: bool,
     pub source_path: PathBuf,
     pub content_security_policy: ContentSecurityPolicy,
-    pub server_timing: ServerTiming,
+    pub server_timing: Arc<ServerTiming>,
 }
 
 async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRenderBodyContext) {
@@ -176,23 +176,21 @@ async fn render_sql(
         .clone()
         .into_inner();
 
-    let mut req_param =
-        extract_request_info(srv_req, Arc::clone(&app_state), server_timing.clone())
-            .await
-            .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
+    let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
+        .await
+        .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
 
-    req_param.server_timing.borrow_mut().record("parse_req");
+    req_param.server_timing.record("parse_req");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     let source_path: PathBuf = sql_file.source_path.clone();
     actix_web::rt::spawn(async move {
-        let server_timing_for_context = req_param.server_timing.borrow().clone();
         let request_context = RequestContext {
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
             source_path,
             content_security_policy: ContentSecurityPolicy::with_random_nonce(),
-            server_timing: server_timing_for_context,
+            server_timing: Arc::clone(&req_param.server_timing),
         };
         let mut conn = None;
         let database_entries_stream =
@@ -286,8 +284,7 @@ async fn process_sql_request(
     sql_path: PathBuf,
 ) -> actix_web::Result<HttpResponse> {
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
-    let mut server_timing = ServerTiming::new(!app_state.config.environment.is_prod());
-    server_timing.record("request");
+    let server_timing = ServerTiming::for_env(app_state.config.environment);
 
     let sql_file = app_state
         .sql_file_cache

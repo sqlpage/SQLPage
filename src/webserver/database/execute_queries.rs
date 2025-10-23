@@ -284,7 +284,7 @@ async fn take_connection<'a>(
     match db.connection.acquire().await {
         Ok(c) => {
             log::debug!("Acquired a database connection");
-            request.server_timing.borrow_mut().record("db_conn");
+            request.server_timing.record("db_conn");
             *conn = Some(c);
             Ok(conn.as_mut().unwrap())
         }
