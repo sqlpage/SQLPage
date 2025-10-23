@@ -80,7 +80,7 @@ pub enum PageContext {
 /// Handles the first SQL statements, before the headers have been sent to
 pub struct HeaderContext {
     app_state: Arc<AppState>,
-    request_context: RequestContext,
+    pub request_context: RequestContext,
     pub writer: ResponseWriter,
     response: HttpResponseBuilder,
     has_status: bool,
@@ -368,7 +368,14 @@ impl HeaderContext {
         Ok(PageContext::Header(self))
     }
 
-    async fn start_body(self, data: JsonValue) -> anyhow::Result<PageContext> {
+    fn add_server_timing_header(&mut self) {
+        if let Some(header_value) = self.request_context.server_timing.header_value() {
+            self.response.insert_header(("Server-Timing", header_value));
+        }
+    }
+
+    async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
+        self.add_server_timing_header();
         let html_renderer =
             HtmlRenderContext::new(self.app_state, self.request_context, self.writer, data)
                 .await
@@ -382,6 +389,7 @@ impl HeaderContext {
     }
 
     pub fn close(mut self) -> HttpResponse {
+        self.add_server_timing_header();
         self.response.finish()
     }
 }

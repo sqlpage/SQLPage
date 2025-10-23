@@ -5,6 +5,7 @@ mod core;
 mod data_formats;
 mod errors;
 mod requests;
+mod server_timing;
 pub mod sql_test_files;
 mod transactions;
 mod uploads;

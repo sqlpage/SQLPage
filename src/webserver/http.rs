@@ -7,6 +7,7 @@ use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::webserver::database::execute_queries::stop_at_first_error;
 use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
 use crate::webserver::http_request_info::extract_request_info;
+use crate::webserver::server_timing::ServerTiming;
 use crate::webserver::ErrorWithStatus;
 use crate::{AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
@@ -46,6 +47,7 @@ pub struct RequestContext {
     pub is_embedded: bool,
     pub source_path: PathBuf,
     pub content_security_policy: ContentSecurityPolicy,
+    pub server_timing: Arc<ServerTiming>,
 }
 
 async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRenderBodyContext) {
@@ -106,7 +108,10 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
     let mut stream = Box::pin(database_entries);
     while let Some(item) = stream.next().await {
         let page_context = match item {
-            DbItem::Row(data) => head_context.handle_row(data).await?,
+            DbItem::Row(data) => {
+                head_context.request_context.server_timing.record("row");
+                head_context.handle_row(data).await?
+            }
             DbItem::FinishedQuery => {
                 log::debug!("finished query");
                 continue;
@@ -163,17 +168,20 @@ enum ResponseWithWriter<S> {
 async fn render_sql(
     srv_req: &mut ServiceRequest,
     sql_file: Arc<ParsedSqlFile>,
+    server_timing: ServerTiming,
 ) -> actix_web::Result<HttpResponse> {
     let app_state = srv_req
         .app_data::<web::Data<AppState>>()
         .ok_or_else(|| ErrorInternalServerError("no state"))?
-        .clone() // Cheap reference count increase
+        .clone()
         .into_inner();
 
-    let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state))
+    let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
         .await
         .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
     log::debug!("Received a request with the following parameters: {req_param:?}");
+
+    req_param.server_timing.record("parse_req");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     let source_path: PathBuf = sql_file.source_path.clone();
@@ -182,6 +190,7 @@ async fn render_sql(
             is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
             source_path,
             content_security_policy: ContentSecurityPolicy::with_random_nonce(),
+            server_timing: Arc::clone(&req_param.server_timing),
         };
         let mut conn = None;
         let database_entries_stream =
@@ -275,13 +284,17 @@ async fn process_sql_request(
     sql_path: PathBuf,
 ) -> actix_web::Result<HttpResponse> {
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
+    let server_timing = ServerTiming::for_env(app_state.config.environment);
+
     let sql_file = app_state
         .sql_file_cache
         .get_with_privilege(app_state, &sql_path, false)
         .await
         .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
         .map_err(|e| anyhow_err_to_actix(e, app_state))?;
-    render_sql(req, sql_file).await
+    server_timing.record("sql_file");
+
+    render_sql(req, sql_file, server_timing).await
 }
 
 async fn serve_file(
