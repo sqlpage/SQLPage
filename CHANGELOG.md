@@ -5,6 +5,7 @@
  - Display source line info in errors even when the database does not return a precise error position. In this case, the entire problematic SQL statement is referenced.
  - The shell with a vertical sidebar can now have "active" elements, just like the horizontal header bar.
  - New `edit_url`, `delete_url`, and `custom_actions` properties in the [table](https://sql-page.com/component.sql?component=table) component to easily add nice icon buttons to a table.
+ - SQLPage now sets the [`Server-Timing` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Server-Timing) in development. So when you have a page that loads slowly, you can open your browser's network inspector, click on the slow request, then open the timing tab to understand where it's spending its time.
 
 ## v0.38.0
  - Added support for the Open Database Connectivity (ODBC) standard.
