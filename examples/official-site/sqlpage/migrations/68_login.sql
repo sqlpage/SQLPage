@@ -12,6 +12,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('action','An optional link to a target page that will handle the results of the form. ','TEXT',TRUE,TRUE),
     ('username','User account identifier.','TEXT',TRUE,FALSE),
     ('password','User password.','TEXT',TRUE,FALSE),
+    ('username_icon','Icon to display on the left side of the input field, on the same line.','ICON',TRUE,TRUE),
+    ('password_icon','Icon to display on the left side of the input field, on the same line.','ICON',TRUE,TRUE),
     ('image','The URL of an centered image displayed before the title.','URL',TRUE,TRUE),
     ('forgot_password_text','A text for the link allowing the user to reset their password. If the text is empty, the link is not displayed.','TEXT',TRUE,TRUE),
     ('forgot_password_link','The link to the page allowing the user to reset their password.','TEXT',TRUE,TRUE),
@@ -39,6 +41,8 @@ VALUES (
                     "title": "Please login to your account",
                     "username": "Username",
                     "password": "Password",
+                    "username_icon": "user",
+                    "password_icon": "lock",
                     "forgot_password_text": "Forgot your password?",
                     "forgot_password_link": "reset_password.sql",
                     "remember_me_text": "Remember me",
@@ -48,5 +52,3 @@ VALUES (
             ]'
         )
     );
-
--- 265707.png
