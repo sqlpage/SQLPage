@@ -3,12 +3,17 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 The login component is an authentication form with numerous customization options. 
 It offers the main functionalities for this type of form. 
 The user can enter their username and password. 
-There are many optional attributes such as the use of icons on input fields, the insertion of a link to a page to reset the password, an option for the application to maintain the user''s session via a cookie. 
+There are many optional attributes such as the use of icons on input fields, the insertion of a link to a page to reset the password, an option for the application to maintain the user''s identity via a cookie. 
 It is also possible to set the title of the form, display the company logo, or customize the appearance of the form submission button.
 
 This component should be used in conjunction with other components such as [authentication](component.sql?component=authentication) and [cookie](component.sql?component=cookie). 
 It does not implement any logic and simply collects the username and password to pass them to the code responsible for authentication.
 
+A few things to know :
+- The form uses the POST method to transmit information to the destination page,
+- The user''s username and password are entered into fields with the names `username` and `password`, 
+- To obtain the values of username and password, you must use the variables `:username` and `:password`,
+- To know if the user wants their identity to be remembered, you must read the value of the variable `:remember`.
 ', '0.39.0');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'login', * FROM (VALUES
@@ -22,7 +27,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('image','The URL of an centered image displayed before the title.','URL',TRUE,TRUE),
     ('forgot_password_text','A text for the link allowing the user to reset their password. If the text is empty, the link is not displayed.','TEXT',TRUE,TRUE),
     ('forgot_password_link','The link to the page allowing the user to reset their password.','TEXT',TRUE,TRUE),
-    ('remember_me_text','A text for the option allowing the user to request the preservation of their work session. The name of the field is remember. If the text is empty, the option is not displayed.','TEXT',TRUE,TRUE),
+    ('remember_me_text','A text for the option allowing the user to request the preservation of their identity. If the text is empty, the option is not displayed.','TEXT',TRUE,TRUE),
     ('footer','A text placed at the bottom of the authentication form.','TEXT',TRUE,TRUE),
     ('footer_md','A markdown text placed at the bottom of the authentication form. Useful for creating links to other pages (creating a new account, contacting technical support, etc.).','TEXT',TRUE,TRUE),
     ('validate','The text to display in the button at the bottom of the form that submits the values.','TEXT',TRUE,FALSE),
