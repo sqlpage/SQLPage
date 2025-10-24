@@ -1,10 +1,15 @@
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
     ('login', 'password-user', '
-The login component is an authentication form for users of an application. 
+The login component is an authentication form with numerous customization options. 
+It offers the main functionalities for this type of form. 
+The user can enter their username and password. 
+There are many optional attributes such as the use of icons on input fields, the insertion of a link to a page to reset the password, an option for the application to maintain the user''s session via a cookie. 
+It is also possible to set the title of the form, display the company logo, or customize the appearance of the form submission button.
 
-It allows the entry of a user account consisting of a username and a password. 
+This component should be used in conjunction with other components such as [authentication](component.sql?component=authentication) and [cookie](component.sql?component=cookie). 
+It does not implement any logic and simply collects the username and password to pass them to the code responsible for authentication.
 
-It offers additional features such as the ability to request session persistence or to reset the password.', '0.39.0');
+', '0.39.0');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'login', * FROM (VALUES
     ('title','Title of the authentication form.','TEXT',TRUE,TRUE),
