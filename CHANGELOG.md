@@ -7,6 +7,7 @@
  - New `edit_url`, `delete_url`, and `custom_actions` properties in the [table](https://sql-page.com/component.sql?component=table) component to easily add nice icon buttons to a table.
  - SQLPage now sets the [`Server-Timing` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Server-Timing) in development. So when you have a page that loads slowly, you can open your browser's network inspector, click on the slow request, then open the timing tab to understand where it's spending its time.
    - <img width="1250" height="1263" alt="image" src="https://github.com/user-attachments/assets/6781a31f-e342-4e8c-8506-bc47049ce313" />
+ - Fixed a memory corruption issue in the builtin odbc driver manager
 
 
 ## v0.38.0
