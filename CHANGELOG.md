@@ -8,6 +8,7 @@
  - SQLPage now sets the [`Server-Timing` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Server-Timing) in development. So when you have a page that loads slowly, you can open your browser's network inspector, click on the slow request, then open the timing tab to understand where it's spending its time.
    - <img width="1250" height="1263" alt="image" src="https://github.com/user-attachments/assets/6781a31f-e342-4e8c-8506-bc47049ce313" />
  - Fixed a memory corruption issue in the builtin odbc driver manager
+ - ODBC: fix using globally installed system drivers by their name in debian-based linux distributions.
 
 
 ## v0.38.0

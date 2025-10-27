@@ -29,6 +29,7 @@ async fn main() {
     ] {
         h.await.unwrap();
     }
+    set_odbc_rpath();
 }
 
 fn make_client() -> awc::Client {
@@ -170,4 +171,15 @@ fn make_url_path(url: &str) -> PathBuf {
         "_",
     );
     sqlpage_artefacts.join(filename)
+}
+
+/// On debian-based linux distributions, odbc drivers are installed in /usr/lib/<target>-linux-gnu/odbc
+/// which is not in the default library search path.
+fn set_odbc_rpath() {
+    if cfg!(all(target_os = "linux", feature = "odbc-static")) {
+        println!(
+            "cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/{}-linux-gnu/odbc",
+            std::env::var("TARGET").unwrap().split('-').next().unwrap()
+        );
+    }
 }
