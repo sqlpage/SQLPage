@@ -54,7 +54,7 @@ jobs:
             db_url: "mssql://root:Password123!@127.0.0.1/sqlpage"
           - database: odbc
             container: postgres
-            db_url: "Driver=/usr/lib/x86_64-linux-gnu/odbc/psqlodbcw.so;Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!"
+            db_url: "Driver=PostgreSQL Unicode;Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!"
             setup_odbc: true
     steps:
       - uses: actions/checkout@v4
