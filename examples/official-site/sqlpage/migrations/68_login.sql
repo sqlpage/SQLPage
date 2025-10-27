@@ -1,15 +1,13 @@
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
     ('login', 'password-user', '
 The login component is an authentication form with numerous customization options. 
-The user enters their username and password,
-and is then redirected to another page, where you can use the [authentication](?component=authentication) component
-to check the credentials.
-
+It offers the main functionalities for this type of form. 
+The user can enter their username and password. 
 There are many optional attributes such as the use of icons on input fields, the insertion of a link to a page to reset the password, an option for the application to maintain the user''s identity via a cookie. 
 It is also possible to set the title of the form, display the company logo, or customize the appearance of the form submission button.
 
-This component does not implement any logic. It simply collects the username and password to pass them to the code responsible for authentication.
-It should be used in conjunction with other components such as [authentication](component.sql?component=authentication) and [cookie](component.sql?component=cookie) to actually allow or deny access.
+This component should be used in conjunction with other components such as [authentication](component.sql?component=authentication) and [cookie](component.sql?component=cookie). 
+It does not implement any logic and simply collects the username and password to pass them to the code responsible for authentication.
 
 A few things to know :
 - The form uses the POST method to transmit information to the destination page,
@@ -22,6 +20,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title','Title of the authentication form.','TEXT',TRUE,TRUE),
     ('enctype','Form data encoding.','TEXT',TRUE,TRUE),
     ('action','An optional link to a target page that will handle the results of the form. ','TEXT',TRUE,TRUE),
+    ('error_message','An error message to display above the form, typically shown after a failed login attempt.','TEXT',TRUE,TRUE),
     ('username','Label and placeholder for the user account identifier text field.','TEXT',TRUE,FALSE),
     ('password','Label and placeholder for the password field.','TEXT',TRUE,FALSE),
     ('username_icon','Icon to display on the left side of the input field, on the same line.','ICON',TRUE,TRUE),
@@ -43,57 +42,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties)
 VALUES (
         'login',
-        'This example shows how to implement a complete custom login system in your SQLPage app.
-
-### Database schema
-
-`sqlpage/migrations/001_users.sql`
-
-```sql
-create table account (
-        username TEXT PRIMARY KEY,
-        password_hash TEXT NOT NULL
-);
-
-create table session (
-        id TEXT PRIMARY KEY,
-        username TEXT REFERENCES account(username)
-	-- you could add more fields for session expiration, session metadata tracking...
-);
-```
-
-### Process user credentials
-
-Create a file named `login.sql`:
-
-```sql
-SELECT ''authentication'' AS component,
-    ''/'' AS link, -- redirect the user to the homepage if the password is incorrect
-    (SELECT password_hash FROM account WHERE username = :username) AS password_hash,
-    :password AS password;
-
--- The code after this point is only executed if the user has sent the correct password
-
--- Generate a random session token
-INSERT INTO session (id, username)
-VALUES (sqlpage.random_string(32), :username)
-RETURNING ''cookie'' AS component, ''session_token'' AS name, id AS value,
-case when :remember is null then 3600*24*365 else 3600*4 end as max_age;
-
-select ''redirect'' as component, ''protected.sql'' as link; -- once logged in, redirect to the protected page
-```
-
-### Protect pages
-
-Start all protected pages with 
-
-```sql
-select ''redirect'' as component, ''/'' as link where not exists (select 1 from session where id=sqlpage.cookie(''session_token''));
-```
-
-### Login form on the home page
-',
-	JSON('[{
+        'Using the main options of the login component',
+        JSON(
+            '[
+                {
                     "component": "login",
                     "action": "login.sql",
                     "image": "../assets/icon.webp",
@@ -107,6 +59,8 @@ select ''redirect'' as component, ''/'' as link where not exists (select 1 from 
                     "remember_me_text": "Remember me",
                     "footer_md": "Don''t have an account? [Register here](register.sql)",
                     "validate": "Sign in"
-	}]')
-),
+                }
+            ]'
+        )
+    ),
    ('login', 'Most basic login form', JSON('[{"component": "login"}]'));
