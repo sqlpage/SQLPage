@@ -2,7 +2,7 @@ services:
   web:
     image: lovasoa/sqlpage:main # main is cutting edge, use sqlpage/SQLPage:latest for the latest stable version
     build:
-      context: ".."
+      context: "../.."
     ports:
       - "8080:8080"
     volumes:

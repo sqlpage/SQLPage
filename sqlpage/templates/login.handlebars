@@ -31,12 +31,12 @@
                         </div>
                     </div>
                 {{/if}}
-                <label class="form-label">{{username}}</label>    
+                <label class="form-label" for="username">{{username}}</label>    
                 <div class="input-icon mb-3">
                     <span class="input-icon-addon">{{icon_img (default username_icon 'user-circle')}}</span>
                     <input type="text" name="username" id="username" value="" class="form-control" placeholder="{{username}}" required="required" autofocus autocomplete="username"/>
                 </div>
-                <label class="form-label">{{password}}
+                <label class="form-label" for="password">{{password}}
                     {{#if forgot_password_text}}
                         <span class="form-label-description"><a href="{{forgot_password_link}}">{{forgot_password_text}}</a></span> 
                     {{/if}}

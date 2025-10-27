@@ -9,7 +9,7 @@ select
     'Password'              as password,
     case when $failed is not null then 'Invalid username or password. In this demo, you can log in with admin / admin.' end as error_message,
     'In this demo, the username is "admin" and the password is "admin".' as footer_md,
-    'Sign in'               as validate;
+    'Log in'               as validate;
 
 select 'text' as component, '
 
