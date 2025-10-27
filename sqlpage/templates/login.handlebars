@@ -20,13 +20,14 @@
                 {{#if title}}
                     <h1 class="text-center mb-3">{{title}}</h1>
                 {{/if}}
-                {{#if error_message}}
+                {{#if (or error_message error_message_md)}}
                     <div class="alert alert-danger mb-3" role="alert">
                         <div class="alert-icon">
                             {{icon_img 'alert-circle'}}
                         </div>
-                        <div class="overflow-auto w-100">
-                            {{error_message}}
+                        <div class="overflow-auto w-100 remove-bottom-margin">
+                            {{~error_message~}}
+                            {{{~markdown error_message_md~}}}
                         </div>
                     </div>
                 {{/if}}

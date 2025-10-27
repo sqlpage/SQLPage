@@ -1,14 +1,9 @@
-SELECT 'form' AS component,
+SELECT 'login' AS component,
+    'login.sql' AS action,
     'Sign in' AS title,
-    'Sign in' AS validate,
-    'login.sql' AS action;
-
-SELECT 'username' AS name;
-SELECT 'password' AS name, 'password' AS type;
-
-SELECT 'alert' as component,
-    'Sorry' as title,
-    'We could not authenticate you. Please log in or [create an account](signup.sql).' as description_md,
-    'alert-circle' as icon,
-    'red' as color
-WHERE $error IS NOT NULL;
+    'Username' AS username,
+    'Password' AS password,
+    'user' AS username_icon,
+    'lock' AS password_icon,
+    case when $error is not null then 'We could not authenticate you. Please log in or [create an account](signup.sql).' end as error_message_md,
+    'Sign in' AS validate;
