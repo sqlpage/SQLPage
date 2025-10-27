@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## v0.39.0
+## v0.39.0 (2025-10-28)
  - Ability to execute sql for URL paths with another extension. If you create sitemap.xml.sql, it will be executed for example.com/sitemap.xml
  - Display source line info in errors even when the database does not return a precise error position. In this case, the entire problematic SQL statement is referenced.
  - The shell with a vertical sidebar can now have "active" elements, just like the horizontal header bar.
