@@ -20,6 +20,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title','Title of the authentication form.','TEXT',TRUE,TRUE),
     ('enctype','Form data encoding.','TEXT',TRUE,TRUE),
     ('action','An optional link to a target page that will handle the results of the form. ','TEXT',TRUE,TRUE),
+    ('error_message','An error message to display above the form, typically shown after a failed login attempt.','TEXT',TRUE,TRUE),
     ('username','User account identifier.','TEXT',TRUE,FALSE),
     ('password','User password.','TEXT',TRUE,FALSE),
     ('username_icon','Icon to display on the left side of the input field, on the same line.','ICON',TRUE,TRUE),
