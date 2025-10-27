@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.38.1"
+version = "0.39.0"
 edition = "2021"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -79,17 +79,13 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false }
 encoding_rs = "0.8.35"
-odbc-sys = { version = "0.27.1", optional = true }
+odbc-sys = { version = "0.27.4", optional = true }
 
 
 [features]
 default = []
 odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]
 lambda-web = ["dep:lambda-web", "odbc-static"]
-
-
-[patch.crates-io]
-odbc-sys = { git = "https://github.com/sqlpage/odbc-sys", branch = "no-autotools" }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }

@@ -38,6 +38,7 @@ pub mod http_client;
 pub mod http_request_info;
 mod https;
 pub mod request_variables;
+pub mod server_timing;
 
 pub use database::Database;
 pub use error_with_status::ErrorWithStatus;
