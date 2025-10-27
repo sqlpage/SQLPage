@@ -22,10 +22,8 @@
                 {{/if}}
                 <label class="form-label">{{username}}</label>    
                 <div class="input-icon mb-3">
-                    {{#if username_icon}}
-                        <span class="input-icon-addon">{{icon_img username_icon}}</span>
-                    {{/if}}
-                    <input type="text" name="username" id="username" value="" class="form-control" placeholder="{{username}}" required="required" autofocus/>
+                    <span class="input-icon-addon">{{icon_img (default username_icon 'user-circle')}}</span>
+                    <input type="text" name="username" id="username" value="" class="form-control" placeholder="{{username}}" required="required" autofocus autocomplete="username"/>
                 </div>
                 <label class="form-label">{{password}}
                     {{#if forgot_password_text}}
@@ -33,10 +31,8 @@
                     {{/if}}
                 </label>
                 <div class="input-icon mb-3">
-                    {{#if password_icon}}
-                        <span class="input-icon-addon">{{~icon_img password_icon~}}</span>
-                    {{/if}}
-                    <input type="password" name="password" id="password" value="" class="form-control" placeholder="{{password}}" required="required"/>
+		    <span class="input-icon-addon">{{~icon_img (default password_icon 'key')~}}</span>
+                    <input type="password" name="password" id="password" value="" class="form-control" placeholder="{{password}}" required="required" autocomplete="current-password" />
                 </div>
                 {{#if remember_me_text}}
                     <label class="form-check">
@@ -53,7 +49,7 @@
                         {{#if validate_size}} btn-{{validate_size}} {{/if}}"
                         type="submit" 
                         name="submit"
-                        value="{{validate}}"/>
+                        value="{{default validate 'Login'}}"/>
                 </div>
                 {{#if (or footer footer_md)}}
                     <hr>

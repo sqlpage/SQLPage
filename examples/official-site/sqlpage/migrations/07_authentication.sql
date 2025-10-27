@@ -14,7 +14,7 @@ you have two main options:
    - does not require any external service
    - gives you fine-grained control over 
      - which pages and actions are protected
-     - the look of the login form
+     - the look of the [login form](?component=login)
      - the duration of the session
      - the permissions of each user
 2. [**Single sign-on**](/sso)
@@ -128,12 +128,10 @@ Then, in all the pages that require authentication, you check if the cookie is p
 
 You can check if the user has sent the correct password in a form, and if not, redirect them to a login page.
 
-Create a login form in a file called `login.sql`:
+Create a login form in a file called `login.sql` that uses the [login component](?component=login):
 
 ```sql
-select ''form'' as component, ''Authentication'' as title, ''Log in'' as validate, ''create_session_token.sql'' as action;
-select ''Username'' as name, ''admin'' as placeholder;
-select ''Password'' as name, ''admin'' as placeholder, ''password'' as type;
+select ''login'' as component;
 ```
 
 And then, in `create_session_token.sql` :
