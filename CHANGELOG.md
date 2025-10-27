@@ -9,6 +9,7 @@
    - <img width="1250" height="1263" alt="image" src="https://github.com/user-attachments/assets/6781a31f-e342-4e8c-8506-bc47049ce313" />
  - Fixed a memory corruption issue in the builtin odbc driver manager
  - ODBC: fix using globally installed system drivers by their name in debian-based linux distributions.
+ - New [login](https://sql-page.com/component.sql?component=table) component.
 
 
 ## v0.38.0
