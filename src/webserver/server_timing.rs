@@ -61,8 +61,10 @@ impl ServerTiming {
             if i > 0 {
                 s.push_str(", ");
             }
-            let millis = time.saturating_duration_since(last).as_millis();
-            write!(&mut s, "{name};dur={millis}").ok()?;
+            let micros = time.saturating_duration_since(last).as_micros();
+            let millis = micros / 1000;
+            let micros = micros % 1000;
+            write!(&mut s, "{name};dur={millis}.{micros:03}").ok()?;
             last = *time;
         }
         Some(s)
