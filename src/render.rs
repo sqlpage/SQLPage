@@ -167,7 +167,9 @@ impl HeaderContext {
                 self.response.status(StatusCode::FOUND);
                 self.has_status = true;
             }
-            self.response.insert_header((name.as_str(), value_str));
+            let sanitized_value = sanitize_header_value(value_str);
+            self.response
+                .insert_header((name.as_str(), sanitized_value));
         }
         Ok(self)
     }
@@ -242,7 +244,9 @@ impl HeaderContext {
         self.has_status = true;
         let link = get_object_str(data, "link")
             .with_context(|| "The redirect component requires a 'link' property")?;
-        self.response.insert_header((header::LOCATION, link));
+        let sanitized_link = sanitize_header_value(link);
+        self.response
+            .insert_header((header::LOCATION, sanitized_link));
         let response = self.response.body(());
         Ok(response)
     }
@@ -288,9 +292,10 @@ impl HeaderContext {
             get_object_str(options, "filename").or_else(|| get_object_str(options, "title"))
         {
             let extension = if filename.contains('.') { "" } else { ".csv" };
+            let sanitized_filename = sanitize_header_value(filename);
             self.response.insert_header((
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename={filename}{extension}"),
+                format!("attachment; filename={sanitized_filename}{extension}"),
             ));
         }
         let csv_renderer = CsvBodyRenderer::new(self.writer, options).await?;
@@ -315,9 +320,10 @@ impl HeaderContext {
         log::debug!("Authentication failed");
         // The authentication failed
         let http_response: HttpResponse = if let Some(link) = get_object_str(&data, "link") {
+            let sanitized_link = sanitize_header_value(link);
             self.response
                 .status(StatusCode::FOUND)
-                .insert_header((header::LOCATION, link))
+                .insert_header((header::LOCATION, sanitized_link))
                 .body(
                     "Sorry, but you are not authorized to access this page. \
                     Redirecting to the login page...",
@@ -333,9 +339,10 @@ impl HeaderContext {
 
     fn download(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         if let Some(filename) = get_object_str(options, "filename") {
+            let sanitized_filename = sanitize_header_value(filename);
             self.response.insert_header((
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{filename}\""),
+                format!("attachment; filename=\"{sanitized_filename}\""),
             ));
         }
         let data_url = get_object_str(options, "data_url")
@@ -405,6 +412,26 @@ async fn verify_password_async(
         Ok(hash.verify_password(phfs, password))
     })
     .await?
+}
+
+fn sanitize_header_value(value: &str) -> String {
+    let sanitized: String = value
+        .chars()
+        .filter(|&c| {
+            let byte = c as u32;
+            byte >= 0x20 && byte != 0x7F
+        })
+        .collect();
+
+    if sanitized != value {
+        log::warn!(
+            "Sanitized header value by removing control characters. Original length: {}, Sanitized length: {}",
+            value.len(),
+            sanitized.len()
+        );
+    }
+
+    sanitized
 }
 
 fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {
