@@ -1,18 +1,24 @@
 ## How SQLPage runs your SQL
 
-SQLPage reads your SQL file and runs one statement at a time. For each statement, it decides whether to:
+SQLPage reads your SQL file and runs one statement at a time. For each statement, it
 
-- handle it inside SQLPage, or
-- send it to your database as a prepared statement.
+- decides whether to:
+  - handle it inside SQLPage, or
+  - prepare it as a (potentially slightly modified) sql statement on the database.
+- extracts values from the request to pass them as prepared statements parameters
+- runs [`sqlpage.*` functions](/functions)
+- passes the database results to components
 
-This page explains that boundary in simple, practical terms, with examples you can reuse.
+This page explains every step of the process,
+with examples and details about differences between how SQLPage understands SQL and how your database does.
 
 ## What runs where
 
-### Handled by SQLPage
+### Handled locally by SQLPage
 
 - Static simple selects (a tiny, fast subset of SELECT)
 - Simple variable assignments that use only literals or variables
+ - All sqlpage functions
  
 
 ### Sent to your database
@@ -21,7 +27,7 @@ Everything else: joins, subqueries, arithmetic, database functions, `SELECT @@VE
 
 ### Mixed statements using `sqlpage.*` functions
 
-[`sqlpage.*` functions](/functions.sql) are executed by SQLPage, not by your database. They can run:
+[`sqlpage.*` functions](/functions.sql) are executed by SQLPage; your database never sees them. They can run:
 
 - Before the query, when used as values inside conditions or parameters.
 - After the query, when used as top-level selected columns (applied per row).
