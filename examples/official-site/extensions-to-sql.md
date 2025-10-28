@@ -185,7 +185,7 @@ select name from filtered_posts;
 ### Small JSON values in variables
 
 Useful for small datasets that you want to keep in memory.
-See the guide on JSON in SQL: [blog article](/blog.sql?post=JSON+in+SQL%3A+A+Comprehensive+Guide).
+See the [guide on JSON in SQL](/blog.sql?post=JSON+in+SQL%3A+A+Comprehensive+Guide).
 
 ```sql
 set product = (
