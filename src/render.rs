@@ -169,7 +169,7 @@ impl HeaderContext {
             }
             let sanitized_value = sanitize_header_value(value_str);
             self.response
-                .insert_header((name.as_str(), sanitized_value));
+                .insert_header((name.as_str(), sanitized_value.as_ref()));
         }
         Ok(self)
     }
@@ -246,7 +246,7 @@ impl HeaderContext {
             .with_context(|| "The redirect component requires a 'link' property")?;
         let sanitized_link = sanitize_header_value(link);
         self.response
-            .insert_header((header::LOCATION, sanitized_link));
+            .insert_header((header::LOCATION, sanitized_link.as_ref()));
         let response = self.response.body(());
         Ok(response)
     }
@@ -323,7 +323,7 @@ impl HeaderContext {
             let sanitized_link = sanitize_header_value(link);
             self.response
                 .status(StatusCode::FOUND)
-                .insert_header((header::LOCATION, sanitized_link))
+                .insert_header((header::LOCATION, sanitized_link.as_ref()))
                 .body(
                     "Sorry, but you are not authorized to access this page. \
                     Redirecting to the login page...",
@@ -414,24 +414,25 @@ async fn verify_password_async(
     .await?
 }
 
-fn sanitize_header_value(value: &str) -> String {
-    let sanitized: String = value
-        .chars()
-        .filter(|&c| {
-            let byte = c as u32;
-            byte >= 0x20 && byte != 0x7F
-        })
-        .collect();
-
-    if sanitized != value {
-        log::warn!(
-            "Sanitized header value by removing control characters. Original length: {}, Sanitized length: {}",
-            value.len(),
-            sanitized.len()
-        );
+fn sanitize_header_value(value: &str) -> Cow<'_, str> {
+    if value.bytes().all(|b| b >= 0x20 && b != 0x7F) {
+        return Cow::Borrowed(value);
     }
 
-    sanitized
+    log::warn!(
+        "Sanitized header value by removing control characters. Original length: {}",
+        value.len()
+    );
+
+    Cow::Owned(
+        value
+            .chars()
+            .filter(|&c| {
+                let byte = c as u32;
+                byte >= 0x20 && byte != 0x7F
+            })
+            .collect(),
+    )
 }
 
 fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {
