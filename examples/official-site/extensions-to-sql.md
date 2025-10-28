@@ -224,7 +224,7 @@ They are just sequences of bytes. SQLPage requires them to be valid utf8 strings
 SQLPage follows the convention that when a parameter name ends with `[]`, it represents an array.
 Arrays in SQLPage are represented as JSON strings.
 
-Example: In `users.sql?user[]=Tim&user[]=Tom`, `$user` becomes `'[\"Tim\", \"Tom\"]'` (a JSON string exploitable with your database's builtin json functions).
+Example: In `users.sql?user[]=Tim&user[]=Tom`, `$user` becomes `'["Tim", "Tom"]'` (a JSON string exploitable with your database's builtin json functions).
 
 ### From SQLPage to the database
 
