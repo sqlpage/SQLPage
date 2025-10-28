@@ -46,8 +46,10 @@ use crate::webserver::http::RequestContext;
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
+use actix_web::body::MessageBody;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::cookie::time::OffsetDateTime;
+use actix_web::http::header::TryIntoHeaderPair;
 use actix_web::http::{header, StatusCode};
 use actix_web::{HttpResponse, HttpResponseBuilder};
 use anyhow::{bail, format_err, Context as AnyhowContext};
@@ -116,7 +118,7 @@ impl HeaderContext {
             Some(HeaderComponent::HttpHeader) => {
                 self.add_http_header(&data).map(PageContext::Header)
             }
-            Some(HeaderComponent::Redirect) => self.redirect(&data).map(PageContext::Close),
+            Some(HeaderComponent::Redirect) => self.redirect(&data),
             Some(HeaderComponent::Json) => self.json(&data),
             Some(HeaderComponent::Csv) => self.csv(&data).await,
             Some(HeaderComponent::Cookie) => self.add_cookie(&data).map(PageContext::Header),
@@ -167,9 +169,9 @@ impl HeaderContext {
                 self.response.status(StatusCode::FOUND);
                 self.has_status = true;
             }
-            let sanitized_value = sanitize_header_value(value_str);
-            self.response
-                .insert_header((name.as_str(), sanitized_value.as_ref()));
+            let header = TryIntoHeaderPair::try_into_pair((name.as_str(), value_str))
+                .map_err(|e| anyhow::anyhow!("Invalid header: {name}:{value_str}: {e:#?}"))?;
+            self.response.insert_header(header);
         }
         Ok(self)
     }
@@ -239,15 +241,13 @@ impl HeaderContext {
         Ok(self)
     }
 
-    fn redirect(mut self, data: &JsonValue) -> anyhow::Result<HttpResponse> {
+    fn redirect(mut self, data: &JsonValue) -> anyhow::Result<PageContext> {
         self.response.status(StatusCode::FOUND);
         self.has_status = true;
         let link = get_object_str(data, "link")
             .with_context(|| "The redirect component requires a 'link' property")?;
-        let sanitized_link = sanitize_header_value(link);
-        self.response
-            .insert_header((header::LOCATION, sanitized_link.as_ref()));
-        Ok(self.into_response_builder().body(()))
+        self.response.insert_header((header::LOCATION, link));
+        self.close_with_body(())
     }
 
     /// Answers to the HTTP request with a single json object
@@ -260,9 +260,7 @@ impl HeaderContext {
             } else {
                 serde_json::to_vec(contents)?
             };
-            Ok(PageContext::Close(
-                self.into_response_builder().body(json_response),
-            ))
+            self.close_with_body(json_response)
         } else {
             let body_type = get_object_str(data, "type");
             let json_renderer = match body_type {
@@ -293,10 +291,9 @@ impl HeaderContext {
             get_object_str(options, "filename").or_else(|| get_object_str(options, "title"))
         {
             let extension = if filename.contains('.') { "" } else { ".csv" };
-            let sanitized_filename = sanitize_header_value(filename);
             self.response.insert_header((
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename={sanitized_filename}{extension}"),
+                format!("attachment; filename={filename}{extension}"),
             ));
         }
         let csv_renderer = CsvBodyRenderer::new(self.writer, options).await?;
@@ -321,15 +318,15 @@ impl HeaderContext {
         log::debug!("Authentication failed");
         // The authentication failed
         if let Some(link) = get_object_str(&data, "link") {
-            let sanitized_link = sanitize_header_value(link);
             self.response
                 .status(StatusCode::FOUND)
-                .insert_header((header::LOCATION, sanitized_link.as_ref()));
+                .insert_header((header::LOCATION, link));
             self.has_status = true;
-            Ok(PageContext::Close(self.into_response_builder().body(
+            let response = self.into_response(
                 "Sorry, but you are not authorized to access this page. \
                 Redirecting to the login page...",
-            )))
+            )?;
+            Ok(PageContext::Close(response))
         } else {
             anyhow::bail!(ErrorWithStatus {
                 status: StatusCode::UNAUTHORIZED
@@ -339,10 +336,9 @@ impl HeaderContext {
 
     fn download(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         if let Some(filename) = get_object_str(options, "filename") {
-            let sanitized_filename = sanitize_header_value(filename);
             self.response.insert_header((
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{sanitized_filename}\""),
+                format!("attachment; filename=\"{filename}\""),
             ));
         }
         let data_url = get_object_str(options, "data_url")
@@ -365,9 +361,7 @@ impl HeaderContext {
             self.response
                 .insert_header((header::CONTENT_TYPE, content_type));
         }
-        Ok(PageContext::Close(
-            self.into_response_builder().body(body_bytes.into_owned()),
-        ))
+        self.close_with_body(body_bytes.into_owned())
     }
 
     fn log(self, data: &JsonValue) -> anyhow::Result<PageContext> {
@@ -381,9 +375,18 @@ impl HeaderContext {
         }
     }
 
-    fn into_response_builder(mut self) -> HttpResponseBuilder {
+    fn into_response<B: MessageBody + 'static>(mut self, body: B) -> anyhow::Result<HttpResponse> {
         self.add_server_timing_header();
-        self.response
+        match self.response.message_body(body) {
+            Ok(response) => Ok(response.map_into_boxed_body()),
+            Err(e) => Err(anyhow::anyhow!(
+                "An error occured while generating the request headers: {e:#}"
+            )),
+        }
+    }
+
+    fn close_with_body<B: MessageBody + 'static>(self, body: B) -> anyhow::Result<PageContext> {
+        Ok(PageContext::Close(self.into_response(body)?))
     }
 
     async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
@@ -401,7 +404,7 @@ impl HeaderContext {
     }
 
     pub fn close(self) -> HttpResponse {
-        self.into_response_builder().finish()
+        self.into_response(()).unwrap()
     }
 }
 
@@ -416,27 +419,6 @@ async fn verify_password_async(
         Ok(hash.verify_password(phfs, password))
     })
     .await?
-}
-
-fn sanitize_header_value(value: &str) -> Cow<'_, str> {
-    if value.bytes().all(|b| b >= 0x20 && b != 0x7F) {
-        return Cow::Borrowed(value);
-    }
-
-    log::warn!(
-        "Sanitized header value by removing control characters. Original length: {}",
-        value.len()
-    );
-
-    Cow::Owned(
-        value
-            .chars()
-            .filter(|&c| {
-                let byte = c as u32;
-                byte >= 0x20 && byte != 0x7F
-            })
-            .collect(),
-    )
 }
 
 fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {
