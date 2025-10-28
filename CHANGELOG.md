@@ -1,5 +1,10 @@
 # CHANGELOG.md
 
+## v0.39.1 (unreleased)
+ - More precise server timing tracking to debug performance issues
+ - Fix missing server timing header in some cases
+ - Implement nice error messages for some header-related errors such as invalid header values.
+
 ## v0.39.0 (2025-10-28)
  - Ability to execute sql for URL paths with another extension. If you create sitemap.xml.sql, it will be executed for example.com/sitemap.xml
  - Display source line info in errors even when the database does not return a precise error position. In this case, the entire problematic SQL statement is referenced.
