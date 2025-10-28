@@ -243,8 +243,7 @@ impl HeaderContext {
         let link = get_object_str(data, "link")
             .with_context(|| "The redirect component requires a 'link' property")?;
         self.response.insert_header((header::LOCATION, link));
-        let response = self.response.body(());
-        Ok(response)
+        Ok(self.into_response_builder().body(()))
     }
 
     /// Answers to the HTTP request with a single json object
@@ -257,7 +256,9 @@ impl HeaderContext {
             } else {
                 serde_json::to_vec(contents)?
             };
-            Ok(PageContext::Close(self.response.body(json_response)))
+            Ok(PageContext::Close(
+                self.into_response_builder().body(json_response),
+            ))
         } else {
             let body_type = get_object_str(data, "type");
             let json_renderer = match body_type {
@@ -314,21 +315,20 @@ impl HeaderContext {
         }
         log::debug!("Authentication failed");
         // The authentication failed
-        let http_response: HttpResponse = if let Some(link) = get_object_str(&data, "link") {
+        if let Some(link) = get_object_str(&data, "link") {
             self.response
                 .status(StatusCode::FOUND)
-                .insert_header((header::LOCATION, link))
-                .body(
-                    "Sorry, but you are not authorized to access this page. \
-                    Redirecting to the login page...",
-                )
+                .insert_header((header::LOCATION, link));
+            self.has_status = true;
+            Ok(PageContext::Close(self.into_response_builder().body(
+                "Sorry, but you are not authorized to access this page. \
+                Redirecting to the login page...",
+            )))
         } else {
             anyhow::bail!(ErrorWithStatus {
                 status: StatusCode::UNAUTHORIZED
             })
-        };
-        self.has_status = true;
-        Ok(PageContext::Close(http_response))
+        }
     }
 
     fn download(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
@@ -359,7 +359,7 @@ impl HeaderContext {
                 .insert_header((header::CONTENT_TYPE, content_type));
         }
         Ok(PageContext::Close(
-            self.response.body(body_bytes.into_owned()),
+            self.into_response_builder().body(body_bytes.into_owned()),
         ))
     }
 
@@ -372,6 +372,11 @@ impl HeaderContext {
         if let Some(header_value) = self.request_context.server_timing.header_value() {
             self.response.insert_header(("Server-Timing", header_value));
         }
+    }
+
+    fn into_response_builder(mut self) -> HttpResponseBuilder {
+        self.add_server_timing_header();
+        self.response
     }
 
     async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
@@ -388,9 +393,8 @@ impl HeaderContext {
         })
     }
 
-    pub fn close(mut self) -> HttpResponse {
-        self.add_server_timing_header();
-        self.response.finish()
+    pub fn close(self) -> HttpResponse {
+        self.into_response_builder().finish()
     }
 }
 

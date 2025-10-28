@@ -98,3 +98,38 @@ async fn test_server_timing_format() -> actix_web::Result<()> {
 
     Ok(())
 }
+
+#[actix_web::test]
+async fn test_server_timing_in_redirect() -> actix_web::Result<()> {
+    let mut config = test_config();
+    config.environment = sqlpage::app_config::DevOrProd::Development;
+    let app_data = make_app_data_from_config(config).await;
+
+    let req =
+        crate::common::get_request_to_with_data("/tests/server_timing/redirect_test.sql", app_data)
+            .await?
+            .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(
+        resp.status(),
+        StatusCode::FOUND,
+        "Response should be a redirect"
+    );
+    let server_timing_header = resp
+        .headers()
+        .get("Server-Timing")
+        .expect("Server-Timing header should be present in redirect responses");
+    let header_value = server_timing_header.to_str().unwrap();
+
+    assert!(
+        !header_value.is_empty(),
+        "Server-Timing header should not be empty: {header_value}"
+    );
+    assert!(
+        header_value.contains(";dur="),
+        "Server-Timing header should contain timing events: {header_value}"
+    );
+
+    Ok(())
+}
