@@ -55,6 +55,10 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
         "Should contain parse_req timing: {header_value}"
     );
     assert!(
+        header_value.contains("bind_params;dur="),
+        "Should contain bind_params timing: {header_value}"
+    );
+    assert!(
         header_value.contains("db_conn;dur="),
         "Should contain db_conn timing: {header_value}"
     );
@@ -78,7 +82,7 @@ async fn test_server_timing_format() -> actix_web::Result<()> {
     let header_value = server_timing_header.to_str().unwrap();
 
     let parts: Vec<&str> = header_value.split(", ").collect();
-    assert!(parts.len() >= 4, "Should have at least 4 timing events");
+    assert!(parts.len() >= 5, "Should have at least 5 timing events");
 
     for part in parts {
         assert!(

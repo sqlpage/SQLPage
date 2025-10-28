@@ -58,6 +58,7 @@ pub fn stream_query_results_with_conn<'a>(
                 },
                 ParsedStatement::StmtWithParams(stmt) => {
                     let query = bind_parameters(stmt, request, db_connection).await?;
+                    request.server_timing.record("bind_params");
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
                     let mut stream = connection.fetch_many(query);
