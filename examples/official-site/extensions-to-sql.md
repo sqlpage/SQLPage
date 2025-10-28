@@ -1,257 +1,256 @@
-# Extensions to SQL
+## How SQLPage runs your SQL
 
-SQLPage makes some special treatment before executing your SQL queries.
+SQLPage reads your SQL file and runs one statement at a time. For each statement, it decides whether to:
 
-When executing your SQL file, SQLPage executes each query one at a time.
-It doesn't send the whole file as-is to the database engine.
+- handle it inside SQLPage, or
+- send it to your database as a prepared statement.
 
-## Performance
+This page explains that boundary in simple, practical terms, with examples you can reuse.
 
-See the [performance page](/performance.sql) for details on the optimizations
-made to run your queries as fast as possible.
+## What runs where
+
+### Handled by SQLPage
+
+- Static simple selects (a tiny, fast subset of SELECT)
+- Simple variable assignments that use only literals or variables
+ 
+
+### Sent to your database
+
+Everything else: joins, subqueries, arithmetic, database functions, `SELECT @@VERSION`, `CURRENT_TIMESTAMP`, `SELECT *`, expressions, `FROM`, `WHERE`, `GROUP BY`, `ORDER BY`, `LIMIT`/`FETCH`, `WITH`, `DISTINCT`, etc.
+
+### Mixed statements using `sqlpage.*` functions
+
+[`sqlpage.*` functions](/functions.sql) are executed by SQLPage, not by your database. They can run:
+
+- Before the query, when used as values inside conditions or parameters.
+- After the query, when used as top-level selected columns (applied per row).
+
+Examples are shown below.
+
+## Static simple selects
+
+A *static simple select* is a very restricted `SELECT` that SQLPage can execute entirely by itself. This avoids back and forths between SQLPage and the database for trivial queries.
+
+To be static and simple, a statement must satisfy all of the following:
+
+- No `FROM`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`/`FETCH`, `WITH`, `DISTINCT`, `TOP`, windowing, locks, or other clauses.
+- Each selected item is of the form `value AS alias`.
+- Each `value` is either:
+  - a literal (single-quoted string, number, boolean, or `NULL`), or
+  - a variable (like `$name`, `:message`)
+
+That’s it. If any part is more complex, it is not a static simple select and will be sent to the database.
+
+#### Examples that ARE static (executed by SQLPage)
+
+```sql
+SELECT 'text' AS component, 'Hello' AS contents;
+SELECT 'text' AS component, $name AS contents;
+```
+
+#### Examples that are NOT static (sent to the database)
+
+```sql
+-- Has string concatenation
+select 'from' as component, 'handle_form.sql?id=' || $id as action;
+
+-- Has WHERE
+select 'text' as component, $alert_message as contents where $should_alert;
+
+-- Uses database functions or expressions
+SELECT 1 + 1 AS two;
+SELECT CURRENT_TIMESTAMP AS now;
+SELECT @@VERSION AS version; -- SQL Server variables
+-- Uses a subquery
+SELECT (select 1) AS one;
+```
 
 ## Variables
 
-SQL doesn't have its own mechanism for variables.
-SQLPage implements variables in the following way:
+SQLPage communicates information about incoming HTTP requests to your SQL code through prepared statement variables.
+You can use 
+ - `$var` to reference a GET variable (an URL parameter),
+ - `:var` to reference a POST variable (a value filled by an user in a form field),
+ - `set var = ...` to set the value of `$var`.
 
 ### POST parameters
 
-When sending a POST request, most often by sending a form with the
-[form component](/component.sql?component=form), the form data is made
-available as variables prefixed by a colon.
+Form fields sent with POST are available as `:name`.
 
-So when this form is sent:
-
-`form.sql`
 ```sql
 SELECT
-    'form' AS component,
-    'POST' AS method, -- form defaults to using the HTTP POST method
-    'result.sql' AS action;
+  'form' AS component,
+  'POST' AS method,
+  'result.sql' AS action;
 
-SELECT
-    'age' AS name,
-    'How old are you?' AS label,
-    'number' AS type;
+SELECT 'age' AS name, 'How old are you?' AS label, 'number' AS type;
 ```
 
-It will make a request to this page:
-
-`result.sql`
 ```sql
-SELECT
-    'text' AS component,
-    'You are ' || :age || ' years old!' AS contents;
+-- result.sql
+SELECT 'text' AS component, 'You are ' || :age || ' years old!' AS contents;
 ```
-
-`:age` will be substituted by the actual value of the POST parameter.
 
 ### URL parameters
 
-Likewise, URL parameters are available as variables prefixed by a dollar sign.
+Query-string parameters are available as `$name`.
 
-> URL parameters are often called GET parameters because they can originate
-> from a form with 'GET' as the method.
-
-So the previous example can be reworked to handle URL parameters:
-
-`result.sql`
 ```sql
-SELECT
-    'text' AS component,
-    'You are ' || $age || ' years old!' AS contents;
+SELECT 'text' AS component, 'You are ' || $age || ' years old!' AS contents;
+-- /result.sql?age=42  →  You are 42 years old!
 ```
 
-By querying this page with this URL: `/request.sql?age=42`
-we would get `You are 42 years old!` as a response.
+When a URL parameter is not set, its value is `NULL`.
 
-### The `SET` command
+### The SET command
 
-SQLPage overrides the behavior of `SET` statements in SQL to store variables in SQLPage itself instead of running the statement on the database. 
-
-```sql
-SET coalesced_post_id = COALESCE($post_id, 0);
-```
-
-`SET` statements are transformed into `SELECT` queries, and their result is stored in a `$`-variable:
+`SET` stores a value in SQLPage (not in the database). Only strings and `NULL` are stored.
 
 ```sql
-SELECT COALESCE($post_id, 0);
-```
-
-We can override a previous `$`-variable:
-
-```sql
+-- Give a default value to a variable
 SET post_id = COALESCE($post_id, 0);
 ```
 
-### Limitations
+- If the right-hand side is purely literals/variables, SQLPage computes it directly. See the section about *static simple select* above.
+- If it needs the database (for example, calls a database function), SQLPage runs an internal `SELECT` to compute it and stores the first column of the first row of results.
 
-`$`-variables and `:`-variables are stored by SQLPage, not in the database.
+Only a single textual value (**string or `NULL`**) is stored.
+`set id = 1` will store the string `'1'`, not the number `1`.
 
-They can only store a string, or null.
+On databases with a strict type system, such as PostgreSQL, if you need a number, you will need to cast your variables: `select * from post where id = $id::int`.
 
-As such, they're not designed to store table-valued results.
-They will only store the first value of the first column:
+Complex structures can be stored as json strings.
+
+For larger temporary results, prefer temporary tables on your database; do not send them to SQLPage at all.
+
+## `sqlpage.*` functions
+
+Functions under the `sqlpage.` prefix run in SQLPage. See the [functions page](/functions.sql).
+
+They can run:
+
+### Before sending the query (as input values)
+
+Used inside conditions or parameters, the function is evaluated first and its result is passed to the database.
 
 ```sql
-CREATE TABLE t(a, b);
-INSERT INTO t(a, b) VALUES (1, 2), (3, 4);
-
-SET var = (SELECT * FROM t);
-
--- now $var contains '1'
+SELECT *
+FROM blog
+WHERE slug = sqlpage.path();
 ```
 
-Temporary table-valued results can be stored in two ways.
+### After receiving results (as top-level selected columns)
 
-## Storing large datasets in the database with temporary tables
+Used as top-level selected columns, the query is rewritten to first fetch the raw column, and the function is applied per row in SQLPage.
 
-This is the most efficient method to store large values.
 ```sql
--- Database connections are reused and temporary tables are stored at the
--- connection level, so we make sure the table doesn't exist already
-DROP TABLE IF EXISTS my_temp_table;
-CREATE TEMPORARY TABLE my_temp_table AS
-SELECT a, b
-FROM my_stored_table ...
-
--- Insert data from direct values
-INSERT INTO my_temp_table(a, b)
-VALUES (1, 2), (3, 4);
+SELECT sqlpage.read_file_as_text(file_path) AS contents
+FROM blog_posts;
 ```
 
-## Storing rich structured data in memory using JSON
+## Performance
 
-This can be more convenient, but should only be used for small values, because data
-is copied from the database into SQLPage memory, and to the database again at each use.
+See the [performance page](/performance.sql) for details. In short:
 
-You can use the [JSON functions from your database](/blog.sql?post=JSON+in+SQL%3A+A+Comprehensive+Guide).
+- Statements sent to the database are prepared and cached.
+- Variables and pre-computed values are bound as parameters.
+- This keeps queries fast and repeatable.
 
-Here are some examples with SQLite:
+## Working with larger temporary results
+
+### Temporary tables in your database
+
+When you reuse the same values multiple times in your page,
+store them in a temporary table.
+
 ```sql
--- CREATE TABLE my_table(a, b);
--- INSERT INTO my_table(a, b)
--- VALUES (1, 2), (3, 4);
+DROP TABLE IF EXISTS filtered_posts;
+CREATE TEMPORARY TABLE filtered_posts AS
+SELECT * FROM posts where category = $category;
 
-SET my_json = (
-    SELECT json_group_array(a)
-    FROM my_table
+select 'alert' as component, count(*) || 'results' as title
+from filtered_posts;
+
+select 'list' as component;
+select name from filtered_posts;
+```
+
+### Small JSON values in variables
+
+Useful for small datasets that you want to keep in memory.
+See the guide on JSON in SQL: [blog article](/blog.sql?post=JSON+in+SQL%3A+A+Comprehensive+Guide).
+
+```sql
+set product = (
+    select json_object('name', name, 'price', price)
+    from products where id = $product_id
 );
--- [1, 3]
-
-SET my_json = json_array(1, 2, 3);
--- [1, 2, 3]
 ```
 
-## Functions
+## CSV imports
 
-Functions starting with `sqlpage.` are executed by SQLPage, not by your database engine.
-See the [functions page](/functions.sql) for more details.
+When you write a compatible `COPY ... FROM 'field'` statement and upload a file with the matching form field name, SQLPage orchestrates the import:
 
-They're either executed before or after the query is run in the database.
+- PostgreSQL: the file is streamed directly to the database using `COPY FROM STDIN`; the database performs the import.
+- Other databases: SQLPage reads the CSV and inserts rows using a prepared `INSERT` statement. Options like delimiter, quote, header, escape, and a custom `NULL` string are supported. With a header row, column names are matched by name; otherwise, the order is used.
 
-### Executing functions *before* sending a query to the database
-
-When they don't process results coming from the database:
+Example:
 
 ```sql
-SELECT * FROM blog WHERE slug = sqlpage.path()
+COPY my_table (col1, col2)
+FROM 'my_csv'
+(DELIMITER ';', HEADER);
 ```
 
-`sqlpage.path()` will get replaced by the result of the function.
+The uploaded file should be provided in a form field with `'file' as type, 'my_csv' as name`.
 
-### Executing functions *after* receiving results from the database
+## Data types
 
-When they process results coming from the database:
-
-```sql
-SELECT sqlpage.read_file_as_text(blog_post_file) AS title
-FROM blog;
-```
-
-The query executed will be:
-
-```sql
-SELECT blog_post_file AS title FROM blog;
-```
-
-Then `sqlpage.read_file_as_text()` will be called on each row.
-
-## Implementation details of variables and functions
-
-All queries run by SQLPage in the database are first prepared, then executed.
-
-Statements are prepared and cached the first time they're encountered by SQLPage.
-Then those cached prepared statements are executed at each run, with parameter substitution.
-
-All variables and function results are cast as text, to let the
-database query optimizer know only strings (or nulls) will be passed.
-
-Examples:
-
-```sql
--- Source query
-SELECT * FROM blog WHERE slug = sqlpage.path();
-
--- Prepared statement (SQLite syntax)
-SELECT * FROM blog WHERE slug = CAST(?1 AS TEXT)
-```
-
-```sql
--- Source query
-SET post_id = COALESCE($post_id, 0);
-
--- Prepared statement (SQLite syntax)
-SELECT COALESCE(CAST(?1 AS TEXT), 0)
-```
-
-# Data types
-
-Each database has its own rich set of data types.
-The data modal in SQLPage itself is simpler, mainly composed of text strings and json objects.
+Each database has its own usually large set of data types.
+SQLPage itself has a much more rudimentary type system.
 
 ### From the user to SQLPage
 
-Form fields and URL parameters may contain arrays. These are converted to JSON strings before processing.
+Form fields and URL parameters in HTTP are fundamentally untyped.
+They are just sequences of bytes. SQLPage requires them to be valid utf8 strings.
 
-For instance, Loading `users.sql?user[]=Tim&user[]=Tom` will result in a single variable `$user` with the textual value `["Tim", "Tom"]`.
+SQLPage follows the convention that when a parameter name ends with `[]`, it represents an array.
+Arrays in SQLPage are represented as JSON strings.
+
+Example: In `users.sql?user[]=Tim&user[]=Tom`, `$user` becomes `'[\"Tim\", \"Tom\"]'` (a JSON string exploitable with your database's builtin json functions).
 
 ### From SQLPage to the database
 
-SQLPage sends only text strings (`VARCHAR`) and `NULL`s to the database, since these are the only possible variable and function return values.
+SQLPage sends only strings (`TEXT` or `VARCHAR`) and `NULL`s as parameters.
 
 ### From the database to SQLPage
 
-Each row of data returned by a SQL query is converted to a JSON object before being passed to components.
+Each row returned by the database becomes a JSON object
+before its passed to components:
 
-- Each column becomes a key in the json object. If a row has two columns of the same name, they become an array in the json object.
-- Each value is converted to the closest JSON value
-  - all number types map to json numbers, booleans to booleans, and `NULL` to `null`,
-  - all text types map to json strings
-  - date and time types map to json strings containing ISO datetime values
-  - binary values (BLOBs) map to json strings containing [data URLs](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Schemes/data)
+- Each column is a key. Duplicate column names turn into arrays.
+- Numbers, booleans, text, and `NULL` map naturally.
+- Dates/times become ISO strings.
+- Binary data (BLOBs) becomes a data URL (with mime type auto-detection).
 
 #### Example
 
-The following PostgreSQL query:
-
 ```sql
-select
-    1 as one,
-    'x' as my_array, 'y' as my_array,
-    now() as today,
-    '<svg></svg>'::bytea as my_image;
+SELECT
+  1 AS one,
+  'x' AS my_array, 'y' AS my_array,
+  now() AS today,
+  '<svg></svg>'::bytea AS my_image;
 ```
 
-will result in the following JSON object being passed to components for rendering
+Produces something like:
 
 ```json
 {
-    "one" : 1,
-    "my_array" : ["x","y"],
-    "today":"2025-08-30T06:40:13.894918+00:00",
-    "my_image":"data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+  "one": 1,
+  "my_array": ["x", "y"],
+  "today": "2025-08-30T06:40:13.894918+00:00",
+  "my_image": "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
 }
 ```
