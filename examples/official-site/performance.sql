@@ -22,13 +22,13 @@ as opposed to writing imperative code in a backend programming language like Jav
 This declarative approach allows SQLPage to offer **optimizations** out of the box that are difficult or time-consuming
 to achieve in traditional web development stacks.
 
-## Server-side rendering
+## Progressive server-side rendering
 
 SQLPage applications are [server-side rendered](https://web.dev/articles/rendering-on-the-web),
-which means that the SQL queries are executed on the server, and the results are sent to the user''s browser
-as HTML, which allows it to start rendering the page as soon as the first byte is received.
+which means that the SQL queries are executed on the server, and the results are sent to the user''s browser as HTML.
 In contrast, many other web frameworks render the page on the client side, which means that the browser has to download
 some HTML, then download some JavaScript, then execute the JavaScript, then make more requests,
+wait for the database to produce a full result set,
 then process the responses before it can start rendering the actual data the user is interested in.
 This can lead to loading times that are several times longer than a SQLPage application.
 
@@ -36,6 +36,7 @@ This can lead to loading times that are several times longer than a SQLPage appl
 
 SQLPage applications will often feel faster than even equivalent applications written even in alternative server-side rendering
 frameworks, because SQLPage streams the results of the SQL queries to the browser as soon as they are available.
+The user sees the start of the page even before the database has finished producing the last query results.
 
 Most server-side rendering frameworks will first wait for all the SQL queries to finish, then render the page in memory
 on the server, and only then send the HTML webpage to the browser. If a page contains a long list of items, the user
@@ -51,7 +52,7 @@ an execution plan every time an user requests a page.
 
 When an user loads a page, all SQLPage has to do is tell the database: "Hey, do you remember that query we talked about
 earlier? Can you give me the results for these specific parameters?". This is much faster than sending the whole SQL query
-string to the database every time.
+string to the database every time, especially for large complex queries that require heavy planning on the database side.
 
 ## Compiled templates
 
@@ -87,16 +88,15 @@ interaction.
 
 ## Key Takeaways
 
-SQLPage offers a radically different approach to web development,
-resolving the classical tension between performance and ease of use.
-
-By leveraging a declarative approach, server-side rendering, and advanced optimization techniques, SQLPage enables:
-
-* **Faster page loads**: Long loading times make your website feel sluggish and unresponsive, causing users to leave.
-* **Easier development**: Focus on writing SQL queries; all the heavy lifting is done for you.
-* **Cost effective**: SQLPage''s low CPU and memory usage means you can host your website extremely cheaply, even if it gets significant traffic.
+Performance is a key feature of SQLPage.
+Its architecture allows you to build fast websites without having to implement advanced optimizations yourself.
 
 ## Ready to get started?
 
 [Build your fast, secure, and beautiful website](/your-first-sql-website) with SQLPage today!
+
+## Already a SQLPage developer ?
+
+Have a look at our [performance guide](/blog?post=Performance+Guide) to learn the best practices to leverage
+all the features that will make your site faster.
 ' as contents_md;
