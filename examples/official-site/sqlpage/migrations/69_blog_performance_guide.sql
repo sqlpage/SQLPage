@@ -29,17 +29,49 @@ We''ll go over the most common database performance pitfalls so that you know ho
 
 #### Normalize (but not too much)
 
-Your database schema should be made so that one piece of information
-is stored in only one place in the database.
-For instance, if you are modelling sales that happen in stores, the sales table should 
+Your database schema should be [normalized](https://en.wikipedia.org/wiki/Database_normalization):
+one piece of information should be stored in only one place in the database.
+This is a good practice that will not only make your queries faster,
+but also make it impossible to store incoherent data.
+
+For instance, if you are modelling sales that happen in stores, the sales table should
 contain a foreign key to another table named stores.
-This way, when you need to display the list of stores in your application, you don''t have to 
+It should not contain the full store name.
+
+This way, when you need to display the list of stores in your application, you don''t have to
 run a slow `select distinct store from sales`, that would have to go through your millions of sales
-(*even if you have an index on the store column*),
+(*even if you have an index on the store column*), you just query the tiny `stores` table directly.
+
+[Denormalization](https://en.wikipedia.org/wiki/Denormalization) can be introduced
+only after you have already normalized your data, and is often not required at all.
+
+### Use views
+
+Querying normalized views can be cumbersome.
+`select store_name, sum(paid_eur) from sale group by store_name`
+is more readable than
+
+```sql
+select store.name, sum(sale.paid_eur)
+from sales
+  inner join stores on sale.store_id = store.store_id
+group by store_name
+```
+
+To work around that, you can create views that contain
+useful table joins so that you do not have to duplicate them in all your queries:
+
+```sql
+create view enriched_sales as
+select sales.sales_eur, sales.client_id, store.store_name
+from sales
+inner join store
+```
+
+#### Materialized views
+
 
 ### Use database indices
-
-### Use (materialized) views
 
 ### Query performance debugging
 
