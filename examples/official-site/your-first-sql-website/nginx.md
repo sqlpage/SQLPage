@@ -54,10 +54,12 @@ server {
 
 ### Streaming-friendly proxy settings
 
-SQLPage streams HTML by default so the browser can render results while the database is still sending rows. To preserve this low-latency behaviour through NGINX, add the following directives inside the same `location` block as `proxy_pass`:
+SQLPage streams HTML by default so the browser can render results while the database is still sending rows. NGINX keeps `proxy_buffering` enabled by default, which smooths bursts and protects upstreams from slow clients at the cost of delaying the first bytes. Start with these directives inside the same `location` block as `proxy_pass`:
 
 ```nginx
-    proxy_buffering off;
+    proxy_buffering on;
+    proxy_buffer_size 16k;
+    proxy_buffers 4 16k;
 
     gzip on;
     gzip_buffers 2 4k;
@@ -66,7 +68,7 @@ SQLPage streams HTML by default so the browser can render results while the data
     chunked_transfer_encoding on;
 ```
 
-Disabling buffering lets responses reach clients immediately but increases how many simultaneous connections SQLPage must serve; raise the buffers only if you prefer smoothing bursts over fastest-first rendering. Tune the gzip buffer count and size to balance CPU cost and bandwidth, and keep chunked transfer enabled so streaming works with HTTP/1.1 clients. Consult the official NGINX documentation for [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) when adjusting these values. If you later implement heavy caching (see the section below), you may choose to reintroduce buffering for specific locations.
+Keep the default buffering behaviour when most visitors are on slow links (mobile, high latency) or when SQLPage queries run long (large aggregations, reports). Increase the buffer count or size if responses exceed these limits frequently, or leave them to NGINX defaults when unsure. For primarily fast clients reading light pages, you can switch to `proxy_buffering off;` or reduce the number of buffers to let the streamed HTML reach the browser sooner, accepting higher upstream connection pressure. Refer to the official documentation for [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) when tuning these values.
 
 When SQLPage sits behind a reverse proxy, set `compress_responses` to `false` in `sqlpage.json` so that NGINX compresses once at the edge (documented [here](https://github.com/sqlpage/SQLPage/blob/main/configuration.md)).
 

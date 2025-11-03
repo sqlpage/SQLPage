@@ -45,10 +45,12 @@ The `nginx.conf` file contains the NGINX configuration:
 
 ### Streaming and compression
 
-SQLPage streams HTML as it is generated, so browsers can start rendering before the database finishes returning rows. To keep that behaviour through NGINX, prefer minimal buffering and let the proxy handle compression:
+SQLPage streams HTML as it is generated, so browsers can start rendering before the database finishes returning rows. NGINX enables `proxy_buffering` by default, which can delay those first bytes but stores responses for slow clients. Start with a modest buffer configuration and let the proxy handle compression:
 
 ```
-    proxy_buffering off;
+    proxy_buffering on;
+    proxy_buffer_size 16k;
+    proxy_buffers 4 16k;
 
     gzip on;
     gzip_buffers 2 4k;
@@ -57,7 +59,7 @@ SQLPage streams HTML as it is generated, so browsers can start rendering before 
     chunked_transfer_encoding on;
 ```
 
-Disabling buffering lowers latency but increases the number of active connections; tune the gzip settings to balance CPU cost versus bandwidth, and re-enable buffering only if you need request coalescing or traffic smoothing. See the [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) directives for more guidance.
+Keep buffering when you expect slow clients or longer SQLPage queries, increasing the buffer sizes only if responses overflow. When most users are on fast connections reading lightweight pages, consider reducing the buffer counts or flipping to `proxy_buffering off;` to minimise latency, accepting the extra load on SQLPage. See the [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) directives for more guidance.
 
 When SQLPage runs behind a reverse proxy, set `compress_responses` to `false` in its configuration (documented [here](https://github.com/sqlpage/SQLPage/blob/main/configuration.md)) so that NGINX can perform compression once at the edge.
 
