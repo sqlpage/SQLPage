@@ -65,6 +65,23 @@ sudo systemctl reload nginx
 
 Your SQLPage instance is now hosted behind a reverse proxy using NGINX. You can access it by visiting `http://example.com`.
 
+
+### Streaming-friendly proxy settings
+
+SQLPage streams HTML by default so the browser can render results while the database is still sending rows.
+If you have slow SQL queries (you shouldn't), you can add the following directive to your location block:
+
+```nginx
+proxy_buffering off;
+```
+
+That will allow users to start seeing the top of your pages faster,
+but will increase the load on your SQLPage server, and reduce the amount of users you can serve concurrently.
+
+Refer to the official documentation for [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) when tuning these values.
+
+When SQLPage sits behind a reverse proxy, set `compress_responses` to `false` [in `sqlpage.json`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md) so that NGINX compresses once at the edge.
+
 ### URL Rewriting
 
 URL rewriting is a powerful feature that allows you to manipulate URLs to make them more readable, search-engine-friendly, and easy to maintain.
