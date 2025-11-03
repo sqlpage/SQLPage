@@ -277,7 +277,7 @@ pub struct AppConfig {
     pub max_pending_rows: usize,
 
     /// Whether to compress the http response body when the client supports it.
-    /// Enabling response compression hinders the ability of SQLPage to stream every single byte
+    /// Enabling response compression hinders the ability of `SQLPage` to stream every single byte
     /// of data as soon as it is produced.
     /// As a rule of thub, enable response compression when your app is fast.
     #[serde(default = "default_compress_responses")]
