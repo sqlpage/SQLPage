@@ -52,26 +52,6 @@ server {
 }
 ```
 
-### Streaming-friendly proxy settings
-
-SQLPage streams HTML by default so the browser can render results while the database is still sending rows. NGINX keeps `proxy_buffering` enabled by default, which smooths bursts and protects upstreams from slow clients at the cost of delaying the first bytes. Start with these directives inside the same `location` block as `proxy_pass`:
-
-```nginx
-    proxy_buffering on;
-    proxy_buffer_size 16k;
-    proxy_buffers 4 16k;
-
-    gzip on;
-    gzip_buffers 2 4k;
-    gzip_types text/html text/plain text/css application/javascript application/json;
-
-    chunked_transfer_encoding on;
-```
-
-Keep the default buffering behaviour when most visitors are on slow links (mobile, high latency) or when SQLPage queries run long (large aggregations, reports). Increase the buffer count or size if responses exceed these limits frequently, or leave them to NGINX defaults when unsure. For primarily fast clients reading light pages, you can switch to `proxy_buffering off;` or reduce the number of buffers to let the streamed HTML reach the browser sooner, accepting higher upstream connection pressure. Refer to the official documentation for [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) when tuning these values.
-
-When SQLPage sits behind a reverse proxy, set `compress_responses` to `false` in `sqlpage.json` so that NGINX compresses once at the edge (documented [here](https://github.com/sqlpage/SQLPage/blob/main/configuration.md)).
-
 Save the file and create a symbolic link to it in the `/etc/nginx/sites-enabled/` directory:
 ```bash
 sudo ln -s /etc/nginx/sites-available/sqlpage /etc/nginx/sites-enabled/sqlpage
@@ -84,6 +64,23 @@ sudo systemctl reload nginx
 ```
 
 Your SQLPage instance is now hosted behind a reverse proxy using NGINX. You can access it by visiting `http://example.com`.
+
+
+### Streaming-friendly proxy settings
+
+SQLPage streams HTML by default so the browser can render results while the database is still sending rows.
+If you have slow SQL queries (you shouldn't), you can add the following directive to your location block:
+
+```nginx
+proxy_buffering off;
+```
+
+That will allow users to start seeing the top of your pages faster,
+but will increase the load on your SQLPage server, and reduce the amount of users you can serve concurrently.
+
+Refer to the official documentation for [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) when tuning these values.
+
+When SQLPage sits behind a reverse proxy, set `compress_responses` to `false` [in `sqlpage.json`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md) so that NGINX compresses once at the edge.
 
 ### URL Rewriting
 
