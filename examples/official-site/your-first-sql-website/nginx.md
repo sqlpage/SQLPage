@@ -52,6 +52,24 @@ server {
 }
 ```
 
+### Streaming and compression
+
+SQLPage streams HTML as it is generated, so browsers start rendering before the database finishes returning rows. Preserve that behaviour in NGINX by keeping buffering minimal and letting the proxy handle compression:
+
+```nginx
+    proxy_buffering off;
+
+    gzip on;
+    gzip_buffers 2 4k;
+    gzip_types text/html text/plain text/css application/javascript application/json;
+
+    chunked_transfer_encoding on;
+```
+
+Turning off buffering lowers latency but increases how many concurrent connections reach SQLPage; only raise the buffers if you need to smooth bursty traffic. Adjust the gzip buffers for your CPU versus bandwidth trade-off, and toggle chunked transfer to keep streaming with HTTP/1.1 clients. See the official guidance for [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding).
+
+When SQLPage runs behind a reverse proxy, set `compress_responses` to `false` so NGINX can compress once at the edge (documented [here](https://github.com/sqlpage/SQLPage/blob/main/configuration.md)).
+
 Save the file and create a symbolic link to it in the `/etc/nginx/sites-enabled/` directory:
 ```bash
 sudo ln -s /etc/nginx/sites-available/sqlpage /etc/nginx/sites-enabled/sqlpage
