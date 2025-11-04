@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
 
 use crate::{app_config::AppConfig, utils::static_filename};
 use anyhow::Context as _;
@@ -209,10 +209,8 @@ impl CanHelp for AppConfigHelper {
     }
 }
 
-#[allow(clippy::unreadable_literal)]
-mod icons {
-    include!(concat!(env!("OUT_DIR"), "/icons.rs"));
-}
+pub static ICON_MAP: LazyLock<HashMap<&'static str, &'static str>> =
+    LazyLock::new(|| include!(concat!(env!("OUT_DIR"), "/icons.rs")).into());
 
 /// Generate an image with the specified icon.
 struct IconImgHelper;
@@ -236,7 +234,7 @@ impl HelperDef for IconImgHelper {
         };
         let size = params[1].as_u64().unwrap_or(24);
 
-        let Some(&inner_content) = icons::ICON_MAP.get(name.as_str()) else {
+        let Some(&inner_content) = ICON_MAP.get(name.as_str()) else {
             log::warn!("icon_img: icon {name} not found");
             return Ok(());
         };
