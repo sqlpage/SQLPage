@@ -230,14 +230,14 @@ impl HelperDef for IconImgHelper {
         let name = match params[0] {
             JsonValue::String(s) => s,
             other => {
-                log::debug!("icon_img: {other:?} is not an icon name, not rendering anything");
+                log::warn!("icon_img: {other:?} is not an icon name, not rendering anything");
                 return Ok(());
             }
         };
         let size = params[1].as_u64().unwrap_or(24);
 
-        let Some(inner_content) = icons::ICON_MAP.get(name).copied() else {
-            log::debug!("icon_img: icon {name} not found");
+        let Some(&inner_content) = icons::ICON_MAP.get(name.as_str()) else {
+            log::warn!("icon_img: icon {name} not found");
             return Ok(());
         };
 
