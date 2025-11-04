@@ -224,17 +224,10 @@ impl HelperDef for IconImgHelper {
         writer: &mut dyn handlebars::Output,
     ) -> handlebars::HelperResult {
         let null = handlebars::JsonValue::Null;
-        let params = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
-        let name = match params[0] {
-            JsonValue::String(s) => s,
-            other => {
-                log::warn!("icon_img: {other:?} is not an icon name, not rendering anything");
-                return Ok(());
-            }
-        };
-        let size = params[1].as_u64().unwrap_or(24);
-
-        let Some(&inner_content) = ICON_MAP.get(name.as_str()) else {
+        let [name, size] = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
+        let size = size.as_u64().unwrap_or(24);
+        let content = name.as_str().and_then(|name| ICON_MAP.get(name));
+        let Some(&inner_content) = content else {
             log::warn!("icon_img: icon {name} not found");
             return Ok(());
         };
