@@ -218,10 +218,9 @@ fn extract_icons_from_sprite(sprite_content: &[u8], mut callback: impl FnMut(&st
         Some(result)
     }
     while let Some(mut symbol_tag) = take_between(&mut sprite_str, "<symbol", "</symbol>") {
-        if let Some(id) = take_between(&mut symbol_tag, "id=\"tabler-", "\"") {
-            let content_start = symbol_tag.find('>').unwrap() + 1;
-            callback(id, &symbol_tag[content_start..]);
-        }
+        let id = take_between(&mut symbol_tag, "id=\"tabler-", "\"").expect("id not found");
+        let content_start = symbol_tag.find('>').unwrap() + 1;
+        callback(id, &symbol_tag[content_start..]);
     }
 }
 
