@@ -181,31 +181,12 @@ async fn download_tabler_icons(client: Rc<awc::Client>, sprite_url: &str) {
     let icon_map_path = out_dir.join("icons.rs");
     let mut sprite_content = Vec::with_capacity(3 * 1024 * 1024);
     copy_url_to_opened_file(&client, sprite_url, &mut sprite_content).await;
-    generate_icons_rs(&icon_map_path, &sprite_content);
-}
-
-fn generate_icons_rs(icon_map_path: &Path, sprite_content: &[u8]) {
     let mut file = File::create(icon_map_path).unwrap();
-
-    writeln!(
-        file,
-        "#[allow(clippy::all)]
-    use std::collections::HashMap;
-    use std::sync::LazyLock;
-    "
-    )
-    .unwrap();
-    writeln!(
-        file,
-        "pub static ICON_MAP: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {{"
-    )
-    .unwrap();
-    writeln!(file, "let mut m = HashMap::new();").unwrap();
-
-    extract_icons_from_sprite(sprite_content, |name, content| {
-        writeln!(file, "m.insert({name:?}, r#\"{content}\"#);").unwrap();
+    file.write_all(b"[").unwrap();
+    extract_icons_from_sprite(&sprite_content, |name, content| {
+        writeln!(file, "({name:?}, r#\"{content}\"#),").unwrap();
     });
-    writeln!(file, "m}});").unwrap();
+    file.write_all(b"]").unwrap();
 }
 
 fn extract_icons_from_sprite(sprite_content: &[u8], mut callback: impl FnMut(&str, &str)) {
