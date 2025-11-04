@@ -22,7 +22,10 @@ async fn main() {
     for h in [
         spawn(download_deps(c.clone(), "sqlpage.js")),
         spawn(download_deps(c.clone(), "sqlpage.css")),
-        spawn(download_deps(c.clone(), "tabler-icons.svg")),
+        spawn(download_tabler_icons(
+            c.clone(),
+            "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.34.0/dist/tabler-sprite.svg",
+        )),
         spawn(download_deps(c.clone(), "apexcharts.js")),
         spawn(download_deps(c.clone(), "tomselect.js")),
         spawn(download_deps(c.clone(), "favicon.svg")),
@@ -171,6 +174,73 @@ fn make_url_path(url: &str) -> PathBuf {
         "_",
     );
     sqlpage_artefacts.join(filename)
+}
+
+async fn download_tabler_icons(client: Rc<awc::Client>, sprite_url: &str) {
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let icon_map_path = out_dir.join("icons.rs");
+
+    if !icon_map_path.exists() {
+        let cached_sprite_path = make_url_path(sprite_url);
+        download_url_to_path(&client, sprite_url, &cached_sprite_path).await;
+        generate_icons_rs(&icon_map_path, &cached_sprite_path);
+    }
+}
+
+fn generate_icons_rs(icon_map_path: &Path, cached_sprite_path: &Path) {
+    let sprite_content = std::fs::read_to_string(cached_sprite_path).unwrap();
+    let icons = extract_icons_from_sprite(&sprite_content);
+    let mut file = File::create(icon_map_path).unwrap();
+
+    writeln!(file, "#[allow(clippy::all)]").unwrap();
+    writeln!(file, "use std::collections::HashMap;").unwrap();
+    writeln!(file, "use std::sync::LazyLock;").unwrap();
+    writeln!(file).unwrap();
+    writeln!(
+        file,
+        "pub static ICON_MAP: LazyLock<HashMap<String, &'static str>> = LazyLock::new(|| {{"
+    )
+    .unwrap();
+    writeln!(file, "    let mut m = HashMap::new();").unwrap();
+
+    for (name, content) in icons {
+        writeln!(file, "    m.insert({:?}.to_string(), r#\"{}\"#);", name, content).unwrap();
+    }
+
+    writeln!(file, "    m").unwrap();
+    writeln!(file, "}});").unwrap();
+}
+
+fn extract_icons_from_sprite(sprite_content: &str) -> Vec<(String, String)> {
+    let mut icons = Vec::new();
+
+    let mut pos = 0;
+    while let Some(symbol_start) = sprite_content[pos..].find("<symbol") {
+        let symbol_start = pos + symbol_start;
+        let Some(symbol_end) = sprite_content[symbol_start..].find("</symbol>") else {
+            break;
+        };
+        let symbol_end = symbol_start + symbol_end + "</symbol>".len();
+
+        let symbol_tag = &sprite_content[symbol_start..symbol_end];
+
+        if let Some(id_start) = symbol_tag.find("id=\"tabler-") {
+            let id_start = id_start + "id=\"tabler-".len();
+            if let Some(id_end) = symbol_tag[id_start..].find('"') {
+                let icon_name = &symbol_tag[id_start..id_start + id_end];
+
+                let content_start = symbol_tag.find('>').unwrap() + 1;
+                let content_end = symbol_tag.rfind("</symbol>").unwrap();
+                let inner_content = symbol_tag[content_start..content_end].trim();
+
+                icons.push((icon_name.to_string(), inner_content.to_string()));
+            }
+        }
+
+        pos = symbol_end;
+    }
+
+    icons
 }
 
 /// On debian-based linux distributions, odbc drivers are installed in /usr/lib/<target>-linux-gnu/odbc
