@@ -179,16 +179,12 @@ fn make_url_path(url: &str) -> PathBuf {
 async fn download_tabler_icons(client: Rc<awc::Client>, sprite_url: &str) {
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let icon_map_path = out_dir.join("icons.rs");
-
-    if !icon_map_path.exists() {
-        let cached_sprite_path = make_url_path(sprite_url);
-        download_url_to_path(&client, sprite_url, &cached_sprite_path).await;
-        generate_icons_rs(&icon_map_path, &cached_sprite_path);
-    }
+    let mut sprite_content = Vec::with_capacity(3 * 1024 * 1024);
+    copy_url_to_opened_file(&client, sprite_url, &mut sprite_content).await;
+    generate_icons_rs(&icon_map_path, &sprite_content);
 }
 
-fn generate_icons_rs(icon_map_path: &Path, cached_sprite_path: &Path) {
-    let sprite_content = std::fs::read_to_string(cached_sprite_path).unwrap();
+fn generate_icons_rs(icon_map_path: &Path, sprite_content: &[u8]) {
     let mut file = File::create(icon_map_path).unwrap();
 
     writeln!(
@@ -206,36 +202,26 @@ fn generate_icons_rs(icon_map_path: &Path, cached_sprite_path: &Path) {
     .unwrap();
     writeln!(file, "let mut m = HashMap::new();").unwrap();
 
-    extract_icons_from_sprite(&sprite_content, |name, content| {
+    extract_icons_from_sprite(sprite_content, |name, content| {
         writeln!(file, "m.insert({name:?}, r#\"{content}\"#);").unwrap();
     });
     writeln!(file, "m}});").unwrap();
 }
 
-fn extract_icons_from_sprite(sprite_content: &str, mut callback: impl FnMut(&str, &str)) {
-    let mut pos = 0;
-    while let Some(symbol_start) = sprite_content[pos..].find("<symbol") {
-        let symbol_start = pos + symbol_start;
-        let Some(symbol_end) = sprite_content[symbol_start..].find("</symbol>") else {
-            break;
-        };
-        let symbol_end = symbol_start + symbol_end + "</symbol>".len();
-
-        let symbol_tag = &sprite_content[symbol_start..symbol_end];
-
-        if let Some(id_start) = symbol_tag.find("id=\"tabler-") {
-            let id_start = id_start + "id=\"tabler-".len();
-            if let Some(id_end) = symbol_tag[id_start..].find('"') {
-                let icon_name = &symbol_tag[id_start..id_start + id_end];
-
-                let content_start = symbol_tag.find('>').unwrap() + 1;
-                let content_end = symbol_tag.rfind("</symbol>").unwrap();
-                let inner_content = symbol_tag[content_start..content_end].trim();
-
-                callback(icon_name, inner_content);
-            }
+fn extract_icons_from_sprite(sprite_content: &[u8], mut callback: impl FnMut(&str, &str)) {
+    let mut sprite_str = std::str::from_utf8(sprite_content).unwrap();
+    fn take_between<'a>(s: &mut &'a str, start: &str, end: &str) -> Option<&'a str> {
+        let start_index = s.find(start)?;
+        let end_index = s[start_index + start.len()..].find(end)?;
+        let result = &s[start_index + start.len()..][..end_index];
+        *s = &s[start_index + start.len() + end_index + end.len()..];
+        Some(result)
+    }
+    while let Some(mut symbol_tag) = take_between(&mut sprite_str, "<symbol", "</symbol>") {
+        if let Some(id) = take_between(&mut symbol_tag, "id=\"tabler-", "\"") {
+            let content_start = symbol_tag.find('>').unwrap() + 1;
+            callback(id, &symbol_tag[content_start..]);
         }
-        pos = symbol_end;
     }
 }
 
