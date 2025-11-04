@@ -30,26 +30,27 @@ macro_rules! static_file_endpoint {
     }};
 }
 
+#[must_use]
 pub fn js() -> Resource {
     static_file_endpoint!("sqlpage", "js", "application/javascript")
 }
 
+#[must_use]
 pub fn apexcharts_js() -> Resource {
     static_file_endpoint!("apexcharts", "js", "application/javascript")
 }
 
+#[must_use]
 pub fn tomselect_js() -> Resource {
     static_file_endpoint!("tomselect", "js", "application/javascript")
 }
 
+#[must_use]
 pub fn css() -> Resource {
     static_file_endpoint!("sqlpage", "css", "text/css")
 }
 
-pub fn icons() -> Resource {
-    static_file_endpoint!("tabler-icons", "svg", "image/svg+xml")
-}
-
+#[must_use]
 pub fn favicon() -> Resource {
     static_file_endpoint!("favicon", "svg", "image/svg+xml")
 }

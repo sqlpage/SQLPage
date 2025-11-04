@@ -67,7 +67,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "app_config", AppConfigHelper(config.clone()));
 
     // icon helper: generate an image with the specified icon
-    h.register_helper("icon_img", Box::new(IconImgHelper(site_prefix)));
+    h.register_helper("icon_img", Box::new(IconImgHelper));
     register_helper(h, "markdown", MarkdownHelper::new(config));
     register_helper(h, "buildinfo", buildinfo_helper as EH);
     register_helper(h, "typeof", typeof_helper as H);
@@ -209,8 +209,13 @@ impl CanHelp for AppConfigHelper {
     }
 }
 
-/// Generate an image with the specified icon. Struct Param is the site prefix
-struct IconImgHelper(String);
+#[allow(clippy::unreadable_literal)]
+mod icons {
+    include!(concat!(env!("OUT_DIR"), "/icons.rs"));
+}
+
+/// Generate an image with the specified icon.
+struct IconImgHelper;
 impl HelperDef for IconImgHelper {
     fn call<'reg: 'rc, 'rc>(
         &self,
@@ -230,11 +235,15 @@ impl HelperDef for IconImgHelper {
             }
         };
         let size = params[1].as_u64().unwrap_or(24);
+
+        let Some(inner_content) = icons::ICON_MAP.get(name).copied() else {
+            log::debug!("icon_img: icon {name} not found");
+            return Ok(());
+        };
+
         write!(
             writer,
-            "<svg width={size} height={size}><use href=\"{}{}#tabler-{name}\" /></svg>",
-            self.0,
-            static_filename!("tabler-icons.svg")
+            "<svg viewBox=\"0 0 24 24\" width=\"{size}\" height=\"{size}\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">{inner_content}</svg>"
         )?;
         Ok(())
     }
