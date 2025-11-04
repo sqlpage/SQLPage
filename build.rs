@@ -24,7 +24,7 @@ async fn main() {
         spawn(download_deps(c.clone(), "sqlpage.css")),
         spawn(download_tabler_icons(
             c.clone(),
-            "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.34.0/dist/tabler-sprite.svg",
+            "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.35.0/dist/tabler-sprite.svg",
         )),
         spawn(download_deps(c.clone(), "apexcharts.js")),
         spawn(download_deps(c.clone(), "tomselect.js")),
@@ -189,31 +189,30 @@ async fn download_tabler_icons(client: Rc<awc::Client>, sprite_url: &str) {
 
 fn generate_icons_rs(icon_map_path: &Path, cached_sprite_path: &Path) {
     let sprite_content = std::fs::read_to_string(cached_sprite_path).unwrap();
-    let icons = extract_icons_from_sprite(&sprite_content);
     let mut file = File::create(icon_map_path).unwrap();
 
-    writeln!(file, "#[allow(clippy::all)]").unwrap();
-    writeln!(file, "use std::collections::HashMap;").unwrap();
-    writeln!(file, "use std::sync::LazyLock;").unwrap();
-    writeln!(file).unwrap();
     writeln!(
         file,
-        "pub static ICON_MAP: LazyLock<HashMap<String, &'static str>> = LazyLock::new(|| {{"
+        "#[allow(clippy::all)]
+    use std::collections::HashMap;
+    use std::sync::LazyLock;
+    "
     )
     .unwrap();
-    writeln!(file, "    let mut m = HashMap::new();").unwrap();
+    writeln!(
+        file,
+        "pub static ICON_MAP: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {{"
+    )
+    .unwrap();
+    writeln!(file, "let mut m = HashMap::new();").unwrap();
 
-    for (name, content) in icons {
-        writeln!(file, "    m.insert({:?}.to_string(), r#\"{}\"#);", name, content).unwrap();
-    }
-
-    writeln!(file, "    m").unwrap();
-    writeln!(file, "}});").unwrap();
+    extract_icons_from_sprite(&sprite_content, |name, content| {
+        writeln!(file, "m.insert({name:?}, r#\"{content}\"#);").unwrap();
+    });
+    writeln!(file, "m}});").unwrap();
 }
 
-fn extract_icons_from_sprite(sprite_content: &str) -> Vec<(String, String)> {
-    let mut icons = Vec::new();
-
+fn extract_icons_from_sprite(sprite_content: &str, mut callback: impl FnMut(&str, &str)) {
     let mut pos = 0;
     while let Some(symbol_start) = sprite_content[pos..].find("<symbol") {
         let symbol_start = pos + symbol_start;
@@ -233,14 +232,11 @@ fn extract_icons_from_sprite(sprite_content: &str) -> Vec<(String, String)> {
                 let content_end = symbol_tag.rfind("</symbol>").unwrap();
                 let inner_content = symbol_tag[content_start..content_end].trim();
 
-                icons.push((icon_name.to_string(), inner_content.to_string()));
+                callback(icon_name, inner_content);
             }
         }
-
         pos = symbol_end;
     }
-
-    icons
 }
 
 /// On debian-based linux distributions, odbc drivers are installed in /usr/lib/<target>-linux-gnu/odbc
