@@ -70,6 +70,22 @@ inner join store
 
 #### Materialized views
 
+Some analytical queries just have to compute aggregated statistics over large quantities of data.
+For instance, you might want to compute the total sales per store, or the total sales per product.
+These queries are slow to compute when there are many rows, and you might not want to run them on every request.
+You can use [materialized views](https://en.wikipedia.org/wiki/Materialized_view) to cache the results of these queries.
+Materialized views are views that are stored as regular tables in the database.
+
+Depending on the database, you might have to refresh the materialized view manually.
+You can either refresh the view manually from inside your sql pages when you detect they are outdated,
+or write an external script to refresh the view periodically.
+
+```sql
+create materialized view total_sales_per_store as
+select store_name, sum(sales_eur) as total_sales
+from sales
+group by store_name;
+```
 
 ### Use database indices
 
