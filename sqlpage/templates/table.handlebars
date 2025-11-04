@@ -55,16 +55,13 @@
                             {{/each}}
                             {{#if ../edit_url}}<th class="_col_edit text-center">Edit</th>{{/if}}
                             {{#if ../delete_url}}<th class="_col_delete text-center">Delete</th>{{/if}}
-                            {{#if ../custom_actions}}
-                                {{#each ../custom_actions}}
-                                    <th class="_col_custom text-center">{{this.name}}</th>
-                                {{/each}}
-                            {{/if}}
-                            {{#if _sqlpage_actions}}
-                                {{#each _sqlpage_actions}}
-                                    <th class="_col_action text-center">{{this.name}}</th>
-                                {{/each}}
-                            {{/if}}
+                            {{#each (to_array ../custom_actions)}}
+                                <th class="_col_custom text-center">{{this.name}}</th>
+                            {{/each}}
+
+                            {{#each (to_array _sqlpage_actions)}}
+                                <th class="_col_action text-center">{{this.name}}</th>
+                            {{/each}}
                         </tr>
                         </thead>
                     <tbody class="table-tbody list">{{#delay}}</tbody>{{/delay}}
@@ -105,24 +102,21 @@
                                 </a>
                             </td>
                             {{/if}}
-                            {{#if ../custom_actions}}
-                                {{#each ../custom_actions}}
-                                <td class="align-middle _col_{{this.name}} text-center">
-                                    <a href="{{replace this.link '{id}' ../_sqlpage_id}}" class="align-middle link-secondary _col_{{this.name}}" data-action="{{this.name}}" title="{{default this.tooltip this.name}}">{{!Title property sets the tooltip text}}
-                                        {{~icon_img this.icon~}}
-                                    </a>
-                                </td>
-                                {{/each}}
-                            {{/if}}
-                            {{#if _sqlpage_actions}}
-                                {{#each _sqlpage_actions}}
-                                <td class="align-middle _col_{{this.name}} text-center">
-                                    <a href="{{replace this.link '{id}' ../_sqlpage_id}}" class="align-middle link-secondary _col_{{this.name}}" data-action="{{this.name}}" title="{{default this.tooltip this.name}}">
-                                        {{~icon_img this.icon~}}
-                                    </a>
-                                </td>
-                                {{/each}}
-                            {{/if}}
+                            {{#each (to_array ../custom_actions)}}
+                            <td class="align-middle _col_{{this.name}} text-center">
+                                <a href="{{replace this.link '{id}' ../_sqlpage_id}}" class="align-middle link-secondary _col_{{this.name}}" data-action="{{this.name}}" title="{{default this.tooltip this.name}}">{{!Title property sets the tooltip text}}
+                                    {{~icon_img this.icon~}}
+                                </a>
+                            </td>
+                            {{/each}}
+
+                            {{#each (to_array _sqlpage_actions)}}
+                            <td class="align-middle _col_{{this.name}} text-center">
+                                <a href="{{replace this.link '{id}' ../_sqlpage_id}}" class="align-middle link-secondary _col_{{this.name}}" data-action="{{this.name}}" title="{{default this.tooltip this.name}}">
+                                    {{~icon_img this.icon~}}
+                                </a>
+                            </td>
+                            {{/each}}
                     </tr>
                     {{!~ 
                         After this <tr> has been rendered, if this was a footer, we need to reopen a new <tbody> 

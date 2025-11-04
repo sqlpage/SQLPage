@@ -1022,7 +1022,9 @@ This is helpful if you want a more complex logic, for instance to disable a butt
 > You can leave blank spaces by including an object with only the `name` property.
 
 The table has a column of buttons, each button defined by the `_sqlpage_actions` column at the table level, and by the `_sqlpage_actions` property at the row level.
+
 ### `custom_actions` & `_sqlpage_actions` JSON properties.
+
 Each button is defined by the following properties:
 * `name`: sets the column header and the tooltip if no tooltip is provided,
 * `tooltip`: text to display when hovering over the button,
@@ -1037,14 +1039,12 @@ Each button is defined by the following properties:
         "component": "table",
         "edit_url": "/examples/show_variables.sql?action=edit&update_id={id}",
         "delete_url": "/examples/show_variables.sql?action=delete&delete_id={id}",
-        "custom_actions": [
-            {
+        "custom_actions": {
                 "name": "history",
                 "tooltip": "View Standard History",
                 "link": "/examples/show_variables.sql?action=history&standard_id={id}",
                 "icon": "history"
-            }
-        ]
+        }
     },
     {
         "name": "CalStd",
