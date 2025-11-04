@@ -243,7 +243,7 @@ impl HelperDef for IconImgHelper {
 
         write!(
             writer,
-            "<svg viewBox=\"0 0 24 24\" width=\"{size}\" height=\"{size}\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">{inner_content}</svg>"
+            r#"<svg viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{inner_content}</svg>"#
         )?;
         Ok(())
     }
