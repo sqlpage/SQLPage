@@ -220,32 +220,24 @@ INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', '
 # Building forms in SQL
 
-So, you have an SQL database, and would like to let users input data into it?
-The `form` component is what you are looking for.
-
-## Collecting data from users to your database
-
 The form component will display a series of input fields of various types, that can be filled in by the user.
 When the user submits the form, the data is posted to an SQL file specified in the `action` property.
 
 ## Handle Data with SQL
 
-User-entered data is posted to an SQL file, that will handle the data,
-and will be able to insert it into the database, search for it, format it, etc.
+The receiving SQL page will be able to handle the data,
+and insert it into the database, use it to perform a search, format it, update existing data, etc.
 
-For example, a value in a field named "x" 
-can be referenced as `:x` in the SQL query of the target page.
+A value in a field named "x" will be available as `:x` in the SQL query of the target page.
 
 ## Examples
 
-- **Data Entry Automation**: Forms for tasks like inventory management.
-- **Custom Report Builder**: Generate reports based on user-specified criteria.
-- **Database Management**: Update records or query data.
-- **Admin Panel**: Manage user roles and permissions.
-- **Data Analytics with SQL**: Collect data for analytics.
-- **SQL Query Parametrization**: Build and execute complex SQL queries that depend on user input.
-- **SQL CRUD Operations**: Perform Create, Read, Update, and Delete operations.
-- **Web SQL**: Integrate forms into web applications.
+ - [A multi-step form](https://github.com/sqlpage/SQLPage/tree/main/examples/forms-with-multiple-steps), guiding the user through a process without overwhelming them with a large form.
+ - [File upload form](https://github.com/sqlpage/SQLPage/tree/main/examples/image%20gallery%20with%20user%20uploads), letting users upload images to a gallery.
+ - [Rich text editor](https://github.com/sqlpage/SQLPage/tree/main/examples/rich-text-editor), letting users write text with bold, italics, links, images, etc.
+ - [Master-detail form](https://github.com/sqlpage/SQLPage/tree/main/examples/master-detail-forms), to edit a list of structured items.
+ - [Form with a variable number of fields](https://github.com/sqlpage/SQLPage/tree/main/examples/forms%20with%20a%20variable%20number%20of%20fields), when the fields are not known in advance.
+ - [Demo of all input types](/examples/form), showing all the input types supported by SQLPage.
 ');
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
