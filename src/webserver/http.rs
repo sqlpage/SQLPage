@@ -547,6 +547,8 @@ fn log_welcome_message(config: &AppConfig) {
                 "http://localhost:{port}\n\
             (also accessible from other devices using your IP address)"
             )
+        } else if ip.is_ipv6() {
+            format!("http://[{ip}]:{port}")
         } else {
             format!("http://{ip}:{port}")
         }
