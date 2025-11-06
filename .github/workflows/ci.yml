@@ -62,6 +62,7 @@ jobs:
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
         with:
           key: test-${{ matrix.database }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install PostgreSQL ODBC driver
         if: matrix.setup_odbc
         run: sudo apt-get install -y odbc-postgresql
