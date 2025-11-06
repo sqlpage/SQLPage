@@ -1485,7 +1485,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3147,9 +3147,9 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "orbclient"
-version = "0.3.48"
+version = "0.3.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba0b26cec2e24f08ed8bb31519a9333140a6599b867dac464bb150bdb796fd43"
+checksum = "247ad146e19b9437f8604c21f8652423595cf710ad108af40e77d3ae6e96b827"
 dependencies = [
  "libredox",
 ]
@@ -3766,7 +3766,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4293,8 +4293,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core-oldapi"
 version = "0.6.49"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "766096ef5d413c23b24b60fb9ac2393b0e85a5d3813c10942f78ae37fc96fa43"
+source = "git+https://github.com/sqlpage/sqlx-oldapi.git?branch=cursor%2Fdiscover-sql-server-named-instance-ports-82e1#35323786da0b75ec70677697acc634d695771e14"
 dependencies = [
  "ahash",
  "atoi",
@@ -4358,8 +4357,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros-oldapi"
 version = "0.6.49"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a21b389e2c67bb44f15d13b158257b9296bf69ff685ebc92ef742a36be7a1e0a"
+source = "git+https://github.com/sqlpage/sqlx-oldapi.git?branch=cursor%2Fdiscover-sql-server-named-instance-ports-82e1#35323786da0b75ec70677697acc634d695771e14"
 dependencies = [
  "dotenvy",
  "either",
@@ -4378,8 +4376,7 @@ dependencies = [
 [[package]]
 name = "sqlx-oldapi"
 version = "0.6.49"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5aff685c4e234d5c8845bf6ef741da8f4ba7f59735899f358be258be466b371"
+source = "git+https://github.com/sqlpage/sqlx-oldapi.git?branch=cursor%2Fdiscover-sql-server-named-instance-ports-82e1#35323786da0b75ec70677697acc634d695771e14"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -4388,8 +4385,7 @@ dependencies = [
 [[package]]
 name = "sqlx-rt-oldapi"
 version = "0.6.49"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04e5e9f3808c8188b4ddc4d6aea26787cab61999cb4cc4c57b77bbc4b57676f9"
+source = "git+https://github.com/sqlpage/sqlx-oldapi.git?branch=cursor%2Fdiscover-sql-server-named-instance-ports-82e1#35323786da0b75ec70677697acc634d695771e14"
 dependencies = [
  "once_cell",
  "tokio",
@@ -5025,7 +5021,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5101,15 +5097,6 @@ name = "windows-sys"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
-dependencies = [
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-sys"
-version = "0.59.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b"
 dependencies = [
  "windows-targets 0.52.6",
 ]

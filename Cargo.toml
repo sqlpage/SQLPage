@@ -18,7 +18,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.49", default-features = false, features = [
+sqlx = { package = "sqlx-oldapi", version = "0.6.49", default-features = false, git = "https://github.com/sqlpage/sqlx-oldapi.git", branch = "cursor/discover-sql-server-named-instance-ports-82e1", features = [
     "any",
     "runtime-tokio-rustls",
     "migrate",
