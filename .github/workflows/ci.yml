@@ -61,7 +61,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
         with:
-          shared-key: test-matrix
+          key: test-${{ matrix.database }}
       - name: Install PostgreSQL ODBC driver
         if: matrix.setup_odbc
         run: sudo apt-get install -y odbc-postgresql
