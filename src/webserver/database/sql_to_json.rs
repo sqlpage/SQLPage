@@ -7,13 +7,23 @@ use sqlx::any::{AnyColumn, AnyRow, AnyTypeInfo, AnyTypeInfoKind};
 use sqlx::Decode;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
+fn remove_double_underscore(value: &str) -> String {
+    let mut chars = value.chars();
+    chars.next();
+    chars.next();
+    chars.as_str().to_owned()
+}
+
 pub fn row_to_json(row: &AnyRow) -> Value {
     use Value::Object;
 
     let columns = row.columns();
     let mut map = Map::new();
     for col in columns {
-        let key = canonical_col_name(col);
+        let mut key = canonical_col_name(col);
+        if key.starts_with("__") {
+            key = remove_double_underscore(&key);
+        }
         let value: Value = sql_to_json(row, col);
         map = add_value_to_map(map, (key, value));
     }
@@ -533,7 +543,8 @@ mod tests {
                 42 as "col-with-dashes",
                 42 as "col with spaces",
                 42 as "_UNDERSCORE_PREFIX",
-                42 as "123_NUMBER_PREFIX"
+                42 as "123_NUMBER_PREFIX",
+                42 as "__SQL_KEYWORD"
         "#,
         )
         .fetch_one(&mut c)
@@ -553,7 +564,8 @@ mod tests {
                 "col-with-dashes": 42,
                 "col with spaces": 42,
                 "_underscore_prefix": 42,
-                "123_NUMBER_PREFIX": 42
+                "123_NUMBER_PREFIX": 42,
+                "sql_keyword": 42
             })
         } else {
             // Non-ODBC database - names remain as-is
@@ -565,7 +577,8 @@ mod tests {
                 "col-with-dashes": 42,
                 "col with spaces": 42,
                 "_UNDERSCORE_PREFIX": 42,
-                "123_NUMBER_PREFIX": 42
+                "123_NUMBER_PREFIX": 42,
+                "SQL_KEYWORD": 42,
             })
         };
 
