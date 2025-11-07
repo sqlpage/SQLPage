@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## v0.39.1 (unreleased)
+## v0.39.1 (2025-11-08)
  - More precise server timing tracking to debug performance issues
  - Fix missing server timing header in some cases
  - Implement nice error messages for some header-related errors such as invalid header values.
