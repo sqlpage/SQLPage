@@ -10,6 +10,8 @@
  - In the table component, allow simple objects in custom_actions instead of requiring arrays of objects.
  - Fatser icon loading. Previously, even a page containing a single icon required downloading and parsing a ~2MB file. This resulted in a delay where pages initially appeared with a blank space before icons appeared. Icons are now inlined inside pages and appear instantaneously.
  - Updated tabler icons to 3.35
+ - Fix inaccurate ODBC warnings
+ - Added support for Microsoft SQL Server named instances: `mssql://user:pass@localhost/db?instance_name=xxx`
  - Added a detailed [performance guide](https://sql-page.com/blog?post=Performance+Guide) to the docs.
 
 ## v0.39.0 (2025-10-28)
