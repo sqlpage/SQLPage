@@ -1,0 +1,3 @@
+sqlpage/sqlpage.json etc/sqlpage/
+sqlpage/templates/* etc/sqlpage/templates/
+sqlpage/migrations/* etc/sqlpage/migrations/

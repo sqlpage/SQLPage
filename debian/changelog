@@ -1,0 +1,8 @@
+sqlpage (0.38.0-beta.1-1) unstable; urgency=medium
+
+  * Initial Debian package release
+  * SQL-only webapp builder with support for multiple databases
+  * Includes systemd service configuration
+  * Support for SQLite, PostgreSQL, MySQL, MS SQL Server, and ODBC
+
+ -- SQLPage Contributors <contact@sql-page.com>  Thu, 02 Oct 2025 00:00:00 +0000
