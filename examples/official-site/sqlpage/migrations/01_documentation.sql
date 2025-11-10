@@ -220,32 +220,24 @@ INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', '
 # Building forms in SQL
 
-So, you have an SQL database, and would like to let users input data into it?
-The `form` component is what you are looking for.
-
-## Collecting data from users to your database
-
 The form component will display a series of input fields of various types, that can be filled in by the user.
 When the user submits the form, the data is posted to an SQL file specified in the `action` property.
 
 ## Handle Data with SQL
 
-User-entered data is posted to an SQL file, that will handle the data,
-and will be able to insert it into the database, search for it, format it, etc.
+The receiving SQL page will be able to handle the data,
+and insert it into the database, use it to perform a search, format it, update existing data, etc.
 
-For example, a value in a field named "x" 
-can be referenced as `:x` in the SQL query of the target page.
+A value in a field named "x" will be available as `:x` in the SQL query of the target page.
 
 ## Examples
 
-- **Data Entry Automation**: Forms for tasks like inventory management.
-- **Custom Report Builder**: Generate reports based on user-specified criteria.
-- **Database Management**: Update records or query data.
-- **Admin Panel**: Manage user roles and permissions.
-- **Data Analytics with SQL**: Collect data for analytics.
-- **SQL Query Parametrization**: Build and execute complex SQL queries that depend on user input.
-- **SQL CRUD Operations**: Perform Create, Read, Update, and Delete operations.
-- **Web SQL**: Integrate forms into web applications.
+ - [A multi-step form](https://github.com/sqlpage/SQLPage/tree/main/examples/forms-with-multiple-steps), guiding the user through a process without overwhelming them with a large form.
+ - [File upload form](https://github.com/sqlpage/SQLPage/tree/main/examples/image%20gallery%20with%20user%20uploads), letting users upload images to a gallery.
+ - [Rich text editor](https://github.com/sqlpage/SQLPage/tree/main/examples/rich-text-editor), letting users write text with bold, italics, links, images, etc.
+ - [Master-detail form](https://github.com/sqlpage/SQLPage/tree/main/examples/master-detail-forms), to edit a list of structured items.
+ - [Form with a variable number of fields](https://github.com/sqlpage/SQLPage/tree/main/examples/forms%20with%20a%20variable%20number%20of%20fields), when the fields are not known in advance.
+ - [Demo of all input types](/examples/form), showing all the input types supported by SQLPage.
 ');
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'form', * FROM (VALUES
     -- top level
@@ -276,7 +268,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('id', 'A unique identifier for the form, which can then be used to validate the form from a button outside of the form.', 'TEXT', TRUE, TRUE),
     ('auto_submit', 'Automatically submit the form when the user changes any of its fields, and remove the validation button.', 'BOOLEAN', TRUE, TRUE),
     -- item level
-    ('type', 'The type of input to use: text for a simple text field, textarea for a multi-line text input control, number to accept only numbers, checkbox, switch, or radio for a button that is part of a group specified in the ''name'' parameter, header for a form header, hidden for a value that will be submitted but not shown to the user. text by default.', 'TEXT', FALSE, TRUE),
+    ('type', 'Declares input control behavior and expected format. All HTML input types are supported (text, number, date, file, checkbox, radio, hidden, ...). SQLPage adds some custom types: textarea, switch, header. text by default. See https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input#input_types', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
@@ -1022,7 +1014,9 @@ This is helpful if you want a more complex logic, for instance to disable a butt
 > You can leave blank spaces by including an object with only the `name` property.
 
 The table has a column of buttons, each button defined by the `_sqlpage_actions` column at the table level, and by the `_sqlpage_actions` property at the row level.
+
 ### `custom_actions` & `_sqlpage_actions` JSON properties.
+
 Each button is defined by the following properties:
 * `name`: sets the column header and the tooltip if no tooltip is provided,
 * `tooltip`: text to display when hovering over the button,
@@ -1037,14 +1031,12 @@ Each button is defined by the following properties:
         "component": "table",
         "edit_url": "/examples/show_variables.sql?action=edit&update_id={id}",
         "delete_url": "/examples/show_variables.sql?action=delete&delete_id={id}",
-        "custom_actions": [
-            {
+        "custom_actions": {
                 "name": "history",
                 "tooltip": "View Standard History",
                 "link": "/examples/show_variables.sql?action=history&standard_id={id}",
                 "icon": "history"
-            }
-        ]
+        }
     },
     {
         "name": "CalStd",

@@ -75,7 +75,14 @@ select
                      group_concat(
                         'select ' || char(10) ||
                             (
-                                with t as (select * from json_tree(top.value)),
+                                with t as (
+                                    select *,
+                                      case type
+                                        when 'array' then json_array_length(value)>1
+                                        else false
+                                      end as is_arr
+                                    from json_tree(top.value)
+                                ),
                                 key_val as (select
                                         CASE t.type 
                                             WHEN 'integer' THEN t.atom
@@ -92,8 +99,8 @@ select
                                             ELSE parent.key
                                         END as key
                                     from t inner join t parent on parent.id = t.parent
-                                    where ((parent.fullkey = '$' and t.type != 'array') 
-                                        or (parent.type = 'array' and parent.path = '$'))
+                                    where ((parent.fullkey = '$' and not t.is_arr) 
+                                        or (parent.path = '$' and parent.is_arr))
                                 ),
                                 key_val_padding as (select
                                     CASE 

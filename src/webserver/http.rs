@@ -437,7 +437,6 @@ pub fn create_app(
                 .service(static_content::apexcharts_js())
                 .service(static_content::tomselect_js())
                 .service(static_content::css())
-                .service(static_content::icons())
                 .service(static_content::favicon())
                 .default_service(fn_service(main_handler)),
         )
@@ -548,6 +547,8 @@ fn log_welcome_message(config: &AppConfig) {
                 "http://localhost:{port}\n\
             (also accessible from other devices using your IP address)"
             )
+        } else if ip.is_ipv6() {
+            format!("http://[{ip}]:{port}")
         } else {
             format!("http://{ip}:{port}")
         }

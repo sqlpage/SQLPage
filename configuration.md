@@ -33,7 +33,7 @@ Here are the available configuration options and their default values:
 | `oidc_scopes`                                | openid email profile                                      | Space-separated list of [scopes](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) your app requests from the OIDC provider. |
 | `oidc_additional_trusted_audiences`          | unset                                                        | A list of additional audiences that are allowed in JWT tokens, beyond the client ID. When empty or unset, any additional audience is accepted. For increased security, set to an empty list `[]` to only allow the client ID as audience. |
 | `max_pending_rows`                            | 256                                                         | Maximum number of rendered rows that can be queued up in memory when a client is slow to receive them. |
-| `compress_responses`                          | true                                                        | When the client supports it, compress the http response body. This can save bandwidth and speed up page loading on slow connections, but can also increase CPU usage and cause rendering delays on pages that take time to render (because streaming responses are buffered for longer than necessary). |
+| `compress_responses`                          | false                                                        | When the client supports it, compress the http response body. This can save bandwidth and speed up page loading on slow connections, but can also increase CPU usage and cause rendering delays on pages that take time to render (because streaming responses are buffered for longer than necessary). |
 | `https_domain`                                |                                                             | Domain name to request a certificate for. Setting this parameter will automatically make SQLPage listen on port 443 and request an SSL certificate. The server will take a little bit longer to start the first time it has to request a certificate.  |
 | `https_certificate_email`                     | contact@<https_domain>                                      | The email address to use when requesting a certificate.                                                                                                                                                                                                |
 | `https_certificate_cache_dir`                 | ./sqlpage/https                                             | A writeable directory where to cache the certificates, so that SQLPage can serve https traffic immediately when it restarts.                                                                                                                           |
@@ -144,7 +144,7 @@ Example configuration:
 
 - **Microsoft Entra ID** (formerly Azure AD)
   - Documentation: https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app
-  - Set *oidc_issuer_url* to `https://login.microsoftonline.com/{tenant}/v2.0` 
+  - Set *oidc_issuer_url* to `https://login.microsoftonline.com/{tenant}/v2.0`
     - ([Find your tenant name](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc#find-your-apps-openid-configuration-document-uri))
 
 - **GitHub**
@@ -193,7 +193,7 @@ For instance, if you want to create a custom `my_component` component, that disp
 
 ## Directories
 
-SQLPage needs two important directories to work: the configuration directory, and the web root. 
+SQLPage needs two important directories to work: the configuration directory, and the web root.
 
 ### Configuration directory
 
@@ -255,7 +255,7 @@ This can be useful to clean up temporary tables,
 rollback transactions that were left open,
 or other resources that were created during the request.
 
-You can also use this script to close database connections that are 
+You can also use this script to close database connections that are
 in an undesirable state, such as being in a transaction that was left open.
 To close a connection, write a select statement that returns a single row
 with a single boolean column named `is_healthy`, and set it to false.

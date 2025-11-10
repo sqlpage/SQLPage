@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
 
 use crate::{app_config::AppConfig, utils::static_filename};
 use anyhow::Context as _;
@@ -67,7 +67,7 @@ pub fn register_all_helpers(h: &mut Handlebars<'_>, config: &AppConfig) {
     register_helper(h, "app_config", AppConfigHelper(config.clone()));
 
     // icon helper: generate an image with the specified icon
-    h.register_helper("icon_img", Box::new(IconImgHelper(site_prefix)));
+    h.register_helper("icon_img", Box::new(IconImgHelper));
     register_helper(h, "markdown", MarkdownHelper::new(config));
     register_helper(h, "buildinfo", buildinfo_helper as EH);
     register_helper(h, "typeof", typeof_helper as H);
@@ -209,8 +209,11 @@ impl CanHelp for AppConfigHelper {
     }
 }
 
-/// Generate an image with the specified icon. Struct Param is the site prefix
-struct IconImgHelper(String);
+pub static ICON_MAP: LazyLock<HashMap<&'static str, &'static str>> =
+    LazyLock::new(|| include!(concat!(env!("OUT_DIR"), "/icons.rs")).into());
+
+/// Generate an image with the specified icon.
+struct IconImgHelper;
 impl HelperDef for IconImgHelper {
     fn call<'reg: 'rc, 'rc>(
         &self,
@@ -221,20 +224,17 @@ impl HelperDef for IconImgHelper {
         writer: &mut dyn handlebars::Output,
     ) -> handlebars::HelperResult {
         let null = handlebars::JsonValue::Null;
-        let params = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
-        let name = match params[0] {
-            JsonValue::String(s) => s,
-            other => {
-                log::debug!("icon_img: {other:?} is not an icon name, not rendering anything");
-                return Ok(());
-            }
+        let [name, size] = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
+        let size = size.as_u64().unwrap_or(24);
+        let content = name.as_str().and_then(|name| ICON_MAP.get(name));
+        let Some(&inner_content) = content else {
+            log::warn!("icon_img: icon {name} not found");
+            return Ok(());
         };
-        let size = params[1].as_u64().unwrap_or(24);
+
         write!(
             writer,
-            "<svg width={size} height={size}><use href=\"{}{}#tabler-{name}\" /></svg>",
-            self.0,
-            static_filename!("tabler-icons.svg")
+            r#"<svg viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{inner_content}</svg>"#
         )?;
         Ok(())
     }

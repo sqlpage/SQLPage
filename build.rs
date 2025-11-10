@@ -22,7 +22,10 @@ async fn main() {
     for h in [
         spawn(download_deps(c.clone(), "sqlpage.js")),
         spawn(download_deps(c.clone(), "sqlpage.css")),
-        spawn(download_deps(c.clone(), "tabler-icons.svg")),
+        spawn(download_tabler_icons(
+            c.clone(),
+            "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.35.0/dist/tabler-sprite.svg",
+        )),
         spawn(download_deps(c.clone(), "apexcharts.js")),
         spawn(download_deps(c.clone(), "tomselect.js")),
         spawn(download_deps(c.clone(), "favicon.svg")),
@@ -171,6 +174,35 @@ fn make_url_path(url: &str) -> PathBuf {
         "_",
     );
     sqlpage_artefacts.join(filename)
+}
+
+async fn download_tabler_icons(client: Rc<awc::Client>, sprite_url: &str) {
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let icon_map_path = out_dir.join("icons.rs");
+    let mut sprite_content = Vec::with_capacity(3 * 1024 * 1024);
+    copy_url_to_opened_file(&client, sprite_url, &mut sprite_content).await;
+    let mut file = File::create(icon_map_path).unwrap();
+    file.write_all(b"[").unwrap();
+    extract_icons_from_sprite(&sprite_content, |name, content| {
+        writeln!(file, "({name:?}, r#\"{content}\"#),").unwrap();
+    });
+    file.write_all(b"]").unwrap();
+}
+
+fn extract_icons_from_sprite(sprite_content: &[u8], mut callback: impl FnMut(&str, &str)) {
+    let mut sprite_str = std::str::from_utf8(sprite_content).unwrap();
+    fn take_between<'a>(s: &mut &'a str, start: &str, end: &str) -> Option<&'a str> {
+        let start_index = s.find(start)?;
+        let end_index = s[start_index + start.len()..].find(end)?;
+        let result = &s[start_index + start.len()..][..end_index];
+        *s = &s[start_index + start.len() + end_index + end.len()..];
+        Some(result)
+    }
+    while let Some(mut symbol_tag) = take_between(&mut sprite_str, "<symbol", "</symbol>") {
+        let id = take_between(&mut symbol_tag, "id=\"tabler-", "\"").expect("id not found");
+        let content_start = symbol_tag.find('>').unwrap() + 1;
+        callback(id, &symbol_tag[content_start..]);
+    }
 }
 
 /// On debian-based linux distributions, odbc drivers are installed in /usr/lib/<target>-linux-gnu/odbc

@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.39.0"
+version = "0.39.1"
 edition = "2021"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -18,7 +18,7 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.49", default-features = false, features = [
+sqlx = { package = "sqlx-oldapi", version = "0.6.50", default-features = false, features = [
     "any",
     "runtime-tokio-rustls",
     "migrate",
