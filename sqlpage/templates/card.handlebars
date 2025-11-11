@@ -38,7 +38,9 @@
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
                 {{#if top_image}}
-                    <img src="{{top_image}}" class="card-img-top" />
+                    <img src="{{top_image}}"
+                        class="card-img-top{{#if image_height}} card-img-top-constrained mx-auto{{/if}}"
+                        {{#if image_height}}style="--sqlpage-card-image-height: {{image_height}};"{{/if}} />
                 {{/if}}
                 {{#if color}}
                     {{#if (not embed)}}

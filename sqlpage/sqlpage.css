@@ -22,6 +22,17 @@ td > p {
   margin-bottom: 0 !important;
 }
 
+.card-img-top-constrained {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: var(--sqlpage-card-image-height, none);
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  object-fit: scale-down;
+}
+
 .text-secondary a {
   color: inherit;
   text-decoration: underline;
