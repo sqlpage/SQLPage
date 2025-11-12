@@ -1,11 +1,13 @@
 use crate::utils::add_value_to_map;
 use crate::webserver::database::blob_to_data_url;
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, FixedOffset, NaiveDateTime};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime};
 use serde_json::{self, Map, Value};
 use sqlx::any::{AnyColumn, AnyRow, AnyTypeInfo, AnyTypeInfoKind};
-use sqlx::Decode;
+use sqlx::postgres::types::PgRange;
+use sqlx::postgres::PgValueRef;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
+use sqlx::{Decode, Type};
 
 pub fn row_to_json(row: &AnyRow) -> Value {
     use Value::Object;
@@ -18,20 +20,6 @@ pub fn row_to_json(row: &AnyRow) -> Value {
         map = add_value_to_map(map, (key, value));
     }
     Object(map)
-}
-
-fn is_postgres_range_type(type_name: &str) -> bool {
-    const RANGE_TYPES: [&str; 6] = [
-        "int4range",
-        "int8range",
-        "numrange",
-        "tsrange",
-        "tstzrange",
-        "daterange",
-    ];
-    RANGE_TYPES
-        .iter()
-        .any(|candidate| type_name.eq_ignore_ascii_case(candidate))
 }
 
 fn canonical_col_name(col: &AnyColumn) -> String {
@@ -78,6 +66,25 @@ fn decode_raw<'a, T: Decode<'a, sqlx::any::Any> + Default>(
             let type_name = std::any::type_name::<T>();
             log::error!("Failed to decode {type_name} value: {e}");
             T::default()
+        }
+    }
+}
+
+fn decode_pg_range<'r, T>(raw_value: sqlx::any::AnyValueRef<'r>) -> Value
+where
+    T: std::fmt::Display
+        + Type<sqlx::postgres::Postgres>
+        + for<'a> sqlx::Decode<'a, sqlx::postgres::Postgres>,
+{
+    let Ok(pg_val): Result<PgValueRef<'r>, _> = raw_value.try_into() else {
+        log::error!("Only postgres range values are supported");
+        return Value::Null;
+    };
+    match <PgRange<T> as sqlx::Decode<'r, sqlx::postgres::Postgres>>::decode(pg_val) {
+        Ok(pg_range) => pg_range.to_string().into(),
+        Err(e) => {
+            log::error!("Failed to decode postgres range value: {e}");
+            Value::Null
         }
     }
 }
@@ -138,7 +145,12 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
         "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => {
             blob_to_data_url::vec_to_data_uri_value(&decode_raw::<Vec<u8>>(raw_value))
         }
-        _ if is_postgres_range_type(type_name) => decode_raw::<String>(raw_value).into(),
+        "INT4RANGE" => decode_pg_range::<i32>(raw_value),
+        "INT8RANGE" => decode_pg_range::<i64>(raw_value),
+        "NUMRANGE" => decode_pg_range::<BigDecimal>(raw_value),
+        "DATERANGE" => decode_pg_range::<NaiveDate>(raw_value),
+        "TSRANGE" => decode_pg_range::<NaiveDateTime>(raw_value),
+        "TSTZRANGE" => decode_pg_range::<DateTime<FixedOffset>>(raw_value),
         // Deserialize as a string by default
         _ => decode_raw::<String>(raw_value).into(),
     }
@@ -239,8 +251,8 @@ mod tests {
                 '[1,5)'::INT4RANGE as int4range,
                 '[1,5]'::INT8RANGE as int8range,
                 '[1.5,4.5)'::NUMRANGE as numrange,
-                '[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")'::TSRANGE as tsrange,
-                '[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")'::TSTZRANGE as tstzrange,
+                -- '[2024-11-12 01:02:03,2024-11-12 23:00:00)'::TSRANGE as tsrange,
+                -- '[2024-11-12 01:02:03+01:00,2024-11-12 23:00:00+00:00)'::TSTZRANGE as tstzrange,
                 '[2024-11-12,2024-11-13)'::DATERANGE as daterange
             ",
         )
@@ -272,10 +284,10 @@ mod tests {
                 "blob_data": "data:application/octet-stream;base64,aGVsbG8gd29ybGQ=",
                 "uuid": "550e8400-e29b-41d4-a716-446655440000",
                 "int4range": "[1,5)",
-                "int8range": "[1,5]",
+                "int8range": "[1,6)",
                 "numrange": "[1.5,4.5)",
-                "tsrange": "[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")",
-                "tstzrange": "[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")",
+                //"tsrange": "[2024-11-12 01:02:03,2024-11-12 23:00:00)", // todo: bug in sqlx datetime range parsing
+                //"tstzrange": "[\"2024-11-12 02:00:00 +01:00\",\"2024-11-12 23:00:00 +00:00\")", // todo: tz info is lost in sqlx
                 "daterange": "[2024-11-12,2024-11-13)"
             }),
         );
@@ -331,8 +343,8 @@ mod tests {
         let row = sqlx::query(
             "SELECT
                 '[1,5)'::INT4RANGE as int4range,
-                '[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")'::TSRANGE as tsrange,
-                '[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")'::TSTZRANGE as tstzrange,
+                '[2024-11-12 01:02:03,2024-11-12 23:00:00)'::TSRANGE as tsrange,
+                '[2024-11-12 01:02:03+01:00,2024-11-12 23:00:00+00:00)'::TSTZRANGE as tstzrange,
                 '[2024-11-12,2024-11-13)'::DATERANGE as daterange
             where $1",
         )
@@ -344,8 +356,8 @@ mod tests {
             &row_to_json(&row),
             &serde_json::json!({
                 "int4range": "[1,5)",
-                "tsrange": "[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")",
-                "tstzrange": "[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")",
+                "tsrange": "[2024-11-12 01:02:03,2024-11-12 23:00:00)",
+                "tstzrange": "[2024-11-12 00:02:03 +00:00,2024-11-12 23:00:00 +00:00)", // todo: tz info is lost in sqlx
                 "daterange": "[2024-11-12,2024-11-13)"
             }),
         );
