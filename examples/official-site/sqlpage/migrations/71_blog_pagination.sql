@@ -3,7 +3,7 @@ INSERT INTO blog_posts (title, description, icon, created_at, content)
 VALUES
     (
         'How to use the pagination component',
-        'Concrete advice on how to make your SQLPage webapp fast',
+        'A tutorial for using the pagination component',
         'sailboat-2',
         '2025-11-10',
         '
@@ -62,10 +62,11 @@ We can now read and display the data based on the active page. To do this, we si
 SELECT 
     ''table'' as component
 SELECT
-    AlbumId AS id, 
-    Title AS title 
+    user_id AS id, 
+    last_name AS "Last name",
+    first_name AS "First name" 
 FROM
-    album
+    users
 LIMIT CAST($MAX_RECORD_PER_PAGE AS INTEGER)
 OFFSET (CAST($page AS INTEGER) - 1) * CAST($MAX_RECORD_PER_PAGE AS INTEGER);
 ```
