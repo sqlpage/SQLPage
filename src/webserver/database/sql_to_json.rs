@@ -20,6 +20,20 @@ pub fn row_to_json(row: &AnyRow) -> Value {
     Object(map)
 }
 
+fn is_postgres_range_type(type_name: &str) -> bool {
+    const RANGE_TYPES: [&str; 6] = [
+        "int4range",
+        "int8range",
+        "numrange",
+        "tsrange",
+        "tstzrange",
+        "daterange",
+    ];
+    RANGE_TYPES
+        .iter()
+        .any(|candidate| type_name.eq_ignore_ascii_case(candidate))
+}
+
 fn canonical_col_name(col: &AnyColumn) -> String {
     // Some databases fold all unquoted identifiers to uppercase but SQLPage uses lowercase property names
     if matches!(col.type_info().0, AnyTypeInfoKind::Odbc(_))
@@ -124,6 +138,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
         "BLOB" | "BYTEA" | "FILESTREAM" | "VARBINARY" | "BIGVARBINARY" | "BINARY" | "IMAGE" => {
             blob_to_data_url::vec_to_data_uri_value(&decode_raw::<Vec<u8>>(raw_value))
         }
+        _ if is_postgres_range_type(type_name) => decode_raw::<String>(raw_value).into(),
         // Deserialize as a string by default
         _ => decode_raw::<String>(raw_value).into(),
     }
@@ -220,7 +235,13 @@ mod tests {
                 justify_interval(interval '1 year 2 months 3 days') as justified_interval,
                 1234.56::MONEY as money_val,
                 '\\x68656c6c6f20776f726c64'::BYTEA as blob_data,
-                '550e8400-e29b-41d4-a716-446655440000'::UUID as uuid
+                '550e8400-e29b-41d4-a716-446655440000'::UUID as uuid,
+                '[1,5)'::INT4RANGE as int4range,
+                '[1,5]'::INT8RANGE as int8range,
+                '[1.5,4.5)'::NUMRANGE as numrange,
+                '[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")'::TSRANGE as tsrange,
+                '[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")'::TSTZRANGE as tstzrange,
+                '[2024-11-12,2024-11-13)'::DATERANGE as daterange
             ",
         )
         .fetch_one(&mut c)
@@ -249,7 +270,13 @@ mod tests {
                 "justified_interval": "1 year 2 mons 3 days",
                 "money_val": "$1,234.56",
                 "blob_data": "data:application/octet-stream;base64,aGVsbG8gd29ybGQ=",
-                "uuid": "550e8400-e29b-41d4-a716-446655440000"
+                "uuid": "550e8400-e29b-41d4-a716-446655440000",
+                "int4range": "[1,5)",
+                "int8range": "[1,5]",
+                "numrange": "[1.5,4.5)",
+                "tsrange": "[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")",
+                "tstzrange": "[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")",
+                "daterange": "[2024-11-12,2024-11-13)"
             }),
         );
         Ok(())
@@ -290,6 +317,36 @@ mod tests {
                 "money_val": "", // TODO: fix this bug: https://github.com/sqlpage/SQLPage/issues/983
                 "blob_data": "data:application/octet-stream;base64,dGVzdA==",
                 "uuid": "550e8400-e29b-41d4-a716-446655440000",
+            }),
+        );
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_postgres_prepared_range_types() -> anyhow::Result<()> {
+        let Some(db_url) = db_specific_test("postgres") else {
+            return Ok(());
+        };
+        let mut c = sqlx::AnyConnection::connect(&db_url).await?;
+        let row = sqlx::query(
+            "SELECT
+                '[1,5)'::INT4RANGE as int4range,
+                '[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")'::TSRANGE as tsrange,
+                '[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")'::TSTZRANGE as tstzrange,
+                '[2024-11-12,2024-11-13)'::DATERANGE as daterange
+            where $1",
+        )
+        .bind(true)
+        .fetch_one(&mut c)
+        .await?;
+
+        expect_json_object_equal(
+            &row_to_json(&row),
+            &serde_json::json!({
+                "int4range": "[1,5)",
+                "tsrange": "[\"2024-11-12 00:00:00\",\"2024-11-12 23:00:00\")",
+                "tstzrange": "[\"2024-11-12 00:00:00+00\",\"2024-11-12 23:00:00+00\")",
+                "daterange": "[2024-11-12,2024-11-13)"
             }),
         );
         Ok(())
