@@ -1,0 +1,20 @@
+<div class="color-swatch-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+    {{#each_row}}
+    <div class="color-swatch-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem; backdrop-filter: blur(10px);">
+        <div class="color-preview" style="width: 100%; height: 120px; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); background: {{#if hex}}{{hex}}{{else}}var(--{{css_var}}){{/if}};">
+        </div>
+        <div class="color-info">
+            <h4 style="color: #ffffff; font-size: 1.1rem; margin-bottom: 0.5rem; font-weight: 600;">{{name}}</h4>
+            {{#if hex}}
+            <div style="font-family: monospace; font-size: 0.9rem; color: rgba(255, 255, 255, 0.8); margin-bottom: 0.25rem;">{{hex}}</div>
+            {{/if}}
+            {{#if css_var}}
+            <div style="font-family: monospace; font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 0.25rem;">{{css_var}}</div>
+            {{/if}}
+            {{#if description}}
+            <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); margin-top: 0.5rem; line-height: 1.4;">{{description}}</p>
+            {{/if}}
+        </div>
+    </div>
+    {{/each_row}}
+</div>

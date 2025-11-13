@@ -1,0 +1,18 @@
+<div style="display: flex; flex-direction: column; gap: 2rem; margin: 2rem 0;">
+{{#each_row}}
+<div class="typography-sample" style="padding: 2rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;">
+    {{#if title}}
+    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">{{title}}</div>
+    {{/if}}
+    <div style="font-family: {{font_family}}; font-size: {{font_size}}; font-weight: {{font_weight}}; line-height: {{line_height}}; color: {{text_color}}; letter-spacing: {{letter_spacing}}; margin-bottom: 1rem;">
+        {{sample_text}}
+    </div>
+    {{#if description}}
+    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); line-height: 1.5;">{{description}}</div>
+    {{/if}}
+    {{#if usage}}
+    <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.5); margin-top: 0.5rem; font-style: italic;">Use for: {{usage}}</div>
+    {{/if}}
+</div>
+{{/each_row}}
+</div>
