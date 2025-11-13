@@ -38,7 +38,9 @@
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
                 {{#if top_image}}
-                    <img src="{{top_image}}" class="card-img-top" />
+                    <img src="{{top_image}}"
+                        class="card-img-top{{#if image_height}} mw-100 w-auto h-auto mx-auto{{/if}}"
+                        {{#if image_height}}style="max-height: {{image_height}}px;"{{/if}} />
                 {{/if}}
                 {{#if color}}
                     {{#if (not embed)}}

@@ -1,7 +1,9 @@
 # CHANGELOG.md
 
-## unrelease
+## unreleased
  - add support for postgres range types
+ - Added an `image_height` property to the card component so top images can be capped without stretching or upscaling.
+
 
 ## v0.39.1 (2025-11-08)
  - More precise server timing tracking to debug performance issues
