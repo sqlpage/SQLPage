@@ -489,6 +489,13 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         return Ok(());
     }
     let mut server = HttpServer::new(factory);
+    #[cfg_attr(
+        not(target_family = "unix"),
+        expect(
+            clippy::redundant_else,
+            reason = "Conditional compilation produces redundant else when not on unix targets."
+        )
+    )]
     if let Some(unix_socket) = &config.unix_socket {
         log::info!(
             "Will start HTTP server on UNIX socket: \"{}\"",
