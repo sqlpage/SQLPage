@@ -15,6 +15,8 @@ This component offers many options, and I recommend consulting its documentation
 
 Of course, this component only handles its display and does not implement any logic for data processing or state changes. In this tutorial, we will implement a complete example of using the pagination component with a SQLite database, but the code should work without modification (or with very little modification) with any relational database management system (RDBMS).
 
+> This article serves as a tutorial on the pagination component, rather than an advanced guide on paginated data retrieval from a database. The document employs a straightforward approach using the LIMIT and OFFSET instructions. This approach is interesting only for datasets that are big enough not to be realistically loadable on a single webpage, yet small enough for being queryable with OFFSET...LIMIT.
+
 ## Initialization
 
 We first need to define two constants that indicate the maximum number of rows per page and the maximum number of pages that the component should display.
@@ -36,7 +38,7 @@ It is possible that the number of rows in the table is greater than the estimate
 ```
 SET pages_count = (
     CASE 
-        WHEN (CAST($pages_count AS INTEGER) * CAST($MAX_RECORD_PER_PAGE AS INTEGER)) = CAST($records_count AS INTEGER) THEN $pages_count 
+        WHEN MOD(CAST($records_count AS INTEGER),CAST($MAX_RECORD_PER_PAGE AS INTEGER)) = 0 THEN $pages_count 
         ELSE (CAST($pages_count AS INTEGER) + 1) 
     END
 );
