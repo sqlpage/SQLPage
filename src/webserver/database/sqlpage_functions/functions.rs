@@ -548,63 +548,6 @@ async fn request_method(request: &RequestInfo) -> String {
     request.method.to_string()
 }
 
-fn parse_run_sql_variables(raw: &str) -> anyhow::Result<ParamMap> {
-    let value: serde_json::Value =
-        serde_json::from_str(raw).with_context(|| "run_sql: unable to parse variables as JSON")?;
-    let object = value.as_object().ok_or_else(|| {
-        anyhow!(
-            "run_sql: the second argument must be a JSON object whose values are strings or arrays of strings. Example: {{\"name\": \"Alice\", \"store_ids\": [\"1\", \"2\"]}}"
-        )
-    })?;
-    let mut parsed = ParamMap::with_capacity(object.len());
-    for (key, value) in object {
-        let entry = match value {
-            serde_json::Value::String(s) => SingleOrVec::Single(s.clone()),
-            serde_json::Value::Array(values) => {
-                let mut strings = Vec::with_capacity(values.len());
-                for (idx, item) in values.iter().enumerate() {
-                    let Some(string_value) = item.as_str() else {
-                        anyhow::bail!(
-                            "run_sql: variable {key:?} must be an array of strings. Item at index {idx} is {item}"
-                        );
-                    };
-                    strings.push(string_value.to_owned());
-                }
-                SingleOrVec::Vec(strings)
-            }
-            _ => {
-                anyhow::bail!(
-                    "run_sql: variable {key:?} must be a string or an array of strings, but found {value}"
-                );
-            }
-        };
-        parsed.insert(key.clone(), entry);
-    }
-    Ok(parsed)
-}
-
-#[test]
-fn parse_run_sql_variables_accepts_strings_and_arrays() {
-    let vars =
-        parse_run_sql_variables(r#"{"city":"Paris","ids":["1","2"]}"#).expect("valid variables");
-    assert_eq!(
-        vars.get("city"),
-        Some(&SingleOrVec::Single("Paris".to_string()))
-    );
-    assert_eq!(
-        vars.get("ids"),
-        Some(&SingleOrVec::Vec(vec!["1".to_string(), "2".to_string()]))
-    );
-}
-
-#[test]
-fn parse_run_sql_variables_rejects_invalid_values() {
-    let err = parse_run_sql_variables(r#"{"city":1}"#).expect_err("should fail");
-    let err_string = err.to_string();
-    assert!(err_string.contains(r#"variable "city""#));
-    assert!(err_string.contains("string or an array of strings"));
-}
-
 async fn run_sql<'a>(
     request: &'a RequestInfo,
     db_connection: &mut DbConn,
@@ -628,7 +571,17 @@ async fn run_sql<'a>(
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let mut tmp_req = if let Some(variables) = variables {
         let mut tmp_req = request.clone_without_variables();
-        let variables = parse_run_sql_variables(&variables)?;
+        let mut deserializer = serde_json::Deserializer::from_str(&variables);
+        let variables: ParamMap =
+            serde_path_to_error::deserialize(&mut deserializer).map_err(|err| {
+                let path = err.path().to_string();
+                let context = if path.is_empty() {
+                    "run_sql: unable to parse the variables argument".to_string()
+                } else {
+                    format!("run_sql: invalid value for the variables argument at {path}")
+                };
+                anyhow::Error::new(err.into_inner()).context(context)
+            })?;
         tmp_req.get_variables = variables;
         tmp_req
     } else {

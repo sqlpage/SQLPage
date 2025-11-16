@@ -226,11 +226,39 @@ async fn render_sql(
     resp_recv.await.map_err(ErrorInternalServerError)
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
-#[serde(untagged)]
+#[derive(Debug, serde::Serialize, PartialEq, Clone)]
 pub enum SingleOrVec {
     Single(String),
     Vec(Vec<String>),
+}
+
+impl<'de> serde::Deserialize<'de> for SingleOrVec {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        match value {
+            serde_json::Value::String(s) => Ok(SingleOrVec::Single(s)),
+            serde_json::Value::Array(values) => {
+                let mut strings = Vec::with_capacity(values.len());
+                for (idx, item) in values.into_iter().enumerate() {
+                    match item {
+                        serde_json::Value::String(s) => strings.push(s),
+                        other => {
+                            return Err(D::Error::custom(format!(
+                                "expected an array of strings, but item at index {idx} is {other}"
+                            )))
+                        }
+                    }
+                }
+                Ok(SingleOrVec::Vec(strings))
+            }
+            other => Err(D::Error::custom(format!(
+                "expected a string or an array of strings, but found {other}"
+            ))),
+        }
+    }
 }
 
 impl std::fmt::Display for SingleOrVec {
@@ -263,6 +291,7 @@ impl SingleOrVec {
             }
         }
     }
+
     fn take_vec(&mut self) -> Vec<String> {
         match self {
             SingleOrVec::Single(x) => vec![mem::take(x)],
@@ -279,6 +308,31 @@ impl SingleOrVec {
     }
 }
 
+#[cfg(test)]
+mod single_or_vec_tests {
+    use super::SingleOrVec;
+
+    #[test]
+    fn deserializes_string_and_array_values() {
+        let single: SingleOrVec = serde_json::from_str(r#""hello""#).unwrap();
+        assert_eq!(single, SingleOrVec::Single("hello".to_string()));
+        let array: SingleOrVec = serde_json::from_str(r#"["a","b"]"#).unwrap();
+        assert_eq!(
+            array,
+            SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()])
+        );
+    }
+
+    #[test]
+    fn rejects_non_string_items() {
+        let err = serde_json::from_str::<SingleOrVec>(r#"["a", 1]"#).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("expected an array of strings, but item at index 1 is 1"),
+            "{err}"
+        );
+    }
+}
 async fn process_sql_request(
     req: &mut ServiceRequest,
     sql_path: PathBuf,
