@@ -34,6 +34,7 @@ use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
+use serde::de::Error as _;
 use std::borrow::Cow;
 use std::mem;
 use std::path::PathBuf;

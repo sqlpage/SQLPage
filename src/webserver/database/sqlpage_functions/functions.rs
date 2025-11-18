@@ -571,17 +571,14 @@ async fn run_sql<'a>(
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let mut tmp_req = if let Some(variables) = variables {
         let mut tmp_req = request.clone_without_variables();
-        let mut deserializer = serde_json::Deserializer::from_str(&variables);
-        let variables: ParamMap =
-            serde_path_to_error::deserialize(&mut deserializer).map_err(|err| {
-                let path = err.path().to_string();
-                let context = if path.is_empty() {
-                    "run_sql: unable to parse the variables argument".to_string()
-                } else {
-                    format!("run_sql: invalid value for the variables argument at {path}")
-                };
-                anyhow::Error::new(err.into_inner()).context(context)
-            })?;
+        let variables: ParamMap = serde_json::from_str(&variables).map_err(|err| {
+            let context = format!(
+                "run_sql: unable to parse the variables argument (line {}, column {})",
+                err.line(),
+                err.column()
+            );
+            anyhow::Error::new(err).context(context)
+        })?;
         tmp_req.get_variables = variables;
         tmp_req
     } else {
