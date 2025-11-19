@@ -37,5 +37,7 @@ rustup target add "$TARGET"
 {
     echo "export TARGET='$TARGET'"
     echo "export LINKER='$LINKER'"
-    [ -n "$BINDGEN_EXTRA_CLANG_ARGS" ] && printf "export BINDGEN_EXTRA_CLANG_ARGS=%q\n" "$BINDGEN_EXTRA_CLANG_ARGS"
+    if [ -n "$BINDGEN_EXTRA_CLANG_ARGS" ]; then
+        printf "export BINDGEN_EXTRA_CLANG_ARGS=%q\n" "$BINDGEN_EXTRA_CLANG_ARGS"
+    fi
 } > /tmp/build-env.sh
