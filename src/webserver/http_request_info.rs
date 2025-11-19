@@ -278,8 +278,8 @@ async fn is_file_field_empty(
 
 #[cfg(test)]
 mod test {
-    use super::super::http::SingleOrVec;
     use super::*;
+    use crate::webserver::single_or_vec::SingleOrVec;
     use crate::{app_config::AppConfig, webserver::server_timing::ServerTiming};
     use actix_web::{http::header::ContentType, test::TestRequest};
 

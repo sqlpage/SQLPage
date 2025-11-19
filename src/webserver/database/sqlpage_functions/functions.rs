@@ -4,9 +4,9 @@ use crate::webserver::{
         blob_to_data_url::vec_to_data_uri_with_mime, execute_queries::DbConn,
         sqlpage_functions::url_parameter_deserializer::URLParameters,
     },
-    http::SingleOrVec,
     http_client::make_http_client,
     request_variables::ParamMap,
+    single_or_vec::SingleOrVec,
     ErrorWithStatus,
 };
 use anyhow::{anyhow, Context};
@@ -571,7 +571,14 @@ async fn run_sql<'a>(
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let mut tmp_req = if let Some(variables) = variables {
         let mut tmp_req = request.clone_without_variables();
-        let variables: ParamMap = serde_json::from_str(&variables)?;
+        let variables: ParamMap = serde_json::from_str(&variables).map_err(|err| {
+            let context = format!(
+                "run_sql: unable to parse the variables argument (line {}, column {})",
+                err.line(),
+                err.column()
+            );
+            anyhow::Error::new(err).context(context)
+        })?;
         tmp_req.get_variables = variables;
         tmp_req
     } else {

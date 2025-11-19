@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use super::http::SingleOrVec;
+use crate::webserver::single_or_vec::SingleOrVec;
 
 pub type ParamMap = HashMap<String, SingleOrVec>;
 

@@ -15,8 +15,8 @@ use super::sql::{
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
 use crate::webserver::database::sql_to_json::row_to_string;
-use crate::webserver::http::SingleOrVec;
 use crate::webserver::http_request_info::RequestInfo;
+use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::syntax_tree::{extract_req_param, StmtParam};
 use super::{error_highlighting::display_db_error, Database, DbItem};
