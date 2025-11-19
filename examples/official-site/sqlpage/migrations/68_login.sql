@@ -30,7 +30,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('forgot_password_text','A text for the link allowing the user to reset their password. If the text is empty, the link is not displayed.','TEXT',TRUE,TRUE),
     ('forgot_password_link','The link to the page allowing the user to reset their password.','TEXT',TRUE,TRUE),
     ('remember_me_text','A text for the option allowing the user to request the preservation of their identity. If the text is empty, the option is not displayed.','TEXT',TRUE,TRUE),
-    ('footer','A text placed at the bottom of the authentication form.','TEXT',TRUE,TRUE),
+    ('footer','A text placed at the bottom of the authentication form. If both footer and footer_md are specified, footer takes precedence.','TEXT',TRUE,TRUE),
     ('footer_md','A markdown text placed at the bottom of the authentication form. Useful for creating links to other pages (creating a new account, contacting technical support, etc.).','TEXT',TRUE,TRUE),
     ('validate','The text to display in the button at the bottom of the form that submits the values.','TEXT',TRUE,TRUE),
     ('validate_color','The color of the button at the bottom of the form that submits the values. Omit this property to use the default color.','COLOR',TRUE,TRUE),
