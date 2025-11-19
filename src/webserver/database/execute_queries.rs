@@ -258,9 +258,13 @@ fn vars_and_name<'a, 'b>(
     variable: &'b StmtParam,
 ) -> anyhow::Result<(std::cell::RefMut<'a, HashMap<String, SingleOrVec>>, &'b str)> {
     match variable {
-        StmtParam::PostOrGet(name) | StmtParam::Get(name) | StmtParam::Post(name) => {
+        StmtParam::PostOrGet(name) | StmtParam::Get(name) => {
+            if request.post_variables.contains_key(name) {
+                log::warn!("Deprecation warning! Setting the value of ${name}, but there is already a form field named :{name}. This will stop working soon. Please rename the variable, or use :{name} directly if you intended to overwrite the posted form field value.");
+            }
             Ok((request.set_variables.borrow_mut(), name))
         }
+        StmtParam::Post(name) => Ok((request.set_variables.borrow_mut(), name)),
         _ => Err(anyhow!(
             "Only GET and POST variables can be set, not {variable:?}"
         )),
