@@ -25,6 +25,8 @@
      - `sqlpage.variables('set')` returns only user-defined SET variables as JSON
      - `sqlpage.variables()` returns all variables merged together, with SET variables taking precedence
    - **Deprecation warnings**: Using `$var` when both a URL parameter and POST parameter exist with the same name now shows a warning. In a future version, you'll need to explicitly choose between `$var` (URL) and `:var` (POST).
+ - Improved performance of `sqlpage.run_sql`.
+   - On a simple test that just runs 4 run_sql calls, the new version is about 2.7x faster (15,708 req/s vs 5,782 req/s) with lower latency (0.637 ms vs 1.730 ms per request).
  - add support for postgres range types
 
 ## v0.39.1 (2025-11-08)
