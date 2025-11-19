@@ -569,8 +569,8 @@ async fn run_sql<'a>(
         )
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
-    let tmp_req = request.clone_without_variables();
-    if let Some(variables) = variables {
+    let tmp_req = if let Some(variables) = variables {
+        let tmp_req = request.clone_without_variables();
         let variables: ParamMap = serde_json::from_str(&variables).map_err(|err| {
             let context = format!(
                 "run_sql: unable to parse the variables argument (line {}, column {})",
@@ -580,8 +580,10 @@ async fn run_sql<'a>(
             anyhow::Error::new(err).context(context)
         })?;
         tmp_req.set_variables.replace(variables);
-    }
-    // else: inherit set_variables from parent (already empty from clone_without_variables)
+        tmp_req
+    } else {
+        request.clone()
+    };
     let max_recursion_depth = app_state.config.max_recursion_depth;
     if tmp_req.clone_depth > max_recursion_depth {
         anyhow::bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to {max_recursion_depth} levels. \n\
