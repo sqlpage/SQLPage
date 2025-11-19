@@ -1,6 +1,14 @@
 # CHANGELOG.md
 
 ## unrelease
+ - **Variable System Improvements**: URL and POST parameters are now immutable, preventing accidental modification. User-defined variables created with `SET` remain mutable.
+   - `$variable` now looks up SET variables first, then URL parameters. This ensures SET variables always take precedence.
+   - `:variable` looks up SET variables first, then POST parameters.
+   - `sqlpage.variables('get')` returns only URL parameters as JSON
+   - `sqlpage.variables('post')` returns only POST parameters as JSON
+   - `sqlpage.variables('set')` returns only user-defined variables as JSON
+   - `sqlpage.variables()` returns all variables merged together, with SET variables taking precedence
+   - Deprecation warnings added for ambiguous cases where both URL and POST parameters exist with the same name
  - add support for postgres range types
 
 ## v0.39.1 (2025-11-08)
