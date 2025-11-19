@@ -169,21 +169,20 @@ pub(super) async fn extract_req_param<'a>(
                 Some(Cow::Owned(val.as_json_str().into_owned()))
             } else {
                 let url_val = request.url_params.get(x);
-                let post_val = request.post_variables.get(x);
-                if let Some(post_val) = post_val {
-                    if let Some(url_val) = url_val {
+                if request.post_variables.contains_key(x) {
+                    if url_val.is_some() {
                         log::warn!(
-                            "Deprecation warning! There is both a URL parameter named '{x}' with value '{url_val}' and a form field named '{x}' with value '{post_val}'. \
-                            SQLPage is using the value from the form submission, but this is ambiguous, can lead to unexpected behavior, and will stop working in a future version of SQLPage. \
-                            To fix this, please rename the URL parameter to something else, and reference the form field with :{x}."
+                            "Deprecation warning! There is both a URL parameter named '{x}' and a form field named '{x}'. \
+                            SQLPage is using the URL parameter for ${x}. Please use :{x} to reference the form field explicitly."
                         );
                     } else {
-                        log::warn!("Deprecation warning! ${x} was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :{x} instead.");
+                        log::warn!(
+                            "Deprecation warning! ${x} was used to reference a form field value (a POST variable). \
+                            This now uses only URL parameters. Please use :{x} instead."
+                        );
                     }
-                    Some(post_val.as_json_str())
-                } else {
-                    url_val.map(SingleOrVec::as_json_str)
                 }
+                url_val.map(SingleOrVec::as_json_str)
             }
         }
         StmtParam::Error(x) => anyhow::bail!("{x}"),
