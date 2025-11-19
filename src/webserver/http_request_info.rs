@@ -35,17 +35,22 @@ pub struct RequestInfo {
     pub protocol: String,
     pub url_params: ParamMap,
     pub post_variables: ParamMap,
-    pub set_variables: RefCell<ParamMap>,
     pub uploaded_files: Rc<HashMap<String, TempFile>>,
     pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
     pub cookies: ParamMap,
     pub basic_auth: Option<Basic>,
     pub app_state: Arc<AppState>,
-    pub clone_depth: u8,
     pub raw_body: Option<Vec<u8>>,
     pub oidc_claims: Option<OidcClaims>,
     pub server_timing: Arc<super::server_timing::ServerTiming>,
+}
+
+#[derive(Debug)]
+pub struct ExecutionContext {
+    pub request: Rc<RequestInfo>,
+    pub set_variables: RefCell<ParamMap>,
+    pub clone_depth: u8,
 }
 
 impl RequestInfo {
