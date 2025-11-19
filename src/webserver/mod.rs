@@ -48,4 +48,5 @@ pub use database::migrations::apply;
 pub mod oidc;
 pub mod response_writer;
 pub mod routing;
+mod single_or_vec;
 mod static_content;
