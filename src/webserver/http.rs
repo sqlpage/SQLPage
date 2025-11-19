@@ -228,6 +228,7 @@ async fn render_sql(
 }
 
 #[derive(Debug, serde::Serialize, PartialEq, Clone)]
+#[serde(untagged)]
 pub enum SingleOrVec {
     Single(String),
     Vec(Vec<String>),
