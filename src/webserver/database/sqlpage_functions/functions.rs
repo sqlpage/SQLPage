@@ -570,13 +570,8 @@ async fn run_sql<'a>(
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let tmp_req = if let Some(variables) = variables {
-        let variables: ParamMap = serde_json::from_str(&variables).map_err(|err| {
-            let context = format!(
-                "run_sql: unable to parse the variables argument (line {}, column {})",
-                err.line(),
-                err.column()
-            );
-            anyhow::Error::new(err).context(context)
+        let variables: ParamMap = serde_json::from_str(&variables).with_context(|| {
+            format!("run_sql(\'{sql_file_path}\', \'{variables}\'): the second argument should be a JSON object with string keys and values")
         })?;
         request.fork_with_variables(variables)
     } else {
