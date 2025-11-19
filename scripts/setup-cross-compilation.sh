@@ -34,8 +34,8 @@ mkdir -p /tmp/sqlpage-libs
 cp "$LIBDIR/libgcc_s.so.1" /tmp/sqlpage-libs/
 rustup target add "$TARGET"
 
-cat > /tmp/build-env.sh <<EOF
-export TARGET="$TARGET"
-export LINKER="$LINKER"
-${BINDGEN_EXTRA_CLANG_ARGS:+export BINDGEN_EXTRA_CLANG_ARGS="$BINDGEN_EXTRA_CLANG_ARGS"}
-EOF
+{
+    echo "export TARGET='$TARGET'"
+    echo "export LINKER='$LINKER'"
+    [ -n "$BINDGEN_EXTRA_CLANG_ARGS" ] && printf "export BINDGEN_EXTRA_CLANG_ARGS=%q\n" "$BINDGEN_EXTRA_CLANG_ARGS"
+} > /tmp/build-env.sh
