@@ -2,13 +2,24 @@
 
 ## unrelease
  - **Variable System Improvements**: URL and POST parameters are now immutable, preventing accidental modification. User-defined variables created with `SET` remain mutable.
-   - `$variable` now looks up SET variables first, then URL parameters. This ensures SET variables always take precedence.
-   - `:variable` looks up SET variables first, then POST parameters.
-   - `sqlpage.variables('get')` returns only URL parameters as JSON
-   - `sqlpage.variables('post')` returns only POST parameters as JSON
-   - `sqlpage.variables('set')` returns only user-defined variables as JSON
-   - `sqlpage.variables()` returns all variables merged together, with SET variables taking precedence
-   - Deprecation warnings added for ambiguous cases where both URL and POST parameters exist with the same name
+   - **BREAKING**: `$variable` no longer accesses POST parameters. Use `:variable` instead.
+     - **What changed**: Previously, `$x` would return a POST parameter value if no GET parameter named `x` existed.
+     - **Fix**: Replace `$x` with `:x` when you need to access form field values.
+     - **Example**: Change `SELECT $username` to `SELECT :username` when reading form submissions.
+   - **BREAKING**: `SET $name` no longer overwrites POST parameters when a POST parameter with the same name exists.
+     - **What changed**: `SET $name = 'value'` would previously overwrite the POST parameter `:name`. Now it creates an independent SET variable that shadows the POST parameter.
+     - **Fix**: Either rename your SET variable, or use `:name` to access the original POST value if needed.
+     - **Example**: If your form has a field named `name`, and you do `SET $name = 'modified'`, then `$name` will be 'modified' but `:name` will still contain the form value.
+   - **New behavior**: Variable lookup now follows this precedence:
+     - `$variable` checks SET variables first, then URL parameters
+     - `:variable` checks SET variables first, then POST parameters  
+     - SET variables always shadow URL/POST parameters with the same name
+   - **New sqlpage.variables() filters**:
+     - `sqlpage.variables('get')` returns only URL parameters as JSON
+     - `sqlpage.variables('post')` returns only POST parameters as JSON
+     - `sqlpage.variables('set')` returns only user-defined SET variables as JSON
+     - `sqlpage.variables()` returns all variables merged together, with SET variables taking precedence
+   - **Deprecation warnings**: Using `$var` when both a URL parameter and POST parameter exist with the same name now shows a warning. In a future version, you'll need to explicitly choose between `$var` (URL) and `:var` (POST).
  - add support for postgres range types
 
 ## v0.39.1 (2025-11-08)
