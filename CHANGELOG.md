@@ -8,8 +8,13 @@
      - **Example**: Change `SELECT $username` to `SELECT :username` when reading form submissions.
    - **BREAKING**: `SET $name` no longer overwrites GET (URL) parameters when a URL parameter with the same name exists.
      - **What changed**: `SET $name = 'value'` would previously overwrite the URL parameter `$name`. Now it creates an independent SET variable that shadows the URL parameter.
-     - **Fix**: This is generally the desired behavior. If you need to access the original URL parameter after setting a variable with the same name, use `sqlpage.variables('get')` to access it.
-     - **Example**: If your URL is `page.sql?name=john`, and you do `SET $name = 'modified'`, then `$name` will be 'modified'. The original URL parameter is still accessible via `sqlpage.variables('get')` but not via `$name` anymore.
+     - **Fix**: This is generally the desired behavior. If you need to access the original URL parameter after setting a variable with the same name, extract it from the JSON returned by `sqlpage.variables('get')`.
+     - **Example**: If your URL is `page.sql?name=john`, and you do `SET $name = 'modified'`, then:
+       - `$name` will be `'modified'` (the SET variable)
+       - The original URL parameter is still preserved and accessible:
+         - PostgreSQL: `sqlpage.variables('get')->>'name'` returns `'john'`
+         - SQLite: `json_extract(sqlpage.variables('get'), '$.name')` returns `'john'`
+         - MySQL: `JSON_UNQUOTE(JSON_EXTRACT(sqlpage.variables('get'), '$.name'))` returns `'john'`
    - **New behavior**: Variable lookup now follows this precedence:
      - `$variable` checks SET variables first, then URL parameters
      - `:variable` checks SET variables first, then POST parameters  
