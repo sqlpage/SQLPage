@@ -1,3 +1,4 @@
+-- This test uses json_extract() which is SQLite-specific
 SET x = 'set_value';
 SET set_only = 'only_in_set';
 
