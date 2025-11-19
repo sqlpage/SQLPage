@@ -21,6 +21,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('enctype','Form data encoding.','TEXT',TRUE,TRUE),
     ('action','An optional link to a target page that will handle the results of the form. ','TEXT',TRUE,TRUE),
     ('error_message','An error message to display above the form, typically shown after a failed login attempt.','TEXT',TRUE,TRUE),
+    ('error_message_md','A markdown error message to display above the form, typically shown after a failed login attempt.','TEXT',TRUE,TRUE),
     ('username','Label and placeholder for the user account identifier text field.','TEXT',TRUE,FALSE),
     ('password','Label and placeholder for the password field.','TEXT',TRUE,FALSE),
     ('username_icon','Icon to display on the left side of the input field, on the same line.','ICON',TRUE,TRUE),
