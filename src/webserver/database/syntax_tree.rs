@@ -16,7 +16,7 @@ use std::str::FromStr;
 
 use sqlparser::ast::FunctionArg;
 
-use crate::webserver::http_request_info::RequestInfo;
+use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::{
@@ -112,7 +112,7 @@ impl SqlPageFunctionCall {
 
     pub async fn evaluate<'a>(
         &self,
-        request: &'a RequestInfo,
+        request: &'a ExecutionContext,
         db_connection: &mut DbConn,
     ) -> anyhow::Result<Option<Cow<'a, str>>> {
         let mut params = Vec::with_capacity(self.arguments.len());
@@ -151,7 +151,7 @@ impl std::fmt::Display for SqlPageFunctionCall {
 /// Returns `Ok(None)` when NULL should be used as the parameter value.
 pub(super) async fn extract_req_param<'a>(
     param: &StmtParam,
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
@@ -169,21 +169,20 @@ pub(super) async fn extract_req_param<'a>(
                 Some(Cow::Owned(val.as_json_str().into_owned()))
             } else {
                 let url_val = request.url_params.get(x);
-                let post_val = request.post_variables.get(x);
-                if let Some(post_val) = post_val {
-                    if let Some(url_val) = url_val {
+                if request.post_variables.contains_key(x) {
+                    if url_val.is_some() {
                         log::warn!(
-                            "Deprecation warning! There is both a URL parameter named '{x}' with value '{url_val}' and a form field named '{x}' with value '{post_val}'. \
-                            SQLPage is using the value from the form submission, but this is ambiguous, can lead to unexpected behavior, and will stop working in a future version of SQLPage. \
-                            To fix this, please rename the URL parameter to something else, and reference the form field with :{x}."
+                            "Deprecation warning! There is both a URL parameter named '{x}' and a form field named '{x}'. \
+                            SQLPage is using the URL parameter for ${x}. Please use :{x} to reference the form field explicitly."
                         );
                     } else {
-                        log::warn!("Deprecation warning! ${x} was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :{x} instead.");
+                        log::warn!(
+                            "Deprecation warning! ${x} was used to reference a form field value (a POST variable). \
+                            This now uses only URL parameters. Please use :{x} instead."
+                        );
                     }
-                    Some(post_val.as_json_str())
-                } else {
-                    url_val.map(SingleOrVec::as_json_str)
                 }
+                url_val.map(SingleOrVec::as_json_str)
             }
         }
         StmtParam::Error(x) => anyhow::bail!("{x}"),
@@ -210,7 +209,7 @@ pub(super) async fn extract_req_param<'a>(
 
 async fn concat_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     let mut result = String::new();
@@ -225,7 +224,7 @@ async fn concat_params<'a>(
 
 async fn coalesce_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     for arg in args {
@@ -238,7 +237,7 @@ async fn coalesce_params<'a>(
 
 async fn json_object_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::{ser::SerializeMap, Serializer};
@@ -276,7 +275,7 @@ async fn json_object_params<'a>(
 
 async fn json_array_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::{ser::SerializeSeq, Serializer};

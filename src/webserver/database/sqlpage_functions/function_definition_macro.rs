@@ -55,7 +55,7 @@ macro_rules! sqlpage_functions {
             pub(crate) async fn evaluate<'a>(
                 &self,
                 #[allow(unused_variables)]
-                request: &'a RequestInfo,
+                request: &'a $crate::webserver::http_request_info::ExecutionContext,
                 db_connection: &mut Option<sqlx::pool::PoolConnection<sqlx::Any>>,
                 params: Vec<Option<Cow<'a, str>>>
             ) -> anyhow::Result<Option<Cow<'a, str>>> {
