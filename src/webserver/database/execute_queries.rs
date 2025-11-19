@@ -15,7 +15,7 @@ use super::sql::{
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
 use crate::webserver::database::sql_to_json::row_to_string;
-use crate::webserver::http_request_info::RequestInfo;
+use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::syntax_tree::{extract_req_param, StmtParam};
@@ -44,7 +44,7 @@ impl Database {
 
 pub fn stream_query_results_with_conn<'a>(
     sql_file: &'a ParsedSqlFile,
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &'a mut DbConn,
 ) -> impl Stream<Item = DbItem> + 'a {
     let source_file = &sql_file.source_path;
@@ -131,7 +131,7 @@ pub fn stop_at_first_error(
 /// Executes the sqlpage pseudo-functions contained in a static simple select
 async fn exec_static_simple_select(
     columns: &[(String, SimpleSelectValue)],
-    req: &RequestInfo,
+    req: &ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<serde_json::Value> {
     let mut map = serde_json::Map::with_capacity(columns.len());
@@ -161,7 +161,7 @@ async fn try_rollback_transaction(db_connection: &mut AnyConnection) {
 /// Returns `Ok(None)` when NULL should be used as the parameter value.
 async fn extract_req_param_as_json(
     param: &StmtParam,
-    request: &RequestInfo,
+    request: &ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<serde_json::Value> {
     if let Some(val) = extract_req_param(param, request, db_connection).await? {
@@ -175,7 +175,7 @@ async fn extract_req_param_as_json(
 /// This allows recursive calls.
 pub fn stream_query_results_boxed<'a>(
     sql_file: &'a ParsedSqlFile,
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &'a mut DbConn,
 ) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>> {
     Box::pin(stream_query_results_with_conn(
@@ -187,7 +187,7 @@ pub fn stream_query_results_boxed<'a>(
 
 async fn execute_set_variable_query<'a>(
     db_connection: &'a mut DbConn,
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     variable: &StmtParam,
     statement: &StmtWithParams,
     source_file: &Path,
@@ -223,7 +223,7 @@ async fn execute_set_variable_query<'a>(
 
 async fn execute_set_simple_static<'a>(
     db_connection: &'a mut DbConn,
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     variable: &StmtParam,
     value: &SimpleSelectValue,
     _source_file: &Path,
@@ -254,7 +254,7 @@ async fn execute_set_simple_static<'a>(
 }
 
 fn vars_and_name<'a, 'b>(
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     variable: &'b StmtParam,
 ) -> anyhow::Result<(std::cell::RefMut<'a, HashMap<String, SingleOrVec>>, &'b str)> {
     match variable {
@@ -274,7 +274,7 @@ fn vars_and_name<'a, 'b>(
 async fn take_connection<'a>(
     db: &'a Database,
     conn: &'a mut DbConn,
-    request: &RequestInfo,
+    request: &ExecutionContext,
 ) -> anyhow::Result<&'a mut PoolConnection<sqlx::Any>> {
     if let Some(c) = conn {
         return Ok(c);
@@ -349,7 +349,7 @@ fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
 
 async fn bind_parameters<'a>(
     stmt: &'a StmtWithParams,
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<StatementWithParams<'a>> {
     let sql = stmt.query.as_str();
@@ -378,7 +378,7 @@ async fn bind_parameters<'a>(
 }
 
 async fn apply_delayed_functions(
-    request: &RequestInfo,
+    request: &ExecutionContext,
     delayed_functions: &[DelayedFunctionCall],
     item: &mut DbItem,
 ) -> anyhow::Result<()> {
@@ -399,7 +399,7 @@ async fn apply_delayed_functions(
 }
 
 async fn apply_single_delayed_function(
-    request: &RequestInfo,
+    request: &ExecutionContext,
     db_connection: &mut DbConn,
     f: &DelayedFunctionCall,
     row: &mut serde_json::Map<String, serde_json::Value>,

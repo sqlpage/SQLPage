@@ -1,4 +1,4 @@
-use super::RequestInfo;
+use super::{ExecutionContext, RequestInfo};
 use crate::webserver::{
     database::{
         blob_to_data_url::vec_to_data_uri_with_mime, execute_queries::DbConn,
@@ -45,7 +45,7 @@ super::function_definition_macro::sqlpage_functions! {
     read_file_as_data_url((&RequestInfo), file_path: Option<Cow<str>>);
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
     request_method((&RequestInfo));
-    run_sql((&RequestInfo, &mut DbConn), sql_file_path: Option<Cow<str>>, variables: Option<Cow<str>>);
+    run_sql((&ExecutionContext, &mut DbConn), sql_file_path: Option<Cow<str>>, variables: Option<Cow<str>>);
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
@@ -53,7 +53,7 @@ super::function_definition_macro::sqlpage_functions! {
     url_encode(raw_text: Option<Cow<str>>);
     user_info((&RequestInfo), claim: Cow<str>);
 
-    variables((&RequestInfo), get_or_post: Option<Cow<str>>);
+    variables((&ExecutionContext), get_or_post: Option<Cow<str>>);
     version();
     request_body((&RequestInfo));
     request_body_base64((&RequestInfo));
@@ -549,7 +549,7 @@ async fn request_method(request: &RequestInfo) -> String {
 }
 
 async fn run_sql<'a>(
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
     sql_file_path: Option<Cow<'a, str>>,
     variables: Option<Cow<'a, str>>,
@@ -570,7 +570,6 @@ async fn run_sql<'a>(
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let tmp_req = if let Some(variables) = variables {
-        let tmp_req = request.clone_without_variables();
         let variables: ParamMap = serde_json::from_str(&variables).map_err(|err| {
             let context = format!(
                 "run_sql: unable to parse the variables argument (line {}, column {})",
@@ -579,8 +578,7 @@ async fn run_sql<'a>(
             );
             anyhow::Error::new(err).context(context)
         })?;
-        tmp_req.set_variables.replace(variables);
-        tmp_req
+        request.fork_with_variables(variables)
     } else {
         request.clone()
     };
@@ -686,7 +684,7 @@ async fn url_encode(raw_text: Option<Cow<'_, str>>) -> Option<Cow<'_, str>> {
 
 /// Returns all variables in the request as a JSON object.
 async fn variables<'a>(
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     get_or_post: Option<Cow<'a, str>>,
 ) -> anyhow::Result<String> {
     Ok(if let Some(get_or_post) = get_or_post {

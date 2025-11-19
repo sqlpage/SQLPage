@@ -16,7 +16,7 @@ use std::str::FromStr;
 
 use sqlparser::ast::FunctionArg;
 
-use crate::webserver::http_request_info::RequestInfo;
+use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::{
@@ -112,7 +112,7 @@ impl SqlPageFunctionCall {
 
     pub async fn evaluate<'a>(
         &self,
-        request: &'a RequestInfo,
+        request: &'a ExecutionContext,
         db_connection: &mut DbConn,
     ) -> anyhow::Result<Option<Cow<'a, str>>> {
         let mut params = Vec::with_capacity(self.arguments.len());
@@ -151,7 +151,7 @@ impl std::fmt::Display for SqlPageFunctionCall {
 /// Returns `Ok(None)` when NULL should be used as the parameter value.
 pub(super) async fn extract_req_param<'a>(
     param: &StmtParam,
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
@@ -210,7 +210,7 @@ pub(super) async fn extract_req_param<'a>(
 
 async fn concat_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     let mut result = String::new();
@@ -225,7 +225,7 @@ async fn concat_params<'a>(
 
 async fn coalesce_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     for arg in args {
@@ -238,7 +238,7 @@ async fn coalesce_params<'a>(
 
 async fn json_object_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::{ser::SerializeMap, Serializer};
@@ -276,7 +276,7 @@ async fn json_object_params<'a>(
 
 async fn json_array_params<'a>(
     args: &[StmtParam],
-    request: &'a RequestInfo,
+    request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     use serde::{ser::SerializeSeq, Serializer};
