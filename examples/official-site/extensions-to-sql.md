@@ -75,10 +75,15 @@ SELECT (select 1) AS one;
 ## Variables
 
 SQLPage communicates information about incoming HTTP requests to your SQL code through prepared statement variables.
-You can use 
- - `$var` to reference a GET variable (an URL parameter),
- - `:var` to reference a POST variable (a value filled by an user in a form field),
- - `set var = ...` to set the value of `$var`.
+
+### Variable Types and Mutability
+
+There are two types of variables in SQLPage:
+
+1. **Request parameters** (immutable): URL parameters and form data from the HTTP request
+2. **User-defined variables** (mutable): Variables created with the `SET` command
+
+Request parameters cannot be modified after the request is received. This ensures the original request data remains intact throughout request processing.
 
 ### POST parameters
 
@@ -111,20 +116,30 @@ When a URL parameter is not set, its value is `NULL`.
 
 ### The SET command
 
-`SET` stores a value in SQLPage (not in the database). Only strings and `NULL` are stored.
+`SET` creates or updates a user-defined variable in SQLPage (not in the database). Only strings and `NULL` are stored.
 
 ```sql
 -- Give a default value to a variable
 SET post_id = COALESCE($post_id, 0);
+
+-- User-defined variables shadow URL parameters with the same name
+SET my_var = 'custom value';  -- This value takes precedence over ?my_var=...
 ```
 
+**Variable Lookup Precedence:**
+- `$var`: checks user-defined variables first, then URL parameters
+- `:var`: checks user-defined variables first, then POST parameters
+
+This means `SET` variables always take precedence over request parameters when using `$var` or `:var` syntax.
+
+**How SET works:**
 - If the right-hand side is purely literals/variables, SQLPage computes it directly. See the section about *static simple select* above.
 - If it needs the database (for example, calls a database function), SQLPage runs an internal `SELECT` to compute it and stores the first column of the first row of results.
 
 Only a single textual value (**string or `NULL`**) is stored.
-`set id = 1` will store the string `'1'`, not the number `1`.
+`SET id = 1` will store the string `'1'`, not the number `1`.
 
-On databases with a strict type system, such as PostgreSQL, if you need a number, you will need to cast your variables: `select * from post where id = $id::int`.
+On databases with a strict type system, such as PostgreSQL, if you need a number, you will need to cast your variables: `SELECT * FROM post WHERE id = $id::int`.
 
 Complex structures can be stored as json strings.
 

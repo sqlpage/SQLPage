@@ -156,24 +156,24 @@ pub(super) async fn extract_req_param<'a>(
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
     Ok(match param {
         // sync functions
-        StmtParam::Get(x) => request.get_variables.get(x).map(SingleOrVec::as_json_str),
-        StmtParam::Post(x) => request.post_variables.get(x).map(SingleOrVec::as_json_str),
-        StmtParam::PostOrGet(x) => {
-            let post_val = request.post_variables.get(x);
-            let get_val = request.get_variables.get(x);
-            if let Some(v) = post_val {
-                if let Some(get_val) = get_val {
-                    log::warn!(
-                        "Deprecation warning! There is both a URL parameter named '{x}' with value '{get_val}' and a form field named '{x}' with value '{v}'. \
-                        SQLPage is using the value from the form submission, but this is ambiguous, can lead to unexpected behavior, and will stop working in a future version of SQLPage. \
-                        To fix this, please rename the URL parameter to something else, and reference the form field with :{x}."
-                    );
-                } else {
-                    log::warn!("Deprecation warning! ${x} was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :{x} instead.");
-                }
-                Some(v.as_json_str())
+        StmtParam::Get(x) => request.url_params.get(x).map(SingleOrVec::as_json_str),
+        StmtParam::Post(x) => {
+            if let Some(val) = request.set_variables.borrow().get(x) {
+                Some(Cow::Owned(val.as_json_str().into_owned()))
             } else {
-                get_val.map(SingleOrVec::as_json_str)
+                request.post_variables.get(x).map(SingleOrVec::as_json_str)
+            }
+        }
+        StmtParam::PostOrGet(x) => {
+            if let Some(val) = request.set_variables.borrow().get(x) {
+                Some(Cow::Owned(val.as_json_str().into_owned()))
+            } else if let Some(url_val) = request.url_params.get(x) {
+                Some(url_val.as_json_str())
+            } else if let Some(post_val) = request.post_variables.get(x) {
+                log::warn!("Deprecation warning! ${x} was used to reference a form field value (a POST variable) instead of a URL parameter. This will stop working soon. Please use :{x} instead.");
+                Some(post_val.as_json_str())
+            } else {
+                None
             }
         }
         StmtParam::Error(x) => anyhow::bail!("{x}"),

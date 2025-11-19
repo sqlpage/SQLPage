@@ -44,7 +44,7 @@ impl Database {
 
 pub fn stream_query_results_with_conn<'a>(
     sql_file: &'a ParsedSqlFile,
-    request: &'a mut RequestInfo,
+    request: &'a RequestInfo,
     db_connection: &'a mut DbConn,
 ) -> impl Stream<Item = DbItem> + 'a {
     let source_file = &sql_file.source_path;
@@ -175,7 +175,7 @@ async fn extract_req_param_as_json(
 /// This allows recursive calls.
 pub fn stream_query_results_boxed<'a>(
     sql_file: &'a ParsedSqlFile,
-    request: &'a mut RequestInfo,
+    request: &'a RequestInfo,
     db_connection: &'a mut DbConn,
 ) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>> {
     Box::pin(stream_query_results_with_conn(
@@ -187,7 +187,7 @@ pub fn stream_query_results_boxed<'a>(
 
 async fn execute_set_variable_query<'a>(
     db_connection: &'a mut DbConn,
-    request: &'a mut RequestInfo,
+    request: &'a RequestInfo,
     variable: &StmtParam,
     statement: &StmtWithParams,
     source_file: &Path,
@@ -209,7 +209,7 @@ async fn execute_set_variable_query<'a>(
         }
     };
 
-    let (vars, name) = vars_and_name(request, variable)?;
+    let (mut vars, name) = vars_and_name(request, variable)?;
 
     if let Some(value) = value {
         log::debug!("Setting variable {name} to {value:?}");
@@ -223,7 +223,7 @@ async fn execute_set_variable_query<'a>(
 
 async fn execute_set_simple_static<'a>(
     db_connection: &'a mut DbConn,
-    request: &'a mut RequestInfo,
+    request: &'a RequestInfo,
     variable: &StmtParam,
     value: &SimpleSelectValue,
     _source_file: &Path,
@@ -241,7 +241,7 @@ async fn execute_set_simple_static<'a>(
         }
     };
 
-    let (vars, name) = vars_and_name(request, variable)?;
+    let (mut vars, name) = vars_and_name(request, variable)?;
 
     if let Some(value) = value_str {
         log::debug!("Setting variable {name} to static value {value:?}");
@@ -254,20 +254,13 @@ async fn execute_set_simple_static<'a>(
 }
 
 fn vars_and_name<'a, 'b>(
-    request: &'a mut RequestInfo,
+    request: &'a RequestInfo,
     variable: &'b StmtParam,
-) -> anyhow::Result<(&'a mut HashMap<String, SingleOrVec>, &'b str)> {
+) -> anyhow::Result<(std::cell::RefMut<'a, HashMap<String, SingleOrVec>>, &'b str)> {
     match variable {
-        StmtParam::PostOrGet(name) => {
-            if request.post_variables.contains_key(name) {
-                log::warn!("Deprecation warning! Setting the value of ${name}, but there is already a form field named :{name}. This will stop working soon. Please rename the variable, or use :{name} directly if you intended to overwrite the posted form field value.");
-                Ok((&mut request.post_variables, name))
-            } else {
-                Ok((&mut request.get_variables, name))
-            }
+        StmtParam::PostOrGet(name) | StmtParam::Get(name) | StmtParam::Post(name) => {
+            Ok((request.set_variables.borrow_mut(), name))
         }
-        StmtParam::Get(name) => Ok((&mut request.get_variables, name)),
-        StmtParam::Post(name) => Ok((&mut request.post_variables, name)),
         _ => Err(anyhow!(
             "Only GET and POST variables can be set, not {variable:?}"
         )),

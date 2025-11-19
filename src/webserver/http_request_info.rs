@@ -17,6 +17,7 @@ use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::anyhow;
 use anyhow::Context;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::rc::Rc;
@@ -32,8 +33,9 @@ pub struct RequestInfo {
     pub method: actix_web::http::Method,
     pub path: String,
     pub protocol: String,
-    pub get_variables: ParamMap,
+    pub url_params: ParamMap,
     pub post_variables: ParamMap,
+    pub set_variables: RefCell<ParamMap>,
     pub uploaded_files: Rc<HashMap<String, TempFile>>,
     pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
@@ -53,8 +55,9 @@ impl RequestInfo {
             method: self.method.clone(),
             path: self.path.clone(),
             protocol: self.protocol.clone(),
-            get_variables: ParamMap::new(),
+            url_params: ParamMap::new(),
             post_variables: ParamMap::new(),
+            set_variables: RefCell::new(ParamMap::new()),
             uploaded_files: self.uploaded_files.clone(),
             headers: self.headers.clone(),
             client_ip: self.client_ip,
@@ -72,8 +75,11 @@ impl RequestInfo {
 impl Clone for RequestInfo {
     fn clone(&self) -> Self {
         let mut clone = self.clone_without_variables();
-        clone.get_variables.clone_from(&self.get_variables);
+        clone.url_params.clone_from(&self.url_params);
         clone.post_variables.clone_from(&self.post_variables);
+        clone
+            .set_variables
+            .replace(self.set_variables.borrow().clone());
         clone
     }
 }
@@ -116,8 +122,9 @@ pub(crate) async fn extract_request_info(
         method,
         path: req.path().to_string(),
         headers: param_map(headers),
-        get_variables: param_map(get_variables),
+        url_params: param_map(get_variables),
         post_variables: param_map(post_variables),
+        set_variables: RefCell::new(ParamMap::new()),
         uploaded_files: Rc::new(HashMap::from_iter(uploaded_files)),
         client_ip,
         cookies: param_map(cookies),
@@ -295,7 +302,7 @@ mod test {
             .unwrap();
         assert_eq!(request_info.post_variables.len(), 0);
         assert_eq!(request_info.uploaded_files.len(), 0);
-        assert_eq!(request_info.get_variables.len(), 0);
+        assert_eq!(request_info.url_params.len(), 0);
     }
 
     #[actix_web::test]
@@ -326,7 +333,7 @@ mod test {
         );
         assert_eq!(request_info.uploaded_files.len(), 0);
         assert_eq!(
-            request_info.get_variables,
+            request_info.url_params,
             vec![(
                 "my_array".to_string(),
                 SingleOrVec::Vec(vec!["5".to_string()])
@@ -374,8 +381,8 @@ mod test {
         assert_eq!(request_info.uploaded_files.len(), 1);
         let my_upload = &request_info.uploaded_files["my_uploaded_file"];
         assert_eq!(my_upload.file_name.as_ref().unwrap(), "test.txt");
-        assert_eq!(request_info.get_variables.len(), 0);
+        assert_eq!(request_info.url_params.len(), 0);
         assert_eq!(std::fs::read(&my_upload.file).unwrap(), b"Hello World");
-        assert_eq!(request_info.get_variables.len(), 0);
+        assert_eq!(request_info.url_params.len(), 0);
     }
 }
