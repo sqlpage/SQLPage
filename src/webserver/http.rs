@@ -538,29 +538,3 @@ fn bind_unix_socket_err(e: std::io::Error, unix_socket: &std::path::Path) -> any
     };
     anyhow::anyhow!(e).context(ctx)
 }
-
-#[cfg(test)]
-mod single_or_vec_tests {
-    use super::SingleOrVec;
-
-    #[test]
-    fn deserializes_string_and_array_values() {
-        let single: SingleOrVec = serde_json::from_str(r#""hello""#).unwrap();
-        assert_eq!(single, SingleOrVec::Single("hello".to_string()));
-        let array: SingleOrVec = serde_json::from_str(r#"["a","b"]"#).unwrap();
-        assert_eq!(
-            array,
-            SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()])
-        );
-    }
-
-    #[test]
-    fn rejects_non_string_items() {
-        let err = serde_json::from_str::<SingleOrVec>(r#"["a", 1]"#).unwrap_err();
-        assert!(
-            err.to_string()
-                .contains("expected an array of strings, but item at index 1 is 1"),
-            "{err}"
-        );
-    }
-}

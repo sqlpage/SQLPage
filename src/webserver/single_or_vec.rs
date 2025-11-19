@@ -84,3 +84,41 @@ impl SingleOrVec {
         }
     }
 }
+
+#[cfg(test)]
+mod single_or_vec_tests {
+    use super::SingleOrVec;
+
+    #[test]
+    fn deserializes_string_and_array_values() {
+        let single: SingleOrVec = serde_json::from_str(r#""hello""#).unwrap();
+        assert_eq!(single, SingleOrVec::Single("hello".to_string()));
+        let array: SingleOrVec = serde_json::from_str(r#"["a","b"]"#).unwrap();
+        assert_eq!(
+            array,
+            SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()])
+        );
+    }
+
+    #[test]
+    fn rejects_non_string_items() {
+        let err = serde_json::from_str::<SingleOrVec>(r#"["a", 1]"#).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("expected an array of strings, but item at index 1 is 1"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn displays_single_value() {
+        let single = SingleOrVec::Single("hello".to_string());
+        assert_eq!(single.to_string(), "hello");
+    }
+
+    #[test]
+    fn displays_array_values() {
+        let array = SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(array.to_string(), "[a, b]");
+    }
+}
