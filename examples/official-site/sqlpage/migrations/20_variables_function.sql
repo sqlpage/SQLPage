@@ -9,9 +9,26 @@ VALUES (
     'variables',
     '0.15.0',
     'variable',
-    'Returns a JSON string containing all variables passed as URL parameters or posted through a form.
+    'Returns a JSON string containing variables from the HTTP request and user-defined variables.
 
 The database''s json handling functions can then be used to process the data.
+
+## Variable Types
+
+SQLPage distinguishes between three types of variables:
+
+- **GET variables**: URL parameters from the query string (immutable)
+- **POST variables**: Form data from POST requests (immutable)  
+- **SET variables**: User-defined variables created with the `SET` command (mutable)
+
+## Usage
+
+- `sqlpage.variables()` - returns all variables (GET, POST, and SET combined, with SET variables taking precedence)
+- `sqlpage.variables(''get'')` - returns only URL parameters
+- `sqlpage.variables(''post'')` - returns only POST form data
+- `sqlpage.variables(''set'')` - returns only user-defined variables created with `SET`
+
+When a SET variable has the same name as a GET or POST variable, the SET variable takes precedence in the combined result.
 
 ## Example: a form with a variable number of fields
 
@@ -95,6 +112,6 @@ VALUES (
     'variables',
     1,
     'method',
-    'Optional. The HTTP request method (GET or POST). Must be a literal string. When not provided, all variables are returned.',
+    'Optional. Filter variables by source: ''get'' (URL parameters), ''post'' (form data), or ''set'' (user-defined variables). When not provided, all variables are returned with SET variables taking precedence over request parameters.',
     'TEXT'
 );

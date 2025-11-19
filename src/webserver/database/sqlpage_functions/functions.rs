@@ -569,8 +569,8 @@ async fn run_sql<'a>(
         )
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
-    let mut tmp_req = if let Some(variables) = variables {
-        let mut tmp_req = request.clone_without_variables();
+    let tmp_req = if let Some(variables) = variables {
+        let tmp_req = request.clone_without_variables();
         let variables: ParamMap = serde_json::from_str(&variables).map_err(|err| {
             let context = format!(
                 "run_sql: unable to parse the variables argument (line {}, column {})",
@@ -579,7 +579,7 @@ async fn run_sql<'a>(
             );
             anyhow::Error::new(err).context(context)
         })?;
-        tmp_req.get_variables = variables;
+        tmp_req.set_variables.replace(variables);
         tmp_req
     } else {
         request.clone()
@@ -596,7 +596,7 @@ async fn run_sql<'a>(
     let mut results_stream =
         crate::webserver::database::execute_queries::stream_query_results_boxed(
             &sql_file,
-            &mut tmp_req,
+            &tmp_req,
             db_connection,
         );
     let mut json_results_bytes = Vec::new();
@@ -691,22 +691,30 @@ async fn variables<'a>(
 ) -> anyhow::Result<String> {
     Ok(if let Some(get_or_post) = get_or_post {
         if get_or_post.eq_ignore_ascii_case("get") {
-            serde_json::to_string(&request.get_variables)?
+            serde_json::to_string(&request.url_params)?
         } else if get_or_post.eq_ignore_ascii_case("post") {
             serde_json::to_string(&request.post_variables)?
+        } else if get_or_post.eq_ignore_ascii_case("set") {
+            serde_json::to_string(&*request.set_variables.borrow())?
         } else {
             return Err(anyhow!(
-                "Expected 'get' or 'post' as the argument to sqlpage.all_variables"
+                "Expected 'get', 'post', or 'set' as the argument to sqlpage.variables"
             ));
         }
     } else {
         use serde::{ser::SerializeMap, Serializer};
         let mut res = Vec::new();
         let mut serializer = serde_json::Serializer::new(&mut res);
-        let len = request.get_variables.len() + request.post_variables.len();
+        let set_vars = request.set_variables.borrow();
+        let len = request.url_params.len() + request.post_variables.len() + set_vars.len();
         let mut ser = serializer.serialize_map(Some(len))?;
-        let iter = request.get_variables.iter().chain(&request.post_variables);
-        for (k, v) in iter {
+        for (k, v) in &request.url_params {
+            ser.serialize_entry(k, v)?;
+        }
+        for (k, v) in &request.post_variables {
+            ser.serialize_entry(k, v)?;
+        }
+        for (k, v) in &*set_vars {
             ser.serialize_entry(k, v)?;
         }
         ser.end()?;
