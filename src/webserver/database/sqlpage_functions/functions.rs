@@ -580,7 +580,7 @@ async fn run_sql<'a>(
         })?;
         request.fork_with_variables(variables)
     } else {
-        request.clone()
+        request.fork()
     };
     let max_recursion_depth = app_state.config.max_recursion_depth;
     if tmp_req.clone_depth > max_recursion_depth {
