@@ -1,0 +1,44 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Create sqlpage user if it doesn't exist
+        if ! getent passwd sqlpage >/dev/null; then
+            # Try adduser first (Debian/Ubuntu), fall back to useradd (minimal containers)
+            if command -v adduser >/dev/null 2>&1; then
+                adduser --system --group --home /var/www/sqlpage \
+                    --no-create-home --disabled-password \
+                    --shell /usr/sbin/nologin \
+                    --gecos "SQLPage web server" sqlpage
+            else
+                useradd --system --user-group --home-dir /var/www/sqlpage \
+                    --no-create-home --shell /usr/sbin/nologin \
+                    --comment "SQLPage web server" sqlpage
+            fi
+        fi
+
+        # Set ownership and permissions
+        chown -R sqlpage:sqlpage /var/www/sqlpage
+        chown -R root:root /etc/sqlpage
+        chmod 755 /var/www/sqlpage
+        chmod 755 /usr/bin/sqlpage
+
+        # Create log directory
+        mkdir -p /var/log/sqlpage
+        chown sqlpage:sqlpage /var/log/sqlpage
+        chmod 750 /var/log/sqlpage
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
