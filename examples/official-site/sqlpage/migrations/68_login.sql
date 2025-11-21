@@ -13,7 +13,7 @@ A few things to know :
 - The form uses the POST method to transmit information to the destination page,
 - The user''s username and password are entered into fields with the names `username` and `password`, 
 - To obtain the values of username and password, you must use the variables `:username` and `:password`,
-- To know if the user wants their identity to be remembered, you must read the value of the variable `:remember`.
+- When you set the `remember_me_text` property, the variable `:remember` becomes available after form submission to check if the user checked the "remember me" checkbox.
 ', '0.39.0');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'login', * FROM (VALUES
@@ -43,12 +43,19 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 INSERT INTO example(component, description, properties)
 VALUES (
         'login',
-        'Using the main options of the login component',
+        'Using the main options of the login component
+
+When the user clicks the "Sign in" button, the form is submitted to the `/examples/show_variables.sql` page.
+There, you will have access to the variables:
+ - `:username`: the username entered by the user
+ - `:password`: the password entered by the user
+ - `:remember`: the string "on" if the checkbox was checked, or NULL if it was not checked
+',
         JSON(
             '[
                 {
                     "component": "login",
-                    "action": "login.sql",
+                    "action": "/examples/show_variables",
                     "image": "../assets/icon.webp",
                     "title": "Please login to your account",
                     "username": "Username",
