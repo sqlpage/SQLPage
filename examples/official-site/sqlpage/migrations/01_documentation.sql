@@ -1290,7 +1290,20 @@ GROUP BY name;
 ', NULL);
 
 INSERT INTO component(name, icon, description) VALUES
-    ('shell', 'layout-navbar', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page.');
+    ('shell', 'layout-navbar', '
+Customize the overall layout, header and footer of the page.
+
+This is a special component that provides the page structure wrapping all other components on your page.
+
+It generates the complete HTML document including the `<head>` section with metadata, title, and stylesheets,
+as well as the navigation bar, main content area, and footer.
+
+If you don''t explicitly call the shell component at the top of your SQL file, SQLPage will automatically
+add a default shell component before your first try to display data on the page.
+
+Use the shell component to customize page-wide settings like the page title, navigation menu, theme, fonts,
+and to include custom visual styles (with CSS) or interactive behavior (with JavaScript) that should be loaded on the page.
+');
 
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'shell', * FROM (VALUES
     ('favicon', 'The URL of the icon the web browser should display in bookmarks and tabs. This property is particularly useful if multiple sites are hosted on the same domain with different [``site_prefix``](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage).', 'URL', TRUE, TRUE),
@@ -1521,16 +1534,41 @@ SELECT
 ```
 ', NULL),
     ('shell', '
-### A page without a shell
-SQLPage provides the `shell-empty` component to create a page without a shell.
-In this case, the `html` and `body` tags are not generated, and the components are rendered directly in the page
-without any styling, navigation bar, footer, or dynamic content.
-This is useful when you want to generate a snippet of HTML that can be dynamically included in a larger page.
+### Returning custom HTML, XML, plain text, or other formats
 
-Any component whose name starts with `shell` will be considered as a shell component,
-so you can also [create your own shell component](custom_components.sql#custom-shell).
+Use `shell-empty` to opt out of SQLPage''s component system and return raw data directly.
 
+By default, SQLPage wraps all your content in a complete HTML page with navigation and styling. 
+The `shell-empty` component tells SQLPage to skip this HTML wrapper and return only the raw content you specify.
+
+Use it to create endpoints that return things like
+ - XML (for JSON, use the [json](?component=json) component)
+ - plain text or markdown content (for instance for consumption by LLMs)
+ - a custom data format you need
+
+When using `shell-empty`, you should use the [http_header](component.sql?component=http%5Fheader) component first
+to set the correct [content type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type) (like `application/json` or `application/xml`).
+',
+     json('[
+        {
+            "component":"http_header", 
+            "Content-Type":"application/xml"
+        },
+        {
+            "component":"shell-empty", 
+            "contents": "<?xml version=\"1.0\"?>\n <user>\n   <account>42</account>\n   <login>john.doe</login>\n </user>"
+        }
+    ]')
+    ),
+    ('shell','
+### Generate your own HTML
 If you generate your own HTML from a SQL query, you can also use the `shell-empty` component to include it in a page.
+This is useful when you want to generate a snippet of HTML that can be dynamically included in a larger page.
 Make sure you know what you are doing, and be careful to escape the HTML properly,
-as you are stepping out of the safe SQLPage framework and into the wild world of HTML.',
+as you are stepping out of the safe SQLPage framework and into the wild world of HTML.
+
+In this scenario, you can use the `html` property, which serves as an alias for the `contents` property. 
+This property improves code readability by clearly indicating that you are generating HTML. 
+Since SQLPage returns HTML by default, there is no need to specify the content type in the HTTP header.
+',
     json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));
