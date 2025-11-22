@@ -149,6 +149,6 @@ select
 select
     name as title,
     icon,
-    sqlpage.link('component.sql', json_object('component', name)) as link
+    sqlpage.set_variable('component', name) as link
 from component
 order by name;

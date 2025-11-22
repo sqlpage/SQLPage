@@ -30,7 +30,7 @@ For more information on how to use layouts, see the [shell component documentati
 select 'list' as component, 'Available SQLPage shell layouts' as title;
 select 
     column1 as title,
-    sqlpage.link('', json_object('layout', lower(column1), 'sidebar', $sidebar)) as link,
+    sqlpage.set_variable('layout', lower(column1)) as link,
     $layout = lower(column1) as active,
     column3 as icon,
     column2 as description
@@ -43,7 +43,7 @@ from (VALUES
 select 'list' as component, 'Available Menu layouts' as title;
 select
     column1 as title,
-    sqlpage.link('', json_object('layout', $layout, 'sidebar', column1 = 'Sidebar')) as link,
+    sqlpage.set_variable('sidebar', column1 = 'Sidebar') as link,
     (column1 = 'Sidebar' AND $sidebar = 1) OR (column1 = 'Horizontal' AND $sidebar = 0) as active,
     column2 as description,
     column3 as icon

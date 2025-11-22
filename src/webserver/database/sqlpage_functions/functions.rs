@@ -46,6 +46,7 @@ super::function_definition_macro::sqlpage_functions! {
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
     request_method((&RequestInfo));
     run_sql((&ExecutionContext, &mut DbConn), sql_file_path: Option<Cow<str>>, variables: Option<Cow<str>>);
+    set_variable((&ExecutionContext), name: Cow<str>, value: Option<Cow<str>>);
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
@@ -610,6 +611,39 @@ async fn run_sql<'a>(
     }
     seq.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
+}
+
+async fn set_variable<'a>(
+    context: &'a ExecutionContext,
+    name: Cow<'a, str>,
+    value: Option<Cow<'a, str>>,
+) -> anyhow::Result<String> {
+    let mut params_map = serde_json::Map::with_capacity(context.url_params.len() + 1);
+
+    for (k, v) in &context.url_params {
+        params_map.insert(k.clone(), serde_json::to_value(v)?);
+    }
+
+    if let Some(value) = value {
+        params_map.insert(
+            name.into_owned(),
+            serde_json::Value::String(value.into_owned()),
+        );
+    } else {
+        params_map.remove(&*name);
+    }
+
+    let json_val = serde_json::Value::Object(params_map);
+    let encoded: URLParameters = serde_json::from_value(json_val)?;
+
+    let mut url = context.path.clone();
+    let encoded_str = encoded.get();
+    if !encoded_str.is_empty() {
+        url.push('?');
+        url.push_str(encoded_str);
+    }
+
+    Ok(url)
 }
 
 #[tokio::test]

@@ -1,6 +1,9 @@
 # CHANGELOG.md
 
 ## unrelease
+ - **New Function**: `sqlpage.set_variable(name, value)`
+   - Returns a URL with the specified variable set to the given value, preserving other existing variables.
+   - This is a shorthand for `sqlpage.link(sqlpage.path(), json_patch(sqlpage.variables('get'), json_object(name, value)))`.
  - **Variable System Improvements**: URL and POST parameters are now immutable, preventing accidental modification. User-defined variables created with `SET` remain mutable.
    - **BREAKING**: `$variable` no longer accesses POST parameters. Use `:variable` instead.
      - **What changed**: Previously, `$x` would return a POST parameter value if no GET parameter named `x` existed.
