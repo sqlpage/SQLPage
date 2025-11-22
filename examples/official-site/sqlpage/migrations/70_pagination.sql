@@ -28,7 +28,8 @@ with recursive pages as (
 select 
     (offset/100+1) as contents,
     sqlpage.link(sqlpage.path(), json_object(''offset'', offset)) as link,
-    (offset/100+1 = $offset) as active from pages;
+    offset = coalesce(cast($offset as integer), 0) as active
+from pages;
 ```
 
 For more advanced usage, the [pagination guide](blog.sql?post=How+to+use+the+pagination+component) provides a complete tutorial.
