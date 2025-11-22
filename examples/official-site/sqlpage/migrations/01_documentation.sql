@@ -1534,21 +1534,20 @@ SELECT
 ```
 ', NULL),
     ('shell', '
-### A page without a shell
-SQLPage provides the `shell-empty` component to create a page without a shell.
-In this case, the `<html>` and `<body>` tags are not generated, and the components are rendered directly in the page
-without any styling, navigation bar, footer, or dynamic content.
-Any component whose name starts with `shell` will be considered as a shell component,
-so you can also [create your own shell component](custom_components.sql#custom-shell).
+### Returning custom HTML, XML, plain text, or other formats
 
-This is particularly useful when creating a [RESTful API](https://en.wikipedia.org/wiki/REST) with SQLPage. 
-Typically, the data returned to the client is not formatted in HTML but rather in JSON or XML. 
-With the `shell-empty` component, you simply need to construct the formatted data and assign it to the contents property.
+Use `shell-empty` to opt out of SQLPage''s component system and return raw data directly.
 
-Remember to use the [http_header](component.sql?component=http%5Fheader) component beforehand to inform the client about the format of the data being sent. 
+By default, SQLPage wraps all your content in a complete HTML page with navigation and styling. 
+The `shell-empty` component tells SQLPage to skip this HTML wrapper and return only the raw content you specify.
 
-In the example below, SQLPage returns data formatted in XML. 
-The correct [MIME](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types) type should be `application/xml`.
+Use it to create endpoints that return things like
+ - XML (for JSON, use the [json](?component=json) component)
+ - plain text or markdown content (for instance for consumption by LLMs)
+ - a custom data format you need
+
+When using `shell-empty`, you should use the [http_header](component.sql?component=http%5Fheader) component first
+to set the correct [content type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type) (like `application/json` or `application/xml`).
 ',
      json('[
         {
