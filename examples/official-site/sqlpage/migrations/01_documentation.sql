@@ -1525,22 +1525,38 @@ SELECT
 SQLPage provides the `shell-empty` component to create a page without a shell.
 In this case, the `html` and `body` tags are not generated, and the components are rendered directly in the page
 without any styling, navigation bar, footer, or dynamic content.
-This is useful when you want to generate a snippet of HTML that can be dynamically included in a larger page.
-
 Any component whose name starts with `shell` will be considered as a shell component,
 so you can also [create your own shell component](custom_components.sql#custom-shell).
 
-If you generate your own HTML from a SQL query, you can also use the `shell-empty` component to include it in a page.
-Make sure you know what you are doing, and be careful to escape the HTML properly,
-as you are stepping out of the safe SQLPage framework and into the wild world of HTML.',
-    json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]')),
-    ('shell','
-### Return data in a format other than HTML
-If you create a RESTful API with SQLPage and the data format transmitted to the client is not HTML, 
-you can use an alias named `contents` to enhance the readability of your code. 
-This approach is particularly useful for returning data formats such as JSON or XML.
+This is particularly useful when creating a [RESTful API](https://en.wikipedia.org/wiki/REST) with SQLPage. 
+Typically, the data returned to the client is not formatted in HTML but rather in JSON or XML. 
+With the `shell-empty` component, you simply need to construct the formatted data and assign it to the contents property.
 
 Remember to use the [http_header](component.sql?component=http%5Fheader) component beforehand to inform the client about the format of the data being sent. 
-For example, for XML, the correct [MIME](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types) type should be `application/xml`.
+
+In the example below, SQLPage returns data formatted in XML. 
+The correct [MIME](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types) type should be `application/xml`.
 ',
-    json('[{"component":"shell-empty", "contents": "<?xml version=\"1.0\"?>\n <user>\n   <account>42</account>\n   <login>john.doe</login>\n </user>"}]'));
+     json('[
+        {
+            "component":"http_header", 
+            "Content-Type":"application/xml"
+        },
+        {
+            "component":"shell-empty", 
+            "contents": "<?xml version=\"1.0\"?>\n <user>\n   <account>42</account>\n   <login>john.doe</login>\n </user>"
+        }
+    ]')
+    ),
+    ('shell','
+### Generate your own HTML
+If you generate your own HTML from a SQL query, you can also use the `shell-empty` component to include it in a page.
+This is useful when you want to generate a snippet of HTML that can be dynamically included in a larger page.
+Make sure you know what you are doing, and be careful to escape the HTML properly,
+as you are stepping out of the safe SQLPage framework and into the wild world of HTML.
+
+In this scenario, you can use the `html` property, which serves as an alias for the `contents` property. 
+This property improves code readability by clearly indicating that you are generating HTML. 
+Since SQLPage returns HTML by default, there is no need to specify the content type in the HTTP header.
+',
+    json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));
