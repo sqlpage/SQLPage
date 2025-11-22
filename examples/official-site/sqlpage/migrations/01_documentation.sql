@@ -1533,4 +1533,14 @@ so you can also [create your own shell component](custom_components.sql#custom-s
 If you generate your own HTML from a SQL query, you can also use the `shell-empty` component to include it in a page.
 Make sure you know what you are doing, and be careful to escape the HTML properly,
 as you are stepping out of the safe SQLPage framework and into the wild world of HTML.',
-    json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));
+    json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]')),
+    ('shell','
+### Return data in a format other than HTML
+If you create a RESTful API with SQLPage and the data format transmitted to the client is not HTML, 
+you can use an alias named `contents` to enhance the readability of your code. 
+This approach is particularly useful for returning data formats such as JSON or XML.
+
+Remember to use the [http_header](component.sql?component=http%5Fheader) component beforehand to inform the client about the format of the data being sent. 
+For example, for XML, the correct [MIME](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types) type should be `application/xml`.
+',
+    json('[{"component":"shell-empty", "contents": "<?xml version=\"1.0\"?>\n <user>\n   <account>42</account>\n   <login>john.doe</login>\n </user>"}]'));
