@@ -6,14 +6,7 @@
                     {{#if first_title}}
                         <a class="page-link page-text" href="{{first_link}}" tabindex="-1" aria-disabled="true">{{first_title}}</a>
                     {{else}}
-                        <a class="page-link" href="{{first_link}}" tabindex="-1" aria-disabled="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
-                                <path d="M11 7l-5 5l5 5" />
-                                <path d="M17 7l-5 5l5 5" />
-                            </svg>
-                        </a>
+                        <a class="page-link" href="{{first_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevrons-left'}}</a>
                     {{/if}}
                 </li>
             {{/if}}
@@ -22,13 +15,7 @@
                     {{#if previous_title}}
                         <a class="page-link page-text" href="{{previous_link}}" tabindex="-1" aria-disabled="true">{{previous_title}}</a>
                     {{else}}
-                        <a class="page-link" href="{{previous_link}}" tabindex="-1" aria-disabled="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
-                            <path d="M15 6l-6 6l6 6" />
-                            </svg>
-                        </a>
+                        <a class="page-link " href="{{previous_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevron-left'}}</a>
                     {{/if}}
                 </li>
             {{/if}}
@@ -46,12 +33,7 @@
                     {{#if next_title}}
                         <a class="page-link page-text" href="{{next_link}}" tabindex="-1" aria-disabled="true">{{next_title}}</a>
                     {{else}}
-                        <a class="page-link" href="{{next_link}}" tabindex="-1" aria-disabled="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
-                            <path d="M9 6l6 6l-6 6" />
-                        </a>
+                        <a class="page-link" href="{{next_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevron-right'}}</a>
                     {{/if}}
                 </li>
             {{/if}}
@@ -60,14 +42,7 @@
                     {{#if last_title}}
                         <a class="page-link page-text" href="{{last_link}}" tabindex="-1" aria-disabled="true">{{last_title}}</a>
                     {{else}}
-                        <a class="page-link" href="{{last_link}}" tabindex="-1" aria-disabled="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
-                                <path d="M7 7l5 5l-5 5" />
-                                <path d="M13 7l5 5l-5 5" />
-                            </svg>
-                        </a>
+                        <a class="page-link" href="{{last_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevrons-right'}}</a>
                     {{/if}}
                 </li>
             {{/if}}
