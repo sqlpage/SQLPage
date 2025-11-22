@@ -1290,7 +1290,20 @@ GROUP BY name;
 ', NULL);
 
 INSERT INTO component(name, icon, description) VALUES
-    ('shell', 'layout-navbar', 'Personalize the "shell" surrounding your page contents. Used to set properties for the entire page.');
+    ('shell', 'layout-navbar', '
+Customize the overall layout, header and footer of the page.
+
+This is a special component that provides the page structure wrapping all other components on your page.
+
+It generates the complete HTML document including the `<head>` section with metadata, title, and stylesheets,
+as well as the navigation bar, main content area, and footer.
+
+If you don''t explicitly call the shell component at the top of your SQL file, SQLPage will automatically
+add a default shell component before your first try to display data on the page.
+
+Use the shell component to customize page-wide settings like the page title, navigation menu, theme, fonts,
+and to include custom visual styles (with CSS) or interactive behavior (with JavaScript) that should be loaded on the page.
+');
 
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'shell', * FROM (VALUES
     ('favicon', 'The URL of the icon the web browser should display in bookmarks and tabs. This property is particularly useful if multiple sites are hosted on the same domain with different [``site_prefix``](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage).', 'URL', TRUE, TRUE),
@@ -1523,7 +1536,7 @@ SELECT
     ('shell', '
 ### A page without a shell
 SQLPage provides the `shell-empty` component to create a page without a shell.
-In this case, the `html` and `body` tags are not generated, and the components are rendered directly in the page
+In this case, the `<html>` and `<body>` tags are not generated, and the components are rendered directly in the page
 without any styling, navigation bar, footer, or dynamic content.
 Any component whose name starts with `shell` will be considered as a shell component,
 so you can also [create your own shell component](custom_components.sql#custom-shell).
