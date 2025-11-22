@@ -4,20 +4,14 @@ WORKDIR /usr/src/sqlpage
 ARG TARGETARCH
 ARG BUILDARCH
 
-# Copy build scripts
 COPY scripts/ /usr/local/bin/
-
-# Initialize cargo project
 RUN cargo init .
 
-# Setup cross-compilation environment
 RUN /usr/local/bin/setup-cross-compilation.sh "$TARGETARCH" "$BUILDARCH"
 
-# Build dependencies (creates a layer that avoids recompiling dependencies on every build)
 COPY Cargo.toml Cargo.lock ./
 RUN /usr/local/bin/build-dependencies.sh
 
-# Build the project
 COPY . .
 RUN /usr/local/bin/build-project.sh
 

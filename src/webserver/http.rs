@@ -34,8 +34,6 @@ use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
-use std::borrow::Cow;
-use std::mem;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -176,25 +174,26 @@ async fn render_sql(
         .clone()
         .into_inner();
 
-    let mut req_param = extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
+    let exec_ctx = extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
         .await
         .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
-    log::debug!("Received a request with the following parameters: {req_param:?}");
+    log::debug!("Received a request with the following parameters: {exec_ctx:?}");
 
-    req_param.server_timing.record("parse_req");
+    exec_ctx.request().server_timing.record("parse_req");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     let source_path: PathBuf = sql_file.source_path.clone();
     actix_web::rt::spawn(async move {
+        let request_info = exec_ctx.request();
         let request_context = RequestContext {
-            is_embedded: req_param.get_variables.contains_key("_sqlpage_embed"),
+            is_embedded: request_info.url_params.contains_key("_sqlpage_embed"),
             source_path,
             content_security_policy: ContentSecurityPolicy::with_random_nonce(),
-            server_timing: Arc::clone(&req_param.server_timing),
+            server_timing: Arc::clone(&request_info.server_timing),
         };
         let mut conn = None;
         let database_entries_stream =
-            stream_query_results_with_conn(&sql_file, &mut req_param, &mut conn);
+            stream_query_results_with_conn(&sql_file, &exec_ctx, &mut conn);
         let database_entries_stream = stop_at_first_error(database_entries_stream);
         let response_with_writer = build_response_header_and_stream(
             Arc::clone(&app_state),
@@ -224,59 +223,6 @@ async fn render_sql(
         }
     });
     resp_recv.await.map_err(ErrorInternalServerError)
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
-#[serde(untagged)]
-pub enum SingleOrVec {
-    Single(String),
-    Vec(Vec<String>),
-}
-
-impl std::fmt::Display for SingleOrVec {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SingleOrVec::Single(x) => write!(f, "{x}"),
-            SingleOrVec::Vec(v) => {
-                write!(f, "[")?;
-                let mut it = v.iter();
-                if let Some(first) = it.next() {
-                    write!(f, "{first}")?;
-                }
-                for item in it {
-                    write!(f, ", {item}")?;
-                }
-                write!(f, "]")
-            }
-        }
-    }
-}
-
-impl SingleOrVec {
-    pub(crate) fn merge(&mut self, other: Self) {
-        match (self, other) {
-            (Self::Single(old), Self::Single(new)) => *old = new,
-            (old, mut new) => {
-                let mut v = old.take_vec();
-                v.extend_from_slice(&new.take_vec());
-                *old = Self::Vec(v);
-            }
-        }
-    }
-    fn take_vec(&mut self) -> Vec<String> {
-        match self {
-            SingleOrVec::Single(x) => vec![mem::take(x)],
-            SingleOrVec::Vec(v) => mem::take(v),
-        }
-    }
-
-    #[must_use]
-    pub fn as_json_str(&self) -> Cow<'_, str> {
-        match self {
-            SingleOrVec::Single(x) => Cow::Borrowed(x),
-            SingleOrVec::Vec(v) => Cow::Owned(serde_json::to_string(v).unwrap()),
-        }
-    }
 }
 
 async fn process_sql_request(

@@ -6,7 +6,7 @@ mod url_parameter_deserializer;
 
 use sqlparser::ast::FunctionArg;
 
-use crate::webserver::http_request_info::RequestInfo;
+use crate::webserver::http_request_info::{ExecutionContext, RequestInfo};
 
 use super::sql::function_args_to_stmt_params;
 use super::syntax_tree::SqlPageFunctionCall;

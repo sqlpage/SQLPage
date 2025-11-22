@@ -17,6 +17,7 @@ use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::anyhow;
 use anyhow::Context;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::rc::Rc;
@@ -32,7 +33,7 @@ pub struct RequestInfo {
     pub method: actix_web::http::Method,
     pub path: String,
     pub protocol: String,
-    pub get_variables: ParamMap,
+    pub url_params: ParamMap,
     pub post_variables: ParamMap,
     pub uploaded_files: Rc<HashMap<String, TempFile>>,
     pub headers: ParamMap,
@@ -40,41 +41,68 @@ pub struct RequestInfo {
     pub cookies: ParamMap,
     pub basic_auth: Option<Basic>,
     pub app_state: Arc<AppState>,
-    pub clone_depth: u8,
     pub raw_body: Option<Vec<u8>>,
     pub oidc_claims: Option<OidcClaims>,
     pub server_timing: Arc<super::server_timing::ServerTiming>,
 }
 
-impl RequestInfo {
+#[derive(Debug)]
+pub struct ExecutionContext {
+    pub request: Rc<RequestInfo>,
+    pub set_variables: RefCell<ParamMap>,
+    pub clone_depth: u8,
+}
+
+impl ExecutionContext {
     #[must_use]
-    pub fn clone_without_variables(&self) -> Self {
+    pub fn new(request: RequestInfo) -> Self {
         Self {
-            method: self.method.clone(),
-            path: self.path.clone(),
-            protocol: self.protocol.clone(),
-            get_variables: ParamMap::new(),
-            post_variables: ParamMap::new(),
-            uploaded_files: self.uploaded_files.clone(),
-            headers: self.headers.clone(),
-            client_ip: self.client_ip,
-            cookies: self.cookies.clone(),
-            basic_auth: self.basic_auth.clone(),
-            app_state: self.app_state.clone(),
-            clone_depth: self.clone_depth + 1,
-            raw_body: self.raw_body.clone(),
-            oidc_claims: self.oidc_claims.clone(),
-            server_timing: Arc::clone(&self.server_timing),
+            request: Rc::new(request),
+            set_variables: RefCell::new(ParamMap::new()),
+            clone_depth: 0,
         }
+    }
+
+    #[must_use]
+    pub fn fork(&self) -> Self {
+        Self {
+            request: Rc::clone(&self.request),
+            set_variables: RefCell::new(self.set_variables.borrow().clone()),
+            clone_depth: self.clone_depth + 1,
+        }
+    }
+
+    #[must_use]
+    pub fn fork_with_variables(&self, variables: ParamMap) -> Self {
+        Self {
+            request: Rc::clone(&self.request),
+            set_variables: RefCell::new(variables),
+            clone_depth: self.clone_depth + 1,
+        }
+    }
+
+    pub fn request(&self) -> &RequestInfo {
+        self.request.as_ref()
     }
 }
 
-impl Clone for RequestInfo {
+impl Clone for ExecutionContext {
     fn clone(&self) -> Self {
-        let mut clone = self.clone_without_variables();
-        clone.get_variables.clone_from(&self.get_variables);
-        clone.post_variables.clone_from(&self.post_variables);
-        clone
+        self.fork()
+    }
+}
+
+impl std::ops::Deref for ExecutionContext {
+    type Target = RequestInfo;
+
+    fn deref(&self) -> &Self::Target {
+        self.request()
+    }
+}
+
+impl<'a> From<&'a ExecutionContext> for &'a RequestInfo {
+    fn from(ctx: &'a ExecutionContext) -> Self {
+        ctx.request()
     }
 }
 
@@ -82,7 +110,7 @@ pub(crate) async fn extract_request_info(
     req: &mut ServiceRequest,
     app_state: Arc<AppState>,
     server_timing: ServerTiming,
-) -> anyhow::Result<RequestInfo> {
+) -> anyhow::Result<ExecutionContext> {
     let (http_req, payload) = req.parts_mut();
     let method = http_req.method().clone();
     let protocol = http_req.connection_info().scheme().to_string();
@@ -112,11 +140,11 @@ pub(crate) async fn extract_request_info(
 
     let oidc_claims: Option<OidcClaims> = req.extensions().get::<OidcClaims>().cloned();
 
-    Ok(RequestInfo {
+    Ok(ExecutionContext::new(RequestInfo {
         method,
         path: req.path().to_string(),
         headers: param_map(headers),
-        get_variables: param_map(get_variables),
+        url_params: param_map(get_variables),
         post_variables: param_map(post_variables),
         uploaded_files: Rc::new(HashMap::from_iter(uploaded_files)),
         client_ip,
@@ -124,11 +152,10 @@ pub(crate) async fn extract_request_info(
         basic_auth,
         app_state,
         protocol,
-        clone_depth: 0,
         raw_body,
         oidc_claims,
         server_timing: Arc::new(server_timing),
-    })
+    }))
 }
 
 async fn extract_post_data(
@@ -278,8 +305,8 @@ async fn is_file_field_empty(
 
 #[cfg(test)]
 mod test {
-    use super::super::http::SingleOrVec;
     use super::*;
+    use crate::webserver::single_or_vec::SingleOrVec;
     use crate::{app_config::AppConfig, webserver::server_timing::ServerTiming};
     use actix_web::{http::header::ContentType, test::TestRequest};
 
@@ -290,12 +317,13 @@ mod test {
         let mut service_request = TestRequest::default().to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
         let server_timing = ServerTiming::default();
-        let request_info = extract_request_info(&mut service_request, app_data, server_timing)
+        let request_ctx = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
+        let request_info = request_ctx.request();
         assert_eq!(request_info.post_variables.len(), 0);
         assert_eq!(request_info.uploaded_files.len(), 0);
-        assert_eq!(request_info.get_variables.len(), 0);
+        assert_eq!(request_info.url_params.len(), 0);
     }
 
     #[actix_web::test]
@@ -309,9 +337,10 @@ mod test {
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
         let server_timing = ServerTiming::default();
-        let request_info = extract_request_info(&mut service_request, app_data, server_timing)
+        let request_ctx = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
+        let request_info = request_ctx.request();
         assert_eq!(
             request_info.post_variables,
             vec![
@@ -326,7 +355,7 @@ mod test {
         );
         assert_eq!(request_info.uploaded_files.len(), 0);
         assert_eq!(
-            request_info.get_variables,
+            request_info.url_params,
             vec![(
                 "my_array".to_string(),
                 SingleOrVec::Vec(vec!["5".to_string()])
@@ -359,9 +388,10 @@ mod test {
             .to_srv_request();
         let app_data = Arc::new(AppState::init(&config).await.unwrap());
         let server_timing = ServerTiming::enabled(false);
-        let request_info = extract_request_info(&mut service_request, app_data, server_timing)
+        let request_ctx = extract_request_info(&mut service_request, app_data, server_timing)
             .await
             .unwrap();
+        let request_info = request_ctx.request();
         assert_eq!(
             request_info.post_variables,
             vec![(
@@ -374,8 +404,8 @@ mod test {
         assert_eq!(request_info.uploaded_files.len(), 1);
         let my_upload = &request_info.uploaded_files["my_uploaded_file"];
         assert_eq!(my_upload.file_name.as_ref().unwrap(), "test.txt");
-        assert_eq!(request_info.get_variables.len(), 0);
+        assert_eq!(request_info.url_params.len(), 0);
         assert_eq!(std::fs::read(&my_upload.file).unwrap(), b"Hello World");
-        assert_eq!(request_info.get_variables.len(), 0);
+        assert_eq!(request_info.url_params.len(), 0);
     }
 }
