@@ -1,0 +1,51 @@
+<div class="container {{class}}" {{#if id}}id="{{id}}"{{/if}}>
+    <div class="p-3 d-flex align-items-center flex-column">
+        <ul class="pagination{{#if outline}} pagination-outline{{/if}}{{#if circle}} pagination-circle{{/if}}">
+            {{#if first_link}}
+                <li class="page-item{{#if first_disabled}} disabled{{/if}}">
+                    {{#if first_title}}
+                        <a class="page-link page-text" href="{{first_link}}" tabindex="-1" aria-disabled="true">{{first_title}}</a>
+                    {{else}}
+                        <a class="page-link" href="{{first_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevrons-left' 19}}</a>
+                    {{/if}}
+                </li>
+            {{/if}}
+            {{#if previous_link}}
+                <li class="page-item{{#if previous_disabled}} disabled{{/if}}">
+                    {{#if previous_title}}
+                        <a class="page-link page-text" href="{{previous_link}}" tabindex="-1" aria-disabled="true">{{previous_title}}</a>
+                    {{else}}
+                        <a class="page-link " href="{{previous_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevron-left' 19}}</a>
+                    {{/if}}
+                </li>
+            {{/if}}
+            {{~#each_row~}}
+            <li class="page-item{{#if active}} active{{/if}}">
+                {{#if offset}}
+                    <span class="page-link disabled">&hellip;</span>
+                {{else}}
+                    <a class="page-link" href="{{default link '#'}}">{{contents}}</a>
+                {{/if}}
+            </li>
+            {{~/each_row~}}
+            {{#if next_link}}
+                <li class="page-item{{#if next_disabled}} disabled{{/if}}">
+                    {{#if next_title}}
+                        <a class="page-link page-text" href="{{next_link}}" tabindex="-1" aria-disabled="true">{{next_title}}</a>
+                    {{else}}
+                        <a class="page-link" href="{{next_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevron-right' 19}}</a>
+                    {{/if}}
+                </li>
+            {{/if}}
+            {{#if last_link}}
+                <li class="page-item{{#if last_disabled}} disabled{{/if}}">
+                    {{#if last_title}}
+                        <a class="page-link page-text" href="{{last_link}}" tabindex="-1" aria-disabled="true">{{last_title}}</a>
+                    {{else}}
+                        <a class="page-link" href="{{last_link}}" tabindex="-1" aria-disabled="true">{{icon_img 'chevrons-right' 19}}</a>
+                    {{/if}}
+                </li>
+            {{/if}}
+        </ul>
+    </div>
+</div>
