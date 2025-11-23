@@ -634,7 +634,7 @@ async fn set_variable<'a>(
     }
 
     let json_val = serde_json::Value::Object(params_map);
-    let encoded: URLParameters = serde_json::from_value(json_val)?;
+    let encoded: URLParameters = serde_json::from_str(&json_val.to_string())?;
 
     let mut url = context.path.clone();
     let encoded_str = encoded.get();
