@@ -174,6 +174,9 @@ fn test_push_single_or_vec() {
     assert_eq!(params.get(), "k=v");
 
     let mut params = URLParameters(String::new());
-    params.push_single_or_vec("arr", SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]));
+    params.push_single_or_vec(
+        "arr",
+        SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]),
+    );
     assert_eq!(params.get(), "arr[]=a&arr[]=b");
 }
