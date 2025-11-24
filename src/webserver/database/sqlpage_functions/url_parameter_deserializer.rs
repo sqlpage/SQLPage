@@ -5,13 +5,8 @@ use serde_json::Value;
 use std::borrow::Cow;
 use std::fmt;
 
+#[derive(Default)]
 pub struct URLParameters(String);
-
-impl Default for URLParameters {
-    fn default() -> Self {
-        Self(String::new())
-    }
-}
 
 impl URLParameters {
     pub fn new() -> Self {
