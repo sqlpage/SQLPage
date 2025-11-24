@@ -42,7 +42,7 @@
 //! [SQLPage documentation](https://sql-page.com/documentation.sql).
 
 use crate::templates::SplitTemplate;
-use crate::webserver::http::RequestContext;
+use crate::webserver::http::{RequestContext, ResponseFormat};
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
 use crate::webserver::ErrorWithStatus;
 use crate::AppState;
@@ -96,11 +96,13 @@ impl HeaderContext {
         writer: ResponseWriter,
     ) -> Self {
         let mut response = HttpResponseBuilder::new(StatusCode::OK);
-        response.content_type("text/html; charset=utf-8");
-        let tpl = &app_state.config.content_security_policy;
-        request_context
-            .content_security_policy
-            .apply_to_response(tpl, &mut response);
+        response.content_type(request_context.response_format.content_type());
+        if request_context.response_format == ResponseFormat::Html {
+            let tpl = &app_state.config.content_security_policy;
+            request_context
+                .content_security_policy
+                .apply_to_response(tpl, &mut response);
+        }
         Self {
             app_state,
             request_context,
@@ -391,11 +393,23 @@ impl HeaderContext {
 
     async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
         self.add_server_timing_header();
-        let html_renderer =
-            HtmlRenderContext::new(self.app_state, self.request_context, self.writer, data)
-                .await
-                .with_context(|| "Failed to create a render context from the header context.")?;
-        let renderer = AnyRenderBodyContext::Html(html_renderer);
+        let renderer = match self.request_context.response_format {
+            ResponseFormat::Json => AnyRenderBodyContext::Json(
+                JsonBodyRenderer::new_array_with_first_row(self.writer, &data),
+            ),
+            ResponseFormat::JsonLines => AnyRenderBodyContext::Json(
+                JsonBodyRenderer::new_jsonlines_with_first_row(self.writer, &data),
+            ),
+            ResponseFormat::Html => {
+                let html_renderer =
+                    HtmlRenderContext::new(self.app_state, self.request_context, self.writer, data)
+                        .await
+                        .with_context(|| {
+                            "Failed to create a render context from the header context."
+                        })?;
+                AnyRenderBodyContext::Html(html_renderer)
+            }
+        };
         let http_response = self.response;
         Ok(PageContext::Body {
             renderer,
@@ -516,6 +530,11 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
         let _ = renderer.write_prefix();
         renderer
     }
+    pub fn new_array_with_first_row(writer: W, first_row: &JsonValue) -> JsonBodyRenderer<W> {
+        let mut renderer = Self::new_array(writer);
+        let _ = renderer.handle_row(first_row);
+        renderer
+    }
     pub fn new_jsonlines(writer: W) -> JsonBodyRenderer<W> {
         let mut renderer = Self {
             writer,
@@ -525,6 +544,11 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
             separator: b"\n",
         };
         renderer.write_prefix().unwrap();
+        renderer
+    }
+    pub fn new_jsonlines_with_first_row(writer: W, first_row: &JsonValue) -> JsonBodyRenderer<W> {
+        let mut renderer = Self::new_jsonlines(writer);
+        let _ = renderer.handle_row(first_row);
         renderer
     }
     pub fn new_server_sent_events(writer: W) -> JsonBodyRenderer<W> {

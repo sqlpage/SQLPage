@@ -12,6 +12,7 @@ use crate::webserver::ErrorWithStatus;
 use crate::{AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
 use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
+use actix_web::http::header::Accept;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode};
 use actix_web::web::PayloadConfig;
@@ -40,12 +41,52 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ResponseFormat {
+    #[default]
+    Html,
+    Json,
+    JsonLines,
+}
+
 #[derive(Clone)]
 pub struct RequestContext {
     pub is_embedded: bool,
     pub source_path: PathBuf,
     pub content_security_policy: ContentSecurityPolicy,
     pub server_timing: Arc<ServerTiming>,
+    pub response_format: ResponseFormat,
+}
+
+impl ResponseFormat {
+    #[must_use]
+    pub fn from_accept_header(accept: &Accept) -> Self {
+        for quality_item in accept.iter() {
+            let mime = &quality_item.item;
+            let type_ = mime.type_().as_str();
+            let subtype = mime.subtype().as_str();
+
+            match (type_, subtype) {
+                ("application", "json") => return Self::Json,
+                ("application", "x-ndjson" | "jsonlines" | "x-jsonlines") => {
+                    return Self::JsonLines
+                }
+                ("text", "x-ndjson" | "jsonlines" | "x-jsonlines") => return Self::JsonLines,
+                ("text", "html") | ("*", "*") => return Self::Html,
+                _ => {}
+            }
+        }
+        Self::Html
+    }
+
+    #[must_use]
+    pub fn content_type(self) -> &'static str {
+        match self {
+            Self::Html => "text/html; charset=utf-8",
+            Self::Json => "application/json",
+            Self::JsonLines => "application/x-ndjson",
+        }
+    }
 }
 
 async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRenderBodyContext) {
@@ -174,6 +215,10 @@ async fn render_sql(
         .clone()
         .into_inner();
 
+    let response_format = Accept::parse(srv_req)
+        .map(|accept| ResponseFormat::from_accept_header(&accept))
+        .unwrap_or_default();
+
     let exec_ctx = extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
         .await
         .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
@@ -190,6 +235,7 @@ async fn render_sql(
             source_path,
             content_security_policy: ContentSecurityPolicy::with_random_nonce(),
             server_timing: Arc::clone(&request_info.server_timing),
+            response_format,
         };
         let mut conn = None;
         let database_entries_stream =
