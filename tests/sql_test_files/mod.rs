@@ -138,14 +138,15 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
 
         let actual = obj
             .get("actual")
-            .map(json_to_string)
-            .unwrap_or_else(|| "NULL".to_string());
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        let actual_str = json_to_string(&actual);
 
-        let expected: Vec<String> = obj
+        let expected: Vec<serde_json::Value> = obj
             .get("expected")
             .map(|v| match v {
-                serde_json::Value::Array(arr) => arr.iter().map(json_to_string).collect(),
-                _ => vec![json_to_string(v)],
+                serde_json::Value::Array(arr) => arr.clone(),
+                _ => vec![v.clone()],
             })
             .unwrap_or_default();
 
@@ -166,13 +167,14 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
         }
 
         let exact_ok = expected.is_empty() || expected.iter().any(|e| e == &actual);
-        let contains_ok =
-            expected_contains.is_empty() || expected_contains.iter().all(|e| actual.contains(e));
+        let contains_ok = expected_contains.is_empty()
+            || expected_contains.iter().all(|e| actual_str.contains(e));
 
         if !exact_ok || !contains_ok {
             let mut msg = format!("Test failed: {}\n", test_file.display());
             if !expected.is_empty() {
-                msg.push_str(&format!("Expected: {}\n", expected.join(" or ")));
+                let expected_strs: Vec<String> = expected.iter().map(|d| d.to_string()).collect();
+                msg.push_str(&format!("Expected: {}\n", expected_strs.join(" or ")));
             }
             if !expected_contains.is_empty() {
                 msg.push_str(&format!(
@@ -180,7 +182,7 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
                     expected_contains.join(", ")
                 ));
             }
-            msg.push_str(&format!("Actual: {}\n", actual));
+            msg.push_str(&format!("Actual:   {}\n", actual));
             panic!("{}", msg);
         }
     }
@@ -193,7 +195,15 @@ fn assert_html_test(body: &str, test_file: &std::path::Path, stem: &str) {
         test_file.display()
     );
 
-    if stem.starts_with("it_works") {
+    if stem.starts_with("error_") {
+        let expected = stem.strip_prefix("error_").unwrap().replace('_', " ");
+        assert!(
+            body.to_lowercase().contains(&expected.to_lowercase()),
+            "Should contain '{}': {}",
+            expected,
+            test_file.display()
+        );
+    } else {
         if let Some(error) = extract_error(body) {
             panic!("Error in {}: {}", test_file.display(), error);
         }
@@ -205,14 +215,6 @@ fn assert_html_test(body: &str, test_file: &std::path::Path, stem: &str) {
         assert!(
             !body.to_lowercase().contains("error"),
             "Unexpected error: {}",
-            test_file.display()
-        );
-    } else if stem.starts_with("error_") {
-        let expected = stem.strip_prefix("error_").unwrap().replace('_', " ");
-        assert!(
-            body.to_lowercase().contains(&expected.to_lowercase()),
-            "Should contain '{}': {}",
-            expected,
             test_file.display()
         );
     }

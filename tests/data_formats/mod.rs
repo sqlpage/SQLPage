@@ -96,7 +96,7 @@ async fn test_json_columns() {
 #[actix_web::test]
 async fn test_accept_json_returns_json_array() -> actix_web::Result<()> {
     let resp = req_with_accept(
-        "/tests/sql_test_files/component_rendering/it_works_simple.sql",
+        "/tests/sql_test_files/component_rendering/simple.sql",
         "application/json",
     )
     .await?;
@@ -117,7 +117,7 @@ async fn test_accept_json_returns_json_array() -> actix_web::Result<()> {
 #[actix_web::test]
 async fn test_accept_ndjson_returns_jsonlines() -> actix_web::Result<()> {
     let resp = req_with_accept(
-        "/tests/sql_test_files/component_rendering/it_works_simple.sql",
+        "/tests/sql_test_files/component_rendering/simple.sql",
         "application/x-ndjson",
     )
     .await?;
@@ -144,7 +144,7 @@ async fn test_accept_ndjson_returns_jsonlines() -> actix_web::Result<()> {
 #[actix_web::test]
 async fn test_accept_html_returns_html() -> actix_web::Result<()> {
     let resp = req_with_accept(
-        "/tests/sql_test_files/component_rendering/it_works_simple.sql",
+        "/tests/sql_test_files/component_rendering/simple.sql",
         "text/html",
     )
     .await?;
@@ -161,7 +161,7 @@ async fn test_accept_html_returns_html() -> actix_web::Result<()> {
 #[actix_web::test]
 async fn test_accept_wildcard_returns_html() -> actix_web::Result<()> {
     let resp = req_with_accept(
-        "/tests/sql_test_files/component_rendering/it_works_simple.sql",
+        "/tests/sql_test_files/component_rendering/simple.sql",
         "*/*",
     )
     .await?;

@@ -10,7 +10,7 @@ async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
     let app_data = make_app_data_from_config(config).await;
 
     let req = crate::common::get_request_to_with_data(
-        "/tests/sql_test_files/component_rendering/it_works_simple.sql",
+        "/tests/sql_test_files/component_rendering/simple.sql",
         app_data,
     )
     .await?
@@ -32,7 +32,7 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
     let app_data = make_app_data_from_config(config).await;
 
     let req = crate::common::get_request_to_with_data(
-        "/tests/sql_test_files/data/it_works_postgres_cast_syntax.sql",
+        "/tests/sql_test_files/data/postgres_cast_syntax.sql",
         app_data,
     )
     .await?
@@ -72,7 +72,7 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_server_timing_format() -> actix_web::Result<()> {
-    let req = get_request_to("/tests/sql_test_files/data/it_works_postgres_cast_syntax.sql")
+    let req = get_request_to("/tests/sql_test_files/data/postgres_cast_syntax.sql")
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;

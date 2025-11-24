@@ -79,9 +79,9 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     }
     // Now make other requests to verify the connection is still usable
     for path in [
-        "/tests/sql_test_files/component_rendering/it_works_simple.sql",
-        "/tests/sql_test_files/component_rendering/it_works_text_markdown.sql",
-        "/tests/sql_test_files/component_rendering/it_works_text_unsafe_markdown.sql",
+        "/tests/sql_test_files/component_rendering/simple.sql",
+        "/tests/sql_test_files/component_rendering/text_markdown.sql",
+        "/tests/sql_test_files/component_rendering/text_unsafe_markdown.sql",
     ] {
         let req = get_request_to_with_data(path, app_data.clone())
             .await?
