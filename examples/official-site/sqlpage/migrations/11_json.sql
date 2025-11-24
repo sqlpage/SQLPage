@@ -18,6 +18,10 @@ This component **must appear at the top of your SQL file**, before any other dat
 An HTTP response can have only a single datatype, and it must be declared in the headers.
 So if you have already called the `shell` component, or another traditional HTML component,
 you cannot use this component in the same file.
+
+SQLPage can also return JSON or JSON Lines when the incoming request says it prefers them with an HTTP `Accept` header, so the same `/users.sql` page can show a table in a browser but return raw data to `curl -H "Accept: application/json" http://localhost:8080/users.sql`.
+
+Use this component when you want to control the payload or force JSON output even for requests that would normally get HTML.
 ',
         'code',
         '0.9.0'
@@ -84,6 +88,12 @@ select * from users;
     {"username":"James","userid":1},
     {"username":"John","userid":2}
 ]
+```
+
+Clients can also receive JSON or JSON Lines automatically by requesting the same SQL file with an HTTP `Accept` header such as `application/json` or `application/x-ndjson` when the component is omitted, for example:
+
+```
+curl -H "Accept: application/json" http://localhost:8080/users.sql
 ```
     '
     ),
