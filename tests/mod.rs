@@ -1,6 +1,5 @@
 mod basic;
 mod common;
-mod components;
 mod core;
 mod data_formats;
 mod errors;
