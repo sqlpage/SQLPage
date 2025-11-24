@@ -10,26 +10,28 @@ pub struct URLParameters(String);
 
 impl URLParameters {
     pub fn new() -> Self {
-        Self::default()
+        Self(String::new())
     }
 
     fn encode_and_push(&mut self, v: &str) {
         let val: Cow<str> = percent_encode(v.as_bytes(), NON_ALPHANUMERIC).into();
         self.0.push_str(&val);
     }
+
+    fn start_new_pair(&mut self) {
+        let char = if self.0.is_empty() { '?' } else { '&' };
+        self.0.push(char);
+    }
+
     fn push_kv(&mut self, key: &str, value: &str) {
-        if !self.0.is_empty() {
-            self.0.push('&');
-        }
+        self.start_new_pair();
         self.encode_and_push(key);
         self.0.push('=');
         self.encode_and_push(value);
     }
 
     fn push_array_entry(&mut self, key: &str, value: &str) {
-        if !self.0.is_empty() {
-            self.0.push('&');
-        }
+        self.start_new_pair();
         self.encode_and_push(key);
         self.0.push_str("[]=");
         self.encode_and_push(value);
@@ -68,9 +70,18 @@ impl URLParameters {
         }
     }
 
-    pub fn append_to_url(&self, url: &mut String) {
-        if !self.0.is_empty() {
-            url.push('?');
+    pub fn with_empty_path(self) -> String {
+        if self.0.is_empty() {
+            "?".to_string() // Link to the current page without parameters
+        } else {
+            self.0 // Link to the current page with specific parameters
+        }
+    }
+
+    pub fn append_to_path(self, url: &mut String) {
+        if url.is_empty() {
+            *url = self.with_empty_path();
+        } else {
             url.push_str(&self.0);
         }
     }
@@ -116,6 +127,12 @@ impl std::fmt::Display for URLParameters {
     }
 }
 
+impl From<URLParameters> for String {
+    fn from(value: URLParameters) -> Self {
+        value.0
+    }
+}
+
 #[test]
 fn test_url_parameters_deserializer() {
     use serde_json::json;
@@ -128,7 +145,7 @@ fn test_url_parameters_deserializer() {
     let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
     assert_eq!(
         url_parameters.0,
-        "x=hello%20world&num=123&arr[]=1&arr[]=2&arr[]=3"
+        "?x=hello%20world&num=123&arr[]=1&arr[]=2&arr[]=3"
     );
 }
 
@@ -141,7 +158,7 @@ fn test_url_parameters_null() {
     });
 
     let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
-    assert_eq!(url_parameters.0, "x=hello");
+    assert_eq!(url_parameters.0, "?x=hello");
 }
 
 #[test]
@@ -152,7 +169,7 @@ fn test_url_parameters_deserializer_special_chars() {
     });
 
     let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
-    assert_eq!(url_parameters.0, "chars[]=%0A&chars[]=%20&chars[]=%22");
+    assert_eq!(url_parameters.0, "?chars[]=%0A&chars[]=%20&chars[]=%22");
 }
 
 #[test]
@@ -167,7 +184,7 @@ fn test_url_parameters_deserializer_issue_879() {
     let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
     assert_eq!(
         url_parameters.0,
-        "name=John%20Doe%20%26%20Son%27s&items[]=1&items[]=item%202%20%26%203&items[]=true&special%5Fchar=%25%26%3D%2B%20"
+        "?name=John%20Doe%20%26%20Son%27s&items[]=1&items[]=item%202%20%26%203&items[]=true&special%5Fchar=%25%26%3D%2B%20"
     );
 }
 
@@ -175,12 +192,12 @@ fn test_url_parameters_deserializer_issue_879() {
 fn test_push_single_or_vec() {
     let mut params = URLParameters(String::new());
     params.push_single_or_vec("k", SingleOrVec::Single("v".to_string()));
-    assert_eq!(params.to_string(), "k=v");
+    assert_eq!(params.to_string(), "?k=v");
 
     let mut params = URLParameters(String::new());
     params.push_single_or_vec(
         "arr",
         SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]),
     );
-    assert_eq!(params.to_string(), "arr[]=a&arr[]=b");
+    assert_eq!(params.to_string(), "?arr[]=a&arr[]=b");
 }

@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
 ## 0.40.0 (unreleased)
+ - Fixed a bug in `sqlpage.link`: a link with no path (link to the current page) and no url parameter now works as expected. It used to keep the existing url parameters instead of removing them. `sqlpage.link('', '{}')` now returns `'?'` instead of the empty string.
  - **New Function**: `sqlpage.set_variable(name, value)`
    - Returns a URL with the specified variable set to the given value, preserving other existing variables.
    - This is a shorthand for `sqlpage.link(sqlpage.path(), json_patch(sqlpage.variables('get'), json_object(name, value)))`.

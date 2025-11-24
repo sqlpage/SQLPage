@@ -2,7 +2,7 @@ use super::{ExecutionContext, RequestInfo};
 use crate::webserver::{
     database::{
         blob_to_data_url::vec_to_data_uri_with_mime, execute_queries::DbConn,
-        sqlpage_functions::url_parameter_deserializer::URLParameters,
+        sqlpage_functions::url_parameters::URLParameters,
     },
     http_client::make_http_client,
     request_variables::ParamMap,
@@ -377,7 +377,7 @@ async fn link<'a>(
         let encoded = serde_json::from_str::<URLParameters>(&parameters).with_context(|| {
             format!("link: invalid URL parameters: not a valid json object:\n{parameters}")
         })?;
-        encoded.append_to_url(&mut url);
+        encoded.append_to_path(&mut url);
     }
     if let Some(hash) = hash {
         url.push('#');
@@ -627,10 +627,7 @@ async fn set_variable<'a>(
         params.push_single_or_vec(&name, SingleOrVec::Single(value.into_owned()));
     }
 
-    let mut url = context.path.clone();
-    params.append_to_url(&mut url);
-
-    Ok(url)
+    Ok(params.with_empty_path())
 }
 
 #[tokio::test]
