@@ -8,8 +8,7 @@ set fetch_req = '{
 }';
 set res = sqlpage.fetch_with_meta($fetch_req);
 
-select 'text' as component,
-    case
-        when $res LIKE '%"status":200%' AND $res LIKE '%"headers":{%' AND $res LIKE '%"body":"%' then 'It works !'
-        else 'Error! Got: ' || $res
-    end as contents; 
+select '"status":200' as expected_contains,
+       '"headers":{' as expected_contains,
+       '"body":"' as expected_contains,
+       $res as actual;

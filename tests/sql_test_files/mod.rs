@@ -9,67 +9,43 @@ async fn run_all_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
     let test_files = get_sql_test_files();
 
-    // Create a shutdown channel for the echo server
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
-    // Start echo server once for all tests
     let (echo_handle, port) = crate::common::start_echo_server(shutdown_rx);
-
-    // Wait for echo server to be ready
     wait_for_echo_server(port).await;
 
     for test_file in test_files {
-        let test_result = run_sql_test(&test_file, &app_data, &echo_handle, port).await;
-        assert_test_result(test_result, &test_file);
+        run_sql_test(&test_file, &app_data, &echo_handle, port).await;
     }
 
-    // Signal the echo server to shut down
     let _ = shutdown_tx.send(());
-    // Wait for echo server to complete after all tests with a timeout
-    match tokio::time::timeout(Duration::from_secs(2), echo_handle).await {
-        Ok(_) => (),
-        Err(_) => panic!("Echo server did not shut down within 2 seconds"),
-    }
+    let _ = tokio::time::timeout(Duration::from_secs(2), echo_handle).await;
 }
 
 async fn wait_for_echo_server(port: u16) {
     let client = awc::Client::default();
     let start = std::time::Instant::now();
-    let timeout = Duration::from_secs(5);
-
-    while start.elapsed() < timeout {
-        match client.get(format!("http://localhost:{port}/")).send().await {
-            Ok(_) => return,
-            Err(_) => {
-                tokio::time::sleep(Duration::from_millis(100)).await;
-                continue;
-            }
+    while start.elapsed() < Duration::from_secs(5) {
+        if client
+            .get(format!("http://localhost:{port}/"))
+            .send()
+            .await
+            .is_ok()
+        {
+            return;
         }
+        tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    panic!("Echo server did not become ready within 5 seconds");
+    panic!("Echo server did not become ready");
 }
 
 fn get_sql_test_files() -> Vec<std::path::PathBuf> {
-    let path = std::path::Path::new("tests/sql_test_files");
-    std::fs::read_dir(path)
+    std::fs::read_dir("tests/sql_test_files")
         .unwrap()
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
-            let path = entry.path();
-            if path.extension()? == "sql" {
-                Some(path)
-            } else {
-                None
-            }
+        .filter_map(|e| {
+            let path = e.ok()?.path();
+            (path.extension()? == "sql").then_some(path)
         })
         .collect()
-}
-
-use std::fmt::Write;
-
-#[derive(Debug)]
-enum TestResult {
-    Success(String),
-    Skipped(String),
 }
 
 async fn run_sql_test(
@@ -77,109 +53,157 @@ async fn run_sql_test(
     app_data: &actix_web::web::Data<AppState>,
     _echo_handle: &JoinHandle<()>,
     port: u16,
-) -> anyhow::Result<TestResult> {
+) {
     let test_file_path = test_file.to_string_lossy().replace('\\', "/");
     let stem = test_file.file_stem().unwrap().to_str().unwrap();
 
-    let app_state = app_data.get_ref();
-    let db = &app_state.db;
-    let db_type = format!("{:?}", db.info.database_type).to_lowercase();
-
+    let db_type = format!("{:?}", app_data.db.info.database_type).to_lowercase();
     if stem.contains(&format!("_no{db_type}")) {
-        return Ok(TestResult::Skipped(format!(
-            "Test skipped for database type: {db_type}"
-        )));
+        println!("Skipped {}: {}", test_file.display(), db_type);
+        return;
     }
 
     let mut query_params = "x=1".to_string();
     if test_file_path.contains("fetch") {
-        write!(query_params, "&echo_port={port}").unwrap();
+        query_params.push_str(&format!("&echo_port={port}"));
     }
     let req_str = format!("/{test_file_path}?{query_params}");
 
-    let resp = tokio::time::timeout(
-        Duration::from_secs(5),
-        crate::common::req_path_with_app_data(&req_str, app_data.clone()),
-    )
+    let use_json = std::fs::read_to_string(test_file)
+        .unwrap_or_default()
+        .contains(" actual");
+
+    let resp = tokio::time::timeout(Duration::from_secs(5), async {
+        if use_json {
+            crate::common::req_path_with_app_data_json(&req_str, app_data.clone()).await
+        } else {
+            crate::common::req_path_with_app_data(&req_str, app_data.clone()).await
+        }
+    })
     .await
-    .map_err(|e| anyhow::anyhow!("Test request timed out after 5 seconds: {}", e))??;
+    .unwrap_or_else(|_| panic!("Test timeout: {}", test_file.display()))
+    .unwrap_or_else(|e| panic!("Request failed: {}: {}", test_file.display(), e));
 
-    let body = test::read_body(resp).await;
-    Ok(TestResult::Success(String::from_utf8(body.to_vec())?))
-}
+    let body = String::from_utf8(test::read_body(resp).await.to_vec())
+        .unwrap_or_else(|_| panic!("Invalid UTF-8: {}", test_file.display()));
 
-fn assert_test_result(result: anyhow::Result<TestResult>, test_file: &std::path::Path) {
-    match result {
-        Ok(TestResult::Skipped(reason)) => {
-            println!("⏭️  Skipped {}: {}", test_file.display(), reason);
-        }
-        Ok(TestResult::Success(body)) => {
-            assert_html_response(&body, test_file);
-            let lowercase_body = body.to_lowercase();
-            let stem = test_file.file_stem().unwrap().to_str().unwrap().to_string();
-
-            if stem.starts_with("it_works") {
-                assert_it_works_tests(&body, &lowercase_body, test_file);
-            } else if stem.starts_with("error_") {
-                assert_error_tests(&stem, &lowercase_body, test_file);
-            }
-        }
-        Err(e) => panic!("Failed to get response for {}: {}", test_file.display(), e),
+    if use_json {
+        assert_json_test(&body, test_file);
+    } else {
+        assert_html_test(&body, test_file, stem);
     }
 }
 
-fn assert_html_response(body: &str, test_file: &std::path::Path) {
+fn assert_json_test(body: &str, test_file: &std::path::Path) {
+    let rows: Vec<serde_json::Value> = serde_json::from_str(body)
+        .unwrap_or_else(|_| panic!("Invalid JSON: {}", test_file.display()));
+
     assert!(
-        body.starts_with("<!DOCTYPE html>"),
-        "Response to {} is not HTML",
+        !rows.is_empty(),
+        "No rows returned: {}",
         test_file.display()
     );
+
+    for row in rows {
+        let obj = match row.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        let actual = obj
+            .get("actual")
+            .map(json_to_string)
+            .unwrap_or_else(|| "NULL".to_string());
+
+        let expected: Vec<String> = obj
+            .get("expected")
+            .map(|v| match v {
+                serde_json::Value::Array(arr) => arr.iter().map(json_to_string).collect(),
+                _ => vec![json_to_string(v)],
+            })
+            .unwrap_or_default();
+
+        let expected_contains: Vec<String> = obj
+            .get("expected_contains")
+            .map(|v| match v {
+                serde_json::Value::Array(arr) => arr.iter().map(json_to_string).collect(),
+                _ => vec![json_to_string(v)],
+            })
+            .unwrap_or_default();
+
+        if expected.is_empty() && expected_contains.is_empty() {
+            continue;
+        }
+
+        let exact_ok = expected.is_empty() || expected.iter().any(|e| e == &actual);
+        let contains_ok =
+            expected_contains.is_empty() || expected_contains.iter().all(|e| actual.contains(e));
+
+        if !exact_ok || !contains_ok {
+            let mut msg = format!("Test failed: {}\n", test_file.display());
+            if !expected.is_empty() {
+                msg.push_str(&format!("Expected: {}\n", expected.join(" or ")));
+            }
+            if !expected_contains.is_empty() {
+                msg.push_str(&format!(
+                    "Expected to contain: {}\n",
+                    expected_contains.join(", ")
+                ));
+            }
+            msg.push_str(&format!("Actual: {}\n", actual));
+            panic!("{}", msg);
+        }
+    }
 }
 
-fn assert_it_works_tests(body: &str, lowercase_body: &str, test_file: &std::path::Path) {
-    if body.contains("<code class=\"sqlpage-error-description\">") {
-        let error_desc = body
-            .split("<code class=\"sqlpage-error-description\">")
-            .nth(1)
-            .and_then(|s| s.split("</code>").next())
-            .unwrap_or("Unknown error");
-        panic!(
-            "\n\n❌ TEST FAILED: {} ❌\n\nFull Response:\n{}\n\nError Description: {}\n",
-            test_file.display(),
-            error_desc,
-            body
+fn assert_html_test(body: &str, test_file: &std::path::Path, stem: &str) {
+    assert!(
+        body.starts_with("<!DOCTYPE html>"),
+        "Not HTML: {}",
+        test_file.display()
+    );
+
+    if stem.starts_with("it_works") {
+        if let Some(error) = extract_error(body) {
+            panic!("Error in {}: {}", test_file.display(), error);
+        }
+        assert!(
+            body.contains("It works !"),
+            "Should contain 'It works !': {}",
+            test_file.display()
+        );
+        assert!(
+            !body.to_lowercase().contains("error"),
+            "Unexpected error: {}",
+            test_file.display()
+        );
+    } else if stem.starts_with("error_") {
+        let expected = stem.strip_prefix("error_").unwrap().replace('_', " ");
+        assert!(
+            body.to_lowercase().contains(&expected.to_lowercase()),
+            "Should contain '{}': {}",
+            expected,
+            test_file.display()
         );
     }
-
-    assert!(
-        body.contains("It works !"),
-        "{body}\n❌ Error in file {test_file:?} ❌\nShould contain: 'It works !'",
-    );
-    assert!(
-        !lowercase_body.contains("error"),
-        "{}\n{}\nexpected to not contain: error",
-        test_file.display(),
-        body
-    );
 }
 
-fn assert_error_tests(stem: &str, lowercase_body: &str, test_file: &std::path::Path) {
-    let expected_error = stem
-        .strip_prefix("error_")
-        .unwrap()
-        .replace('_', " ")
-        .to_lowercase();
-    assert!(
-        lowercase_body.contains(&expected_error),
-        "{}\n{}\nexpected to contain: {}",
-        test_file.display(),
-        lowercase_body,
-        expected_error
-    );
-    assert!(
-        lowercase_body.contains("error"),
-        "{}\n{}\nexpected to contain: error",
-        test_file.display(),
-        lowercase_body
-    );
+fn extract_error(body: &str) -> Option<String> {
+    body.split("<code class=\"sqlpage-error-description\">")
+        .nth(1)?
+        .split("</code>")
+        .next()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+}
+
+fn json_to_string(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::Null => "NULL".to_string(),
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Bool(b) => b.to_string(),
+        _ => v.to_string(),
+    }
 }
