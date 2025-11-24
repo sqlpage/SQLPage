@@ -68,8 +68,11 @@ impl URLParameters {
         }
     }
 
-    pub fn get(&self) -> &str {
-        &self.0
+    pub fn append_to_url(&self, url: &mut String) {
+        if !self.0.is_empty() {
+            url.push('?');
+            url.push_str(&self.0);
+        }
     }
 }
 
@@ -104,6 +107,12 @@ impl<'de> Deserialize<'de> for URLParameters {
         }
 
         deserializer.deserialize_map(URLParametersVisitor)
+    }
+}
+
+impl std::fmt::Display for URLParameters {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -166,12 +175,12 @@ fn test_url_parameters_deserializer_issue_879() {
 fn test_push_single_or_vec() {
     let mut params = URLParameters(String::new());
     params.push_single_or_vec("k", SingleOrVec::Single("v".to_string()));
-    assert_eq!(params.get(), "k=v");
+    assert_eq!(params.to_string(), "k=v");
 
     let mut params = URLParameters(String::new());
     params.push_single_or_vec(
         "arr",
         SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]),
     );
-    assert_eq!(params.get(), "arr[]=a&arr[]=b");
+    assert_eq!(params.to_string(), "arr[]=a&arr[]=b");
 }

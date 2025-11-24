@@ -377,11 +377,7 @@ async fn link<'a>(
         let encoded = serde_json::from_str::<URLParameters>(&parameters).with_context(|| {
             format!("link: invalid URL parameters: not a valid json object:\n{parameters}")
         })?;
-        let encoded_str = encoded.get();
-        if !encoded_str.is_empty() {
-            url.push('?');
-            url.push_str(encoded_str);
-        }
+        encoded.append_to_url(&mut url);
     }
     if let Some(hash) = hash {
         url.push('#');
@@ -632,11 +628,7 @@ async fn set_variable<'a>(
     }
 
     let mut url = context.path.clone();
-    let encoded_str = params.get();
-    if !encoded_str.is_empty() {
-        url.push('?');
-        url.push_str(encoded_str);
-    }
+    params.append_to_url(&mut url);
 
     Ok(url)
 }
