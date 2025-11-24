@@ -46,7 +46,7 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     let app_data = make_app_data().await;
     let big_csv = "col1,col2\nval1,val2\n".repeat(1000);
     let req = get_request_to_with_data(
-        "/tests/sql_test_files/error_failed_to_import_the_csv.sql",
+        "/tests/sql_test_files/component_rendering/error_failed_to_import_the_csv.sql",
         app_data.clone(),
     )
     .await?
@@ -79,9 +79,9 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     }
     // Now make other requests to verify the connection is still usable
     for path in [
-        "/tests/sql_test_files/it_works_lower.sql",
-        "/tests/sql_test_files/it_works_simple.sql",
-        "/tests/sql_test_files/it_works_path.sql",
+        "/tests/sql_test_files/component_rendering/it_works_simple.sql",
+        "/tests/sql_test_files/component_rendering/it_works_text_markdown.sql",
+        "/tests/sql_test_files/component_rendering/it_works_text_unsafe_markdown.sql",
     ] {
         let req = get_request_to_with_data(path, app_data.clone())
             .await?

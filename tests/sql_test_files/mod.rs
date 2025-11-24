@@ -7,7 +7,7 @@ use tokio::task::JoinHandle;
 #[actix_web::test]
 async fn run_all_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
-    let test_files = get_sql_test_files();
+    let test_files = get_sql_test_cases();
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let (echo_handle, port) = crate::common::start_echo_server(shutdown_rx);
@@ -38,22 +38,50 @@ async fn wait_for_echo_server(port: u16) {
     panic!("Echo server did not become ready");
 }
 
-fn get_sql_test_files() -> Vec<std::path::PathBuf> {
-    std::fs::read_dir("tests/sql_test_files")
+#[derive(Clone, Copy)]
+enum SqlTestFormat {
+    Html,
+    Json,
+}
+
+struct SqlTestCase {
+    path: std::path::PathBuf,
+    format: SqlTestFormat,
+}
+
+fn get_sql_test_cases() -> Vec<SqlTestCase> {
+    let mut tests = Vec::new();
+    tests.extend(read_sql_tests_in_dir(
+        "tests/sql_test_files/component_rendering",
+        SqlTestFormat::Html,
+    ));
+    tests.extend(read_sql_tests_in_dir(
+        "tests/sql_test_files/data",
+        SqlTestFormat::Json,
+    ));
+    tests
+}
+
+fn read_sql_tests_in_dir(dir: &str, format: SqlTestFormat) -> Vec<SqlTestCase> {
+    std::fs::read_dir(dir)
         .unwrap()
         .filter_map(|e| {
             let path = e.ok()?.path();
-            (path.extension()? == "sql").then_some(path)
+            if path.is_dir() || path.extension()? != "sql" {
+                return None;
+            }
+            Some(SqlTestCase { path, format })
         })
         .collect()
 }
 
 async fn run_sql_test(
-    test_file: &std::path::Path,
+    test_case: &SqlTestCase,
     app_data: &actix_web::web::Data<AppState>,
     _echo_handle: &JoinHandle<()>,
     port: u16,
 ) {
+    let test_file = &test_case.path;
     let test_file_path = test_file.to_string_lossy().replace('\\', "/");
     let stem = test_file.file_stem().unwrap().to_str().unwrap();
 
@@ -69,9 +97,7 @@ async fn run_sql_test(
     }
     let req_str = format!("/{test_file_path}?{query_params}");
 
-    let use_json = std::fs::read_to_string(test_file)
-        .unwrap_or_default()
-        .contains(" actual");
+    let use_json = matches!(test_case.format, SqlTestFormat::Json);
 
     let resp = tokio::time::timeout(Duration::from_secs(5), async {
         if use_json {
@@ -132,7 +158,11 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
             .unwrap_or_default();
 
         if expected.is_empty() && expected_contains.is_empty() {
-            continue;
+            panic!(
+                "No expected values found in {}: {}",
+                test_file.display(),
+                row
+            );
         }
 
         let exact_ok = expected.is_empty() || expected.iter().any(|e| e == &actual);
