@@ -31,8 +31,7 @@ async fn test_json_body() -> actix_web::Result<()> {
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
         "application/json"
     );
-    let body = test::read_body(resp).await;
-    let body_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let body_json: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(
         body_json,
         serde_json::json!([{"message": "It works!"}, {"cool": "cool"}])
@@ -106,8 +105,7 @@ async fn test_accept_json_returns_json_array() -> actix_web::Result<()> {
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
         "application/json"
     );
-    let body = test::read_body(resp).await;
-    let body_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let body_json: serde_json::Value = test::read_body_json(resp).await;
     assert!(body_json.is_array());
     let arr = body_json.as_array().unwrap();
     assert!(arr.len() >= 2);
