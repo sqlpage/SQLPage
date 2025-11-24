@@ -1,6 +1,9 @@
 # CHANGELOG.md
 
 ## 0.40.0 (unreleased)
+ - SQLPage now respects [HTTP accept headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept) for JSON. You can now easily process the contents of any existing sql page programmatically with:
+    - `curl -H "Accept: application/json" http://example.com/page.sql`: returns a json array
+    - `curl -H "Accept: application/x-ndjson" http://example.com/page.sql`: returns one json object per line.
  - Fixed a bug in `sqlpage.link`: a link with no path (link to the current page) and no url parameter now works as expected. It used to keep the existing url parameters instead of removing them. `sqlpage.link('', '{}')` now returns `'?'` instead of the empty string.
  - **New Function**: `sqlpage.set_variable(name, value)`
    - Returns a URL with the specified variable set to the given value, preserving other existing variables.
