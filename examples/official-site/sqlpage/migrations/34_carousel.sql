@@ -80,6 +80,14 @@ VALUES
     ),
     (
         'carousel',
+        'delay',
+        'Specify the delay, in milliseconds, between two images.',
+        'INTEGER',
+        TRUE,
+        TRUE
+    ),
+    (
+        'carousel',
         'image',
         'The URL (absolute or relative) of an image to display in the carousel.',
         'URL',
