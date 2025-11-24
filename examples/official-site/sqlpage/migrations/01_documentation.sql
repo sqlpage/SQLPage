@@ -893,7 +893,7 @@ Numbers can be displayed
     },
     {
         "feature": "APIs",
-        "description": "Allows building JSON REST APIs, integrates with external services, and can serve the same page as HTML in a browser or as JSON to tools like `curl -H \"Accept: application/json\" http://localhost:8080/users.sql`.",
+        "description": "Allows building JSON REST APIs and integrating with external APIs.",
         "benefits": "Enables automation and integration with other platforms, facilitates data exchange."
     },
     {
