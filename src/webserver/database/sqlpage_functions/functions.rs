@@ -618,26 +618,21 @@ async fn set_variable<'a>(
     name: Cow<'a, str>,
     value: Option<Cow<'a, str>>,
 ) -> anyhow::Result<String> {
-    let mut params_map = serde_json::Map::with_capacity(context.url_params.len() + 1);
+    let mut params = URLParameters::new();
 
     for (k, v) in &context.url_params {
-        params_map.insert(k.clone(), serde_json::to_value(v)?);
+        if k == &name {
+            continue;
+        }
+        params.push_single_or_vec(k, v.clone());
     }
 
     if let Some(value) = value {
-        params_map.insert(
-            name.into_owned(),
-            serde_json::Value::String(value.into_owned()),
-        );
-    } else {
-        params_map.remove(&*name);
+        params.push_single_or_vec(&name, SingleOrVec::Single(value.into_owned()));
     }
 
-    let json_val = serde_json::Value::Object(params_map);
-    let encoded: URLParameters = serde_json::from_str(&json_val.to_string())?;
-
     let mut url = context.path.clone();
-    let encoded_str = encoded.get();
+    let encoded_str = params.get();
     if !encoded_str.is_empty() {
         url.push('?');
         url.push_str(encoded_str);

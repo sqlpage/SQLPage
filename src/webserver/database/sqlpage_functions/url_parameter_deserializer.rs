@@ -1,3 +1,4 @@
+use crate::webserver::single_or_vec::SingleOrVec;
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
@@ -6,7 +7,17 @@ use std::fmt;
 
 pub struct URLParameters(String);
 
+impl Default for URLParameters {
+    fn default() -> Self {
+        Self(String::new())
+    }
+}
+
 impl URLParameters {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     fn encode_and_push(&mut self, v: &str) {
         let val: Cow<str> = percent_encode(v.as_bytes(), NON_ALPHANUMERIC).into();
         self.0.push_str(&val);
@@ -19,6 +30,49 @@ impl URLParameters {
         self.0.push('=');
         self.encode_and_push(value);
     }
+
+    fn push_array_entry(&mut self, key: &str, value: &str) {
+        if !self.0.is_empty() {
+            self.0.push('&');
+        }
+        self.encode_and_push(key);
+        self.0.push_str("[]=");
+        self.encode_and_push(value);
+    }
+
+    fn push_array(&mut self, key: &str, values: Vec<Value>) {
+        for val in values {
+            let val_str = match val {
+                Value::String(s) => s,
+                other => other.to_string(),
+            };
+            self.push_array_entry(key, &val_str);
+        }
+    }
+
+    pub fn push_single_or_vec(&mut self, key: &str, val: SingleOrVec) {
+        match val {
+            SingleOrVec::Single(v) => self.push_kv(key, &v),
+            SingleOrVec::Vec(v) => {
+                for s in v {
+                    self.push_array_entry(key, &s);
+                }
+            }
+        }
+    }
+
+    fn add_from_json(&mut self, key: &str, raw_json_value: &str) {
+        if let Ok(str_val) = serde_json::from_str::<Option<Cow<str>>>(raw_json_value) {
+            if let Some(str_val) = str_val {
+                self.push_kv(key, &str_val);
+            }
+        } else if let Ok(vec_val) = serde_json::from_str::<Vec<Value>>(raw_json_value) {
+            self.push_array(key, vec_val);
+        } else {
+            self.push_kv(key, raw_json_value);
+        }
+    }
+
     pub fn get(&self) -> &str {
         &self.0
     }
@@ -47,31 +101,7 @@ impl<'de> Deserialize<'de> for URLParameters {
                 while let Some((key, value)) =
                     map.next_entry::<Cow<str>, Cow<serde_json::value::RawValue>>()?
                 {
-                    let value = value.get();
-                    if let Ok(str_val) = serde_json::from_str::<Option<Cow<str>>>(value) {
-                        if let Some(str_val) = str_val {
-                            out.push_kv(&key, &str_val);
-                        }
-                    } else if let Ok(vec_val) =
-                        serde_json::from_str::<Vec<serde_json::Value>>(value)
-                    {
-                        for val in vec_val {
-                            if !out.0.is_empty() {
-                                out.0.push('&');
-                            }
-                            out.encode_and_push(&key);
-                            out.0.push_str("[]");
-                            out.0.push('=');
-
-                            let val = match val {
-                                Value::String(s) => s,
-                                other => other.to_string(),
-                            };
-                            out.encode_and_push(&val);
-                        }
-                    } else {
-                        out.push_kv(&key, value);
-                    }
+                    out.add_from_json(&key, value.get());
                 }
 
                 Ok(out)
@@ -135,4 +165,15 @@ fn test_url_parameters_deserializer_issue_879() {
         url_parameters.0,
         "name=John%20Doe%20%26%20Son%27s&items[]=1&items[]=item%202%20%26%203&items[]=true&special%5Fchar=%25%26%3D%2B%20"
     );
+}
+
+#[test]
+fn test_push_single_or_vec() {
+    let mut params = URLParameters(String::new());
+    params.push_single_or_vec("k", SingleOrVec::Single("v".to_string()));
+    assert_eq!(params.get(), "k=v");
+
+    let mut params = URLParameters(String::new());
+    params.push_single_or_vec("arr", SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]));
+    assert_eq!(params.get(), "arr[]=a&arr[]=b");
 }
