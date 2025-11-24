@@ -1,20 +1,22 @@
 # CHANGELOG.md
 
-## unrelease
+## 0.40.0 (unreleased)
+ - Fixed a bug in `sqlpage.link`: a link with no path (link to the current page) and no url parameter now works as expected. It used to keep the existing url parameters instead of removing them. `sqlpage.link('', '{}')` now returns `'?'` instead of the empty string.
+ - **New Function**: `sqlpage.set_variable(name, value)`
+   - Returns a URL with the specified variable set to the given value, preserving other existing variables.
+   - This is a shorthand for `sqlpage.link(sqlpage.path(), json_patch(sqlpage.variables('get'), json_object(name, value)))`.
  - **Variable System Improvements**: URL and POST parameters are now immutable, preventing accidental modification. User-defined variables created with `SET` remain mutable.
    - **BREAKING**: `$variable` no longer accesses POST parameters. Use `:variable` instead.
      - **What changed**: Previously, `$x` would return a POST parameter value if no GET parameter named `x` existed.
      - **Fix**: Replace `$x` with `:x` when you need to access form field values.
      - **Example**: Change `SELECT $username` to `SELECT :username` when reading form submissions.
-   - **BREAKING**: `SET $name` no longer overwrites GET (URL) parameters when a URL parameter with the same name exists.
+   - **BREAKING**: `SET $name` no longer makes GET (URL) parameters inaccessible when a URL parameter with the same name exists.
      - **What changed**: `SET $name = 'value'` would previously overwrite the URL parameter `$name`. Now it creates an independent SET variable that shadows the URL parameter.
      - **Fix**: This is generally the desired behavior. If you need to access the original URL parameter after setting a variable with the same name, extract it from the JSON returned by `sqlpage.variables('get')`.
      - **Example**: If your URL is `page.sql?name=john`, and you do `SET $name = 'modified'`, then:
        - `$name` will be `'modified'` (the SET variable)
        - The original URL parameter is still preserved and accessible:
-         - PostgreSQL: `sqlpage.variables('get')->>'name'` returns `'john'`
-         - SQLite: `json_extract(sqlpage.variables('get'), '$.name')` returns `'john'`
-         - MySQL: `JSON_UNQUOTE(JSON_EXTRACT(sqlpage.variables('get'), '$.name'))` returns `'john'`
+         - `sqlpage.variables('get')->>'name'` returns `'john'`
    - **New behavior**: Variable lookup now follows this precedence:
      - `$variable` checks SET variables first, then URL parameters
      - `:variable` checks SET variables first, then POST parameters  

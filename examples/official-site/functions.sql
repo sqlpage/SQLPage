@@ -11,7 +11,7 @@ FROM example WHERE component = 'shell' LIMIT 1;
 select 'breadcrumb' as component;
 select 'SQLPage' as title, '/' as link, 'Home page' as description;
 select 'Functions' as title, '/functions.sql' as link, 'List of all functions' as description;
-select $function as title, sqlpage.link('functions.sql', json_object('function', $function)) as link where $function IS NOT NULL;
+select $function as title, sqlpage.set_variable('function', $function) as link where $function IS NOT NULL;
 
 select 'text' as component, 'SQLPage built-in functions' as title where $function IS NULL;
 select '
@@ -60,7 +60,7 @@ select
 select
     name as title,
     icon,
-    sqlpage.link('functions.sql', json_object('function', name)) as link
+    sqlpage.set_variable('function', name) as link
 from sqlpage_functions
 where $function IS NOT NULL
 order by name;

@@ -1,0 +1,203 @@
+use crate::webserver::single_or_vec::SingleOrVec;
+use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
+use serde::{Deserialize, Deserializer};
+use serde_json::Value;
+use std::borrow::Cow;
+use std::fmt;
+
+#[derive(Default)]
+pub struct URLParameters(String);
+
+impl URLParameters {
+    pub fn new() -> Self {
+        Self(String::new())
+    }
+
+    fn encode_and_push(&mut self, v: &str) {
+        let val: Cow<str> = percent_encode(v.as_bytes(), NON_ALPHANUMERIC).into();
+        self.0.push_str(&val);
+    }
+
+    fn start_new_pair(&mut self) {
+        let char = if self.0.is_empty() { '?' } else { '&' };
+        self.0.push(char);
+    }
+
+    fn push_kv(&mut self, key: &str, value: &str) {
+        self.start_new_pair();
+        self.encode_and_push(key);
+        self.0.push('=');
+        self.encode_and_push(value);
+    }
+
+    fn push_array_entry(&mut self, key: &str, value: &str) {
+        self.start_new_pair();
+        self.encode_and_push(key);
+        self.0.push_str("[]=");
+        self.encode_and_push(value);
+    }
+
+    fn push_array(&mut self, key: &str, values: Vec<Value>) {
+        for val in values {
+            let val_str = match val {
+                Value::String(s) => s,
+                other => other.to_string(),
+            };
+            self.push_array_entry(key, &val_str);
+        }
+    }
+
+    pub fn push_single_or_vec(&mut self, key: &str, val: SingleOrVec) {
+        match val {
+            SingleOrVec::Single(v) => self.push_kv(key, &v),
+            SingleOrVec::Vec(v) => {
+                for s in v {
+                    self.push_array_entry(key, &s);
+                }
+            }
+        }
+    }
+
+    fn add_from_json(&mut self, key: &str, raw_json_value: &str) {
+        if let Ok(str_val) = serde_json::from_str::<Option<Cow<str>>>(raw_json_value) {
+            if let Some(str_val) = str_val {
+                self.push_kv(key, &str_val);
+            }
+        } else if let Ok(vec_val) = serde_json::from_str::<Vec<Value>>(raw_json_value) {
+            self.push_array(key, vec_val);
+        } else {
+            self.push_kv(key, raw_json_value);
+        }
+    }
+
+    pub fn with_empty_path(self) -> String {
+        if self.0.is_empty() {
+            "?".to_string() // Link to the current page without parameters
+        } else {
+            self.0 // Link to the current page with specific parameters
+        }
+    }
+
+    pub fn append_to_path(self, url: &mut String) {
+        if url.is_empty() {
+            *url = self.with_empty_path();
+        } else {
+            url.push_str(&self.0);
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for URLParameters {
+    fn deserialize<D>(deserializer: D) -> Result<URLParameters, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Visit an object and append keys and values to the string
+        struct URLParametersVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for URLParametersVisitor {
+            type Value = URLParameters;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a sequence")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<URLParameters, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut out = URLParameters(String::new());
+                while let Some((key, value)) =
+                    map.next_entry::<Cow<str>, Cow<serde_json::value::RawValue>>()?
+                {
+                    out.add_from_json(&key, value.get());
+                }
+
+                Ok(out)
+            }
+        }
+
+        deserializer.deserialize_map(URLParametersVisitor)
+    }
+}
+
+impl std::fmt::Display for URLParameters {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<URLParameters> for String {
+    fn from(value: URLParameters) -> Self {
+        value.0
+    }
+}
+
+#[test]
+fn test_url_parameters_deserializer() {
+    use serde_json::json;
+    let json = json!({
+        "x": "hello world",
+        "num": 123,
+        "arr": [1, 2, 3],
+    });
+
+    let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
+    assert_eq!(
+        url_parameters.0,
+        "?x=hello%20world&num=123&arr[]=1&arr[]=2&arr[]=3"
+    );
+}
+
+#[test]
+fn test_url_parameters_null() {
+    use serde_json::json;
+    let json = json!({
+        "null_should_be_omitted": null,
+        "x": "hello",
+    });
+
+    let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
+    assert_eq!(url_parameters.0, "?x=hello");
+}
+
+#[test]
+fn test_url_parameters_deserializer_special_chars() {
+    use serde_json::json;
+    let json = json!({
+        "chars": ["\n", " ", "\""],
+    });
+
+    let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
+    assert_eq!(url_parameters.0, "?chars[]=%0A&chars[]=%20&chars[]=%22");
+}
+
+#[test]
+fn test_url_parameters_deserializer_issue_879() {
+    use serde_json::json;
+    let json = json!({
+        "name": "John Doe & Son's",
+        "items": [1, "item 2 & 3", true],
+        "special_char": "%&=+ ",
+    });
+
+    let url_parameters: URLParameters = serde_json::from_value(json).unwrap();
+    assert_eq!(
+        url_parameters.0,
+        "?name=John%20Doe%20%26%20Son%27s&items[]=1&items[]=item%202%20%26%203&items[]=true&special%5Fchar=%25%26%3D%2B%20"
+    );
+}
+
+#[test]
+fn test_push_single_or_vec() {
+    let mut params = URLParameters(String::new());
+    params.push_single_or_vec("k", SingleOrVec::Single("v".to_string()));
+    assert_eq!(params.to_string(), "?k=v");
+
+    let mut params = URLParameters(String::new());
+    params.push_single_or_vec(
+        "arr",
+        SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]),
+    );
+    assert_eq!(params.to_string(), "?arr[]=a&arr[]=b");
+}

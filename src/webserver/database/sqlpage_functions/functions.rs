@@ -2,7 +2,7 @@ use super::{ExecutionContext, RequestInfo};
 use crate::webserver::{
     database::{
         blob_to_data_url::vec_to_data_uri_with_mime, execute_queries::DbConn,
-        sqlpage_functions::url_parameter_deserializer::URLParameters,
+        sqlpage_functions::url_parameters::URLParameters,
     },
     http_client::make_http_client,
     request_variables::ParamMap,
@@ -46,6 +46,7 @@ super::function_definition_macro::sqlpage_functions! {
     read_file_as_text((&RequestInfo), file_path: Option<Cow<str>>);
     request_method((&RequestInfo));
     run_sql((&ExecutionContext, &mut DbConn), sql_file_path: Option<Cow<str>>, variables: Option<Cow<str>>);
+    set_variable((&ExecutionContext), name: Cow<str>, value: Option<Cow<str>>);
 
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
@@ -376,11 +377,7 @@ async fn link<'a>(
         let encoded = serde_json::from_str::<URLParameters>(&parameters).with_context(|| {
             format!("link: invalid URL parameters: not a valid json object:\n{parameters}")
         })?;
-        let encoded_str = encoded.get();
-        if !encoded_str.is_empty() {
-            url.push('?');
-            url.push_str(encoded_str);
-        }
+        encoded.append_to_path(&mut url);
     }
     if let Some(hash) = hash {
         url.push('#');
@@ -610,6 +607,27 @@ async fn run_sql<'a>(
     }
     seq.end()?;
     Ok(Some(Cow::Owned(String::from_utf8(json_results_bytes)?)))
+}
+
+async fn set_variable<'a>(
+    context: &'a ExecutionContext,
+    name: Cow<'a, str>,
+    value: Option<Cow<'a, str>>,
+) -> anyhow::Result<String> {
+    let mut params = URLParameters::new();
+
+    for (k, v) in &context.url_params {
+        if k == &name {
+            continue;
+        }
+        params.push_single_or_vec(k, v.clone());
+    }
+
+    if let Some(value) = value {
+        params.push_single_or_vec(&name, SingleOrVec::Single(value.into_owned()));
+    }
+
+    Ok(params.with_empty_path())
 }
 
 #[tokio::test]
