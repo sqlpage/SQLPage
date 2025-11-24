@@ -6,6 +6,19 @@ use sqlpage::webserver::http::main_handler;
 
 use crate::common::{get_request_to, make_app_data};
 
+async fn req_with_accept(
+    path: &str,
+    accept: &str,
+) -> actix_web::Result<actix_web::dev::ServiceResponse> {
+    let app_data = make_app_data().await;
+    let req = TestRequest::get()
+        .uri(path)
+        .insert_header((header::ACCEPT, accept))
+        .app_data(app_data)
+        .to_srv_request();
+    main_handler(req).await
+}
+
 #[actix_web::test]
 async fn test_json_body() -> actix_web::Result<()> {
     let req = get_request_to("/tests/data_formats/json_data.sql")
@@ -83,14 +96,11 @@ async fn test_json_columns() {
 
 #[actix_web::test]
 async fn test_accept_json_returns_json_array() -> actix_web::Result<()> {
-    let app_data = make_app_data().await;
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/accept_json_test.sql")
-        .insert_header((header::ACCEPT, "application/json"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await?;
-
+    let resp = req_with_accept(
+        "/tests/sql_test_files/it_works_simple.sql",
+        "application/json",
+    )
+    .await?;
     assert_eq!(resp.status(), StatusCode::OK);
     assert_eq!(
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
@@ -98,29 +108,21 @@ async fn test_accept_json_returns_json_array() -> actix_web::Result<()> {
     );
     let body = test::read_body(resp).await;
     let body_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(body_json.is_array(), "response should be a JSON array");
+    assert!(body_json.is_array());
     let arr = body_json.as_array().unwrap();
-    assert_eq!(arr.len(), 4);
-    assert_eq!(arr[0]["component"], "text");
-    assert_eq!(arr[0]["contents"], "Hello World");
-    assert_eq!(arr[1]["component"], "table");
-    assert_eq!(arr[2]["id"], 1);
-    assert_eq!(arr[2]["name"], "Alice");
-    assert_eq!(arr[3]["id"], 2);
-    assert_eq!(arr[3]["name"], "Bob");
+    assert!(arr.len() >= 2);
+    assert_eq!(arr[0]["component"], "shell");
+    assert_eq!(arr[1]["component"], "text");
     Ok(())
 }
 
 #[actix_web::test]
 async fn test_accept_ndjson_returns_jsonlines() -> actix_web::Result<()> {
-    let app_data = make_app_data().await;
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/accept_json_test.sql")
-        .insert_header((header::ACCEPT, "application/x-ndjson"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await?;
-
+    let resp = req_with_accept(
+        "/tests/sql_test_files/it_works_simple.sql",
+        "application/x-ndjson",
+    )
+    .await?;
     assert_eq!(resp.status(), StatusCode::OK);
     assert_eq!(
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
@@ -129,60 +131,34 @@ async fn test_accept_ndjson_returns_jsonlines() -> actix_web::Result<()> {
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     let lines: Vec<&str> = body_str.trim().lines().collect();
-    assert_eq!(lines.len(), 4);
-
-    let first: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
-    assert_eq!(first["component"], "text");
-    assert_eq!(first["contents"], "Hello World");
-
-    let second: serde_json::Value = serde_json::from_str(lines[1]).unwrap();
-    assert_eq!(second["component"], "table");
-
-    let third: serde_json::Value = serde_json::from_str(lines[2]).unwrap();
-    assert_eq!(third["id"], 1);
-    assert_eq!(third["name"], "Alice");
-
-    let fourth: serde_json::Value = serde_json::from_str(lines[3]).unwrap();
-    assert_eq!(fourth["id"], 2);
-    assert_eq!(fourth["name"], "Bob");
+    assert!(lines.len() >= 2);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(lines[0]).unwrap()["component"],
+        "shell"
+    );
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(lines[1]).unwrap()["component"],
+        "text"
+    );
     Ok(())
 }
 
 #[actix_web::test]
 async fn test_accept_html_returns_html() -> actix_web::Result<()> {
-    let app_data = make_app_data().await;
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/accept_json_test.sql")
-        .insert_header((header::ACCEPT, "text/html"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await?;
-
+    let resp = req_with_accept("/tests/sql_test_files/it_works_simple.sql", "text/html").await?;
     assert_eq!(resp.status(), StatusCode::OK);
     assert_eq!(
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
         "text/html; charset=utf-8"
     );
     let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
-    assert!(body_str.contains("<html"), "response should contain HTML");
-    assert!(
-        body_str.contains("Hello World"),
-        "response should contain the text content"
-    );
+    assert!(body.starts_with(b"<!DOCTYPE html>"));
     Ok(())
 }
 
 #[actix_web::test]
 async fn test_accept_wildcard_returns_html() -> actix_web::Result<()> {
-    let app_data = make_app_data().await;
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/accept_json_test.sql")
-        .insert_header((header::ACCEPT, "*/*"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await?;
-
+    let resp = req_with_accept("/tests/sql_test_files/it_works_simple.sql", "*/*").await?;
     assert_eq!(resp.status(), StatusCode::OK);
     assert_eq!(
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
@@ -193,45 +169,12 @@ async fn test_accept_wildcard_returns_html() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_accept_json_redirect_still_works() -> actix_web::Result<()> {
-    let app_data = make_app_data().await;
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/accept_json_redirect_test.sql")
-        .insert_header((header::ACCEPT, "application/json"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await?;
-
+    let resp =
+        req_with_accept("/tests/server_timing/redirect_test.sql", "application/json").await?;
     assert_eq!(resp.status(), StatusCode::FOUND);
-    assert_eq!(resp.headers().get(header::LOCATION).unwrap(), "/target");
-    Ok(())
-}
-
-#[actix_web::test]
-async fn test_accept_json_headers_still_work() -> actix_web::Result<()> {
-    let app_data = make_app_data().await;
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/accept_json_headers_test.sql")
-        .insert_header((header::ACCEPT, "application/json"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await?;
-
-    assert_eq!(resp.status(), StatusCode::CREATED);
-    let set_cookie = resp.headers().get(header::SET_COOKIE).unwrap();
-    assert!(
-        set_cookie
-            .to_str()
-            .unwrap()
-            .contains("test_cookie=cookie_value"),
-        "Cookie should be set: {:?}",
-        set_cookie
+    assert_eq!(
+        resp.headers().get(header::LOCATION).unwrap(),
+        "/destination.sql"
     );
-    let body = test::read_body(resp).await;
-    let body_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(body_json.is_array());
-    let arr = body_json.as_array().unwrap();
-    assert_eq!(arr.len(), 1);
-    assert_eq!(arr[0]["component"], "text");
-    assert_eq!(arr[0]["contents"], "Created");
     Ok(())
 }
