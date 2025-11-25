@@ -1,0 +1,2 @@
+SET result = 123456789123456789123456789;
+select '123456789123456789123456789' as expected, $result as actual;

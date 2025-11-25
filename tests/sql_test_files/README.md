@@ -1,16 +1,18 @@
-The sql files in this folder are all tested automatically.
+The sql files in this folder are all tested automatically. They are organized in
+two subdirectories:
 
-## `it_works_` files
+## `component_rendering/`
 
-Files with names starting with `it_works` should all
-return a page that contains the text "It works !" and does not contain the
-text "error" (case insensitive) when executed.
+Files that depend on SQLPage's HTML rendering (components, shells, redirects,
+etc.). Every file that does not start with `error_` must render a page that
+contains the text "It works !" and no occurrence of the word "error" (case
+insensitive). `error_` files should return a page containing the word "error"
+and the rest of the file name. Files may include `nosqlite`, `nomssql`,
+`nopostgres` or `nomysql` in their name to skip incompatible backends.
 
-If a file name contains `nosqlite`, `nomssql`, `nopostgres` or `nomysql`, then
-the test will be ignored when running against the corresponding database. 
-This allows using syntax that is not supported on all databases in some tests.
+## `data/`
 
-## `error_` files
-
-Files with names starting with `error` should all return a page that contains
-the text "error" and the rest of the file name when executed.
+Files that only validate data-processing functions should live here. They must
+return rows with an `actual` column plus either `expected` (exact match) or
+`expected_contains` (substring match). Tests in this directory are fetched as
+JSON and validated row by row.

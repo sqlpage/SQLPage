@@ -88,7 +88,7 @@ async fn test_routing_with_prefix() {
 
     let app_data = actix_web::web::Data::new(state);
     let resp = req_path_with_app_data(
-        "/prefix/tests/sql_test_files/it_works_simple.sql",
+        "/prefix/tests/sql_test_files/component_rendering/simple.sql",
         app_data.clone(),
     )
     .await
@@ -121,9 +121,12 @@ async fn test_routing_with_prefix() {
         .to_string();
     assert!(resp.to_lowercase().contains("forbidden"), "{resp}");
 
-    let resp = req_path_with_app_data("/tests/sql_test_files/it_works_simple.sql", app_data)
-        .await
-        .unwrap();
+    let resp = req_path_with_app_data(
+        "/tests/sql_test_files/component_rendering/simple.sql",
+        app_data,
+    )
+    .await
+    .unwrap();
     assert_eq!(resp.status(), StatusCode::MOVED_PERMANENTLY);
     let location = resp
         .headers()

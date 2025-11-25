@@ -53,25 +53,34 @@ pub async fn req_path(
     main_handler(req).await
 }
 
-pub async fn srv_req_path_with_app_data(
-    path: impl AsRef<str>,
-    app_data: Data<AppState>,
-) -> actix_web::dev::ServiceRequest {
-    test::TestRequest::get()
-        .uri(path.as_ref())
-        .app_data(app_data)
-        .insert_header(("cookie", "test_cook=123"))
-        .insert_header(("authorization", "Basic dGVzdDp0ZXN0")) // test:test
-        .to_srv_request()
-}
-
 const REQ_TIMEOUT: Duration = Duration::from_secs(8);
 pub async fn req_path_with_app_data(
     path: impl AsRef<str>,
     app_data: Data<AppState>,
 ) -> anyhow::Result<actix_web::dev::ServiceResponse> {
+    req_path_with_app_data_and_accept(path, app_data, header::Accept::html()).await
+}
+
+pub async fn req_path_with_app_data_json(
+    path: impl AsRef<str>,
+    app_data: Data<AppState>,
+) -> anyhow::Result<actix_web::dev::ServiceResponse> {
+    req_path_with_app_data_and_accept(path, app_data, header::Accept::json()).await
+}
+
+async fn req_path_with_app_data_and_accept(
+    path: impl AsRef<str>,
+    app_data: Data<AppState>,
+    accept: header::Accept,
+) -> anyhow::Result<actix_web::dev::ServiceResponse> {
     let path = path.as_ref();
-    let req = srv_req_path_with_app_data(path, app_data).await;
+    let req = test::TestRequest::get()
+        .uri(path)
+        .app_data(app_data)
+        .insert_header(("cookie", "test_cook=123"))
+        .insert_header(("authorization", "Basic dGVzdDp0ZXN0"))
+        .insert_header(accept)
+        .to_srv_request();
     let resp = tokio::time::timeout(REQ_TIMEOUT, main_handler(req))
         .await
         .map_err(|e| anyhow::anyhow!("Request to {path} timed out: {e}"))?
