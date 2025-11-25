@@ -1,2 +1,2 @@
 set result = sqrt(9.0);
-select 3 as expected, cast($result as INT) as actual;
+select CAST(3.0 AS FLOAT) as expected, cast($result as FLOAT) as actual;
