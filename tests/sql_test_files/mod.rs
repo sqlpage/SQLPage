@@ -120,6 +120,24 @@ async fn run_sql_test(
     }
 }
 
+fn format_error(obj: &serde_json::Map<String, serde_json::Value>) -> Option<String> {
+    if obj.get("component").and_then(|v| v.as_str()) != Some("error") {
+        return None;
+    }
+    let mut msg = String::new();
+    if let Some(desc) = obj.get("description").and_then(|v| v.as_str()) {
+        msg.push_str(desc);
+    }
+    if let Some(bt) = obj.get("backtrace").and_then(|v| v.as_array()) {
+        for frame in bt {
+            if let Some(s) = frame.as_str() {
+                msg.push_str(&format!("\n  {}", s));
+            }
+        }
+    }
+    Some(msg)
+}
+
 fn assert_json_test(body: &str, test_file: &std::path::Path) {
     let rows: Vec<serde_json::Value> = serde_json::from_str(body)
         .unwrap_or_else(|_| panic!("Invalid JSON: {}", test_file.display()));
@@ -135,6 +153,10 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
             Some(o) => o,
             None => continue,
         };
+
+        if let Some(err) = format_error(obj) {
+            panic!("Error in {}:\n{}", test_file.display(), err);
+        }
 
         let actual = obj
             .get("actual")
