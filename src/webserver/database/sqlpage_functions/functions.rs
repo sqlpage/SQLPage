@@ -5,7 +5,7 @@ use crate::webserver::{
         sqlpage_functions::url_parameters::URLParameters,
     },
     http_client::make_http_client,
-    request_variables::ParamMap,
+    request_variables::SetVariablesMap,
     single_or_vec::SingleOrVec,
     ErrorWithStatus,
 };
@@ -567,7 +567,7 @@ async fn run_sql<'a>(
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let tmp_req = if let Some(variables) = variables {
-        let variables: ParamMap = serde_json::from_str(&variables).with_context(|| {
+        let variables: SetVariablesMap = serde_json::from_str(&variables).with_context(|| {
             format!("run_sql(\'{sql_file_path}\', \'{variables}\'): the second argument should be a JSON object with string keys and values")
         })?;
         request.fork_with_variables(variables)

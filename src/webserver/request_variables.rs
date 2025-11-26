@@ -3,6 +3,7 @@ use std::collections::{hash_map::Entry, HashMap};
 use crate::webserver::single_or_vec::SingleOrVec;
 
 pub type ParamMap = HashMap<String, SingleOrVec>;
+pub type SetVariablesMap = HashMap<String, Option<SingleOrVec>>;
 
 pub fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) -> ParamMap {
     values
