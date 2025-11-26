@@ -1,3 +1,4 @@
+use super::function_traits::BorrowFromStr;
 use super::{ExecutionContext, RequestInfo};
 use crate::webserver::{
     database::{
@@ -26,8 +27,8 @@ super::function_definition_macro::sqlpage_functions! {
     environment_variable(name: Cow<str>);
     exec((&RequestInfo), program_name: Cow<str>, args: Vec<Cow<str>>);
 
-    fetch((&RequestInfo), http_request: SqlPageFunctionParam<super::http_fetch_request::HttpFetchRequest<'_>>);
-    fetch_with_meta((&RequestInfo), http_request: SqlPageFunctionParam<super::http_fetch_request::HttpFetchRequest<'_>>);
+    fetch((&RequestInfo), http_request: Option<Cow<str>>);
+    fetch_with_meta((&RequestInfo), http_request: Option<Cow<str>>);
 
     hash_password(password: Option<String>);
     header((&RequestInfo), name: Cow<str>);
@@ -185,8 +186,14 @@ fn prepare_request_body(
 
 async fn fetch(
     request: &RequestInfo,
-    http_request: super::http_fetch_request::HttpFetchRequest<'_>,
-) -> anyhow::Result<String> {
+    http_request: Option<Cow<'_, str>>,
+) -> anyhow::Result<Option<String>> {
+    let Some(http_request_str) = http_request else {
+        return Ok(None);
+    };
+    let http_request =
+        super::http_fetch_request::HttpFetchRequest::borrow_from_str(http_request_str)
+            .with_context(|| "Invalid http fetch request")?;
     let client = make_http_client(&request.app_state.config)
         .with_context(|| "Unable to create an HTTP client")?;
     let req = build_request(&client, &http_request)?;
@@ -219,7 +226,7 @@ async fn fetch(
         .to_vec();
     let response_str = decode_response(body, http_request.response_encoding.as_deref())?;
     log::debug!("Fetch response: {response_str}");
-    Ok(response_str)
+    Ok(Some(response_str))
 }
 
 fn decode_response(response: Vec<u8>, encoding: Option<&str>) -> anyhow::Result<String> {
@@ -259,9 +266,15 @@ fn decode_response(response: Vec<u8>, encoding: Option<&str>) -> anyhow::Result<
 
 async fn fetch_with_meta(
     request: &RequestInfo,
-    http_request: super::http_fetch_request::HttpFetchRequest<'_>,
-) -> anyhow::Result<String> {
+    http_request: Option<Cow<'_, str>>,
+) -> anyhow::Result<Option<String>> {
     use serde::{ser::SerializeMap, Serializer};
+    let Some(http_request_str) = http_request else {
+        return Ok(None);
+    };
+    let http_request =
+        super::http_fetch_request::HttpFetchRequest::borrow_from_str(http_request_str)
+            .with_context(|| "Invalid http fetch request")?;
 
     let client = make_http_client(&request.app_state.config)
         .with_context(|| "Unable to create an HTTP client")?;
@@ -337,7 +350,7 @@ async fn fetch_with_meta(
 
     obj.end()?;
     let return_value = String::from_utf8(resp_str)?;
-    Ok(return_value)
+    Ok(Some(return_value))
 }
 
 pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Option<String>> {
