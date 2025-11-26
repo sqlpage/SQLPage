@@ -84,6 +84,24 @@ impl<'a, T: BorrowFromStr<'a> + Sized + 'a> FunctionParamType<'a> for SqlPageFun
     }
 }
 
+impl<'a, T: BorrowFromStr<'a> + Sized + 'a> FunctionParamType<'a>
+    for Option<SqlPageFunctionParam<T>>
+{
+    type TargetType = Option<T>;
+
+    fn from_args(
+        arg: &mut std::vec::IntoIter<Option<Cow<'a, str>>>,
+    ) -> anyhow::Result<Self::TargetType> {
+        let param = <Option<Cow<'a, str>>>::from_args(arg)?;
+        let res = if let Some(param) = param {
+            Some(T::borrow_from_str(param)?)
+        } else {
+            None
+        };
+        Ok(res)
+    }
+}
+
 pub(super) trait FunctionResultType<'a> {
     fn into_cow_result(self) -> anyhow::Result<Option<Cow<'a, str>>>;
 }

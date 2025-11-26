@@ -36,7 +36,7 @@ In this example, we use the complex form of the function to make an
 authenticated POST request, with custom request headers and a custom request body.
 
 We use SQLite''s json functions to build the request body.
-See [the list of SQL databases and their JSON functions](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) for 
+See [the list of SQL databases and their JSON functions](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) for
 more information on how to build JSON objects in your database.
 
 ```sql
@@ -94,7 +94,22 @@ The fetch function accepts either a URL string, or a JSON object with the follow
 If the request fails, this function throws an error, that will be displayed to the user.
 The response headers are not available for inspection.
 
-If you need to handle errors or inspect the response headers, use [`sqlpage.fetch_with_meta`](?function=fetch_with_meta).
+## Conditional data fetching
+
+Since v0.40, `sqlpage.fetch(null)` returns null instead of throwing an error.
+This makes it easier to conditionnally query an API:
+
+```sql
+set current_field_value = (select field from my_table where id = 1);
+set target_url = nullif(''http://example.com/api/field/1'', null); -- null if the field is currently null in the db
+set api_value = sqlpage.fetch($target_url); -- no http request made if the field is not null in the db
+update my_table set field = $api_value where id = 1 and $api_value is not null; -- update the field only if it was not present before
+```
+
+## Advanced usage
+
+If you need to handle errors or inspect the response headers or the status code,
+use [`sqlpage.fetch_with_meta`](?function=fetch_with_meta).
 '
     );
 INSERT INTO sqlpage_function_parameters (
