@@ -1,3 +1,4 @@
+use crate::webserver::request_variables::SetVariablesMap;
 use crate::webserver::server_timing::ServerTiming;
 use crate::AppState;
 use actix_multipart::form::bytes::Bytes;
@@ -49,7 +50,7 @@ pub struct RequestInfo {
 #[derive(Debug)]
 pub struct ExecutionContext {
     pub request: Rc<RequestInfo>,
-    pub set_variables: RefCell<ParamMap>,
+    pub set_variables: RefCell<SetVariablesMap>,
     pub clone_depth: u8,
 }
 
@@ -58,7 +59,7 @@ impl ExecutionContext {
     pub fn new(request: RequestInfo) -> Self {
         Self {
             request: Rc::new(request),
-            set_variables: RefCell::new(ParamMap::new()),
+            set_variables: RefCell::new(SetVariablesMap::new()),
             clone_depth: 0,
         }
     }
@@ -73,7 +74,7 @@ impl ExecutionContext {
     }
 
     #[must_use]
-    pub fn fork_with_variables(&self, variables: ParamMap) -> Self {
+    pub fn fork_with_variables(&self, variables: SetVariablesMap) -> Self {
         Self {
             request: Rc::clone(&self.request),
             set_variables: RefCell::new(variables),

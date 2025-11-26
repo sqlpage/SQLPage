@@ -159,14 +159,16 @@ pub(super) async fn extract_req_param<'a>(
         StmtParam::Get(x) => request.url_params.get(x).map(SingleOrVec::as_json_str),
         StmtParam::Post(x) => {
             if let Some(val) = request.set_variables.borrow().get(x) {
-                Some(Cow::Owned(val.as_json_str().into_owned()))
+                val.as_ref()
+                    .map(|v| Cow::Owned(v.as_json_str().into_owned()))
             } else {
                 request.post_variables.get(x).map(SingleOrVec::as_json_str)
             }
         }
         StmtParam::PostOrGet(x) => {
             if let Some(val) = request.set_variables.borrow().get(x) {
-                Some(Cow::Owned(val.as_json_str().into_owned()))
+                val.as_ref()
+                    .map(|v| Cow::Owned(v.as_json_str().into_owned()))
             } else {
                 let url_val = request.url_params.get(x);
                 if request.post_variables.contains_key(x) {

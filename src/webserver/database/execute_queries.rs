@@ -3,7 +3,6 @@ use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use serde_json::Value;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::path::Path;
 use std::pin::Pin;
 
@@ -16,6 +15,7 @@ use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
 use crate::webserver::database::sql_to_json::row_to_string;
 use crate::webserver::http_request_info::ExecutionContext;
+use crate::webserver::request_variables::SetVariablesMap;
 use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::syntax_tree::{extract_req_param, StmtParam};
@@ -211,13 +211,9 @@ async fn execute_set_variable_query<'a>(
 
     let (mut vars, name) = vars_and_name(request, variable)?;
 
-    if let Some(value) = value {
-        log::debug!("Setting variable {name} to {value:?}");
-        vars.insert(name.to_owned(), SingleOrVec::Single(value));
-    } else {
-        log::debug!("Removing variable {name}");
-        vars.remove(name);
-    }
+    log::debug!("Setting variable {name} to {value:?}");
+    vars.insert(name.to_owned(), value.map(SingleOrVec::Single));
+
     Ok(())
 }
 
@@ -243,20 +239,15 @@ async fn execute_set_simple_static<'a>(
 
     let (mut vars, name) = vars_and_name(request, variable)?;
 
-    if let Some(value) = value_str {
-        log::debug!("Setting variable {name} to static value {value:?}");
-        vars.insert(name.to_owned(), SingleOrVec::Single(value));
-    } else {
-        log::debug!("Removing variable {name} because it was set to the literal value NULL");
-        vars.remove(name);
-    }
+    log::debug!("Setting variable {name} to static value {value_str:?}");
+    vars.insert(name.to_owned(), value_str.map(SingleOrVec::Single));
     Ok(())
 }
 
 fn vars_and_name<'a, 'b>(
     request: &'a ExecutionContext,
     variable: &'b StmtParam,
-) -> anyhow::Result<(std::cell::RefMut<'a, HashMap<String, SingleOrVec>>, &'b str)> {
+) -> anyhow::Result<(std::cell::RefMut<'a, SetVariablesMap>, &'b str)> {
     match variable {
         StmtParam::PostOrGet(name) | StmtParam::Get(name) => {
             if request.post_variables.contains_key(name) {
