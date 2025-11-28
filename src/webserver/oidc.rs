@@ -488,14 +488,14 @@ async fn build_auth_provider_redirect_response(
 ) -> HttpResponse {
     let AuthUrl { url, params } = build_auth_url(oidc_state).await;
     let tmp_login_flow_state_cookie = create_tmp_login_flow_state_cookie(&params, initial_url);
-    HttpResponse::TemporaryRedirect()
+    HttpResponse::SeeOther()
         .append_header((header::LOCATION, url.to_string()))
         .cookie(tmp_login_flow_state_cookie)
         .body("Redirecting...")
 }
 
 fn build_redirect_response(target_url: String) -> HttpResponse {
-    HttpResponse::TemporaryRedirect()
+    HttpResponse::SeeOther()
         .append_header(("Location", target_url))
         .body("Redirecting...")
 }
@@ -834,4 +834,23 @@ fn validate_redirect_url(url: String) -> String {
     }
     log::warn!("Refusing to redirect to {url}");
     '/'.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::http::StatusCode;
+
+    #[test]
+    fn login_redirects_use_see_other() {
+        let response = build_redirect_response("/foo".to_string());
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        let location = response
+            .headers()
+            .get(header::LOCATION)
+            .expect("missing location header")
+            .to_str()
+            .expect("invalid location header");
+        assert_eq!(location, "/foo");
+    }
 }

@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
 ## 0.40.0 (unreleased)
+ - OIDC login redirects now use HTTP 303 responses so POST submissions are converted to safe GET requests before reaching the identity provider, fixing incorrect reuse of the original POST (HTTP 307) that could break standard auth flows.
  - SQLPage now respects [HTTP accept headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept) for JSON. You can now easily process the contents of any existing sql page programmatically with:
     - `curl -H "Accept: application/json" http://example.com/page.sql`: returns a json array
     - `curl -H "Accept: application/x-ndjson" http://example.com/page.sql`: returns one json object per line.
