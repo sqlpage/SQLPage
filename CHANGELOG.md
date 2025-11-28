@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.40.0 (unreleased)
+## 0.40.0 (2025-11-28)
  - OIDC login redirects now use HTTP 303 responses so POST submissions are converted to safe GET requests before reaching the identity provider, fixing incorrect reuse of the original POST (HTTP 307) that could break standard auth flows.
  - SQLPage now respects [HTTP accept headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept) for JSON. You can now easily process the contents of any existing sql page programmatically with:
     - `curl -H "Accept: application/json" http://example.com/page.sql`: returns a json array
@@ -24,7 +24,6 @@
          - `sqlpage.variables('get')->>'name'` returns `'john'`
    - **New behavior**: Variable lookup now follows this precedence:
      - `$variable` checks SET variables first, then URL parameters
-     - `:variable` checks SET variables first, then POST parameters  
      - SET variables always shadow URL/POST parameters with the same name
    - **New sqlpage.variables() filters**:
      - `sqlpage.variables('get')` returns only URL parameters as JSON
