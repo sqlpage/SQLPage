@@ -111,7 +111,23 @@ impl FileSystem {
             (Ok(f), _) => Ok(f),
             (Err(e), Some(db_fs)) if e.kind() == ErrorKind::NotFound => {
                 // no local file, try the database
-                db_fs.read_file(app_state, path.as_ref()).await
+                match db_fs.read_file(app_state, path.as_ref()).await {
+                    Ok(f) => Ok(f),
+                    Err(e) => {
+                        let e_str = format!("{e:#}");
+                        if e_str.contains("doesn't exist")
+                            || e_str.contains("no such table")
+                            || e_str.contains("Invalid object name")
+                        {
+                            Err(ErrorWithStatus {
+                                status: actix_web::http::StatusCode::NOT_FOUND,
+                            }
+                            .into())
+                        } else {
+                            Err(e)
+                        }
+                    }
+                }
             }
             (Err(e), None) if e.kind() == ErrorKind::NotFound => Err(ErrorWithStatus {
                 status: actix_web::http::StatusCode::NOT_FOUND,
