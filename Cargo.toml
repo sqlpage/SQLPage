@@ -133,6 +133,9 @@ opentelemetry-http = { version = "0.32", default-features = false }
 opentelemetry-semantic-conventions = { version = "0.32", features = ["semconv_experimental"] }
 
 
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1"
+
 [features]
 default = []
 odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]

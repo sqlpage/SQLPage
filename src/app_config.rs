@@ -412,6 +412,12 @@ pub struct AppConfig {
     pub markdown_allow_dangerous_protocol: bool,
 
     pub cache_stale_duration_ms: Option<u64>,
+
+    pub s3_bucket: Option<String>,
+    pub s3_region: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub s3_access_key: Option<String>,
+    pub s3_secret_key: Option<String>,
 }
 
 impl AppConfig {

@@ -19,6 +19,7 @@ mod environment_variable;
 mod exec;
 mod fetch;
 mod fetch_with_meta;
+mod get_from_s3;
 mod hash_password;
 mod header;
 mod headers;
@@ -41,6 +42,7 @@ mod set_variable;
 mod uploaded_file_mime_type;
 mod uploaded_file_name;
 mod uploaded_file_path;
+mod upload_to_s3;
 mod url_encode;
 mod user_info;
 mod user_info_token;
@@ -59,6 +61,7 @@ sqlpage_functions! {
     exec,
     fetch,
     fetch_with_meta,
+    get_from_s3,
     hash_password,
     header,
     headers,
@@ -81,6 +84,7 @@ sqlpage_functions! {
     uploaded_file_mime_type,
     uploaded_file_name,
     uploaded_file_path,
+    upload_to_s3,
     url_encode,
     user_info,
     user_info_token,
