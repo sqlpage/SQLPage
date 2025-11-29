@@ -40,7 +40,7 @@ pub(super) async fn upload_to_s3<'a>(
         base64::engine::general_purpose::STANDARD
             .decode(data.as_bytes())
             .map_err(|e| {
-                log::error!("Base64 decode failed: {}", e);
+                log::error!("Base64 decode failed: {e}");
                 e
             })
             .context("Invalid base64 data")?
@@ -53,9 +53,9 @@ pub(super) async fn upload_to_s3<'a>(
         .body(body_bytes.into())
         .send()
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to upload to S3: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to upload to S3: {e}"))?;
 
-    Ok(format!("s3://{}/{}", bucket, key))
+    Ok(format!("s3://{bucket}/{key}"))
 }
 
 pub(super) async fn get_from_s3<'a>(
@@ -79,7 +79,7 @@ pub(super) async fn get_from_s3<'a>(
         .key(key.as_ref())
         .presigned(presigning_config)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to generate presigned URL: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to generate presigned URL: {e}"))?;
 
     Ok(presigned_request.uri().to_string())
 }
