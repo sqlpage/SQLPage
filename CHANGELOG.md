@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## 0.40.1
+ - Fix compatibility with Auth0 for OpenID-Connect authentification. See https://github.com/ramosbugs/openidconnect-rs/issues/23
+
 ## 0.40.0 (2025-11-28)
  - OIDC login redirects now use HTTP 303 responses so POST submissions are converted to safe GET requests before reaching the identity provider, fixing incorrect reuse of the original POST (HTTP 307) that could break standard auth flows.
  - SQLPage now respects [HTTP accept headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept) for JSON. You can now easily process the contents of any existing sql page programmatically with:

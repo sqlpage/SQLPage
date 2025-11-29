@@ -853,4 +853,19 @@ mod tests {
             .expect("invalid location header");
         assert_eq!(location, "/foo");
     }
+
+    #[test]
+    fn parse_auth0_rfc3339_updated_at() {
+        let claims_json = r#"{
+            "sub": "auth0|123456",
+            "iss": "https://example.auth0.com/",
+            "aud": "test-client-id",
+            "iat": 1700000000,
+            "exp": 1700086400,
+            "updated_at": "2023-11-14T12:00:00.000Z"
+        }"#;
+        let claims: OidcClaims = serde_json::from_str(claims_json)
+            .expect("Auth0 returns updated_at as RFC3339 string, not unix timestamp");
+        assert!(claims.updated_at().is_some());
+    }
 }
