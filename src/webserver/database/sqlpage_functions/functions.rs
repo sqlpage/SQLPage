@@ -3,7 +3,9 @@ use crate::webserver::{
     database::{
         blob_to_data_url::vec_to_data_uri_with_mime,
         execute_queries::DbConn,
-        sqlpage_functions::{http_fetch_request::HttpFetchRequest, url_parameters::URLParameters},
+        sqlpage_functions::{
+            http_fetch_request::HttpFetchRequest, s3, url_parameters::URLParameters,
+        },
     },
     http_client::make_http_client,
     request_variables::SetVariablesMap,
@@ -52,6 +54,8 @@ super::function_definition_macro::sqlpage_functions! {
     uploaded_file_mime_type((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_path((&RequestInfo), upload_name: Cow<str>);
     uploaded_file_name((&RequestInfo), upload_name: Cow<str>);
+    upload_to_s3((&RequestInfo), bucket: Option<Cow<str>>, data: Cow<str>, key: Cow<str>);
+    get_from_s3((&RequestInfo), bucket: Option<Cow<str>>, key: Cow<str>);
     url_encode(raw_text: Option<Cow<str>>);
     user_info((&RequestInfo), claim: Cow<str>);
 
@@ -677,6 +681,23 @@ async fn uploaded_file_name<'a>(
         .file_name
         .as_ref()?;
     Some(Cow::Borrowed(fname.as_str()))
+}
+
+async fn upload_to_s3<'a>(
+    request: &'a RequestInfo,
+    bucket: Option<Cow<'a, str>>,
+    data: Cow<'a, str>,
+    key: Cow<'a, str>,
+) -> anyhow::Result<String> {
+    s3::upload_to_s3(request, bucket, data, key).await
+}
+
+async fn get_from_s3<'a>(
+    request: &'a RequestInfo,
+    bucket: Option<Cow<'a, str>>,
+    key: Cow<'a, str>,
+) -> anyhow::Result<String> {
+    s3::get_from_s3(request, bucket, key).await
 }
 
 /// escapes a string for use in a URL using percent encoding

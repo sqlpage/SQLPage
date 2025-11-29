@@ -305,6 +305,12 @@ pub struct AppConfig {
 
     #[serde(default = "default_markdown_allow_dangerous_protocol")]
     pub markdown_allow_dangerous_protocol: bool,
+
+    pub s3_bucket: Option<String>,
+    pub s3_region: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub s3_access_key: Option<String>,
+    pub s3_secret_key: Option<String>,
 }
 
 impl AppConfig {
