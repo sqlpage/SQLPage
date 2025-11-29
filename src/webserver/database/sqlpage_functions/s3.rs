@@ -25,12 +25,15 @@ pub(super) async fn upload_to_s3<'a>(
         let web_root = &config.web_root;
         let full_path = web_root.join(file_path);
         if !full_path.starts_with(web_root) {
-             anyhow::bail!("Security violation: Access denied to file outside web root");
+            anyhow::bail!("Security violation: Access denied to file outside web root");
         }
-        tokio::fs::read(&full_path).await.map_err(|e| {
-            log::error!("Failed to read file {}: {}", full_path.display(), e);
-            e
-        }).with_context(|| format!("Unable to read file {}", full_path.display()))?
+        tokio::fs::read(&full_path)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to read file {}: {}", full_path.display(), e);
+                e
+            })
+            .with_context(|| format!("Unable to read file {}", full_path.display()))?
     } else {
         // Assume base64
         use base64::Engine;
