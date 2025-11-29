@@ -1,4 +1,4 @@
-FROM rust:1.90-alpine AS builder
+FROM rust:1.91-alpine AS builder
 RUN rustup component add clippy rustfmt
 RUN apk add --no-cache musl-dev zip
 WORKDIR /usr/src/sqlpage
