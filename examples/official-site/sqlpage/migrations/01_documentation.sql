@@ -1572,3 +1572,15 @@ This property improves code readability by clearly indicating that you are gener
 Since SQLPage returns HTML by default, there is no need to specify the content type in the HTTP header.
 ',
     json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));
+
+INSERT INTO component(name, icon, description) VALUES
+    ('accordion', 'sort-ascending', 'An accordion based list of elements which can be shown individually.');
+INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'accordion', * FROM (VALUES
+    -- top level
+    ('id', 'id attribute added to the container in HTML. It can be used to target this item through css or for scrolling to this item through links (use "#id" in link url).', 'TEXT', TRUE, TRUE),
+    -- item level
+    ('title', 'Name of the list item, displayed prominently.', 'TEXT', FALSE, FALSE),
+    ('contents_md', 'A description of the list item, displayed as greyed-out text.', 'TEXT', FALSE, FALSE)
+) x;
+INSERT INTO example(component, description, properties) VALUES
+    ('accordion', 'A basic accordion with Markdown', json('[{"component":"accordion"},{"title":"Beautiful","contents_md": "Lorem *ipsum* dolor sit amet, **consectetur** adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam."},{"title":"Useful","contents_md": "Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis *ipsum*. Praesent **mauris**. Fusce nec tellus sed augue semper porta."},{"title":"Compact","contents_md": "Mauris **ipsum**. Nulla metus metus, ullamcorper vel, tincidunt sed, euismod in, *nibh*. Quisque volutpat condimentum velit."}]'));
