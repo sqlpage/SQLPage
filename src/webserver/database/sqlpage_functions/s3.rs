@@ -178,14 +178,9 @@ mod tests {
         // Presigning is a local operation for the most part, but it needs credentials.
         let client = get_s3_client(&config).await;
 
-        let url = get_from_s3_with_client(
-            &config,
-            &client,
-            None,
-            Cow::Borrowed("my-file.txt"),
-        )
-        .await
-        .unwrap();
+        let url = get_from_s3_with_client(&config, &client, None, Cow::Borrowed("my-file.txt"))
+            .await
+            .unwrap();
 
         assert!(url.contains("my-bucket"));
         assert!(url.contains("my-file.txt"));
