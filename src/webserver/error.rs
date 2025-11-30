@@ -52,7 +52,7 @@ fn error_to_html_string(app_state: &AppState, err: &anyhow::Error) -> anyhow::Re
     Ok(out.into_string()?)
 }
 
-fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse {
+pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> HttpResponse {
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
     resp.insert_header((header::CONTENT_TYPE, header::ContentType::plaintext()));
 
