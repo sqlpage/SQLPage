@@ -33,7 +33,7 @@ async fn run_sql_test_cases(
     wait_for_echo_server(port).await;
 
     for test_file in test_files {
-        run_sql_test(&test_file, app_data, &echo_handle, port).await;
+        Box::pin(run_sql_test(&test_file, app_data, &echo_handle, port)).await;
     }
 
     let _ = shutdown_tx.send(());
