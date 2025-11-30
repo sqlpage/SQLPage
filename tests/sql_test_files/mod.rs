@@ -14,7 +14,7 @@ async fn run_all_sql_test_files() {
     wait_for_echo_server(port).await;
 
     for test_file in test_files {
-        run_sql_test(&test_file, &app_data, &echo_handle, port).await;
+        let _ = Box::pin(run_sql_test(&test_file, &app_data, &echo_handle, port));
     }
 
     let _ = shutdown_tx.send(());
