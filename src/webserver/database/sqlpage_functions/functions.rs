@@ -35,6 +35,8 @@ super::function_definition_macro::sqlpage_functions! {
     headers((&RequestInfo));
     hmac(data: Cow<str>, key: Cow<str>, algorithm: Option<Cow<str>>);
 
+    oidc_logout_url((&RequestInfo), redirect_uri: Option<Cow<str>>);
+
     user_info_token((&RequestInfo));
     link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
 
@@ -856,6 +858,31 @@ async fn user_info_token(request: &RequestInfo) -> anyhow::Result<Option<String>
         return Ok(None);
     };
     Ok(Some(serde_json::to_string(claims)?))
+}
+
+async fn oidc_logout_url<'a>(
+    request: &'a RequestInfo,
+    redirect_uri: Option<Cow<'a, str>>,
+) -> anyhow::Result<Option<String>> {
+    let Some(oidc_state) = &request.app_state.oidc_state else {
+        return Ok(None);
+    };
+
+    let redirect_uri = redirect_uri.as_deref().unwrap_or("/");
+
+    if !redirect_uri.starts_with('/') || redirect_uri.starts_with("//") {
+        anyhow::bail!(
+            "oidc_logout_url: redirect_uri must be a relative path starting with '/'. Got: {redirect_uri}"
+        );
+    }
+
+    let logout_url = crate::webserver::oidc::create_logout_url(
+        redirect_uri,
+        &request.app_state.config.site_prefix,
+        &oidc_state.config.client_secret,
+    );
+
+    Ok(Some(logout_url))
 }
 
 /// Returns a specific claim from the ID token.

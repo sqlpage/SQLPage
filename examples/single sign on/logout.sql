@@ -1,12 +1,10 @@
--- remove the session cookie
-select
-    'cookie' as component,
-    'sqlpage_auth' as name,
-    true as remove;
+-- Secure OIDC logout with CSRF protection
+-- This redirects to /sqlpage/oidc_logout which:
+-- 1. Verifies the CSRF token
+-- 2. Removes the auth cookies
+-- 3. Redirects to the OIDC provider's logout endpoint
+-- 4. Finally redirects back to the homepage
 
 select
     'redirect' as component,
-    sqlpage.link('http://localhost:8181/realms/sqlpage_demo/protocol/openid-connect/logout', json_object(
-    'post_logout_redirect_uri', 'http://localhost:8080/',
-    'id_token_hint', sqlpage.cookie('sqlpage_auth')
-    )) as link;
+    sqlpage.oidc_logout_url('/') as link;
