@@ -436,26 +436,34 @@ async fn process_oidc_logout(
 
     let state_cookie = get_logout_state_cookie(request, &params.state)?;
     let LogoutState { redirect_uri } = parse_logout_state(&state_cookie)?;
-    let redirect_uri = redirect_uri.to_string();
 
-    let id_token = request.cookie(SQLPAGE_AUTH_COOKIE_NAME);
+    let id_token_cookie = request.cookie(SQLPAGE_AUTH_COOKIE_NAME);
+    let id_token = id_token_cookie
+        .as_ref()
+        .map(|c| OidcToken::from_str(c.value()))
+        .transpose()
+        .ok()
+        .flatten();
 
-    let mut response = if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await
-    {
-        let mut logout_url = end_session_endpoint;
-        {
-            let mut query_pairs = logout_url.query_pairs_mut();
-            query_pairs.append_pair("post_logout_redirect_uri", &redirect_uri);
+    let mut response =
+        if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
+            let post_logout_redirect_uri = PostLogoutRedirectUrl::new(redirect_uri.to_string())
+                .with_context(|| format!("Invalid post_logout_redirect_uri: {redirect_uri}"))?;
+
+            let mut logout_request = LogoutRequest::from(end_session_endpoint)
+                .set_post_logout_redirect_uri(post_logout_redirect_uri);
+
             if let Some(ref token) = id_token {
-                query_pairs.append_pair("id_token_hint", token.value());
+                logout_request = logout_request.set_id_token_hint(token);
             }
-        }
-        log::info!("Redirecting to OIDC logout URL: {logout_url}");
-        build_redirect_response(logout_url.to_string())
-    } else {
-        log::info!("No end_session_endpoint, redirecting to {redirect_uri}");
-        build_redirect_response(redirect_uri)
-    };
+
+            let logout_url = logout_request.http_get_url();
+            log::info!("Redirecting to OIDC logout URL: {logout_url}");
+            build_redirect_response(logout_url.to_string())
+        } else {
+            log::info!("No end_session_endpoint, redirecting to {redirect_uri}");
+            build_redirect_response(redirect_uri.to_string())
+        };
 
     let auth_cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, "")
         .secure(true)
