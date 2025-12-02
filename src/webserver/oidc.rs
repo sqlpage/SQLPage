@@ -24,8 +24,8 @@ use openidconnect::core::{
 };
 use openidconnect::{
     core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndpointMaybeSet,
-    EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
-    TokenResponse,
+    EndpointNotSet, EndpointSet, EndSessionUrl, IssuerUrl, LogoutRequest, Nonce, OAuth2TokenResponse,
+    PostLogoutRedirectUrl, ProviderMetadataWithLogout, RedirectUrl, Scope, TokenResponse,
 };
 use openidconnect::{
     EmptyExtraTokenFields, IdTokenFields, IdTokenVerifier, StandardErrorResponse,
@@ -154,7 +154,7 @@ fn get_app_host(config: &AppConfig) -> String {
 
 pub struct ClientWithTime {
     client: OidcClient,
-    end_session_endpoint: Option<Url>,
+    end_session_endpoint: Option<EndSessionUrl>,
     last_update: Instant,
 }
 
@@ -216,7 +216,7 @@ impl OidcState {
         )
     }
 
-    pub async fn get_end_session_endpoint(&self) -> Option<Url> {
+    pub async fn get_end_session_endpoint(&self) -> Option<EndSessionUrl> {
         self.client.read().await.end_session_endpoint.clone()
     }
 
@@ -253,7 +253,7 @@ pub async fn initialize_oidc_state(
 async fn build_oidc_client_from_appdata(
     cfg: &OidcConfig,
     req: &ServiceRequest,
-) -> anyhow::Result<(OidcClient, Option<Url>)> {
+) -> anyhow::Result<(OidcClient, Option<EndSessionUrl>)> {
     let http_client = get_http_client_from_appdata(req)?;
     build_oidc_client(cfg, http_client).await
 }
@@ -261,10 +261,13 @@ async fn build_oidc_client_from_appdata(
 async fn build_oidc_client(
     oidc_cfg: &OidcConfig,
     http_client: &Client,
-) -> anyhow::Result<(OidcClient, Option<Url>)> {
+) -> anyhow::Result<(OidcClient, Option<EndSessionUrl>)> {
     let issuer_url = oidc_cfg.issuer_url.clone();
-    let (provider_metadata, end_session_endpoint) =
-        discover_provider_metadata(http_client, issuer_url.clone()).await?;
+    let provider_metadata = discover_provider_metadata(http_client, issuer_url.clone()).await?;
+    let end_session_endpoint = provider_metadata
+        .additional_metadata()
+        .end_session_endpoint
+        .clone();
     let client = make_oidc_client(oidc_cfg, provider_metadata)?;
     Ok((client, end_session_endpoint))
 }
@@ -284,37 +287,20 @@ impl OidcMiddleware {
 async fn discover_provider_metadata(
     http_client: &awc::Client,
     issuer_url: IssuerUrl,
-) -> anyhow::Result<(openidconnect::core::CoreProviderMetadata, Option<Url>)> {
+) -> anyhow::Result<ProviderMetadataWithLogout> {
     log::debug!("Discovering provider metadata for {issuer_url}");
-
-    let discovery_url = issuer_url
-        .join(".well-known/openid-configuration")
-        .with_context(|| {
-            format!("Failed to construct discovery URL from issuer URL: {issuer_url}")
-        })?;
-
-    let response = http_client
-        .get(discovery_url.as_str())
-        .send()
-        .await
-        .map_err(|e| anyhow!("Failed to fetch OIDC discovery document: {e}"))?
-        .body()
-        .await
-        .map_err(|e| anyhow!("Failed to read OIDC discovery document body: {e}"))?;
-
-    let extra_metadata: DiscoveryMetadata = serde_json::from_slice(&response)
-        .with_context(|| "Failed to parse end_session_endpoint from discovery document")?;
-
-    let provider_metadata = openidconnect::core::CoreProviderMetadata::discover_async(
+    let provider_metadata = ProviderMetadataWithLogout::discover_async(
         issuer_url,
         &AwcHttpClient::from_client(http_client),
     )
     .await
     .with_context(|| "Failed to discover OIDC provider metadata".to_string())?;
     log::debug!("Provider metadata discovered: {provider_metadata:?}");
-    log::debug!("end_session_endpoint: {:?}", extra_metadata.end_session_endpoint);
-
-    Ok((provider_metadata, extra_metadata.end_session_endpoint))
+    log::debug!(
+        "end_session_endpoint: {:?}",
+        provider_metadata.additional_metadata().end_session_endpoint
+    );
+    Ok(provider_metadata)
 }
 
 impl<S> Transform<S, ServiceRequest> for OidcMiddleware
