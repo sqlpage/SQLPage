@@ -38,11 +38,6 @@ use super::http_client::make_http_client;
 
 type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
-#[derive(Clone, Debug, Deserialize)]
-struct DiscoveryMetadata {
-    #[serde(default)]
-    end_session_endpoint: Option<Url>,
-}
 
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
