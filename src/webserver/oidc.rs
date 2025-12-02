@@ -38,10 +38,18 @@ use super::http_client::make_http_client;
 
 type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
+#[derive(Clone, Debug, Deserialize)]
+struct DiscoveryMetadata {
+    #[serde(default)]
+    end_session_endpoint: Option<Url>,
+}
+
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
+const SQLPAGE_LOGOUT_URI: &str = "/sqlpage/oidc_logout";
 const SQLPAGE_NONCE_COOKIE_NAME: &str = "sqlpage_oidc_nonce";
 const SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX: &str = "sqlpage_oidc_state_";
+const SQLPAGE_LOGOUT_STATE_COOKIE_PREFIX: &str = "sqlpage_logout_state_";
 const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
 const AUTH_COOKIE_EXPIRATION: awc::cookie::time::Duration =
@@ -151,6 +159,7 @@ fn get_app_host(config: &AppConfig) -> String {
 
 pub struct ClientWithTime {
     client: OidcClient,
+    end_session_endpoint: Option<Url>,
     last_update: Instant,
 }
 
@@ -162,24 +171,26 @@ pub struct OidcState {
 impl OidcState {
     pub async fn new(oidc_cfg: OidcConfig, app_config: AppConfig) -> anyhow::Result<Self> {
         let http_client = make_http_client(&app_config)?;
-        let client = build_oidc_client(&oidc_cfg, &http_client).await?;
+        let (client, end_session_endpoint) =
+            build_oidc_client(&oidc_cfg, &http_client).await?;
 
         Ok(Self {
             config: oidc_cfg,
             client: RwLock::new(ClientWithTime {
                 client,
+                end_session_endpoint,
                 last_update: Instant::now(),
             }),
         })
     }
 
     async fn refresh(&self, service_request: &ServiceRequest) {
-        // Obtain a write lock to prevent concurrent OIDC client refreshes.
         let mut write_guard = self.client.write().await;
         match build_oidc_client_from_appdata(&self.config, service_request).await {
-            Ok(http_client) => {
+            Ok((http_client, end_session_endpoint)) => {
                 *write_guard = ClientWithTime {
                     client: http_client,
+                    end_session_endpoint,
                     last_update: Instant::now(),
                 }
             }
@@ -208,6 +219,10 @@ impl OidcState {
             self.client.read().await,
             |ClientWithTime { client, .. }| client,
         )
+    }
+
+    pub async fn get_end_session_endpoint(&self) -> Option<Url> {
+        self.client.read().await.end_session_endpoint.clone()
     }
 
     /// Validate and decode the claims of an OIDC token, without refreshing the client.
@@ -243,7 +258,7 @@ pub async fn initialize_oidc_state(
 async fn build_oidc_client_from_appdata(
     cfg: &OidcConfig,
     req: &ServiceRequest,
-) -> anyhow::Result<OidcClient> {
+) -> anyhow::Result<(OidcClient, Option<Url>)> {
     let http_client = get_http_client_from_appdata(req)?;
     build_oidc_client(cfg, http_client).await
 }
@@ -251,11 +266,12 @@ async fn build_oidc_client_from_appdata(
 async fn build_oidc_client(
     oidc_cfg: &OidcConfig,
     http_client: &Client,
-) -> anyhow::Result<OidcClient> {
+) -> anyhow::Result<(OidcClient, Option<Url>)> {
     let issuer_url = oidc_cfg.issuer_url.clone();
-    let provider_metadata = discover_provider_metadata(http_client, issuer_url.clone()).await?;
+    let (provider_metadata, end_session_endpoint) =
+        discover_provider_metadata(http_client, issuer_url.clone()).await?;
     let client = make_oidc_client(oidc_cfg, provider_metadata)?;
-    Ok(client)
+    Ok((client, end_session_endpoint))
 }
 
 pub struct OidcMiddleware {
@@ -273,8 +289,27 @@ impl OidcMiddleware {
 async fn discover_provider_metadata(
     http_client: &awc::Client,
     issuer_url: IssuerUrl,
-) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
+) -> anyhow::Result<(openidconnect::core::CoreProviderMetadata, Option<Url>)> {
     log::debug!("Discovering provider metadata for {issuer_url}");
+
+    let discovery_url = issuer_url
+        .join(".well-known/openid-configuration")
+        .with_context(|| {
+            format!("Failed to construct discovery URL from issuer URL: {issuer_url}")
+        })?;
+
+    let response = http_client
+        .get(discovery_url.as_str())
+        .send()
+        .await
+        .map_err(|e| anyhow!("Failed to fetch OIDC discovery document: {e}"))?
+        .body()
+        .await
+        .map_err(|e| anyhow!("Failed to read OIDC discovery document body: {e}"))?;
+
+    let extra_metadata: DiscoveryMetadata = serde_json::from_slice(&response)
+        .with_context(|| "Failed to parse end_session_endpoint from discovery document")?;
+
     let provider_metadata = openidconnect::core::CoreProviderMetadata::discover_async(
         issuer_url,
         &AwcHttpClient::from_client(http_client),
@@ -282,7 +317,9 @@ async fn discover_provider_metadata(
     .await
     .with_context(|| "Failed to discover OIDC provider metadata".to_string())?;
     log::debug!("Provider metadata discovered: {provider_metadata:?}");
-    Ok(provider_metadata)
+    log::debug!("end_session_endpoint: {:?}", extra_metadata.end_session_endpoint);
+
+    Ok((provider_metadata, extra_metadata.end_session_endpoint))
 }
 
 impl<S> Transform<S, ServiceRequest> for OidcMiddleware
@@ -337,6 +374,11 @@ async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> Midd
         return MiddlewareResponse::Respond(response);
     }
 
+    if request.path() == SQLPAGE_LOGOUT_URI {
+        let response = handle_oidc_logout(oidc_state, request).await;
+        return MiddlewareResponse::Respond(response);
+    }
+
     match get_authenticated_user_info(oidc_state, &request).await {
         Ok(Some(claims)) => {
             log::trace!("Storing authenticated user info in request extensions: {claims:?}");
@@ -382,6 +424,128 @@ async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -
             request.into_response(resp)
         }
     }
+}
+
+async fn handle_oidc_logout(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
+    match process_oidc_logout(oidc_state, &request).await {
+        Ok(response) => request.into_response(response),
+        Err(e) => {
+            log::error!("Failed to process OIDC logout: {e:#}");
+            request.into_response(
+                HttpResponse::BadRequest()
+                    .content_type("text/plain")
+                    .body(format!("Logout failed: {e}")),
+            )
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct LogoutParams {
+    state: CsrfToken,
+}
+
+async fn process_oidc_logout(
+    oidc_state: &OidcState,
+    request: &ServiceRequest,
+) -> anyhow::Result<HttpResponse> {
+    let params = Query::<LogoutParams>::from_query(request.query_string())
+        .with_context(|| format!("{SQLPAGE_LOGOUT_URI}: missing or invalid state parameter"))?
+        .into_inner();
+
+    let state_cookie = get_logout_state_cookie(request, &params.state)?;
+    let LogoutState { redirect_uri } = parse_logout_state(&state_cookie)?;
+    let redirect_uri = redirect_uri.to_string();
+
+    let id_token = request.cookie(SQLPAGE_AUTH_COOKIE_NAME);
+
+    let mut response = if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await
+    {
+        let mut logout_url = end_session_endpoint;
+        {
+            let mut query_pairs = logout_url.query_pairs_mut();
+            query_pairs.append_pair("post_logout_redirect_uri", &redirect_uri);
+            if let Some(ref token) = id_token {
+                query_pairs.append_pair("id_token_hint", token.value());
+            }
+        }
+        log::info!("Redirecting to OIDC logout URL: {logout_url}");
+        build_redirect_response(logout_url.to_string())
+    } else {
+        log::info!("No end_session_endpoint, redirecting to {redirect_uri}");
+        build_redirect_response(redirect_uri)
+    };
+
+    let auth_cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, "")
+        .secure(true)
+        .http_only(true)
+        .max_age(actix_web::cookie::time::Duration::ZERO)
+        .path("/")
+        .finish();
+    response.add_removal_cookie(&auth_cookie)?;
+
+    let nonce_cookie = Cookie::build(SQLPAGE_NONCE_COOKIE_NAME, "")
+        .secure(true)
+        .http_only(true)
+        .max_age(actix_web::cookie::time::Duration::ZERO)
+        .path("/")
+        .finish();
+    response.add_removal_cookie(&nonce_cookie)?;
+
+    let mut logout_state_cookie = state_cookie;
+    logout_state_cookie.set_path("/");
+    response.add_removal_cookie(&logout_state_cookie)?;
+
+    log::debug!("User logged out successfully");
+    Ok(response)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct LogoutState<'a> {
+    #[serde(rename = "r")]
+    redirect_uri: &'a str,
+}
+
+fn get_logout_state_cookie(
+    request: &ServiceRequest,
+    csrf_token: &CsrfToken,
+) -> anyhow::Result<Cookie<'static>> {
+    let cookie_name = SQLPAGE_LOGOUT_STATE_COOKIE_PREFIX.to_owned() + csrf_token.secret();
+    request
+        .cookie(&cookie_name)
+        .with_context(|| format!("Invalid or expired logout state. Cookie {cookie_name} not found."))
+}
+
+fn parse_logout_state<'a>(cookie: &'a Cookie<'_>) -> anyhow::Result<LogoutState<'a>> {
+    serde_json::from_str(cookie.value())
+        .with_context(|| format!("Invalid logout state cookie: {}", cookie.value()))
+}
+
+pub fn create_logout_url_with_state(redirect_uri: &str, site_prefix: &str) -> (String, Cookie<'_>) {
+    let csrf_token = CsrfToken::new_random();
+    let cookie_name = SQLPAGE_LOGOUT_STATE_COOKIE_PREFIX.to_owned() + csrf_token.secret();
+    let cookie_value = serde_json::to_string(&LogoutState { redirect_uri })
+        .expect("logout state is always serializable");
+
+    let cookie = Cookie::build(cookie_name, cookie_value)
+        .secure(true)
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .path("/")
+        .max_age(LOGIN_FLOW_STATE_COOKIE_EXPIRATION)
+        .finish();
+
+    let logout_url = format!(
+        "{}{}?state={}",
+        site_prefix.trim_end_matches('/'),
+        SQLPAGE_LOGOUT_URI,
+        percent_encoding::percent_encode(
+            csrf_token.secret().as_bytes(),
+            percent_encoding::NON_ALPHANUMERIC
+        )
+    );
+
+    (logout_url, cookie)
 }
 
 impl<S> Service<ServiceRequest> for OidcService<S>
