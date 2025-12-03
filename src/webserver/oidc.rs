@@ -474,21 +474,15 @@ async fn process_oidc_logout(
         build_redirect_response(logout_state.redirect_uri)
     };
 
-    let auth_cookie = Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, "")
-        .secure(true)
-        .http_only(true)
-        .max_age(actix_web::cookie::time::Duration::ZERO)
-        .path("/")
-        .finish();
-    response.add_removal_cookie(&auth_cookie)?;
+    let mut auth_cookie = Cookie::named(SQLPAGE_AUTH_COOKIE_NAME);
+    auth_cookie.set_path("/");
+    auth_cookie.make_removal();
+    response.add_cookie(&auth_cookie)?;
 
-    let nonce_cookie = Cookie::build(SQLPAGE_NONCE_COOKIE_NAME, "")
-        .secure(true)
-        .http_only(true)
-        .max_age(actix_web::cookie::time::Duration::ZERO)
-        .path("/")
-        .finish();
-    response.add_removal_cookie(&nonce_cookie)?;
+    let mut nonce_cookie = Cookie::named(SQLPAGE_NONCE_COOKIE_NAME);
+    nonce_cookie.set_path("/");
+    nonce_cookie.make_removal();
+    response.add_cookie(&nonce_cookie)?;
 
     log::debug!("User logged out successfully");
     Ok(response)
