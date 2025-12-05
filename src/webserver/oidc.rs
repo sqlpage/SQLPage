@@ -151,6 +151,26 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
+fn build_absolute_uri(app_host: &str, relative_path: &str) -> anyhow::Result<String> {
+    let mut base_url = Url::parse(&format!("https://{app_host}"))
+        .with_context(|| format!("Failed to parse app_host: {app_host}"))?;
+    let needs_http = match base_url.host() {
+        Some(openidconnect::url::Host::Domain(domain)) => domain == "localhost",
+        Some(openidconnect::url::Host::Ipv4(_) | openidconnect::url::Host::Ipv6(_)) => true,
+        None => false,
+    };
+    if needs_http {
+        base_url
+            .set_scheme("http")
+            .map_err(|()| anyhow!("Failed to set URL scheme to http"))?;
+    }
+    base_url.set_path("");
+    let absolute_url = base_url
+        .join(relative_path)
+        .with_context(|| format!("Failed to join path {relative_path}"))?;
+    Ok(absolute_url.to_string())
+}
+
 pub struct ClientWithTime {
     client: OidcClient,
     end_session_endpoint: Option<EndSessionUrl>,
@@ -445,34 +465,32 @@ async fn process_oidc_logout(
         .ok()
         .flatten();
 
-    let mut response = if let Some(end_session_endpoint) =
-        oidc_state.get_end_session_endpoint().await
-    {
-        let post_logout_redirect_uri =
-            PostLogoutRedirectUrl::new(logout_state.redirect_uri.clone()).with_context(|| {
-                format!(
-                    "Invalid post_logout_redirect_uri: {}",
-                    logout_state.redirect_uri
-                )
-            })?;
+    let mut response =
+        if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
+            let absolute_redirect_uri =
+                build_absolute_uri(&oidc_state.config.app_host, &logout_state.redirect_uri)?;
+            let post_logout_redirect_uri =
+                PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
+                    format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
+                })?;
 
-        let mut logout_request = LogoutRequest::from(end_session_endpoint)
-            .set_post_logout_redirect_uri(post_logout_redirect_uri);
+            let mut logout_request = LogoutRequest::from(end_session_endpoint)
+                .set_post_logout_redirect_uri(post_logout_redirect_uri);
 
-        if let Some(ref token) = id_token {
-            logout_request = logout_request.set_id_token_hint(token);
-        }
+            if let Some(ref token) = id_token {
+                logout_request = logout_request.set_id_token_hint(token);
+            }
 
-        let logout_url = logout_request.http_get_url();
-        log::info!("Redirecting to OIDC logout URL: {logout_url}");
-        build_redirect_response(logout_url.to_string())
-    } else {
-        log::info!(
-            "No end_session_endpoint, redirecting to {}",
-            logout_state.redirect_uri
-        );
-        build_redirect_response(logout_state.redirect_uri)
-    };
+            let logout_url = logout_request.http_get_url();
+            log::info!("Redirecting to OIDC logout URL: {logout_url}");
+            build_redirect_response(logout_url.to_string())
+        } else {
+            log::info!(
+                "No end_session_endpoint, redirecting to {}",
+                logout_state.redirect_uri
+            );
+            build_redirect_response(logout_state.redirect_uri)
+        };
 
     let mut auth_cookie = Cookie::named(SQLPAGE_AUTH_COOKIE_NAME);
     auth_cookie.set_path("/");
