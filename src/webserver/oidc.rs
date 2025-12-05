@@ -23,8 +23,9 @@ use openidconnect::core::{
     CoreRevocationErrorResponse, CoreTokenIntrospectionResponse, CoreTokenType,
 };
 use openidconnect::{
-    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndpointMaybeSet,
-    EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse, RedirectUrl, Scope,
+    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndSessionUrl,
+    EndpointMaybeSet, EndpointNotSet, EndpointSet, IssuerUrl, LogoutRequest, Nonce,
+    OAuth2TokenResponse, PostLogoutRedirectUrl, ProviderMetadataWithLogout, RedirectUrl, Scope,
     TokenResponse,
 };
 use openidconnect::{
@@ -40,6 +41,7 @@ type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 const SQLPAGE_AUTH_COOKIE_NAME: &str = "sqlpage_auth";
 const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
+const SQLPAGE_LOGOUT_URI: &str = "/sqlpage/oidc_logout";
 const SQLPAGE_NONCE_COOKIE_NAME: &str = "sqlpage_oidc_nonce";
 const SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX: &str = "sqlpage_oidc_state_";
 const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
@@ -149,8 +151,29 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
+fn build_absolute_uri(app_host: &str, relative_path: &str) -> anyhow::Result<String> {
+    let mut base_url = Url::parse(&format!("https://{app_host}"))
+        .with_context(|| format!("Failed to parse app_host: {app_host}"))?;
+    let needs_http = match base_url.host() {
+        Some(openidconnect::url::Host::Domain(domain)) => domain == "localhost",
+        Some(openidconnect::url::Host::Ipv4(_) | openidconnect::url::Host::Ipv6(_)) => true,
+        None => false,
+    };
+    if needs_http {
+        base_url
+            .set_scheme("http")
+            .map_err(|()| anyhow!("Failed to set URL scheme to http"))?;
+    }
+    base_url.set_path("");
+    let absolute_url = base_url
+        .join(relative_path)
+        .with_context(|| format!("Failed to join path {relative_path}"))?;
+    Ok(absolute_url.to_string())
+}
+
 pub struct ClientWithTime {
     client: OidcClient,
+    end_session_endpoint: Option<EndSessionUrl>,
     last_update: Instant,
 }
 
@@ -162,24 +185,25 @@ pub struct OidcState {
 impl OidcState {
     pub async fn new(oidc_cfg: OidcConfig, app_config: AppConfig) -> anyhow::Result<Self> {
         let http_client = make_http_client(&app_config)?;
-        let client = build_oidc_client(&oidc_cfg, &http_client).await?;
+        let (client, end_session_endpoint) = build_oidc_client(&oidc_cfg, &http_client).await?;
 
         Ok(Self {
             config: oidc_cfg,
             client: RwLock::new(ClientWithTime {
                 client,
+                end_session_endpoint,
                 last_update: Instant::now(),
             }),
         })
     }
 
     async fn refresh(&self, service_request: &ServiceRequest) {
-        // Obtain a write lock to prevent concurrent OIDC client refreshes.
         let mut write_guard = self.client.write().await;
         match build_oidc_client_from_appdata(&self.config, service_request).await {
-            Ok(http_client) => {
+            Ok((http_client, end_session_endpoint)) => {
                 *write_guard = ClientWithTime {
                     client: http_client,
+                    end_session_endpoint,
                     last_update: Instant::now(),
                 }
             }
@@ -208,6 +232,10 @@ impl OidcState {
             self.client.read().await,
             |ClientWithTime { client, .. }| client,
         )
+    }
+
+    pub async fn get_end_session_endpoint(&self) -> Option<EndSessionUrl> {
+        self.client.read().await.end_session_endpoint.clone()
     }
 
     /// Validate and decode the claims of an OIDC token, without refreshing the client.
@@ -243,7 +271,7 @@ pub async fn initialize_oidc_state(
 async fn build_oidc_client_from_appdata(
     cfg: &OidcConfig,
     req: &ServiceRequest,
-) -> anyhow::Result<OidcClient> {
+) -> anyhow::Result<(OidcClient, Option<EndSessionUrl>)> {
     let http_client = get_http_client_from_appdata(req)?;
     build_oidc_client(cfg, http_client).await
 }
@@ -251,11 +279,15 @@ async fn build_oidc_client_from_appdata(
 async fn build_oidc_client(
     oidc_cfg: &OidcConfig,
     http_client: &Client,
-) -> anyhow::Result<OidcClient> {
+) -> anyhow::Result<(OidcClient, Option<EndSessionUrl>)> {
     let issuer_url = oidc_cfg.issuer_url.clone();
     let provider_metadata = discover_provider_metadata(http_client, issuer_url.clone()).await?;
+    let end_session_endpoint = provider_metadata
+        .additional_metadata()
+        .end_session_endpoint
+        .clone();
     let client = make_oidc_client(oidc_cfg, provider_metadata)?;
-    Ok(client)
+    Ok((client, end_session_endpoint))
 }
 
 pub struct OidcMiddleware {
@@ -273,15 +305,19 @@ impl OidcMiddleware {
 async fn discover_provider_metadata(
     http_client: &awc::Client,
     issuer_url: IssuerUrl,
-) -> anyhow::Result<openidconnect::core::CoreProviderMetadata> {
+) -> anyhow::Result<ProviderMetadataWithLogout> {
     log::debug!("Discovering provider metadata for {issuer_url}");
-    let provider_metadata = openidconnect::core::CoreProviderMetadata::discover_async(
+    let provider_metadata = ProviderMetadataWithLogout::discover_async(
         issuer_url,
         &AwcHttpClient::from_client(http_client),
     )
     .await
     .with_context(|| "Failed to discover OIDC provider metadata".to_string())?;
     log::debug!("Provider metadata discovered: {provider_metadata:?}");
+    log::debug!(
+        "end_session_endpoint: {:?}",
+        provider_metadata.additional_metadata().end_session_endpoint
+    );
     Ok(provider_metadata)
 }
 
@@ -337,6 +373,11 @@ async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> Midd
         return MiddlewareResponse::Respond(response);
     }
 
+    if request.path() == SQLPAGE_LOGOUT_URI {
+        let response = handle_oidc_logout(oidc_state, request).await;
+        return MiddlewareResponse::Respond(response);
+    }
+
     match get_authenticated_user_info(oidc_state, &request).await {
         Ok(Some(claims)) => {
             log::trace!("Storing authenticated user info in request extensions: {claims:?}");
@@ -382,6 +423,180 @@ async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -
             request.into_response(resp)
         }
     }
+}
+
+async fn handle_oidc_logout(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
+    match process_oidc_logout(oidc_state, &request).await {
+        Ok(response) => request.into_response(response),
+        Err(e) => {
+            log::error!("Failed to process OIDC logout: {e:#}");
+            request.into_response(
+                HttpResponse::BadRequest()
+                    .content_type("text/plain")
+                    .body(format!("Logout failed: {e}")),
+            )
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct LogoutParams {
+    token: String,
+}
+
+const LOGOUT_TOKEN_VALIDITY_SECONDS: i64 = 600;
+
+async fn process_oidc_logout(
+    oidc_state: &OidcState,
+    request: &ServiceRequest,
+) -> anyhow::Result<HttpResponse> {
+    let params = Query::<LogoutParams>::from_query(request.query_string())
+        .with_context(|| format!("{SQLPAGE_LOGOUT_URI}: missing token parameter"))?
+        .into_inner();
+
+    let logout_state =
+        verify_and_decode_logout_token(&params.token, &oidc_state.config.client_secret)?;
+
+    let id_token_cookie = request.cookie(SQLPAGE_AUTH_COOKIE_NAME);
+    let id_token = id_token_cookie
+        .as_ref()
+        .map(|c| OidcToken::from_str(c.value()))
+        .transpose()
+        .ok()
+        .flatten();
+
+    let mut response =
+        if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
+            let absolute_redirect_uri =
+                build_absolute_uri(&oidc_state.config.app_host, &logout_state.redirect_uri)?;
+            let post_logout_redirect_uri =
+                PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
+                    format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
+                })?;
+
+            let mut logout_request = LogoutRequest::from(end_session_endpoint)
+                .set_post_logout_redirect_uri(post_logout_redirect_uri);
+
+            if let Some(ref token) = id_token {
+                logout_request = logout_request.set_id_token_hint(token);
+            }
+
+            let logout_url = logout_request.http_get_url();
+            log::info!("Redirecting to OIDC logout URL: {logout_url}");
+            build_redirect_response(logout_url.to_string())
+        } else {
+            log::info!(
+                "No end_session_endpoint, redirecting to {}",
+                logout_state.redirect_uri
+            );
+            build_redirect_response(logout_state.redirect_uri)
+        };
+
+    let mut auth_cookie = Cookie::named(SQLPAGE_AUTH_COOKIE_NAME);
+    auth_cookie.set_path("/");
+    auth_cookie.make_removal();
+    response.add_cookie(&auth_cookie)?;
+
+    let mut nonce_cookie = Cookie::named(SQLPAGE_NONCE_COOKIE_NAME);
+    nonce_cookie.set_path("/");
+    nonce_cookie.make_removal();
+    response.add_cookie(&nonce_cookie)?;
+
+    log::debug!("User logged out successfully");
+    Ok(response)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct LogoutTokenPayload {
+    #[serde(rename = "r")]
+    redirect_uri: String,
+    #[serde(rename = "t")]
+    timestamp: i64,
+}
+
+fn create_logout_token(redirect_uri: &str, client_secret: &str) -> String {
+    use base64::Engine;
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+
+    let timestamp = chrono::Utc::now().timestamp();
+    let payload = LogoutTokenPayload {
+        redirect_uri: redirect_uri.to_string(),
+        timestamp,
+    };
+    let payload_json = serde_json::to_string(&payload).expect("payload is always serializable");
+    let payload_b64 =
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
+
+    let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
+        .expect("HMAC accepts any key size");
+    mac.update(payload_b64.as_bytes());
+    let signature = mac.finalize().into_bytes();
+    let signature_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature);
+
+    format!("{payload_b64}.{signature_b64}")
+}
+
+fn verify_and_decode_logout_token(
+    token: &str,
+    client_secret: &str,
+) -> anyhow::Result<LogoutTokenPayload> {
+    use base64::Engine;
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 2 {
+        anyhow::bail!("Invalid logout token format");
+    }
+
+    let payload_b64 = parts[0];
+    let signature_b64 = parts[1];
+
+    let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
+        .expect("HMAC accepts any key size");
+    mac.update(payload_b64.as_bytes());
+
+    let expected_signature = mac.finalize().into_bytes();
+    let provided_signature = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(signature_b64)
+        .with_context(|| "Invalid logout token signature encoding")?;
+
+    if expected_signature[..] != provided_signature[..] {
+        anyhow::bail!("Invalid logout token signature");
+    }
+
+    let payload_json = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload_b64)
+        .with_context(|| "Invalid logout token payload encoding")?;
+
+    let payload: LogoutTokenPayload =
+        serde_json::from_slice(&payload_json).with_context(|| "Invalid logout token payload")?;
+
+    let now = chrono::Utc::now().timestamp();
+    if now - payload.timestamp > LOGOUT_TOKEN_VALIDITY_SECONDS {
+        anyhow::bail!("Logout token has expired");
+    }
+    if payload.timestamp > now + 60 {
+        anyhow::bail!("Logout token timestamp is in the future");
+    }
+
+    if !payload.redirect_uri.starts_with('/') || payload.redirect_uri.starts_with("//") {
+        anyhow::bail!("Invalid redirect URI in logout token");
+    }
+
+    Ok(payload)
+}
+
+#[must_use]
+pub fn create_logout_url(redirect_uri: &str, site_prefix: &str, client_secret: &str) -> String {
+    let token = create_logout_token(redirect_uri, client_secret);
+    format!(
+        "{}{}?token={}",
+        site_prefix.trim_end_matches('/'),
+        SQLPAGE_LOGOUT_URI,
+        percent_encoding::percent_encode(token.as_bytes(), percent_encoding::NON_ALPHANUMERIC)
+    )
 }
 
 impl<S> Service<ServiceRequest> for OidcService<S>
@@ -630,7 +845,7 @@ impl std::error::Error for AwcWrapperError {
 
 fn make_oidc_client(
     config: &OidcConfig,
-    provider_metadata: openidconnect::core::CoreProviderMetadata,
+    provider_metadata: ProviderMetadataWithLogout,
 ) -> anyhow::Result<OidcClient> {
     let client_id = openidconnect::ClientId::new(config.client_id.clone());
     let client_secret = openidconnect::ClientSecret::new(config.client_secret.clone());
