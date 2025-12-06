@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
 ## 0.40.1
+ - **New Function**: `sqlpage.oidc_logout_url(redirect_uri)` - Generates a secure logout URL for OIDC-authenticated users with support for [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RPLogout)
  - Fix compatibility with Auth0 for OpenID-Connect authentification. See https://github.com/ramosbugs/openidconnect-rs/issues/23
 
 ## 0.40.0 (2025-11-28)
