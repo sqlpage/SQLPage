@@ -23,10 +23,11 @@ use openidconnect::core::{
     CoreRevocationErrorResponse, CoreTokenIntrospectionResponse, CoreTokenType,
 };
 use openidconnect::{
-    core::CoreAuthenticationFlow, url::Url, AsyncHttpClient, Audience, CsrfToken, EndSessionUrl,
-    EndpointMaybeSet, EndpointNotSet, EndpointSet, IssuerUrl, LogoutRequest, Nonce,
-    OAuth2TokenResponse, PostLogoutRedirectUrl, ProviderMetadataWithLogout, RedirectUrl, Scope,
-    TokenResponse,
+    core::CoreAuthenticationFlow,
+    url::{form_urlencoded, Url},
+    AsyncHttpClient, Audience, CsrfToken, EndSessionUrl, EndpointMaybeSet, EndpointNotSet,
+    EndpointSet, IssuerUrl, LogoutRequest, Nonce, OAuth2TokenResponse, PostLogoutRedirectUrl,
+    ProviderMetadataWithLogout, RedirectUrl, Scope, TokenResponse,
 };
 use openidconnect::{
     EmptyExtraTokenFields, IdTokenFields, IdTokenVerifier, StandardErrorResponse,
@@ -441,7 +442,7 @@ const LOGOUT_TOKEN_VALIDITY_SECONDS: i64 = 600;
 fn parse_logout_params(query: &str) -> anyhow::Result<LogoutParams> {
     Query::<LogoutParams>::from_query(query)
         .with_context(|| format!("{SQLPAGE_LOGOUT_URI}: missing required parameters"))
-        .map(|q| q.into_inner())
+        .map(Query::into_inner)
 }
 
 async fn process_oidc_logout(
@@ -552,16 +553,16 @@ fn verify_logout_params(params: &LogoutParams, client_secret: &str) -> anyhow::R
 pub fn create_logout_url(redirect_uri: &str, site_prefix: &str, client_secret: &str) -> String {
     let timestamp = chrono::Utc::now().timestamp();
     let signature = compute_logout_signature(redirect_uri, timestamp, client_secret);
+    let query = form_urlencoded::Serializer::new(String::new())
+        .append_pair("redirect_uri", redirect_uri)
+        .append_pair("timestamp", &timestamp.to_string())
+        .append_pair("signature", &signature)
+        .finish();
     format!(
-        "{}{}?redirect_uri={}&timestamp={}&signature={}",
+        "{}{}?{}",
         site_prefix.trim_end_matches('/'),
         SQLPAGE_LOGOUT_URI,
-        percent_encoding::percent_encode(
-            redirect_uri.as_bytes(),
-            percent_encoding::NON_ALPHANUMERIC
-        ),
-        timestamp,
-        percent_encoding::percent_encode(signature.as_bytes(), percent_encoding::NON_ALPHANUMERIC)
+        query
     )
 }
 
