@@ -489,8 +489,16 @@ async fn process_oidc_logout(
             build_redirect_response(params.redirect_uri)
         };
 
-    response.add_removal_cookie(&Cookie::named(SQLPAGE_AUTH_COOKIE_NAME))?;
-    response.add_removal_cookie(&Cookie::named(SQLPAGE_NONCE_COOKIE_NAME))?;
+    response.add_removal_cookie(
+        &Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, "")
+            .path("/")
+            .finish(),
+    )?;
+    response.add_removal_cookie(
+        &Cookie::build(SQLPAGE_NONCE_COOKIE_NAME, "")
+            .path("/")
+            .finish(),
+    )?;
 
     log::debug!("User logged out successfully");
     Ok(response)
