@@ -151,11 +151,7 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
-fn build_absolute_uri(
-    app_host: &str,
-    relative_path: &str,
-    scheme: &str,
-) -> anyhow::Result<String> {
+fn build_absolute_uri(app_host: &str, relative_path: &str, scheme: &str) -> anyhow::Result<String> {
     let mut base_url = Url::parse(&format!("{scheme}://{app_host}"))
         .with_context(|| format!("Failed to parse app_host: {app_host}"))?;
     base_url.set_path("");
@@ -442,13 +438,17 @@ struct LogoutParams {
 
 const LOGOUT_TOKEN_VALIDITY_SECONDS: i64 = 600;
 
+fn parse_logout_params(query: &str) -> anyhow::Result<LogoutParams> {
+    Query::<LogoutParams>::from_query(query)
+        .with_context(|| format!("{SQLPAGE_LOGOUT_URI}: missing required parameters"))
+        .map(|q| q.into_inner())
+}
+
 async fn process_oidc_logout(
     oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
-    let params = Query::<LogoutParams>::from_query(request.query_string())
-        .with_context(|| format!("{SQLPAGE_LOGOUT_URI}: missing required parameters"))?
-        .into_inner();
+    let params = parse_logout_params(request.query_string())?;
 
     verify_logout_params(&params, &oidc_state.config.client_secret)?;
 
@@ -463,11 +463,8 @@ async fn process_oidc_logout(
     let scheme = request.connection_info().scheme().to_string();
     let mut response =
         if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
-            let absolute_redirect_uri = build_absolute_uri(
-                &oidc_state.config.app_host,
-                &logout_state.redirect_uri,
-                &scheme,
-            )?;
+            let absolute_redirect_uri =
+                build_absolute_uri(&oidc_state.config.app_host, &params.redirect_uri, &scheme)?;
             let post_logout_redirect_uri =
                 PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
                     format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
@@ -486,9 +483,9 @@ async fn process_oidc_logout(
         } else {
             log::info!(
                 "No end_session_endpoint, redirecting to {}",
-                logout_state.redirect_uri
+                params.redirect_uri
             );
-            build_redirect_response(logout_state.redirect_uri)
+            build_redirect_response(params.redirect_uri)
         };
 
     let mut auth_cookie = Cookie::named(SQLPAGE_AUTH_COOKIE_NAME);
@@ -505,96 +502,66 @@ async fn process_oidc_logout(
     Ok(response)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct LogoutTokenPayload {
-    #[serde(rename = "r")]
-    redirect_uri: String,
-    #[serde(rename = "t")]
-    timestamp: i64,
-}
-
-fn create_logout_token(redirect_uri: &str, client_secret: &str) -> String {
+fn compute_logout_signature(redirect_uri: &str, timestamp: i64, client_secret: &str) -> String {
     use base64::Engine;
     use hmac::{Hmac, Mac};
     use sha2::Sha256;
 
-    let timestamp = chrono::Utc::now().timestamp();
-    let payload = LogoutTokenPayload {
-        redirect_uri: redirect_uri.to_string(),
-        timestamp,
-    };
-    let payload_json = serde_json::to_string(&payload).expect("payload is always serializable");
-    let payload_b64 =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
-
     let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
         .expect("HMAC accepts any key size");
-    mac.update(payload_b64.as_bytes());
+    mac.update(redirect_uri.as_bytes());
+    mac.update(&timestamp.to_be_bytes());
     let signature = mac.finalize().into_bytes();
-    let signature_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature);
-
-    format!("{payload_b64}.{signature_b64}")
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature)
 }
 
-fn verify_and_decode_logout_token(
-    token: &str,
-    client_secret: &str,
-) -> anyhow::Result<LogoutTokenPayload> {
+fn verify_logout_params(params: &LogoutParams, client_secret: &str) -> anyhow::Result<()> {
     use base64::Engine;
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
 
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 2 {
-        anyhow::bail!("Invalid logout token format");
-    }
+    let expected_signature =
+        compute_logout_signature(&params.redirect_uri, params.timestamp, client_secret);
 
-    let payload_b64 = parts[0];
-    let signature_b64 = parts[1];
-
-    let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
-        .expect("HMAC accepts any key size");
-    mac.update(payload_b64.as_bytes());
-
-    let expected_signature = mac.finalize().into_bytes();
     let provided_signature = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(signature_b64)
-        .with_context(|| "Invalid logout token signature encoding")?;
+        .decode(&params.signature)
+        .with_context(|| "Invalid logout signature encoding")?;
 
-    if expected_signature[..] != provided_signature[..] {
-        anyhow::bail!("Invalid logout token signature");
+    let expected_signature_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(&expected_signature)
+        .with_context(|| "Failed to decode expected signature")?;
+
+    if expected_signature_bytes[..] != provided_signature[..] {
+        anyhow::bail!("Invalid logout signature");
     }
-
-    let payload_json = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(payload_b64)
-        .with_context(|| "Invalid logout token payload encoding")?;
-
-    let payload: LogoutTokenPayload =
-        serde_json::from_slice(&payload_json).with_context(|| "Invalid logout token payload")?;
 
     let now = chrono::Utc::now().timestamp();
-    if now - payload.timestamp > LOGOUT_TOKEN_VALIDITY_SECONDS {
+    if now - params.timestamp > LOGOUT_TOKEN_VALIDITY_SECONDS {
         anyhow::bail!("Logout token has expired");
     }
-    if payload.timestamp > now + 60 {
+    if params.timestamp > now + 60 {
         anyhow::bail!("Logout token timestamp is in the future");
     }
 
-    if !payload.redirect_uri.starts_with('/') || payload.redirect_uri.starts_with("//") {
-        anyhow::bail!("Invalid redirect URI in logout token");
+    if !params.redirect_uri.starts_with('/') || params.redirect_uri.starts_with("//") {
+        anyhow::bail!("Invalid redirect URI");
     }
 
-    Ok(payload)
+    Ok(())
 }
 
 #[must_use]
 pub fn create_logout_url(redirect_uri: &str, site_prefix: &str, client_secret: &str) -> String {
-    let token = create_logout_token(redirect_uri, client_secret);
+    let timestamp = chrono::Utc::now().timestamp();
+    let signature = compute_logout_signature(redirect_uri, timestamp, client_secret);
     format!(
-        "{}{}?token={}",
+        "{}{}?redirect_uri={}&timestamp={}&signature={}",
         site_prefix.trim_end_matches('/'),
         SQLPAGE_LOGOUT_URI,
-        percent_encoding::percent_encode(token.as_bytes(), percent_encoding::NON_ALPHANUMERIC)
+        percent_encoding::percent_encode(
+            redirect_uri.as_bytes(),
+            percent_encoding::NON_ALPHANUMERIC
+        ),
+        timestamp,
+        percent_encoding::percent_encode(signature.as_bytes(), percent_encoding::NON_ALPHANUMERIC)
     )
 }
 
@@ -1054,6 +1021,7 @@ fn validate_redirect_url(url: String) -> String {
 mod tests {
     use super::*;
     use actix_web::http::StatusCode;
+    use openidconnect::url::Url;
 
     #[test]
     fn login_redirects_use_see_other() {
@@ -1081,5 +1049,18 @@ mod tests {
         let claims: OidcClaims = serde_json::from_str(claims_json)
             .expect("Auth0 returns updated_at as RFC3339 string, not unix timestamp");
         assert!(claims.updated_at().is_some());
+    }
+
+    #[test]
+    fn logout_url_generation_and_parsing_are_compatible() {
+        let secret = "super_secret_key";
+        let generated = create_logout_url("/after", "https://example.com", secret);
+
+        let parsed = Url::parse(&generated).expect("generated URL should be valid");
+        assert_eq!(parsed.path(), SQLPAGE_LOGOUT_URI);
+
+        let params = parse_logout_params(parsed.query().expect("query string is present"))
+            .expect("generated URL should parse");
+        verify_logout_params(&params, secret).expect("generated URL should validate");
     }
 }
