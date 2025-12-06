@@ -151,19 +151,13 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
-fn build_absolute_uri(app_host: &str, relative_path: &str) -> anyhow::Result<String> {
-    let mut base_url = Url::parse(&format!("https://{app_host}"))
+fn build_absolute_uri(
+    app_host: &str,
+    relative_path: &str,
+    scheme: &str,
+) -> anyhow::Result<String> {
+    let mut base_url = Url::parse(&format!("{scheme}://{app_host}"))
         .with_context(|| format!("Failed to parse app_host: {app_host}"))?;
-    let needs_http = match base_url.host() {
-        Some(openidconnect::url::Host::Domain(domain)) => domain == "localhost",
-        Some(openidconnect::url::Host::Ipv4(_) | openidconnect::url::Host::Ipv6(_)) => true,
-        None => false,
-    };
-    if needs_http {
-        base_url
-            .set_scheme("http")
-            .map_err(|()| anyhow!("Failed to set URL scheme to http"))?;
-    }
     base_url.set_path("");
     let absolute_url = base_url
         .join(relative_path)
@@ -441,7 +435,9 @@ async fn handle_oidc_logout(oidc_state: &OidcState, request: ServiceRequest) -> 
 
 #[derive(Debug, Deserialize)]
 struct LogoutParams {
-    token: String,
+    redirect_uri: String,
+    timestamp: i64,
+    signature: String,
 }
 
 const LOGOUT_TOKEN_VALIDITY_SECONDS: i64 = 600;
@@ -451,11 +447,10 @@ async fn process_oidc_logout(
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
     let params = Query::<LogoutParams>::from_query(request.query_string())
-        .with_context(|| format!("{SQLPAGE_LOGOUT_URI}: missing token parameter"))?
+        .with_context(|| format!("{SQLPAGE_LOGOUT_URI}: missing required parameters"))?
         .into_inner();
 
-    let logout_state =
-        verify_and_decode_logout_token(&params.token, &oidc_state.config.client_secret)?;
+    verify_logout_params(&params, &oidc_state.config.client_secret)?;
 
     let id_token_cookie = request.cookie(SQLPAGE_AUTH_COOKIE_NAME);
     let id_token = id_token_cookie
@@ -465,10 +460,14 @@ async fn process_oidc_logout(
         .ok()
         .flatten();
 
+    let scheme = request.connection_info().scheme().to_string();
     let mut response =
         if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
-            let absolute_redirect_uri =
-                build_absolute_uri(&oidc_state.config.app_host, &logout_state.redirect_uri)?;
+            let absolute_redirect_uri = build_absolute_uri(
+                &oidc_state.config.app_host,
+                &logout_state.redirect_uri,
+                &scheme,
+            )?;
             let post_logout_redirect_uri =
                 PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
                     format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
