@@ -50,7 +50,7 @@ serde_json = { version = "1.0.82", features = [
     "arbitrary_precision",
 ] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.59.0", default-features = false, features = [
+sqlparser = { version = "0.60.0", default-features = false, features = [
     "std",
     "visitor",
 ] }
