@@ -4,7 +4,7 @@ SQLpage
 
 [![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
 
-[SQLpage](https://sql-page.com) is an **SQL**-only webapp builder.
+[SQLPage](https://sql-page.com) is an **SQL**-only webapp builder.
 It allows building powerful data-centric user interfaces quickly,
 by tranforming simple database queries into interactive websites.
 
