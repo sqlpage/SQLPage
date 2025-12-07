@@ -79,7 +79,7 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false, features = ["accept-rfc3339-timestamps"] }
 encoding_rs = "0.8.35"
-odbc-sys = { version = "0.27.4", optional = true }
+odbc-sys = { version = "0.28.0", optional = true }
 
 
 [features]

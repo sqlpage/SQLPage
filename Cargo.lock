@@ -3020,7 +3020,7 @@ checksum = "f017d3949731e436bc1bb9a1fbc34197c2f39c588cdcb60d21adb1f8dd3b8514"
 dependencies = [
  "atoi",
  "log",
- "odbc-sys",
+ "odbc-sys 0.27.4",
  "thiserror 2.0.17",
  "widestring",
  "winit",
@@ -3031,6 +3031,12 @@ name = "odbc-sys"
 version = "0.27.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1896e52e97c2f0cf997cc627380f1af1ecb3f6c29ce6175047cd38adaadb46f5"
+
+[[package]]
+name = "odbc-sys"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "348f5e1d16a8aa07e9e76fc62f82bf44d94c099c0d291b4b4b7e10574447434c"
 dependencies = [
  "unix-odbc",
 ]
@@ -4191,7 +4197,7 @@ dependencies = [
  "log",
  "markdown",
  "mime_guess",
- "odbc-sys",
+ "odbc-sys 0.28.0",
  "openidconnect",
  "password-hash",
  "percent-encoding",
