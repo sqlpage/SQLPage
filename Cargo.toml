@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.40.1"
+version = "0.41.0"
 edition = "2021"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -50,7 +50,7 @@ serde_json = { version = "1.0.82", features = [
     "arbitrary_precision",
 ] }
 lambda-web = { version = "0.2.1", features = ["actix4"], optional = true }
-sqlparser = { version = "0.59.0", default-features = false, features = [
+sqlparser = { version = "0.60.0", default-features = false, features = [
     "std",
     "visitor",
 ] }
@@ -79,7 +79,7 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false, features = ["accept-rfc3339-timestamps"] }
 encoding_rs = "0.8.35"
-odbc-sys = { version = "0.27.4", optional = true }
+odbc-sys = { version = "0.28.0", optional = true }
 
 
 [features]
