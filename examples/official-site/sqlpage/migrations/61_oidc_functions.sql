@@ -192,6 +192,8 @@ When a user visits this URL, SQLPage will:
 2. Redirect the user to the OIDC provider''s logout endpoint (if available)
 3. Finally redirect back to the specified `redirect_uri`
 
+The generated link now appends the current user''s OIDC `sub` identifier as the `user_id` query parameter, so you can display or log which account will be signed out. If no user is currently authenticated, the function simply returns the provided `redirect_uri`, avoiding unnecessary redirects.
+
 ## Security Features
 
 This function provides protection against **Cross-Site Request Forgery (CSRF)** attacks:

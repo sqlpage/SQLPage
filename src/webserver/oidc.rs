@@ -551,14 +551,22 @@ fn verify_logout_params(params: &LogoutParams, client_secret: &str) -> anyhow::R
 }
 
 #[must_use]
-pub fn create_logout_url(redirect_uri: &str, site_prefix: &str, client_secret: &str) -> String {
+pub fn create_logout_url(
+    redirect_uri: &str,
+    site_prefix: &str,
+    client_secret: &str,
+    user_id: Option<&str>,
+) -> String {
     let timestamp = chrono::Utc::now().timestamp();
     let signature = compute_logout_signature(redirect_uri, timestamp, client_secret);
-    let query = form_urlencoded::Serializer::new(String::new())
-        .append_pair("redirect_uri", redirect_uri)
-        .append_pair("timestamp", &timestamp.to_string())
-        .append_pair("signature", &signature)
-        .finish();
+    let mut serializer = form_urlencoded::Serializer::new(String::new());
+    serializer.append_pair("redirect_uri", redirect_uri);
+    serializer.append_pair("timestamp", &timestamp.to_string());
+    serializer.append_pair("signature", &signature);
+    if let Some(user_id) = user_id {
+        serializer.append_pair("user_id", user_id);
+    }
+    let query = serializer.finish();
     format!(
         "{}{}?{}",
         site_prefix.trim_end_matches('/'),
@@ -1056,10 +1064,18 @@ mod tests {
     #[test]
     fn logout_url_generation_and_parsing_are_compatible() {
         let secret = "super_secret_key";
-        let generated = create_logout_url("/after", "https://example.com", secret);
+        let user_id = "user-123";
+        let generated = create_logout_url("/after", "https://example.com", secret, Some(user_id));
 
         let parsed = Url::parse(&generated).expect("generated URL should be valid");
         assert_eq!(parsed.path(), SQLPAGE_LOGOUT_URI);
+        let mut pairs = parsed.query_pairs();
+        assert_eq!(
+            pairs
+                .find(|(key, _)| key == "user_id")
+                .map(|(_, value)| value.to_string()),
+            Some(user_id.to_string())
+        );
 
         let params = parse_logout_params(parsed.query().expect("query string is present"))
             .expect("generated URL should parse");
