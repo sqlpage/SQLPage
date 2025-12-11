@@ -36,6 +36,7 @@ use openidconnect::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
+use super::error::anyhow_err_to_actix_resp;
 use super::http_client::make_http_client;
 
 type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
@@ -47,6 +48,8 @@ const SQLPAGE_NONCE_COOKIE_NAME: &str = "sqlpage_oidc_nonce";
 const SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX: &str = "sqlpage_oidc_state_";
 const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
+const SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE: &str = "sqlpage_oidc_redirect_count";
+const MAX_OIDC_REDIRECTS: u8 = 3;
 const AUTH_COOKIE_EXPIRATION: awc::cookie::time::Duration =
     actix_web::cookie::time::Duration::days(7);
 const LOGIN_FLOW_STATE_COOKIE_EXPIRATION: awc::cookie::time::Duration =
@@ -400,20 +403,50 @@ async fn handle_unauthenticated_request(
     log::debug!("Redirecting to OIDC provider");
 
     let initial_url = request.uri().to_string();
-    let response = build_auth_provider_redirect_response(oidc_state, &initial_url).await;
+    let redirect_count = get_redirect_count(&request);
+    let response =
+        build_auth_provider_redirect_response(oidc_state, &initial_url, redirect_count).await;
     MiddlewareResponse::Respond(request.into_response(response))
 }
 
 async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
     match process_oidc_callback(oidc_state, &request).await {
-        Ok(response) => request.into_response(response),
-        Err(e) => {
-            log::error!("Failed to process OIDC callback. Refreshing oidc provider metadata, then redirecting to home page: {e:#}");
-            oidc_state.refresh_on_error(&request).await;
-            let resp = build_auth_provider_redirect_response(oidc_state, "/").await;
-            request.into_response(resp)
+        Ok(mut response) => {
+            clear_redirect_count_cookie(&mut response);
+            request.into_response(response)
         }
+        Err(e) => handle_oidc_callback_error(oidc_state, request, e).await,
     }
+}
+
+async fn handle_oidc_callback_error(
+    oidc_state: &OidcState,
+    request: ServiceRequest,
+    e: anyhow::Error,
+) -> ServiceResponse {
+    let redirect_count = get_redirect_count(&request);
+    if redirect_count >= MAX_OIDC_REDIRECTS {
+        return handle_max_redirect_count_reached(request, &e, redirect_count);
+    }
+    log::error!(
+        "Failed to process OIDC callback (attempt {redirect_count}). Refreshing oidc provider metadata, then redirecting to home page: {e:#}"
+    );
+    oidc_state.refresh_on_error(&request).await;
+    let resp = build_auth_provider_redirect_response(oidc_state, "/", redirect_count).await;
+    request.into_response(resp)
+}
+
+fn handle_max_redirect_count_reached(
+    request: ServiceRequest,
+    e: &anyhow::Error,
+    redirect_count: u8,
+) -> ServiceResponse {
+    log::error!(
+        "Failed to process OIDC callback after {redirect_count} attempts. \
+         Stopping to avoid infinite redirections: {e:#}"
+    );
+    let resp = build_oidc_error_response(&request, e);
+    request.into_response(resp)
 }
 
 async fn handle_oidc_logout(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
@@ -668,12 +701,23 @@ fn set_auth_cookie(response: &mut HttpResponse, id_token: &OidcToken) {
 async fn build_auth_provider_redirect_response(
     oidc_state: &OidcState,
     initial_url: &str,
+    redirect_count: u8,
 ) -> HttpResponse {
     let AuthUrl { url, params } = build_auth_url(oidc_state).await;
     let tmp_login_flow_state_cookie = create_tmp_login_flow_state_cookie(&params, initial_url);
+    let redirect_count_cookie = Cookie::build(
+        SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE,
+        (redirect_count + 1).to_string(),
+    )
+    .path("/")
+    .http_only(true)
+    .same_site(actix_web::cookie::SameSite::Lax)
+    .max_age(LOGIN_FLOW_STATE_COOKIE_EXPIRATION)
+    .finish();
     HttpResponse::SeeOther()
         .append_header((header::LOCATION, url.to_string()))
         .cookie(tmp_login_flow_state_cookie)
+        .cookie(redirect_count_cookie)
         .body("Redirecting...")
 }
 
@@ -681,6 +725,28 @@ fn build_redirect_response(target_url: String) -> HttpResponse {
     HttpResponse::SeeOther()
         .append_header(("Location", target_url))
         .body("Redirecting...")
+}
+
+fn get_redirect_count(request: &ServiceRequest) -> u8 {
+    request
+        .cookie(SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE)
+        .and_then(|c| c.value().parse().ok())
+        .unwrap_or(0)
+}
+
+fn clear_redirect_count_cookie(response: &mut HttpResponse) {
+    let cookie = Cookie::build(SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE, "")
+        .path("/")
+        .finish()
+        .into_owned();
+    response.add_removal_cookie(&cookie).ok();
+}
+
+fn build_oidc_error_response(request: &ServiceRequest, e: &anyhow::Error) -> HttpResponse {
+    request.app_data::<web::Data<AppState>>().map_or_else(
+        || HttpResponse::InternalServerError().body(format!("Authentication error: {e}")),
+        |state| anyhow_err_to_actix_resp(e, state),
+    )
 }
 
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
