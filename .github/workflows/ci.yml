@@ -162,6 +162,74 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  oidc_sso_test:
+    runs-on: ubuntu-latest
+    needs: compile_and_lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download SQLPage binary
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlpage-linux-debug
+          path: target/debug/
+      - name: Make binary executable
+        run: chmod +x target/debug/sqlpage
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        working-directory: tests/end-to-end
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+      - name: Build Keycloak image
+        working-directory: "examples/single sign on"
+        run: docker build -t keycloak-sso -f keycloak.Dockerfile .
+      - name: Start Keycloak
+        run: |
+          docker run -d --name keycloak \
+            -e KEYCLOAK_ADMIN=admin \
+            -e KEYCLOAK_ADMIN_PASSWORD=admin \
+            -p 8181:8181 \
+            keycloak-sso
+      - name: Wait for Keycloak to be ready
+        run: |
+          echo "Waiting for Keycloak to start..."
+          for i in {1..60}; do
+            if curl -s -f http://localhost:8181/realms/sqlpage_demo/.well-known/openid-configuration > /dev/null 2>&1; then
+              echo "Keycloak is ready!"
+              break
+            fi
+            echo "Attempt $i: Keycloak not ready yet..."
+            sleep 5
+          done
+          curl -f http://localhost:8181/realms/sqlpage_demo/.well-known/openid-configuration || (docker logs keycloak && exit 1)
+      - name: Start SQLPage with OIDC config
+        working-directory: "examples/single sign on"
+        run: |
+          ../../target/debug/sqlpage &
+          sleep 3
+        env:
+          SQLPAGE_CONFIGURATION_DIRECTORY: ./sqlpage
+      - name: Verify SQLPage is running
+        run: |
+          curl -f http://localhost:8080/ || exit 1
+      - name: Run OIDC SSO tests
+        working-directory: tests/end-to-end
+        run: npx playwright test oidc-sso.spec.ts --reporter=line
+        env:
+          SQLPAGE_URL: http://localhost:8080
+      - name: Show Keycloak logs on failure
+        if: failure()
+        run: docker logs keycloak
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: oidc-test-results
+          path: tests/end-to-end/test-results/
+
   docker_push:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
