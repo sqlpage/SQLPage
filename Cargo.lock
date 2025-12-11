@@ -4169,8 +4169,10 @@ dependencies = [
 name = "sqlpage"
 version = "0.41.0"
 dependencies = [
+ "actix-http",
  "actix-multipart",
  "actix-rt",
+ "actix-service",
  "actix-web",
  "actix-web-httpauth",
  "anyhow",

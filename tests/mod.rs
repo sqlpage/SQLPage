@@ -3,6 +3,7 @@ mod common;
 mod core;
 mod data_formats;
 mod errors;
+mod oidc;
 mod requests;
 mod server_timing;
 pub mod sql_test_files;

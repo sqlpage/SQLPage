@@ -93,3 +93,7 @@ rustls = "0.23"
 actix-rt = "2.8"
 libflate = "2"
 futures-util = "0.3.21"
+
+[dev-dependencies]
+actix-http = "3.11.2"
+actix-service = "2.0.3"
