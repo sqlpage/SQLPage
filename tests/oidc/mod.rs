@@ -4,14 +4,16 @@ use actix_web::{
     body::MessageBody,
     cookie::Cookie,
     dev::ServiceResponse,
-    http::header,
+    http::{header, StatusCode},
+    test,
     web::{self, Data},
     App, HttpResponse, HttpServer, Responder,
 };
 use base64::Engine;
+use openidconnect::url::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlpage::AppState;
+use sqlpage::{webserver::http::create_app, AppState};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
@@ -273,6 +275,14 @@ where
     resp
 }
 
+fn get_query_param(url: &Url, name: &str) -> String {
+    url.query_pairs()
+        .find(|(k, _)| k == name)
+        .unwrap()
+        .1
+        .to_string()
+}
+
 async fn setup_oidc_test_state(
     provider_mutator: impl FnOnce(&mut ProviderState),
 ) -> (Data<AppState>, FakeOidcProvider) {
@@ -311,6 +321,46 @@ async fn setup_oidc_test_state(
     (app_data, provider)
 }
 
+async fn perform_oidc_callback<S, B>(
+    app: &S,
+    provider: &FakeOidcProvider,
+    protected_path: &str,
+    state_override: Option<String>,
+) -> (ServiceResponse<B>, Vec<Cookie<'static>>)
+where
+    S: Service<Request, Response = ServiceResponse<B>, Error = actix_web::Error>,
+    B: MessageBody,
+{
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    let req = test::TestRequest::get().uri(protected_path);
+    let resp = make_request_with_session(app, req, &mut cookies).await;
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+
+    let location = resp.headers().get("location").unwrap().to_str().unwrap();
+    let auth_url = Url::parse(location).unwrap();
+
+    let state = get_query_param(&auth_url, "state");
+    let nonce = get_query_param(&auth_url, "nonce");
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+
+    provider.store_auth_code("test_auth_code".to_string(), nonce);
+
+    let callback_state = state_override.unwrap_or(state);
+    let callback_url = format!(
+        "{}?code=test_auth_code&state={}",
+        redirect_uri, callback_state
+    );
+    let parsed_callback_url = Url::parse(&callback_url).unwrap();
+    let callback_req = test::TestRequest::get().uri(&format!(
+        "{}?{}",
+        parsed_callback_url.path(),
+        parsed_callback_url.query().unwrap_or_default()
+    ));
+    let callback_resp = make_request_with_session(app, callback_req, &mut cookies).await;
+    (callback_resp, cookies)
+}
+
 async fn simulate_oidc_login<S, B>(
     app: &S,
     provider: &FakeOidcProvider,
@@ -321,53 +371,11 @@ where
     B: MessageBody,
 {
     use actix_web::{http::StatusCode, test};
-    use openidconnect::url::Url;
 
-    let mut cookies: Vec<Cookie<'static>> = Vec::new();
-
-    // 1. Request protected page
-    let req = test::TestRequest::get().uri(protected_path);
-    let resp = make_request_with_session(app, req, &mut cookies).await;
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-
-    // 2. Extract info from redirect to OIDC provider
-    let location = resp.headers().get("location").unwrap().to_str().unwrap();
-    let auth_url = Url::parse(location).unwrap();
-
-    let state = auth_url
-        .query_pairs()
-        .find(|(k, _)| k == "state")
-        .unwrap()
-        .1
-        .to_string();
-    let nonce = auth_url
-        .query_pairs()
-        .find(|(k, _)| k == "nonce")
-        .unwrap()
-        .1
-        .to_string();
-    let redirect_uri = auth_url
-        .query_pairs()
-        .find(|(k, _)| k == "redirect_uri")
-        .unwrap()
-        .1
-        .to_string();
-
-    // 3. Simulate user login at provider
-    provider.store_auth_code("test_auth_code".to_string(), nonce);
-
-    // 4. Request the callback URL
-    let callback_url = format!("{}?code=test_auth_code&state={}", redirect_uri, state);
-    let parsed_callback_url = Url::parse(&callback_url).unwrap();
-    let callback_req = test::TestRequest::get().uri(&format!(
-        "{}?{}",
-        parsed_callback_url.path(),
-        parsed_callback_url.query().unwrap_or_default()
-    ));
-    let callback_resp = make_request_with_session(app, callback_req, &mut cookies).await;
+    let (callback_resp, mut cookies) =
+        perform_oidc_callback(app, provider, protected_path, None).await;
     assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
 
-    // 5. Follow the final redirect back to the protected page
     let final_location = callback_resp
         .headers()
         .get("location")
@@ -404,9 +412,6 @@ async fn test_fake_provider_discovery() {
 
 #[actix_web::test]
 async fn test_oidc_happy_path() {
-    use actix_web::http::StatusCode;
-    use sqlpage::webserver::http::create_app;
-
     let (app_data, provider) = setup_oidc_test_state(|_| {}).await;
     let app = actix_web::test::init_service(create_app(app_data.clone())).await;
     let final_resp = simulate_oidc_login(&app, &provider, "/").await;
@@ -417,61 +422,12 @@ async fn assert_oidc_login_fails(
     provider_mutator: impl FnOnce(&mut ProviderState),
     state_override: Option<String>,
 ) {
-    use actix_web::{http::StatusCode, test};
-    use openidconnect::url::Url;
-    use sqlpage::webserver::http::create_app;
-
     let (app_data, provider) = setup_oidc_test_state(provider_mutator).await;
     let app = actix_web::test::init_service(create_app(app_data.clone())).await;
 
-    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+    let (callback_resp, cookies) =
+        perform_oidc_callback(&app, &provider, "/", state_override).await;
 
-    // 1. Request protected page
-    let req = test::TestRequest::get().uri("/");
-    let resp = make_request_with_session(&app, req, &mut cookies).await;
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-
-    // 2. Extract info
-    let location = resp.headers().get("location").unwrap().to_str().unwrap();
-    let auth_url = Url::parse(location).unwrap();
-    let state = auth_url
-        .query_pairs()
-        .find(|(k, _)| k == "state")
-        .unwrap()
-        .1
-        .to_string();
-    let nonce = auth_url
-        .query_pairs()
-        .find(|(k, _)| k == "nonce")
-        .unwrap()
-        .1
-        .to_string();
-    let redirect_uri = auth_url
-        .query_pairs()
-        .find(|(k, _)| k == "redirect_uri")
-        .unwrap()
-        .1
-        .to_string();
-
-    provider.store_auth_code("test_auth_code".to_string(), nonce);
-
-    // 3. Request callback URL (with potential state override)
-    let callback_state = state_override.unwrap_or(state);
-    let callback_url = format!(
-        "{}?code=test_auth_code&state={}",
-        redirect_uri, callback_state
-    );
-
-    let parsed_callback_url = Url::parse(&callback_url).unwrap();
-    let callback_req = test::TestRequest::get().uri(&format!(
-        "{}?{}",
-        parsed_callback_url.path(),
-        parsed_callback_url.query().unwrap_or_default()
-    ));
-
-    let callback_resp = make_request_with_session(&app, callback_req, &mut cookies).await;
-
-    // 4. Assert failure
     assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
     let location = callback_resp
         .headers()
@@ -507,16 +463,6 @@ async fn assert_oidc_callback_fails_with_bad_jwt(
     .await;
 }
 
-async fn assert_oidc_callback_fails_with_bad_signature() {
-    assert_oidc_login_fails(
-        |state| {
-            state.jwt_customizer = Some(Box::new(|claims, _| make_jwt(&claims, "wrong_secret")));
-        },
-        None,
-    )
-    .await;
-}
-
 #[actix_web::test]
 async fn test_oidc_csrf_state_mismatch_is_rejected() {
     assert_oidc_login_fails(|_| {}, Some("wrong_state".to_string())).await;
@@ -532,7 +478,13 @@ async fn test_oidc_nonce_mismatch_is_rejected() {
 
 #[actix_web::test]
 async fn test_oidc_bad_signature_is_rejected() {
-    assert_oidc_callback_fails_with_bad_signature().await;
+    assert_oidc_login_fails(
+        |state| {
+            state.jwt_customizer = Some(Box::new(|claims, _| make_jwt(&claims, "wrong_secret")));
+        },
+        None,
+    )
+    .await;
 }
 
 #[actix_web::test]
