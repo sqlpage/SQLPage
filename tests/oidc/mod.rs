@@ -1,9 +1,8 @@
 use actix_http::Request;
-use actix_service::Service;
 use actix_web::{
     body::MessageBody,
     cookie::Cookie,
-    dev::ServiceResponse,
+    dev::{Service, ServiceResponse},
     http::{header, StatusCode},
     test,
     web::{self, Data},
@@ -254,7 +253,7 @@ impl FakeOidcProvider {
 
 async fn make_request_with_session<S, B>(
     app: &S,
-    mut req: actix_web::test::TestRequest,
+    mut req: test::TestRequest,
     cookies: &mut Vec<Cookie<'static>>,
 ) -> ServiceResponse<B>
 where
@@ -264,7 +263,7 @@ where
     for cookie in cookies.iter() {
         req = req.cookie(cookie.clone());
     }
-    let resp = req.send_request(app).await;
+    let resp = test::call_service(app, req.to_request()).await;
 
     for new_cookie in extract_set_cookies(resp.headers()) {
         cookies.retain(|c| c.name() != new_cookie.name());

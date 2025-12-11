@@ -87,13 +87,12 @@ default = []
 odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]
 lambda-web = ["dep:lambda-web", "odbc-static"]
 
+[dev-dependencies]
+actix-http = "3"
+
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
 rustls = "0.23"
 actix-rt = "2.8"
 libflate = "2"
 futures-util = "0.3.21"
-
-[dev-dependencies]
-actix-http = "3.11.2"
-actix-service = "2.0.3"
