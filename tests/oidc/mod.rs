@@ -201,6 +201,7 @@ impl FakeOidcProvider {
                 .route("/jwks", web::get().to(jwks_endpoint))
                 .route("/token", web::post().to(token_endpoint))
         })
+        .workers(1)
         .listen(listener)
         .unwrap()
         .shutdown_timeout(1)

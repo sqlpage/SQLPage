@@ -158,6 +158,7 @@ pub fn start_echo_server(shutdown: oneshot::Receiver<()>) -> (JoinHandle<()>, u1
             Ok(req.into_response(resp))
         }))
     })
+    .workers(1)
     .listen(listener)
     .unwrap()
     .shutdown_timeout(1)
