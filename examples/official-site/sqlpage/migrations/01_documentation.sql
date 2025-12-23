@@ -1013,7 +1013,7 @@ This is helpful if you want a more complex logic, for instance to disable a butt
 > If the number of array items in `_sqlpage_actions` is not consistent across all rows, the table may not render correctly.
 > You can leave blank spaces by including an object with only the `name` property.
 
-The table has a column of buttons, each button defined by the `_sqlpage_actions` column at the table level, and by the `_sqlpage_actions` property at the row level.
+The table has a column of buttons, each button defined by the `custom_actions` column at the table level, and by the `_sqlpage_actions` property at the row level.
 
 ### `custom_actions` & `_sqlpage_actions` JSON properties.
 
