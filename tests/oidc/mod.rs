@@ -138,7 +138,7 @@ async fn token_endpoint(
     let id_token = state
         .jwt_customizer
         .take()
-        .map(|customizer| (customizer)(claims.clone(), &state.secret))
+        .map(|customizer| customizer(claims.clone(), &state.secret))
         .unwrap_or_else(|| make_jwt(&claims, &state.secret));
 
     let response = TokenResponse {
@@ -330,7 +330,7 @@ async fn test_fake_provider_discovery() {
         .await
         .expect("Failed to connect to fake provider");
 
-    assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    assert_eq!(resp.status(), StatusCode::OK);
     let mut resp = resp;
     let discovery: DiscoveryResponse = resp.json().await.expect("Failed to parse discovery");
     assert_eq!(discovery.issuer, provider.issuer_url);
@@ -415,7 +415,7 @@ async fn assert_oidc_login_fails(
 async fn assert_oidc_callback_fails_with_bad_jwt(
     mutate_jwt_claims: impl FnMut(&mut serde_json::Value) + Send + Sync + 'static,
 ) {
-    let mutate_jwt_claims = std::sync::Mutex::new(mutate_jwt_claims);
+    let mutate_jwt_claims = Mutex::new(mutate_jwt_claims);
     assert_oidc_login_fails(
         |state| {
             state.jwt_customizer = Some(Box::new(move |mut claims, secret| {
