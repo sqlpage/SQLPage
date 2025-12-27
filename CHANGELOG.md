@@ -7,6 +7,7 @@
  - updated apexcharts to 5.3.6:
   - https://github.com/apexcharts/apexcharts.js/compare/v5.3.0...v5.3.6
   - https://github.com/apexcharts/apexcharts.js/releases/tag/v5.3.6
+ - re-add the lime color to charts
 
 ## 0.40.0 (2025-11-28)
  - OIDC login redirects now use HTTP 303 responses so POST submissions are converted to safe GET requests before reaching the identity provider, fixing incorrect reuse of the original POST (HTTP 307) that could break standard auth flows.

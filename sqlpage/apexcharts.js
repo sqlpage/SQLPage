@@ -22,6 +22,7 @@ sqlpage_chart = (() => {
     ["teal", "#008080", "#20B2AA"],
     ["yellow", "#FFD700", "#FFFF00"],
     ["indigo", "#4B0082", "#6F00FF"],
+    ["lime", "#74b816", "#d8f5a2"],
     ["azure", "#007FFF", "#1E90FF"],
     ["gray", "#A0A0A0", "#D3D3D3"],
     ["black", "#000000", "#000000"],
