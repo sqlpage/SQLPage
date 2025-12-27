@@ -5,9 +5,12 @@
  - Fix compatibility with Auth0 for OpenID-Connect authentification. See https://github.com/ramosbugs/openidconnect-rs/issues/23
  - updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.60.0.md
  - updated apexcharts to 5.3.6:
-  - https://github.com/apexcharts/apexcharts.js/compare/v5.3.0...v5.3.6
-  - https://github.com/apexcharts/apexcharts.js/releases/tag/v5.3.6
- - re-add the lime color to charts
+   - https://github.com/apexcharts/apexcharts.js/compare/v5.3.0...v5.3.6
+   - https://github.com/apexcharts/apexcharts.js/releases/tag/v5.3.6
+ - re-add the `lime` color option to charts
+ - update default chart color palette
+   - <img width="2077" height="978" alt="image" src="https://github.com/user-attachments/assets/839bd318-c4cd-419c-8f04-a583399e0512" />
+
 
 ## 0.40.0 (2025-11-28)
  - OIDC login redirects now use HTTP 303 responses so POST submissions are converted to safe GET requests before reaching the identity provider, fixing incorrect reuse of the original POST (HTTP 307) that could break standard auth flows.
