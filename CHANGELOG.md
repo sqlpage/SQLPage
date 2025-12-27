@@ -8,7 +8,7 @@
    - https://github.com/apexcharts/apexcharts.js/compare/v5.3.0...v5.3.6
    - https://github.com/apexcharts/apexcharts.js/releases/tag/v5.3.6
  - re-add the `lime` color option to charts
- - update default chart color palette
+ - update default chart color palette; use [Open Colors](https://yeun.github.io/open-color/)
    - <img width="2077" height="978" alt="image" src="https://github.com/user-attachments/assets/839bd318-c4cd-419c-8f04-a583399e0512" />
 
 
