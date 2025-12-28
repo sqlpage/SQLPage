@@ -12,11 +12,11 @@ FROM example WHERE component = 'shell' LIMIT 1;
 
 select 'text' as component, format('SQLPage v%s documentation', sqlpage.version()) as title;
 select '
-If you are completely new to SQLPage, you should start by reading the [get started tutorial](get%20started.sql),
+If you are completely new to SQLPage, you should start by reading the [get started tutorial](/your-first-sql-website/),
 which will guide you through the process of creating your first SQLPage application.
 
 Building an application with SQLPage is quite simple.
-To create a new web page, just create a new SQL file. 
+To create a new web page, just create a new SQL file.
 For each SELECT statement that you write, the data it returns will be analyzed and rendered to the user.
 The two most important concepts in SQLPage are **components** and **parameters**.
 
@@ -24,7 +24,7 @@ The two most important concepts in SQLPage are **components** and **parameters**
  - *top-level* **parameters** are the properties of these components, allowing you to customize their appearance and behavior.
  - *row-level* **parameters** constitute the data that you want to display in the components.
 
-To select a component and set its top-level properties, you write the following SQL statement: 
+To select a component and set its top-level properties, you write the following SQL statement:
 
 ```sql
 SELECT ''component_name'' AS component, ''my value'' AS top_level_parameter_1;
@@ -38,6 +38,9 @@ SELECT my_column_1 AS row_level_parameter_1, my_column_2 AS row_level_parameter_
 
 This page documents all the components provided by default in SQLPage and their parameters.
 Use this as a reference when building your SQL application.
+For more information about SQLPage variables and [SQLPage functions](/functions),
+read about [the SQLPage data model](/extensions-to-sql).
+
 If at any point you need help, you can ask for it on the [SQLPage forum](https://github.com/sqlpage/SQLPage/discussions).
 
 If you know some [HTML](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/HTML_basics),

@@ -194,5 +194,6 @@ If you prefer to host your website yourself, you can use a cloud provider or a V
 
 - Check out [learnsqlpage.com](https://learnsqlpage.com) by Nick Antonaccio for an in-depth tutorial with many examples
 - Read the [SQLPage documentation](/documentation.sql) to learn about all the components available in SQLPage
+- Read about [SQLPage's extensions to SQL](/extensions-to-sql) for a specification of the SQL syntax you can use in SQLPage, the data types used when exchanging data with the browser and with the database, a clear explanation of how *SQLPage variables* and *SQLPage functions* work.
 - Join the [SQLPage community](https://github.com/sqlpage/SQLPage/discussions) to ask questions and share your projects
 - If you like videos better, check this series that shows how to build and deploy your app from scratch [SQLPage on Youtube](https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_) 

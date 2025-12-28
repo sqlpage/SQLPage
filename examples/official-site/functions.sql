@@ -24,6 +24,8 @@ Thus, they require all the parameters to be known at the time the query is sent 
 Function parameters cannot reference columns from the rest of your query.
 The only case when you can call a SQLPage function with a parameter that is not a constant is when it appears at the top level of a `SELECT` statement.
 For example, `SELECT sqlpage.url_encode(url) FROM t` is allowed because SQLPage can execute `SELECT url FROM t` and then apply the `url_encode` function to each value.
+
+For more information about how SQLPage functions are evaluated, and data types in SQLPage, read [the SQLPage data model documentation](/extensions-to-sql).
 ' as contents_md where $function IS NULL;
 
 select 'list' as component, 'SQLPage functions' as title where $function IS NULL;
@@ -53,7 +55,7 @@ select
 from sqlpage_function_parameters where "function" = $function
 ORDER BY "index";
 
-select 
+select
     'button' as component,
     'sm'     as size,
     'pill'   as shape;
