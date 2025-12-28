@@ -158,7 +158,7 @@ sqlpage_chart = (() => {
       dataLabels: {
         enabled: !!data.labels,
         dropShadow: {
-          enabled: false,
+          enabled: true,
           color: "var(--tblr-primary-bg-subtle)",
         },
         formatter:
