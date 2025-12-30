@@ -12,6 +12,7 @@ use serde_json::json;
 use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use tokio_util::sync::{CancellationToken, DropGuard};
 
 fn base64url_encode(data: &[u8]) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(data)
@@ -156,6 +157,7 @@ pub struct FakeOidcProvider {
     pub client_id: String,
     pub client_secret: String,
     state: SharedProviderState,
+    _stop_on_drop: DropGuard,
 }
 
 fn extract_set_cookies(headers: &header::HeaderMap) -> Vec<Cookie<'static>> {
@@ -184,6 +186,10 @@ impl FakeOidcProvider {
         }));
 
         let state_for_server = Arc::clone(&state);
+
+        let server_stop = CancellationToken::new();
+        let stop_on_drop = server_stop.clone().drop_guard();
+
         let server = HttpServer::new(move || {
             let state = Data::new(Arc::clone(&state_for_server));
             App::new()
@@ -199,6 +205,7 @@ impl FakeOidcProvider {
         .listen(listener)
         .unwrap()
         .shutdown_timeout(1)
+        .shutdown_signal(server_stop.cancelled_owned())
         .run();
 
         tokio::spawn(server);
@@ -208,6 +215,7 @@ impl FakeOidcProvider {
             client_id,
             client_secret,
             state,
+            _stop_on_drop: stop_on_drop,
         }
     }
 
