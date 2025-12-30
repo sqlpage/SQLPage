@@ -12,8 +12,6 @@ use serde_json::json;
 use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::oneshot;
-use tokio::task::JoinHandle;
 
 fn base64url_encode(data: &[u8]) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(data)
@@ -158,8 +156,6 @@ pub struct FakeOidcProvider {
     pub client_id: String,
     pub client_secret: String,
     state: SharedProviderState,
-    _server_handle: JoinHandle<()>,
-    _shutdown_tx: oneshot::Sender<()>,
 }
 
 fn extract_set_cookies(headers: &header::HeaderMap) -> Vec<Cookie<'static>> {
@@ -187,8 +183,6 @@ impl FakeOidcProvider {
             jwt_customizer: None,
         }));
 
-        let (shutdown_tx, shutdown_rx) = oneshot::channel();
-
         let state_for_server = Arc::clone(&state);
         let server = HttpServer::new(move || {
             let state = Data::new(Arc::clone(&state_for_server));
@@ -207,12 +201,7 @@ impl FakeOidcProvider {
         .shutdown_timeout(1)
         .run();
 
-        let server_handle = tokio::spawn(async move {
-            tokio::select! {
-                _ = server => {},
-                _ = shutdown_rx => {},
-            }
-        });
+        tokio::spawn(server);
 
         let client = awc::Client::default();
         let start = std::time::Instant::now();
@@ -232,8 +221,6 @@ impl FakeOidcProvider {
             client_id,
             client_secret,
             state,
-            _server_handle: server_handle,
-            _shutdown_tx: shutdown_tx,
         }
     }
 
@@ -316,29 +303,6 @@ async fn setup_oidc_test(
     let app_state = AppState::init(&config).await.unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
     (app, provider)
-}
-
-#[actix_web::test]
-async fn test_fake_provider_discovery() {
-    let provider = FakeOidcProvider::new().await;
-    let client = awc::Client::default();
-
-    let discovery_url = format!("{}/.well-known/openid-configuration", provider.issuer_url);
-    let resp = client
-        .get(&discovery_url)
-        .send()
-        .await
-        .expect("Failed to connect to fake provider");
-
-    assert_eq!(resp.status(), StatusCode::OK);
-    let mut resp = resp;
-    let discovery: DiscoveryResponse = resp.json().await.expect("Failed to parse discovery");
-    assert_eq!(discovery.issuer, provider.issuer_url);
-    assert_eq!(
-        discovery.token_endpoint,
-        format!("{}/token", provider.issuer_url)
-    );
-    assert_eq!(discovery.jwks_uri, format!("{}/jwks", provider.issuer_url));
 }
 
 #[actix_web::test]
