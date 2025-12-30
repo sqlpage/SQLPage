@@ -78,12 +78,16 @@ SQLPage communicates information about incoming HTTP requests to your SQL code t
 
 ### Variable Types and Mutability
 
-There are two types of variables in SQLPage:
+There are three types of variables in SQLPage:
 
-1. **Request parameters** (immutable): URL parameters and form data from the HTTP request
-2. **User-defined variables** (mutable): Variables created with the `SET` command
+1. `GET` variables, or **URL parameters** (immutable):
+    - data sent in the URL query string. For example, in `http://example.com/my_page.sql?id=123`, your SQL code would have access to `$id`.
+2. `POST` variables, or **form parameters** (immutable):
+    - data sent in the HTTP request body. For example, submitting a form with a field named `username` would make `:username` available in your SQL code.
+3. `SET` variables, or **User-defined variables** (mutable):
+    - Variables created and modified with the `SET` command. For example, `SET greetings = $greetings || '!'` would update the value of `$greetings`.
 
-Request parameters cannot be modified after the request is received. This ensures the original request data remains intact throughout request processing.
+`SET` variables shadow `GET` variables with the same name, but the underlying url parameter value is still accessible using [`sqlpage.variables('get')`](/functions?function=variables).
 
 ### POST parameters
 

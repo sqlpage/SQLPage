@@ -11,19 +11,21 @@ VALUES (
     'variable',
     'Returns a JSON string containing variables from the HTTP request and user-defined variables.
 
-The database''s json handling functions can then be used to process the data.
+The [database''s json handling functions](/blog?post=JSON+in+SQL%3A+A+Comprehensive+Guide) can then be used to process the data.
 
 ## Variable Types
 
 SQLPage distinguishes between three types of variables:
 
-- **GET variables**: URL parameters from the query string (immutable)
-- **POST variables**: Form data from POST requests (immutable)  
+- **GET variables**: URL parameters from the [query string](https://en.wikipedia.org/wiki/Query_string) (immutable)
+- **POST variables**: Values from form fields [submitted](https://en.wikipedia.org/wiki/POST_(HTTP)#Use_for_submitting_web_forms) by the user (immutable)
 - **SET variables**: User-defined variables created with the `SET` command (mutable)
+
+For more information about SQLPage variables, see the [*SQL in SQLPage* guide](/extensions-to-sql).
 
 ## Usage
 
-- `sqlpage.variables()` - returns all variables (GET, POST, and SET combined, with SET variables taking precedence)
+- `sqlpage.variables()` - returns all variables (GET, POST, and SET combined). When multiple variables of the same name are present, the order of precedence is: set > post > get.
 - `sqlpage.variables(''get'')` - returns only URL parameters
 - `sqlpage.variables(''post'')` - returns only POST form data
 - `sqlpage.variables(''set'')` - returns only user-defined variables created with `SET`
@@ -76,7 +78,7 @@ FROM OPENJSON(sqlpage.variables(''post''));
 
 #### In MySQL
 
-MySQL has [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html), 
+MySQL has [`JSON_TABLE`](https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html),
 and [`JSON_KEYS`](https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-keys)
 which are a little bit less straightforward to use:
 

@@ -729,14 +729,20 @@ async fn variables<'a>(
         let set_vars = request.set_variables.borrow();
         let len = request.url_params.len() + request.post_variables.len() + set_vars.len();
         let mut ser = serializer.serialize_map(Some(len))?;
-        for (k, v) in &request.url_params {
+        let mut seen_keys = std::collections::HashSet::new();
+        for (k, v) in &*set_vars {
+            seen_keys.insert(k);
             ser.serialize_entry(k, v)?;
         }
         for (k, v) in &request.post_variables {
-            ser.serialize_entry(k, v)?;
+            if seen_keys.insert(k) {
+                ser.serialize_entry(k, v)?;
+            }
         }
-        for (k, v) in &*set_vars {
-            ser.serialize_entry(k, v)?;
+        for (k, v) in &request.url_params {
+            if seen_keys.insert(k) {
+                ser.serialize_entry(k, v)?;
+            }
         }
         ser.end()?;
         String::from_utf8(res)?

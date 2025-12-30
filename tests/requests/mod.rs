@@ -1,4 +1,5 @@
 use actix_web::{http::StatusCode, test};
+use serde_json::json;
 use sqlpage::webserver::http::main_handler;
 
 use crate::common::get_request_to;
@@ -117,6 +118,73 @@ async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
         body_str.contains(&long_string),
         "{body_str}\nexpected to contain long string submitted"
     );
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_variables_function() -> actix_web::Result<()> {
+    let url = "/tests/requests/variables.sql?common=get_value&get_only=get_val";
+    let req_body = "common=post_value&post_only=post_val";
+    let req = get_request_to(url)
+        .await?
+        .insert_header(("content-type", "application/x-www-form-urlencoded"))
+        .insert_header(("accept", "application/json"))
+        .set_payload(req_body)
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body_json: serde_json::Value = test::read_body_json(resp).await;
+
+    let expected = [
+        [
+            (
+                "all_vars",
+                json!({"get_only": "get_val", "common": "get_value", "post_only": "post_val", "common": "post_value"}),
+            ),
+            (
+                "get_vars",
+                json!({"get_only": "get_val", "common": "get_value"}),
+            ),
+            (
+                "post_vars",
+                json!({"post_only": "post_val", "common": "post_value"}),
+            ),
+            ("set_vars", json!({})),
+        ],
+        [
+            (
+                "all_vars",
+                json!({"get_only": "get_val", "common": "set_common_value", "post_only": "post_val", "my_set_var": "set_value"}),
+            ),
+            (
+                "get_vars",
+                json!({"get_only": "get_val", "common": "get_value"}),
+            ),
+            (
+                "post_vars",
+                json!({"post_only": "post_val", "common": "post_value"}),
+            ),
+            (
+                "set_vars",
+                json!({"common": "set_common_value", "my_set_var": "set_value"}),
+            ),
+        ],
+    ];
+
+    let actual_array = body_json.as_array().expect("response is nota json array");
+    for (i, expected_step) in expected.into_iter().enumerate() {
+        let actual = &actual_array[i];
+        for (key, expected_value) in expected_step {
+            let actual_decoded: serde_json::Value =
+                serde_json::from_str(actual[key].as_str().unwrap()).unwrap();
+            assert_eq!(
+                actual_decoded, expected_value,
+                "step {i}: {key} mismatch: {actual_decoded:#} != {expected_value:#}"
+            )
+        }
+    }
+
     Ok(())
 }
 
