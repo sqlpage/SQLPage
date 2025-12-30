@@ -203,19 +203,6 @@ impl FakeOidcProvider {
 
         tokio::spawn(server);
 
-        let client = awc::Client::default();
-        let start = std::time::Instant::now();
-        loop {
-            if start.elapsed() > std::time::Duration::from_secs(5) {
-                panic!("Fake OIDC provider did not become ready");
-            }
-            let discovery_url = format!("{issuer_url}/.well-known/openid-configuration");
-            if client.get(&discovery_url).send().await.is_ok() {
-                break;
-            }
-            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-        }
-
         Self {
             issuer_url,
             client_id,
