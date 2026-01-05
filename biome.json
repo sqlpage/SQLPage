@@ -4,7 +4,8 @@
     "includes": [
       "**",
       "!examples/official-site/pgconf/**",
-      "!tests/end-to-end/test-results/**"
+      "!tests/end-to-end/test-results/**",
+      "!.zed/*.json"
     ],
     "ignoreUnknown": true
   },

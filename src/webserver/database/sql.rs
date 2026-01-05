@@ -16,7 +16,8 @@ use sqlparser::ast::{
     VisitMut, Visitor, VisitorMut,
 };
 use sqlparser::dialect::{
-    Dialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
+    Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
+    SQLiteDialect, SnowflakeDialect,
 };
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
@@ -36,8 +37,12 @@ pub struct ParsedSqlFile {
 impl ParsedSqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> ParsedSqlFile {
-        log::debug!("Parsing SQL file {}", source_path.display());
         let dialect = dialect_for_db(db.info.database_type);
+        log::debug!(
+            "Parsing SQL file {} using dialect {:?}",
+            source_path.display(),
+            dialect
+        );
         let parsed_statements = match parse_sql(&db.info, dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err, source_path),
@@ -269,7 +274,9 @@ fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement
 
 fn dialect_for_db(dbms: SupportedDatabase) -> Box<dyn Dialect> {
     match dbms {
-        SupportedDatabase::Postgres | SupportedDatabase::Generic => Box::new(PostgreSqlDialect {}), // Default to PostgreSQL dialect for Generic
+        SupportedDatabase::Duckdb => Box::new(DuckDbDialect {}),
+        SupportedDatabase::Postgres => Box::new(PostgreSqlDialect {}),
+        SupportedDatabase::Generic => Box::new(GenericDialect {}),
         SupportedDatabase::Mssql => Box::new(MsSqlDialect {}),
         SupportedDatabase::MySql => Box::new(MySqlDialect {}),
         SupportedDatabase::Sqlite => Box::new(SQLiteDialect {}),
@@ -1196,6 +1203,33 @@ mod test {
     }
 
     #[test]
+    fn test_duckdb_odbc_dialect_selection() {
+        use std::any::Any;
+
+        let dbms = SupportedDatabase::from_dbms_name("DuckDB");
+        assert_eq!(dbms, SupportedDatabase::Duckdb);
+        let dialect = dialect_for_db(dbms);
+        assert_eq!(dialect.as_ref().type_id(), (DuckDbDialect {}).type_id());
+
+        let sql = "select {'a': 1, 'b': 2} as payload";
+        let db_info = create_test_db_info(dbms);
+        let mut parsed = parse_sql(&db_info, dialect.as_ref(), sql).unwrap();
+        let stmt = parsed.next().expect("expected one statement");
+        assert!(
+            !matches!(stmt, ParsedStatement::Error(_)),
+            "duckdb dictionary literals should parse"
+        );
+
+        let pg_info = create_test_db_info(SupportedDatabase::Postgres);
+        let mut parsed = parse_sql(&pg_info, &PostgreSqlDialect {}, sql).unwrap();
+        let stmt = parsed.next().expect("expected one statement");
+        assert!(
+            matches!(stmt, ParsedStatement::Error(_)),
+            "postgres should reject duckdb dictionary literals"
+        );
+    }
+
+    #[test]
     fn test_extract_toplevel_delayed_functions() {
         let mut ast = parse_stmt(
             "select sqlpage.fetch($x) as x, sqlpage.persist_uploaded_file('a', 'b') as y from t",
@@ -1533,13 +1567,13 @@ mod test {
                 FROM generate_series(1, 3) x
                 JOIN generate_series(4, 6) y ON true
             )
-            SELECT 
+            SELECT
                 json_object('key', 'value') AS json_col1,
                 json_array(1, 2, 3) AS json_col2,
-                (SELECT json_build_object('nested', subq.val) 
+                (SELECT json_build_object('nested', subq.val)
                  FROM (SELECT AVG(x) AS val FROM generate_series(1, 5) x) subq
             ) AS json_col3, -- not supported because of the subquery
-            CASE 
+            CASE
                 WHEN EXISTS (SELECT 1 FROM json_cte WHERE cte_json->>'a' = '2')
                 THEN to_json(ARRAY(SELECT cte_json FROM json_cte))
                 ELSE json_build_array()
@@ -1607,7 +1641,7 @@ mod test {
     #[test]
     fn test_extract_json_columns_from_literal() {
         let sql = r#"
-            SELECT 
+            SELECT
                 'Pro Plan' as title,
                 JSON('{"icon":"database","color":"blue","description":"1GB Database"}') as item,
                 JSON('{"icon":"headset","color":"green","description":"Priority Support"}') as item

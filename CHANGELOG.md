@@ -2,6 +2,7 @@
 
 ## unreleased
  - fix: `sqlpage.variables()` now does not return json objects with duplicate keys when post, get and set variables of the same name are present. The semantics of the returned values remains the same (precedence: set > post > get).
+- add support for some duckdb-specific syntax like `select {'a': 1, 'b': 2}` when connected to duckdb through odbc.
 
 ## 0.41.0 (2025-12-28)
  - **New Function**: `sqlpage.oidc_logout_url(redirect_uri)` - Generates a secure logout URL for OIDC-authenticated users with support for [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RPLogout)

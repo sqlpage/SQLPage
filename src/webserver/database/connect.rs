@@ -59,7 +59,7 @@ impl Database {
         let dbms_name: String = pool.acquire().await?.dbms_name().await?;
         let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
 
-        log::debug!("Initialized {dbms_name} database pool: {pool:#?}");
+        log::debug!("Initialized {dbms_name:?} database pool: {pool:#?}");
         Ok(Database {
             connection: pool,
             info: DbInfo {
