@@ -503,7 +503,7 @@ async fn process_oidc_logout(
     let mut response =
         if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
             let absolute_redirect_uri =
-                build_absolute_uri(&oidc_state.config.app_host, &params.redirect_uri, scheme)?;
+                build_absolute_uri(&oidc_state.config.app_host, &params.redirect_uri, &scheme)?;
             let post_logout_redirect_uri =
                 PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
                     format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
