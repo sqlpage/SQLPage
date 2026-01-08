@@ -438,11 +438,67 @@ async fn test_oidc_expired_token_is_rejected() {
     .await;
 }
 
+async fn setup_oidc_test_with_prefix(
+    provider_mutator: impl FnOnce(&mut ProviderState),
+    site_prefix: &str,
+) -> (
+    impl actix_web::dev::Service<
+        actix_http::Request,
+        Response = actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>,
+        Error = actix_web::Error,
+    >,
+    FakeOidcProvider,
+) {
+    use sqlpage::{
+        app_config::{test_database_url, AppConfig},
+        AppState,
+    };
+    crate::common::init_log();
+    let provider = FakeOidcProvider::new().await;
+    provider.with_state_mut(provider_mutator);
+
+    let db_url = test_database_url();
+    let config_json = format!(
+        r#"{{
+        "database_url": "{db_url}",
+        "oidc_issuer_url": "{}",
+        "oidc_client_id": "{}",
+        "oidc_client_secret": "{}",
+        "oidc_protected_paths": ["/"],
+        "site_prefix": "{site_prefix}"
+    }}"#,
+        provider.issuer_url, provider.client_id, provider.client_secret
+    );
+
+    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
+    let app_state = AppState::init(&config).await.unwrap();
+    let app = test::init_service(create_app(Data::new(app_state))).await;
+    (app, provider)
+}
+
+#[actix_web::test]
+async fn test_oidc_with_site_prefix() {
+    let (app, _provider) = setup_oidc_test_with_prefix(|_| {}, "/my-app/").await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    // Access the app with the prefix
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/my-app/"), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+
+    // Check if the redirect_uri parameter in the auth URL contains the site prefix
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    assert!(
+        redirect_uri.contains("/my-app/sqlpage/oidc_callback"),
+        "Redirect URI should contain site prefix. Got: {}",
+        redirect_uri
+    );
+}
+
 #[actix_web::test]
 async fn test_oidc_logout_uses_correct_scheme() {
     use sqlpage::{
         app_config::{test_database_url, AppConfig},
-        webserver::oidc::create_logout_url,
         AppState,
     };
 
@@ -463,9 +519,13 @@ async fn test_oidc_logout_uses_correct_scheme() {
 
     let config: AppConfig = serde_json::from_str(&config_json).unwrap();
     let app_state = AppState::init(&config).await.unwrap();
+    let logout_path = app_state
+        .oidc_state
+        .as_ref()
+        .unwrap()
+        .config
+        .create_logout_url("/logged_out");
     let app = test::init_service(create_app(Data::new(app_state))).await;
-
-    let logout_path = create_logout_url("/logged_out", "", &provider.client_secret);
     // make sure the logout path includes the configured domain
     assert!(logout_path.starts_with("/sqlpage/oidc_logout"));
 
