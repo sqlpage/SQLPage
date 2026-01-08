@@ -478,16 +478,6 @@ fn parse_logout_params(query: &str) -> anyhow::Result<LogoutParams> {
         .map(Query::into_inner)
 }
 
-fn infer_url_scheme(app_host: &str) -> &'static str {
-    let Ok(url) = Url::parse(&format!("https://{app_host}")) else {
-        return "http";
-    };
-    match url.host() {
-        Some(openidconnect::url::Host::Domain(domain)) if domain != "localhost" => "https",
-        _ => "http",
-    }
-}
-
 async fn process_oidc_logout(
     oidc_state: &OidcState,
     request: &ServiceRequest,
@@ -504,7 +494,12 @@ async fn process_oidc_logout(
         .ok()
         .flatten();
 
-    let scheme = infer_url_scheme(&oidc_state.config.app_host);
+    let scheme = request
+        .headers()
+        .get("x-forwarded-proto")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
+        .unwrap_or_else(|| request.connection_info().scheme().to_string());
     let mut response =
         if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
             let absolute_redirect_uri =
@@ -894,10 +889,9 @@ fn make_oidc_client(
     let client_id = openidconnect::ClientId::new(config.client_id.clone());
     let client_secret = openidconnect::ClientSecret::new(config.client_secret.clone());
 
-    let scheme = infer_url_scheme(&config.app_host);
-    let redirect_url = RedirectUrl::new(format!(
-        "{}://{}{}",
-        scheme, config.app_host, SQLPAGE_REDIRECT_URI,
+    let mut redirect_url = RedirectUrl::new(format!(
+        "https://{}{}",
+        config.app_host, SQLPAGE_REDIRECT_URI,
     ))
     .with_context(|| {
         format!(
@@ -905,6 +899,18 @@ fn make_oidc_client(
             config.app_host
         )
     })?;
+    let needs_http = match redirect_url.url().host() {
+        Some(openidconnect::url::Host::Domain(domain)) => domain == "localhost",
+        Some(openidconnect::url::Host::Ipv4(_) | openidconnect::url::Host::Ipv6(_)) => true,
+        None => false,
+    };
+    if needs_http {
+        log::debug!("App host seems to be local, changing redirect URL to HTTP");
+        redirect_url = RedirectUrl::new(format!(
+            "http://{}{}",
+            config.app_host, SQLPAGE_REDIRECT_URI,
+        ))?;
+    }
     log::info!("OIDC redirect URL for {}: {redirect_url}", config.client_id);
     let client =
         OidcClient::from_provider_metadata(provider_metadata, client_id, Some(client_secret))
