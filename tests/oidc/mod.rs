@@ -491,8 +491,12 @@ async fn test_oidc_with_site_prefix() {
     let resp = request_with_cookies!(app, test::TestRequest::get().uri("/my-app/"), cookies);
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
     let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
-    
+
     // Check if the redirect_uri parameter in the auth URL contains the site prefix
     let redirect_uri = get_query_param(&auth_url, "redirect_uri");
-    assert!(redirect_uri.contains("/my-app/sqlpage/oidc_callback"), "Redirect URI should contain site prefix. Got: {}", redirect_uri);
+    assert!(
+        redirect_uri.contains("/my-app/sqlpage/oidc_callback"),
+        "Redirect URI should contain site prefix. Got: {}",
+        redirect_uri
+    );
 }
