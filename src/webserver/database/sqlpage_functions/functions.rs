@@ -882,11 +882,7 @@ async fn oidc_logout_url<'a>(
         );
     }
 
-    let logout_url = crate::webserver::oidc::create_logout_url(
-        redirect_uri,
-        &request.app_state.config.site_prefix,
-        &oidc_state.config.client_secret,
-    );
+    let logout_url = oidc_state.config.create_logout_url(redirect_uri);
 
     Ok(Some(logout_url))
 }

@@ -80,6 +80,8 @@ pub struct OidcConfig {
     pub scopes: Vec<Scope>,
     pub additional_audience_verifier: AudienceVerifier,
     pub site_prefix: String,
+    pub redirect_uri: String,
+    pub logout_uri: String,
 }
 
 impl TryFrom<&AppConfig> for OidcConfig {
@@ -94,6 +96,10 @@ impl TryFrom<&AppConfig> for OidcConfig {
         let public_paths: Vec<String> = config.oidc_public_paths.clone();
 
         let app_host = get_app_host(config);
+
+        let site_prefix_trimmed = config.site_prefix.trim_end_matches('/');
+        let redirect_uri = format!("{site_prefix_trimmed}{SQLPAGE_REDIRECT_URI}");
+        let logout_uri = format!("{site_prefix_trimmed}{SQLPAGE_LOGOUT_URI}");
 
         Ok(Self {
             issuer_url: issuer_url.clone(),
@@ -111,6 +117,8 @@ impl TryFrom<&AppConfig> for OidcConfig {
                 config.oidc_additional_trusted_audiences.clone(),
             ),
             site_prefix: config.site_prefix.clone(),
+            redirect_uri,
+            logout_uri,
         })
     }
 }
@@ -130,6 +138,19 @@ impl OidcConfig {
         oidc_client
             .id_token_verifier()
             .set_other_audience_verifier_fn(self.additional_audience_verifier.as_fn())
+    }
+
+    /// Creates a logout URL with the given redirect URI
+    #[must_use]
+    pub fn create_logout_url(&self, redirect_uri: &str) -> String {
+        let timestamp = chrono::Utc::now().timestamp();
+        let signature = compute_logout_signature(redirect_uri, timestamp, &self.client_secret);
+        let query = form_urlencoded::Serializer::new(String::new())
+            .append_pair("redirect_uri", redirect_uri)
+            .append_pair("timestamp", &timestamp.to_string())
+            .append_pair("signature", &signature)
+            .finish();
+        format!("{}?{}", self.logout_uri, query)
     }
 }
 
@@ -155,16 +176,6 @@ fn get_app_host(config: &AppConfig) -> String {
          Disable this warning by providing a value for the \"host\" setting."
     );
     host
-}
-
-fn build_absolute_uri(app_host: &str, relative_path: &str, scheme: &str) -> anyhow::Result<String> {
-    let mut base_url = Url::parse(&format!("{scheme}://{app_host}"))
-        .with_context(|| format!("Failed to parse app_host: {app_host}"))?;
-    base_url.set_path("");
-    let absolute_url = base_url
-        .join(relative_path)
-        .with_context(|| format!("Failed to join path {relative_path}"))?;
-    Ok(absolute_url.to_string())
 }
 
 pub struct ClientWithTime {
@@ -247,6 +258,29 @@ impl OidcState {
             .into_claims(&verifier, nonce_verifier)
             .map_err(|e| anyhow::anyhow!("Could not verify the ID token: {e}"))?;
         Ok(claims)
+    }
+
+    /// Builds an absolute redirect URI by joining the relative redirect URI with the client's redirect URL
+    pub async fn build_absolute_redirect_uri(
+        &self,
+        relative_redirect_uri: &str,
+    ) -> anyhow::Result<String> {
+        let client_guard = self.get_client().await;
+        let client_redirect_url = client_guard
+            .redirect_uri()
+            .ok_or_else(|| anyhow!("OIDC client has no redirect URL configured"))?;
+        let absolute_redirect_uri = client_redirect_url
+            .url()
+            .join(relative_redirect_uri)
+            .with_context(|| {
+                format!(
+                    "Failed to join redirect URI {} with client redirect URL {}",
+                    relative_redirect_uri,
+                    client_redirect_url.url()
+                )
+            })?
+            .to_string();
+        Ok(absolute_redirect_uri)
     }
 }
 
@@ -364,23 +398,12 @@ async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> Midd
     log::trace!("Started OIDC middleware request handling");
     oidc_state.refresh_if_expired(&request).await;
 
-    let redirect_uri = format!(
-        "{}{}",
-        oidc_state.config.site_prefix.trim_end_matches('/'),
-        SQLPAGE_REDIRECT_URI
-    );
-    let logout_uri = format!(
-        "{}{}",
-        oidc_state.config.site_prefix.trim_end_matches('/'),
-        SQLPAGE_LOGOUT_URI
-    );
-
-    if request.path() == redirect_uri {
+    if request.path() == oidc_state.config.redirect_uri {
         let response = handle_oidc_callback(oidc_state, request).await;
         return MiddlewareResponse::Respond(response);
     }
 
-    if request.path() == logout_uri {
+    if request.path() == oidc_state.config.logout_uri {
         let response = handle_oidc_logout(oidc_state, request).await;
         return MiddlewareResponse::Respond(response);
     }
@@ -507,11 +530,12 @@ async fn process_oidc_logout(
         .ok()
         .flatten();
 
-    let scheme = request.connection_info().scheme().to_string();
     let mut response =
         if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
-            let absolute_redirect_uri =
-                build_absolute_uri(&oidc_state.config.app_host, &params.redirect_uri, &scheme)?;
+            let absolute_redirect_uri = oidc_state
+                .build_absolute_redirect_uri(&params.redirect_uri)
+                .await?;
+
             let post_logout_redirect_uri =
                 PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
                     format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
@@ -596,23 +620,6 @@ fn verify_logout_params(params: &LogoutParams, client_secret: &str) -> anyhow::R
     Ok(())
 }
 
-#[must_use]
-pub fn create_logout_url(redirect_uri: &str, site_prefix: &str, client_secret: &str) -> String {
-    let timestamp = chrono::Utc::now().timestamp();
-    let signature = compute_logout_signature(redirect_uri, timestamp, client_secret);
-    let query = form_urlencoded::Serializer::new(String::new())
-        .append_pair("redirect_uri", redirect_uri)
-        .append_pair("timestamp", &timestamp.to_string())
-        .append_pair("signature", &signature)
-        .finish();
-    format!(
-        "{}{}?{}",
-        site_prefix.trim_end_matches('/'),
-        SQLPAGE_LOGOUT_URI,
-        query
-    )
-}
-
 impl<S> Service<ServiceRequest> for OidcService<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
@@ -654,7 +661,7 @@ async fn process_oidc_callback(
         redirect_target,
     } = parse_login_flow_state(&tmp_login_flow_state_cookie)?;
     let redirect_target =
-        validate_redirect_url(redirect_target.to_string(), &oidc_state.config.site_prefix);
+        validate_redirect_url(redirect_target.to_string(), &oidc_state.config.redirect_uri);
 
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
@@ -898,20 +905,16 @@ fn make_oidc_client(
     let client_id = openidconnect::ClientId::new(config.client_id.clone());
     let client_secret = openidconnect::ClientSecret::new(config.client_secret.clone());
 
-    let redirect_path = format!(
-        "{}{}",
-        config.site_prefix.trim_end_matches('/'),
-        SQLPAGE_REDIRECT_URI
-    );
-    let mut redirect_url =
-        RedirectUrl::new(format!("https://{}{}", config.app_host, redirect_path,)).with_context(
-            || {
-                format!(
-                    "Failed to build the redirect URL; invalid app host \"{}\"",
-                    config.app_host
-                )
-            },
-        )?;
+    let mut redirect_url = RedirectUrl::new(format!(
+        "https://{}{}",
+        config.app_host, config.redirect_uri,
+    ))
+    .with_context(|| {
+        format!(
+            "Failed to build the redirect URL; invalid app host \"{}\"",
+            config.app_host
+        )
+    })?;
     let needs_http = match redirect_url.url().host() {
         Some(openidconnect::url::Host::Domain(domain)) => domain == "localhost",
         Some(openidconnect::url::Host::Ipv4(_) | openidconnect::url::Host::Ipv6(_)) => true,
@@ -919,7 +922,8 @@ fn make_oidc_client(
     };
     if needs_http {
         log::debug!("App host seems to be local, changing redirect URL to HTTP");
-        redirect_url = RedirectUrl::new(format!("http://{}{}", config.app_host, redirect_path,))?;
+        redirect_url =
+            RedirectUrl::new(format!("http://{}{}", config.app_host, config.redirect_uri,))?;
     }
     log::info!("OIDC redirect URL for {}: {redirect_url}", config.client_id);
     let client =
@@ -1092,13 +1096,8 @@ impl AudienceVerifier {
 }
 
 /// Validate that a redirect URL is safe to use (prevents open redirect attacks)
-fn validate_redirect_url(url: String, site_prefix: &str) -> String {
-    let redirect_uri = format!(
-        "{}{}",
-        site_prefix.trim_end_matches('/'),
-        SQLPAGE_REDIRECT_URI
-    );
-    if url.starts_with('/') && !url.starts_with("//") && !url.starts_with(&redirect_uri) {
+fn validate_redirect_url(url: String, redirect_uri: &str) -> String {
+    if url.starts_with('/') && !url.starts_with("//") && !url.starts_with(redirect_uri) {
         return url;
     }
     log::warn!("Refusing to redirect to {url}");
@@ -1142,7 +1141,20 @@ mod tests {
     #[test]
     fn logout_url_generation_and_parsing_are_compatible() {
         let secret = "super_secret_key";
-        let generated = create_logout_url("/after", "https://example.com", secret);
+        let config = OidcConfig {
+            issuer_url: IssuerUrl::new("https://example.com".to_string()).unwrap(),
+            client_id: "test_client".to_string(),
+            client_secret: secret.to_string(),
+            protected_paths: vec![],
+            public_paths: vec![],
+            app_host: "example.com".to_string(),
+            scopes: vec![],
+            additional_audience_verifier: AudienceVerifier::new(None),
+            site_prefix: "https://example.com".to_string(),
+            redirect_uri: format!("https://example.com{SQLPAGE_REDIRECT_URI}"),
+            logout_uri: format!("https://example.com{SQLPAGE_LOGOUT_URI}"),
+        };
+        let generated = config.create_logout_url("/after");
 
         let parsed = Url::parse(&generated).expect("generated URL should be valid");
         assert_eq!(parsed.path(), SQLPAGE_LOGOUT_URI);
