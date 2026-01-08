@@ -64,6 +64,7 @@ struct DiscoveryResponse {
     response_types_supported: Vec<String>,
     subject_types_supported: Vec<String>,
     id_token_signing_alg_values_supported: Vec<String>,
+    end_session_endpoint: String,
 }
 
 #[derive(Serialize)]
@@ -89,6 +90,7 @@ async fn discovery_endpoint(state: Data<SharedProviderState>) -> impl Responder 
         response_types_supported: vec!["code".to_string()],
         subject_types_supported: vec!["public".to_string()],
         id_token_signing_alg_values_supported: vec!["HS256".to_string()],
+        end_session_endpoint: format!("{}/logout", state.issuer_url),
     };
     HttpResponse::Ok()
         .insert_header((header::CONTENT_TYPE, "application/json"))
@@ -434,4 +436,47 @@ async fn test_oidc_expired_token_is_rejected() {
         claims["exp"] = json!(current_exp - 7200);
     })
     .await;
+}
+
+#[actix_web::test]
+async fn test_oidc_logout_uses_correct_scheme() {
+    use sqlpage::{
+        app_config::{test_database_url, AppConfig},
+        webserver::oidc::create_logout_url,
+        AppState,
+    };
+
+    crate::common::init_log();
+    let provider = FakeOidcProvider::new().await;
+
+    let db_url = test_database_url();
+    let config_json = format!(
+        r#"{{
+        "database_url": "{db_url}",
+        "oidc_issuer_url": "{}",
+        "oidc_client_id": "{}",
+        "oidc_client_secret": "{}",
+        "https_domain": "example.com"
+    }}"#,
+        provider.issuer_url, provider.client_id, provider.client_secret
+    );
+
+    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
+    let app_state = AppState::init(&config).await.unwrap();
+    let app = test::init_service(create_app(Data::new(app_state))).await;
+
+    let logout_path = create_logout_url("/logged_out", "", &provider.client_secret);
+    // make sure the logout path includes the configured domain
+    assert!(logout_path.starts_with("/sqlpage/oidc_logout"));
+
+    let req = test::TestRequest::get().uri(&logout_path).to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let location = resp.headers().get("location").unwrap().to_str().unwrap();
+    let location_url = Url::parse(location).unwrap();
+    assert_eq!(location_url.path(), "/logout");
+    let params: HashMap<String, String> = location_url.query_pairs().into_owned().collect();
+    let post_logout = params.get("post_logout_redirect_uri").unwrap();
+    assert_eq!(post_logout, "https://example.com/logged_out");
 }

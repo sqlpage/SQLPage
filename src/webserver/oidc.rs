@@ -155,16 +155,6 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
-fn build_absolute_uri(app_host: &str, relative_path: &str, scheme: &str) -> anyhow::Result<String> {
-    let mut base_url = Url::parse(&format!("{scheme}://{app_host}"))
-        .with_context(|| format!("Failed to parse app_host: {app_host}"))?;
-    base_url.set_path("");
-    let absolute_url = base_url
-        .join(relative_path)
-        .with_context(|| format!("Failed to join path {relative_path}"))?;
-    Ok(absolute_url.to_string())
-}
-
 pub struct ClientWithTime {
     client: OidcClient,
     end_session_endpoint: Option<EndSessionUrl>,
@@ -245,6 +235,29 @@ impl OidcState {
             .into_claims(&verifier, nonce_verifier)
             .map_err(|e| anyhow::anyhow!("Could not verify the ID token: {e}"))?;
         Ok(claims)
+    }
+
+    /// Builds an absolute redirect URI by joining the relative redirect URI with the client's redirect URL
+    pub async fn build_absolute_redirect_uri(
+        &self,
+        relative_redirect_uri: &str,
+    ) -> anyhow::Result<String> {
+        let client_guard = self.get_client().await;
+        let client_redirect_url = client_guard
+            .redirect_uri()
+            .ok_or_else(|| anyhow!("OIDC client has no redirect URL configured"))?;
+        let absolute_redirect_uri = client_redirect_url
+            .url()
+            .join(relative_redirect_uri)
+            .with_context(|| {
+                format!(
+                    "Failed to join redirect URI {} with client redirect URL {}",
+                    relative_redirect_uri,
+                    client_redirect_url.url()
+                )
+            })?
+            .to_string();
+        Ok(absolute_redirect_uri)
     }
 }
 
@@ -494,11 +507,12 @@ async fn process_oidc_logout(
         .ok()
         .flatten();
 
-    let scheme = request.connection_info().scheme().to_string();
     let mut response =
         if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
-            let absolute_redirect_uri =
-                build_absolute_uri(&oidc_state.config.app_host, &params.redirect_uri, &scheme)?;
+            let absolute_redirect_uri = oidc_state
+                .build_absolute_redirect_uri(&params.redirect_uri)
+                .await?;
+
             let post_logout_redirect_uri =
                 PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
                     format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
