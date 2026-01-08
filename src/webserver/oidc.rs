@@ -478,6 +478,16 @@ fn parse_logout_params(query: &str) -> anyhow::Result<LogoutParams> {
         .map(Query::into_inner)
 }
 
+fn get_request_scheme(request: &ServiceRequest) -> String {
+    request
+        .headers()
+        .get("x-forwarded-proto")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.split(',').next())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| request.connection_info().scheme().to_string())
+}
+
 async fn process_oidc_logout(
     oidc_state: &OidcState,
     request: &ServiceRequest,
@@ -494,12 +504,7 @@ async fn process_oidc_logout(
         .ok()
         .flatten();
 
-    let scheme = request
-        .headers()
-        .get("x-forwarded-proto")
-        .and_then(|h| h.to_str().ok())
-        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
-        .unwrap_or_else(|| request.connection_info().scheme().to_string());
+    let scheme = get_request_scheme(request);
     let mut response =
         if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
             let absolute_redirect_uri =
@@ -1107,6 +1112,23 @@ mod tests {
             .to_str()
             .expect("invalid location header");
         assert_eq!(location, "/foo");
+    }
+
+    #[test]
+    fn test_get_request_scheme() {
+        use actix_web::test::TestRequest;
+        let req = TestRequest::default().to_srv_request();
+        assert_eq!(get_request_scheme(&req), "http");
+
+        let req = TestRequest::default()
+            .insert_header(("x-forwarded-proto", "https"))
+            .to_srv_request();
+        assert_eq!(get_request_scheme(&req), "https");
+
+        let req = TestRequest::default()
+            .insert_header(("x-forwarded-proto", "https, http"))
+            .to_srv_request();
+        assert_eq!(get_request_scheme(&req), "https");
     }
 
     #[test]
