@@ -882,10 +882,15 @@ async fn oidc_logout_url<'a>(
         );
     }
 
+    let Some(claims) = request.oidc_claims.as_ref() else {
+        return Ok(Some(redirect_uri.to_string()));
+    };
+
     let logout_url = crate::webserver::oidc::create_logout_url(
         redirect_uri,
         &request.app_state.config.site_prefix,
         &oidc_state.config.client_secret,
+        Some(claims.subject().as_str()),
     );
 
     Ok(Some(logout_url))
