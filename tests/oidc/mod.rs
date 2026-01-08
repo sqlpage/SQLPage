@@ -461,18 +461,10 @@ async fn setup_oidc_test_with_prefix(
     let config_json = format!(
         r#"{{
         "database_url": "{db_url}",
-        "max_database_pool_connections": 1,
-        "database_connection_retries": 3,
-        "database_connection_acquire_timeout_seconds": 15,
-        "allow_exec": true,
-        "max_uploaded_file_size": 123456,
-        "listen_on": "127.0.0.1:0",
-        "system_root_ca_certificates": false,
         "oidc_issuer_url": "{}",
         "oidc_client_id": "{}",
         "oidc_client_secret": "{}",
         "oidc_protected_paths": ["/"],
-        "host": "localhost:1",
         "site_prefix": "{site_prefix}"
     }}"#,
         provider.issuer_url, provider.client_id, provider.client_secret
