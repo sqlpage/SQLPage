@@ -79,6 +79,7 @@ pub struct OidcConfig {
     pub app_host: String,
     pub scopes: Vec<Scope>,
     pub additional_audience_verifier: AudienceVerifier,
+    pub site_prefix: String,
 }
 
 impl TryFrom<&AppConfig> for OidcConfig {
@@ -109,6 +110,7 @@ impl TryFrom<&AppConfig> for OidcConfig {
             additional_audience_verifier: AudienceVerifier::new(
                 config.oidc_additional_trusted_audiences.clone(),
             ),
+            site_prefix: config.site_prefix.clone(),
         })
     }
 }
@@ -362,12 +364,15 @@ async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> Midd
     log::trace!("Started OIDC middleware request handling");
     oidc_state.refresh_if_expired(&request).await;
 
-    if request.path() == SQLPAGE_REDIRECT_URI {
+    let redirect_uri = format!("{}{}", oidc_state.config.site_prefix.trim_end_matches('/'), SQLPAGE_REDIRECT_URI);
+    let logout_uri = format!("{}{}", oidc_state.config.site_prefix.trim_end_matches('/'), SQLPAGE_LOGOUT_URI);
+
+    if request.path() == redirect_uri {
         let response = handle_oidc_callback(oidc_state, request).await;
         return MiddlewareResponse::Respond(response);
     }
 
-    if request.path() == SQLPAGE_LOGOUT_URI {
+    if request.path() == logout_uri {
         let response = handle_oidc_logout(oidc_state, request).await;
         return MiddlewareResponse::Respond(response);
     }
@@ -640,7 +645,7 @@ async fn process_oidc_callback(
         nonce,
         redirect_target,
     } = parse_login_flow_state(&tmp_login_flow_state_cookie)?;
-    let redirect_target = validate_redirect_url(redirect_target.to_string());
+    let redirect_target = validate_redirect_url(redirect_target.to_string(), &oidc_state.config.site_prefix);
 
     log::info!("Redirecting to {redirect_target} after a successful login");
     let mut response = build_redirect_response(redirect_target);
@@ -884,9 +889,10 @@ fn make_oidc_client(
     let client_id = openidconnect::ClientId::new(config.client_id.clone());
     let client_secret = openidconnect::ClientSecret::new(config.client_secret.clone());
 
+    let redirect_path = format!("{}{}", config.site_prefix.trim_end_matches('/'), SQLPAGE_REDIRECT_URI);
     let mut redirect_url = RedirectUrl::new(format!(
         "https://{}{}",
-        config.app_host, SQLPAGE_REDIRECT_URI,
+        config.app_host, redirect_path,
     ))
     .with_context(|| {
         format!(
@@ -903,7 +909,7 @@ fn make_oidc_client(
         log::debug!("App host seems to be local, changing redirect URL to HTTP");
         redirect_url = RedirectUrl::new(format!(
             "http://{}{}",
-            config.app_host, SQLPAGE_REDIRECT_URI,
+            config.app_host, redirect_path,
         ))?;
     }
     log::info!("OIDC redirect URL for {}: {redirect_url}", config.client_id);
@@ -1077,8 +1083,9 @@ impl AudienceVerifier {
 }
 
 /// Validate that a redirect URL is safe to use (prevents open redirect attacks)
-fn validate_redirect_url(url: String) -> String {
-    if url.starts_with('/') && !url.starts_with("//") && !url.starts_with(SQLPAGE_REDIRECT_URI) {
+fn validate_redirect_url(url: String, site_prefix: &str) -> String {
+    let redirect_uri = format!("{}{}", site_prefix.trim_end_matches('/'), SQLPAGE_REDIRECT_URI);
+    if url.starts_with('/') && !url.starts_with("//") && !url.starts_with(&redirect_uri) {
         return url;
     }
     log::warn!("Refusing to redirect to {url}");
