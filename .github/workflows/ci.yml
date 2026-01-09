@@ -61,7 +61,7 @@ jobs:
             setup_odbc: true
           - database: oracle
             container: oracle
-            db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREE;Uid=root;Pwd=Password123!"
+            db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
     steps:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
