@@ -76,10 +76,10 @@ jobs:
         if: matrix.database == 'oracle'
         run: |
            sudo apt-get install -y alien wget
-           wget https://download.oracle.com/otn_software/linux/instantclient/211000/oracle-instantclient-basic-21.10.0.0.0-1.el8.x86_64.rpm
-           wget https://download.oracle.com/otn_software/linux/instantclient/211000/oracle-instantclient-odbc-21.10.0.0.0-1.el8.x86_64.rpm
-           sudo alien -i oracle-instantclient-basic-21.10.0.0.0-1.el8.x86_64.rpm
-           sudo alien -i oracle-instantclient-odbc-21.10.0.0.0-1.el8.x86_64.rpm
+           wget https://download.oracle.com/otn_software/linux/instantclient/2114000/oracle-instantclient-basic-21.14.0.0.0-1.el8.x86_64.rpm
+           wget https://download.oracle.com/otn_software/linux/instantclient/2114000/oracle-instantclient-odbc-21.14.0.0.0-1.el8.x86_64.rpm
+           sudo alien -i oracle-instantclient-basic-21.14.0.0.0-1.el8.x86_64.rpm
+           sudo alien -i oracle-instantclient-odbc-21.14.0.0.0-1.el8.x86_64.rpm
            echo "[Oracle 21 ODBC driver]" | sudo tee -a /etc/odbcinst.ini
            echo "Description = Oracle ODBC driver for Oracle 21c" | sudo tee -a /etc/odbcinst.ini
            echo "Driver = /usr/lib/oracle/21/client64/lib/libsqora.so.21.1" | sudo tee -a /etc/odbcinst.ini
