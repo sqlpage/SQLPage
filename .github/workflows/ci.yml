@@ -80,6 +80,7 @@ jobs:
            wget https://download.oracle.com/otn_software/linux/instantclient/2114000/oracle-instantclient-odbc-21.14.0.0.0-1.el8.x86_64.rpm
            sudo alien -i oracle-instantclient-basic-21.14.0.0.0-1.el8.x86_64.rpm
            sudo alien -i oracle-instantclient-odbc-21.14.0.0.0-1.el8.x86_64.rpm
+           sudo ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/libaio.so.1
            echo "[Oracle 21 ODBC driver]" | sudo tee -a /etc/odbcinst.ini
            echo "Description = Oracle ODBC driver for Oracle 21c" | sudo tee -a /etc/odbcinst.ini
            echo "Driver = /usr/lib/oracle/21/client64/lib/libsqora.so.21.1" | sudo tee -a /etc/odbcinst.ini
