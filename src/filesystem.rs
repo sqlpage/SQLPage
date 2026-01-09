@@ -357,9 +357,9 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let state = AppState::init(&config).await?;
     
     // Oracle has specific issues with implicit timestamp conversions and empty strings in this test setup
-    // so we skip it for ODBC (Oracle) to avoid complex workarounds in the main codebase.
-    if state.db.info.kind == sqlx::any::AnyKind::Odbc {
-        log::warn!("Skipping test_sql_file_read_utf8 for ODBC/Oracle due to date format/implicit conversion issues");
+    // so we skip it for Oracle to avoid complex workarounds in the main codebase.
+    if config.database_url.contains("Oracle") {
+        log::warn!("Skipping test_sql_file_read_utf8 for Oracle due to date format/implicit conversion issues");
         return Ok(());
     }
 
