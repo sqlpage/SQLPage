@@ -666,7 +666,9 @@ line2' as multiline_string
 
         let json_result = row_to_json(&row);
 
-        // For ODBC databases (specifically Oracle), empty string is treated as NULL
+        // For Oracle databases, empty string is treated as NULL.
+        // We detect Oracle by checking if we are using ODBC.
+        // This is a heuristic that works for the current tests, but is not strictly correct as generic ODBC might not behave this way.
         let is_oracle = c.kind() == sqlx::any::AnyKind::Odbc;
         
         let expected_json = serde_json::json!({
