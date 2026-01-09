@@ -61,3 +61,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: Password123!
       MYSQL_DATABASE: sqlpage
+
+  oracle:
+    profiles: ["oracle"]
+    ports: ["1521:1521"]
+    image: gvenzl/oracle-free:slim
+    environment:
+      ORACLE_PASSWORD: Password123!
+      APP_USER: root
+      APP_USER_PASSWORD: Password123!

@@ -59,6 +59,9 @@ jobs:
             container: postgres
             db_url: "Driver=PostgreSQL Unicode;Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!"
             setup_odbc: true
+          - database: oracle
+            container: oracle
+            db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREE;Uid=root;Pwd=Password123!"
     steps:
       - uses: actions/checkout@v4
       - name: Set up cargo cache
@@ -69,6 +72,18 @@ jobs:
       - name: Install PostgreSQL ODBC driver
         if: matrix.setup_odbc
         run: sudo apt-get install -y odbc-postgresql
+      - name: Install Oracle ODBC driver
+        if: matrix.database == 'oracle'
+        run: |
+           sudo apt-get install -y alien libaio1 wget
+           wget https://download.oracle.com/otn_software/linux/instantclient/211000/oracle-instantclient-basic-21.10.0.0.0-1.el8.x86_64.rpm
+           wget https://download.oracle.com/otn_software/linux/instantclient/211000/oracle-instantclient-odbc-21.10.0.0.0-1.el8.x86_64.rpm
+           sudo alien -i oracle-instantclient-basic-21.10.0.0.0-1.el8.x86_64.rpm
+           sudo alien -i oracle-instantclient-odbc-21.10.0.0.0-1.el8.x86_64.rpm
+           echo "[Oracle 21 ODBC driver]" | sudo tee -a /etc/odbcinst.ini
+           echo "Description = Oracle ODBC driver for Oracle 21c" | sudo tee -a /etc/odbcinst.ini
+           echo "Driver = /usr/lib/oracle/21/client64/lib/libsqora.so.21.1" | sudo tee -a /etc/odbcinst.ini
+           echo "LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: Start database container
         run: docker compose up --wait ${{ matrix.container }}
       - name: Show container logs
