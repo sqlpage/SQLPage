@@ -217,6 +217,11 @@ impl DbFsQueries {
             SupportedDatabase::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
             SupportedDatabase::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             SupportedDatabase::Snowflake => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY, last_modified TIMESTAMP_TZ DEFAULT CONVERT_TIMEZONE('UTC', CURRENT_TIMESTAMP()));",
+            // Oracle doesn't support IF NOT EXISTS for tables in standard SQL (until 23c). For broader compatibility, we just attempt to create it.
+            // Also, Oracle uses BLOB for binary data, and TIMESTAMP is fine.
+            // However, the test script drops the table before creating it, so we can skip IF NOT EXISTS check for test compatibility if needed.
+            // But for general usage, we might want to be careful. For now, let's keep the generic one but handle the ORA-01843 issue by ensuring date format.
+            // Actually, ORA-01843 is often due to implicit conversions.
             _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
         }
     }
@@ -231,11 +236,21 @@ impl DbFsQueries {
     }
 
     async fn make_was_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
-        let was_modified_query = format!(
-            "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
-            make_placeholder(db.info.kind, 1),
-            make_placeholder(db.info.kind, 2)
-        );
+        let was_modified_query = if db.info.kind == sqlx::any::AnyKind::Odbc {
+             // For Oracle, explicitly casting the bind parameter to TIMESTAMP helps avoid implicit conversion issues
+             // which cause ORA-01843 errors.
+             format!(
+                "SELECT 1 from sqlpage_files WHERE last_modified >= CAST({} AS TIMESTAMP) AND path = {}",
+                make_placeholder(db.info.kind, 1),
+                make_placeholder(db.info.kind, 2)
+            )
+        } else {
+            format!(
+                "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
+                make_placeholder(db.info.kind, 1),
+                make_placeholder(db.info.kind, 2)
+            )
+        };
         let param_types: &[AnyTypeInfo; 2] = &[
             PgTimeTz::type_info().into(),
             <str as Type<Postgres>>::type_info().into(),

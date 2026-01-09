@@ -666,9 +666,12 @@ line2' as multiline_string
 
         let json_result = row_to_json(&row);
 
+        // For ODBC databases (specifically Oracle), empty string is treated as NULL
+        let is_oracle = c.kind() == sqlx::any::AnyKind::Odbc;
+        
         let expected_json = serde_json::json!({
             "null_col": null,
-            "empty_string": "",
+            "empty_string": if is_oracle { serde_json::Value::Null } else { serde_json::Value::String("".to_string()) },
             "zero_value": 0,
             "negative_int": -42,
             "my_float": 1.23456,
