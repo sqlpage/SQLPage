@@ -75,7 +75,7 @@ jobs:
       - name: Install Oracle ODBC driver
         if: matrix.database == 'oracle'
         run: |
-           sudo apt-get install -y alien libaio1 wget
+           sudo apt-get install -y alien wget
            wget https://download.oracle.com/otn_software/linux/instantclient/211000/oracle-instantclient-basic-21.10.0.0.0-1.el8.x86_64.rpm
            wget https://download.oracle.com/otn_software/linux/instantclient/211000/oracle-instantclient-odbc-21.10.0.0.0-1.el8.x86_64.rpm
            sudo alien -i oracle-instantclient-basic-21.10.0.0.0-1.el8.x86_64.rpm
