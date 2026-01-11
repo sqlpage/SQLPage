@@ -217,11 +217,6 @@ impl DbFsQueries {
             SupportedDatabase::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
             SupportedDatabase::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             SupportedDatabase::Snowflake => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY, last_modified TIMESTAMP_TZ DEFAULT CONVERT_TIMEZONE('UTC', CURRENT_TIMESTAMP()));",
-            // Oracle doesn't support IF NOT EXISTS for tables in standard SQL (until 23c). For broader compatibility, we just attempt to create it.
-            // Also, Oracle uses BLOB for binary data, and TIMESTAMP is fine.
-            // However, the test script drops the table before creating it, so we can skip IF NOT EXISTS check for test compatibility if needed.
-            // But for general usage, we might want to be careful. For now, let's keep the generic one but handle the ORA-01843 issue by ensuring date format.
-            // Actually, ORA-01843 is often due to implicit conversions.
             _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
         }
     }
