@@ -5,6 +5,7 @@
 # DATABASE_URL='mssql://root:Password123!@localhost/sqlpage'
 # DATABASE_URL='mysql://root:Password123!@localhost/sqlpage'
 # DATABASE_URL='Driver={/usr/lib64/psqlodbcw.so};Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!'
+# DATABASE_URL='Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!'
 
 # Run for instance:
 # docker compose up postgres
