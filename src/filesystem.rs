@@ -355,7 +355,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use sqlx::Executor;
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
-    
+
     // Oracle has specific issues with implicit timestamp conversions and empty strings in this test setup
     // so we skip it for Oracle to avoid complex workarounds in the main codebase.
     if config.database_url.contains("Oracle") {

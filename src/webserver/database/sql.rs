@@ -16,8 +16,8 @@ use sqlparser::ast::{
     VisitMut, Visitor, VisitorMut,
 };
 use sqlparser::dialect::{
-    Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
-    SQLiteDialect, SnowflakeDialect,
+    Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, OracleDialect,
+    PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
 };
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
@@ -275,6 +275,7 @@ fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement
 fn dialect_for_db(dbms: SupportedDatabase) -> Box<dyn Dialect> {
     match dbms {
         SupportedDatabase::Duckdb => Box::new(DuckDbDialect {}),
+        SupportedDatabase::Oracle => Box::new(OracleDialect {}),
         SupportedDatabase::Postgres => Box::new(PostgreSqlDialect {}),
         SupportedDatabase::Generic => Box::new(GenericDialect {}),
         SupportedDatabase::Mssql => Box::new(MsSqlDialect {}),

@@ -471,7 +471,7 @@ mod tests {
         };
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
         let row = sqlx::query(
-            "SELECT 
+            "SELECT
                 42 as integer,
                 42.25 as real,
                 'xxx' as string,
@@ -647,6 +647,7 @@ mod tests {
     async fn test_row_to_json_edge_cases() -> anyhow::Result<()> {
         let db_url = test_database_url();
         let mut c = sqlx::AnyConnection::connect(&db_url).await?;
+        let dbms_name = c.dbms_name().await.expect("retrieve db name");
 
         // Test edge cases for row_to_json
         let row = sqlx::query(
@@ -667,11 +668,11 @@ line2' as multiline_string
         let json_result = row_to_json(&row);
 
         // For Oracle databases, empty string is treated as NULL.
-        let is_oracle = db_url.contains("Oracle");
-        
+        let empty_str_is_null = dbms_name.to_lowercase().contains("oracle");
+
         let expected_json = serde_json::json!({
             "null_col": null,
-            "empty_string": if is_oracle { serde_json::Value::Null } else { serde_json::Value::String("".to_string()) },
+            "empty_string": if empty_str_is_null { serde_json::Value::Null } else { serde_json::Value::String("".to_string()) },
             "zero_value": 0,
             "negative_int": -42,
             "my_float": 1.23456,
