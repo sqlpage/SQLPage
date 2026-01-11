@@ -80,7 +80,7 @@ jobs:
           sudo alien -i oracle-instantclient-basic-21.14.0.0.0-1.el8.x86_64.rpm
           sudo alien -i oracle-instantclient-odbc-21.14.0.0.0-1.el8.x86_64.rpm
           sudo ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/libaio.so.1
-          sudo /usr/lib/oracle/21/client64/bin/odbc_update_ini.sh /
+          sudo /usr/lib/oracle/21/client64/bin/odbc_update_ini.sh / /usr/lib/oracle/21/client64/lib/
           echo "LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: Start database container
         run: docker compose up --wait ${{ matrix.container }}
