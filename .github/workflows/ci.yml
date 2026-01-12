@@ -92,7 +92,6 @@ jobs:
         run: cargo test --features odbc-static
         env:
           DATABASE_URL: ${{ matrix.db_url }}
-          RUST_BACKTRACE: 1
           MALLOC_CHECK_: 3
           MALLOC_PERTURB_: 10
 
