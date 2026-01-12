@@ -50,6 +50,13 @@ async fn test_routing_with_db_fs() {
     config.site_prefix = "/prefix/".to_string();
     let state = AppState::init(&config).await.unwrap();
 
+    if matches!(
+        state.db.info.database_type,
+        sqlpage::webserver::database::SupportedDatabase::Oracle
+    ) {
+        return;
+    }
+
     let drop_sql = "DROP TABLE IF EXISTS sqlpage_files";
     state.db.connection.execute(drop_sql).await.unwrap();
     let create_table_sql =

@@ -41,7 +41,15 @@ async fn test_json_body() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_csv_body() -> actix_web::Result<()> {
-    let req = get_request_to("/tests/data_formats/csv_data.sql")
+    let app_data = make_app_data().await;
+    if matches!(
+        app_data.db.info.database_type,
+        sqlpage::webserver::database::SupportedDatabase::Oracle
+    ) {
+        return Ok(());
+    }
+
+    let req = crate::common::get_request_to_with_data("/tests/data_formats/csv_data.sql", app_data)
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;
