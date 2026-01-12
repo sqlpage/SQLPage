@@ -21,6 +21,7 @@ super::function_definition_macro::sqlpage_functions! {
     basic_auth_username((&RequestInfo));
 
     client_ip((&RequestInfo));
+    configuration_directory((&RequestInfo));
     cookie((&RequestInfo), name: Cow<str>);
     current_working_directory();
 
@@ -59,6 +60,7 @@ super::function_definition_macro::sqlpage_functions! {
 
     variables((&ExecutionContext), get_or_post: Option<Cow<str>>);
     version();
+    web_root((&RequestInfo));
     request_body((&RequestInfo));
     request_body_base64((&RequestInfo));
 }
@@ -95,6 +97,16 @@ fn extract_basic_auth(
 
 async fn cookie<'a>(request: &'a RequestInfo, name: Cow<'a, str>) -> Option<Cow<'a, str>> {
     request.cookies.get(&*name).map(SingleOrVec::as_json_str)
+}
+
+/// Returns the directory where the sqlpage.json configuration file, templates, and migrations are located.
+async fn configuration_directory(request: &RequestInfo) -> String {
+    request
+        .app_state
+        .config
+        .configuration_directory
+        .to_string_lossy()
+        .into_owned()
 }
 
 async fn current_working_directory() -> anyhow::Result<String> {
@@ -752,6 +764,16 @@ async fn variables<'a>(
 /// Returns the version of the sqlpage that is running.
 async fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+/// Returns the directory where the .sql files are located (the web root).
+async fn web_root(request: &RequestInfo) -> String {
+    request
+        .app_state
+        .config
+        .web_root
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Returns the raw request body as a string.

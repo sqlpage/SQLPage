@@ -26,11 +26,11 @@ select 'SQLPage''s website' as contents,
     1 as italics;
 SELECT '. You can replace this page''s contents by creating a file named ' as contents;
 SELECT 'index.sql' as contents, 1 as code;
-SELECT ' in the folder where sqlpage is running (current working directory: ' as contents;
-SELECT sqlpage.current_working_directory() as contents, 1 as code;
-SELECT ').' as contents;
+SELECT ' in the web root directory: ' as contents;
+SELECT sqlpage.web_root() as contents, 1 as code;
+SELECT '.' as contents;
 SELECT 'You can customize your server''s [configuration](https://github.com/sqlpage/SQLPage/blob/main/configuration.md)
-by creating a file in `' || sqlpage.current_working_directory() || '/sqlpage/sqlpage.json`.' as contents_md;
+by creating a file named `sqlpage.json` in the configuration directory: `' || sqlpage.configuration_directory() || '`.' as contents_md;
 
 SELECT '
 Alternatively, you can create a table called `sqlpage_files` in your database with the following columns: `path`, `contents`, and `last_modified`.' as contents_md;

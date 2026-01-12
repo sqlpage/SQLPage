@@ -1,200 +1,212 @@
 # CHANGELOG.md
 
 ## unreleased
- - fix: `sqlpage.variables()` now does not return json objects with duplicate keys when post, get and set variables of the same name are present. The semantics of the returned values remains the same (precedence: set > post > get).
+
+- **New Function**: `sqlpage.web_root()` - Returns the web root directory where SQLPage serves `.sql` files from. This is more reliable than `sqlpage.current_working_directory()` when you need to reference the location of your SQL files, especially when the `--web-root` argument or `WEB_ROOT` environment variable is used.
+- **New Function**: `sqlpage.configuration_directory()` - Returns the configuration directory where SQLPage looks for `sqlpage.json`, templates, and migrations. Useful when you need to reference configuration-related files in your SQL code.
+- fix: The default welcome page (`index.sql`) now correctly displays the web root and configuration directory paths instead of showing the current working directory.
+- fix: `sqlpage.variables()` now does not return json objects with duplicate keys when post, get and set variables of the same name are present. The semantics of the returned values remains the same (precedence: set > post > get).
 - add support for some duckdb-specific (like `select {'a': 1, 'b': 2}`), and oracle-specific syntax dynamically when connected through odbc.
 - better oidc support. Single-sign-on now works with sites:
- - using a non-default `site_prefix`
- - hosted behind an ssl-terminating reverse proxy
+- using a non-default `site_prefix`
+- hosted behind an ssl-terminating reverse proxy
 
 ## 0.41.0 (2025-12-28)
- - **New Function**: `sqlpage.oidc_logout_url(redirect_uri)` - Generates a secure logout URL for OIDC-authenticated users with support for [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RPLogout)
- - Fix compatibility with Auth0 for OpenID-Connect authentification. See https://github.com/ramosbugs/openidconnect-rs/issues/23
- - updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.60.0.md
- - updated apexcharts to 5.3.6:
-   - https://github.com/apexcharts/apexcharts.js/compare/v5.3.0...v5.3.6
-   - https://github.com/apexcharts/apexcharts.js/releases/tag/v5.3.6
- - re-add the `lime` color option to charts
- - update default chart color palette; use [Open Colors](https://yeun.github.io/open-color/)
-   - <img width="2077" height="978" alt="image" src="https://github.com/user-attachments/assets/839bd318-c4cd-419c-8f04-a583399e0512" />
- - re-enable text drop shadow in chart data labels
+
+- **New Function**: `sqlpage.oidc_logout_url(redirect_uri)` - Generates a secure logout URL for OIDC-authenticated users with support for [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RPLogout)
+- Fix compatibility with Auth0 for OpenID-Connect authentification. See https://github.com/ramosbugs/openidconnect-rs/issues/23
+- updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.60.0.md
+- updated apexcharts to 5.3.6:
+  - https://github.com/apexcharts/apexcharts.js/compare/v5.3.0...v5.3.6
+  - https://github.com/apexcharts/apexcharts.js/releases/tag/v5.3.6
+- re-add the `lime` color option to charts
+- update default chart color palette; use [Open Colors](https://yeun.github.io/open-color/)
+  - <img width="2077" height="978" alt="image" src="https://github.com/user-attachments/assets/839bd318-c4cd-419c-8f04-a583399e0512" />
+- re-enable text drop shadow in chart data labels
 
 ## 0.40.0 (2025-11-28)
- - OIDC login redirects now use HTTP 303 responses so POST submissions are converted to safe GET requests before reaching the identity provider, fixing incorrect reuse of the original POST (HTTP 307) that could break standard auth flows.
- - SQLPage now respects [HTTP accept headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept) for JSON. You can now easily process the contents of any existing sql page programmatically with:
-    - `curl -H "Accept: application/json" http://example.com/page.sql`: returns a json array
-    - `curl -H "Accept: application/x-ndjson" http://example.com/page.sql`: returns one json object per line.
- - Fixed a bug in `sqlpage.link`: a link with no path (link to the current page) and no url parameter now works as expected. It used to keep the existing url parameters instead of removing them. `sqlpage.link('', '{}')` now returns `'?'` instead of the empty string.
- - `sqlpage.fetch(null)` and `sqlpage.fetch_with_meta(null)` now return `null` instead of throwing an error.
- - **New Function**: `sqlpage.set_variable(name, value)`
-   - Returns a URL with the specified variable set to the given value, preserving other existing variables.
-   - This is a shorthand for `sqlpage.link(sqlpage.path(), json_patch(sqlpage.variables('get'), json_object(name, value)))`.
- - **Variable System Improvements**: URL and POST parameters are now immutable, preventing accidental modification. User-defined variables created with `SET` remain mutable.
-   - **BREAKING**: `$variable` no longer accesses POST parameters. Use `:variable` instead.
-     - **What changed**: Previously, `$x` would return a POST parameter value if no GET parameter named `x` existed.
-     - **Fix**: Replace `$x` with `:x` when you need to access form field values.
-     - **Example**: Change `SELECT $username` to `SELECT :username` when reading form submissions.
-   - **BREAKING**: `SET $name` no longer makes GET (URL) parameters inaccessible when a URL parameter with the same name exists.
-     - **What changed**: `SET $name = 'value'` would previously overwrite the URL parameter `$name`. Now it creates an independent SET variable that shadows the URL parameter.
-     - **Fix**: This is generally the desired behavior. If you need to access the original URL parameter after setting a variable with the same name, extract it from the JSON returned by `sqlpage.variables('get')`.
-     - **Example**: If your URL is `page.sql?name=john`, and you do `SET $name = 'modified'`, then:
-       - `$name` will be `'modified'` (the SET variable)
-       - The original URL parameter is still preserved and accessible:
-         - `sqlpage.variables('get')->>'name'` returns `'john'`
-   - **New behavior**: Variable lookup now follows this precedence:
-     - `$variable` checks SET variables first, then URL parameters
-     - SET variables always shadow URL/POST parameters with the same name
-   - **New sqlpage.variables() filters**:
-     - `sqlpage.variables('get')` returns only URL parameters as JSON
-     - `sqlpage.variables('post')` returns only POST parameters as JSON
-     - `sqlpage.variables('set')` returns only user-defined SET variables as JSON
-     - `sqlpage.variables()` returns all variables merged together, with SET variables taking precedence
-   - **Deprecation warnings**: Using `$var` when both a URL parameter and POST parameter exist with the same name now shows a warning. In a future version, you'll need to explicitly choose between `$var` (URL) and `:var` (POST).
- - Improved performance of `sqlpage.run_sql`.
-   - On a simple test that just runs 4 run_sql calls, the new version is about 2.7x faster (15,708 req/s vs 5,782 req/s) with lower latency (0.637 ms vs 1.730 ms per request).
- - add support for postgres range types
+
+- OIDC login redirects now use HTTP 303 responses so POST submissions are converted to safe GET requests before reaching the identity provider, fixing incorrect reuse of the original POST (HTTP 307) that could break standard auth flows.
+- SQLPage now respects [HTTP accept headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept) for JSON. You can now easily process the contents of any existing sql page programmatically with:
+  - `curl -H "Accept: application/json" http://example.com/page.sql`: returns a json array
+  - `curl -H "Accept: application/x-ndjson" http://example.com/page.sql`: returns one json object per line.
+- Fixed a bug in `sqlpage.link`: a link with no path (link to the current page) and no url parameter now works as expected. It used to keep the existing url parameters instead of removing them. `sqlpage.link('', '{}')` now returns `'?'` instead of the empty string.
+- `sqlpage.fetch(null)` and `sqlpage.fetch_with_meta(null)` now return `null` instead of throwing an error.
+- **New Function**: `sqlpage.set_variable(name, value)`
+  - Returns a URL with the specified variable set to the given value, preserving other existing variables.
+  - This is a shorthand for `sqlpage.link(sqlpage.path(), json_patch(sqlpage.variables('get'), json_object(name, value)))`.
+- **Variable System Improvements**: URL and POST parameters are now immutable, preventing accidental modification. User-defined variables created with `SET` remain mutable.
+  - **BREAKING**: `$variable` no longer accesses POST parameters. Use `:variable` instead.
+    - **What changed**: Previously, `$x` would return a POST parameter value if no GET parameter named `x` existed.
+    - **Fix**: Replace `$x` with `:x` when you need to access form field values.
+    - **Example**: Change `SELECT $username` to `SELECT :username` when reading form submissions.
+  - **BREAKING**: `SET $name` no longer makes GET (URL) parameters inaccessible when a URL parameter with the same name exists.
+    - **What changed**: `SET $name = 'value'` would previously overwrite the URL parameter `$name`. Now it creates an independent SET variable that shadows the URL parameter.
+    - **Fix**: This is generally the desired behavior. If you need to access the original URL parameter after setting a variable with the same name, extract it from the JSON returned by `sqlpage.variables('get')`.
+    - **Example**: If your URL is `page.sql?name=john`, and you do `SET $name = 'modified'`, then:
+      - `$name` will be `'modified'` (the SET variable)
+      - The original URL parameter is still preserved and accessible:
+        - `sqlpage.variables('get')->>'name'` returns `'john'`
+  - **New behavior**: Variable lookup now follows this precedence:
+    - `$variable` checks SET variables first, then URL parameters
+    - SET variables always shadow URL/POST parameters with the same name
+  - **New sqlpage.variables() filters**:
+    - `sqlpage.variables('get')` returns only URL parameters as JSON
+    - `sqlpage.variables('post')` returns only POST parameters as JSON
+    - `sqlpage.variables('set')` returns only user-defined SET variables as JSON
+    - `sqlpage.variables()` returns all variables merged together, with SET variables taking precedence
+  - **Deprecation warnings**: Using `$var` when both a URL parameter and POST parameter exist with the same name now shows a warning. In a future version, you'll need to explicitly choose between `$var` (URL) and `:var` (POST).
+- Improved performance of `sqlpage.run_sql`.
+  - On a simple test that just runs 4 run_sql calls, the new version is about 2.7x faster (15,708 req/s vs 5,782 req/s) with lower latency (0.637 ms vs 1.730 ms per request).
+- add support for postgres range types
 
 ## v0.39.1 (2025-11-08)
- - More precise server timing tracking to debug performance issues
- - Fix missing server timing header in some cases
- - Implement nice error messages for some header-related errors such as invalid header values.
- - `compress_responses` is now set to `false` by default in the configuration.
-  - When response compression is enabled, additional buffering is needed. Users reported a better experience with pages that load more progressively, reducing the time before the pages' shell is rendered.
-  - When SQLPage is deployed behind a reverse proxy, compressing responses between sqlpage and the proxy is wasteful.
- - In the table component, allow simple objects in custom_actions instead of requiring arrays of objects.
- - Fatser icon loading. Previously, even a page containing a single icon required downloading and parsing a ~2MB file. This resulted in a delay where pages initially appeared with a blank space before icons appeared. Icons are now inlined inside pages and appear instantaneously.
- - Updated tabler icons to 3.35
- - Fix inaccurate ODBC warnings
- - Added support for Microsoft SQL Server named instances: `mssql://user:pass@localhost/db?instance_name=xxx`
- - Added a detailed [performance guide](https://sql-page.com/blog?post=Performance+Guide) to the docs.
+
+- More precise server timing tracking to debug performance issues
+- Fix missing server timing header in some cases
+- Implement nice error messages for some header-related errors such as invalid header values.
+- `compress_responses` is now set to `false` by default in the configuration.
+- When response compression is enabled, additional buffering is needed. Users reported a better experience with pages that load more progressively, reducing the time before the pages' shell is rendered.
+- When SQLPage is deployed behind a reverse proxy, compressing responses between sqlpage and the proxy is wasteful.
+- In the table component, allow simple objects in custom_actions instead of requiring arrays of objects.
+- Fatser icon loading. Previously, even a page containing a single icon required downloading and parsing a ~2MB file. This resulted in a delay where pages initially appeared with a blank space before icons appeared. Icons are now inlined inside pages and appear instantaneously.
+- Updated tabler icons to 3.35
+- Fix inaccurate ODBC warnings
+- Added support for Microsoft SQL Server named instances: `mssql://user:pass@localhost/db?instance_name=xxx`
+- Added a detailed [performance guide](https://sql-page.com/blog?post=Performance+Guide) to the docs.
 
 ## v0.39.0 (2025-10-28)
- - Ability to execute sql for URL paths with another extension. If you create sitemap.xml.sql, it will be executed for example.com/sitemap.xml
- - Display source line info in errors even when the database does not return a precise error position. In this case, the entire problematic SQL statement is referenced.
- - The shell with a vertical sidebar can now have "active" elements, just like the horizontal header bar.
- - New `edit_url`, `delete_url`, and `custom_actions` properties in the [table](https://sql-page.com/component.sql?component=table) component to easily add nice icon buttons to a table.
- - SQLPage now sets the [`Server-Timing` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Server-Timing) in development. So when you have a page that loads slowly, you can open your browser's network inspector, click on the slow request, then open the timing tab to understand where it's spending its time.
-   - <img width="1250" height="1263" alt="image" src="https://github.com/user-attachments/assets/6781a31f-e342-4e8c-8506-bc47049ce313" />
- - Fixed a memory corruption issue in the builtin odbc driver manager
- - ODBC: fix using globally installed system drivers by their name in debian-based linux distributions.
- - New [login](https://sql-page.com/component.sql?component=table) component.
 
+- Ability to execute sql for URL paths with another extension. If you create sitemap.xml.sql, it will be executed for example.com/sitemap.xml
+- Display source line info in errors even when the database does not return a precise error position. In this case, the entire problematic SQL statement is referenced.
+- The shell with a vertical sidebar can now have "active" elements, just like the horizontal header bar.
+- New `edit_url`, `delete_url`, and `custom_actions` properties in the [table](https://sql-page.com/component.sql?component=table) component to easily add nice icon buttons to a table.
+- SQLPage now sets the [`Server-Timing` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Server-Timing) in development. So when you have a page that loads slowly, you can open your browser's network inspector, click on the slow request, then open the timing tab to understand where it's spending its time.
+  - <img width="1250" height="1263" alt="image" src="https://github.com/user-attachments/assets/6781a31f-e342-4e8c-8506-bc47049ce313" />
+- Fixed a memory corruption issue in the builtin odbc driver manager
+- ODBC: fix using globally installed system drivers by their name in debian-based linux distributions.
+- New [login](https://sql-page.com/component.sql?component=table) component.
 
 ## v0.38.0
- - Added support for the Open Database Connectivity (ODBC) standard.
-   - This makes SQLPage compatible with many new databases, including:
-    - [*ClickHouse*](https://github.com/ClickHouse/clickhouse-odbc),
-    - [*MongoDB*](https://www.mongodb.com/docs/atlas/data-federation/query/sql/drivers/odbc/connect),
-    - [*DuckDB*](https://duckdb.org/docs/stable/clients/odbc/overview.html), and through it [many other data sources](https://duckdb.org/docs/stable/data/data_sources),
-    - [*Oracle*](https://www.oracle.com/database/technologies/releasenote-odbc-ic.html),
-    - [*Snowflake*](https://docs.snowflake.com/en/developer-guide/odbc/odbc),
-    - [*BigQuery*](https://cloud.google.com/bigquery/docs/reference/odbc-jdbc-drivers),
-    - [*IBM DB2*](https://www.ibm.com/support/pages/db2-odbc-cli-driver-download-and-installation-information),
-    - [*Trino*](https://docs.starburst.io/clients/odbc/odbc-v2.html), and through it [many other data sources](https://trino.io/docs/current/connector.html)
- - Added a new `sqlpage.hmac()` function for cryptographic HMAC (Hash-based Message Authentication Code) operations.
-   - Create and verify secure signatures for webhooks (Shopify, Stripe, GitHub, etc.)
-   - Generate tamper-proof tokens for API authentication
-   - Secure download links and temporary access codes
-   - Supports SHA-256 (default) and SHA-512 algorithms
-   - Output formats: hexadecimal (default) or base64 (e.g., `sha256-base64`)
-   - See the [function documentation](https://sql-page.com/functions.sql?function=hmac) for detailed examples
- - Fixed a slight spacing issue in the list components empty value display.
- - Improved performance of setting a variable to a literal value. `SET x = 'hello'` is now executed locally by SQLPage and does not send anything to the database. This completely removes the cost of extracting static values into variables for cleaner SQL files.
- - Enable arbitrary precision in the internal representation of numbers. This guarantees zero precision loss when the database returns very large or very small DECIMAL or NUMERIC values.
+
+- Added support for the Open Database Connectivity (ODBC) standard.
+  - This makes SQLPage compatible with many new databases, including:
+  - [_ClickHouse_](https://github.com/ClickHouse/clickhouse-odbc),
+  - [_MongoDB_](https://www.mongodb.com/docs/atlas/data-federation/query/sql/drivers/odbc/connect),
+  - [_DuckDB_](https://duckdb.org/docs/stable/clients/odbc/overview.html), and through it [many other data sources](https://duckdb.org/docs/stable/data/data_sources),
+  - [_Oracle_](https://www.oracle.com/database/technologies/releasenote-odbc-ic.html),
+  - [_Snowflake_](https://docs.snowflake.com/en/developer-guide/odbc/odbc),
+  - [_BigQuery_](https://cloud.google.com/bigquery/docs/reference/odbc-jdbc-drivers),
+  - [_IBM DB2_](https://www.ibm.com/support/pages/db2-odbc-cli-driver-download-and-installation-information),
+  - [_Trino_](https://docs.starburst.io/clients/odbc/odbc-v2.html), and through it [many other data sources](https://trino.io/docs/current/connector.html)
+- Added a new `sqlpage.hmac()` function for cryptographic HMAC (Hash-based Message Authentication Code) operations.
+  - Create and verify secure signatures for webhooks (Shopify, Stripe, GitHub, etc.)
+  - Generate tamper-proof tokens for API authentication
+  - Secure download links and temporary access codes
+  - Supports SHA-256 (default) and SHA-512 algorithms
+  - Output formats: hexadecimal (default) or base64 (e.g., `sha256-base64`)
+  - See the [function documentation](https://sql-page.com/functions.sql?function=hmac) for detailed examples
+- Fixed a slight spacing issue in the list components empty value display.
+- Improved performance of setting a variable to a literal value. `SET x = 'hello'` is now executed locally by SQLPage and does not send anything to the database. This completely removes the cost of extracting static values into variables for cleaner SQL files.
+- Enable arbitrary precision in the internal representation of numbers. This guarantees zero precision loss when the database returns very large or very small DECIMAL or NUMERIC values.
 
 ## v0.37.1
- - fixed decoding of UUID values
- - Fixed handling of NULL values in `sqlpage.link`. They were encoded as the string `'null'` instead of being omitted from the link's parameters.
- - Enable submenu autoclosing (on click) in the shell. This is not ideal, but this prevents a bug introduced in v0.36.0 where the page would scroll back to the top when clicking anywhere on the page after navigating from a submenu. The next version will fix this properly. See https://github.com/sqlpage/SQLPage/issues/1011
- - Adopt the new nice visual errors introduced in v0.37.1 for "403 Forbidden" and "429 Too Many Requests" errors.
- - Fix a bug in oidc login flows. When two tabs in the same browser initiated a login at the same time, an infinite redirect loop could be triggered. This mainly occured when restoring open tabs after a period of inactivity, often in mobile browsers.
- - Multiple small sql parser improvements.
-   - Adds support for MERGE queries inside CTEs, and MERGE queries with a RETURNING clause.
-   -  https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.59.0.md
+
+- fixed decoding of UUID values
+- Fixed handling of NULL values in `sqlpage.link`. They were encoded as the string `'null'` instead of being omitted from the link's parameters.
+- Enable submenu autoclosing (on click) in the shell. This is not ideal, but this prevents a bug introduced in v0.36.0 where the page would scroll back to the top when clicking anywhere on the page after navigating from a submenu. The next version will fix this properly. See https://github.com/sqlpage/SQLPage/issues/1011
+- Adopt the new nice visual errors introduced in v0.37.1 for "403 Forbidden" and "429 Too Many Requests" errors.
+- Fix a bug in oidc login flows. When two tabs in the same browser initiated a login at the same time, an infinite redirect loop could be triggered. This mainly occured when restoring open tabs after a period of inactivity, often in mobile browsers.
+- Multiple small sql parser improvements.
+  - Adds support for MERGE queries inside CTEs, and MERGE queries with a RETURNING clause.
+  - https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.59.0.md
 
 ## v0.37.0
- - We now cryptographically sign the Windows app during releases, which proves the file hasn’t been tampered with. Once the production certificate is active, Windows will show a "verified publisher" and should stop showing screens saying "This app might harm your device", "Windows protected your PC" or "Are you sure you want to run this application ?".
-   - Thanks to https://signpath.io for providing us with a windows signing certificate !
- - Added a new parameter `encoding` to the [fetch](https://sql-page.com/functions.sql?function=fetch) function:
-  - All [standard web encodings](https://encoding.spec.whatwg.org/#concept-encoding-get) are supported.
-  - Additionally, `base64` can be specified to decode binary data as base64 (compatible with [data URI](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs))
-  - By default, the old behavior of the `fetch_with_meta` function is preserved: the response body is decoded as `utf-8` if possible, otherwise the response is encoded in `base64`.
- - Added a specific warning when a URL parameter and a form field have the same name. The previous general warning about referencing form fields with the `$var` syntax was confusing in that case.
- - [modal](https://sql-page.com/component.sql?component=modal) component: allow opening modals with a simple link.
-   - This allows you to trigger modals from any other component, including tables, maps, forms, lists and more.
-   - Since modals have their own url inside the page, you can now link to a modal from another page, and if you refresh a page while the modal is open, the modal will stay open.
-   - modals now have an `open` parameter to open the modal automatically when the page is loaded.
- - New [download](https://sql-page.com/component.sql?component=download) component to let the user download files. The files may be stored as BLOBs in the database, local files on the server, or may be fetched from a different server.
- - **Enhanced BLOB Support**. You can now return binary data (BLOBs) directly to sqlpage, and it will automatically convert them to data URLs. This allows you to use database BLOBs directly wherever a link is expected, including in the new download component.
-   - supports columns of type `BYTEA` (PostgreSQL), `BLOB` (MySQL, SQLite), `VARBINARY` and `IMAGE` (mssql)
-   - Automatic detection of common file types based on magic bytes
-   - This means you can use a BLOB wherever an image url is expected. For instance:
-     ```sql
-     select 'list' as component;
-     select username as title, avatar_blob as image_url
-     from users;
-     ```
- - When a sql file is saved with the wrong character encoding (not UTF8), SQLPage now displays a helpful error messages that points to exactly where in the file the problem is.
- - More visual error messages: errors that occured before (such as file access issues) used to generate plain text messages that looked scary to non-technical users. All errors are now displayed nicely in the browser.
- - The form component now considers numbers and their string representation as equal when comparing the `value` parameter and the values from the `options` parameter in dropdowns. This makes it easier to use variables (which are always strings) in the value parameter in order to preserve a dropdown field value across page reloads. The following is now valid:
-    - ```sql
-      select 'form' as component;
-      select
-          'select' as type,
-          true as create_new,
-          true as dropdown,
-          '2' as value, -- passed as text even if the option values are passed as integers
-          '[{"label": "A", "value": 1}, {"label": "B", "value": 2}]' as options;
-      ```
+
+- We now cryptographically sign the Windows app during releases, which proves the file hasn’t been tampered with. Once the production certificate is active, Windows will show a "verified publisher" and should stop showing screens saying "This app might harm your device", "Windows protected your PC" or "Are you sure you want to run this application ?".
+  - Thanks to https://signpath.io for providing us with a windows signing certificate !
+- Added a new parameter `encoding` to the [fetch](https://sql-page.com/functions.sql?function=fetch) function:
+- All [standard web encodings](https://encoding.spec.whatwg.org/#concept-encoding-get) are supported.
+- Additionally, `base64` can be specified to decode binary data as base64 (compatible with [data URI](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs))
+- By default, the old behavior of the `fetch_with_meta` function is preserved: the response body is decoded as `utf-8` if possible, otherwise the response is encoded in `base64`.
+- Added a specific warning when a URL parameter and a form field have the same name. The previous general warning about referencing form fields with the `$var` syntax was confusing in that case.
+- [modal](https://sql-page.com/component.sql?component=modal) component: allow opening modals with a simple link.
+  - This allows you to trigger modals from any other component, including tables, maps, forms, lists and more.
+  - Since modals have their own url inside the page, you can now link to a modal from another page, and if you refresh a page while the modal is open, the modal will stay open.
+  - modals now have an `open` parameter to open the modal automatically when the page is loaded.
+- New [download](https://sql-page.com/component.sql?component=download) component to let the user download files. The files may be stored as BLOBs in the database, local files on the server, or may be fetched from a different server.
+- **Enhanced BLOB Support**. You can now return binary data (BLOBs) directly to sqlpage, and it will automatically convert them to data URLs. This allows you to use database BLOBs directly wherever a link is expected, including in the new download component.
+  - supports columns of type `BYTEA` (PostgreSQL), `BLOB` (MySQL, SQLite), `VARBINARY` and `IMAGE` (mssql)
+  - Automatic detection of common file types based on magic bytes
+  - This means you can use a BLOB wherever an image url is expected. For instance:
+    ```sql
+    select 'list' as component;
+    select username as title, avatar_blob as image_url
+    from users;
+    ```
+- When a sql file is saved with the wrong character encoding (not UTF8), SQLPage now displays a helpful error messages that points to exactly where in the file the problem is.
+- More visual error messages: errors that occured before (such as file access issues) used to generate plain text messages that looked scary to non-technical users. All errors are now displayed nicely in the browser.
+- The form component now considers numbers and their string representation as equal when comparing the `value` parameter and the values from the `options` parameter in dropdowns. This makes it easier to use variables (which are always strings) in the value parameter in order to preserve a dropdown field value across page reloads. The following is now valid:
+  - ```sql
+    select 'form' as component;
+    select
+        'select' as type,
+        true as create_new,
+        true as dropdown,
+        '2' as value, -- passed as text even if the option values are passed as integers
+        '[{"label": "A", "value": 1}, {"label": "B", "value": 2}]' as options;
+    ```
 
 ## v0.36.1
- - Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
-   - The recommended way to display money values in postgres is still to format them in the way you expect in SQL. See https://github.com/sqlpage/SQLPage/issues/983
- - updated dependencies
+
+- Fix regression introduced in v0.36.0: PostgreSQL money values showed as 0.0
+  - The recommended way to display money values in postgres is still to format them in the way you expect in SQL. See https://github.com/sqlpage/SQLPage/issues/983
+- updated dependencies
 
 ## v0.36.0
- - added support for the MONEY and SMALLMONEY types in MSSQL.
- - include [math functions](https://sqlite.org/lang_mathfunc.html) in the builtin sqlite3 database.
- - the sqlpage binary can now help you create new empty migration files from the command line:
-   ```
-   ❯ ./sqlpage create-migration my_new_table
-    Migration file created: sqlpage/migrations/20250627095944_my_new_table.sql
-   ```
- - New [modal](https://sql-page.com/component.sql?component=modal) component
- - In bar charts: Sort chart categories by name instead of first appearance. This is useful when displaying cumulative bar charts with some series missing data for some x values.
- - Updated tabler to v1.4 https://github.com/tabler/tabler/releases/tag/%40tabler%2Fcore%401.4.0
- - Updated tabler-icons to v3.34 (19 new icons) https://tabler.io/changelog#/changelog/tabler-icons-3.34
- - Added support for partially private sites when using OIDC single sign-on:
-   - The same SQLPage application can now have both publicly accessible and private pages accessible to users authenticated with SSO.
-   - This allows easily creating a "log in page" that redirects to the OIDC provider.
-   - See the [configuration](./configuration.md) for `oidc_protected_paths`
+
+- added support for the MONEY and SMALLMONEY types in MSSQL.
+- include [math functions](https://sqlite.org/lang_mathfunc.html) in the builtin sqlite3 database.
+- the sqlpage binary can now help you create new empty migration files from the command line:
+  ```
+  ❯ ./sqlpage create-migration my_new_table
+   Migration file created: sqlpage/migrations/20250627095944_my_new_table.sql
+  ```
+- New [modal](https://sql-page.com/component.sql?component=modal) component
+- In bar charts: Sort chart categories by name instead of first appearance. This is useful when displaying cumulative bar charts with some series missing data for some x values.
+- Updated tabler to v1.4 https://github.com/tabler/tabler/releases/tag/%40tabler%2Fcore%401.4.0
+- Updated tabler-icons to v3.34 (19 new icons) https://tabler.io/changelog#/changelog/tabler-icons-3.34
+- Added support for partially private sites when using OIDC single sign-on:
+  - The same SQLPage application can now have both publicly accessible and private pages accessible to users authenticated with SSO.
+  - This allows easily creating a "log in page" that redirects to the OIDC provider.
+  - See the [configuration](./configuration.md) for `oidc_protected_paths`
 - Chart component: accept numerical values passed as strings in pie charts.
-- updated sql parser: [v0.57](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.57.0.md)  [v0.58](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.58.0.md)
-  * **Postgres text search types**: allows `tsquery` and `tsvector` data types
+- updated sql parser: [v0.57](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.57.0.md) [v0.58](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.58.0.md)
+  - **Postgres text search types**: allows `tsquery` and `tsvector` data types
     ```sql
     SELECT 'OpenAI'::text @@ 'open:*'::tsquery;
     ```
-  * **LIMIT in subqueries**: fixes parsing of `LIMIT` inside subselects
+  - **LIMIT in subqueries**: fixes parsing of `LIMIT` inside subselects
     ```sql
     SELECT id FROM (SELECT id FROM users ORDER BY id LIMIT 5) AS sub;
     ```
-  * **MySQL `MEMBER OF`**: JSON array membership test
+  - **MySQL `MEMBER OF`**: JSON array membership test
     ```sql
     SELECT 17 MEMBER OF('[23, "abc", 17, "ab", 10]')
     ```
-  * **Join precedence fix**: corrects interpretation of mixed `JOIN` types without join conditions
+  - **Join precedence fix**: corrects interpretation of mixed `JOIN` types without join conditions
     ```sql
     SELECT * FROM t1 NATURAL JOIN t2
     ```
-  * **Unicode identifiers**: allows non‑ASCII names in MySQL/Postgres/SQLite
+  - **Unicode identifiers**: allows non‑ASCII names in MySQL/Postgres/SQLite
     ```sql
     SELECT 用户 AS chinese_name FROM accounts;
     ```
-  * **Regex and `LIKE` operator fixes**: allow using `~` and `LIKE` with arrays
+  - **Regex and `LIKE` operator fixes**: allow using `~` and `LIKE` with arrays
     ```sql
     select a ~ any(array['x']);
     ```
-  * MSSQL output and default keywords in `EXEC` statements
+  - MSSQL output and default keywords in `EXEC` statements
     ```sql
     EXECUTE dbo.proc1 DEFAULT
     ```
@@ -204,50 +216,54 @@
 - A bug that caused SSO logins to fail over time has been fixed. The issue occurred because identity providers regularly rotate their security keys, but SQLPage previously only fetched them at startup. The application now automatically refreshes this provider metadata periodically and after login errors, ensuring stable authentication without requiring manual restarts.
 
 ## v0.35.2
- - Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
- - Updated dependencies, including the embedded SQLite database.
- - Release binaries are now dynamically linked again, but use GLIBC 2.28 ([released in 2018](https://sourceware.org/glibc/wiki/Glibc%20Timeline)), with is compatible with older linux distributions.
-  - fixes an issue introduced in 0.35 where custom SQLite extension loading would not work.
- - When an user requests a page that does not exist (and the site owner did not provide a custom 404.sql file), we now serve a nice visual 404 web page instead of the ugly textual message and the verbose log messages we used to have.
-   - ![screenshot 404](https://github.com/user-attachments/assets/02525f9e-91ec-4657-a70f-1b7990cbe25f)
-   - still returns plain text 404 for non-HTML requests
- - Rich text editor: implement a readonly mode, activated when the field is not editable
- - [chart](https://sql-page.com/component.sql?component=chart): remove automatic sorting of categories. Values are now displayed in the order they are returned by the query.
+
+- Fix a bug with zero values being displayed with a non-zero height in stacked bar charts.
+- Updated dependencies, including the embedded SQLite database.
+- Release binaries are now dynamically linked again, but use GLIBC 2.28 ([released in 2018](https://sourceware.org/glibc/wiki/Glibc%20Timeline)), with is compatible with older linux distributions.
+- fixes an issue introduced in 0.35 where custom SQLite extension loading would not work.
+- When an user requests a page that does not exist (and the site owner did not provide a custom 404.sql file), we now serve a nice visual 404 web page instead of the ugly textual message and the verbose log messages we used to have.
+  - ![screenshot 404](https://github.com/user-attachments/assets/02525f9e-91ec-4657-a70f-1b7990cbe25f)
+  - still returns plain text 404 for non-HTML requests
+- Rich text editor: implement a readonly mode, activated when the field is not editable
+- [chart](https://sql-page.com/component.sql?component=chart): remove automatic sorting of categories. Values are now displayed in the order they are returned by the query.
 
 ## v0.35.1
- - improve color palette for charts
- - Fix some color names not working in the datagrid component
+
+- improve color palette for charts
+- Fix some color names not working in the datagrid component
 
 ## v0.35
- - Add support for [single sign-on using OIDC](sql-page.com/sso)
-   - Allows protecting access to your website using "Sign in with Google/Microsoft/..."
- - Fix tooltips not showing on line charts with one or more hidden series
- - Update default chart colors and text shadows for better readability with all themes
- - Optimize memory layout by boxing large structs. Slightly reduces memory usage.
- - New example: [Rich text editor](./examples/rich-text-editor/). Let your users safely write formatted text with links and images.
- - Update the Tabler CSS library to [v1.3](https://tabler.io/changelog#/changelog/tabler-1.3). This fixes issues with
-   - the alignment inside chart tooltips
-   - the display of lists
-   - update to [tabler incons v1.33](https://tabler.io/changelog#/changelog/tabler-icons-3.33) with many new icons.
- - Add an `active` top-level parameter to the shell component to highlight one of the top bar menu items. Thanks to @andrewsinnovations !
- - Make the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) customization more flexible, allowing you to harden the default security rules. Thanks to @guspower !
+
+- Add support for [single sign-on using OIDC](sql-page.com/sso)
+  - Allows protecting access to your website using "Sign in with Google/Microsoft/..."
+- Fix tooltips not showing on line charts with one or more hidden series
+- Update default chart colors and text shadows for better readability with all themes
+- Optimize memory layout by boxing large structs. Slightly reduces memory usage.
+- New example: [Rich text editor](./examples/rich-text-editor/). Let your users safely write formatted text with links and images.
+- Update the Tabler CSS library to [v1.3](https://tabler.io/changelog#/changelog/tabler-1.3). This fixes issues with
+  - the alignment inside chart tooltips
+  - the display of lists
+  - update to [tabler incons v1.33](https://tabler.io/changelog#/changelog/tabler-icons-3.33) with many new icons.
+- Add an `active` top-level parameter to the shell component to highlight one of the top bar menu items. Thanks to @andrewsinnovations !
+- Make the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) customization more flexible, allowing you to harden the default security rules. Thanks to @guspower !
 - Fix vertically truncated text in the list component on empty descriptions.
   - ![screenshot](https://github.com/user-attachments/assets/df258e31-6698-4398-8ce5-4d7f396c03ef)
- - Updated sqlparser to [v0.56](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.56.0.md), with many improvements including:
-  - Add support for the xmltable(...) function in postgres
-  - Add support for MSSQL IF/ELSE statements.
-  - Added four optional properties to the `big_number` component:
-    - title_link (string): the URL or path that the Big Number’s title should link to, if any
-    - title_link_new_tab (bool): how the title link is opened
-    - value_link (string): the URL or path that the Big Number’s value should link to, if any
-    - value_link_new_tab (bool): open the link in a new tab
- - Add support for nice "switch" checkboxes in the form component using `'switch' as type`
- - Add support for headers in the form component using
- - Release binaries are statically linked on linux
+- Updated sqlparser to [v0.56](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.56.0.md), with many improvements including:
+- Add support for the xmltable(...) function in postgres
+- Add support for MSSQL IF/ELSE statements.
+- Added four optional properties to the `big_number` component:
+  - title_link (string): the URL or path that the Big Number’s title should link to, if any
+  - title_link_new_tab (bool): how the title link is opened
+  - value_link (string): the URL or path that the Big Number’s value should link to, if any
+  - value_link_new_tab (bool): open the link in a new tab
+- Add support for nice "switch" checkboxes in the form component using `'switch' as type`
+- Add support for headers in the form component using
+- Release binaries are statically linked on linux
 
 ## v0.34 (2025-03-23)
 
 ### ✨ Top Features at a Glance
+
 - **Safer deletion flows** in lists
 - **Better table styling control** with CSS updates
 - **Right-to-Left language support**
@@ -255,39 +271,50 @@
 - **Sticky table footers** for better data presentation
 
 ### 🔒 Security First
+
 #### **POST-based Deletions**
+
 List component's `delete_link` now uses secure POST requests:
+
 ```sql
 SELECT 'list' AS component;
 SELECT 'Delete me' AS title, 'delete_item.sql?id=77' AS delete_link;
 ```
-*Prevents accidental deletions by web crawlers and follows REST best practices*
+
+_Prevents accidental deletions by web crawlers and follows REST best practices_
 
 #### **Protected Internal Files**
+
 - Files/folders starting with `.` (e.g., `.utils/`) are now inaccessible
 - Perfect for internal scripts used with `sqlpage.run_sql()`
 
 ### 🎨 UI & Component Upgrades
+
 #### **Table Styling Revolution**
+
 ```css
 /* Before: .price | After: */
 ._col_price {
-    background: #f8f9fa;
-    border-right: 2px solid #dee2e6;
+  background: #f8f9fa;
+  border-right: 2px solid #dee2e6;
 }
 ```
+
 - New CSS class pattern: `._col_{column_name}`
 - Fixes [#830](https://github.com/sqlpage/SQLPage/issues/830)
 
 #### **Column component**
+
 ```sql
 SELECT 'columns' AS component;
 SELECT 'View details' AS title; -- No button shown
 ```
+
 - Columns without button text now hide empty buttons
 - Cleaner interfaces by default
 
 #### **Sticky Table Footers**
+
 ```sql
 SELECT
     'table' AS component,
@@ -297,19 +324,25 @@ SELECT
     SUM(price) AS value,
     true AS _sqlpage_footer;
 ```
+
 - Keep summary rows visible during scroll
 - Use `_sqlpage_footer` on your final data row
 
 ### 🌍 Internationalization
+
 #### **Right-to-Left Support**
+
 ```sql
 SELECT 'shell' AS component, true AS rtl;
 ```
+
 - Enable RTL mode per page via shell component
 - Perfect for Arabic, Hebrew, and Persian content
 
 ### 📝 Content Handling
+
 #### **Rich Text Power**
+
 ```sql
 SELECT 'text' AS component,
        '<div class="alert alert-warning">
@@ -319,24 +352,30 @@ SELECT 'text' AS component,
        </div>'
        AS unsafe_contents_md;
 ```
+
 - New `unsafe_contents_md` allows HTML+Markdown mixing
 
 #### **Base64 Image Support**
+
 ```markdown
 ![Alt text](data:image/png;base64,iVBORw0KGg...)
 ```
+
 - Embed images directly in Markdown fields
 
 ### ⚙️ Configuration Tweaks
+
 ```json
 {
   "markdown_allow_dangerous_html": false,
   "markdown_allow_dangerous_protocol": false
 }
 ```
+
 - **Markdown safety controls** to change markdown rendering settings
 
 ### 🐛 Notable Fixes
+
 - **SQL Server**
   Fixed TINYINT handling crashes
 - **Anchor Links**
@@ -345,6 +384,7 @@ SELECT 'text' AS component,
   Proper handling of `0` values in number fields
 
 ### 💡 Upgrade Guide
+
 1. **CSS Updates**
    Search/replace `.your_column` → `._col_your_column` if you have custom css targetting tables.
 2. **Deletion Flows**
@@ -352,7 +392,6 @@ SELECT 'text' AS component,
    You can now add a check that the request method is POST if you want to forbid deletions by simply loading pages.
 
 [View full configuration options →](./configuration.md)
-
 
 ## 0.33.1 (2025-02-25)
 
@@ -381,15 +420,17 @@ SELECT 'text' AS component,
 ### 1. Routing & URL Enhancements 🔀
 
 #### **Clean URLs:**
+
 Access your pages without the extra “.sql” suffix. For instance, if your file is `page.sql`, you can now use either:
 
-| Old URL | New URL |
-|---|---|
+| Old URL                        | New URL                                                |
+| ------------------------------ | ------------------------------------------------------ |
 | `https://example.com/page.sql` | `https://example.com/page` (or `page.sql` still works) |
 
 Big thanks to [@guspower](https://github.com/guspower) for their contributions!
 
 #### **Complete Routing Rewrite:**
+
 We overhauled our request routing system for smoother, more predictable routing across every request.
 
 ---
@@ -401,13 +442,14 @@ We overhauled our request routing system for smoother, more predictable routing 
 - **HTTP Basic Authentication:**
   SQLPage’s `sqlpage.fetch(request)` now supports HTTP Basic Auth. Easily call APIs requiring a username/password. For example:
 
-    ```sql
-    SET result = sqlpage.fetch(json_object(
-      'url', 'https://api.example.com/data',
-      'username', 'user',
-      'password', 'pass'
-    ));
-    ```
+  ```sql
+  SET result = sqlpage.fetch(json_object(
+    'url', 'https://api.example.com/data',
+    'username', 'user',
+    'password', 'pass'
+  ));
+  ```
+
   Check out the [[fetch documentation](https://sql-page.com/documentation.sql?component=fetch#component)](https://sql-page.com/documentation.sql?component=fetch#component) for more.
 
 - **Smarter Fetch Errors & Headers Defaults:**
@@ -444,20 +486,20 @@ We overhauled our request routing system for smoother, more predictable routing 
   Customizing your `card` components is now easier:
   - The `embed` property auto‑appends the `_sqlpage_embed` parameter for embeddable fragments.
   - When rendering an embedded page, the `shell` component is replaced by `shell-empty` to avoid duplicate headers and metadata.
-  ![Card Layout Example](https://github.com/user-attachments/assets/c5b58402-178a-441e-8966-fd8e341b02bc)
+    ![Card Layout Example](https://github.com/user-attachments/assets/c5b58402-178a-441e-8966-fd8e341b02bc)
 
 #### **Form Component Boosts**
 
 - **Auto‑Submit Forms:**
   Set `auto_submit` to true and your form will instantly submit on any field change—ideal for dashboard filters.
-  *Example:*
+  _Example:_
   ```sql
   SELECT 'form' AS component, 'Filter Results' AS title, true AS auto_submit;
   SELECT 'date' AS name;
   ```
 - **Dynamic Options for Dropdowns:**
   Use `options_source` to load dropdown options dynamically from another SQL file. Perfect for autocomplete with large option sets.
-  *Example:*
+  _Example:_
   ```sql
   SELECT 'form' AS component, 'Select Country' AS title, 'countries.sql' AS options_source;
   SELECT 'country' AS name;
@@ -528,7 +570,7 @@ Our sqlparser is now at [v0.54](https://github.com/apache/datafusion-sqlparser-r
 This is a bugfix release.
 
 - Fix a bug where the form component would not display the right checked state in radio buttons and checkboxes.
- - https://github.com/sqlpage/SQLPage/issues/751
+- https://github.com/sqlpage/SQLPage/issues/751
 - Fix a bug in the [link](https://sql-page.com/component.sql?component=link) component where the properties `view_link`, `edit_link`, and `delete_link` had become incompatible with the main `link` property.
 - Updated sqlparser to [v0.53](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.53.0.md) which fixes parse errors when using some advanced SQL syntax
   - adds support for SQLite's `UPDATE OR REPLACE` syntax
@@ -559,7 +601,7 @@ This is a bugfix release.
 - Fix `error returned from database: 1295 (HY000): This command is not supported in the prepared statement protocol yet` when trying to use transactions with MySQL. `START TRANSACTION` now works as expected in MySQL.
 - Fix a bug where a multi-select dropdown would unexpectedly open when the form was reset.
 - Add a new optional `sqlpage/on_reset.sql` file that can be used to execute some SQL code after the end of each page execution.
-   - Useful to reset a connection to the database after each request.
+  - Useful to reset a connection to the database after each request.
 - Fix a bug where the `sqlpage.header` function would not work with headers containing uppercase letters.
 - Fix a bug where the table component would not sort columns that contained a space in their name.
 - Fix a bug where stacked bar charts would not stack the bars correctly in some cases.
@@ -582,6 +624,7 @@ This is a bugfix release.
 ### 🚀 **New Features**
 
 #### **Improved Components**
+
 - [**Columns Component**](https://sql-page.com/component.sql?component=columns)
   - Markdown-supported descriptions (`description_md`) allow richer formatting.
   - Add simple text items without needing JSON handling.
@@ -592,18 +635,19 @@ This is a bugfix release.
   - New **freeze headers and columns** feature improves usability with large tables.
   - Enhanced search logic ensures more precise matches (e.g., `"xy"` no longer matches separate `x` and `y` cells in adjacent columns).
   - Search box visibility is retained during horizontal scrolling.
-    *Technical:* Adds `freeze_headers`, `freeze_columns`, and improves the internal search algorithm.
+    _Technical:_ Adds `freeze_headers`, `freeze_columns`, and improves the internal search algorithm.
   - ![scroll table](https://github.com/user-attachments/assets/546f36fb-b590-487d-8817-47eeed8f1835)
 
 - [**Form Component**](https://sql-page.com/component.sql?component=form)
   - Added an empty option (`empty_option`) to dropdowns, enabling placeholder-like behavior.
     - ![form](https://github.com/user-attachments/assets/40a230da-9b1b-49ed-9759-5e21fe812957)
   - Improved handling of large form submissions with configurable size limits (`max_uploaded_file_size`, default 5MB).
-    *Technical:* There used to be a hardcoded limit to 16kB for all forms.
+    _Technical:_ There used to be a hardcoded limit to 16kB for all forms.
+
 ---
 
-
 #### **Database Enhancements**
+
 - **Support for New Data Types**:
   - Microsoft SQL Server now supports `BIT` columns.
   - Improved handling of `DATETIMEOFFSET` in MSSQL and `TIMESTAMPTZ` in PostgreSQL, preserving their timezones instead of converting them to UTC.
@@ -626,12 +670,13 @@ This is a bugfix release.
 ---
 
 #### **Security and Performance**
+
 - **Encrypted Login Support for MSSQL**:
   - Ensures secure connections with flexible encryption modes:
     - No encryption (`?encrypt=not_supported`): For legacy systems and environments where SSL is blocked
     - Partial encryption (`?encrypt=off`): Protects login credentials but not data packets.
     - Full encryption (`?encrypt=on`): Secures both login and data.
-    *Technical:* Controlled using the `encrypt` parameter (`not_supported`, `off`, or `strict`) in mssql connection strings.
+      _Technical:_ Controlled using the `encrypt` parameter (`not_supported`, `off`, or `strict`) in mssql connection strings.
 
 - **Chart Library Optimization**:
   - Updated ApexCharts to v4.0.0.
@@ -641,7 +686,9 @@ This is a bugfix release.
 ---
 
 ### 🛠 **Bug Fixes**
+
 #### Database and Compatibility Fixes
+
 - **Microsoft SQL Server**:
   - Fixed decoding issues for less common data types.
   - Resolved bugs in reading `VARCHAR` columns from non-European collations.
@@ -649,9 +696,10 @@ This is a bugfix release.
 
 - **SQLite**:
   - Eliminated spurious warnings when using SQLPage functions with JSON arguments.
-    *Technical:* Avoids warnings like `The column _sqlpage_f0_a1 is missing`.
+    _Technical:_ Avoids warnings like `The column _sqlpage_f0_a1 is missing`.
 
 #### Component Fixes
+
 - **Card Component**:
   - Fixed layout issues with embedded content (e.g., removed double borders).
     - ![Example Screenshot](https://github.com/user-attachments/assets/ea85438d-5fcb-4eed-b90b-a4385675355d)
@@ -661,40 +709,48 @@ This is a bugfix release.
   - Resolved state retention after form resets, ensuring dropdowns reset correctly.
 
 #### Usability Enhancements
+
 - Removed unnecessary padding around tables for cleaner layouts.
 - Increased spacing between items in the columns component for improved readability.
 - Database errors are now consistently logged and displayed with more actionable details.
   - ![better errors](https://github.com/user-attachments/assets/f0d2f9ef-9a30-4ff2-af3c-b33a375f2e9b)
-    *Technical:* Ensures warnings in the browser and console for faster debugging.
+    _Technical:_ Ensures warnings in the browser and console for faster debugging.
 
 ---
 
 ## 0.30.1 (2024-10-31)
+
 - fix a bug where table sorting would break if table search was not also enabled.
 
 ## 0.30.0 (2024-10-30)
 
 ### 🤖 Easy APIs
+
 - **Enhanced CSV Support**: The [CSV component](https://sql-page.com/component.sql?component=csv) can now create URLs that trigger a CSV download directly on page load.
   - This finally makes it possible to allow the download of large datasets as CSV
   - This makes it possible to create an API that returns data as CSV and can be easily exposed to other software for interoperabily.
- - **Easy [json](https://sql-page.com/component.sql?component=json) APIs**
-   - The json component now accepts a second sql query, and will return the results as a json array in a very resource-efficient manner. This makes it easier and faster than ever to build REST APIs entirely in SQL.
-      - ```sql
-        select 'json' as component;
-        select * from users;
-        ```
-      - ```json
-        [ { "id": 0, "name": "Jon Snow" }, { "id": 1, "name": "Tyrion Lannister" } ]
-        ```
-   - **Ease of use** : the component can now be used to automatically format any query result as a json array, without manually using your database''s json functions.
-   - **server-sent events** : the component can now be used to stream query results to the client in real-time using server-sent events.
+- **Easy [json](https://sql-page.com/component.sql?component=json) APIs**
+  - The json component now accepts a second sql query, and will return the results as a json array in a very resource-efficient manner. This makes it easier and faster than ever to build REST APIs entirely in SQL.
+    - ```sql
+      select 'json' as component;
+      select * from users;
+      ```
+    - ```json
+      [
+        { "id": 0, "name": "Jon Snow" },
+        { "id": 1, "name": "Tyrion Lannister" }
+      ]
+      ```
+  - **Ease of use** : the component can now be used to automatically format any query result as a json array, without manually using your database''s json functions.
+  - **server-sent events** : the component can now be used to stream query results to the client in real-time using server-sent events.
 
 ### 🔒 Database Connectivity
+
 - **Encrypted Microsoft SQL Server Connections**: SQLPage now supports encrypted connections to SQL Server databases, enabling connections to secure databases (e.g., those hosted on Azure).
 - **Separate Database Password Setting**: Added `database_password` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md) to store passwords securely outside the connection string. This is useful for security purposes, to avoid accidentally leaking the password in logs. This also allows setting the database password as an environment variable directly, without having to URL-encode it inside the connection string.
 
 ### 😎 Developer experience improvements
+
 - **Improved JSON Handling**: SQLPage now automatically converts JSON strings to JSON objects in databases like SQLite and MariaDB, making it easier to use JSON-based components.
   - ```sql
     -- Now works out of the box in SQLite
@@ -708,6 +764,7 @@ This is a bugfix release.
     ```
 
 ### 📈 Table & Search Improvements
+
 - **Initial Search Value**: Pre-fill the search bar with a default value in tables with `initial_search_value`, making it easier to set starting filters.
 - **Faster Sorting and Searching**: Table filtering and sorting has been entirely rewritten.
   - filtering is much faster for large datasets
@@ -727,46 +784,51 @@ This is a bugfix release.
 - **Updated Icons**: The Tabler icon set has been refreshed from 3.10 to 3.21, making many new icons available: https://tabler.io/changelog
 
 ## 0.29.0 (2024-09-25)
- - New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
-   - ![screenshot](https://github.com/user-attachments/assets/89e4ac34-864c-4427-a926-c38e9bed3f86)
- - New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
-   - ![screenshot](https://github.com/user-attachments/assets/2274ef5d-7426-46bd-b12c-865c0308a712)
- - CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
-   - ```
-     $ sqlpage --help
-     Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components.
 
-     Usage: sqlpage [OPTIONS]
+- New columns component: `columns`. Useful to display a comparison between items, or large key figures to an user.
+  - ![screenshot](https://github.com/user-attachments/assets/89e4ac34-864c-4427-a926-c38e9bed3f86)
+- New foldable component: `foldable`. Useful to display a list of items that can be expanded individually.
+  - ![screenshot](https://github.com/user-attachments/assets/2274ef5d-7426-46bd-b12c-865c0308a712)
+- CLI arguments parsing: SQLPage now processes command-line arguments to set the web root and configuration directory. It also allows getting the currently installed version of SQLPage with `sqlpage --version` without starting the server.
+  - ```
+    $ sqlpage --help
+    Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components.
 
-     Options:
-       -w, --web-root <WEB_ROOT>        The directory where the .sql files are located
-       -d, --config-dir <CONFIG_DIR>    The directory where the sqlpage.json configuration, the templates, and the migrations are located
-       -c, --config-file <CONFIG_FILE>  The path to the configuration file
-       -h, --help                       Print help
-       -V, --version                    Print version
- - Configuration checks: SQLPage now checks if the configuration file is valid when starting the server. This allows to display a helpful error message when the configuration is invalid, instead of crashing or behaving unexpectedly. Notable, we now ensure critical configuration values like directories, timeouts, and connection pool settings are valid.
-   - ```
-     ./sqlpage --web-root /xyz
-     [ERROR sqlpage] The provided configuration is invalid
-     Caused by:
-        Web root is not a valid directory: "/xyz"
- - The configuration directory is now created if it does not exist. This allows to start the server without having to manually create the directory.
- - The default database URL is now computed from the configuration directory, instead of being hardcoded to `sqlite://./sqlpage/sqlpage.db`. So when using a custom configuration directory, the default SQLite database will be created inside it. When using the default `./sqlpage` configuration directory, or when using a custom database URL, the default behavior is unchanged.
- - New `navbar_title` property in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
- - Fixed: The `font` property in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component was mistakingly not applied since v0.28.0. It works again.
- - Updated SQL parser to [v0.51.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0510-2024-09-11). Improved `INTERVAL` parsing.
-  - **Important note**: this version removes support for the `SET $variable = ...` syntax in SQLite. This worked only with some databases. You should replace all occurrences of this syntax with `SET variable = ...` (without the `$` prefix).
- - slightly reduce the margin at the top of pages to make the content appear higher on the screen.
- - fix the display of the page title when it is long and the sidebar display is enabled.
- - Fix an issue where the color name `blue` could not be used in the chart component.
- - **divider component**: Add new properties to the divider component: `link`, `bold`, `italics`, `underline`, `size`.
-   - ![image](https://github.com/user-attachments/assets/1aced068-7650-42d6-b9bf-2b4631a63c70)
- - **form component**: fix slight misalignment and sizing issues of checkboxes and radio buttons.
-   - ![image](https://github.com/user-attachments/assets/2caf6c28-b1ef-4743-8ffa-351e88c82070)
- - **table component**: fixed a bug where markdown contents of table cells would not be rendered as markdown if the column name contained uppercase letters on Postgres. Column name matching is now case-insensitive, so `'title' as markdown` will work the same as `'Title' as markdown`. In postgres, non-double-quoted identifiers are always folded to lowercase.
- - **shell component**: fixed a bug where the mobile menu would display even when no menu items were provided.
+    Usage: sqlpage [OPTIONS]
+
+    Options:
+      -w, --web-root <WEB_ROOT>        The directory where the .sql files are located
+      -d, --config-dir <CONFIG_DIR>    The directory where the sqlpage.json configuration, the templates, and the migrations are located
+      -c, --config-file <CONFIG_FILE>  The path to the configuration file
+      -h, --help                       Print help
+      -V, --version                    Print version
+    ```
+
+- Configuration checks: SQLPage now checks if the configuration file is valid when starting the server. This allows to display a helpful error message when the configuration is invalid, instead of crashing or behaving unexpectedly. Notable, we now ensure critical configuration values like directories, timeouts, and connection pool settings are valid.
+  - ```
+    ./sqlpage --web-root /xyz
+    [ERROR sqlpage] The provided configuration is invalid
+    Caused by:
+       Web root is not a valid directory: "/xyz"
+    ```
+- The configuration directory is now created if it does not exist. This allows to start the server without having to manually create the directory.
+- The default database URL is now computed from the configuration directory, instead of being hardcoded to `sqlite://./sqlpage/sqlpage.db`. So when using a custom configuration directory, the default SQLite database will be created inside it. When using the default `./sqlpage` configuration directory, or when using a custom database URL, the default behavior is unchanged.
+- New `navbar_title` property in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component to set the title of the top navigation bar. This allows to display a different title in the top menu than the one that appears in the tab of the browser. This can also be set to the empty string to hide the title in the top menu, in case you want to display only a logo for instance.
+- Fixed: The `font` property in the [shell](https://sql-page.com/documentation.sql?component=shell#component) component was mistakingly not applied since v0.28.0. It works again.
+- Updated SQL parser to [v0.51.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0510-2024-09-11). Improved `INTERVAL` parsing.
+- **Important note**: this version removes support for the `SET $variable = ...` syntax in SQLite. This worked only with some databases. You should replace all occurrences of this syntax with `SET variable = ...` (without the `$` prefix).
+- slightly reduce the margin at the top of pages to make the content appear higher on the screen.
+- fix the display of the page title when it is long and the sidebar display is enabled.
+- Fix an issue where the color name `blue` could not be used in the chart component.
+- **divider component**: Add new properties to the divider component: `link`, `bold`, `italics`, `underline`, `size`.
+  - ![image](https://github.com/user-attachments/assets/1aced068-7650-42d6-b9bf-2b4631a63c70)
+- **form component**: fix slight misalignment and sizing issues of checkboxes and radio buttons.
+  - ![image](https://github.com/user-attachments/assets/2caf6c28-b1ef-4743-8ffa-351e88c82070)
+- **table component**: fixed a bug where markdown contents of table cells would not be rendered as markdown if the column name contained uppercase letters on Postgres. Column name matching is now case-insensitive, so `'title' as markdown` will work the same as `'Title' as markdown`. In postgres, non-double-quoted identifiers are always folded to lowercase.
+- **shell component**: fixed a bug where the mobile menu would display even when no menu items were provided.
 
 ## 0.28.0 (2024-08-31)
+
 - Chart component: fix the labels of pie charts displaying too many decimal places.
   - ![pie chart](https://github.com/user-attachments/assets/6cc4a522-b9dd-4005-92bc-dc92b16c7293)
 - You can now create a `404.sql` file anywhere in your SQLPage project to handle requests to non-existing pages. This allows you to create custom 404 pages, or create [nice URLs](https://sql-page.com/your-first-sql-website/custom_urls.sql) that don't end with `.sql`.
@@ -790,40 +852,46 @@ This is a bugfix release.
 - Fixed `width` attribute in the card component not being respected when the specified width was < 6.
 - Fixed small inaccuracies in decimal numbers leading to unexpectedly long numbers in the output, such as `0.47000000000000003` instead of `0.47`.
 - [chart component](https://sql-page.com/documentation.sql?component=chart#component)
- - TreeMap charts in the chart component allow you to visualize hierarchical data structures.
- - Timeline charts allow you to visualize time intervals.
- - Fixed multiple small display issues in the chart component.
- - When no series name nor top-level `title` is provided, display the series anyway (with no name) instead of throwing an error in the javascript console.
+- TreeMap charts in the chart component allow you to visualize hierarchical data structures.
+- Timeline charts allow you to visualize time intervals.
+- Fixed multiple small display issues in the chart component.
+- When no series name nor top-level `title` is provided, display the series anyway (with no name) instead of throwing an error in the javascript console.
 - Better error handling: Stop processing the SQL file after the first error is encountered.
- - The previous behavior was to try paresing a new statement after a syntax error, leading to a cascade of irrelevant error messages after a syntax error.
+- The previous behavior was to try paresing a new statement after a syntax error, leading to a cascade of irrelevant error messages after a syntax error.
 - Allow giving an id to HTML rows in the table component. This allows making links to specific rows in the table using anchor links. (`my-table.sql#myid`)
 - Fixed a bug where long menu items in the shell component's menu would wrap on multiple lines.
 - Much better error messages when a call to sqlpage.fetch fails.
 
 ## 0.26.0 (2024-08-06)
+
 ### Components
+
 #### Card
+
 New `width` attribute in the [card](https://sql-page.com/documentation.sql?component=card#component) component to set the width of the card. This finally allows you to create custom layouts, by combining the `embed` and `width` attributes of the card component! This also updates the default layout of the card component: when `columns` is not set, there is now a default of 4 columns instead of 5.
 
 ![image](https://github.com/user-attachments/assets/98425bd8-c576-4628-9ae2-db3ba4650019)
 
-
 #### Datagrid
+
 fix [datagrid](https://sql-page.com/documentation.sql?component=datagrid#component) color pills display when they contain long text.
 
 ![image](https://github.com/user-attachments/assets/3b7dba27-8812-410c-a383-2b62d6a286ac)
 
 #### Table
+
 Fixed a bug that could cause issues with other components when a table was empty.
 Improved handling of empty tables. Added a new `empty_description` attribute, which defaults to `No data`. This allows you to display a custom message when a table is empty.
 
 ![image](https://github.com/user-attachments/assets/c370f841-20c5-4cbf-8c9e-7318dce9b87c)
 
 #### Form
- - Fixed a bug where a form input with a value of `0` would diplay as empty instead of showing the `0`.
- - Reduced the margin at the botton of forms to fix the appearance of forms that are validated by a `button` component declared separately from the form.
+
+- Fixed a bug where a form input with a value of `0` would diplay as empty instead of showing the `0`.
+- Reduced the margin at the botton of forms to fix the appearance of forms that are validated by a `button` component declared separately from the form.
 
 #### Shell
+
 Fixed ugly wrapping of items in the header when the page title is long. We now have a nice text ellipsis (...) when the title is too long.
 ![image](https://github.com/user-attachments/assets/3ac22d98-dde5-49c2-8f72-45ee7595fe82)
 
@@ -832,6 +900,7 @@ Fixed the link to the website title in the shell component.
 Allow loading javascript ESM modules in the shell component with the new `javascript_module` property.
 
 #### html
+
 Added `text` and `post_html` properties to the [html](https://sql-page.com/documentation.sql?component=html#component) component. This allows to include sanitized user-generated content in the middle of custom HTML.
 
 ```sql
@@ -844,13 +913,14 @@ select
 ```
 
 ### Other
- - allow customizing the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy) in the configuration.
- - the new default *content security policy* is both more secure and easier to use. You can now include inline javascript in your custom components with `<script nonce="{{@csp_nonce}}">...</script>`.
- - update to [sqlparser v0.49.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0490-2024-07-23)
-   - support [`WITH ORDINALITY`](https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-TABLEFUNCTIONS) in postgres `FROM` clauses
- - update to [handlebars-rs v6](https://github.com/sunng87/handlebars-rust/blob/master/CHANGELOG.md#600---2024-07-20)
- - fix the "started successfully" message being displayed before the error message when the server failed to start.
- - add support for using the system's native SSL Certificate Authority (CA) store in `sqlpage.fetch`. See the new `system_root_ca_certificates` configuration option.
+
+- allow customizing the [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy) in the configuration.
+- the new default _content security policy_ is both more secure and easier to use. You can now include inline javascript in your custom components with `<script nonce="{{@csp_nonce}}">...</script>`.
+- update to [sqlparser v0.49.0](https://github.com/sqlparser-rs/sqlparser-rs/blob/main/CHANGELOG.md#0490-2024-07-23)
+  - support [`WITH ORDINALITY`](https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-TABLEFUNCTIONS) in postgres `FROM` clauses
+- update to [handlebars-rs v6](https://github.com/sunng87/handlebars-rust/blob/master/CHANGELOG.md#600---2024-07-20)
+- fix the "started successfully" message being displayed before the error message when the server failed to start.
+- add support for using the system's native SSL Certificate Authority (CA) store in `sqlpage.fetch`. See the new `system_root_ca_certificates` configuration option.
 
 ## 0.25.0 (2024-07-13)
 
@@ -887,6 +957,7 @@ select
     sqlpage.link('product.sql', json_object('product', product_name)) as link
   from products;
   ```
+
   - Before, you would usually build the link manually with `CONCAT('/product.sql?product=', product_name)`, which would fail if the product name contained special characters like '&'. The new `sqlpage.link` function takes care of encoding the parameters correctly.
 - Calls to `json_object` are now accepted as arguments to SQLPage functions. This allows you to pass complex data structures to functions such as `sqlpage.fetch`, `sqlpage.run_sql`, and `sqlpage.link`.
 - Better syntax error messages, with a short quotation of the part of the SQL file that caused the error:
@@ -1326,7 +1397,6 @@ and to create JSON APIs.
 - Support multiple statements in [`on_connect.sql`](./configuration.md) in MySQL.
 - Randomize postgres prepared statement names to avoid name collisions. This should fix a bug where SQLPage would report errors like `prepared statement "sqlx_s_1" already exists` when using a connection pooler in front of a PostgreSQL database. It is still not recommended to use SQLPage with an external connection pooler (such as pgbouncer), because SQLPage already implements its own connection pool. If you really want to use a connection pooler, you should set the [`max_connections`](./configuration.md) configuration parameter to `1` to disable the connection pooling logic in SQLPage.
 - SQL statements are now prepared lazily right before their first execution, instead of all at once when a file is first loaded, which allows **referencing a temporary table created at the start of a file in a later statement** in the same file. This works by delegating statement preparation to the database interface library we use (sqlx). The logic of preparing statements and caching them for later reuse is now entirely delegated to sqlx. This also nicely simplifies the code and logic inside sqlpage itself, and should slightly improve performance and memory usage.
-
   - Creating temporary tables at the start of a file is a nice way to keep state between multiple statements in a single file, without having to use variables, which can contain only a single string value:
 
     ```sql
@@ -1370,6 +1440,7 @@ and to create JSON APIs.
         {"link":"2.sql","title":"Page 2"}
     ]}') as menu_item;
   ```
+
   - _note_: this requires a database that supports json objects natively. If you are using SQLite, you can work around this limitation by using the `dynamic` component.
 - Updated the embedded database to [SQLite 3.44](https://antonz.org/sqlite-3-44/), which improves performance, compatibility with other databases, and brings new date formatting functions. The new `ORDER BY` clause in aggregate functions is not supported yet in SQLPage.
 
