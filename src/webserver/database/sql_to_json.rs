@@ -672,7 +672,7 @@ line2' as multiline_string
 
         let expected_json = serde_json::json!({
             "null_col": null,
-            "empty_string": if empty_str_is_null { serde_json::Value::Null } else { serde_json::Value::String("".to_string()) },
+            "empty_string": if empty_str_is_null { serde_json::Value::Null } else { serde_json::Value::String(String::new()) },
             "zero_value": 0,
             "negative_int": -42,
             "my_float": 1.23456,
