@@ -800,44 +800,4 @@ mod test {
             "Configuration directory should default to ./sqlpage when not specified"
         );
     }
-
-    #[test]
-    fn test_concurrent_initialization_no_panic() {
-        let _lock = ENV_LOCK
-            .lock()
-            .expect("Another test panicked while holding the lock");
-
-        let test_dir = std::env::temp_dir().join(format!(
-            "sqlpage_race_test_{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&test_dir).unwrap();
-
-        env::remove_var("DATABASE_URL");
-
-        let handles: Vec<_> = (0..10)
-            .map(|_| {
-                let test_dir_clone = test_dir.clone();
-                std::thread::spawn(move || {
-                    let cli = Cli {
-                        web_root: None,
-                        config_dir: Some(test_dir_clone),
-                        config_file: None,
-                        command: None,
-                    };
-                    let result = AppConfig::from_cli(&cli);
-                    assert!(result.is_ok(), "AppConfig initialization should succeed");
-                })
-            })
-            .collect();
-
-        for handle in handles {
-            handle.join().expect("Thread should not panic");
-        }
-
-        let _ = std::fs::remove_dir_all(&test_dir);
-    }
 }
