@@ -630,7 +630,12 @@ impl ParameterExtractor {
         let data_type = match self.db_info.database_type {
             SupportedDatabase::MySql => DataType::Char(None),
             SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
-            _ => DataType::Text,
+            SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
+            SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
+                length: 4000,
+                unit: None,
+            })),
+            _ => DataType::Varchar(None),
         };
         let value = Expr::value(Value::Placeholder(name));
         Expr::Cast {
