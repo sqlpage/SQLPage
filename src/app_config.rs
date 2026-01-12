@@ -495,7 +495,9 @@ fn create_default_database(configuration_directory: &Path) -> String {
                 default_db_path.display()
             );
             drop(tmp_file);
-            std::fs::remove_file(&default_db_path).expect("removing temp file");
+            if let Err(e) = std::fs::remove_file(&default_db_path) {
+                log::debug!("Unable to remove temporary probe file. It might have already been removed by another instance started concurrently: {}", e);
+            }
             return prefix + &encode_uri(&default_db_path) + "?mode=rwc";
         }
     }
