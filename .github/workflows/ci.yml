@@ -121,12 +121,26 @@ jobs:
           - linux/amd64
           - linux/arm/v7
           - linux/arm64
+        variant:
+          - name: default
+            target: minimal
+            suffix: ""
+          - name: duckdb
+            target: duckdb
+            suffix: -duckdb
+        exclude:
+          # DuckDB ODBC is not available for armv7
+          - platform: linux/arm/v7
+            variant:
+              name: duckdb
+              target: duckdb
+              suffix: -duckdb
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - id: suffix
         name: Cache name suffix
-        run: echo "suffix=-$(tr '/' '-' <<< ${{ matrix.platform }})" >> "$GITHUB_OUTPUT"
+        run: echo "suffix=-$(tr '/' '-' <<< ${{ matrix.platform }})${{ matrix.variant.suffix }}" >> "$GITHUB_OUTPUT"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -149,6 +163,7 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
+          target: ${{ matrix.variant.target }}
           labels: ${{ steps.meta.outputs.labels }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -179,11 +194,18 @@ jobs:
     if: github.event_name != 'pull_request'
     needs:
       - docker_build
+    strategy:
+      matrix:
+        variant:
+          - name: default
+            suffix: ""
+          - name: duckdb
+            suffix: -duckdb
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          pattern: digests*
+          pattern: digests*${{ matrix.variant.suffix }}
           merge-multiple: true
           path: /tmp/digests
       - name: Set up Docker Buildx
@@ -193,6 +215,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          flavor: suffix=${{ matrix.variant.suffix }}
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -205,4 +228,4 @@ jobs:
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}${{ matrix.variant.suffix }}
