@@ -56,9 +56,6 @@ fn get_sql_test_cases(db_type: SupportedDatabase) -> Vec<SqlTestCase> {
         "tests/sql_test_files/component_rendering",
         SqlTestFormat::Html,
     ));
-    if matches!(db_type, SupportedDatabase::Oracle) {
-        return tests;
-    }
     tests.extend(read_sql_tests_in_dir(
         "tests/sql_test_files/data",
         SqlTestFormat::Json,

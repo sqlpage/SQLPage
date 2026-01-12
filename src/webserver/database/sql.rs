@@ -359,7 +359,7 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
                     argument_col_names.push(argument_col_name.clone());
                     let expr_to_insert = SelectItem::ExprWithAlias {
                         expr: std::mem::replace(expr, Expr::value(Value::Null)),
-                        alias: Ident::new(argument_col_name),
+                        alias: Ident::with_quote('"', argument_col_name),
                     };
                     select_items_to_add.push(SelectItemToAdd {
                         expr_to_insert,
@@ -1244,7 +1244,7 @@ mod test {
         let functions = extract_toplevel_functions(&mut ast);
         assert_eq!(
             ast.to_string(),
-            "SELECT $x AS _sqlpage_f0_a0, 'a' AS _sqlpage_f1_a0, 'b' AS _sqlpage_f1_a1 FROM t"
+            "SELECT $x AS \"_sqlpage_f0_a0\", 'a' AS \"_sqlpage_f1_a0\", 'b' AS \"_sqlpage_f1_a1\" FROM t"
         );
         assert_eq!(
             functions,
@@ -1287,7 +1287,7 @@ mod test {
         };
         assert_eq!(
             query,
-            "SELECT CAST($1 AS TEXT) AS a, 'xxx' AS _sqlpage_f0_a0, x = CAST($2 AS TEXT) AS _sqlpage_f0_a1, CAST($3 AS TEXT) AS c FROM t"
+            "SELECT CAST($1 AS TEXT) AS a, 'xxx' AS \"_sqlpage_f0_a0\", x = CAST($2 AS TEXT) AS \"_sqlpage_f0_a1\", CAST($3 AS TEXT) AS c FROM t"
         );
         assert_eq!(
             params,
@@ -1638,7 +1638,7 @@ mod test {
                     target_col_name: "sqlpage_set_expr".to_string()
                 }]
             );
-            assert_eq!(query, "SELECT some_db_function() AS _sqlpage_f0_a0");
+            assert_eq!(query, "SELECT some_db_function() AS \"_sqlpage_f0_a0\"");
             assert_eq!(params, []);
             assert_eq!(json_columns, Vec::<String>::new());
         }
