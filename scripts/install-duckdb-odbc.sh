@@ -16,3 +16,21 @@ curl -fsSL -o /tmp/duckdb_odbc.zip "https://github.com/duckdb/duckdb-odbc/releas
 mkdir -p /opt/duckdb_odbc
 unzip /tmp/duckdb_odbc.zip -d /opt/duckdb_odbc
 rm /tmp/duckdb_odbc.zip
+
+# Configure ODBC driver in odbcinst.ini
+cat >> /etc/odbcinst.ini << EOF
+
+[DuckDB]
+Description=DuckDB ODBC Driver
+Driver=/opt/duckdb_odbc/libduckdb_odbc.so
+Setup=/opt/duckdb_odbc/libduckdb_odbc.so
+UsageCount=1
+EOF
+
+# Configure default DuckDB data source in odbc.ini
+cat >> /etc/odbc.ini << EOF
+
+[DuckDB]
+Driver=DuckDB
+Database=/var/lib/sqlpage/duckdb.db
+EOF
