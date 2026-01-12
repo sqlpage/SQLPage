@@ -1,5 +1,4 @@
 use actix_web::test;
-use sqlpage::webserver::database::SupportedDatabase;
 use sqlpage::AppState;
 use std::time::Duration;
 use tokio::sync::oneshot;
@@ -8,7 +7,7 @@ use tokio::task::JoinHandle;
 #[actix_web::test]
 async fn run_all_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
-    let test_files = get_sql_test_cases(app_data.db.info.database_type);
+    let test_files = get_sql_test_cases();
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let (echo_handle, port) = crate::common::start_echo_server(shutdown_rx);
@@ -50,7 +49,7 @@ struct SqlTestCase {
     format: SqlTestFormat,
 }
 
-fn get_sql_test_cases(db_type: SupportedDatabase) -> Vec<SqlTestCase> {
+fn get_sql_test_cases() -> Vec<SqlTestCase> {
     let mut tests = Vec::new();
     tests.extend(read_sql_tests_in_dir(
         "tests/sql_test_files/component_rendering",
