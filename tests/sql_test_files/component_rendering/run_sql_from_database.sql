@@ -11,4 +11,4 @@ from
         union all
         select
             'works !'
-    );
+    ) t1;
