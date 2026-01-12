@@ -2,7 +2,7 @@
 
 ## unreleased
  - fix: `sqlpage.variables()` now does not return json objects with duplicate keys when post, get and set variables of the same name are present. The semantics of the returned values remains the same (precedence: set > post > get).
-- add support for some duckdb-specific syntax like `select {'a': 1, 'b': 2}` when connected to duckdb through odbc.
+- add support for some duckdb-specific (like `select {'a': 1, 'b': 2}`), and oracle-specific syntax dynamically when connected through odbc.
 - better oidc support. Single-sign-on now works with sites:
  - using a non-default `site_prefix`
  - hosted behind an ssl-terminating reverse proxy

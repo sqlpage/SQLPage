@@ -9,8 +9,8 @@ async fn test_transaction_error() -> actix_web::Result<()> {
     let path = match data.db.info.database_type {
         SupportedDatabase::MySql => "/tests/transactions/failed_transaction_mysql.sql",
         SupportedDatabase::Mssql => "/tests/transactions/failed_transaction_mssql.sql",
-        SupportedDatabase::Snowflake => {
-            return Ok(()); //snowflake doesn't support transactions
+        SupportedDatabase::Snowflake | SupportedDatabase::Oracle => {
+            return Ok(()); //snowflake and oracle don't support transactions in this test way
         }
         _ => "/tests/transactions/failed_transaction.sql",
     };

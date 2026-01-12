@@ -20,6 +20,7 @@ use sqlx::any::AnyKind;
 pub enum SupportedDatabase {
     Sqlite,
     Duckdb,
+    Oracle,
     Postgres,
     MySql,
     Mssql,
@@ -34,6 +35,7 @@ impl SupportedDatabase {
         match dbms_name.to_lowercase().as_str() {
             "sqlite" | "sqlite3" => Self::Sqlite,
             "duckdb" | "d\0\0\0\0\0" => Self::Duckdb, // ducksdb incorrectly truncates the db name: https://github.com/duckdb/duckdb-odbc/issues/350
+            "oracle" => Self::Oracle,
             "postgres" | "postgresql" => Self::Postgres,
             "mysql" | "mariadb" => Self::MySql,
             "mssql" | "sql server" | "microsoft sql server" => Self::Mssql,
@@ -48,6 +50,7 @@ impl SupportedDatabase {
         match self {
             Self::Sqlite => "SQLite",
             Self::Duckdb => "DuckDB",
+            Self::Oracle => "Oracle",
             Self::Postgres => "PostgreSQL",
             Self::MySql => "MySQL",
             Self::Mssql => "Microsoft SQL Server",

@@ -16,8 +16,8 @@ use sqlparser::ast::{
     VisitMut, Visitor, VisitorMut,
 };
 use sqlparser::dialect::{
-    Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
-    SQLiteDialect, SnowflakeDialect,
+    Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, OracleDialect,
+    PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
 };
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
@@ -275,6 +275,7 @@ fn syntax_error(err: ParserError, parser: &Parser, sql: &str) -> ParsedStatement
 fn dialect_for_db(dbms: SupportedDatabase) -> Box<dyn Dialect> {
     match dbms {
         SupportedDatabase::Duckdb => Box::new(DuckDbDialect {}),
+        SupportedDatabase::Oracle => Box::new(OracleDialect {}),
         SupportedDatabase::Postgres => Box::new(PostgreSqlDialect {}),
         SupportedDatabase::Generic => Box::new(GenericDialect {}),
         SupportedDatabase::Mssql => Box::new(MsSqlDialect {}),
@@ -358,7 +359,7 @@ fn extract_toplevel_functions(stmt: &mut Statement) -> Vec<DelayedFunctionCall> 
                     argument_col_names.push(argument_col_name.clone());
                     let expr_to_insert = SelectItem::ExprWithAlias {
                         expr: std::mem::replace(expr, Expr::value(Value::Null)),
-                        alias: Ident::new(argument_col_name),
+                        alias: Ident::with_quote('"', argument_col_name),
                     };
                     select_items_to_add.push(SelectItemToAdd {
                         expr_to_insert,
@@ -629,7 +630,12 @@ impl ParameterExtractor {
         let data_type = match self.db_info.database_type {
             SupportedDatabase::MySql => DataType::Char(None),
             SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
-            _ => DataType::Text,
+            SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
+            SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
+                length: 4000,
+                unit: None,
+            })),
+            _ => DataType::Varchar(None),
         };
         let value = Expr::value(Value::Placeholder(name));
         Expr::Cast {
@@ -1238,7 +1244,7 @@ mod test {
         let functions = extract_toplevel_functions(&mut ast);
         assert_eq!(
             ast.to_string(),
-            "SELECT $x AS _sqlpage_f0_a0, 'a' AS _sqlpage_f1_a0, 'b' AS _sqlpage_f1_a1 FROM t"
+            "SELECT $x AS \"_sqlpage_f0_a0\", 'a' AS \"_sqlpage_f1_a0\", 'b' AS \"_sqlpage_f1_a1\" FROM t"
         );
         assert_eq!(
             functions,
@@ -1281,7 +1287,7 @@ mod test {
         };
         assert_eq!(
             query,
-            "SELECT CAST($1 AS TEXT) AS a, 'xxx' AS _sqlpage_f0_a0, x = CAST($2 AS TEXT) AS _sqlpage_f0_a1, CAST($3 AS TEXT) AS c FROM t"
+            "SELECT CAST($1 AS TEXT) AS a, 'xxx' AS \"_sqlpage_f0_a0\", x = CAST($2 AS TEXT) AS \"_sqlpage_f0_a1\", CAST($3 AS TEXT) AS c FROM t"
         );
         assert_eq!(
             params,
@@ -1632,7 +1638,7 @@ mod test {
                     target_col_name: "sqlpage_set_expr".to_string()
                 }]
             );
-            assert_eq!(query, "SELECT some_db_function() AS _sqlpage_f0_a0");
+            assert_eq!(query, "SELECT some_db_function() AS \"_sqlpage_f0_a0\"");
             assert_eq!(params, []);
             assert_eq!(json_columns, Vec::<String>::new());
         }
