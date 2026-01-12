@@ -210,7 +210,7 @@ Generate a random string of 32 characters and use it as a session ID stored in a
 
 ```sql
 INSERT INTO login_session (session_token, username) VALUES (sqlpage.random_string(32), :username)
-RETURNING 
+RETURNING
     ''cookie'' AS component,
     ''session_id'' AS name,
     session_token AS value;
@@ -260,6 +260,79 @@ Currently running from `/home/user/my_sqlpage_website`
 The current working directory is the directory from which the SQLPage server process was started.
 By default, this is also the directory from which `.sql` files are loaded and served.
 However, this can be changed by setting the `web_root` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md).
+'
+    );
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'web_root',
+        '0.42.0',
+        'folder-code',
+        'Returns the web root directory where SQLPage serves `.sql` files from.
+
+### Example
+
+```sql
+SELECT ''text'' AS component;
+SELECT ''SQL files are served from '' AS contents;
+SELECT sqlpage.web_root() as contents, true as code;
+```
+
+#### Result
+
+SQL files are served from `/home/user/my_sqlpage_website`
+
+#### Notes
+
+The web root is the directory from which `.sql` files are loaded and served.
+By default, it is the current working directory, but it can be changed using:
+ - the `--web-root` command line argument
+ - the `web_root` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md) in `sqlpage.json`
+ - the `WEB_ROOT` environment variable
+
+This is more reliable than `sqlpage.current_working_directory()` when you need to reference the location of your SQL files.
+'
+    );
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'configuration_directory',
+        '0.42.0',
+        'folder-cog',
+        'Returns the configuration directory where SQLPage looks for `sqlpage.json`, templates, and migrations.
+
+### Example
+
+```sql
+SELECT ''text'' AS component;
+SELECT ''Configuration files are in '' AS contents;
+SELECT sqlpage.configuration_directory() as contents, true as code;
+```
+
+#### Result
+
+Configuration files are in `/home/user/my_sqlpage_website/sqlpage`
+
+#### Notes
+
+The configuration directory is where SQLPage looks for:
+ - `sqlpage.json` (the configuration file)
+ - `templates/` (custom component templates)
+ - `migrations/` (database migration files)
+
+By default, it is `./sqlpage` relative to the current working directory, but it can be changed using:
+ - the `--config-dir` command line argument
+ - the `SQLPAGE_CONFIGURATION_DIRECTORY` or `CONFIGURATION_DIRECTORY` environment variable
+
+This function is useful when you need to reference configuration-related files in your SQL code.
 '
     );
 INSERT INTO sqlpage_functions (
@@ -321,7 +394,7 @@ VALUES (
         'Executes a shell command and returns its output as text.
 
 ### Example
-    
+
 #### Fetch data from a remote API using curl
 
 ```sql
