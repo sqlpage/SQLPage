@@ -175,6 +175,17 @@ To run on a server, you can use [the docker image](https://hub.docker.com/r/lova
 We provide compiled binaries only for the x86_64 architecture, but provide docker images for other architectures, including arm64 and armv7. If you want to run SQLPage on a Raspberry Pi or 
 a cheaper ARM cloud instance, using the docker image is the easiest way to do it.
 
+#### DuckDB ODBC Docker Image
+
+A DuckDB-enabled variant is available with pre-installed DuckDB ODBC drivers:
+
+- Use the `-duckdb` suffix: `lovasoa/sqlpage:main-duckdb` or `lovasoa/sqlpage:latest-duckdb`
+- Comes pre-configured to connect to DuckDB at `/var/lib/sqlpage/duckdb.db`
+- To use a custom database location, set `DATABASE_URL`:
+  - `docker run -e DATABASE_URL="Driver=DuckDB;Database=/path/to/your.db" -p 8080:8080 lovasoa/sqlpage:main-duckdb`
+- To persist your DuckDB database, mount a volume:
+  - `docker run -v ./data:/var/lib/sqlpage lovasoa/sqlpage:main-duckdb`
+
 ### On Mac OS, with homebrew
 
 An alternative for Mac OS users is to use [SQLPage's homebrew package](https://formulae.brew.sh/formula/sqlpage).
