@@ -19,6 +19,7 @@ env:
   CARGO_TERM_COLOR: always
   REGISTRY_USERNAME: lovasoa
   REGISTRY_IMAGE: lovasoa/sqlpage
+  PUBLISH_DOCKER: ${{ github.event_name != 'pull_request' || github.ref == 'refs/heads/duckdb-odbc-docker' }}
 
 jobs:
   compile_and_lint:
@@ -165,12 +166,12 @@ jobs:
           platforms: ${{ matrix.platform }}
           target: ${{ matrix.variant.target }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ env.PUBLISH_DOCKER == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
           # don't save cache on prs
           cache-to: >
-            ${{ github.event_name != 'pull_request'
+            ${{ env.PUBLISH_DOCKER == 'true'
               && format('type=registry,ref={0}:main{1},compression=zstd,mode=max', env.REGISTRY_IMAGE, steps.suffix.outputs.suffix)
               || ''
             }}
@@ -191,7 +192,7 @@ jobs:
 
   docker_push:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: env.PUBLISH_DOCKER == 'true'
     needs:
       - docker_build
     strategy:
