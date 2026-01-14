@@ -184,7 +184,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
         with:
-          name: digests${{ steps.suffix.outputs.suffix }}
+          name: digests-${{ matrix.variant.name }}${{ steps.suffix.outputs.suffix }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -205,7 +205,7 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          pattern: digests*${{ matrix.variant.suffix }}
+          pattern: digests-${{ matrix.variant.name }}*
           merge-multiple: true
           path: /tmp/digests
       - name: Set up Docker Buildx
