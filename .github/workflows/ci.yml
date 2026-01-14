@@ -6,7 +6,6 @@ on:
       - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
     branches:
       - "main"
-      - "duckdb-odbc-docker"
     paths-ignore:
       - "docs/**"
       - "README.md"
@@ -166,12 +165,12 @@ jobs:
           platforms: ${{ matrix.platform }}
           target: ${{ matrix.variant.target }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ github.event_name != 'pull_request' || github.ref == 'refs/heads/duckdb-odbc-docker' }}
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
           # don't save cache on prs
           cache-to: >
-            ${{ (github.event_name != 'pull_request' || github.ref == 'refs/heads/duckdb-odbc-docker')
+            ${{ github.event_name != 'pull_request'
               && format('type=registry,ref={0}:main{1},compression=zstd,mode=max', env.REGISTRY_IMAGE, steps.suffix.outputs.suffix)
               || ''
             }}
@@ -192,7 +191,7 @@ jobs:
 
   docker_push:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.ref == 'refs/heads/duckdb-odbc-docker'
+    if: github.event_name != 'pull_request'
     needs:
       - docker_build
     strategy:
@@ -229,4 +228,4 @@ jobs:
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}${{ matrix.variant.suffix }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
