@@ -121,12 +121,24 @@ jobs:
           - linux/amd64
           - linux/arm/v7
           - linux/arm64
+        variant:
+          - minimal
+          - duckdb
+        exclude:
+          # DuckDB ODBC is not available for armv7
+          - platform: linux/arm/v7
+            variant: duckdb
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - id: suffix
         name: Cache name suffix
-        run: echo "suffix=-$(tr '/' '-' <<< ${{ matrix.platform }})" >> "$GITHUB_OUTPUT"
+        run: |
+          suffix="-$(tr '/' '-' <<< "${{ matrix.platform }}")"
+          if [[ "${{ matrix.variant }}" != "minimal" ]]; then
+            suffix="${suffix}-${{ matrix.variant }}"
+          fi
+          echo "suffix=${suffix}" >> "$GITHUB_OUTPUT"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -149,6 +161,7 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
+          target: ${{ matrix.variant }}
           labels: ${{ steps.meta.outputs.labels }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -169,7 +182,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
         with:
-          name: digests${{ steps.suffix.outputs.suffix }}
+          name: digests-${{ matrix.variant }}${{ steps.suffix.outputs.suffix }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -179,11 +192,16 @@ jobs:
     if: github.event_name != 'pull_request'
     needs:
       - docker_build
+    strategy:
+      matrix:
+        variant:
+          - minimal
+          - duckdb
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          pattern: digests*
+          pattern: digests-${{ matrix.variant }}*
           merge-multiple: true
           path: /tmp/digests
       - name: Set up Docker Buildx
@@ -193,6 +211,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          flavor: suffix=${{ matrix.variant != 'minimal' && format('-{0}', matrix.variant) || '' }}
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:

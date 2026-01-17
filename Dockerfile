@@ -15,7 +15,8 @@ RUN /usr/local/bin/build-dependencies.sh
 COPY . .
 RUN /usr/local/bin/build-project.sh
 
-FROM busybox:glibc
+# Default minimal image (busybox-based)
+FROM busybox:glibc AS minimal
 RUN addgroup --gid 1000 --system sqlpage && \
     adduser --uid 1000 --system --no-create-home --ingroup sqlpage sqlpage && \
     mkdir -p /etc/sqlpage && \
@@ -31,3 +32,36 @@ USER sqlpage
 COPY --from=builder --chown=sqlpage:sqlpage /usr/src/sqlpage/sqlpage/sqlpage.db sqlpage/sqlpage.db
 EXPOSE 8080
 CMD ["/usr/local/bin/sqlpage"]
+
+# DuckDB ODBC image (debian-based with DuckDB ODBC driver)
+FROM debian:trixie-slim AS duckdb
+
+ARG TARGETARCH
+ENV SQLPAGE_WEB_ROOT=/var/www
+ENV SQLPAGE_CONFIGURATION_DIRECTORY=/etc/sqlpage
+ENV DATABASE_URL="Driver=/opt/duckdb_odbc/libduckdb_odbc.so;Database=/var/lib/sqlpage/duckdb.db"
+
+COPY scripts/install-duckdb-odbc.sh scripts/setup-sqlpage-user.sh /usr/local/bin/
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    unzip \
+    adduser \
+    odbcinst \
+    unixodbc \
+    && /usr/local/bin/install-duckdb-odbc.sh "$TARGETARCH" \
+    && apt-get purge -y --auto-remove curl unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN /usr/local/bin/setup-sqlpage-user.sh
+
+COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
+
+USER sqlpage
+WORKDIR /var/www
+EXPOSE 8080
+CMD ["/usr/local/bin/sqlpage"]
+
+# Default stage
+FROM minimal
