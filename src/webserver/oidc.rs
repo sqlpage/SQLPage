@@ -916,7 +916,9 @@ fn make_oidc_client(
         )
     })?;
     let needs_http = match redirect_url.url().host() {
-        Some(openidconnect::url::Host::Domain(domain)) => domain == "localhost",
+        Some(openidconnect::url::Host::Domain(domain)) => {
+            domain == "localhost" || domain.ends_with(".localhost")
+        }
         Some(openidconnect::url::Host::Ipv4(_) | openidconnect::url::Host::Ipv6(_)) => true,
         None => false,
     };
