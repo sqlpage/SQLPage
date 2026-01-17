@@ -32,9 +32,10 @@ impl<T> Cached<T> {
     }
     fn last_check_time(&self) -> DateTime<Utc> {
         let millis = self.last_checked_at.load(Acquire);
-        Utc.timestamp_millis_opt(millis as i64)
+        let as_i64 = i64::try_from(millis).expect("file timestamp out of bound");
+        Utc.timestamp_millis_opt(as_i64)
             .single()
-            .expect("file timestamp out of bound")
+            .expect("utc has a single mapping for every timestamp")
     }
     fn update_check_time(&self) {
         self.last_checked_at.store(Self::now_millis(), Release);

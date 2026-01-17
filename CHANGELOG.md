@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## 0.42.0 (2026-01-17)
 
 - **New Function**: `sqlpage.web_root()` - Returns the web root directory where SQLPage serves `.sql` files from. This is more reliable than `sqlpage.current_working_directory()` when you need to reference the location of your SQL files, especially when the `--web-root` argument or `WEB_ROOT` environment variable is used.
 - **New Function**: `sqlpage.configuration_directory()` - Returns the configuration directory where SQLPage looks for `sqlpage.json`, templates, and migrations. Useful when you need to reference configuration-related files in your SQL code.
@@ -10,6 +10,7 @@
 - better oidc support. Single-sign-on now works with sites:
   - using a non-default `site_prefix`
   - hosted behind an ssl-terminating reverse proxy
+- New docker image variant: `lovasoa/sqlpage:latest-duckdb`, `lovasoa/sqlpage:main-duckdb` with preconfigured duckdb odbc drivers.
 - New config option: `cache_stale_duration_ms` to control the duration for which cached sql files are considered fresh.
 
 ## 0.41.0 (2025-12-28)
