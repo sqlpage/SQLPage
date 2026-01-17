@@ -15,10 +15,6 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
 
-/// The maximum time in milliseconds that a file can be cached before its freshness is checked
-/// (in production mode)
-const MAX_STALE_CACHE_MS: u64 = 150;
-
 #[derive(Default)]
 struct Cached<T> {
     last_checked_at: AtomicU64,
@@ -35,34 +31,32 @@ impl<T> Cached<T> {
         s
     }
     fn last_check_time(&self) -> DateTime<Utc> {
-        self.last_checked_at
-            .load(Acquire)
-            .saturating_mul(MAX_STALE_CACHE_MS)
-            .try_into()
-            .ok()
-            .and_then(|millis| Utc.timestamp_millis_opt(millis).single())
+        let millis = self.last_checked_at.load(Acquire);
+        Utc.timestamp_millis_opt(millis as i64)
+            .single()
             .expect("file timestamp out of bound")
     }
     fn update_check_time(&self) {
-        self.last_checked_at.store(Self::elapsed(), Release);
+        self.last_checked_at.store(Self::now_millis(), Release);
     }
-    fn elapsed() -> u64 {
-        let timestamp_millis = (SystemTime::now().duration_since(SystemTime::UNIX_EPOCH))
+    fn now_millis() -> u64 {
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
             .expect("invalid duration")
-            .as_millis();
-        let elapsed_intervals = timestamp_millis / u128::from(MAX_STALE_CACHE_MS);
-        u64::try_from(elapsed_intervals).expect("invalid date")
+            .as_millis()
+            .try_into()
+            .expect("invalid date")
     }
-    fn needs_check(&self) -> bool {
+    fn needs_check(&self, stale_cache_duration_ms: u64) -> bool {
         self.last_checked_at
             .load(Acquire)
-            .saturating_add(MAX_STALE_CACHE_MS)
-            < Self::elapsed()
+            .saturating_add(stale_cache_duration_ms)
+            < Self::now_millis()
     }
     /// Creates a new cached entry with the same content but a new check time set to now
     fn make_fresh(&self) -> Self {
         Self {
-            last_checked_at: AtomicU64::from(Self::elapsed()),
+            last_checked_at: AtomicU64::from(Self::now_millis()),
             content: Arc::clone(&self.content),
         }
     }
@@ -126,7 +120,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
     ) -> anyhow::Result<Arc<T>> {
         log::trace!("Attempting to get from cache {}", path.display());
         if let Some(cached) = self.cache.read().await.get(path) {
-            if app_state.config.environment.is_prod() && !cached.needs_check() {
+            if !cached.needs_check(app_state.config.cache_stale_duration_ms()) {
                 log::trace!(
                     "Cache answer without filesystem lookup for {}",
                     path.display()
@@ -222,4 +216,27 @@ pub trait AsyncFromStrWithState: Sized {
         source: &str,
         source_path: &Path,
     ) -> anyhow::Result<Self>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cache_duration() {
+        let cached = Cached::new(());
+        assert!(
+            !cached.needs_check(1000),
+            "Should not need check immediately after creation"
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        assert!(
+            !cached.needs_check(1000),
+            "Should not need check before duration expires"
+        );
+        assert!(
+            cached.needs_check(1),
+            "Should need check after duration expires"
+        );
+    }
 }

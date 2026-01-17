@@ -305,9 +305,22 @@ pub struct AppConfig {
 
     #[serde(default = "default_markdown_allow_dangerous_protocol")]
     pub markdown_allow_dangerous_protocol: bool,
+
+    pub cache_stale_duration_ms: Option<u64>,
 }
 
 impl AppConfig {
+    #[must_use]
+    pub fn cache_stale_duration_ms(&self) -> u64 {
+        self.cache_stale_duration_ms.unwrap_or_else(|| {
+            if self.environment.is_prod() {
+                1000
+            } else {
+                0
+            }
+        })
+    }
+
     #[must_use]
     pub fn listen_on(&self) -> SocketAddr {
         let mut addr = self.listen_on.unwrap_or_else(|| {
