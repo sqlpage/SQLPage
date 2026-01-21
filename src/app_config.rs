@@ -9,6 +9,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use url::Url;
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
@@ -61,6 +62,8 @@ impl AppConfig {
             })?;
         }
 
+        config.apply_postgres_env_vars();
+
         if config.database_url.is_empty() {
             log::debug!(
                 "Creating default database in {}",
@@ -80,6 +83,31 @@ impl AppConfig {
         );
 
         Ok(config)
+    }
+
+    fn apply_postgres_env_vars(&mut self) {
+        if self.database_url.is_empty() {
+            if let Some(url) = construct_postgres_url_from_env() {
+                log::debug!("Constructed database URL from environment variables: {}", url);
+                self.database_url = url;
+            }
+        }
+
+        if self.database_password.is_none()
+            && (self.database_url.starts_with("postgres://")
+                || self.database_url.starts_with("postgresql://"))
+        {
+            if let Ok(env_pwd) = std::env::var("PGPASSWORD") {
+                let has_password = Url::parse(&self.database_url)
+                    .map(|u| u.password().is_some())
+                    .unwrap_or(false);
+
+                if !has_password {
+                    log::debug!("Using PGPASSWORD environment variable");
+                    self.database_password = Some(env_pwd);
+                }
+            }
+        }
     }
 
     fn validate(&self) -> anyhow::Result<()> {
@@ -611,6 +639,62 @@ impl DevOrProd {
     }
 }
 
+fn construct_postgres_url_from_env() -> Option<String> {
+    let host = std::env::var("PGHOST").ok();
+    let port = std::env::var("PGPORT").ok();
+    let user = std::env::var("PGUSER").ok();
+    let dbname = std::env::var("PGDATABASE").ok();
+    let password = std::env::var("PGPASSWORD").ok();
+
+    if host.is_none() && port.is_none() && user.is_none() && dbname.is_none() && password.is_none() {
+        return None;
+    }
+
+    if host.is_none() && port.is_none() && user.is_none() && dbname.is_none() {
+        return None;
+    }
+
+    let mut url = Url::parse("postgres://localhost").unwrap();
+
+    if let Some(h) = host {
+        if !h.is_empty() {
+            if h.starts_with('/') {
+                url.set_host(None).ok();
+                url.query_pairs_mut().append_pair("host", &h);
+            } else {
+                url.set_host(Some(&h)).ok();
+            }
+        }
+    }
+
+    if let Some(p) = port {
+        if let Ok(p_num) = p.parse() {
+            url.set_port(Some(p_num)).ok();
+        }
+    }
+
+    if let Some(u) = user {
+        if !u.is_empty() {
+            url.set_username(&u).ok();
+        }
+    }
+
+    if let Some(db) = dbname {
+        if !db.is_empty() {
+            url.set_path(&db);
+        }
+    }
+
+    if let Ok(sslmode) = std::env::var("PGSSLMODE") {
+        url.query_pairs_mut().append_pair("sslmode", &sslmode);
+    }
+    if let Ok(appname) = std::env::var("PGAPPNAME") {
+        url.query_pairs_mut().append_pair("application_name", &appname);
+    }
+
+    Some(url.to_string())
+}
+
 #[must_use]
 pub fn test_database_url() -> String {
     std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string())
@@ -783,6 +867,63 @@ mod test {
 
         env::remove_var("SQLPAGE_WEB_ROOT");
         std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_postgres_env_vars() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+
+        // Test 1: No config, only env vars
+        env::set_var("PGHOST", "localhost");
+        env::set_var("PGUSER", "myuser");
+        env::set_var("PGDATABASE", "mydb");
+        env::set_var("PGPASSWORD", "mypass");
+
+        // We need to clear other env vars that might interfere
+        env::remove_var("SQLPAGE_DATABASE_URL");
+        env::remove_var("DATABASE_URL");
+
+        let cli = Cli {
+            web_root: None,
+            config_dir: None,
+            config_file: None,
+            command: None,
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert!(config.database_url.starts_with("postgres://"));
+        assert!(config.database_url.contains("myuser"));
+        assert!(config.database_url.contains("mydb"));
+        assert_eq!(config.database_password, Some("mypass".to_string()));
+
+        // Test 2: Config overrides env vars
+        env::set_var("SQLPAGE_DATABASE_URL", "sqlite://:memory:");
+        let config = AppConfig::from_cli(&cli).unwrap();
+        assert_eq!(config.database_url, "sqlite://:memory:");
+        // PGPASSWORD ignored because it's not postgres URL
+        assert!(config.database_password.is_none());
+
+        // Test 3: Postgres URL in config without password, PGPASSWORD set
+        env::set_var("SQLPAGE_DATABASE_URL", "postgres://user@host/db");
+        let config = AppConfig::from_cli(&cli).unwrap();
+        assert_eq!(config.database_url, "postgres://user@host/db");
+        assert_eq!(config.database_password, Some("mypass".to_string()));
+
+        // Test 4: Postgres URL in config WITH password, PGPASSWORD set
+        env::set_var("SQLPAGE_DATABASE_URL", "postgres://user:otherpass@host/db");
+        let config = AppConfig::from_cli(&cli).unwrap();
+        assert_eq!(config.database_url, "postgres://user:otherpass@host/db");
+        assert_eq!(config.database_password, None); // Should be None because URL has password
+
+        // Cleanup
+        env::remove_var("PGHOST");
+        env::remove_var("PGUSER");
+        env::remove_var("PGDATABASE");
+        env::remove_var("PGPASSWORD");
+        env::remove_var("SQLPAGE_DATABASE_URL");
     }
 
     #[test]
