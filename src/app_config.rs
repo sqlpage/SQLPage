@@ -109,16 +109,12 @@ impl AppConfig {
         }
         if let Some(idle_timeout) = self.database_connection_idle_timeout_seconds {
             if idle_timeout < 0.0 {
-                return Err(anyhow::anyhow!(
-                    "Database connection idle timeout must be non-negative"
-                ));
+                log::warn!("Database connection idle timeout is negative, this will disable the timeout");
             }
         }
         if let Some(max_lifetime) = self.database_connection_max_lifetime_seconds {
             if max_lifetime < 0.0 {
-                return Err(anyhow::anyhow!(
-                    "Database connection max lifetime must be non-negative"
-                ));
+                log::warn!("Database connection max lifetime is negative, this will disable the timeout");
             }
         }
         anyhow::ensure!(self.max_pending_rows > 0, "max_pending_rows cannot be null");
