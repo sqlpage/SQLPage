@@ -289,3 +289,17 @@ fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
         unreachable!("Unsupported database type");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_url_has_password() {
+        assert!(url_has_password("postgres://user:pass@host/db"));
+        assert!(url_has_password("postgresql://user:pass@host/db"));
+        assert!(!url_has_password("postgres://user@host/db"));
+        assert!(!url_has_password("postgres://host/db"));
+        assert!(!url_has_password("mysql://user:pass@host/db"));
+    }
+}

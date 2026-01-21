@@ -112,13 +112,7 @@ If the `database_password` configuration parameter is set, it will override any 
 It does not need to be percent-encoded.
 This allows you to keep the password separate from the connection string, which can be useful for security purposes, especially when storing configurations in version control systems.
 
-### PostgreSQL Environment Variables
-
-SQLPage supports standard [PostgreSQL environment variables](https://www.postgresql.org/docs/current/libpq-envars.html) for configuring the database connection.
-
-If no `database_url` is provided, SQLPage will try to construct one from the following environment variables: `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`, `PGPASSWORD`, `PGSSLMODE`, and `PGAPPNAME`.
-
-Additionally, if a `database_url` is provided but does not contain a password, and the `PGPASSWORD` environment variable is set, SQLPage will use it (unless `database_password` is explicitly set in the configuration).
+Standard [PostgreSQL environment variables](https://www.postgresql.org/docs/current/libpq-envars.html) are also supported.
 
 ### OpenID Connect (OIDC) Authentication
 
