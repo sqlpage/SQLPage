@@ -89,20 +89,8 @@ impl Database {
                     AnyKind::Mssql => 100,
                 }
             })
-            .idle_timeout(resolve_timeout(
-                config.database_connection_idle_timeout_seconds,
-                match kind {
-                    AnyKind::Sqlite => None,
-                    _ => Some(Duration::from_secs(30 * 60)),
-                },
-            ))
-            .max_lifetime(resolve_timeout(
-                config.database_connection_max_lifetime_seconds,
-                match kind {
-                    AnyKind::Sqlite => None,
-                    _ => Some(Duration::from_secs(60 * 60)),
-                },
-            ))
+            .idle_timeout(config.database_connection_idle_timeout)
+            .max_lifetime(config.database_connection_max_lifetime)
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
             ));
@@ -260,13 +248,5 @@ fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
         log::warn!("Setting a password for a SQLite database is not supported");
     } else {
         unreachable!("Unsupported database type");
-    }
-}
-
-fn resolve_timeout(config_val: Option<f64>, default: Option<Duration>) -> Option<Duration> {
-    match config_val {
-        Some(v) if v <= 0.0 || !v.is_finite() => None,
-        Some(v) => Some(Duration::from_secs_f64(v)),
-        None => default,
     }
 }

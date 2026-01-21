@@ -9,6 +9,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
@@ -73,6 +74,8 @@ impl AppConfig {
             .validate()
             .context("The provided configuration is invalid")?;
 
+        config.resolve_timeouts();
+
         log::debug!("Loaded configuration: {config:#?}");
         log::info!(
             "Configuration loaded from {}",
@@ -80,6 +83,26 @@ impl AppConfig {
         );
 
         Ok(config)
+    }
+
+    fn resolve_timeouts(&mut self) {
+        let is_sqlite = self.database_url.starts_with("sqlite:");
+        self.database_connection_idle_timeout = resolve_timeout(
+            self.database_connection_idle_timeout_seconds_raw,
+            if is_sqlite {
+                None
+            } else {
+                Some(Duration::from_secs(30 * 60))
+            },
+        );
+        self.database_connection_max_lifetime = resolve_timeout(
+            self.database_connection_max_lifetime_seconds_raw,
+            if is_sqlite {
+                None
+            } else {
+                Some(Duration::from_secs(60 * 60))
+            },
+        );
     }
 
     fn validate(&self) -> anyhow::Result<()> {
@@ -107,12 +130,12 @@ impl AppConfig {
                 ));
             }
         }
-        if let Some(idle_timeout) = self.database_connection_idle_timeout_seconds {
+        if let Some(idle_timeout) = self.database_connection_idle_timeout_seconds_raw {
             if idle_timeout < 0.0 {
                 log::warn!("Database connection idle timeout is negative, this will disable the timeout");
             }
         }
-        if let Some(max_lifetime) = self.database_connection_max_lifetime_seconds {
+        if let Some(max_lifetime) = self.database_connection_max_lifetime_seconds_raw {
             if max_lifetime < 0.0 {
                 log::warn!("Database connection max lifetime is negative, this will disable the timeout");
             }
@@ -142,8 +165,15 @@ pub struct AppConfig {
     #[serde(default)]
     pub database_password: Option<String>,
     pub max_database_pool_connections: Option<u32>,
-    pub database_connection_idle_timeout_seconds: Option<f64>,
-    pub database_connection_max_lifetime_seconds: Option<f64>,
+    #[serde(rename = "database_connection_idle_timeout_seconds")]
+    pub database_connection_idle_timeout_seconds_raw: Option<f64>,
+    #[serde(rename = "database_connection_max_lifetime_seconds")]
+    pub database_connection_max_lifetime_seconds_raw: Option<f64>,
+
+    #[serde(skip)]
+    pub database_connection_idle_timeout: Option<Duration>,
+    #[serde(skip)]
+    pub database_connection_max_lifetime: Option<Duration>,
 
     #[serde(default)]
     pub sqlite_extensions: Vec<String>,
@@ -607,6 +637,14 @@ impl DevOrProd {
     }
 }
 
+fn resolve_timeout(config_val: Option<f64>, default: Option<Duration>) -> Option<Duration> {
+    match config_val {
+        Some(v) if v <= 0.0 || !v.is_finite() => None,
+        Some(v) => Some(Duration::from_secs_f64(v)),
+        None => default,
+    }
+}
+
 #[must_use]
 pub fn test_database_url() -> String {
     std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string())
@@ -619,14 +657,16 @@ pub mod tests {
 
     #[must_use]
     pub fn test_config() -> AppConfig {
-        serde_json::from_str::<AppConfig>(
+        let mut config = serde_json::from_str::<AppConfig>(
             &serde_json::json!({
                 "database_url": test_database_url(),
                 "listen_on": "localhost:8080"
             })
             .to_string(),
         )
-        .unwrap()
+        .unwrap();
+        config.resolve_timeouts();
+        config
     }
 }
 
