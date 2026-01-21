@@ -89,24 +89,8 @@ impl Database {
                     AnyKind::Mssql => 100,
                 }
             })
-            .idle_timeout(
-                config
-                    .database_connection_idle_timeout_seconds
-                    .map(Duration::from_secs_f64)
-                    .or_else(|| match kind {
-                        AnyKind::Sqlite => None,
-                        _ => Some(Duration::from_secs(30 * 60)),
-                    }),
-            )
-            .max_lifetime(
-                config
-                    .database_connection_max_lifetime_seconds
-                    .map(Duration::from_secs_f64)
-                    .or_else(|| match kind {
-                        AnyKind::Sqlite => None,
-                        _ => Some(Duration::from_secs(60 * 60)),
-                    }),
-            )
+            .idle_timeout(config.database_connection_idle_timeout)
+            .max_lifetime(config.database_connection_max_lifetime)
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
             ));

@@ -9,6 +9,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 #[cfg(not(feature = "lambda-web"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
@@ -73,6 +74,8 @@ impl AppConfig {
             .validate()
             .context("The provided configuration is invalid")?;
 
+        config.resolve_timeouts();
+
         log::debug!("Loaded configuration: {config:#?}");
         log::info!(
             "Configuration loaded from {}",
@@ -80,6 +83,26 @@ impl AppConfig {
         );
 
         Ok(config)
+    }
+
+    fn resolve_timeouts(&mut self) {
+        let is_sqlite = self.database_url.starts_with("sqlite:");
+        self.database_connection_idle_timeout = resolve_timeout(
+            self.database_connection_idle_timeout,
+            if is_sqlite {
+                None
+            } else {
+                Some(Duration::from_secs(30 * 60))
+            },
+        );
+        self.database_connection_max_lifetime = resolve_timeout(
+            self.database_connection_max_lifetime,
+            if is_sqlite {
+                None
+            } else {
+                Some(Duration::from_secs(60 * 60))
+            },
+        );
     }
 
     fn validate(&self) -> anyhow::Result<()> {
@@ -104,20 +127,6 @@ impl AppConfig {
             if max_connections == 0 {
                 return Err(anyhow::anyhow!(
                     "Maximum database pool connections must be greater than 0"
-                ));
-            }
-        }
-        if let Some(idle_timeout) = self.database_connection_idle_timeout_seconds {
-            if idle_timeout < 0.0 {
-                return Err(anyhow::anyhow!(
-                    "Database connection idle timeout must be non-negative"
-                ));
-            }
-        }
-        if let Some(max_lifetime) = self.database_connection_max_lifetime_seconds {
-            if max_lifetime < 0.0 {
-                return Err(anyhow::anyhow!(
-                    "Database connection max lifetime must be non-negative"
                 ));
             }
         }
@@ -146,8 +155,18 @@ pub struct AppConfig {
     #[serde(default)]
     pub database_password: Option<String>,
     pub max_database_pool_connections: Option<u32>,
-    pub database_connection_idle_timeout_seconds: Option<f64>,
-    pub database_connection_max_lifetime_seconds: Option<f64>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_duration_seconds",
+        rename = "database_connection_idle_timeout_seconds"
+    )]
+    pub database_connection_idle_timeout: Option<Duration>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_duration_seconds",
+        rename = "database_connection_max_lifetime_seconds"
+    )]
+    pub database_connection_max_lifetime: Option<Duration>,
 
     #[serde(default)]
     pub sqlite_extensions: Vec<String>,
@@ -611,6 +630,26 @@ impl DevOrProd {
     }
 }
 
+fn deserialize_duration_seconds<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let seconds: Option<f64> = Option::deserialize(deserializer)?;
+    match seconds {
+        None => Ok(None),
+        Some(s) if s <= 0.0 || !s.is_finite() => Ok(Some(Duration::ZERO)),
+        Some(s) => Ok(Some(Duration::from_secs_f64(s))),
+    }
+}
+
+fn resolve_timeout(config_val: Option<Duration>, default: Option<Duration>) -> Option<Duration> {
+    match config_val {
+        Some(v) if v.is_zero() => None,
+        Some(v) => Some(v),
+        None => default,
+    }
+}
+
 #[must_use]
 pub fn test_database_url() -> String {
     std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string())
@@ -623,14 +662,16 @@ pub mod tests {
 
     #[must_use]
     pub fn test_config() -> AppConfig {
-        serde_json::from_str::<AppConfig>(
+        let mut config = serde_json::from_str::<AppConfig>(
             &serde_json::json!({
                 "database_url": test_database_url(),
                 "listen_on": "localhost:8080"
             })
             .to_string(),
         )
-        .unwrap()
+        .unwrap();
+        config.resolve_timeouts();
+        config
     }
 }
 
