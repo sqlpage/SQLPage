@@ -63,11 +63,18 @@ impl AppConfig {
         }
 
         if config.database_url.is_empty() {
-            log::debug!(
-                "Creating default database in {}",
-                config.configuration_directory.display()
-            );
-            config.database_url = create_default_database(&config.configuration_directory);
+            // If the database URL is empty, we check if the user has set the PGDATABASE environment variable.
+            // If they have, we assume they want to use the postgres environment variables to connect to the database.
+            // We set the database URL to a special value that will be recognized by the database connection code.
+            if std::env::var("PGDATABASE").is_ok() || std::env::var("PGHOST").is_ok() {
+                config.database_url = "postgres://:env:".to_string();
+            } else {
+                log::debug!(
+                    "Creating default database in {}",
+                    config.configuration_directory.display()
+                );
+                config.database_url = create_default_database(&config.configuration_directory);
+            }
         }
 
         config
@@ -824,6 +831,46 @@ mod test {
 
         env::remove_var("SQLPAGE_WEB_ROOT");
         std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_postgres_env_vars() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+
+        // Test 1: No config, only env vars
+        env::set_var("PGHOST", "localhost");
+        env::set_var("PGUSER", "myuser");
+        env::set_var("PGDATABASE", "mydb");
+        env::set_var("PGPASSWORD", "mypass");
+
+        // We need to clear other env vars that might interfere
+        env::remove_var("SQLPAGE_DATABASE_URL");
+        env::remove_var("DATABASE_URL");
+
+        let cli = Cli {
+            web_root: None,
+            config_dir: None,
+            config_file: None,
+            command: None,
+        };
+
+        let config = AppConfig::from_cli(&cli).unwrap();
+
+        assert_eq!(config.database_url, "postgres://:env:");
+
+        // Test 2: Config overrides env vars
+        env::set_var("SQLPAGE_DATABASE_URL", "sqlite://:memory:");
+        let config = AppConfig::from_cli(&cli).unwrap();
+        assert_eq!(config.database_url, "sqlite://:memory:");
+
+        // Cleanup
+        env::remove_var("PGHOST");
+        env::remove_var("PGUSER");
+        env::remove_var("PGDATABASE");
+        env::remove_var("PGPASSWORD");
+        env::remove_var("SQLPAGE_DATABASE_URL");
     }
 
     #[test]

@@ -112,6 +112,8 @@ If the `database_password` configuration parameter is set, it will override any 
 It does not need to be percent-encoded.
 This allows you to keep the password separate from the connection string, which can be useful for security purposes, especially when storing configurations in version control systems.
 
+Standard [PostgreSQL environment variables](https://www.postgresql.org/docs/current/libpq-envars.html) are also supported.
+
 ### OpenID Connect (OIDC) Authentication
 
 OpenID Connect (OIDC) is a secure way to let users log in to your SQLPage application using their existing accounts from popular services. When OIDC is configured, you can control which parts of your application require authentication using the `oidc_protected_paths` option. By default, all pages are protected. You can specify a list of URL prefixes to protect specific areas, allowing you to have a mix of public and private pages.

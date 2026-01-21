@@ -12,6 +12,7 @@
   - hosted behind an ssl-terminating reverse proxy
 - New docker image variant: `lovasoa/sqlpage:latest-duckdb`, `lovasoa/sqlpage:main-duckdb` with preconfigured duckdb odbc drivers.
 - New config option: `cache_stale_duration_ms` to control the duration for which cached sql files are considered fresh.
+- Add support for standard PostgreSQL environment variables (`PGHOST`, `PGUSER`, `PGPASSWORD`, etc.) to configure the database connection.
 
 ## 0.41.0 (2025-12-28)
 
