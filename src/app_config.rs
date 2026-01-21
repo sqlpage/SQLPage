@@ -88,7 +88,7 @@ impl AppConfig {
     fn resolve_timeouts(&mut self) {
         let is_sqlite = self.database_url.starts_with("sqlite:");
         self.database_connection_idle_timeout = resolve_timeout(
-            self.database_connection_idle_timeout_seconds_raw,
+            self.database_connection_idle_timeout,
             if is_sqlite {
                 None
             } else {
@@ -96,7 +96,7 @@ impl AppConfig {
             },
         );
         self.database_connection_max_lifetime = resolve_timeout(
-            self.database_connection_max_lifetime_seconds_raw,
+            self.database_connection_max_lifetime,
             if is_sqlite {
                 None
             } else {
@@ -130,16 +130,6 @@ impl AppConfig {
                 ));
             }
         }
-        if let Some(idle_timeout) = self.database_connection_idle_timeout_seconds_raw {
-            if idle_timeout < 0.0 {
-                log::warn!("Database connection idle timeout is negative, this will disable the timeout");
-            }
-        }
-        if let Some(max_lifetime) = self.database_connection_max_lifetime_seconds_raw {
-            if max_lifetime < 0.0 {
-                log::warn!("Database connection max lifetime is negative, this will disable the timeout");
-            }
-        }
         anyhow::ensure!(self.max_pending_rows > 0, "max_pending_rows cannot be null");
         Ok(())
     }
@@ -165,14 +155,9 @@ pub struct AppConfig {
     #[serde(default)]
     pub database_password: Option<String>,
     pub max_database_pool_connections: Option<u32>,
-    #[serde(rename = "database_connection_idle_timeout_seconds")]
-    pub database_connection_idle_timeout_seconds_raw: Option<f64>,
-    #[serde(rename = "database_connection_max_lifetime_seconds")]
-    pub database_connection_max_lifetime_seconds_raw: Option<f64>,
-
-    #[serde(skip)]
+    #[serde(default, deserialize_with = "deserialize_duration_seconds", rename = "database_connection_idle_timeout_seconds")]
     pub database_connection_idle_timeout: Option<Duration>,
-    #[serde(skip)]
+    #[serde(default, deserialize_with = "deserialize_duration_seconds", rename = "database_connection_max_lifetime_seconds")]
     pub database_connection_max_lifetime: Option<Duration>,
 
     #[serde(default)]
@@ -637,10 +622,22 @@ impl DevOrProd {
     }
 }
 
-fn resolve_timeout(config_val: Option<f64>, default: Option<Duration>) -> Option<Duration> {
+fn deserialize_duration_seconds<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let seconds: Option<f64> = Option::deserialize(deserializer)?;
+    match seconds {
+        None => Ok(None),
+        Some(s) if s <= 0.0 || !s.is_finite() => Ok(Some(Duration::ZERO)),
+        Some(s) => Ok(Some(Duration::from_secs_f64(s))),
+    }
+}
+
+fn resolve_timeout(config_val: Option<Duration>, default: Option<Duration>) -> Option<Duration> {
     match config_val {
-        Some(v) if v <= 0.0 || !v.is_finite() => None,
-        Some(v) => Some(Duration::from_secs_f64(v)),
+        Some(v) if v.is_zero() => None,
+        Some(v) => Some(v),
         None => default,
     }
 }
