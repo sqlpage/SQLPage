@@ -155,9 +155,17 @@ pub struct AppConfig {
     #[serde(default)]
     pub database_password: Option<String>,
     pub max_database_pool_connections: Option<u32>,
-    #[serde(default, deserialize_with = "deserialize_duration_seconds", rename = "database_connection_idle_timeout_seconds")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_duration_seconds",
+        rename = "database_connection_idle_timeout_seconds"
+    )]
     pub database_connection_idle_timeout: Option<Duration>,
-    #[serde(default, deserialize_with = "deserialize_duration_seconds", rename = "database_connection_max_lifetime_seconds")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_duration_seconds",
+        rename = "database_connection_max_lifetime_seconds"
+    )]
     pub database_connection_max_lifetime: Option<Duration>,
 
     #[serde(default)]
