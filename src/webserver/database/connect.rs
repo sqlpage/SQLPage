@@ -9,6 +9,7 @@ use crate::{
 use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::odbc::OdbcConnectOptions;
+use sqlx::postgres::PgConnectOptions;
 use sqlx::{
     any::{Any, AnyConnectOptions, AnyKind},
     pool::PoolOptions,
@@ -19,9 +20,21 @@ use sqlx::{
 impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
         let database_url = &config.database_url;
-        let mut connect_options: AnyConnectOptions = database_url
-            .parse()
-            .with_context(|| format!("\"{database_url}\" is not a valid database URL. Please change the \"database_url\" option in the configuration file."))?;
+        let mut connect_options: AnyConnectOptions = if database_url == "postgres://:env:" {
+            PgConnectOptions::new().into()
+        } else {
+            let mut options: AnyConnectOptions = database_url
+                .parse()
+                .with_context(|| format!("\"{database_url}\" is not a valid database URL. Please change the \"database_url\" option in the configuration file."))?;
+            if options.kind() == AnyKind::Postgres
+                && !url_has_password(database_url)
+            {
+                if let Ok(password) = std::env::var("PGPASSWORD") {
+                    set_database_password(&mut options, &password);
+                }
+            }
+            options
+        };
         if let Some(password) = &config.database_password {
             set_database_password(&mut connect_options, password);
         }
@@ -77,8 +90,8 @@ impl Database {
             } else {
                 // Different databases have a different number of max concurrent connections allowed by default
                 match kind {
-                    AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for Generic
-                    AnyKind::MySql => 75,
+//                    AnyKind::Postgres => 50, // Default to PostgreSQL-like limits for Generic
+//                    AnyKind::MySql => 75,
                     AnyKind::Sqlite => {
                         if config.database_url.contains(":memory:") {
                             128
@@ -247,6 +260,16 @@ fn set_custom_connect_options_odbc(odbc_options: &mut OdbcConnectOptions, config
     log::trace!("ODBC batch size set to {batch_size}");
     // Disables ODBC batching, but avoids truncation of large text fields
     odbc_options.max_column_size(None);
+}
+
+fn url_has_password(url: &str) -> bool {
+    if let Some(rest) = url.strip_prefix("postgres://").or_else(|| url.strip_prefix("postgresql://")) {
+        if let Some(at_index) = rest.find('@') {
+            let user_info = &rest[..at_index];
+            return user_info.contains(':');
+        }
+    }
+    false
 }
 
 fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
