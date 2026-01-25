@@ -9,7 +9,7 @@ SELECT 'dynamic' AS component, json_patch(json_extract(properties, '$[0]'), json
 )) AS properties
 FROM example WHERE component = 'shell' LIMIT 1;
 
-SET MAX_WIDTH = 300;
+SET TEXT_MAX_LENGTH = 300;
 
 SELECT 
     'alert'                    AS component,
@@ -18,16 +18,18 @@ SELECT
     'teal'                     AS color,
     TRUE                       AS dismissible,
     '[Click here to deactivate it.](stories)' AS description_md
-WHERE $filter IS NOT NULL
+WHERE $id IS NULL 
+  AND $filter IS NOT NULL
 
 SELECT
     'stories' AS component, 
+    $filter AS filter,
     id,
     title,
     publication_date,
     tags,
     CASE
-        WHEN LENGTH(contents_md) > CAST($MAX_WIDTH AS INTEGER) THEN SUBSTR(contents_md, 1, CAST($MAX_WIDTH AS INTEGER)) || '...'
+        WHEN LENGTH(contents_md) > CAST($EXT_MAX_LENGTH AS INTEGER) THEN SUBSTR(contents_md, 1, CAST($TEXT_MAX_LENGTH AS INTEGER)) || '...'
         ELSE contents_md
     END as truncated_contents
 FROM stories
@@ -38,6 +40,7 @@ ORDER BY publication_date DESC;
 
 SELECT
     'story' AS component, 
+    $filter AS filter,
     id,
     title,
     publication_date,

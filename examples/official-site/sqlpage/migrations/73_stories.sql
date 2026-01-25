@@ -12,39 +12,12 @@ CREATE TABLE stories (
 
 INSERT INTO stories(title, publication_date, contents_md, optional_contents_md, image, website, git_repository, tags) VALUES
     (
-        'User Management',
+        'Greater Lincolnshire species data bank',
         '2025-11-20 21:15:00',
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-        'Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.',
+        'This is an SQLPage based system I''ve developed for the organisation I work for to collate information on species within our area, running on FreeBSD and MariaDB. Collating the information is still a work in progress, but there''s a complete example data sheet at https://glincsson.glnp.org.uk/view?taxon_list_item_key=NBNORG0000018213 which pulls in all the various elements of information and a complete group listing at https://glincsson.glnp.org.uk/taxon_group?taxon_group=60 showing various colour coding and indicators.',
+        'SQLPage has made it trivial to implement this and allowed us to easily add in new aspects based on feedback from others. Most of it is stock SQLPage, but there are a couple of simple modified/custom components, with some custom javascript to allow saving png images of the maps. Its something we''ve long been wanted to do and have attempted in various guises over the years but using SQLPage is the first time we''ve been able to achieve exactly what we wanted (and more). And it''s been fun!',
+        'glsdb.jpg',
+        'https://glincsson.glnp.org.uk',
         NULL,
-        NULl,
-        NULL,
-        '[]'
-    ),(
-        'API REST',
-        '2025-11-22 20:35:00',
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-        NULL,
-        NULL,
-        'https://github.com/api',
-        NULL,
-        '["PostgreSQL"]'
-    ),(
-        'PowerDashboard',
-        '2025-11-25 16:15:00',
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-        'Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.',
-        'dashboard.jpg',
-        'https://www.powerdashboard.com',
-        'https://github.com/powerdashboard',
-        '["postgreSQL","MIT"]'
-    ),(
-        'SmallWorld',
-        '2025-11-25 12:15:00',
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-        'Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.',
-        'ulille.jpg',
-        NULL,
-        'https://github.com/smallworld',
         '["MariaDB"]'
     );
