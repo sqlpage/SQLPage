@@ -1,0 +1,23 @@
+<h1 class="mt-2 mb-0">{{title}}</h1>
+
+<div class="remove-bottom-margin markdown mb-4">
+    <span class="badge bg-gray-lt text-white-lt-fg">{{publication_date}}</span>
+    {{{~markdown contents_md~}}}
+</div>
+
+{{#if image}}
+    <div class="card my-2 col-md-6 mx-auto"><img src="assets/stories/{{image}}" alt="image"></div>
+{{/if}}
+
+{{#if optional_contents_md}}
+    <div class="remove-bottom-margin markdown mb-4">{{{~markdown optional_contents_md~}}}</div>
+{{/if}}
+
+<div class="remove-bottom-margin mb-4">
+    {{#if website}}<a href="{{website}}" class="badge bg-yellow-lt">{{website}}</a>{{/if}}
+    {{#if git_repository}}<a href="{{git_repository}}" class="badge bg-green-lt">{{git_repository}}</a>{{/if}}
+</div>
+
+<div class="text-center">
+    <a href='stories'>Back</a>
+</div>
