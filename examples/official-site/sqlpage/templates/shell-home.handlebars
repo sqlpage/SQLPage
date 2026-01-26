@@ -16,51 +16,89 @@
     <meta name="generator" content="SQLPage" />
 
     <style>
-        /* ROOT VARIABLES */
+        /* ROOT VARIABLES
+           ===============
+           Color system based on SQLPage visual identity.
+
+           BRAND COLORS (from visual-identity.sql):
+           - Primary Cyan: #37E5EF - bright accent, use sparingly
+           - Teal: #2A9FAF - secondary accent
+           - Dark Navy: #0a0f1a - primary background
+
+           DESIGN PRINCIPLE:
+           Bright cyan is an ACCENT color for small elements (buttons, borders, hovers).
+           Gradients and large areas use darker, desaturated tones for readability.
+        */
         :root {
-            /* Colors */
-            --bg-primary: hsl(225, 47%, 7%);
-            --bg-secondary: hsl(225, 47%, 10%);
-            --bg-tertiary: hsl(225, 47%, 13%);
+            /* === BRAND COLORS === */
+            --brand-cyan: #37E5EF;
+            --brand-teal: #2A9FAF;
+            --brand-navy: #0a0f1a;
 
-            --text-primary: hsl(0, 0%, 97%);
-            --text-secondary: hsl(0, 0%, 60%);
-            --text-muted: hsla(0, 0%, 100%, 0.7);
+            /* === BACKGROUNDS ===
+               Dark navy family - slight teal undertone for cohesion */
+            --bg-primary: #0a0f1a;
+            --bg-secondary: #0c1520;
+            --bg-tertiary: #101c28;
+            --bg-elevated: #142430;
 
-            --accent-blue: hsla(212, 49%, 34%, 0.95);
-            --accent-purple: hsla(270, 41%, 41%, 0.95);
+            /* === TEXT === */
+            --text-primary: #f0f4f7;
+            --text-secondary: #8a9baa;
+            --text-muted: rgba(255, 255, 255, 0.6);
 
-            /* Overlays */
+            /* === ACCENT COLORS ===
+               For buttons, links, highlights - the bright brand colors */
+            --accent-primary: var(--brand-cyan);
+            --accent-secondary: var(--brand-teal);
+
+            /* === GRADIENT COLORS ===
+               Darker, desaturated versions for large area gradients.
+               These blend smoothly without harsh contrast. */
+            --gradient-dark: #0d1a24;
+            --gradient-mid: #153040;
+            --gradient-light: #1a4055;
+
+            /* === GLOW COLORS ===
+               Semi-transparent brand colors for subtle atmospheric effects */
+            --glow-cyan: rgba(55, 229, 239, 0.15);
+            --glow-teal: rgba(42, 159, 175, 0.12);
+            --glow-subtle: rgba(55, 229, 239, 0.06);
+
+            /* === OVERLAYS === */
             --overlay-light: rgba(255, 255, 255, 0.03);
             --overlay-lighter: rgba(255, 255, 255, 0.05);
-            --overlay-lightest: rgba(255, 255, 255, 0.15);
+            --overlay-lightest: rgba(255, 255, 255, 0.12);
 
-            /* Borders */
-            --border-subtle: rgba(255, 255, 255, 0.05);
-            --border-light: rgba(255, 255, 255, 0.1);
-            --border-medium: rgba(255, 255, 255, 0.2);
+            /* === BORDERS === */
+            --border-subtle: rgba(55, 229, 239, 0.08);
+            --border-light: rgba(55, 229, 239, 0.15);
+            --border-medium: rgba(55, 229, 239, 0.25);
 
-            /* Gradients */
+            /* === GRADIENTS ===
+               Primary: for buttons and interactive elements
+               Atmospheric: for background decoration */
             --gradient-primary: linear-gradient(135deg,
-                    var(--accent-blue) 0%,
-                    var(--accent-purple) 100%);
-            --gradient-reverse: linear-gradient(135deg,
-                    var(--accent-purple) 0%,
-                    var(--accent-blue) 100%);
+                    var(--brand-teal) 0%,
+                    var(--brand-cyan) 100%);
+            --gradient-atmospheric: linear-gradient(135deg,
+                    var(--gradient-dark) 0%,
+                    var(--gradient-mid) 100%);
 
-            /* Shadows */
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
-            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+            /* === SHADOWS === */
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+            --shadow-glow: 0 0 20px var(--glow-cyan);
 
-            /* Spacing */
+            /* === SPACING === */
             --container-padding: 40px;
             --container-width: 1000px;
             --gap-sm: 20px;
             --gap-md: 40px;
             --gap-lg: 60px;
 
-            /* Transitions */
+            /* === TRANSITIONS === */
             --transition-fast: 0.3s ease;
             --transition-medium: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             --transition-slow: 0.6s cubic-bezier(0.22, 1, 0.36, 1);
@@ -88,15 +126,13 @@
             background-color: var(--bg-primary);
             color: var(--text-primary);
             background-image:
-                radial-gradient(circle at 100% 0%,
-                    var(--accent-blue) 0%,
-                    hsla(212, 49%, 34%, 0.15) 50%,
-                    transparent 100%),
-                radial-gradient(circle at 0% 100%,
-                    var(--accent-purple) 0%,
-                    hsla(270, 41%, 41%, 0.15) 50%,
-                    transparent 100%),
-                linear-gradient(135deg,
+                radial-gradient(ellipse 80% 60% at 100% 0%,
+                    var(--glow-cyan) 0%,
+                    transparent 70%),
+                radial-gradient(ellipse 70% 50% at 0% 100%,
+                    var(--glow-teal) 0%,
+                    transparent 70%),
+                linear-gradient(160deg,
                     var(--bg-primary) 0%,
                     var(--bg-secondary) 100%);
             backface-visibility: hidden;
@@ -184,7 +220,7 @@
                 0 5px 15px rgba(0, 0, 0, 0.6);
             border-radius: 12px;
             overflow: hidden;
-            background: linear-gradient(135deg, #597c8529, #5b939c24);
+            background: linear-gradient(135deg, var(--glow-teal), var(--glow-subtle));
             margin-right: 30px;
             animation: floatWaves 6s ease-in-out infinite;
         }
@@ -431,60 +467,46 @@
             top: 2rem;
             right: 2rem;
             display: flex;
-            gap: 2rem;
+            gap: 0.5rem;
             z-index: 1000;
+            background: rgba(10, 15, 26, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
         }
 
         .menu a {
-            color: var(--text-muted);
+            color: var(--text-secondary);
             text-decoration: none;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
             position: relative;
-            transition: all 0.3s ease;
-            opacity: 0.6;
-        }
-
-        .menu:hover a {
-            opacity: 0.8;
+            transition: all 0.2s ease;
         }
 
         .menu a:hover {
-            color: rgba(255, 255, 255, 0.9);
-            opacity: 1;
+            color: var(--text-primary);
+            background: var(--overlay-lighter);
             text-decoration: none;
-        }
-
-        .menu a::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 1px;
-            bottom: -4px;
-            left: 0;
-            background-color: currentColor;
-            transform: scaleX(0);
-            transform-origin: right;
-            transition: transform 0.3s ease;
-        }
-
-        .menu a:hover::after {
-            transform: scaleX(1);
-            transform-origin: left;
         }
 
         @media (max-width: 768px) {
             .menu {
                 top: 1rem;
                 right: 1rem;
-                gap: 1rem;
+                gap: 0.25rem;
+                padding: 0.4rem 0.6rem;
             }
 
             .menu a {
-                font-size: 0.9rem;
+                font-size: 0.8rem;
+                padding: 0.3rem 0.5rem;
             }
         }
 
-        /* Add new CTA button styles */
+        /* CTA BUTTON - Minimal, transparent base */
         .cta-button {
             display: inline-block;
             text-align: center;
@@ -492,74 +514,32 @@
             min-width: 200px;
             max-width: 300px;
             font-size: 1.2rem;
-            font-weight: 500;
-            background: var(--gradient-primary);
-            color: rgba(255, 255, 255, 0.95);
+            font-weight: 600;
+            background: transparent;
+            color: var(--text-primary);
             text-decoration: none !important;
-            border-radius: 12px;
-            transition: all var(--transition-slow);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all var(--transition-fast);
+            border: 1px solid var(--border-medium);
             cursor: pointer;
             margin-top: 1.5rem;
-            box-shadow:
-                var(--shadow-sm),
-                var(--shadow-md),
-                inset 0 1px rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 200%;
-            height: 100%;
-            background: linear-gradient(115deg,
-                    transparent 0%,
-                    transparent 25%,
-                    rgba(255, 255, 255, 0.1) 45%,
-                    rgba(255, 255, 255, 0.2) 50%,
-                    rgba(255, 255, 255, 0.1) 55%,
-                    transparent 75%,
-                    transparent 100%);
-            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
         .cta-button:hover {
-            transform: translateY(-2px) scale(1.02);
-            color: rgba(255, 255, 255, 1);
-            background: var(--gradient-reverse);
-            box-shadow:
-                var(--shadow-md),
-                var(--shadow-lg),
-                inset 0 1px rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .cta-button:hover::before {
-            left: 100%;
-            transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+            color: var(--brand-cyan);
+            border-color: var(--brand-cyan);
+            background: rgba(55, 229, 239, 0.05);
+            text-decoration: none !important;
         }
 
         .cta-button:active {
-            transform: translateY(0) scale(0.98);
-            box-shadow:
-                0 2px 4px rgba(0, 0, 0, 0.2),
-                0 4px 12px rgba(0, 0, 0, 0.15),
-                inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            background: rgba(55, 229, 239, 0.1);
             transition-duration: 0.1s;
         }
 
         .cta-button:focus {
             outline: none;
-            box-shadow:
-                0 2px 4px rgba(0, 0, 0, 0.1),
-                0 4px 12px rgba(0, 0, 0, 0.15),
-                inset 0 1px rgba(255, 255, 255, 0.1),
-                0 0 0 2px rgba(255, 255, 255, 0.2);
+            border-color: var(--brand-cyan);
         }
 
         @media (max-width: 768px) {
@@ -575,7 +555,8 @@
             bottom: 1.5rem;
             left: 50%;
             transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-secondary);
+            opacity: 0.5;
             transition: all 0.3s ease;
             animation: bounce 3s infinite;
             cursor: pointer;
@@ -587,7 +568,8 @@
         }
 
         .scroll-link:hover {
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-primary);
+            opacity: 0.8;
             transform: translateX(-50%) scale(1.05);
         }
 
@@ -616,8 +598,8 @@
             align-items: center;
             justify-content: center;
             background: linear-gradient(135deg,
-                    hsla(225, 47%, 10%, 1) 0%,
-                    hsla(225, 47%, 13%, 1) 100%);
+                    var(--bg-secondary) 0%,
+                    var(--bg-tertiary) 100%);
         }
 
         #features .container {
@@ -628,10 +610,7 @@
         #features h2 {
             font-size: 3.5rem;
             margin-bottom: 1rem;
-            background: linear-gradient(135deg, #ffffff 0%, #e1e1e1 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--text-primary);
         }
 
         .features-grid {
@@ -662,7 +641,7 @@
         .feature-card h3 {
             font-size: 1.5rem;
             margin-bottom: 1rem;
-            color: #fff;
+            color: var(--text-primary);
             position: relative;
         }
 
@@ -671,9 +650,7 @@
             position: absolute;
             width: 30px;
             height: 2px;
-            background: linear-gradient(90deg,
-                    hsla(212, 49%, 34%, 0.8),
-                    hsla(270, 41%, 41%, 0.8));
+            background: var(--gradient-primary);
             bottom: -8px;
             left: 0;
             transform: scaleX(0);
@@ -688,7 +665,7 @@
         .feature-card p {
             font-size: 1rem;
             line-height: 1.6;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-secondary);
             margin-top: 1rem;
         }
 
@@ -805,7 +782,10 @@
 
         .compat-section {
             position: relative;
-            background: radial-gradient(circle at 20% 20%, rgba(88, 125, 255, 0.18), transparent 50%), radial-gradient(circle at 80% 10%, rgba(255, 130, 255, 0.18), transparent 55%), linear-gradient(160deg, rgba(10, 19, 44, 0.95), rgba(7, 12, 26, 0.92));
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 20%, var(--glow-teal), transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 10%, var(--glow-subtle), transparent 60%),
+                linear-gradient(160deg, var(--bg-secondary), var(--bg-primary));
             overflow: hidden;
             isolation: isolate;
         }
@@ -826,7 +806,7 @@
         }
 
         .compat-section::after {
-            background: radial-gradient(450px 450px at 80% 110%, rgba(63, 104, 255, 0.35), transparent 70%);
+            background: radial-gradient(450px 450px at 80% 110%, var(--glow-teal), transparent 70%);
         }
 
         .compat-layout {
@@ -849,18 +829,19 @@
             font-size: 0.85rem;
             letter-spacing: 0.3em;
             text-transform: uppercase;
-            color: rgba(173, 188, 255, 0.75);
+            color: var(--brand-cyan);
+            opacity: 0.7;
         }
 
         .compat-intro h2 {
             font-size: 3.2rem;
             line-height: 1.1;
-            color: rgba(229, 237, 255, 0.94);
+            color: var(--text-primary);
         }
 
         .compat-intro p {
             font-size: 1.15rem;
-            color: rgba(209, 219, 255, 0.78);
+            color: var(--text-secondary);
             max-width: 90%;
         }
 
@@ -873,9 +854,9 @@
         .compat-pill {
             padding: 0.45rem 0.9rem;
             border-radius: 999px;
-            background: rgba(99, 118, 255, 0.12);
-            border: 1px solid rgba(143, 162, 255, 0.25);
-            color: rgba(207, 221, 255, 0.78);
+            background: var(--overlay-lighter);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
             font-size: 0.85rem;
             backdrop-filter: blur(6px);
         }
@@ -896,8 +877,8 @@
             height: 320px;
             margin: 0 auto;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(64, 84, 182, 0.35), rgba(19, 27, 51, 0.4));
-            box-shadow: inset 0 0 40px rgba(127, 162, 255, 0.2), 0 20px 60px rgba(6, 12, 32, 0.7);
+            background: radial-gradient(circle, var(--gradient-mid), var(--bg-tertiary));
+            box-shadow: inset 0 0 40px var(--glow-subtle), 0 20px 60px rgba(0, 0, 0, 0.5);
         }
 
         .compat-orbit::before {
@@ -905,7 +886,7 @@
             position: absolute;
             inset: 14px;
             border-radius: 50%;
-            border: 1px dashed rgba(162, 186, 255, 0.4);
+            border: 1px dashed var(--border-medium);
             animation: orbitSpin 26s linear infinite;
         }
 
@@ -914,7 +895,7 @@
             position: absolute;
             inset: 44px;
             border-radius: 50%;
-            border: 1px solid rgba(86, 112, 221, 0.2);
+            border: 1px solid var(--border-subtle);
             filter: blur(0.3px);
         }
 
@@ -923,14 +904,14 @@
             width: 160px;
             height: 160px;
             border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, rgba(35, 46, 98, 0.95), rgba(20, 30, 70, 0.9));
-            box-shadow: 0 0 40px rgba(150, 178, 255, 0.32);
+            background: radial-gradient(circle at 30% 30%, var(--bg-elevated), var(--bg-tertiary));
+            box-shadow: var(--shadow-glow);
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
             padding: 1rem;
-            color: rgba(229, 236, 255, 0.95);
+            color: var(--text-primary);
             font-size: 0.9rem;
             line-height: 1.3;
             backdrop-filter: blur(6px);
@@ -945,14 +926,14 @@
             width: 84px;
             height: 84px;
             border-radius: 18px;
-            background: rgba(10, 17, 36, 0.72);
-            box-shadow: 0 12px 28px rgba(2, 6, 18, 0.6), inset 0 0 24px rgba(137, 157, 255, 0.24);
+            background: var(--bg-secondary);
+            box-shadow: var(--shadow-lg), inset 0 0 24px var(--glow-subtle);
             display: flex;
             align-items: center;
             justify-content: center;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(143, 166, 255, 0.35);
-            outline: 1px solid rgba(12, 18, 38, 0.6);
+            border: 1px solid var(--border-light);
+            outline: 1px solid rgba(0, 0, 0, 0.3);
             outline-offset: -4px;
         }
 
@@ -990,11 +971,11 @@
         }
 
         .compat-card {
-            background: rgba(12, 20, 42, 0.68);
+            background: rgba(10, 15, 26, 0.8);
             border-radius: 18px;
             padding: 1.8rem;
-            border: 1px solid rgba(110, 138, 238, 0.32);
-            box-shadow: 0 18px 40px rgba(4, 8, 22, 0.6);
+            border: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-lg);
             backdrop-filter: blur(12px);
             display: grid;
             gap: 1.2rem;
@@ -1005,12 +986,12 @@
 
         .compat-card h3 {
             font-size: 1.35rem;
-            color: rgba(228, 236, 255, 0.92);
+            color: var(--text-primary);
         }
 
         .compat-card p {
             font-size: 0.98rem;
-            color: rgba(204, 214, 255, 0.72);
+            color: var(--text-secondary);
             line-height: 1.6;
         }
 
@@ -1026,8 +1007,8 @@
             justify-content: center;
             border-radius: 12px;
             padding: 0.7rem;
-            background: rgba(19, 30, 58, 0.9);
-            border: 1px solid rgba(118, 140, 233, 0.25);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
             position: relative;
             overflow: hidden;
         }
@@ -1046,8 +1027,8 @@
         .compat-badge {
             padding: 0.35rem 0.75rem;
             border-radius: 999px;
-            background: rgba(57, 76, 162, 0.32);
-            color: rgba(225, 232, 255, 0.78);
+            background: var(--glow-teal);
+            color: var(--text-primary);
             font-size: 0.82rem;
         }
 
@@ -1142,15 +1123,10 @@
 
         /* FOOTER STYLES */
         footer {
-            background: linear-gradient(135deg,
-                    var(--bg-secondary) 0%,
-                    var(--bg-tertiary) 100%),
-                radial-gradient(circle at 0% 100%,
-                    hsla(270, 41%, 41%, 0.03) 0%,
-                    transparent 50%),
-                radial-gradient(circle at 100% 0%,
-                    hsla(212, 49%, 34%, 0.03) 0%,
-                    transparent 50%);
+            background:
+                radial-gradient(ellipse 60% 40% at 0% 100%, var(--glow-subtle), transparent 70%),
+                radial-gradient(ellipse 50% 30% at 100% 0%, var(--glow-subtle), transparent 70%),
+                linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
             padding: 5rem 0 1rem 0;
             border-top: 1px solid var(--border-subtle);
         }
@@ -1192,7 +1168,7 @@
         }
 
         .link-category a:hover {
-            color: var(--text-primary);
+            color: var(--brand-cyan);
         }
 
         .social-links {
@@ -1207,7 +1183,7 @@
         }
 
         .social-links a:hover {
-            color: var(--text-primary);
+            color: var(--brand-cyan);
             transform: translateY(-2px);
         }
 
@@ -1255,7 +1231,7 @@
 
         .dynamic-title {
             font-size: 2.5rem;
-            background: linear-gradient(135deg, rgba(231, 131, 211, 0.95) 0%, rgba(221, 22, 22, 0.85) 100%);
+            background: var(--gradient-primary);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
@@ -1285,16 +1261,14 @@
         }
 
         a {
-            color: #f3f3fa;
+            color: var(--text-primary);
             text-decoration: none;
-            opacity: 0.92;
             font-weight: 500;
-            transition: color 0.2s, opacity 0.2s, text-decoration 0.2s;
+            transition: color var(--transition-fast), text-decoration var(--transition-fast);
         }
 
         a:hover {
-            opacity: 1;
-            color: #fff;
+            color: var(--brand-cyan);
             text-decoration: underline;
             text-underline-offset: 2px;
             text-decoration-thickness: 1.5px;
@@ -1327,7 +1301,7 @@
                         APIs</span></span>
             </h1>
             <p>Instant web interfaces for your database. Free and open-source.</p>
-            <a href="https://editor.datapage.app" class="cta-button">Try Online</a>
+            <a href="/your-first-sql-website/" class="cta-button">Get Started</a>
         </div>
     </div>
     <a href="#features" class="scroll-link">
