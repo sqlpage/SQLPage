@@ -48,8 +48,10 @@
   --tblr-purple: rgb(var(--tblr-purple-rgb));
   --tblr-cyan-rgb: 0, 149, 168; /* Deep cyan */
   --tblr-cyan: rgb(var(--tblr-cyan-rgb));
-  --tblr-indigo-rgb: 68, 85, 190; /* Deep indigo */
+  --tblr-indigo-rgb: 96, 113, 215; /* Deep indigo */
   --tblr-indigo: rgb(var(--tblr-indigo-rgb));
+  --tblr-teal: #267d63;
+  --tblr-teal-fg: #20050b;
 
   --tblr-green: var(--tblr-success);
   --tblr-yellow: var(--tblr-warning);
