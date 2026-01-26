@@ -1,5 +1,5 @@
 # The documentation site is fully static, so we don't need to persist any data.
-database_url: "sqlite::memory:?cache=shared"
+#database_url: "sqlite::memory:?cache=shared"
 
 # We have a file upload example, and would like to limit the size of the uploaded files 
 max_uploaded_file_size: 256000
