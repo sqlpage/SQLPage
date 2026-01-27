@@ -101,6 +101,14 @@ impl TryFrom<&AppConfig> for OidcConfig {
         let redirect_uri = format!("{site_prefix_trimmed}{SQLPAGE_REDIRECT_URI}");
         let logout_uri = format!("{site_prefix_trimmed}{SQLPAGE_LOGOUT_URI}");
 
+        for path in &mut protected_paths {
+            *path = format!("{}{}", site_prefix_trimmed, path);
+        }
+
+        for path in &mut public_paths{
+            *path = format!("{}{}", site_prefix_trimmed, path);
+        }
+        
         Ok(Self {
             issuer_url: issuer_url.clone(),
             client_id: config.oidc_client_id.clone(),
