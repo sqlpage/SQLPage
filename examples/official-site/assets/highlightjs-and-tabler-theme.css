@@ -94,9 +94,9 @@
   --tblr-btn-active-bg: transparent;
   --tblr-btn-disabled-bg: var(--tblr-primary);
   --tblr-btn-disabled-color: var(--tblr-primary-fg);
-  --tblr-btn-box-shadow: .1em .1em 0.1em var(--tblr-primary);
+  --tblr-btn-box-shadow: 0.1em 0.1em 0.1em var(--tblr-primary);
   --tblr-btn-hover-border-color: var(--tblr-primary);
-  --tblr-btn-active-shadow: -.1em -.1em 0.1em var(--tblr-primary);
+  --tblr-btn-active-shadow: -0.1em -0.1em 0.1em var(--tblr-primary);
 }
 
 .dropdown-menu {
