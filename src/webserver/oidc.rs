@@ -92,14 +92,24 @@ impl TryFrom<&AppConfig> for OidcConfig {
         let client_secret = config.oidc_client_secret.as_ref().ok_or(Some(
             "The \"oidc_client_secret\" setting is required to authenticate with the OIDC provider",
         ))?;
-        let protected_paths: Vec<String> = config.oidc_protected_paths.clone();
-        let public_paths: Vec<String> = config.oidc_public_paths.clone();
 
         let app_host = get_app_host(config);
 
         let site_prefix_trimmed = config.site_prefix.trim_end_matches('/');
         let redirect_uri = format!("{site_prefix_trimmed}{SQLPAGE_REDIRECT_URI}");
         let logout_uri = format!("{site_prefix_trimmed}{SQLPAGE_LOGOUT_URI}");
+
+        let protected_paths: Vec<String> = config
+            .oidc_protected_paths
+            .iter()
+            .map(|path| format!("{site_prefix_trimmed}{path}"))
+            .collect();
+
+        let public_paths: Vec<String> = config
+            .oidc_public_paths
+            .iter()
+            .map(|path| format!("{site_prefix_trimmed}{path}"))
+            .collect();
 
         Ok(Self {
             issuer_url: issuer_url.clone(),
