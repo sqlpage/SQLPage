@@ -1,6 +1,7 @@
 use crate::cli::arguments::{parse_cli, Cli};
 use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
+use actix_web::http::Uri;
 use anyhow::Context;
 use config::Config;
 use openidconnect::IssuerUrl;
@@ -9,6 +10,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Duration;
 
 #[cfg(not(feature = "lambda-web"))]
@@ -190,6 +192,7 @@ pub struct AppConfig {
 
     #[serde(default, deserialize_with = "deserialize_socket_addr")]
     pub listen_on: Option<SocketAddr>,
+    #[serde(default, deserialize_with = "deserialize_port")]
     pub port: Option<u16>,
     pub unix_socket: Option<PathBuf>,
 
@@ -439,6 +442,36 @@ fn env_config() -> config::Environment {
         .with_list_parse_key("sqlite_extensions")
 }
 
+fn deserialize_port<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    // deserializes both 8080 and "tcp://1.1.1.1:9090"
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum PortOrUrl {
+        Port(u16),
+        Url(String),
+    }
+    let port_or_url: Option<PortOrUrl> = Deserialize::deserialize(deserializer)?;
+    match port_or_url {
+        Some(PortOrUrl::Port(p)) => Ok(Some(p)),
+        Some(PortOrUrl::Url(u)) => {
+            if let Ok(u) = Uri::from_str(&u) {
+                log::warn!("{u} is not a valid value for the SQLPage port number. Ignoring this error since kubernetes may set the SQLPAGE_PORT env variable to a service URI when there is a service named sqlpage. Rename your service to avoid this warning.");
+                Ok(None)
+            } else {
+                Err(D::Error::custom(format!(
+                    "Invalid port number: {u}. Expected a number between {} and {}",
+                    u16::MIN,
+                    u16::MAX
+                )))
+            }
+        }
+        None => Ok(None),
+    }
+}
+
 fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<SocketAddr>, D::Error> {
@@ -545,7 +578,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
             );
             drop(tmp_file);
             if let Err(e) = std::fs::remove_file(&default_db_path) {
-                log::debug!("Unable to remove temporary probe file. It might have already been removed by another instance started concurrently: {}", e);
+                log::debug!("Unable to remove temporary probe file. It might have already been removed by another instance started concurrently: {e}");
             }
             return prefix + &encode_uri(&default_db_path) + "?mode=rwc";
         }
@@ -752,6 +785,32 @@ mod test {
         );
 
         env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+    }
+
+    #[test]
+    fn test_k8s_env_var_ignored() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_PORT", "tcp://10.0.0.1:8080");
+
+        let config = load_from_env().unwrap();
+        assert_eq!(config.port, None);
+
+        env::remove_var("SQLPAGE_PORT");
+    }
+
+    #[test]
+    fn test_valid_port_env_var() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_PORT", "9000");
+
+        let config = load_from_env().unwrap();
+        assert_eq!(config.port, Some(9000));
+
+        env::remove_var("SQLPAGE_PORT");
     }
 
     #[test]
