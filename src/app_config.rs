@@ -131,25 +131,23 @@ impl AppConfig {
             }
         }
         anyhow::ensure!(self.max_pending_rows > 0, "max_pending_rows cannot be null");
-        
-        for path in self.oidc_protected_paths {
+
+        for path in &self.oidc_protected_paths {
             if !path.starts_with('/') {
                 return Err(anyhow::anyhow!(
-                    "All protected paths must start with '/', but found: '{}'",
-                    path
+                    "All protected paths must start with '/', but found: '{path}'"
                 ));
             }
         }
 
-        for path in self.oidc_public_paths {
+        for path in &self.oidc_public_paths {
             if !path.starts_with('/') {
                 return Err(anyhow::anyhow!(
-                    "All public paths must start with '/', but found: '{}'",
-                    path
+                    "All public paths must start with '/', but found: '{path}'"
                 ));
             }
         }
-        
+
         Ok(())
     }
 }

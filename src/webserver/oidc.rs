@@ -99,14 +99,16 @@ impl TryFrom<&AppConfig> for OidcConfig {
         let redirect_uri = format!("{site_prefix_trimmed}{SQLPAGE_REDIRECT_URI}");
         let logout_uri = format!("{site_prefix_trimmed}{SQLPAGE_LOGOUT_URI}");
 
-        let protected_paths: Vec<String> = config.oidc_protected_paths
+        let protected_paths: Vec<String> = config
+            .oidc_protected_paths
             .iter()
-            .map(|path| format!("{}{}", site_prefix, path))
+            .map(|path| format!("{site_prefix_trimmed}{path}"))
             .collect();
 
-        let public_paths: Vec<String> = config.oidc_public_paths
+        let public_paths: Vec<String> = config
+            .oidc_public_paths
             .iter()
-            .map(|path| format!("{}{}", site_prefix, path))
+            .map(|path| format!("{site_prefix_trimmed}{path}"))
             .collect();
 
         Ok(Self {
