@@ -427,32 +427,66 @@ fn deserialize_port<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let v: Option<serde_json::Value> = Deserialize::deserialize(deserializer)?;
-    match v {
-        Some(serde_json::Value::Number(n)) => {
-            if let Some(port) = n.as_u64() {
-                if port <= 65535 {
-                    Ok(Some(port as u16))
-                } else {
-                    Err(D::Error::custom("Port number too large"))
-                }
-            } else {
-                 Err(D::Error::custom("Invalid port number"))
-            }
-        },
-        Some(serde_json::Value::String(s)) => {
-            if let Ok(port) = s.parse::<u16>() {
+    struct PortVisitor;
+
+    impl<'de> serde::de::Visitor<'de> for PortVisitor {
+        type Value = Option<u16>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a port number or a string starting with tcp://")
+        }
+
+        fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            u16::try_from(v).map(Some).map_err(E::custom)
+        }
+
+        fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            u16::try_from(v).map(Some).map_err(E::custom)
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if let Ok(port) = v.parse::<u16>() {
                 Ok(Some(port))
-            } else if s.starts_with("tcp://") {
-                log::warn!("Ignoring invalid SQLPAGE_PORT value from Kubernetes: {}", s);
+            } else if v.starts_with("tcp://") {
+                log::warn!("Ignoring invalid SQLPAGE_PORT value from Kubernetes: {}", v);
                 Ok(None)
             } else {
-                 Err(D::Error::custom(format!("Invalid port number: {}", s)))
+                Err(E::custom(format!("Invalid port number: {}", v)))
             }
-        },
-        Some(_) => Err(D::Error::custom("Invalid type for port")),
-        None => Ok(None),
+        }
+
+        fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_any(self)
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
     }
+
+    deserializer.deserialize_option(PortVisitor)
 }
 
 fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
