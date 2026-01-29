@@ -457,10 +457,10 @@ where
             if let Ok(port) = v.parse::<u16>() {
                 Ok(Some(port))
             } else if v.starts_with("tcp://") {
-                log::warn!("Ignoring invalid SQLPAGE_PORT value from Kubernetes: {}", v);
+                log::warn!("Ignoring invalid SQLPAGE_PORT value from Kubernetes: {v}");
                 Ok(None)
             } else {
-                Err(E::custom(format!("Invalid port number: {}", v)))
+                Err(E::custom(format!("Invalid port number: {v}")))
             }
         }
 
