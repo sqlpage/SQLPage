@@ -173,6 +173,7 @@ pub struct AppConfig {
 
     #[serde(default, deserialize_with = "deserialize_socket_addr")]
     pub listen_on: Option<SocketAddr>,
+    #[serde(default, deserialize_with = "deserialize_port")]
     pub port: Option<u16>,
     pub unix_socket: Option<PathBuf>,
 
@@ -420,6 +421,38 @@ fn env_config() -> config::Environment {
         .try_parsing(true)
         .list_separator(" ")
         .with_list_parse_key("sqlite_extensions")
+}
+
+fn deserialize_port<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v: Option<serde_json::Value> = Deserialize::deserialize(deserializer)?;
+    match v {
+        Some(serde_json::Value::Number(n)) => {
+            if let Some(port) = n.as_u64() {
+                if port <= 65535 {
+                    Ok(Some(port as u16))
+                } else {
+                    Err(D::Error::custom("Port number too large"))
+                }
+            } else {
+                 Err(D::Error::custom("Invalid port number"))
+            }
+        },
+        Some(serde_json::Value::String(s)) => {
+            if let Ok(port) = s.parse::<u16>() {
+                Ok(Some(port))
+            } else if s.starts_with("tcp://") {
+                log::warn!("Ignoring invalid SQLPAGE_PORT value from Kubernetes: {}", s);
+                Ok(None)
+            } else {
+                 Err(D::Error::custom(format!("Invalid port number: {}", s)))
+            }
+        },
+        Some(_) => Err(D::Error::custom("Invalid type for port")),
+        None => Ok(None),
+    }
 }
 
 fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
@@ -735,6 +768,32 @@ mod test {
         );
 
         env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+    }
+
+    #[test]
+    fn test_k8s_env_var_ignored() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_PORT", "tcp://10.0.0.1:8080");
+
+        let config = load_from_env().unwrap();
+        assert_eq!(config.port, None);
+
+        env::remove_var("SQLPAGE_PORT");
+    }
+
+    #[test]
+    fn test_valid_port_env_var() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        env::set_var("SQLPAGE_PORT", "9000");
+
+        let config = load_from_env().unwrap();
+        assert_eq!(config.port, Some(9000));
+
+        env::remove_var("SQLPAGE_PORT");
     }
 
     #[test]
