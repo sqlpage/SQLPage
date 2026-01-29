@@ -1,6 +1,7 @@
 use crate::cli::arguments::{parse_cli, Cli};
 use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
+use actix_web::http::Uri;
 use anyhow::Context;
 use config::Config;
 use openidconnect::IssuerUrl;
@@ -9,6 +10,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Duration;
 
 #[cfg(not(feature = "lambda-web"))]
@@ -427,66 +429,30 @@ fn deserialize_port<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    struct PortVisitor;
-
-    impl<'de> serde::de::Visitor<'de> for PortVisitor {
-        type Value = Option<u16>;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a port number or a string starting with tcp://")
-        }
-
-        fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            u16::try_from(v).map(Some).map_err(E::custom)
-        }
-
-        fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            u16::try_from(v).map(Some).map_err(E::custom)
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            if let Ok(port) = v.parse::<u16>() {
-                Ok(Some(port))
-            } else if v.starts_with("tcp://") {
-                log::warn!("Ignoring invalid SQLPAGE_PORT value from Kubernetes: {v}");
+    // deserializes both 8080 and "tcp://1.1.1.1:9090"
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum PortOrUrl {
+        Port(u16),
+        Url(String),
+    }
+    let port_or_url: Option<PortOrUrl> = Deserialize::deserialize(deserializer)?;
+    match port_or_url {
+        Some(PortOrUrl::Port(p)) => Ok(Some(p)),
+        Some(PortOrUrl::Url(u)) => {
+            if let Ok(u) = Uri::from_str(&u) {
+                log::warn!("{u} is not a valid value for the SQLPage port number. Ignoring this error since kubernetes may set the SQLPAGE_PORT env variable to a service URI when there is a service named sqlpage. Rename your service to avoid this warning.");
                 Ok(None)
             } else {
-                Err(E::custom(format!("Invalid port number: {v}")))
+                Err(D::Error::custom(format!(
+                    "Invalid port number: {u}. Expected a number between {} and {}",
+                    u16::MIN,
+                    u16::MAX
+                )))
             }
         }
-
-        fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            deserializer.deserialize_any(self)
-        }
-
-        fn visit_none<E>(self) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(None)
-        }
-
-        fn visit_unit<E>(self) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(None)
-        }
+        None => Ok(None),
     }
-
-    deserializer.deserialize_option(PortVisitor)
 }
 
 fn deserialize_socket_addr<'de, D: Deserializer<'de>>(
@@ -595,7 +561,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
             );
             drop(tmp_file);
             if let Err(e) = std::fs::remove_file(&default_db_path) {
-                log::debug!("Unable to remove temporary probe file. It might have already been removed by another instance started concurrently: {}", e);
+                log::debug!("Unable to remove temporary probe file. It might have already been removed by another instance started concurrently: {e}");
             }
             return prefix + &encode_uri(&default_db_path) + "?mode=rwc";
         }
