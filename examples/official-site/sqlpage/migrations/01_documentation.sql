@@ -1380,7 +1380,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/blog.sql", "title": "Blog", "icon": "book"},
                     {"link": "//github.com/sqlpage/SQLPage/issues", "title": "Report a bug", "icon": "bug"},
                     {"link": "//github.com/sqlpage/SQLPage/discussions", "title": "Discussions", "icon": "message"},
-                    {"link": "/stories.sql", "title": "Stories", "icon": "user-screen"},
+                    {"link": "/stories", "title": "Stories", "icon": "user-screen"},
                     {"link": "//github.com/sqlpage/SQLPage", "title": "Github", "icon": "brand-github"}
                 ]},
                 {"title": "Documentation", "submenu": [
