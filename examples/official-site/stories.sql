@@ -1,8 +1,7 @@
 SELECT 'http_header' AS component, 
     'no-store, no-cache, must-revalidate, max-age=0' AS "Cache-Control",
     'no-cache' AS "pragma",
-    '0' AS "expires",
-    '<https://sql-page.com/safety>; rel="canonical"' AS "Link";
+    '0' AS "expires";
 
 SELECT 'dynamic' AS component, json_patch(json_extract(properties, '$[0]'), json_object(
     'title', 'SQLPage Success Stories'
