@@ -26,6 +26,7 @@
   /* Code colors */
   --tblr-code-color: hsl(225deg 45.4% 76.93%); /* Light code text for dark theme */
   --tblr-code-bg: hsla(225, 47%, 15%, 0.5); /* Subtle dark background */
+  --tblr-active-bg: var(--tblr-code-bg);
 
   /* Ethereal accent colors */
   --tblr-blue-rgb: 84, 151, 213;
@@ -35,6 +36,26 @@
   --tblr-primary-rgb: 95, 132, 169;
   --tblr-primary: rgb(var(--tblr-primary-rgb));
   --tblr-secondary: hsla(247, 60%, 94%, 0.7); /* Nebula purple */
+
+  /* Status + accent colors aligned with the brand palette */
+  --tblr-success-rgb: 16, 132, 86; /* Deep green for white text */
+  --tblr-success: rgb(var(--tblr-success-rgb));
+  --tblr-warning-rgb: 197, 124, 0; /* Deep amber */
+  --tblr-warning: rgb(var(--tblr-warning-rgb));
+  --tblr-danger-rgb: 196, 68, 68; /* Deep crimson */
+  --tblr-danger: rgb(var(--tblr-danger-rgb));
+  --tblr-purple-rgb: 118, 82, 200; /* Deep violet */
+  --tblr-purple: rgb(var(--tblr-purple-rgb));
+  --tblr-cyan-rgb: 0, 149, 168; /* Deep cyan */
+  --tblr-cyan: rgb(var(--tblr-cyan-rgb));
+  --tblr-indigo-rgb: 96, 113, 215; /* Deep indigo */
+  --tblr-indigo: rgb(var(--tblr-indigo-rgb));
+  --tblr-teal: #267d63;
+  --tblr-teal-fg: #20050b;
+
+  --tblr-green: var(--tblr-success);
+  --tblr-yellow: var(--tblr-warning);
+  --tblr-red: var(--tblr-danger);
 
   /* Luminous links */
   --tblr-link-color: hsl(212, 70%, 75%) !important; /* Star glow */
@@ -60,6 +81,26 @@
   --hljs-cosmic-string: hsl(120, 40%, 75%); /* Green aurora */
   --hljs-cosmic-operator: hsl(0, 0%, 95%); /* White dwarf */
   --hljs-cosmic-keyword: hsl(210, 100%, 75%); /* Blue giant */
+}
+
+.btn-primary {
+  --tblr-btn-border-color: var(--tblr-secondary);
+  --tblr-btn-active-border-color: transparent;
+  --tblr-btn-color: var(--tblr-primary-fg, #ffffff);
+  --tblr-btn-bg: transparent;
+  --tblr-btn-hover-color: var(--tblr-primary-fg);
+  --tblr-btn-hover-bg: transparent;
+  --tblr-btn-active-color: var(--tblr-primary-fg);
+  --tblr-btn-active-bg: transparent;
+  --tblr-btn-disabled-bg: var(--tblr-primary);
+  --tblr-btn-disabled-color: var(--tblr-primary-fg);
+  --tblr-btn-box-shadow: 0.1em 0.1em 0.1em var(--tblr-primary);
+  --tblr-btn-hover-border-color: var(--tblr-primary);
+  --tblr-btn-active-shadow: -0.1em -0.1em 0.1em var(--tblr-primary);
+}
+
+.dropdown-menu {
+  --tblr-dropdown-link-active-color: rgb(166, 211, 255);
 }
 
 @media (min-width: 768px) {

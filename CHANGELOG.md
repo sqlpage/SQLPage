@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## unreleased
+ - OIDC protected and public paths now respect the site prefix when it is defined.
+
 ## 0.42.0 (2026-01-17)
 
 - **New Function**: `sqlpage.web_root()` - Returns the web root directory where SQLPage serves `.sql` files from. This is more reliable than `sqlpage.current_working_directory()` when you need to reference the location of your SQL files, especially when the `--web-root` argument or `WEB_ROOT` environment variable is used.
