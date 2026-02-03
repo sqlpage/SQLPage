@@ -111,6 +111,7 @@ In a separate terminal, run the tests:
 ```bash
 cd tests/end-to-end
 npm install
+npx playwright install chromium
 npm run test
 ```
 
