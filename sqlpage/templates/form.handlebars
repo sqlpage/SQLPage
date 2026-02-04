@@ -163,23 +163,32 @@
         {{/each_row}}
         </div>
         {{#if (and (ne validate '') (not auto_submit))}}
-            <input class="btn
+            <button class="btn
             btn-{{default validate_color "primary"}}
             {{#if validate_shape}} btn-{{validate_shape}} {{/if}}
             {{#if validate_outline}} btn-outline-{{validate_outline}} {{/if}}
             {{#if validate_size}} btn-{{validate_size}} {{/if}}"
             {{flush_delayed}}
-            type="submit"
-            {{#if validate}}value="{{validate}}"{{/if}}>
+            type="submit">
+            {{~#if validate_icon~}}
+                <span {{~#if (not narrow)}} class="me-1"{{/if}}>{{~icon_img validate_icon~}}</span>
+            {{~/if~}}
+            <span>{{#if validate}}{{validate}}{{else}}Submit Query{{/if}}</span>
+            </button>
+
         {{/if}}
         {{#if reset}}
-            <input class="btn 
+            <button class="btn
             {{#if reset_color}} btn-{{reset_color}} {{/if}}
             {{#if reset_shape}} btn-{{reset_shape}} {{/if}}
             {{#if reset_outline}} btn-outline-{{reset_outline}} {{/if}}
             {{#if reset_size}} btn-{{reset_size}} {{/if}}"
-            type="reset" 
-            value="{{reset}}">
+            type="reset">
+            {{~#if reset_icon~}}
+                <span {{~#if (not narrow)}} class="me-1"{{/if}}>{{~icon_img reset_icon~}}</span>
+            {{~/if~}}
+            <span>{{reset}}</span>
+            </button>
         {{/if}}
     </fieldset>
 </form>
