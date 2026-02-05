@@ -2,6 +2,7 @@
 
 ## unreleased
  - OIDC protected and public paths now respect the site prefix when it is defined.
+ - Fix: forms without submit or reset buttons no longer keep extra bottom spacing.
 
 ## 0.42.0 (2026-01-17)
 
