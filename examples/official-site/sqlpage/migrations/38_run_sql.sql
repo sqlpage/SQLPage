@@ -11,7 +11,7 @@ VALUES (
         'Executes another SQL file and returns its result as a JSON array.
 
 ### Example
-    
+
 #### Include a common header in all your pages
 
 It is common to want to run the same SQL queries at the beginning of all your pages,
@@ -24,11 +24,31 @@ to include it in all your pages.
 select ''dynamic'' as component, sqlpage.run_sql(''common_header.sql'') as properties;
 ```
 
+#### Factorize logic between pages
+
+Reuse a sqlpage query in multiple pages without duplicating code by storing the results of `run_sql` to variables:
+
+##### `reusable.sql`
+
+```sql
+select some_field from some_table;
+```
+
+##### `index.sql`
+
+```sql
+-- save the value of some_field from the first result row of reusable.sql into $my_var
+set my_var = sqlpage.run_sql(''reusable.sql'')->>0->>''some_field'';
+```
+
+See [json in SQL](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide)
+for help with manipulating the json array returned by `run_sql`.
+
 #### Notes
 
  - **recursion**: you can use `run_sql` to include a file that itself includes another file, and so on. However, be careful to avoid infinite loops. SQLPage will throw an error if the inclusion depth is superior to `max_recursion_depth` (10 by default).
- - **security**: be careful when using `run_sql` to include files. 
-    - Never use `run_sql` with a user-provided parameter. 
+ - **security**: be careful when using `run_sql` to include files.
+    - Never use `run_sql` with a user-provided parameter.
     - Never run a file uploaded by a user, or a file that is not under your control.
     - Remember that users can also run the files you include with `sqlpage.run_sql(...)` directly just by loading the file in the browser.
         - Make sure this does not allow users to bypass security measures you put in place such as [access control](/component.sql?component=authentication).
