@@ -2,6 +2,7 @@
 
 ## unreleased
  - OIDC protected and public paths now respect the site prefix when it is defined.
+ - add submit and reset form button icons: validate_icon, reset_icon, reset_color
 
 ## 0.42.0 (2026-01-17)
 

@@ -267,6 +267,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('reset', 'The text to display in the button at the bottom of the form that resets the form to its original state. Omit this property not to show a reset button at all.', 'TEXT', TRUE, TRUE),
     ('id', 'A unique identifier for the form, which can then be used to validate the form from a button outside of the form.', 'TEXT', TRUE, TRUE),
     ('auto_submit', 'Automatically submit the form when the user changes any of its fields, and remove the validation button.', 'BOOLEAN', TRUE, TRUE),
+    ('validate_icon', 'Name of an icon to be displayed on the left side of the submit button.', 'ICON', TRUE, TRUE),
+    ('reset_icon', 'Name of an icon to be displayed on the left side of the reset button.', 'ICON', TRUE, TRUE),
+    ('reset_color', 'The color of the button at the bottom of the form that resets the form to its original state. Omit this property to use the default color.', 'COLOR', TRUE, TRUE),
     -- item level
     ('type', 'Declares input control behavior and expected format. All HTML input types are supported (text, number, date, file, checkbox, radio, hidden, ...). SQLPage adds some custom types: textarea, switch, header. text by default. See https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input#input_types', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
