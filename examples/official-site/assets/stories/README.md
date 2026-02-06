@@ -1,0 +1,1 @@
+This directory contains the images used on the stories page.
