@@ -9,7 +9,7 @@
     {{/if}}
     {{#if auto_submit}}data-auto-submit{{/if}}
 >
-    <fieldset class="form-fieldset mb-1">
+    <fieldset class="form-fieldset {{#if (or (and (ne validate '') (not auto_submit)) reset)}}mb-1{{else}}mb-0{{/if}}">
         {{#if title}}
             <h2 class="text-center mb-0">{{title}}</h2>
         {{/if}}
