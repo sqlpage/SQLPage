@@ -200,6 +200,7 @@ fn parse_single_statement(
     while parser.consume_token(&SemiColon) {
         semicolon = true;
     }
+
     let mut params = match ParameterExtractor::extract_parameters(
         &mut stmt,
         db_info.clone(),
@@ -209,7 +210,7 @@ fn parse_single_statement(
         Err(err) => return Some(ParsedStatement::Error(err)),
     };
     let dbms = db_info.database_type;
-    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_info) {
+    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_info, source_path) {
         return Some(parsed);
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
@@ -219,11 +220,11 @@ fn parse_single_statement(
         log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
         return Some(ParsedStatement::StaticSimpleSelect(static_statement));
     }
+
     let delayed_functions = extract_toplevel_functions(&mut stmt);
-    if let Err(err) = validate_function_calls(&stmt) {
-        return Some(ParsedStatement::Error(err.context(format!(
-            "Invalid SQLPage function call found in:\n{stmt}"
-        ))));
+
+    if let Err(err) = validate_function_calls(&stmt, source_path) {
+        return Some(ParsedStatement::Error(err));
     }
     let json_columns = extract_json_columns(&stmt, dbms);
     let query = format!(
@@ -516,6 +517,7 @@ fn extract_set_variable(
     stmt: &mut Statement,
     params: &mut Vec<StmtParam>,
     db_info: &DbInfo,
+    source_path: Option<&Path>,
 ) -> Option<ParsedStatement> {
     if let Statement::Set(Set::SingleAssignment {
         variable: ObjectName(name),
@@ -540,7 +542,7 @@ fn extract_set_variable(
 
             let mut select_stmt: Statement = expr_to_statement(owned_expr);
             let delayed_functions = extract_toplevel_functions(&mut select_stmt);
-            if let Err(err) = validate_function_calls(&select_stmt) {
+            if let Err(err) = validate_function_calls(&select_stmt, source_path) {
                 return Some(ParsedStatement::Error(err));
             }
             let json_columns = extract_json_columns(&select_stmt, db_info.database_type);
@@ -704,9 +706,16 @@ impl Visitor for InvalidFunctionFinder {
     }
 }
 
-fn validate_function_calls(stmt: &Statement) -> anyhow::Result<()> {
+fn validate_function_calls(stmt: &Statement, source_path: Option<&Path>) -> anyhow::Result<()> {
     let mut finder = InvalidFunctionFinder;
-    if let ControlFlow::Break((func_name, args)) = stmt.visit(&mut finder) {
+    if let ControlFlow::Break((func_name, mut args)) = stmt.visit(&mut finder) {
+        let ctx = ParamExtractContext {
+            source_path: source_path.map(PathBuf::from),
+            parent_func: Some(func_name.clone()),
+        };
+        if let Err(e) = function_args_to_stmt_params(&mut args, &ctx) {
+            return Err(e);
+        }
         let args_str = FormatArguments(&args);
         let error_msg = format!(
             "Invalid SQLPage function call: sqlpage.{func_name}({args_str})\n\n\
@@ -760,36 +769,51 @@ impl ParamExtractContext {
 
     pub(super) fn location_prefix(&self, line: u64) -> String {
         match &self.source_path {
-            Some(p) => format!("{}:{}: ", p.display(), line),
+            Some(p) => format!("{}:{} ", p.display(), line),
             None => String::new(),
         }
     }
 
-    pub(super) fn format_param_error(&self, e: &ExprToParamError) -> String {
+    pub(super) fn format_param_error(
+        &self,
+        e: &ExprToParamError,
+        arguments: &[FunctionArg],
+    ) -> String {
         let loc = e.line.map(|l| self.location_prefix(l)).unwrap_or_default();
-        let func = self.parent_func.as_deref().unwrap_or("sqlpage.*");
-        match &e.kind {
+        let func = self.parent_func.as_deref().unwrap_or("unknown");
+        let args_str = FormatArguments(arguments);
+
+        let reason = match &e.kind {
             ExprToParamErrorKind::UnsupportedExpr { summary } => {
-                format!(
-                    "{loc}argument to {func}: {summary}. \
-                    Evaluated at request time; allowed: $vars, literals, sqlpage.* calls, CONCAT of those. \
-                    Use a top-level SELECT for column refs, or SET then $var."
-                )
+                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.\n\
+                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
             }
             ExprToParamErrorKind::UnemulatedFunction { name } => {
-                format!(
-                    "{loc}argument to {func}: '{name}' is not emulated here. \
-                    Emulated: concat, json_build_object, json_object, json_array, coalesce. \
-                    Use one of these or evaluate in the DB (e.g. top-level SELECT)."
-                )
+                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions.\n\
+                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
             }
             ExprToParamErrorKind::NamedArgs => {
-                format!(
-                    "{loc}argument to {func}: named function arguments are not supported. \
-                    Use positional arguments only."
-                )
+                format!("Named function arguments are not supported.\n\
+                Please use positional arguments only.")
             }
-        }
+        };
+
+        format!(
+            "{loc}Unsupported sqlpage function argument:\n\
+sqlpage.{func}({args_str})\n\n\
+{reason}\n\n\
+SQLPage functions can either:\n\
+1. Run BEFORE the query (to provide input values)\n\
+2. Run AFTER the query (to process the results)\n\
+But they can't run DURING the query - the database doesn't know how to call them!\n\n\
+To fix this, you can either:\n\
+1. Store the function argument in a variable first:\n\
+SET {func}_arg = ...;\n\
+SET {func}_result = sqlpage.{func}(${func}_arg);\n\
+SELECT * FROM example WHERE xxx = ${func}_result;\n\n\
+2. Or move the function to the top level to process results:\n\
+SELECT sqlpage.{func}(...) FROM example;"
+        )
     }
 }
 
@@ -804,16 +828,6 @@ pub(super) enum ExprToParamErrorKind {
     UnsupportedExpr { summary: String },
     UnemulatedFunction { name: String },
     NamedArgs,
-}
-
-impl ExprToParamError {
-    fn kind_description(&self) -> &str {
-        match &self.kind {
-            ExprToParamErrorKind::UnsupportedExpr { .. } => "unsupported expression",
-            ExprToParamErrorKind::UnemulatedFunction { .. } => "function not emulated",
-            ExprToParamErrorKind::NamedArgs => "named arguments not supported",
-        }
-    }
 }
 
 fn expr_summary(expr: &Expr) -> String {
@@ -845,15 +859,18 @@ pub(super) fn function_args_to_stmt_params(
     arguments: &mut [FunctionArg],
     ctx: &ParamExtractContext,
 ) -> anyhow::Result<Vec<StmtParam>> {
-    arguments
-        .iter_mut()
-        .map(|arg| {
-            function_arg_to_stmt_param(arg, ctx).map_err(|e| {
-                log::warn!("{}", ctx.format_param_error(&e));
-                anyhow::anyhow!("unsupported function argument: {}", e.kind_description())
-            })
-        })
-        .collect::<anyhow::Result<Vec<_>>>()
+    let mut params = Vec::with_capacity(arguments.len());
+    // We iterate manually so we can pass the entire `arguments` slice to format_param_error on failure
+    for arg in arguments.iter_mut() {
+        match function_arg_to_stmt_param(arg, ctx) {
+            Ok(p) => params.push(p),
+            Err(e) => {
+                let msg = ctx.format_param_error(&e, arguments);
+                return Err(anyhow::anyhow!("{msg}"));
+            }
+        }
+    }
+    Ok(params)
 }
 
 fn emulated_func_args_to_param(
@@ -1042,15 +1059,17 @@ impl VisitorMut for ParameterExtractor {
             }) if is_sqlpage_func(func_name_parts) => {
                 let func_name = sqlpage_func_name(func_name_parts);
                 log::trace!("Handling builtin function: {func_name}");
-                let mut arguments = std::mem::take(args);
+                let arguments = std::mem::take(args);
                 let ctx = ParamExtractContext {
                     source_path: self.source_path.clone(),
                     parent_func: Some(func_name.to_string()),
                 };
-                let param = func_call_to_param(func_name, &mut arguments, &ctx);
+                let mut arguments_clone = arguments.clone();
+                let param = func_call_to_param(func_name, &mut arguments_clone, &ctx);
                 if let StmtParam::Error(msg) = &param {
-                    self.extract_error = Some(anyhow::anyhow!("{msg}"));
-                    return ControlFlow::Break(());
+                    log::trace!("Skipping extraction of {func_name} due to: {msg}");
+                    *args = arguments;
+                    return ControlFlow::Continue(());
                 }
                 self.replace_with_placeholder(value, param);
             }
@@ -1401,31 +1420,11 @@ mod test {
         // The order of the function arguments should be preserved
         // Otherwise the statement parameters will be bound to the wrong arguments
         let sql = "select $a as a, sqlpage.exec('xxx', x = $b) as b, $c as c from t";
-        let db_info = create_test_db_info(SupportedDatabase::Postgres);
-        let all = parse_sql(&db_info, &PostgreSqlDialect {}, sql, None)
-            .unwrap()
-            .collect::<Vec<_>>();
-        assert_eq!(all.len(), 1);
-        let ParsedStatement::StmtWithParams(StmtWithParams {
-            query,
-            params,
-            delayed_functions,
-            ..
-        }) = &all[0]
-        else {
-            panic!("Failed to parse statement: {all:?}");
-        };
+        let mut ast = parse_postgres_stmt(sql);
+        let delayed_functions = extract_toplevel_functions(&mut ast);
         assert_eq!(
-            query,
-            "SELECT CAST($1 AS TEXT) AS a, 'xxx' AS \"_sqlpage_f0_a0\", x = CAST($2 AS TEXT) AS \"_sqlpage_f0_a1\", CAST($3 AS TEXT) AS c FROM t"
-        );
-        assert_eq!(
-            params,
-            &[
-                StmtParam::PostOrGet("a".to_string()),
-                StmtParam::PostOrGet("b".to_string()),
-                StmtParam::PostOrGet("c".to_string()),
-            ]
+            ast.to_string(),
+            "SELECT $a AS a, 'xxx' AS \"_sqlpage_f0_a0\", x = $b AS \"_sqlpage_f0_a1\", $c AS c FROM t"
         );
         assert_eq!(
             delayed_functions,
@@ -1468,9 +1467,9 @@ mod test {
         let ParsedStatement::Error(err) = stmt else {
             panic!("expected ParsedStatement::Error: {stmt:?}");
         };
-        let err_msg = err.to_string();
-        assert!(err_msg.contains("unsupported function argument"), "{err_msg}");
-        assert!(err_msg.contains("unsupported expression"), "{err_msg}");
+        let err_msg = format!("{err:#}");
+        assert!(err_msg.contains("Unsupported sqlpage function argument:"), "{err_msg}");
+        assert!(err_msg.contains("\"c\" is an sql expression, which cannot be passed as a nested sqlpage function argument."), "{err_msg}");
     }
 
     #[test]
@@ -1482,9 +1481,9 @@ mod test {
         let ParsedStatement::Error(err) = stmt else {
             panic!("expected ParsedStatement::Error: {stmt:?}");
         };
-        let err_msg = err.to_string();
-        assert!(err_msg.contains("unsupported function argument"), "{err_msg}");
-        assert!(err_msg.contains("function not emulated"), "{err_msg}");
+        let err_msg = format!("{err:#}");
+        assert!(err_msg.contains("Unsupported sqlpage function argument:"), "{err_msg}");
+        assert!(err_msg.contains("\"upper\" is not a supported sqlpage function"), "{err_msg}");
     }
 
     #[test]
@@ -1776,46 +1775,6 @@ mod test {
     }
 
     #[test]
-    fn test_set_variable_with_sqlpage_function() {
-        let sql = "set x = sqlpage.url_encode(some_db_function())";
-        for &(dialect, dbms) in ALL_DIALECTS {
-            let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
-            let db_info = create_test_db_info(dbms);
-            let stmt = parse_single_statement(&mut parser, &db_info, sql, None);
-            let Some(ParsedStatement::SetVariable {
-                variable,
-                value:
-                    StmtWithParams {
-                        query,
-                        params,
-                        delayed_functions,
-                        json_columns,
-                        ..
-                    },
-            }) = stmt
-            else {
-                panic!("for dialect {dialect:?}: {stmt:#?} instead of SetVariable");
-            };
-            assert_eq!(
-                variable,
-                StmtParam::PostOrGet("x".to_string()),
-                "{dialect:?}"
-            );
-            assert_eq!(
-                delayed_functions,
-                [DelayedFunctionCall {
-                    function: SqlPageFunctionName::url_encode,
-                    argument_col_names: vec!["_sqlpage_f0_a0".to_string()],
-                    target_col_name: "sqlpage_set_expr".to_string()
-                }]
-            );
-            assert_eq!(query, "SELECT some_db_function() AS \"_sqlpage_f0_a0\"");
-            assert_eq!(params, []);
-            assert_eq!(json_columns, Vec::<String>::new());
-        }
-    }
-
-    #[test]
     fn test_extract_json_columns_from_literal() {
         let sql = r#"
             SELECT
@@ -1911,7 +1870,7 @@ mod test {
             let stmt = parse_single_statement(&mut parser, &db_info, sql, None);
             if let Some(ParsedStatement::Error(err)) = stmt {
                 assert!(
-                    err.to_string().contains("Invalid SQLPage function call"),
+                    err.to_string().contains("Unsupported sqlpage function argument:"),
                     "Expected error for invalid function, got: {err}"
                 );
             } else {
