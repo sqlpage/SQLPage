@@ -734,12 +734,12 @@ impl std::fmt::Display for FormatArguments<'_> {
 }
 
 #[derive(Clone, Default)]
-pub(super) struct ParamWarnContext {
+pub(super) struct ParamExtractContext {
     pub source_path: Option<PathBuf>,
     pub parent_func: Option<String>,
 }
 
-impl ParamWarnContext {
+impl ParamExtractContext {
     pub(super) fn with_parent(&self, parent: &str) -> Self {
         Self {
             source_path: self.source_path.clone(),
@@ -753,34 +753,94 @@ impl ParamWarnContext {
             None => String::new(),
         }
     }
+
+    pub(super) fn format_param_error(&self, e: &ExprToParamError) -> String {
+        let loc = e.line.map(|l| self.location_prefix(l)).unwrap_or_default();
+        let func = self.parent_func.as_deref().unwrap_or("sqlpage.*");
+        match &e.kind {
+            ExprToParamErrorKind::UnsupportedExpr { summary } => {
+                format!(
+                    "{loc}argument to {func}: {summary}. \
+                    Evaluated at request time; allowed: $vars, literals, sqlpage.* calls, CONCAT of those. \
+                    Use a top-level SELECT for column refs, or SET then $var."
+                )
+            }
+            ExprToParamErrorKind::UnemulatedFunction { name } => {
+                format!(
+                    "{loc}argument to {func}: '{name}' is not emulated here. \
+                    Emulated: concat, json_build_object, json_object, json_array, coalesce. \
+                    Use one of these or evaluate in the DB (e.g. top-level SELECT)."
+                )
+            }
+            ExprToParamErrorKind::NamedArgs => {
+                format!(
+                    "{loc}argument to {func}: named function arguments are not supported. \
+                    Use positional arguments only."
+                )
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(super) struct ExprToParamError {
+    pub(super) line: Option<u64>,
+    pub(super) kind: ExprToParamErrorKind,
+}
+
+#[derive(Debug)]
+pub(super) enum ExprToParamErrorKind {
+    UnsupportedExpr { summary: String },
+    UnemulatedFunction { name: String },
+    NamedArgs,
+}
+
+impl ExprToParamError {
+    fn kind_description(&self) -> &str {
+        match &self.kind {
+            ExprToParamErrorKind::UnsupportedExpr { .. } => "unsupported expression",
+            ExprToParamErrorKind::UnemulatedFunction { .. } => "function not emulated",
+            ExprToParamErrorKind::NamedArgs => "named arguments not supported",
+        }
+    }
+}
+
+fn expr_summary(expr: &Expr) -> String {
+    match expr {
+        Expr::CompoundIdentifier(idents) => {
+            let s = idents
+                .iter()
+                .map(|i| i.value.as_str())
+                .collect::<Vec<_>>()
+                .join(".");
+            format!("column/table reference '{s}'")
+        }
+        _ => format!("{expr}"),
+    }
 }
 
 pub(super) fn function_arg_to_stmt_param(
     arg: &mut FunctionArg,
-    ctx: &ParamWarnContext,
-) -> Option<StmtParam> {
-    function_arg_expr(arg).and_then(|e| expr_to_stmt_param(e, ctx))
+    ctx: &ParamExtractContext,
+) -> Result<StmtParam, ExprToParamError> {
+    let expr = function_arg_expr(arg).ok_or(ExprToParamError {
+        line: None,
+        kind: ExprToParamErrorKind::NamedArgs,
+    })?;
+    expr_to_stmt_param(expr, ctx)
 }
 
 pub(super) fn function_args_to_stmt_params(
     arguments: &mut [FunctionArg],
-    ctx: &ParamWarnContext,
+    ctx: &ParamExtractContext,
 ) -> anyhow::Result<Vec<StmtParam>> {
     arguments
         .iter_mut()
         .map(|arg| {
-            function_arg_to_stmt_param(arg, ctx)
-                .ok_or_else(|| anyhow::anyhow!("Passing \"{arg}\" as a function argument is not supported.\n\n\
-                    The only supported sqlpage function argument types are : \n\
-                      - variables (such as $my_variable), \n\
-                      - other sqlpage function calls (such as sqlpage.cookie('my_cookie')), \n\
-                      - literal strings (such as 'my_string'), \n\
-                      - concatenations of the above (such as CONCAT(x, y)).\n\n\
-                    Arbitrary SQL expressions as function arguments are not supported.\n\
-                    Try executing the SQL expression in a separate SET expression, then passing it to the function:\n\n\
-                    set my_parameter = {arg}; \n\
-                    SELECT sqlpage.my_function($my_parameter);\n\n\
-                    "))
+            function_arg_to_stmt_param(arg, ctx).map_err(|e| {
+                log::warn!("{}", ctx.format_param_error(&e));
+                anyhow::anyhow!("unsupported function argument: {}", e.kind_description())
+            })
         })
         .collect::<anyhow::Result<Vec<_>>>()
 }
@@ -788,15 +848,16 @@ pub(super) fn function_args_to_stmt_params(
 fn emulated_func_args_to_param(
     func_name: &str,
     args: &mut [FunctionArg],
-    ctx: &ParamWarnContext,
-) -> Option<StmtParam> {
+    ctx: &ParamExtractContext,
+    line: u64,
+) -> Result<StmtParam, ExprToParamError> {
     let inner = ctx.with_parent(func_name);
     if func_name.eq_ignore_ascii_case("concat") {
         let mut concat_args = Vec::with_capacity(args.len());
         for a in args {
             concat_args.push(function_arg_to_stmt_param(a, &inner)?);
         }
-        Some(StmtParam::Concat(concat_args))
+        Ok(StmtParam::Concat(concat_args))
     } else if func_name.eq_ignore_ascii_case("json_object")
         || func_name.eq_ignore_ascii_case("jsonb_object")
         || func_name.eq_ignore_ascii_case("json_build_object")
@@ -806,7 +867,7 @@ fn emulated_func_args_to_param(
         for a in args {
             json_obj_args.push(function_arg_to_stmt_param(a, &inner)?);
         }
-        Some(StmtParam::JsonObject(json_obj_args))
+        Ok(StmtParam::JsonObject(json_obj_args))
     } else if func_name.eq_ignore_ascii_case("json_array")
         || func_name.eq_ignore_ascii_case("jsonb_array")
         || func_name.eq_ignore_ascii_case("json_build_array")
@@ -816,26 +877,39 @@ fn emulated_func_args_to_param(
         for a in args {
             json_obj_args.push(function_arg_to_stmt_param(a, &inner)?);
         }
-        Some(StmtParam::JsonArray(json_obj_args))
+        Ok(StmtParam::JsonArray(json_obj_args))
     } else if func_name.eq_ignore_ascii_case("coalesce") {
         let mut coalesce_args = Vec::with_capacity(args.len());
         for a in args {
             coalesce_args.push(function_arg_to_stmt_param(a, &inner)?);
         }
-        Some(StmtParam::Coalesce(coalesce_args))
+        Ok(StmtParam::Coalesce(coalesce_args))
     } else {
-        log::warn!("SQLPage cannot emulate the following function: {func_name}");
-        None
+        Err(ExprToParamError {
+            line: Some(line),
+            kind: ExprToParamErrorKind::UnemulatedFunction {
+                name: func_name.to_string(),
+            },
+        })
     }
 }
 
-fn expr_to_stmt_param(arg: &mut Expr, ctx: &ParamWarnContext) -> Option<StmtParam> {
+fn expr_to_stmt_param(
+    arg: &mut Expr,
+    ctx: &ParamExtractContext,
+) -> Result<StmtParam, ExprToParamError> {
+    let line = arg.span().start.line;
     match arg {
         Expr::Value(ValueWithSpan {
             value: Value::Placeholder(placeholder),
             ..
-        }) => Some(map_param(std::mem::take(placeholder))),
-        Expr::Identifier(ident) => extract_ident_param(ident),
+        }) => Ok(map_param(std::mem::take(placeholder))),
+        Expr::Identifier(ident) => extract_ident_param(ident).ok_or_else(|| ExprToParamError {
+            line: Some(line),
+            kind: ExprToParamErrorKind::UnsupportedExpr {
+                summary: expr_summary(arg),
+            },
+        }),
         Expr::Function(Function {
             name: ObjectName(func_name_parts),
             args:
@@ -845,7 +919,7 @@ fn expr_to_stmt_param(arg: &mut Expr, ctx: &ParamWarnContext) -> Option<StmtPara
                     ..
                 }),
             ..
-        }) if is_sqlpage_func(func_name_parts) => Some(func_call_to_param(
+        }) if is_sqlpage_func(func_name_parts) => Ok(func_call_to_param(
             sqlpage_func_name(func_name_parts),
             args.as_mut_slice(),
             ctx,
@@ -853,14 +927,14 @@ fn expr_to_stmt_param(arg: &mut Expr, ctx: &ParamWarnContext) -> Option<StmtPara
         Expr::Value(ValueWithSpan {
             value: Value::SingleQuotedString(param_value),
             ..
-        }) => Some(StmtParam::Literal(std::mem::take(param_value))),
+        }) => Ok(StmtParam::Literal(std::mem::take(param_value))),
         Expr::Value(ValueWithSpan {
             value: Value::Number(param_value, _is_long),
             ..
-        }) => Some(StmtParam::Literal(param_value.clone())),
+        }) => Ok(StmtParam::Literal(param_value.clone())),
         Expr::Value(ValueWithSpan {
             value: Value::Null, ..
-        }) => Some(StmtParam::Null),
+        }) => Ok(StmtParam::Null),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::StringConcat,
@@ -868,7 +942,7 @@ fn expr_to_stmt_param(arg: &mut Expr, ctx: &ParamWarnContext) -> Option<StmtPara
         } => {
             let left = expr_to_stmt_param(left, ctx)?;
             let right = expr_to_stmt_param(right, ctx)?;
-            Some(StmtParam::Concat(vec![left, right]))
+            Ok(StmtParam::Concat(vec![left, right]))
         }
         Expr::Function(Function {
             name: ObjectName(func_name_parts),
@@ -884,48 +958,21 @@ fn expr_to_stmt_param(arg: &mut Expr, ctx: &ParamWarnContext) -> Option<StmtPara
                 .as_ident()
                 .map(|ident| ident.value.as_str())
                 .unwrap_or_default();
-            emulated_func_args_to_param(func_name, args.as_mut_slice(), ctx)
+            emulated_func_args_to_param(func_name, args.as_mut_slice(), ctx, line)
         }
-        Expr::CompoundIdentifier(idents) => {
-            let display = idents
-                .iter()
-                .map(|i| i.value.as_str())
-                .collect::<Vec<_>>()
-                .join(".");
-            let line = arg.span().start.line;
-            let loc = ctx.location_prefix(line);
-            let func = ctx.parent_func.as_deref().unwrap_or("sqlpage.*");
-            log::warn!(
-                "{loc}column/table reference '{display}' not allowed as argument to {func} (evaluated at request time inside sqlpage.*). \
-                Allowed here: $vars, literals, other sqlpage.* calls. \
-                Column refs allowed only in top-level SELECT (e.g. SELECT sqlpage.link(..., json_build_object(..., col)) FROM t). \
-                Non-fatal: execution continues, argument passed through to DB."
-            );
-            None
-        }
-        _ => {
-            let line = arg.span().start.line;
-            let loc = ctx.location_prefix(line);
-            let func = ctx.parent_func.as_deref().unwrap_or("emulated");
-            log::warn!(
-                "{loc}unsupported argument {arg} to {func}. \
-                Emulated functions (json_build_object, json_object, json_array, concat, coalesce) accept only: $vars, literals, sqlpage.* calls, or CONCAT of those. \
-                Non-fatal: execution continues, argument passed through to DB."
-            );
-            None
-        }
+        _ => Err(ExprToParamError {
+            line: Some(line),
+            kind: ExprToParamErrorKind::UnsupportedExpr {
+                summary: expr_summary(arg),
+            },
+        }),
     }
 }
 
 fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
     match arg {
         FunctionArg::Unnamed(FunctionArgExpr::Expr(expr)) => Some(expr),
-        other => {
-            log::warn!(
-                "Using named function arguments ({other}) is not supported by SQLPage functions."
-            );
-            None
-        }
+        _ => None,
     }
 }
 
@@ -985,7 +1032,7 @@ impl VisitorMut for ParameterExtractor {
                 let func_name = sqlpage_func_name(func_name_parts);
                 log::trace!("Handling builtin function: {func_name}");
                 let mut arguments = std::mem::take(args);
-                let ctx = ParamWarnContext {
+                let ctx = ParamExtractContext {
                     source_path: self.source_path.clone(),
                     parent_func: Some(func_name.to_string()),
                 };

@@ -9,7 +9,7 @@ use sqlparser::ast::FunctionArg;
 use crate::webserver::http_request_info::{ExecutionContext, RequestInfo};
 
 use super::sql::function_args_to_stmt_params;
-use super::sql::ParamWarnContext;
+use super::sql::ParamExtractContext;
 use super::syntax_tree::SqlPageFunctionCall;
 use super::syntax_tree::StmtParam;
 
@@ -19,7 +19,7 @@ use anyhow::Context;
 pub(super) fn func_call_to_param(
     func_name: &str,
     arguments: &mut [FunctionArg],
-    ctx: &ParamWarnContext,
+    ctx: &ParamExtractContext,
 ) -> StmtParam {
     SqlPageFunctionCall::from_func_call(func_name, arguments, ctx)
         .with_context(|| {
@@ -36,5 +36,5 @@ pub(super) fn func_call_to_param(
 
 pub(super) fn are_params_extractable(arguments: &[FunctionArg]) -> bool {
     let mut mutable_copy = arguments.to_vec();
-    function_args_to_stmt_params(&mut mutable_copy, &ParamWarnContext::default()).is_ok()
+    function_args_to_stmt_params(&mut mutable_copy, &ParamExtractContext::default()).is_ok()
 }

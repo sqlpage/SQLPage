@@ -20,7 +20,7 @@ use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::{
-    execute_queries::DbConn, sql::function_args_to_stmt_params, sql::ParamWarnContext,
+    execute_queries::DbConn, sql::function_args_to_stmt_params, sql::ParamExtractContext,
     sqlpage_functions::functions::SqlPageFunctionName,
 };
 use anyhow::Context as _;
@@ -104,7 +104,7 @@ impl SqlPageFunctionCall {
     pub fn from_func_call(
         func_name: &str,
         arguments: &mut [FunctionArg],
-        ctx: &ParamWarnContext,
+        ctx: &ParamExtractContext,
     ) -> anyhow::Result<Self> {
         let function = SqlPageFunctionName::from_str(func_name)?;
         let arguments = function_args_to_stmt_params(arguments, ctx)?;
