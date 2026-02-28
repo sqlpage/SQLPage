@@ -43,8 +43,7 @@ impl ParsedSqlFile {
             source_path.display(),
             dialect
         );
-        let parsed_statements = match parse_sql(&db.info, dialect.as_ref(), sql)
-        {
+        let parsed_statements = match parse_sql(&db.info, dialect.as_ref(), sql) {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err, source_path),
         };
@@ -199,10 +198,7 @@ fn parse_single_statement(
         semicolon = true;
     }
 
-    let mut params = match ParameterExtractor::extract_parameters(
-        &mut stmt,
-        db_info.clone(),
-    ) {
+    let mut params = match ParameterExtractor::extract_parameters(&mut stmt, db_info.clone()) {
         Ok(p) => p,
         Err(err) => return Some(ParsedStatement::Error(err)),
     };
@@ -773,8 +769,10 @@ impl ParamExtractContext {
                 format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions.")
             }
             ExprToParamErrorKind::NamedArgs => {
-                format!("Named function arguments are not supported.\n\
-                Please use positional arguments only.")
+                format!(
+                    "Named function arguments are not supported.\n\
+                Please use positional arguments only."
+                )
             }
         };
 
@@ -1446,8 +1444,8 @@ mod test {
             let sql = "select sqlpage.fetch($x)";
             let mut ast = parse_stmt(sql, dialect);
             let db_info = create_test_db_info(SupportedDatabase::Postgres);
-            let parameters =
-                ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();            assert_eq!(
+            let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();
+            assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
                     function: SqlPageFunctionName::fetch,
@@ -1616,8 +1614,7 @@ mod test {
             } else {
                 create_test_db_info(SupportedDatabase::Generic)
             };
-            let parsed: Vec<ParsedStatement> =
-                parse_sql(&db_info, dialect, sql).unwrap().collect();
+            let parsed: Vec<ParsedStatement> = parse_sql(&db_info, dialect, sql).unwrap().collect();
             match &parsed[..] {
                 [ParsedStatement::StaticSimpleSelect(q)] => assert_eq!(
                     q,
@@ -1775,6 +1772,46 @@ mod test {
                 "json_col6".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn test_set_variable_with_sqlpage_function() {
+        let sql = "set x = sqlpage.url_encode(some_db_function())";
+        for &(dialect, dbms) in ALL_DIALECTS {
+            let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
+            let db_info = create_test_db_info(dbms);
+            let stmt = parse_single_statement(&mut parser, &db_info, sql);
+            let Some(ParsedStatement::SetVariable {
+                variable,
+                value:
+                    StmtWithParams {
+                        query,
+                        params,
+                        delayed_functions,
+                        json_columns,
+                        ..
+                    },
+            }) = stmt
+            else {
+                panic!("for dialect {dialect:?}: {stmt:#?} instead of SetVariable");
+            };
+            assert_eq!(
+                variable,
+                StmtParam::PostOrGet("x".to_string()),
+                "{dialect:?}"
+            );
+            assert_eq!(
+                delayed_functions,
+                [DelayedFunctionCall {
+                    function: SqlPageFunctionName::url_encode,
+                    argument_col_names: vec!["_sqlpage_f0_a0".to_string()],
+                    target_col_name: "sqlpage_set_expr".to_string()
+                }]
+            );
+            assert_eq!(query, "SELECT some_db_function() AS \"_sqlpage_f0_a0\"");
+            assert_eq!(params, []);
+            assert_eq!(json_columns, Vec::<String>::new());
+        }
     }
 
     #[test]
