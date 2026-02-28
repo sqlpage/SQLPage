@@ -9,14 +9,19 @@ use sqlparser::ast::FunctionArg;
 use crate::webserver::http_request_info::{ExecutionContext, RequestInfo};
 
 use super::sql::function_args_to_stmt_params;
+use super::sql::ParamWarnContext;
 use super::syntax_tree::SqlPageFunctionCall;
 use super::syntax_tree::StmtParam;
 
 use super::sql::FormatArguments;
 use anyhow::Context;
 
-pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg]) -> StmtParam {
-    SqlPageFunctionCall::from_func_call(func_name, arguments)
+pub(super) fn func_call_to_param(
+    func_name: &str,
+    arguments: &mut [FunctionArg],
+    ctx: &ParamWarnContext,
+) -> StmtParam {
+    SqlPageFunctionCall::from_func_call(func_name, arguments, ctx)
         .with_context(|| {
             format!(
                 "Invalid function call: sqlpage.{func_name}({})",
@@ -31,5 +36,5 @@ pub(super) fn func_call_to_param(func_name: &str, arguments: &mut [FunctionArg])
 
 pub(super) fn are_params_extractable(arguments: &[FunctionArg]) -> bool {
     let mut mutable_copy = arguments.to_vec();
-    function_args_to_stmt_params(&mut mutable_copy).is_ok()
+    function_args_to_stmt_params(&mut mutable_copy, &ParamWarnContext::default()).is_ok()
 }
