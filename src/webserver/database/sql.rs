@@ -1,6 +1,6 @@
 use super::csv_import::{extract_csv_copy_statement, CsvImport};
-use super::sqlpage_functions::functions::SqlPageFunctionName;
 use super::sqlpage_functions::func_call_to_param;
+use super::sqlpage_functions::functions::SqlPageFunctionName;
 use super::syntax_tree::StmtParam;
 use super::SupportedDatabase;
 use crate::file_cache::AsyncFromStrWithState;
@@ -201,14 +201,11 @@ fn parse_single_statement(
         semicolon = true;
     }
 
-    let mut params = match ParameterExtractor::extract_parameters(
-        &mut stmt,
-        db_info.clone(),
-        source_path,
-    ) {
-        Ok(p) => p,
-        Err(err) => return Some(ParsedStatement::Error(err)),
-    };
+    let mut params =
+        match ParameterExtractor::extract_parameters(&mut stmt, db_info.clone(), source_path) {
+            Ok(p) => p,
+            Err(err) => return Some(ParsedStatement::Error(err)),
+        };
     let dbms = db_info.database_type;
     if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_info, source_path) {
         return Some(parsed);
@@ -713,9 +710,8 @@ fn validate_function_calls(stmt: &Statement, source_path: Option<&Path>) -> anyh
             source_path: source_path.map(PathBuf::from),
             parent_func: Some(func_name.clone()),
         };
-        if let Err(e) = function_args_to_stmt_params(&mut args, &ctx) {
-            return Err(e);
-        }
+        function_args_to_stmt_params(&mut args, &ctx)?;
+
         let args_str = FormatArguments(&args);
         let error_msg = format!(
             "Invalid SQLPage function call: sqlpage.{func_name}({args_str})\n\n\
@@ -785,16 +781,13 @@ impl ParamExtractContext {
 
         let reason = match &e.kind {
             ExprToParamErrorKind::UnsupportedExpr { summary } => {
-                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.\n\
-                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
+                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.")
             }
             ExprToParamErrorKind::UnemulatedFunction { name } => {
-                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions.\n\
-                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
+                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql function calls like concat or json_object can be used as function parameters.")
             }
             ExprToParamErrorKind::NamedArgs => {
-                format!("Named function arguments are not supported.\n\
-                Please use positional arguments only.")
+                format!("Named function arguments are not supported. Please use positional arguments only in sqlpage.{func}")
             }
         };
 
@@ -1294,8 +1287,7 @@ mod test {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
         let db_info = create_test_db_info(SupportedDatabase::Postgres);
-        let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
         // $a -> $1
         // $x -> $2
         // sqlpage.cookie(...) -> $3
@@ -1320,8 +1312,7 @@ mod test {
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
         let db_info = create_test_db_info(SupportedDatabase::Sqlite);
-        let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
         assert_eq!(
             ast.to_string(),
             "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
@@ -1446,7 +1437,7 @@ mod test {
             let mut ast = parse_stmt(sql, dialect);
             let db_info = create_test_db_info(SupportedDatabase::Postgres);
             let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
+                ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
             assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
@@ -1468,7 +1459,10 @@ mod test {
             panic!("expected ParsedStatement::Error: {stmt:?}");
         };
         let err_msg = format!("{err:#}");
-        assert!(err_msg.contains("Unsupported sqlpage function argument:"), "{err_msg}");
+        assert!(
+            err_msg.contains("Unsupported sqlpage function argument:"),
+            "{err_msg}"
+        );
         assert!(err_msg.contains("\"c\" is an sql expression, which cannot be passed as a nested sqlpage function argument."), "{err_msg}");
     }
 
@@ -1482,8 +1476,14 @@ mod test {
             panic!("expected ParsedStatement::Error: {stmt:?}");
         };
         let err_msg = format!("{err:#}");
-        assert!(err_msg.contains("Unsupported sqlpage function argument:"), "{err_msg}");
-        assert!(err_msg.contains("\"upper\" is not a supported sqlpage function"), "{err_msg}");
+        assert!(
+            err_msg.contains("Unsupported sqlpage function argument:"),
+            "{err_msg}"
+        );
+        assert!(
+            err_msg.contains("\"upper\" is not a supported sqlpage function"),
+            "{err_msg}"
+        );
     }
 
     #[test]
@@ -1559,8 +1559,7 @@ mod test {
             &MsSqlDialect {},
         );
         let db_info = create_test_db_info(SupportedDatabase::Mssql);
-        let parameters =
-            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
         assert_eq!(
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
@@ -1870,7 +1869,8 @@ mod test {
             let stmt = parse_single_statement(&mut parser, &db_info, sql, None);
             if let Some(ParsedStatement::Error(err)) = stmt {
                 assert!(
-                    err.to_string().contains("Unsupported sqlpage function argument:"),
+                    err.to_string()
+                        .contains("Unsupported sqlpage function argument:"),
                     "Expected error for invalid function, got: {err}"
                 );
             } else {
