@@ -1,6 +1,6 @@
 use super::csv_import::{extract_csv_copy_statement, CsvImport};
 use super::sqlpage_functions::functions::SqlPageFunctionName;
-use super::sqlpage_functions::{are_params_extractable, func_call_to_param};
+use super::sqlpage_functions::func_call_to_param;
 use super::syntax_tree::StmtParam;
 use super::SupportedDatabase;
 use crate::file_cache::AsyncFromStrWithState;
@@ -200,8 +200,14 @@ fn parse_single_statement(
     while parser.consume_token(&SemiColon) {
         semicolon = true;
     }
-    let mut params =
-        ParameterExtractor::extract_parameters(&mut stmt, db_info.clone(), source_path);
+    let mut params = match ParameterExtractor::extract_parameters(
+        &mut stmt,
+        db_info.clone(),
+        source_path,
+    ) {
+        Ok(p) => p,
+        Err(err) => return Some(ParsedStatement::Error(err)),
+    };
     let dbms = db_info.database_type;
     if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_info) {
         return Some(parsed);
@@ -556,6 +562,7 @@ struct ParameterExtractor {
     db_info: DbInfo,
     parameters: Vec<StmtParam>,
     source_path: Option<PathBuf>,
+    extract_error: Option<anyhow::Error>,
 }
 
 #[derive(Debug)]
@@ -607,14 +614,18 @@ impl ParameterExtractor {
         sql_ast: &mut sqlparser::ast::Statement,
         db_info: DbInfo,
         source_path: Option<&Path>,
-    ) -> Vec<StmtParam> {
+    ) -> anyhow::Result<Vec<StmtParam>> {
         let mut this = Self {
             db_info,
             parameters: vec![],
             source_path: source_path.map(PathBuf::from),
+            extract_error: None,
         };
         let _ = sql_ast.visit(&mut this);
-        this.parameters
+        if let Some(e) = this.extract_error {
+            return Err(e);
+        }
+        Ok(this.parameters)
     }
 
     fn replace_with_placeholder(&mut self, value: &mut Expr, param: StmtParam) {
@@ -1028,7 +1039,7 @@ impl VisitorMut for ParameterExtractor {
                 null_treatment: None,
                 over: None,
                 ..
-            }) if is_sqlpage_func(func_name_parts) && are_params_extractable(args) => {
+            }) if is_sqlpage_func(func_name_parts) => {
                 let func_name = sqlpage_func_name(func_name_parts);
                 log::trace!("Handling builtin function: {func_name}");
                 let mut arguments = std::mem::take(args);
@@ -1037,6 +1048,10 @@ impl VisitorMut for ParameterExtractor {
                     parent_func: Some(func_name.to_string()),
                 };
                 let param = func_call_to_param(func_name, &mut arguments, &ctx);
+                if let StmtParam::Error(msg) = &param {
+                    self.extract_error = Some(anyhow::anyhow!("{msg}"));
+                    return ControlFlow::Break(());
+                }
                 self.replace_with_placeholder(value, param);
             }
             // Replace 'str1' || 'str2' with CONCAT('str1', 'str2') for MSSQL
@@ -1260,7 +1275,8 @@ mod test {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
         let db_info = create_test_db_info(SupportedDatabase::Postgres);
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None);
+        let parameters =
+            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
         // $a -> $1
         // $x -> $2
         // sqlpage.cookie(...) -> $3
@@ -1285,7 +1301,8 @@ mod test {
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
         let db_info = create_test_db_info(SupportedDatabase::Sqlite);
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None);
+        let parameters =
+            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
         assert_eq!(
             ast.to_string(),
             "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
@@ -1429,7 +1446,8 @@ mod test {
             let sql = "select sqlpage.fetch($x)";
             let mut ast = parse_stmt(sql, dialect);
             let db_info = create_test_db_info(SupportedDatabase::Postgres);
-            let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None);
+            let parameters =
+            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
             assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
@@ -1439,6 +1457,34 @@ mod test {
                 "Failed for dialect {dialect:?}"
             );
         }
+    }
+
+    #[test]
+    fn test_parse_sql_unsupported_expr_in_sqlpage_arg() {
+        let sql = "SELECT sqlpage.link('x', json_build_object('k', c)) FROM (SELECT 1 AS c) t";
+        let db_info = create_test_db_info(SupportedDatabase::Postgres);
+        let mut parsed = parse_sql(&db_info, &PostgreSqlDialect {}, sql, None).unwrap();
+        let stmt = parsed.next().expect("one statement");
+        let ParsedStatement::Error(err) = stmt else {
+            panic!("expected ParsedStatement::Error: {stmt:?}");
+        };
+        let err_msg = err.to_string();
+        assert!(err_msg.contains("unsupported function argument"), "{err_msg}");
+        assert!(err_msg.contains("unsupported expression"), "{err_msg}");
+    }
+
+    #[test]
+    fn test_parse_sql_unemulated_function_in_sqlpage_arg() {
+        let sql = "SELECT sqlpage.link('x', upper('a')) FROM (SELECT 1) t";
+        let db_info = create_test_db_info(SupportedDatabase::Postgres);
+        let mut parsed = parse_sql(&db_info, &PostgreSqlDialect {}, sql, None).unwrap();
+        let stmt = parsed.next().expect("one statement");
+        let ParsedStatement::Error(err) = stmt else {
+            panic!("expected ParsedStatement::Error: {stmt:?}");
+        };
+        let err_msg = err.to_string();
+        assert!(err_msg.contains("unsupported function argument"), "{err_msg}");
+        assert!(err_msg.contains("function not emulated"), "{err_msg}");
     }
 
     #[test]
@@ -1470,6 +1516,7 @@ mod test {
             db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![],
             source_path: None,
+            extract_error: None,
         }
         .is_own_placeholder("$1"));
 
@@ -1477,6 +1524,7 @@ mod test {
             db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![StmtParam::Get("x".to_string())],
             source_path: None,
+            extract_error: None,
         }
         .is_own_placeholder("$2"));
 
@@ -1484,6 +1532,7 @@ mod test {
             db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![],
             source_path: None,
+            extract_error: None,
         }
         .is_own_placeholder("$2"));
 
@@ -1491,6 +1540,7 @@ mod test {
             db_info: create_test_db_info(SupportedDatabase::Sqlite),
             parameters: vec![],
             source_path: None,
+            extract_error: None,
         }
         .is_own_placeholder("?1"));
 
@@ -1498,6 +1548,7 @@ mod test {
             db_info: create_test_db_info(SupportedDatabase::Sqlite),
             parameters: vec![],
             source_path: None,
+            extract_error: None,
         }
         .is_own_placeholder("$1"));
     }
@@ -1509,7 +1560,8 @@ mod test {
             &MsSqlDialect {},
         );
         let db_info = create_test_db_info(SupportedDatabase::Mssql);
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None);
+        let parameters =
+            ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
         assert_eq!(
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"

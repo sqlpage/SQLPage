@@ -8,7 +8,6 @@ use sqlparser::ast::FunctionArg;
 
 use crate::webserver::http_request_info::{ExecutionContext, RequestInfo};
 
-use super::sql::function_args_to_stmt_params;
 use super::sql::ParamExtractContext;
 use super::syntax_tree::SqlPageFunctionCall;
 use super::syntax_tree::StmtParam;
@@ -32,9 +31,4 @@ pub(super) fn func_call_to_param(
             |e| StmtParam::Error(format!("{e:#}")),
             StmtParam::FunctionCall,
         )
-}
-
-pub(super) fn are_params_extractable(arguments: &[FunctionArg]) -> bool {
-    let mut mutable_copy = arguments.to_vec();
-    function_args_to_stmt_params(&mut mutable_copy, &ParamExtractContext::default()).is_ok()
 }
