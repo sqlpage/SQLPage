@@ -331,6 +331,12 @@ fn debug_row(r: &AnyRow) {
 }
 
 fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
+    if let Some(func_err) = err.downcast_ref::<super::sql::SqlPageFunctionError>() {
+        let line = func_err.line;
+        let loc = if line > 0 { format!(":{line}") } else { String::new() };
+        return anyhow::anyhow!("{}{loc} {}", source_file.display(), func_err);
+    }
+
     let mut e = anyhow!("{} contains a syntax error preventing SQLPage from parsing and preparing its SQL statements.", source_file.display());
     for c in err.chain().rev() {
         e = e.context(c.to_string());

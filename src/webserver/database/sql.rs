@@ -43,7 +43,7 @@ impl ParsedSqlFile {
             source_path.display(),
             dialect
         );
-        let parsed_statements = match parse_sql(&db.info, dialect.as_ref(), sql, Some(source_path))
+        let parsed_statements = match parse_sql(&db.info, dialect.as_ref(), sql)
         {
             Ok(parsed) => parsed,
             Err(err) => return Self::from_err(err, source_path),
@@ -136,7 +136,6 @@ fn parse_sql<'a>(
     db_info: &'a DbInfo,
     dialect: &'a dyn Dialect,
     sql: &'a str,
-    source_path: Option<&'a Path>,
 ) -> anyhow::Result<impl Iterator<Item = ParsedStatement> + 'a> {
     log::trace!("Parsing {} SQL: {sql}", db_info.dbms_name);
 
@@ -153,7 +152,7 @@ fn parse_sql<'a>(
             // Return the first error and ignore the rest
             return None;
         }
-        let statement = parse_single_statement(&mut parser, db_info, sql, source_path);
+        let statement = parse_single_statement(&mut parser, db_info, sql);
         log::debug!("Parsed statement: {statement:?}");
         if let Some(ParsedStatement::Error(_)) = &statement {
             has_error = true;
@@ -187,7 +186,6 @@ fn parse_single_statement(
     parser: &mut Parser<'_>,
     db_info: &DbInfo,
     source_sql: &str,
-    source_path: Option<&Path>,
 ) -> Option<ParsedStatement> {
     if parser.peek_token() == EOF {
         return None;
@@ -201,13 +199,15 @@ fn parse_single_statement(
         semicolon = true;
     }
 
-    let mut params =
-        match ParameterExtractor::extract_parameters(&mut stmt, db_info.clone(), source_path) {
-            Ok(p) => p,
-            Err(err) => return Some(ParsedStatement::Error(err)),
-        };
+    let mut params = match ParameterExtractor::extract_parameters(
+        &mut stmt,
+        db_info.clone(),
+    ) {
+        Ok(p) => p,
+        Err(err) => return Some(ParsedStatement::Error(err)),
+    };
     let dbms = db_info.database_type;
-    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_info, source_path) {
+    if let Some(parsed) = extract_set_variable(&mut stmt, &mut params, db_info) {
         return Some(parsed);
     }
     if let Some(csv_import) = extract_csv_copy_statement(&mut stmt) {
@@ -220,7 +220,7 @@ fn parse_single_statement(
 
     let delayed_functions = extract_toplevel_functions(&mut stmt);
 
-    if let Err(err) = validate_function_calls(&stmt, source_path) {
+    if let Err(err) = validate_function_calls(&stmt) {
         return Some(ParsedStatement::Error(err));
     }
     let json_columns = extract_json_columns(&stmt, dbms);
@@ -514,7 +514,6 @@ fn extract_set_variable(
     stmt: &mut Statement,
     params: &mut Vec<StmtParam>,
     db_info: &DbInfo,
-    source_path: Option<&Path>,
 ) -> Option<ParsedStatement> {
     if let Statement::Set(Set::SingleAssignment {
         variable: ObjectName(name),
@@ -539,7 +538,7 @@ fn extract_set_variable(
 
             let mut select_stmt: Statement = expr_to_statement(owned_expr);
             let delayed_functions = extract_toplevel_functions(&mut select_stmt);
-            if let Err(err) = validate_function_calls(&select_stmt, source_path) {
+            if let Err(err) = validate_function_calls(&select_stmt) {
                 return Some(ParsedStatement::Error(err));
             }
             let json_columns = extract_json_columns(&select_stmt, db_info.database_type);
@@ -560,7 +559,6 @@ fn extract_set_variable(
 struct ParameterExtractor {
     db_info: DbInfo,
     parameters: Vec<StmtParam>,
-    source_path: Option<PathBuf>,
     extract_error: Option<anyhow::Error>,
 }
 
@@ -612,12 +610,10 @@ impl ParameterExtractor {
     fn extract_parameters(
         sql_ast: &mut sqlparser::ast::Statement,
         db_info: DbInfo,
-        source_path: Option<&Path>,
     ) -> anyhow::Result<Vec<StmtParam>> {
         let mut this = Self {
             db_info,
             parameters: vec![],
-            source_path: source_path.map(PathBuf::from),
             extract_error: None,
         };
         let _ = sql_ast.visit(&mut this);
@@ -703,11 +699,10 @@ impl Visitor for InvalidFunctionFinder {
     }
 }
 
-fn validate_function_calls(stmt: &Statement, source_path: Option<&Path>) -> anyhow::Result<()> {
+fn validate_function_calls(stmt: &Statement) -> anyhow::Result<()> {
     let mut finder = InvalidFunctionFinder;
     if let ControlFlow::Break((func_name, mut args)) = stmt.visit(&mut finder) {
         let ctx = ParamExtractContext {
-            source_path: source_path.map(PathBuf::from),
             parent_func: Some(func_name.clone()),
         };
         function_args_to_stmt_params(&mut args, &ctx)?;
@@ -751,48 +746,62 @@ impl std::fmt::Display for FormatArguments<'_> {
 
 #[derive(Clone, Default)]
 pub(super) struct ParamExtractContext {
-    pub source_path: Option<PathBuf>,
     pub parent_func: Option<String>,
 }
 
 impl ParamExtractContext {
     pub(super) fn with_parent(&self, parent: &str) -> Self {
         Self {
-            source_path: self.source_path.clone(),
             parent_func: Some(parent.to_string()),
         }
     }
 
-    pub(super) fn location_prefix(&self, line: u64) -> String {
-        match &self.source_path {
-            Some(p) => format!("{}:{} ", p.display(), line),
-            None => String::new(),
-        }
-    }
-
-    pub(super) fn format_param_error(
+    pub(super) fn into_error(
         &self,
-        e: &ExprToParamError,
+        e: ExprToParamError,
         arguments: &[FunctionArg],
-    ) -> String {
-        let loc = e.line.map(|l| self.location_prefix(l)).unwrap_or_default();
-        let func = self.parent_func.as_deref().unwrap_or("unknown");
-        let args_str = FormatArguments(arguments);
+    ) -> SqlPageFunctionError {
+        let line = e.line.unwrap_or(0);
+        let func_name = self.parent_func.as_deref().unwrap_or("unknown").to_string();
+        let arguments_str = FormatArguments(arguments).to_string();
 
         let reason = match &e.kind {
             ExprToParamErrorKind::UnsupportedExpr { summary } => {
-                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.")
+                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.\n\
+                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func_name} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
             }
             ExprToParamErrorKind::UnemulatedFunction { name } => {
-                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql function calls like concat or json_object can be used as function parameters.")
+                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions.\n\
+                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func_name} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
             }
             ExprToParamErrorKind::NamedArgs => {
-                format!("Named function arguments are not supported. Please use positional arguments only in sqlpage.{func}")
+                format!("Named function arguments are not supported.\n\
+                Please use positional arguments only.")
             }
         };
 
-        format!(
-            "{loc}Unsupported sqlpage function argument:\n\
+        SqlPageFunctionError {
+            line,
+            func_name,
+            arguments_str,
+            reason,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SqlPageFunctionError {
+    pub line: u64,
+    pub func_name: String,
+    pub arguments_str: String,
+    pub reason: String,
+}
+
+impl std::fmt::Display for SqlPageFunctionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Unsupported sqlpage function argument:\n\
 sqlpage.{func}({args_str})\n\n\
 {reason}\n\n\
 SQLPage functions can either:\n\
@@ -805,10 +814,14 @@ SET {func}_arg = ...;\n\
 SET {func}_result = sqlpage.{func}(${func}_arg);\n\
 SELECT * FROM example WHERE xxx = ${func}_result;\n\n\
 2. Or move the function to the top level to process results:\n\
-SELECT sqlpage.{func}(...) FROM example;"
+SELECT sqlpage.{func}(...) FROM example;",
+            func = self.func_name,
+            args_str = self.arguments_str,
+            reason = self.reason
         )
     }
 }
+impl std::error::Error for SqlPageFunctionError {}
 
 #[derive(Debug)]
 pub(super) struct ExprToParamError {
@@ -853,13 +866,13 @@ pub(super) fn function_args_to_stmt_params(
     ctx: &ParamExtractContext,
 ) -> anyhow::Result<Vec<StmtParam>> {
     let mut params = Vec::with_capacity(arguments.len());
-    // We iterate manually so we can pass the entire `arguments` slice to format_param_error on failure
+    // We iterate manually so we can pass the entire `arguments` slice to into_error on failure
     for arg in arguments.iter_mut() {
         match function_arg_to_stmt_param(arg, ctx) {
             Ok(p) => params.push(p),
             Err(e) => {
-                let msg = ctx.format_param_error(&e, arguments);
-                return Err(anyhow::anyhow!("{msg}"));
+                let func_err = ctx.into_error(e, arguments);
+                return Err(anyhow::Error::new(func_err));
             }
         }
     }
@@ -1054,7 +1067,6 @@ impl VisitorMut for ParameterExtractor {
                 log::trace!("Handling builtin function: {func_name}");
                 let arguments = std::mem::take(args);
                 let ctx = ParamExtractContext {
-                    source_path: self.source_path.clone(),
                     parent_func: Some(func_name.to_string()),
                 };
                 let mut arguments_clone = arguments.clone();
@@ -1287,7 +1299,7 @@ mod test {
         let mut ast =
             parse_postgres_stmt("select $a from t where $x > $a OR $x = sqlpage.cookie('cookoo')");
         let db_info = create_test_db_info(SupportedDatabase::Postgres);
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();
         // $a -> $1
         // $x -> $2
         // sqlpage.cookie(...) -> $3
@@ -1312,7 +1324,7 @@ mod test {
     fn test_statement_rewrite_sqlite() {
         let mut ast = parse_stmt("select $x, :y from t", &SQLiteDialect {});
         let db_info = create_test_db_info(SupportedDatabase::Sqlite);
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();
         assert_eq!(
             ast.to_string(),
             "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT) FROM t"
@@ -1359,7 +1371,7 @@ mod test {
 
         let sql = "select {'a': 1, 'b': 2} as payload";
         let db_info = create_test_db_info(dbms);
-        let mut parsed = parse_sql(&db_info, dialect.as_ref(), sql, None).unwrap();
+        let mut parsed = parse_sql(&db_info, dialect.as_ref(), sql).unwrap();
         let stmt = parsed.next().expect("expected one statement");
         assert!(
             !matches!(stmt, ParsedStatement::Error(_)),
@@ -1367,7 +1379,7 @@ mod test {
         );
 
         let pg_info = create_test_db_info(SupportedDatabase::Postgres);
-        let mut parsed = parse_sql(&pg_info, &PostgreSqlDialect {}, sql, None).unwrap();
+        let mut parsed = parse_sql(&pg_info, &PostgreSqlDialect {}, sql).unwrap();
         let stmt = parsed.next().expect("expected one statement");
         assert!(
             matches!(stmt, ParsedStatement::Error(_)),
@@ -1437,8 +1449,7 @@ mod test {
             let mut ast = parse_stmt(sql, dialect);
             let db_info = create_test_db_info(SupportedDatabase::Postgres);
             let parameters =
-                ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
-            assert_eq!(
+                ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();            assert_eq!(
                 parameters,
                 [StmtParam::FunctionCall(SqlPageFunctionCall {
                     function: SqlPageFunctionName::fetch,
@@ -1453,7 +1464,7 @@ mod test {
     fn test_parse_sql_unsupported_expr_in_sqlpage_arg() {
         let sql = "SELECT sqlpage.link('x', json_build_object('k', c)) FROM (SELECT 1 AS c) t";
         let db_info = create_test_db_info(SupportedDatabase::Postgres);
-        let mut parsed = parse_sql(&db_info, &PostgreSqlDialect {}, sql, None).unwrap();
+        let mut parsed = parse_sql(&db_info, &PostgreSqlDialect {}, sql).unwrap();
         let stmt = parsed.next().expect("one statement");
         let ParsedStatement::Error(err) = stmt else {
             panic!("expected ParsedStatement::Error: {stmt:?}");
@@ -1470,7 +1481,7 @@ mod test {
     fn test_parse_sql_unemulated_function_in_sqlpage_arg() {
         let sql = "SELECT sqlpage.link('x', upper('a')) FROM (SELECT 1) t";
         let db_info = create_test_db_info(SupportedDatabase::Postgres);
-        let mut parsed = parse_sql(&db_info, &PostgreSqlDialect {}, sql, None).unwrap();
+        let mut parsed = parse_sql(&db_info, &PostgreSqlDialect {}, sql).unwrap();
         let stmt = parsed.next().expect("one statement");
         let ParsedStatement::Error(err) = stmt else {
             panic!("expected ParsedStatement::Error: {stmt:?}");
@@ -1492,7 +1503,7 @@ mod test {
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
             let db_info = create_test_db_info(dbms);
-            match parse_single_statement(&mut parser, &db_info, sql, None) {
+            match parse_single_statement(&mut parser, &db_info, sql) {
                 Some(ParsedStatement::StaticSimpleSet { variable, value }) => {
                     assert_eq!(
                         variable,
@@ -1514,7 +1525,6 @@ mod test {
         assert!(ParameterExtractor {
             db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![],
-            source_path: None,
             extract_error: None,
         }
         .is_own_placeholder("$1"));
@@ -1522,7 +1532,6 @@ mod test {
         assert!(ParameterExtractor {
             db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![StmtParam::Get("x".to_string())],
-            source_path: None,
             extract_error: None,
         }
         .is_own_placeholder("$2"));
@@ -1530,7 +1539,6 @@ mod test {
         assert!(!ParameterExtractor {
             db_info: create_test_db_info(SupportedDatabase::Postgres),
             parameters: vec![],
-            source_path: None,
             extract_error: None,
         }
         .is_own_placeholder("$2"));
@@ -1538,7 +1546,6 @@ mod test {
         assert!(ParameterExtractor {
             db_info: create_test_db_info(SupportedDatabase::Sqlite),
             parameters: vec![],
-            source_path: None,
             extract_error: None,
         }
         .is_own_placeholder("?1"));
@@ -1546,7 +1553,6 @@ mod test {
         assert!(!ParameterExtractor {
             db_info: create_test_db_info(SupportedDatabase::Sqlite),
             parameters: vec![],
-            source_path: None,
             extract_error: None,
         }
         .is_own_placeholder("$1"));
@@ -1559,7 +1565,7 @@ mod test {
             &MsSqlDialect {},
         );
         let db_info = create_test_db_info(SupportedDatabase::Mssql);
-        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info, None).unwrap();
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();
         assert_eq!(
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
@@ -1613,7 +1619,7 @@ mod test {
                 create_test_db_info(SupportedDatabase::Generic)
             };
             let parsed: Vec<ParsedStatement> =
-                parse_sql(&db_info, dialect, sql, None).unwrap().collect();
+                parse_sql(&db_info, dialect, sql).unwrap().collect();
             match &parsed[..] {
                 [ParsedStatement::StaticSimpleSelect(q)] => assert_eq!(
                     q,
@@ -1650,7 +1656,7 @@ mod test {
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
             let db_info = create_test_db_info(dbms);
-            let stmt = parse_single_statement(&mut parser, &db_info, sql, None);
+            let stmt = parse_single_statement(&mut parser, &db_info, sql);
             if let Some(ParsedStatement::SetVariable {
                 variable,
                 value: StmtWithParams { query, params, .. },
@@ -1675,7 +1681,7 @@ mod test {
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
             let db_info = create_test_db_info(dbms);
-            match parse_single_statement(&mut parser, &db_info, sql, None) {
+            match parse_single_statement(&mut parser, &db_info, sql) {
                 Some(ParsedStatement::StaticSimpleSet {
                     variable: StmtParam::PostOrGet(var_name),
                     value: SimpleSelectValue::Static(value),
@@ -1866,7 +1872,7 @@ mod test {
         for &(dialect, dbms) in ALL_DIALECTS {
             let mut parser = Parser::new(dialect).try_with_sql(sql).unwrap();
             let db_info = create_test_db_info(dbms);
-            let stmt = parse_single_statement(&mut parser, &db_info, sql, None);
+            let stmt = parse_single_statement(&mut parser, &db_info, sql);
             if let Some(ParsedStatement::Error(err)) = stmt {
                 assert!(
                     err.to_string()
