@@ -767,12 +767,10 @@ impl ParamExtractContext {
 
         let reason = match &e.kind {
             ExprToParamErrorKind::UnsupportedExpr { summary } => {
-                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.\n\
-                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func_name} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
+                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.")
             }
             ExprToParamErrorKind::UnemulatedFunction { name } => {
-                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions.\n\
-                You should reorganize the query or split it into a sequence of multiple queries using intermediate variables with SET, so that sqlpage.{func_name} either appears at the top level of a SELECT statement, or depends solely on $variables instead of data from the database.")
+                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions.")
             }
             ExprToParamErrorKind::NamedArgs => {
                 format!("Named function arguments are not supported.\n\
