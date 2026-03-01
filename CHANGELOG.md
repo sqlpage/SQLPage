@@ -3,6 +3,7 @@
 ## unreleased
  - OIDC protected and public paths now respect the site prefix when it is defined.
  - add submit and reset form button icons: validate_icon, reset_icon, reset_color
+ - improve error messages when sqlpage functions are used incorrectly. Include precise file reference and line number
 
 ## 0.42.0 (2026-01-17)
 
