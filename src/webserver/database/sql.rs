@@ -118,7 +118,10 @@ pub(super) struct SourceLocation {
 #[derive(Debug)]
 pub(super) enum ParsedStatement {
     StmtWithParams(StmtWithParams),
-    StaticSimpleSelect(Vec<(String, SimpleSelectValue)>),
+    StaticSimpleSelect {
+        values: Vec<(String, SimpleSelectValue)>,
+        query_position: SourceSpan,
+    },
     SetVariable {
         variable: StmtParam,
         value: StmtWithParams,
@@ -217,7 +220,10 @@ fn parse_single_statement(
     }
     if let Some(static_statement) = extract_static_simple_select(&stmt, &params) {
         log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
-        return Some(ParsedStatement::StaticSimpleSelect(static_statement));
+        return Some(ParsedStatement::StaticSimpleSelect {
+            values: static_statement,
+            query_position: extract_query_start(&stmt),
+        });
     }
 
     let delayed_functions = extract_toplevel_functions(&mut stmt);
@@ -1042,7 +1048,7 @@ mod test {
             };
             let parsed: Vec<ParsedStatement> = parse_sql(&db_info, dialect, sql).unwrap().collect();
             match &parsed[..] {
-                [ParsedStatement::StaticSimpleSelect(q)] => assert_eq!(
+                [ParsedStatement::StaticSimpleSelect { values: q, .. }] => assert_eq!(
                     q,
                     &[
                         ("component".into(), Static("text".into())),

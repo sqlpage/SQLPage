@@ -396,8 +396,11 @@ async fn link<'a>(
 ) -> anyhow::Result<String> {
     let mut url = file.into_owned();
     if let Some(parameters) = parameters {
-        let encoded = serde_json::from_str::<URLParameters>(&parameters)
-            .with_context(|| format!("sqlpage.link: {parameters:?} is not a valid JSON object. Expected usage: sqlpage.link(filename, json_parameters)"))?;
+        let encoded = serde_json::from_str::<URLParameters>(&parameters).map_err(|_| {
+            anyhow!(
+                "sqlpage.link: {parameters:?} is not a valid JSON object. Expected usage: sqlpage.link(filename, json_parameters)"
+            )
+        })?;
         encoded.append_to_path(&mut url);
     }
     if let Some(hash) = hash {
