@@ -7,7 +7,7 @@ use std::path::Path;
 use std::pin::Pin;
 
 use super::csv_import::run_csv_import;
-use super::error_highlighting::display_stmt_db_error;
+use super::error_highlighting::{display_stmt_db_error, display_stmt_error};
 use super::sql::{
     DelayedFunctionCall, ParsedSqlFile, ParsedStatement, SimpleSelectValue, StmtWithParams,
 };
@@ -17,6 +17,7 @@ use crate::webserver::database::sql_to_json::row_to_string;
 use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::request_variables::SetVariablesMap;
 use crate::webserver::single_or_vec::SingleOrVec;
+use crate::webserver::ErrorWithStatus;
 
 use super::syntax_tree::{extract_req_param, StmtParam};
 use super::{error_highlighting::display_db_error, Database, DbItem};
@@ -57,7 +58,9 @@ pub fn stream_query_results_with_conn<'a>(
                     run_csv_import(connection, csv_import, request).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },
                 ParsedStatement::StmtWithParams(stmt) => {
-                    let query = bind_parameters(stmt, request, db_connection).await?;
+                    let query = bind_parameters(stmt, request, db_connection)
+                        .await
+                        .map_err(|e| with_stmt_position(source_file, stmt.query_position, e))?;
                     request.server_timing.record("bind_params");
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
@@ -93,8 +96,11 @@ pub fn stream_query_results_with_conn<'a>(
                         format!("Failed to set the {variable} variable to {value:?}")
                     )?;
                 },
-                ParsedStatement::StaticSimpleSelect(value) => {
-                    for i in parse_dynamic_rows(DbItem::Row(exec_static_simple_select(value, request, db_connection).await?)) {
+                ParsedStatement::StaticSimpleSelect { values, query_position } => {
+                    let row = exec_static_simple_select(values, request, db_connection)
+                        .await
+                        .map_err(|e| with_stmt_position(source_file, *query_position, e))?;
+                    for i in parse_dynamic_rows(DbItem::Row(row)) {
                         yield i;
                     }
                 }
@@ -103,6 +109,18 @@ pub fn stream_query_results_with_conn<'a>(
         }
     }
     .map(|res| res.unwrap_or_else(DbItem::Error))
+}
+
+fn with_stmt_position(
+    source_file: &Path,
+    query_position: super::sql::SourceSpan,
+    error: anyhow::Error,
+) -> anyhow::Error {
+    if error.downcast_ref::<ErrorWithStatus>().is_some() {
+        error
+    } else {
+        display_stmt_error(source_file, query_position, error)
+    }
 }
 
 /// Transforms a stream of database items to stop processing after encountering the first error.

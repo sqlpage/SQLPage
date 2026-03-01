@@ -17,6 +17,24 @@ struct NiceDatabaseError {
     query_position: Option<SourceSpan>,
 }
 
+fn write_source_position_info(
+    f: &mut std::fmt::Formatter<'_>,
+    source_file: &Path,
+    query_position: Option<SourceSpan>,
+) -> Result<(), std::fmt::Error> {
+    write!(f, "\n{}", source_file.display())?;
+    if let Some(query_position) = query_position {
+        let start_line = query_position.start.line;
+        let end_line = query_position.end.line;
+        if start_line == end_line {
+            write!(f, ": line {start_line}")?;
+        } else {
+            write!(f, ": lines {start_line} to {end_line}")?;
+        }
+    }
+    Ok(())
+}
+
 impl std::fmt::Display for NiceDatabaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -51,21 +69,31 @@ impl std::fmt::Display for NiceDatabaseError {
 
 impl NiceDatabaseError {
     fn show_position_info(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "\n{}", self.source_file.display())?;
-        let _: () = if let Some(query_position) = self.query_position {
-            let start_line = query_position.start.line;
-            let end_line = query_position.end.line;
-            if start_line == end_line {
-                write!(f, ": line {start_line}")?;
-            } else {
-                write!(f, ": lines {start_line} to {end_line}")?;
-            }
-        };
-        Ok(())
+        write_source_position_info(f, &self.source_file, self.query_position)
     }
 }
 
 impl std::error::Error for NiceDatabaseError {}
+
+#[derive(Debug)]
+struct NicePositionedError {
+    source_file: PathBuf,
+    query_position: SourceSpan,
+    error: anyhow::Error,
+}
+
+impl std::fmt::Display for NicePositionedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "In \"{}\": {}", self.source_file.display(), self.error)?;
+        write_source_position_info(f, &self.source_file, Some(self.query_position))
+    }
+}
+
+impl std::error::Error for NicePositionedError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(self.error.as_ref())
+    }
+}
 
 /// Display a database error without any position information
 #[must_use]
@@ -97,6 +125,19 @@ pub fn display_stmt_db_error(
     })
 }
 
+#[must_use]
+pub fn display_stmt_error(
+    source_file: &Path,
+    query_position: SourceSpan,
+    error: anyhow::Error,
+) -> anyhow::Error {
+    anyhow::Error::new(NicePositionedError {
+        source_file: source_file.to_path_buf(),
+        query_position,
+        error,
+    })
+}
+
 /// Highlight a line with a character offset.
 pub fn highlight_line_offset<W: std::fmt::Write>(msg: &mut W, line: &str, offset: usize) {
     writeln!(msg, "{line}").unwrap();
@@ -122,6 +163,27 @@ pub fn quote_source_with_highlight(source: &str, line_num: u64, col_num: u64) ->
         current_line_num += 1;
     }
     msg
+}
+
+#[test]
+fn test_display_stmt_error_includes_file_and_line() {
+    let err = display_stmt_error(
+        Path::new("example.sql"),
+        SourceSpan {
+            start: super::sql::SourceLocation {
+                line: 12,
+                column: 3,
+            },
+            end: super::sql::SourceLocation {
+                line: 12,
+                column: 17,
+            },
+        },
+        anyhow::anyhow!("boom"),
+    );
+    let message = err.to_string();
+    assert!(message.contains("In \"example.sql\": boom"));
+    assert!(message.contains("example.sql: line 12"));
 }
 
 #[test]
