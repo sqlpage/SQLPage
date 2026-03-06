@@ -1,5 +1,5 @@
 <div {{#if id}} id="{{id}}" {{/if~}}
-  class="row g-3 h-100
+  class="row g-3 h-100 mb-2
   {{~#if columns}} row-cols-1 row-cols-sm-2 row-cols-lg-{{columns~}} {{/if~}}
   {{~#if class}} {{class}} {{/if}}
 ">
@@ -45,7 +45,7 @@
           {{/if}}
         </div>
         {{/if}}
-        
+       
         <div class="d-flex align-items-center mt-1">
           <div class="h1 {{#if description}}mb-3{{else}}mb-0{{/if}} mt-auto text-nowrap text-truncate">
             {{#if value_link}}
@@ -76,7 +76,7 @@
           </div>
           {{/if}}
         </div>
-        
+       
         {{#if description}}
         <div class="d-flex flex-wrap mb-2" title="{{description}}">
           <div class="text-truncate me-2">{{description}}</div>
