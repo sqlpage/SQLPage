@@ -48,6 +48,7 @@ const SQLPAGE_NONCE_COOKIE_NAME: &str = "sqlpage_oidc_nonce";
 const SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX: &str = "sqlpage_oidc_state_";
 const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
+const OIDC_HTTP_BODY_TIMEOUT: Duration = OIDC_CLIENT_MIN_REFRESH_INTERVAL;
 const SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE: &str = "sqlpage_oidc_redirect_count";
 const MAX_OIDC_REDIRECTS: u8 = 3;
 const AUTH_COOKIE_EXPIRATION: awc::cookie::time::Duration =
@@ -837,7 +838,7 @@ async fn execute_oidc_request_with_awc(
         req = req.insert_header((name.as_str(), value.to_str()?));
     }
     let (req_head, body) = request.into_parts();
-    let mut response = req.send_body(body).await.map_err(|e| {
+    let response = req.send_body(body).await.map_err(|e| {
         anyhow!(e.to_string()).context(format!(
             "Failed to send request: {} {}",
             &req_head.method, &req_head.uri
@@ -849,6 +850,7 @@ async fn execute_oidc_request_with_awc(
     for (name, value) in head {
         resp_builder = resp_builder.header(name.as_str(), value.to_str()?);
     }
+    let mut response = response.timeout(OIDC_HTTP_BODY_TIMEOUT);
     let body = response
         .body()
         .await

@@ -12,6 +12,7 @@ use serde_json::json;
 use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tokio_util::sync::{CancellationToken, DropGuard};
 
 fn base64url_encode(data: &[u8]) -> String {
@@ -50,6 +51,7 @@ struct ProviderState<'a> {
     client_id: String,
     auth_codes: HashMap<String, String>, // code -> nonce
     jwt_customizer: Option<Box<JwtCustomizer<'a>>>,
+    token_endpoint_delay: Duration,
 }
 
 type ProviderStateWithLifetime<'a> = ProviderState<'a>;
@@ -142,6 +144,9 @@ async fn token_endpoint(
         .map(|customizer| customizer(claims.clone(), &state.secret))
         .unwrap_or_else(|| make_jwt(&claims, &state.secret));
 
+    let delay = state.token_endpoint_delay;
+    drop(state);
+
     let response = TokenResponse {
         access_token: "test_access_token".to_string(),
         token_type: "Bearer".to_string(),
@@ -149,9 +154,14 @@ async fn token_endpoint(
         expires_in: 3600,
     };
 
+    let json_bytes = serde_json::to_vec(&response).unwrap();
+    let body = futures_util::stream::once(async move {
+        tokio::time::sleep(delay).await;
+        Ok::<web::Bytes, actix_web::Error>(web::Bytes::from(json_bytes))
+    });
     HttpResponse::Ok()
         .insert_header((header::CONTENT_TYPE, "application/json"))
-        .json(response)
+        .streaming(body)
 }
 
 pub struct FakeOidcProvider {
@@ -185,6 +195,7 @@ impl FakeOidcProvider {
             client_id: client_id.clone(),
             auth_codes: HashMap::new(),
             jwt_customizer: None,
+            token_endpoint_delay: Duration::ZERO,
         }));
 
         let state_for_server = Arc::clone(&state);
@@ -224,6 +235,10 @@ impl FakeOidcProvider {
     fn with_state_mut<R>(&self, f: impl FnOnce(&mut ProviderState) -> R) -> R {
         let mut state = self.state.lock().unwrap();
         f(&mut state)
+    }
+
+    pub fn set_token_endpoint_delay(&self, delay: Duration) {
+        self.with_state_mut(|s| s.token_endpoint_delay = delay);
     }
 
     pub fn store_auth_code(&self, code: String, nonce: String) {
@@ -539,4 +554,51 @@ async fn test_oidc_logout_uses_correct_scheme() {
     let params: HashMap<String, String> = location_url.query_pairs().into_owned().collect();
     let post_logout = params.get("post_logout_redirect_uri").unwrap();
     assert_eq!(post_logout, "https://example.com/logged_out");
+}
+
+/// A slow OIDC provider must not freeze the server.
+/// See https://github.com/sqlpage/SQLPage/issues/1231
+#[actix_web::test]
+async fn test_slow_token_endpoint_does_not_freeze_server() {
+    let (app, provider) = setup_oidc_test(|_| {}).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+    let state_param = get_query_param(&auth_url, "state");
+    let nonce = get_query_param(&auth_url, "nonce");
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    provider.store_auth_code("test_auth_code".to_string(), nonce);
+
+    provider.set_token_endpoint_delay(Duration::from_secs(999));
+
+    let callback_uri = format!(
+        "{}?code=test_auth_code&state={}",
+        Url::parse(&redirect_uri).unwrap().path(),
+        state_param
+    );
+
+    let handle = tokio::task::spawn_local(async move {
+        let mut req = test::TestRequest::get().uri(&callback_uri);
+        for cookie in cookies.iter() {
+            req = req.cookie(cookie.clone());
+        }
+        test::call_service(&app, req.to_request()).await
+    });
+
+    // Let the localhost TCP round-trip complete so awc reads response headers.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Freeze time and advance past the body-read timeout.
+    tokio::time::pause();
+    tokio::time::advance(Duration::from_secs(60)).await;
+
+    // The body timeout should have fired, completing the request with an error
+    // that SQLPage handles by redirecting to the OIDC provider.
+    let resp = tokio::time::timeout(Duration::from_secs(1), handle)
+        .await
+        .expect("OIDC callback hung on a slow token endpoint")
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 }
