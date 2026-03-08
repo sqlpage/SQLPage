@@ -501,6 +501,7 @@ fn is_simple_select_placeholder(e: &Expr) -> bool {
             data_type: DataType::Text | DataType::Varchar(_) | DataType::Char(_),
             format: None,
             kind: CastKind::Cast,
+            ..
         } if is_simple_select_placeholder(expr) => true,
         _ => false,
     }
@@ -689,7 +690,9 @@ fn expr_to_statement(expr: Expr) -> Statement {
                 prewhere: None,
                 window_before_qualify: false,
                 value_table_mode: None,
-                connect_by: None,
+                connect_by: Vec::new(),
+                optimizer_hint: None,
+                select_modifiers: None,
                 flavor: SelectFlavor::Standard,
                 exclude: None,
             },

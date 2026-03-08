@@ -7,6 +7,7 @@
 - Fix: forms without submit or reset buttons no longer keep extra bottom spacing.
 - add submit and reset form button icons: validate_icon, reset_icon, reset_color
 - improve error messages when sqlpage functions are used incorrectly. Include precise file reference and line number
+- updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.61.0.md
 
 ## 0.42.0 (2026-01-17)
 

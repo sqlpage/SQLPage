@@ -65,7 +65,7 @@ pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> H
             ));
         }
     } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
-        use rand::Rng;
+        use rand::RngExt;
         resp.status(StatusCode::TOO_MANY_REQUESTS).insert_header((
             header::RETRY_AFTER,
             header::HeaderValue::from(rand::rng().random_range(1..=15)),

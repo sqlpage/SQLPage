@@ -110,6 +110,7 @@ impl ParameterExtractor {
             data_type,
             format: None,
             kind: CastKind::Cast,
+            array: false,
         }
     }
 

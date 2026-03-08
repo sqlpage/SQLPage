@@ -483,7 +483,7 @@ pub(crate) async fn random_string(len: usize) -> anyhow::Result<String> {
 
 /// Returns a random string of the specified length.
 pub(crate) fn random_string_sync(len: usize) -> String {
-    use rand::{distr::Alphanumeric, Rng};
+    use rand::{distr::Alphanumeric, RngExt};
     rand::rng()
         .sample_iter(&Alphanumeric)
         .take(len)
