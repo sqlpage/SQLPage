@@ -198,6 +198,7 @@ pub struct ClientWithTime {
 pub struct OidcState {
     pub config: OidcConfig,
     client: RwLock<ClientWithTime>,
+    refreshing: std::sync::atomic::AtomicBool,
 }
 
 impl OidcState {
@@ -212,36 +213,51 @@ impl OidcState {
                 end_session_endpoint,
                 last_update: Instant::now(),
             }),
+            refreshing: std::sync::atomic::AtomicBool::new(false),
         })
     }
 
-    async fn refresh(&self, service_request: &ServiceRequest) {
-        let mut write_guard = self.client.write().await;
-        match build_oidc_client_from_appdata(&self.config, service_request).await {
-            Ok((http_client, end_session_endpoint)) => {
-                *write_guard = ClientWithTime {
-                    client: http_client,
-                    end_session_endpoint,
-                    last_update: Instant::now(),
-                }
-            }
-            Err(e) => log::error!("Failed to refresh OIDC client: {e:#}"),
+    /// Spawns a background task to refresh the OIDC client from the provider
+    /// metadata URL if it hasn't been refreshed within `max_age`.
+    /// Returns immediately without blocking the caller.
+    /// Multiple concurrent calls are deduplicated via an atomic flag.
+    fn refresh_in_background(self: &Arc<Self>, http_client: &Client, max_age: Duration) {
+        use std::sync::atomic::Ordering;
+        let Ok(last_update) = self.client.try_read().map(|g| g.last_update) else {
+            return; // write lock held → a refresh is already in progress
+        };
+        if last_update.elapsed() <= max_age {
+            return;
         }
+        if self.refreshing.swap(true, Ordering::AcqRel) {
+            return; // another refresh is already running
+        }
+        let state = Arc::clone(self);
+        let http_client = http_client.clone();
+        tokio::task::spawn_local(async move {
+            match build_oidc_client(&state.config, &http_client).await {
+                Ok((client, end_session_endpoint)) => {
+                    *state.client.write().await = ClientWithTime {
+                        client,
+                        end_session_endpoint,
+                        last_update: Instant::now(),
+                    };
+                }
+                Err(e) => log::error!("Failed to refresh OIDC client: {e:#}"),
+            }
+            state.refreshing.store(false, Ordering::Release);
+        });
     }
 
     /// Refreshes the OIDC client from the provider metadata URL if it has expired.
     /// Most providers update their signing keys periodically.
-    pub async fn refresh_if_expired(&self, service_request: &ServiceRequest) {
-        if self.client.read().await.last_update.elapsed() > OIDC_CLIENT_MAX_REFRESH_INTERVAL {
-            self.refresh(service_request).await;
-        }
+    pub fn refresh_if_expired(self: &Arc<Self>, http_client: &Client) {
+        self.refresh_in_background(http_client, OIDC_CLIENT_MAX_REFRESH_INTERVAL);
     }
 
     /// When an authentication error is encountered, refresh the OIDC client info faster
-    pub async fn refresh_on_error(&self, service_request: &ServiceRequest) {
-        if self.client.read().await.last_update.elapsed() > OIDC_CLIENT_MIN_REFRESH_INTERVAL {
-            self.refresh(service_request).await;
-        }
+    pub fn refresh_on_error(self: &Arc<Self>, http_client: &Client) {
+        self.refresh_in_background(http_client, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
     }
 
     /// Gets a reference to the oidc client, potentially generating a new one if needed
@@ -250,6 +266,15 @@ impl OidcState {
             self.client.read().await,
             |ClientWithTime { client, .. }| client,
         )
+    }
+
+    /// Forces the OIDC client to appear stale so that the next request triggers a refresh.
+    #[doc(hidden)]
+    pub async fn force_expire(&self) {
+        self.client.write().await.last_update =
+            Instant::now()
+                .checked_sub(OIDC_CLIENT_MAX_REFRESH_INTERVAL + Duration::from_secs(1))
+                .unwrap_or(Instant::now());
     }
 
     pub async fn get_end_session_endpoint(&self) -> Option<EndSessionUrl> {
@@ -307,14 +332,6 @@ pub async fn initialize_oidc_state(
     Ok(Some(Arc::new(
         OidcState::new(oidc_cfg, app_config.clone()).await?,
     )))
-}
-
-async fn build_oidc_client_from_appdata(
-    cfg: &OidcConfig,
-    req: &ServiceRequest,
-) -> anyhow::Result<(OidcClient, Option<EndSessionUrl>)> {
-    let http_client = get_http_client_from_appdata(req)?;
-    build_oidc_client(cfg, http_client).await
 }
 
 async fn build_oidc_client(
@@ -405,9 +422,14 @@ enum MiddlewareResponse {
     Respond(ServiceResponse),
 }
 
-async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> MiddlewareResponse {
+async fn handle_request(
+    oidc_state: &Arc<OidcState>,
+    request: ServiceRequest,
+) -> MiddlewareResponse {
     log::trace!("Started OIDC middleware request handling");
-    oidc_state.refresh_if_expired(&request).await;
+    if let Ok(http_client) = get_http_client_from_appdata(&request) {
+        oidc_state.refresh_if_expired(http_client);
+    }
 
     if request.path() == oidc_state.config.redirect_uri {
         let response = handle_oidc_callback(oidc_state, request).await;
@@ -431,7 +453,9 @@ async fn handle_request(oidc_state: &OidcState, request: ServiceRequest) -> Midd
         }
         Err(e) => {
             log::debug!("An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}");
-            oidc_state.refresh_on_error(&request).await;
+            if let Ok(http_client) = get_http_client_from_appdata(&request) {
+                oidc_state.refresh_on_error(http_client);
+            }
             handle_unauthenticated_request(oidc_state, request).await
         }
     }
@@ -456,7 +480,10 @@ async fn handle_unauthenticated_request(
     MiddlewareResponse::Respond(request.into_response(response))
 }
 
-async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
+async fn handle_oidc_callback(
+    oidc_state: &Arc<OidcState>,
+    request: ServiceRequest,
+) -> ServiceResponse {
     match process_oidc_callback(oidc_state, &request).await {
         Ok(mut response) => {
             clear_redirect_count_cookie(&mut response);
@@ -467,7 +494,7 @@ async fn handle_oidc_callback(oidc_state: &OidcState, request: ServiceRequest) -
 }
 
 async fn handle_oidc_callback_error(
-    oidc_state: &OidcState,
+    oidc_state: &Arc<OidcState>,
     request: ServiceRequest,
     e: anyhow::Error,
 ) -> ServiceResponse {
@@ -478,7 +505,9 @@ async fn handle_oidc_callback_error(
     log::error!(
         "Failed to process OIDC callback (attempt {redirect_count}). Refreshing oidc provider metadata, then redirecting to home page: {e:#}"
     );
-    oidc_state.refresh_on_error(&request).await;
+    if let Ok(http_client) = get_http_client_from_appdata(&request) {
+        oidc_state.refresh_on_error(http_client);
+    }
     let resp = build_auth_provider_redirect_response(oidc_state, "/", redirect_count).await;
     request.into_response(resp)
 }

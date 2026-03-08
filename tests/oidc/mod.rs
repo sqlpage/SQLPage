@@ -1,5 +1,6 @@
 use actix_web::{
     cookie::Cookie,
+    dev::Service,
     http::{header, StatusCode},
     test,
     web::{self, Data},
@@ -83,17 +84,21 @@ struct TokenResponse {
 }
 
 async fn discovery_endpoint(state: Data<SharedProviderState>) -> impl Responder {
-    let state = state.lock().unwrap();
-    let discovery = DiscoveryResponse {
-        issuer: state.issuer_url.clone(),
-        authorization_endpoint: format!("{}/auth", state.issuer_url),
-        token_endpoint: format!("{}/token", state.issuer_url),
-        jwks_uri: format!("{}/jwks", state.issuer_url),
-        response_types_supported: vec!["code".to_string()],
-        subject_types_supported: vec!["public".to_string()],
-        id_token_signing_alg_values_supported: vec!["HS256".to_string()],
-        end_session_endpoint: format!("{}/logout", state.issuer_url),
+    let (discovery, delay) = {
+        let state = state.lock().unwrap();
+        let discovery = DiscoveryResponse {
+            issuer: state.issuer_url.clone(),
+            authorization_endpoint: format!("{}/auth", state.issuer_url),
+            token_endpoint: format!("{}/token", state.issuer_url),
+            jwks_uri: format!("{}/jwks", state.issuer_url),
+            response_types_supported: vec!["code".to_string()],
+            subject_types_supported: vec!["public".to_string()],
+            id_token_signing_alg_values_supported: vec!["HS256".to_string()],
+            end_session_endpoint: format!("{}/logout", state.issuer_url),
+        };
+        (discovery, state.discovery_delay)
     };
+    tokio::time::sleep(delay).await;
     HttpResponse::Ok()
         .insert_header((header::CONTENT_TYPE, "application/json"))
         .json(discovery)
@@ -282,6 +287,7 @@ async fn setup_oidc_test(
         Error = actix_web::Error,
     >,
     FakeOidcProvider,
+    Data<sqlpage::AppState>,
 ) {
     use sqlpage::{
         app_config::{test_database_url, AppConfig},
@@ -313,13 +319,14 @@ async fn setup_oidc_test(
 
     let config: AppConfig = serde_json::from_str(&config_json).unwrap();
     let app_state = AppState::init(&config).await.unwrap();
-    let app = test::init_service(create_app(Data::new(app_state))).await;
-    (app, provider)
+    let app_data = Data::new(app_state);
+    let app = test::init_service(create_app(app_data.clone())).await;
+    (app, provider, app_data)
 }
 
 #[actix_web::test]
 async fn test_oidc_happy_path() {
-    let (app, provider) = setup_oidc_test(|_| {}).await;
+    let (app, provider, _) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
     let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
@@ -348,7 +355,7 @@ async fn assert_oidc_login_fails(
     provider_mutator: impl FnOnce(&mut ProviderState),
     state_override: Option<String>,
 ) {
-    let (app, provider) = setup_oidc_test(provider_mutator).await;
+    let (app, provider, _) = setup_oidc_test(provider_mutator).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
     let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
@@ -556,8 +563,52 @@ async fn test_oidc_logout_uses_correct_scheme() {
     assert_eq!(post_logout, "https://example.com/logged_out");
 }
 
-/// A slow OIDC provider must not freeze the server.
-/// See https://github.com/sqlpage/SQLPage/issues/1231
+/// An OIDC provider metadata refresh must not block authenticated requests.
+/// The refresh should happen in the background while existing requests are
+/// served using the current (possibly stale) OIDC client.
+#[actix_web::test]
+async fn test_slow_discovery_does_not_block_authenticated_requests() {
+    let (app, provider) = setup_oidc_test(|_| {}).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    // Complete a full login to get auth cookies
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+    let state_param = get_query_param(&auth_url, "state");
+    let nonce = get_query_param(&auth_url, "nonce");
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    provider.store_auth_code("test_auth_code".to_string(), nonce);
+    let callback_uri = format!(
+        "{}?code=test_auth_code&state={}",
+        Url::parse(&redirect_uri).unwrap().path(),
+        state_param
+    );
+    let callback_resp =
+        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+    assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
+
+    // Advance time so the OIDC snapshot appears stale.
+    // The next request triggers a background refresh.
+    let count_before = provider.discovery_count();
+    tokio::time::pause();
+    tokio::time::advance(Duration::from_secs(3601)).await;
+
+    // An authenticated request must succeed immediately, even though
+    // it triggers a background refresh.
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Let the background refresh task complete.
+    tokio::task::yield_now().await;
+    assert!(
+        provider.discovery_count() > count_before,
+        "OIDC provider metadata was not refreshed"
+    );
+}
+
+/// A slow OIDC token endpoint must not freeze the server.
+/// The body-read timeout fires and the request completes with a redirect.
 #[actix_web::test]
 async fn test_slow_token_endpoint_does_not_freeze_server() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
