@@ -1,10 +1,12 @@
-# Distributed Tracing for SQLPage with OpenTelemetry
+# Distributed Tracing and Logs for SQLPage with OpenTelemetry and Grafana
 
 SQLPage has built-in support for [OpenTelemetry](https://opentelemetry.io/) (OTel),
 an open standard for collecting traces, metrics, and logs from your applications.
 When enabled, every HTTP request to SQLPage produces a **trace** — a timeline of
 everything that happened to serve that request, from receiving it to querying the
-database and rendering the response.
+database and rendering the response. SQLPage also emits structured request-aware
+logs, which this example forwards to Grafana Loki so you can inspect logs and traces
+side by side.
 
 This is useful for:
 
@@ -16,7 +18,7 @@ This is useful for:
 ## Quick start (this example)
 
 This directory contains a ready-to-run Docker Compose stack that demonstrates
-the full tracing pipeline. No prior OpenTelemetry experience is needed.
+the full tracing and logging pipeline. No prior OpenTelemetry experience is needed.
 
 ### Prerequisites
 
@@ -30,7 +32,7 @@ cd examples/opentelemetry-grafana
 docker compose up --build
 ```
 
-This starts six services:
+This starts eight services:
 
 | Service          | Role                                                      | Port          |
 |------------------|-----------------------------------------------------------|---------------|
@@ -39,16 +41,19 @@ This starts six services:
 | **PostgreSQL**   | Database                                                  | (internal 5432) |
 | **OTel Collector** | Receives traces and forwards them to Tempo              | `localhost:4318` |
 | **Tempo**        | Trace storage backend                                     | (internal 3200) |
-| **Grafana**      | Web UI to explore traces                                  | `localhost:3000` |
+| **Loki**         | Log storage backend                                       | (internal 3100) |
+| **Promtail**     | Scrapes container logs and pushes them to Loki            | (internal) |
+| **Grafana**      | Web UI to explore traces and logs                         | `localhost:3000` |
 
-### Explore traces
+### Explore traces and logs
 
 1. Open the todo app at [http://localhost](http://localhost) — add a few items, click to toggle them.
 2. Open Grafana at [http://localhost:3000](http://localhost:3000).
-3. In the left sidebar, click **Explore** (compass icon).
-4. Make sure **Tempo** is selected as the datasource (top-left dropdown).
-5. Click **Search** tab, then **Run query**. You should see a list of recent traces.
-6. Click any trace to see the full span waterfall.
+3. The default home dashboard now shows recent traces and recent SQLPage logs.
+4. Click any trace ID in the trace table to see the full span waterfall.
+5. In the logs panel, click a `trace_id` derived field to jump straight to the matching trace.
+6. In the left sidebar, click **Explore** (compass icon) if you want to search manually.
+7. Select **Tempo** to search traces or **Loki** to search logs.
 
 ### What you will see in a trace
 
@@ -72,6 +77,18 @@ Key attributes on each span:
 | SQL file execution  | `sqlpage.file` — which `.sql` file was executed              |
 | `db.pool.acquire`   | `db.pool.size` — current pool size when acquiring            |
 | `db.query`          | `db.statement` — the full SQL text; `db.system` — database type |
+
+### What you will see in the logs
+
+SQLPage writes one structured log line per event, for example:
+
+```text
+ts=2026-03-08T20:56:15.000Z level=info target=sqlpage::webserver::http msg="request completed" method=GET path=/ trace_id=4f2d...
+```
+
+Promtail scrapes these container logs, parses the logfmt fields, and sends them to Loki.
+The homepage dashboard filters to the `sqlpage` container so you can see request logs update
+live while you use the sample app.
 
 ### PostgreSQL correlation
 
@@ -139,18 +156,16 @@ understood by all OTel-compatible tools. SQLPage reads them directly — no
 sending trace data. Here is how the pieces fit together:
 
 ```
- Your app (SQLPage)          Collector (optional)         Backend (storage + UI)
-┌─────────────────┐        ┌──────────────────┐        ┌─────────────────────┐
-│ Creates spans    │──OTLP──│ Routes, batches, │──OTLP──│ Stores traces and   │
-│ for each request │        │ and exports data │        │ provides a query UI │
-└─────────────────┘        └──────────────────┘        └─────────────────────┘
+ Traces: SQLPage -> OTel Collector -> Tempo -> Grafana
+ Logs:   SQLPage stdout/stderr -> Promtail -> Loki -> Grafana
 ```
 
 - **SQLPage** generates trace data and sends it via the OTLP HTTP protocol.
 - A **collector** (optional) receives traces and forwards them to one or more backends.
   Useful for buffering, sampling, or fanning out to multiple destinations.
   You can skip the collector and send directly from SQLPage to most backends.
-- A **backend** stores the traces and lets you search and visualize them.
+- **Promtail** scrapes Docker container logs and forwards them to Loki.
+- **Tempo** stores traces, **Loki** stores logs, and **Grafana** lets you search both.
 
 ### Trace context propagation
 
@@ -169,16 +184,20 @@ For nginx specifically, use the [`ngx_otel_module`](https://nginx.org/en/docs/ng
 
 ## Setup guides by deployment scenario
 
-### Self-hosted with Grafana Tempo
+### Self-hosted with Grafana Tempo and Loki
 
 This is what the Docker Compose example in this directory uses.
-[Grafana Tempo](https://grafana.com/oss/tempo/) is a free, open-source trace backend.
+[Grafana Tempo](https://grafana.com/oss/tempo/) is a free, open-source trace backend, and
+[Grafana Loki](https://grafana.com/oss/loki/) is the corresponding log backend.
 
 **Components:**
 - [Grafana Tempo](https://grafana.com/docs/tempo/latest/) stores the traces.
+- [Grafana Loki](https://grafana.com/docs/loki/latest/) stores the logs.
 - [Grafana](https://grafana.com/docs/grafana/latest/) provides the web UI.
 - An [OTel Collector](https://opentelemetry.io/docs/collector/) sits between
   SQLPage and Tempo (optional but recommended for production).
+- [Promtail](https://grafana.com/docs/loki/latest/send-data/promtail/) scrapes container logs
+  and forwards them to Loki.
 
 **SQLPage environment variables:**
 

@@ -39,7 +39,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<div style=\"padding: 4px 2px 0; font-size: 15px; line-height: 1.55;\"><h1 style=\"margin: 0 0 10px; font-size: 28px;\">Recent SQLPage traces</h1><p style=\"margin: 0 0 8px;\">Open <a href=\"http://localhost\" target=\"_blank\" rel=\"noopener noreferrer\">http://localhost</a> and interact with the app. New requests will appear here automatically.</p><p style=\"margin: 0; color: #666;\">Click any trace ID to open the full span waterfall. Use the time picker in the top right if the table is empty.</p></div>",
+        "content": "<div style=\"padding: 4px 2px 0; font-size: 15px; line-height: 1.55;\"><h1 style=\"margin: 0 0 10px; font-size: 28px;\">Recent SQLPage traces and logs</h1><p style=\"margin: 0 0 8px;\">Open <a href=\"http://localhost\" target=\"_blank\" rel=\"noopener noreferrer\">http://localhost</a> and interact with the app. New requests will appear here automatically.</p><p style=\"margin: 0; color: #666;\">The trace table shows recent requests. The logs panel shows SQLPage container logs, including the trace ID so you can jump from a log line to the full span waterfall.</p></div>",
         "mode": "html"
       },
       "pluginVersion": "12.4.0",
@@ -49,7 +49,7 @@
     {
       "datasource": {
         "type": "tempo",
-        "uid": "P214B5B846CF3925F"
+        "uid": "tempo"
       },
       "fieldConfig": {
         "defaults": {
@@ -125,7 +125,7 @@
         ]
       },
       "gridPos": {
-        "h": 18,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 4
@@ -153,7 +153,7 @@
         {
           "datasource": {
             "type": "tempo",
-            "uid": "P214B5B846CF3925F"
+            "uid": "tempo"
           },
           "limit": 50,
           "query": "{resource.service.name != nil}",
@@ -189,12 +189,52 @@
         }
       ],
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": false,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{compose_service=\"sqlpage\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": "1h",
+      "title": "SQLPage Logs",
+      "type": "logs"
     }
   ],
   "refresh": "5s",
   "schemaVersion": 41,
   "style": "dark",
-  "tags": ["sqlpage", "tracing"],
+  "tags": ["sqlpage", "tracing", "logs"],
   "templating": {
     "list": []
   },
@@ -204,7 +244,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "SQLPage Tracing Home",
+  "title": "SQLPage Tracing and Logs Home",
   "uid": "sqlpage-tracing-home",
-  "version": 2
+  "version": 3
 }

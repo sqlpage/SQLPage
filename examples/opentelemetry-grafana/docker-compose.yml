@@ -52,6 +52,19 @@ services:
       - ./tempo.yaml:/etc/tempo/config.yaml:ro
     command: ["-config.file=/etc/tempo/config.yaml"]
 
+  loki:
+    image: grafana/loki:3.4.1
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+
+  promtail:
+    image: grafana/promtail:3.4.1
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./promtail.yaml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+
   grafana:
     image: grafana/grafana:latest
     ports:
@@ -67,3 +80,4 @@ services:
       - ./grafana:/etc/grafana/provisioning/dashboards/sqlpage:ro
     depends_on:
       - tempo
+      - loki

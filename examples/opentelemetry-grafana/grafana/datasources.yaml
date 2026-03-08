@@ -3,6 +3,18 @@ apiVersion: 1
 datasources:
   - name: Tempo
     type: tempo
+    uid: tempo
     access: proxy
     url: http://tempo:3200
     isDefault: true
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        - name: trace_id
+          matcherRegex: 'trace_id=([0-9a-f]+)'
+          datasourceUid: tempo
+          url: '$${__value.raw}'
