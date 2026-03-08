@@ -268,6 +268,10 @@ impl OidcState {
         let span = tracing::info_span!(
             "oidc.jwt.verify",
             enduser.id = tracing::field::Empty,
+            user.id = tracing::field::Empty,
+            user.name = tracing::field::Empty,
+            user.full_name = tracing::field::Empty,
+            user.email = tracing::field::Empty,
         );
         let _guard = span.enter();
         let snapshot = self.snapshot();
@@ -276,7 +280,18 @@ impl OidcState {
         let claims: OidcClaims = id_token
             .into_claims(&verifier, nonce_verifier)
             .map_err(|e| anyhow::anyhow!("Could not verify the ID token: {e}"))?;
-        span.record("enduser.id", claims.subject().as_str());
+        let sub = claims.subject().as_str();
+        span.record("enduser.id", sub);
+        span.record("user.id", sub);
+        if let Some(name) = claims.preferred_username() {
+            span.record("user.name", name.as_str());
+        }
+        if let Some(name) = claims.name().and_then(|n| n.get(None)) {
+            span.record("user.full_name", name.as_str());
+        }
+        if let Some(email) = claims.email() {
+            span.record("user.email", email.as_str());
+        }
         Ok(claims)
     }
 
