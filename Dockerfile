@@ -3,6 +3,8 @@ FROM --platform=$BUILDPLATFORM rust:1.91-slim AS builder
 WORKDIR /usr/src/sqlpage
 ARG TARGETARCH
 ARG BUILDARCH
+ARG CARGO_PROFILE=superoptimized
+ENV CARGO_PROFILE=$CARGO_PROFILE
 
 COPY scripts/ /usr/local/bin/
 RUN cargo init .

@@ -12,7 +12,8 @@ services:
   sqlpage:
     build:
       context: ../..
-      dockerfile: examples/opentelemetry-grafana/Dockerfile
+      args:
+        CARGO_PROFILE: release
     environment:
       - DATABASE_URL=postgres://sqlpage:sqlpage@postgres:5432/sqlpage
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
