@@ -121,9 +121,8 @@ async fn token_endpoint(
 ) -> impl Responder {
     let gate = state.lock().unwrap().token_endpoint_gate.clone();
     if let Some(gate) = gate {
-        // Send HTTP response headers immediately, but stall the body.
-        // This reproduces the exact bug: send_body().await succeeds (headers arrived),
-        // but response.body().await hangs forever with no timeout.
+        // Simulate a provider that stalls mid-response: send headers
+        // immediately but never complete the body.
         let body = futures_util::stream::once(async move {
             gate.notified().await;
             Ok::<web::Bytes, actix_web::Error>(web::Bytes::new())
