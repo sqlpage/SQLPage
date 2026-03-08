@@ -2553,23 +2553,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "json-subscriber"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6456771bcb3511e2afa6a6a8c9ce2730be80803116a2839931476740ab3b86bc"
-dependencies = [
- "opentelemetry",
- "serde",
- "serde_json",
- "tracing",
- "tracing-core",
- "tracing-opentelemetry",
- "tracing-serde",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "json5"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4597,7 +4580,6 @@ dependencies = [
  "handlebars",
  "hmac",
  "include_dir",
- "json-subscriber",
  "lambda-web",
  "libflate",
  "log",
@@ -5232,16 +5214,6 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "web-time",
-]
-
-[[package]]
-name = "tracing-serde"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "704b1aeb7be0d0a84fc9828cae51dab5970fee5088f83d1dd7ee6f6246fc6ff1"
-dependencies = [
- "serde",
- "tracing-core",
 ]
 
 [[package]]
