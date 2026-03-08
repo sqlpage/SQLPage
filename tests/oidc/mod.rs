@@ -594,6 +594,8 @@ async fn test_slow_discovery_does_not_block_authenticated_requests() {
     let count_before = provider.discovery_count();
     tokio::time::pause();
     tokio::time::advance(Duration::from_secs(3601)).await;
+    // Resume real time so the DB pool and background refresh work normally.
+    tokio::time::resume();
 
     // An authenticated request must succeed immediately, even though
     // it triggers a background refresh.

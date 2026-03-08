@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::future::ready;
 use std::rc::Rc;
 use std::time::Duration;
-use tokio::time::Instant;
 use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
+use tokio::time::Instant;
 
 use crate::webserver::http_client::get_http_client_from_appdata;
 use crate::{app_config::AppConfig, AppState};
@@ -251,12 +251,9 @@ impl OidcState {
                 }
                 Err(e) => log::error!("Failed to refresh OIDC client: {e:#}"),
             }
-            state
-                .refresh_in_progress
-                .store(false, Ordering::Release);
+            state.refresh_in_progress.store(false, Ordering::Release);
         });
     }
-
 
     pub fn end_session_endpoint(&self) -> Option<EndSessionUrl> {
         self.snapshot().end_session_endpoint.clone()
@@ -458,8 +455,7 @@ fn handle_unauthenticated_request(
 
     let initial_url = request.uri().to_string();
     let redirect_count = get_redirect_count(&request);
-    let response =
-        build_auth_provider_redirect_response(oidc_state, &initial_url, redirect_count);
+    let response = build_auth_provider_redirect_response(oidc_state, &initial_url, redirect_count);
     MiddlewareResponse::Respond(request.into_response(response))
 }
 
@@ -553,33 +549,31 @@ fn process_oidc_logout(
         .ok()
         .flatten();
 
-    let mut response =
-        if let Some(end_session_endpoint) = oidc_state.end_session_endpoint() {
-            let absolute_redirect_uri = oidc_state
-                .build_absolute_redirect_uri(&params.redirect_uri)?;
+    let mut response = if let Some(end_session_endpoint) = oidc_state.end_session_endpoint() {
+        let absolute_redirect_uri = oidc_state.build_absolute_redirect_uri(&params.redirect_uri)?;
 
-            let post_logout_redirect_uri =
-                PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
-                    format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
-                })?;
+        let post_logout_redirect_uri = PostLogoutRedirectUrl::new(absolute_redirect_uri.clone())
+            .with_context(|| {
+                format!("Invalid post_logout_redirect_uri: {absolute_redirect_uri}")
+            })?;
 
-            let mut logout_request = LogoutRequest::from(end_session_endpoint)
-                .set_post_logout_redirect_uri(post_logout_redirect_uri);
+        let mut logout_request = LogoutRequest::from(end_session_endpoint)
+            .set_post_logout_redirect_uri(post_logout_redirect_uri);
 
-            if let Some(ref token) = id_token {
-                logout_request = logout_request.set_id_token_hint(token);
-            }
+        if let Some(ref token) = id_token {
+            logout_request = logout_request.set_id_token_hint(token);
+        }
 
-            let logout_url = logout_request.http_get_url();
-            log::info!("Redirecting to OIDC logout URL: {logout_url}");
-            build_redirect_response(logout_url.to_string())
-        } else {
-            log::info!(
-                "No end_session_endpoint, redirecting to {}",
-                params.redirect_uri
-            );
-            build_redirect_response(params.redirect_uri)
-        };
+        let logout_url = logout_request.http_get_url();
+        log::info!("Redirecting to OIDC logout URL: {logout_url}");
+        build_redirect_response(logout_url.to_string())
+    } else {
+        log::info!(
+            "No end_session_endpoint, redirecting to {}",
+            params.redirect_uri
+        );
+        build_redirect_response(params.redirect_uri)
+    };
 
     response.add_removal_cookie(
         &Cookie::build(SQLPAGE_AUTH_COOKIE_NAME, "")
@@ -978,7 +972,8 @@ fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
     let hashed_nonce = Nonce::new(hash_nonce(&nonce_source));
     let scopes = &oidc_state.config.scopes;
     let snapshot = oidc_state.snapshot();
-    let (url, csrf_token, _nonce) = snapshot.client
+    let (url, csrf_token, _nonce) = snapshot
+        .client
         .authorize_url(
             CoreAuthenticationFlow::AuthorizationCode,
             CsrfToken::new_random,
