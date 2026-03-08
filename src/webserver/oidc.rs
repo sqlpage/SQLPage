@@ -34,7 +34,6 @@ use openidconnect::{
     StandardTokenResponse,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::{RwLock, RwLockReadGuard};
 
 use super::error::anyhow_err_to_actix_resp;
 use super::http_client::make_http_client;
@@ -189,16 +188,21 @@ fn get_app_host(config: &AppConfig) -> String {
     host
 }
 
-pub struct ClientWithTime {
+/// A point-in-time snapshot of the OIDC provider's client and metadata.
+/// Cheaply cloneable via Arc — callers never hold a lock while using this.
+struct OidcSnapshot {
     client: OidcClient,
     end_session_endpoint: Option<EndSessionUrl>,
-    last_update: Instant,
+    created_at: Instant,
 }
 
 pub struct OidcState {
     pub config: OidcConfig,
-    client: RwLock<ClientWithTime>,
-    refreshing: std::sync::atomic::AtomicBool,
+    /// Current snapshot. The lock is only held for the instant
+    /// needed to clone/swap the Arc — never across await points.
+    snapshot: std::sync::RwLock<Arc<OidcSnapshot>>,
+    /// Prevents concurrent background refreshes.
+    refresh_in_progress: std::sync::atomic::AtomicBool,
 }
 
 impl OidcState {
@@ -208,87 +212,76 @@ impl OidcState {
 
         Ok(Self {
             config: oidc_cfg,
-            client: RwLock::new(ClientWithTime {
+            snapshot: std::sync::RwLock::new(Arc::new(OidcSnapshot {
                 client,
                 end_session_endpoint,
-                last_update: Instant::now(),
-            }),
-            refreshing: std::sync::atomic::AtomicBool::new(false),
+                created_at: Instant::now(),
+            })),
+            refresh_in_progress: std::sync::atomic::AtomicBool::new(false),
         })
     }
 
-    /// Spawns a background task to refresh the OIDC client from the provider
-    /// metadata URL if it hasn't been refreshed within `max_age`.
-    /// Returns immediately without blocking the caller.
-    /// Multiple concurrent calls are deduplicated via an atomic flag.
-    fn refresh_in_background(self: &Arc<Self>, http_client: &Client, max_age: Duration) {
+    /// Returns the current snapshot. Never blocks in practice.
+    fn snapshot(&self) -> Arc<OidcSnapshot> {
+        self.snapshot.read().unwrap().clone()
+    }
+
+    /// If the snapshot is older than `max_age` and no refresh is already running,
+    /// spawns a background task to fetch new provider metadata.
+    /// Returns immediately — never blocks the caller on I/O.
+    pub fn maybe_refresh(self: &Arc<Self>, http_client: &Client, max_age: Duration) {
         use std::sync::atomic::Ordering;
-        let Ok(last_update) = self.client.try_read().map(|g| g.last_update) else {
-            return; // write lock held → a refresh is already in progress
-        };
-        if last_update.elapsed() <= max_age {
+        if self.snapshot().created_at.elapsed() <= max_age {
             return;
         }
-        if self.refreshing.swap(true, Ordering::AcqRel) {
-            return; // another refresh is already running
+        if self.refresh_in_progress.swap(true, Ordering::AcqRel) {
+            return;
         }
         let state = Arc::clone(self);
         let http_client = http_client.clone();
         tokio::task::spawn_local(async move {
             match build_oidc_client(&state.config, &http_client).await {
                 Ok((client, end_session_endpoint)) => {
-                    *state.client.write().await = ClientWithTime {
+                    *state.snapshot.write().unwrap() = Arc::new(OidcSnapshot {
                         client,
                         end_session_endpoint,
-                        last_update: Instant::now(),
-                    };
+                        created_at: Instant::now(),
+                    });
                 }
                 Err(e) => log::error!("Failed to refresh OIDC client: {e:#}"),
             }
-            state.refreshing.store(false, Ordering::Release);
+            state
+                .refresh_in_progress
+                .store(false, Ordering::Release);
         });
-    }
-
-    /// Refreshes the OIDC client from the provider metadata URL if it has expired.
-    /// Most providers update their signing keys periodically.
-    pub fn refresh_if_expired(self: &Arc<Self>, http_client: &Client) {
-        self.refresh_in_background(http_client, OIDC_CLIENT_MAX_REFRESH_INTERVAL);
-    }
-
-    /// When an authentication error is encountered, refresh the OIDC client info faster
-    pub fn refresh_on_error(self: &Arc<Self>, http_client: &Client) {
-        self.refresh_in_background(http_client, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
-    }
-
-    /// Gets a reference to the oidc client, potentially generating a new one if needed
-    pub async fn get_client(&self) -> RwLockReadGuard<'_, OidcClient> {
-        RwLockReadGuard::map(
-            self.client.read().await,
-            |ClientWithTime { client, .. }| client,
-        )
     }
 
     /// Forces the OIDC client to appear stale so that the next request triggers a refresh.
     #[doc(hidden)]
-    pub async fn force_expire(&self) {
-        self.client.write().await.last_update =
-            Instant::now()
+    pub fn force_expire(&self) {
+        let mut guard = self.snapshot.write().unwrap();
+        let old = &**guard;
+        *guard = Arc::new(OidcSnapshot {
+            client: old.client.clone(),
+            end_session_endpoint: old.end_session_endpoint.clone(),
+            created_at: Instant::now()
                 .checked_sub(OIDC_CLIENT_MAX_REFRESH_INTERVAL + Duration::from_secs(1))
-                .unwrap_or(Instant::now());
+                .unwrap_or(Instant::now()),
+        });
     }
 
-    pub async fn get_end_session_endpoint(&self) -> Option<EndSessionUrl> {
-        self.client.read().await.end_session_endpoint.clone()
+    pub fn end_session_endpoint(&self) -> Option<EndSessionUrl> {
+        self.snapshot().end_session_endpoint.clone()
     }
 
-    /// Validate and decode the claims of an OIDC token, without refreshing the client.
-    async fn get_token_claims(
+    /// Validate and decode the claims of an OIDC token.
+    fn get_token_claims(
         &self,
         id_token: OidcToken,
         expected_nonce: &Nonce,
     ) -> anyhow::Result<OidcClaims> {
-        let client = &self.get_client().await;
-        let verifier = self.config.create_id_token_verifier(client);
+        let snapshot = self.snapshot();
+        let verifier = self.config.create_id_token_verifier(&snapshot.client);
         let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, expected_nonce);
         let claims: OidcClaims = id_token
             .into_claims(&verifier, nonce_verifier)
@@ -296,13 +289,14 @@ impl OidcState {
         Ok(claims)
     }
 
-    /// Builds an absolute redirect URI by joining the relative redirect URI with the client's redirect URL
-    pub async fn build_absolute_redirect_uri(
+    /// Builds an absolute redirect URI from the client's configured redirect URL.
+    pub fn build_absolute_redirect_uri(
         &self,
         relative_redirect_uri: &str,
     ) -> anyhow::Result<String> {
-        let client_guard = self.get_client().await;
-        let client_redirect_url = client_guard
+        let snapshot = self.snapshot();
+        let client_redirect_url = snapshot
+            .client
             .redirect_uri()
             .ok_or_else(|| anyhow!("OIDC client has no redirect URL configured"))?;
         let absolute_redirect_uri = client_redirect_url
@@ -427,8 +421,9 @@ async fn handle_request(
     request: ServiceRequest,
 ) -> MiddlewareResponse {
     log::trace!("Started OIDC middleware request handling");
-    if let Ok(http_client) = get_http_client_from_appdata(&request) {
-        oidc_state.refresh_if_expired(http_client);
+    let http_client = get_http_client_from_appdata(&request).ok();
+    if let Some(c) = http_client {
+        oidc_state.maybe_refresh(c, OIDC_CLIENT_MAX_REFRESH_INTERVAL);
     }
 
     if request.path() == oidc_state.config.redirect_uri {
@@ -437,11 +432,11 @@ async fn handle_request(
     }
 
     if request.path() == oidc_state.config.logout_uri {
-        let response = handle_oidc_logout(oidc_state, request).await;
+        let response = handle_oidc_logout(oidc_state, request);
         return MiddlewareResponse::Respond(response);
     }
 
-    match get_authenticated_user_info(oidc_state, &request).await {
+    match get_authenticated_user_info(oidc_state, &request) {
         Ok(Some(claims)) => {
             log::trace!("Storing authenticated user info in request extensions: {claims:?}");
             request.extensions_mut().insert(claims);
@@ -449,19 +444,19 @@ async fn handle_request(
         }
         Ok(None) => {
             log::trace!("No authenticated user found");
-            handle_unauthenticated_request(oidc_state, request).await
+            handle_unauthenticated_request(oidc_state, request)
         }
         Err(e) => {
             log::debug!("An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}");
-            if let Ok(http_client) = get_http_client_from_appdata(&request) {
-                oidc_state.refresh_on_error(http_client);
+            if let Some(c) = http_client {
+                oidc_state.maybe_refresh(c, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
             }
-            handle_unauthenticated_request(oidc_state, request).await
+            handle_unauthenticated_request(oidc_state, request)
         }
     }
 }
 
-async fn handle_unauthenticated_request(
+fn handle_unauthenticated_request(
     oidc_state: &OidcState,
     request: ServiceRequest,
 ) -> MiddlewareResponse {
@@ -476,7 +471,7 @@ async fn handle_unauthenticated_request(
     let initial_url = request.uri().to_string();
     let redirect_count = get_redirect_count(&request);
     let response =
-        build_auth_provider_redirect_response(oidc_state, &initial_url, redirect_count).await;
+        build_auth_provider_redirect_response(oidc_state, &initial_url, redirect_count);
     MiddlewareResponse::Respond(request.into_response(response))
 }
 
@@ -489,26 +484,26 @@ async fn handle_oidc_callback(
             clear_redirect_count_cookie(&mut response);
             request.into_response(response)
         }
-        Err(e) => handle_oidc_callback_error(oidc_state, request, e).await,
+        Err(e) => handle_oidc_callback_error(oidc_state, request, &e),
     }
 }
 
-async fn handle_oidc_callback_error(
+fn handle_oidc_callback_error(
     oidc_state: &Arc<OidcState>,
     request: ServiceRequest,
-    e: anyhow::Error,
+    e: &anyhow::Error,
 ) -> ServiceResponse {
     let redirect_count = get_redirect_count(&request);
     if redirect_count >= MAX_OIDC_REDIRECTS {
-        return handle_max_redirect_count_reached(request, &e, redirect_count);
+        return handle_max_redirect_count_reached(request, e, redirect_count);
     }
     log::error!(
         "Failed to process OIDC callback (attempt {redirect_count}). Refreshing oidc provider metadata, then redirecting to home page: {e:#}"
     );
     if let Ok(http_client) = get_http_client_from_appdata(&request) {
-        oidc_state.refresh_on_error(http_client);
+        oidc_state.maybe_refresh(http_client, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
     }
-    let resp = build_auth_provider_redirect_response(oidc_state, "/", redirect_count).await;
+    let resp = build_auth_provider_redirect_response(oidc_state, "/", redirect_count);
     request.into_response(resp)
 }
 
@@ -525,8 +520,8 @@ fn handle_max_redirect_count_reached(
     request.into_response(resp)
 }
 
-async fn handle_oidc_logout(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
-    match process_oidc_logout(oidc_state, &request).await {
+fn handle_oidc_logout(oidc_state: &OidcState, request: ServiceRequest) -> ServiceResponse {
+    match process_oidc_logout(oidc_state, &request) {
         Ok(response) => request.into_response(response),
         Err(e) => {
             log::error!("Failed to process OIDC logout: {e:#}");
@@ -554,7 +549,7 @@ fn parse_logout_params(query: &str) -> anyhow::Result<LogoutParams> {
         .map(Query::into_inner)
 }
 
-async fn process_oidc_logout(
+fn process_oidc_logout(
     oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
@@ -571,10 +566,9 @@ async fn process_oidc_logout(
         .flatten();
 
     let mut response =
-        if let Some(end_session_endpoint) = oidc_state.get_end_session_endpoint().await {
+        if let Some(end_session_endpoint) = oidc_state.end_session_endpoint() {
             let absolute_redirect_uri = oidc_state
-                .build_absolute_redirect_uri(&params.redirect_uri)
-                .await?;
+                .build_absolute_redirect_uri(&params.redirect_uri)?;
 
             let post_logout_redirect_uri =
                 PostLogoutRedirectUrl::new(absolute_redirect_uri.clone()).with_context(|| {
@@ -692,9 +686,9 @@ async fn process_oidc_callback(
         .into_inner();
     log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
     let mut tmp_login_flow_state_cookie = get_tmp_login_flow_state_cookie(request, &params.state)?;
-    let client = oidc_state.get_client().await;
+    let snapshot = oidc_state.snapshot();
     let http_client = get_http_client_from_appdata(request)?;
-    let id_token = exchange_code_for_token(&client, http_client, params.clone()).await?;
+    let id_token = exchange_code_for_token(&snapshot.client, http_client, params.clone()).await?;
     log::debug!("Received token response: {id_token:?}");
     let LoginFlowState {
         nonce,
@@ -708,7 +702,6 @@ async fn process_oidc_callback(
     set_auth_cookie(&mut response, &id_token);
     let claims = oidc_state
         .get_token_claims(id_token, &nonce)
-        .await
         .context("The identity provider returned an invalid ID token")?;
     log::debug!("{} successfully logged in", claims.subject().as_str());
     let nonce_cookie = create_final_nonce_cookie(&nonce);
@@ -759,12 +752,12 @@ fn set_auth_cookie(response: &mut HttpResponse, id_token: &OidcToken) {
     response.add_cookie(&cookie).unwrap();
 }
 
-async fn build_auth_provider_redirect_response(
+fn build_auth_provider_redirect_response(
     oidc_state: &OidcState,
     initial_url: &str,
     redirect_count: u8,
 ) -> HttpResponse {
-    let AuthUrl { url, params } = build_auth_url(oidc_state).await;
+    let AuthUrl { url, params } = build_auth_url(oidc_state);
     let tmp_login_flow_state_cookie = create_tmp_login_flow_state_cookie(&params, initial_url);
     let redirect_count_cookie = Cookie::build(
         SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE,
@@ -811,7 +804,7 @@ fn build_oidc_error_response(request: &ServiceRequest, e: &anyhow::Error) -> Htt
 }
 
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.
-async fn get_authenticated_user_info(
+fn get_authenticated_user_info(
     oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> anyhow::Result<Option<OidcClaims>> {
@@ -824,7 +817,7 @@ async fn get_authenticated_user_info(
 
     let nonce = get_final_nonce_from_cookie(request)?;
     log::debug!("Verifying id token: {id_token:?}");
-    let claims = oidc_state.get_token_claims(id_token, &nonce).await?;
+    let claims = oidc_state.get_token_claims(id_token, &nonce)?;
     log::debug!("The current user is: {claims:?}");
     Ok(Some(claims))
 }
@@ -992,12 +985,12 @@ struct AuthUrlParams {
     nonce: Nonce,
 }
 
-async fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
+fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
     let nonce_source = Nonce::new_random();
     let hashed_nonce = Nonce::new(hash_nonce(&nonce_source));
     let scopes = &oidc_state.config.scopes;
-    let client_lock = oidc_state.get_client().await;
-    let (url, csrf_token, _nonce) = client_lock
+    let snapshot = oidc_state.snapshot();
+    let (url, csrf_token, _nonce) = snapshot.client
         .authorize_url(
             CoreAuthenticationFlow::AuthorizationCode,
             CsrfToken::new_random,
