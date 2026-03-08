@@ -84,22 +84,19 @@ struct TokenResponse {
 }
 
 async fn discovery_endpoint(state: Data<SharedProviderState>) -> impl Responder {
-    let (discovery, delay) = {
-        let mut state = state.lock().unwrap();
-        state.discovery_count += 1;
-        let discovery = DiscoveryResponse {
-            issuer: state.issuer_url.clone(),
-            authorization_endpoint: format!("{}/auth", state.issuer_url),
-            token_endpoint: format!("{}/token", state.issuer_url),
-            jwks_uri: format!("{}/jwks", state.issuer_url),
-            response_types_supported: vec!["code".to_string()],
-            subject_types_supported: vec!["public".to_string()],
-            id_token_signing_alg_values_supported: vec!["HS256".to_string()],
-            end_session_endpoint: format!("{}/logout", state.issuer_url),
-        };
-        (discovery, state.discovery_delay)
+    let mut state = state.lock().unwrap();
+    state.discovery_count += 1;
+    let discovery = DiscoveryResponse {
+        issuer: state.issuer_url.clone(),
+        authorization_endpoint: format!("{}/auth", state.issuer_url),
+        token_endpoint: format!("{}/token", state.issuer_url),
+        jwks_uri: format!("{}/jwks", state.issuer_url),
+        response_types_supported: vec!["code".to_string()],
+        subject_types_supported: vec!["public".to_string()],
+        id_token_signing_alg_values_supported: vec!["HS256".to_string()],
+        end_session_endpoint: format!("{}/logout", state.issuer_url),
     };
-    tokio::time::sleep(delay).await;
+    drop(state);
     HttpResponse::Ok()
         .insert_header((header::CONTENT_TYPE, "application/json"))
         .json(discovery)
