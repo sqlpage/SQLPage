@@ -643,7 +643,7 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
 
     // Let the TCP round-trip complete so awc reads HTTP headers,
     // then advance past the body-read timeout.
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
     tokio::time::pause();
     tokio::time::advance(Duration::from_secs(60)).await;
 
