@@ -13,6 +13,7 @@ use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tokio::sync::Notify;
 use tokio_util::sync::{CancellationToken, DropGuard};
 
 fn base64url_encode(data: &[u8]) -> String {
@@ -52,6 +53,7 @@ struct ProviderState<'a> {
     auth_codes: HashMap<String, String>, // code -> nonce
     jwt_customizer: Option<Box<JwtCustomizer<'a>>>,
     token_endpoint_delay: Duration,
+    token_endpoint_started: Option<Arc<Notify>>,
 }
 
 type ProviderStateWithLifetime<'a> = ProviderState<'a>;
@@ -145,6 +147,7 @@ async fn token_endpoint(
         .unwrap_or_else(|| make_jwt(&claims, &state.secret));
 
     let delay = state.token_endpoint_delay;
+    let started = state.token_endpoint_started.clone();
     drop(state);
 
     let response = TokenResponse {
@@ -156,6 +159,10 @@ async fn token_endpoint(
 
     let json_bytes = serde_json::to_vec(&response).unwrap();
     let body = futures_util::stream::once(async move {
+        // Signal that HTTP headers have been sent and the body stream started.
+        if let Some(started) = started {
+            started.notify_one();
+        }
         tokio::time::sleep(delay).await;
         Ok::<web::Bytes, actix_web::Error>(web::Bytes::from(json_bytes))
     });
@@ -196,6 +203,7 @@ impl FakeOidcProvider {
             auth_codes: HashMap::new(),
             jwt_customizer: None,
             token_endpoint_delay: Duration::ZERO,
+            token_endpoint_started: None,
         }));
 
         let state_for_server = Arc::clone(&state);
@@ -237,8 +245,15 @@ impl FakeOidcProvider {
         f(&mut state)
     }
 
-    pub fn set_token_endpoint_delay(&self, delay: Duration) {
-        self.with_state_mut(|s| s.token_endpoint_delay = delay);
+    /// Set a delay on the token endpoint body and return a Notify that fires
+    /// once the endpoint has sent response headers and started the body stream.
+    pub fn set_token_endpoint_delay(&self, delay: Duration) -> Arc<Notify> {
+        let started = Arc::new(Notify::new());
+        self.with_state_mut(|s| {
+            s.token_endpoint_delay = delay;
+            s.token_endpoint_started = Some(started.clone());
+        });
+        started
     }
 
     pub fn store_auth_code(&self, code: String, nonce: String) {
@@ -571,7 +586,7 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
     let redirect_uri = get_query_param(&auth_url, "redirect_uri");
     provider.store_auth_code("test_auth_code".to_string(), nonce);
 
-    provider.set_token_endpoint_delay(Duration::from_secs(999));
+    let body_started = provider.set_token_endpoint_delay(Duration::from_secs(999));
 
     let callback_uri = format!(
         "{}?code=test_auth_code&state={}",
@@ -589,10 +604,15 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
         test::call_service(&app, req.to_request()).await
     });
 
-    // Let the localhost TCP round trip complete in real time (microseconds).
-    for _ in 0..1000 {
-        tokio::task::yield_now().await;
-    }
+    // Wait until the token endpoint has sent HTTP headers and started the body
+    // stream. At this point headers are in the TCP buffer but the awc client
+    // may not have read them yet. Yield to let it process the I/O events and
+    // enter response.body().await — this is deterministic because the data is
+    // already available in the socket buffer.
+    body_started.notified().await;
+    tokio::task::yield_now().await;
+    tokio::task::yield_now().await;
+    tokio::task::yield_now().await;
 
     // Freeze time and advance past the body-read timeout. If one is set, the
     // request completes. If not, only the 999s endpoint delay would wake it.
