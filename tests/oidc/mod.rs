@@ -573,32 +573,28 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
 
     provider.set_token_endpoint_delay(Duration::from_secs(999));
 
+    // Pause tokio time so all sleeps and timeouts auto-advance instantly.
+    tokio::time::pause();
+
     let callback_uri = format!(
         "{}?code=test_auth_code&state={}",
         Url::parse(&redirect_uri).unwrap().path(),
         state_param
     );
 
-    // Race the callback request against a deadline to detect hangs without
-    // wall-clock delays. Phase 1 (yields) lets the localhost TCP round trip
-    // complete. Phase 2 (pause + sleep) uses tokio auto-advance to instantly
-    // skip past any body-read timeout that may be set on the HTTP client.
-    tokio::select! {
-        _resp = async {
-            let mut req = test::TestRequest::get().uri(&callback_uri);
-            for cookie in cookies.iter() {
-                req = req.cookie(cookie.clone());
-            }
-            test::call_service(&app, req.to_request()).await
-        } => {}
-        _ = async {
-            for _ in 0..1000 {
-                tokio::task::yield_now().await;
-            }
-            tokio::time::pause();
-            tokio::time::sleep(Duration::from_secs(60)).await;
-        } => {
-            panic!("OIDC callback hung on a slow token endpoint");
-        }
-    }
+    // The callback exchanges the auth code for a token via the slow endpoint.
+    // All tokio timers auto-advance, so this returns immediately. With a body
+    // read timeout the request fails in ~5s of virtual time; without one the
+    // full 999s endpoint delay must elapse first.
+    let start = tokio::time::Instant::now();
+    let _resp = request_with_cookies!(
+        app,
+        test::TestRequest::get().uri(&callback_uri),
+        cookies
+    );
+    let elapsed = start.elapsed();
+    assert!(
+        elapsed < Duration::from_secs(60),
+        "token exchange should time out quickly, took {elapsed:?} of virtual time"
+    );
 }
