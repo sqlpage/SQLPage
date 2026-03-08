@@ -16,9 +16,8 @@ use actix_web::http::header::Accept;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode};
 use actix_web::web::PayloadConfig;
-use actix_web::{
-    dev::ServiceResponse, middleware, middleware::Logger, web, App, HttpResponse, HttpServer,
-};
+use actix_web::{dev::ServiceResponse, middleware, web, App, HttpResponse, HttpServer};
+use tracing_actix_web::TracingLogger;
 
 use super::error::{anyhow_err_to_actix, bind_error, send_anyhow_error};
 use super::http_client::make_http_client;
@@ -228,7 +227,11 @@ async fn render_sql(
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     let source_path: PathBuf = sql_file.source_path.clone();
-    actix_web::rt::spawn(async move {
+    let exec_span = tracing::info_span!(
+        "sqlpage.exec",
+        sqlpage.file = %source_path.display(),
+    );
+    actix_web::rt::spawn(tracing::Instrument::instrument(async move {
         let request_info = exec_ctx.request();
         let request_context = RequestContext {
             is_embedded: request_info.url_params.contains_key("_sqlpage_embed"),
@@ -267,7 +270,7 @@ async fn render_sql(
                 send_anyhow_error(&err, resp_send, &app_state);
             }
         }
-    });
+    }, exec_span));
     resp_recv.await.map_err(ErrorInternalServerError)
 }
 
@@ -435,7 +438,7 @@ pub fn create_app(
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
         .wrap(OidcMiddleware::new(&app_state))
-        .wrap(Logger::default())
+        .wrap(TracingLogger::default())
         .wrap(default_headers())
         .wrap(middleware::Condition::new(
             app_state.config.compress_responses,

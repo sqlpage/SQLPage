@@ -1,6 +1,7 @@
 use sqlpage::{
     app_config::AppConfig,
     cli,
+    telemetry,
     webserver::{self, Database},
     AppState,
 };
@@ -29,17 +30,14 @@ async fn start() -> anyhow::Result<()> {
     log::debug!("Starting server...");
     webserver::http::run_server(&app_config, state).await?;
     log::info!("Server stopped gracefully. Goodbye!");
+    telemetry::shutdown_telemetry();
     Ok(())
 }
 
 fn init_logging() {
     let load_env = dotenvy::dotenv();
 
-    let env =
-        env_logger::Env::new().default_filter_or("sqlpage=info,actix_web::middleware::logger=info");
-    let mut logging = env_logger::Builder::from_env(env);
-    logging.format_timestamp_millis();
-    logging.init();
+    let otel_active = telemetry::init_telemetry();
 
     match load_env {
         Ok(path) => log::info!("Loaded environment variables from {path:?}"),
@@ -47,5 +45,9 @@ fn init_logging() {
             "No .env file found, using only environment variables and configuration files"
         ),
         Err(e) => log::error!("Error loading .env file: {e}"),
+    }
+
+    if otel_active {
+        log::info!("OpenTelemetry tracing enabled (OTEL_EXPORTER_OTLP_ENDPOINT is set)");
     }
 }

@@ -76,6 +76,7 @@ pub mod dynamic_component;
 pub mod file_cache;
 pub mod filesystem;
 pub mod render;
+pub mod telemetry;
 pub mod template_helpers;
 pub mod templates;
 pub mod utils;

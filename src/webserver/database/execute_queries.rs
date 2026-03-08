@@ -64,6 +64,12 @@ pub fn stream_query_results_with_conn<'a>(
                     request.server_timing.record("bind_params");
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
+                    let _query_span = tracing::info_span!(
+                        "db.query",
+                        db.statement = query.sql,
+                        db.system = %request.app_state.db.info.dbms_name,
+                    )
+                    .entered();
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
                     while let Some(elem) = stream.next().await {
@@ -217,6 +223,12 @@ async fn execute_set_variable_query<'a>(
         query.sql
     );
 
+    let _query_span = tracing::info_span!(
+        "db.query",
+        db.statement = query.sql,
+        db.system = %request.app_state.db.info.dbms_name,
+    )
+    .entered();
     let value = match connection.fetch_optional(query).await {
         Ok(Some(row)) => row_to_string(&row),
         Ok(None) => None,
@@ -288,6 +300,12 @@ async fn take_connection<'a>(
     if let Some(c) = conn {
         return Ok(c);
     }
+    let pool_size = db.connection.size();
+    let _acquire_span = tracing::info_span!(
+        "db.pool.acquire",
+        db.pool.size = pool_size,
+    )
+    .entered();
     match db.connection.acquire().await {
         Ok(c) => {
             log::debug!("Acquired a database connection");
