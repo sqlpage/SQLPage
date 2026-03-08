@@ -355,7 +355,18 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
     }
 
     fn on_request_end<B: MessageBody>(span: Span, outcome: &Result<ServiceResponse<B>, Error>) {
+        let span_ref = span.clone();
         DefaultRootSpanBuilder::on_request_end(span, outcome);
+
+        // Emit a single log event per completed request so it appears in logs.
+        // Error responses (4xx/5xx) are already logged by our error handlers.
+        let _enter = span_ref.enter();
+        if let Ok(response) = outcome {
+            let status = response.response().status();
+            if status.is_success() || status.is_redirection() {
+                log::info!("{}", status.canonical_reason().unwrap_or("ok"));
+            }
+        }
     }
 }
 
