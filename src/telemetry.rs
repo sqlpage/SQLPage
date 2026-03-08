@@ -48,10 +48,6 @@ fn init_otel_tracing() {
     use opentelemetry::trace::TracerProvider as _;
     use opentelemetry_sdk::propagation::TraceContextPropagator;
     use tracing_subscriber::layer::SubscriberExt;
-    use tracing_subscriber::util::SubscriberInitExt;
-
-    // Bridge log::* macros → tracing events (must be called before subscriber init)
-    tracing_log::LogTracer::init().expect("Failed to set log tracer");
 
     // W3C TraceContext propagation (traceparent header)
     global::set_text_map_propagator(TraceContextPropagator::new());
@@ -81,9 +77,15 @@ fn init_otel_tracing() {
         .with_timer(tracing_subscriber::fmt::time::uptime())
         .with_target(true);
 
-    tracing_subscriber::registry()
+    // Build the subscriber and set it as global default.
+    // We use tracing_log::LogTracer to bridge log::* → tracing,
+    // and set_global_default (not .init()) to avoid double-setting the log logger.
+    let subscriber = tracing_subscriber::registry()
         .with(filter)
         .with(fmt_layer)
-        .with(otel_layer)
-        .init();
+        .with(otel_layer);
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Failed to set global tracing subscriber");
+    tracing_log::LogTracer::init().expect("Failed to set log→tracing bridge");
 }

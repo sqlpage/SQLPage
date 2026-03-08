@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: ghcr.io/nginxinc/nginx-otel:latest
+    image: nginx:otel
     ports:
       - "80:80"
     volumes:
@@ -12,7 +12,7 @@ services:
   sqlpage:
     build:
       context: ../..
-      dockerfile: Dockerfile
+      dockerfile: examples/opentelemetry-grafana/Dockerfile
     environment:
       - DATABASE_URL=postgres://sqlpage:sqlpage@postgres:5432/sqlpage
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
@@ -47,7 +47,7 @@ services:
       - tempo
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.6.1
     volumes:
       - ./tempo.yaml:/etc/tempo/config.yaml:ro
     command: ["-config.file=/etc/tempo/config.yaml"]
