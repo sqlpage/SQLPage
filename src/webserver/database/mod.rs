@@ -58,6 +58,22 @@ impl SupportedDatabase {
             Self::Generic => "Generic",
         }
     }
+
+    /// Returns the OTel `db.system.name` well-known value.
+    /// See <https://opentelemetry.io/docs/specs/semconv/registry/attributes/db/#db-system-name>
+    #[must_use]
+    pub fn otel_name(self) -> &'static str {
+        match self {
+            Self::Sqlite => "sqlite",
+            Self::Duckdb => "duckdb",
+            Self::Oracle => "oracle.db",
+            Self::Postgres => "postgresql",
+            Self::MySql => "mysql",
+            Self::Mssql => "microsoft.sql_server",
+            Self::Snowflake => "snowflake",
+            Self::Generic => "other_sql",
+        }
+    }
 }
 
 pub struct Database {

@@ -67,9 +67,9 @@ pub fn stream_query_results_with_conn<'a>(
                     let _query_span = tracing::info_span!(
                         "db.query",
                         db.query.text = query.sql,
-                        db.system.name = %request.app_state.db.info.dbms_name,
+                        db.system.name = request.app_state.db.info.database_type.otel_name(),
                         code.file.path = %source_file.display(),
-                        code.line.number = stmt.query_position.start.line,
+                        code.line.number = stmt.query_position.start.line as i64,
                     )
                     .entered();
                     let mut stream = connection.fetch_many(query);
@@ -228,9 +228,9 @@ async fn execute_set_variable_query<'a>(
     let _query_span = tracing::info_span!(
         "db.query",
         db.query.text = query.sql,
-        db.system.name = %request.app_state.db.info.dbms_name,
+        db.system.name = request.app_state.db.info.database_type.otel_name(),
         code.file.path = %source_file.display(),
-        code.line.number = statement.query_position.start.line,
+        code.line.number = statement.query_position.start.line as i64,
     )
     .entered();
     let value = match connection.fetch_optional(query).await {
