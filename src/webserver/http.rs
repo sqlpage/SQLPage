@@ -17,7 +17,7 @@ use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, La
 use actix_web::http::{header, StatusCode};
 use actix_web::web::PayloadConfig;
 use actix_web::{dev::ServiceResponse, middleware, web, App, Error, HttpResponse, HttpServer};
-use tracing::Span;
+use tracing::{Instrument, Span};
 use tracing_actix_web::{DefaultRootSpanBuilder, RootSpanBuilder, TracingLogger};
 
 use super::error::{anyhow_err_to_actix, bind_error, send_anyhow_error};
@@ -226,13 +226,13 @@ async fn render_sql(
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        let _parse_span = tracing::info_span!(
+        let parse_span = tracing::info_span!(
             "http.parse_request",
             http.request.method = %srv_req.method(),
             http.request.header.content_type = content_type,
-        )
-        .entered();
+        );
         extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
+            .instrument(parse_span)
             .await
             .map_err(|e| anyhow_err_to_actix(e, &app_state))?
     };
@@ -378,14 +378,14 @@ async fn process_sql_request(
     let server_timing = ServerTiming::for_env(app_state.config.environment);
 
     let sql_file = {
-        let _span = tracing::info_span!(
+        let span = tracing::info_span!(
             "sqlpage.file.load",
             code.file.path = %sql_path.display(),
-        )
-        .entered();
+        );
         app_state
             .sql_file_cache
             .get_with_privilege(app_state, &sql_path, false)
+            .instrument(span)
             .await
             .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
             .map_err(|e| anyhow_err_to_actix(e, app_state))?

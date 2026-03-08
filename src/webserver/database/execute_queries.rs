@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
+use tracing::Instrument;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::path::Path;
@@ -68,24 +69,23 @@ pub fn stream_query_results_with_conn<'a>(
                     request.server_timing.record("bind_params");
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
-                    let _query_span = tracing::info_span!(
+                    let query_span = tracing::info_span!(
                         "db.query",
                         db.query.text = query.sql,
                         db.system.name = request.app_state.db.info.database_type.otel_name(),
                         code.file.path = %source_file.display(),
                         code.line.number = source_line_number(stmt.query_position.start.line),
-                    )
-                    .entered();
+                    );
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
-                    while let Some(elem) = stream.next().await {
+                    while let Some(elem) = stream.next().instrument(query_span.clone()).await {
                         let mut query_result = parse_single_sql_result(source_file, stmt, elem);
                         if let DbItem::Error(e) = query_result {
                             error = Some(e);
                             break;
                         }
                         apply_json_columns(&mut query_result, &stmt.json_columns);
-                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
+                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).instrument(query_span.clone()).await?;
                         for db_item in parse_dynamic_rows(query_result) {
                             yield db_item;
                         }
@@ -229,15 +229,14 @@ async fn execute_set_variable_query<'a>(
         query.sql
     );
 
-    let _query_span = tracing::info_span!(
+    let query_span = tracing::info_span!(
         "db.query",
         db.query.text = query.sql,
         db.system.name = request.app_state.db.info.database_type.otel_name(),
         code.file.path = %source_file.display(),
         code.line.number = source_line_number(statement.query_position.start.line),
-    )
-    .entered();
-    let value = match connection.fetch_optional(query).await {
+    );
+    let value = match connection.fetch_optional(query).instrument(query_span).await {
         Ok(Some(row)) => row_to_string(&row),
         Ok(None) => None,
         Err(e) => {
@@ -309,8 +308,8 @@ async fn take_connection<'a>(
         return Ok(c);
     }
     let pool_size = db.connection.size();
-    let _acquire_span = tracing::info_span!("db.pool.acquire", db.pool.size = pool_size,).entered();
-    match db.connection.acquire().await {
+    let acquire_span = tracing::info_span!("db.pool.acquire", db.pool.size = pool_size,);
+    match db.connection.acquire().instrument(acquire_span).await {
         Ok(c) => {
             log::debug!("Acquired a database connection");
             request.server_timing.record("db_conn");

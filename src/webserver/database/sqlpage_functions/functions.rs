@@ -12,6 +12,7 @@ use crate::webserver::{
 };
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
+use tracing::Instrument;
 use mime_guess::mime;
 use std::fmt::Write;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
@@ -136,16 +137,16 @@ async fn exec<'a>(
         Make sure you understand the security implications before enabling it, and never allow user input to be passed as the first argument to this function.
         You can enable it by setting the allow_exec option to true in the sqlpage.json configuration file.")
     }
-    let _exec_span = tracing::info_span!(
+    let exec_span = tracing::info_span!(
         "subprocess",
         otel.name = format!("EXEC {program_name}"),
         process.command = %program_name,
         process.args_count = args.len(),
-    )
-    .entered();
+    );
     let res = tokio::process::Command::new(&*program_name)
         .args(args.iter().map(|x| &**x))
         .output()
+        .instrument(exec_span)
         .await
         .with_context(|| {
             let mut s = format!("Unable to execute command: {program_name}");
@@ -220,46 +221,49 @@ async fn fetch(
         url.full = %http_request.url,
         http.response.status_code = tracing::field::Empty,
     );
-    let _guard = fetch_span.enter();
 
-    let client = make_http_client(&request.app_state.config)
-        .with_context(|| "Unable to create an HTTP client")?;
-    let req = build_request(&client, &http_request)?;
+    async {
+        let client = make_http_client(&request.app_state.config)
+            .with_context(|| "Unable to create an HTTP client")?;
+        let req = build_request(&client, &http_request)?;
 
-    log::info!("Fetching {}", http_request.url);
-    let mut response = if let Some(body) = &http_request.body {
-        let (body, req) = prepare_request_body(body, req)?;
-        req.send_body(body)
-    } else {
-        req.send()
-    }
-    .await
-    .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
-
-    fetch_span.record(
-        "http.response.status_code",
-        i64::from(response.status().as_u16()),
-    );
-
-    log::debug!(
-        "Finished fetching {}. Status: {}",
-        http_request.url,
-        response.status()
-    );
-
-    let body = response
-        .body()
+        log::info!("Fetching {}", http_request.url);
+        let mut response = if let Some(body) = &http_request.body {
+            let (body, req) = prepare_request_body(body, req)?;
+            req.send_body(body)
+        } else {
+            req.send()
+        }
         .await
-        .with_context(|| {
-            format!(
-                "Unable to read the body of the response from {}",
-                http_request.url
-            )
-        })?
-        .to_vec();
-    let response_str = decode_response(body, http_request.response_encoding.as_deref())?;
-    log::debug!("Fetch response: {response_str}");
-    Ok(Some(response_str))
+        .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
+
+        tracing::Span::current().record(
+            "http.response.status_code",
+            i64::from(response.status().as_u16()),
+        );
+
+        log::debug!(
+            "Finished fetching {}. Status: {}",
+            http_request.url,
+            response.status()
+        );
+
+        let body = response
+            .body()
+            .await
+            .with_context(|| {
+                format!(
+                    "Unable to read the body of the response from {}",
+                    http_request.url
+                )
+            })?
+            .to_vec();
+        let response_str = decode_response(body, http_request.response_encoding.as_deref())?;
+        log::debug!("Fetch response: {response_str}");
+        Ok(Some(response_str))
+    }
+    .instrument(fetch_span)
+    .await
 }
 
 fn decode_response(response: Vec<u8>, encoding: Option<&str>) -> anyhow::Result<String> {
@@ -315,84 +319,88 @@ async fn fetch_with_meta(
         url.full = %http_request.url,
         http.response.status_code = tracing::field::Empty,
     );
-    let _guard = fetch_span.enter();
 
-    let client = make_http_client(&request.app_state.config)
-        .with_context(|| "Unable to create an HTTP client")?;
-    let req = build_request(&client, &http_request)?;
+    async {
+        let client = make_http_client(&request.app_state.config)
+            .with_context(|| "Unable to create an HTTP client")?;
+        let req = build_request(&client, &http_request)?;
 
-    log::info!("Fetching {} with metadata", http_request.url);
-    let response_result = if let Some(body) = &http_request.body {
-        let (body, req) = prepare_request_body(body, req)?;
-        req.send_body(body).await
-    } else {
-        req.send().await
-    };
+        log::info!("Fetching {} with metadata", http_request.url);
+        let response_result = if let Some(body) = &http_request.body {
+            let (body, req) = prepare_request_body(body, req)?;
+            req.send_body(body).await
+        } else {
+            req.send().await
+        };
 
-    let mut resp_str = Vec::new();
-    let mut encoder = serde_json::Serializer::new(&mut resp_str);
-    let mut obj = encoder.serialize_map(Some(3))?;
-    match response_result {
-        Ok(mut response) => {
-            let status = response.status();
-            fetch_span.record("http.response.status_code", i64::from(status.as_u16()));
-            obj.serialize_entry("status", &status.as_u16())?;
-            let mut has_error = false;
-            if status.is_server_error() {
-                has_error = true;
-                obj.serialize_entry("error", &format!("Server error: {status}"))?;
-            }
+        let mut resp_str = Vec::new();
+        let mut encoder = serde_json::Serializer::new(&mut resp_str);
+        let mut obj = encoder.serialize_map(Some(3))?;
+        match response_result {
+            Ok(mut response) => {
+                let status = response.status();
+                tracing::Span::current()
+                    .record("http.response.status_code", i64::from(status.as_u16()));
+                obj.serialize_entry("status", &status.as_u16())?;
+                let mut has_error = false;
+                if status.is_server_error() {
+                    has_error = true;
+                    obj.serialize_entry("error", &format!("Server error: {status}"))?;
+                }
 
-            let headers = response.headers();
+                let headers = response.headers();
 
-            let is_json = headers
-                .get("content-type")
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or_default()
-                .starts_with("application/json");
+                let is_json = headers
+                    .get("content-type")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or_default()
+                    .starts_with("application/json");
 
-            obj.serialize_entry(
-                "headers",
-                &headers
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default()))
-                    .collect::<std::collections::HashMap<_, _>>(),
-            )?;
+                obj.serialize_entry(
+                    "headers",
+                    &headers
+                        .iter()
+                        .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default()))
+                        .collect::<std::collections::HashMap<_, _>>(),
+                )?;
 
-            match response.body().await {
-                Ok(body) => {
-                    let body_bytes = body.to_vec();
-                    let body_str =
-                        decode_response(body_bytes, http_request.response_encoding.as_deref())?;
-                    if is_json {
-                        obj.serialize_entry(
-                            "json_body",
-                            &serde_json::value::RawValue::from_string(body_str)?,
-                        )?;
-                    } else {
-                        obj.serialize_entry("body", &body_str)?;
+                match response.body().await {
+                    Ok(body) => {
+                        let body_bytes = body.to_vec();
+                        let body_str =
+                            decode_response(body_bytes, http_request.response_encoding.as_deref())?;
+                        if is_json {
+                            obj.serialize_entry(
+                                "json_body",
+                                &serde_json::value::RawValue::from_string(body_str)?,
+                            )?;
+                        } else {
+                            obj.serialize_entry("body", &body_str)?;
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to read response body: {e}");
+                        if !has_error {
+                            obj.serialize_entry(
+                                "error",
+                                &format!("Failed to read response body: {e}"),
+                            )?;
+                        }
                     }
                 }
-                Err(e) => {
-                    log::warn!("Failed to read response body: {e}");
-                    if !has_error {
-                        obj.serialize_entry(
-                            "error",
-                            &format!("Failed to read response body: {e}"),
-                        )?;
-                    }
-                }
+            }
+            Err(e) => {
+                log::warn!("Request failed: {e}");
+                obj.serialize_entry("error", &format!("Request failed: {e}"))?;
             }
         }
-        Err(e) => {
-            log::warn!("Request failed: {e}");
-            obj.serialize_entry("error", &format!("Request failed: {e}"))?;
-        }
+
+        obj.end()?;
+        let return_value = String::from_utf8(resp_str)?;
+        Ok(Some(return_value))
     }
-
-    obj.end()?;
-    let return_value = String::from_utf8(resp_str)?;
-    Ok(Some(return_value))
+    .instrument(fetch_span)
+    .await
 }
 
 pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Option<String>> {
@@ -610,12 +618,11 @@ async fn run_sql<'a>(
         log::debug!("run_sql: first argument is NULL, returning NULL");
         return Ok(None);
     };
-    let _run_sql_span = tracing::info_span!(
+    let run_sql_span = tracing::info_span!(
         "sqlpage.file",
         otel.name = format!("SQL {sql_file_path}"),
         code.file.path = %sql_file_path,
-    )
-    .entered();
+    );
     let app_state = &request.app_state;
     let sql_file = app_state
         .sql_file_cache
@@ -624,6 +631,7 @@ async fn run_sql<'a>(
             std::path::Path::new(sql_file_path.as_ref()),
             true,
         )
+        .instrument(run_sql_span.clone())
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
     let tmp_req = if let Some(variables) = variables {
@@ -652,7 +660,7 @@ async fn run_sql<'a>(
     let mut json_results_bytes = Vec::new();
     let mut json_encoder = serde_json::Serializer::new(&mut json_results_bytes);
     let mut seq = json_encoder.serialize_seq(None)?;
-    while let Some(db_item) = results_stream.next().await {
+    while let Some(db_item) = results_stream.next().instrument(run_sql_span.clone()).await {
         use crate::webserver::database::DbItem::{Error, FinishedQuery, Row};
         match db_item {
             Row(row) => {

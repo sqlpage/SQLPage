@@ -17,6 +17,7 @@ use actix_web::{
     Error, HttpMessage, HttpResponse,
 };
 use anyhow::{anyhow, Context};
+use tracing::Instrument;
 use awc::Client;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
@@ -484,8 +485,8 @@ async fn handle_oidc_callback(
     oidc_state: &Arc<OidcState>,
     request: ServiceRequest,
 ) -> ServiceResponse {
-    let _span = tracing::info_span!("oidc.callback").entered();
-    match process_oidc_callback(oidc_state, &request).await {
+    let span = tracing::info_span!("oidc.callback");
+    match process_oidc_callback(oidc_state, &request).instrument(span).await {
         Ok(mut response) => {
             clear_redirect_count_cookie(&mut response);
             request.into_response(response)
@@ -720,17 +721,17 @@ async fn exchange_code_for_token(
     http_client: &awc::Client,
     oidc_callback_params: OidcCallbackParams,
 ) -> anyhow::Result<OidcToken> {
-    let _span = tracing::info_span!(
+    let span = tracing::info_span!(
         "http.client",
         otel.name = "POST token_endpoint",
         http.request.method = "POST",
-    )
-    .entered();
+    );
     let token_response = oidc_client
         .exchange_code(openidconnect::AuthorizationCode::new(
             oidc_callback_params.code,
         ))?
         .request_async(&AwcHttpClient::from_client(http_client))
+        .instrument(span)
         .await
         .context("Failed to exchange code for token")?;
     let access_token = token_response.access_token();
