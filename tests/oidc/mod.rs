@@ -573,28 +573,35 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
 
     provider.set_token_endpoint_delay(Duration::from_secs(999));
 
-    // Pause tokio time so all sleeps and timeouts auto-advance instantly.
-    tokio::time::pause();
-
     let callback_uri = format!(
         "{}?code=test_auth_code&state={}",
         Url::parse(&redirect_uri).unwrap().path(),
         state_param
     );
 
-    // The callback exchanges the auth code for a token via the slow endpoint.
-    // All tokio timers auto-advance, so this returns immediately. With a body
-    // read timeout the request fails in ~5s of virtual time; without one the
-    // full 999s endpoint delay must elapse first.
-    let start = tokio::time::Instant::now();
-    let _resp = request_with_cookies!(
-        app,
-        test::TestRequest::get().uri(&callback_uri),
-        cookies
-    );
-    let elapsed = start.elapsed();
+    // Spawn the callback request. It will exchange the auth code for a token,
+    // but the token endpoint body is delayed by 999s (headers arrive immediately).
+    let handle = tokio::task::spawn_local(async move {
+        let mut req = test::TestRequest::get().uri(&callback_uri);
+        for cookie in cookies.iter() {
+            req = req.cookie(cookie.clone());
+        }
+        test::call_service(&app, req.to_request()).await
+    });
+
+    // Let the localhost TCP round trip complete in real time (microseconds).
+    for _ in 0..1000 {
+        tokio::task::yield_now().await;
+    }
+
+    // Freeze time and advance past the body-read timeout. If one is set, the
+    // request completes. If not, only the 999s endpoint delay would wake it.
+    tokio::time::pause();
+    tokio::time::advance(Duration::from_secs(60)).await;
+    tokio::task::yield_now().await;
+
     assert!(
-        elapsed < Duration::from_secs(60),
-        "token exchange should time out quickly, took {elapsed:?} of virtual time"
+        handle.is_finished(),
+        "OIDC callback hung on a slow token endpoint"
     );
 }
