@@ -221,7 +221,17 @@ async fn render_sql(
         .unwrap_or_default();
 
     let exec_ctx = {
-        let _parse_span = tracing::info_span!("http.parse_request").entered();
+        let content_type = srv_req
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let _parse_span = tracing::info_span!(
+            "http.parse_request",
+            http.request.method = %srv_req.method(),
+            http.request.header.content_type = content_type,
+        )
+        .entered();
         extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
             .await
             .map_err(|e| anyhow_err_to_actix(e, &app_state))?
@@ -356,12 +366,19 @@ async fn process_sql_request(
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
     let server_timing = ServerTiming::for_env(app_state.config.environment);
 
-    let sql_file = app_state
-        .sql_file_cache
-        .get_with_privilege(app_state, &sql_path, false)
-        .await
-        .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
-        .map_err(|e| anyhow_err_to_actix(e, app_state))?;
+    let sql_file = {
+        let _span = tracing::info_span!(
+            "sqlpage.file.load",
+            code.file.path = %sql_path.display(),
+        )
+        .entered();
+        app_state
+            .sql_file_cache
+            .get_with_privilege(app_state, &sql_path, false)
+            .await
+            .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
+            .map_err(|e| anyhow_err_to_actix(e, app_state))?
+    };
     server_timing.record("sql_file");
 
     render_sql(req, sql_file, server_timing).await
