@@ -136,9 +136,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "frameIndex": 0,
@@ -196,10 +194,7 @@
   "refresh": "5s",
   "schemaVersion": 41,
   "style": "dark",
-  "tags": [
-    "sqlpage",
-    "tracing"
-  ],
+  "tags": ["sqlpage", "tracing"],
   "templating": {
     "list": []
   },
