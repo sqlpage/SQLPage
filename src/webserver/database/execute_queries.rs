@@ -311,7 +311,9 @@ async fn take_connection<'a>(
             log::debug!("Acquired a database connection");
             request.server_timing.record("db_conn");
             *conn = Some(c);
-            Ok(conn.as_mut().unwrap())
+            let connection = conn.as_mut().unwrap();
+            set_trace_context(connection, db).await;
+            Ok(connection)
         }
         Err(e) => {
             let db_name = db.connection.any_kind();
@@ -319,6 +321,40 @@ async fn take_connection<'a>(
             let err_msg = format!("Unable to connect to {db_name:?}. The connection pool currently has {active_count} active connections.");
             Err(anyhow::Error::new(e).context(err_msg))
         }
+    }
+}
+
+/// Sets the current OTel trace context on the database connection so it is visible
+/// in `pg_stat_activity.application_name` (PostgreSQL) or as a session variable (MySQL).
+/// This allows correlating SQLPage traces with database-side monitoring.
+async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
+    use opentelemetry::trace::TraceContextExt;
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+    let span = tracing::Span::current();
+    let context = span.context();
+    let otel_span = context.span();
+    let span_context = otel_span.span_context();
+    if !span_context.is_valid() {
+        return;
+    }
+    let traceparent = format!(
+        "00-{}-{}-{:02x}",
+        span_context.trace_id(),
+        span_context.span_id(),
+        span_context.trace_flags()
+    );
+    let sql = match db.info.kind {
+        sqlx::any::AnyKind::Postgres => {
+            format!("SET application_name = 'sqlpage {traceparent}'")
+        }
+        sqlx::any::AnyKind::MySql => {
+            format!("SET @traceparent = '{traceparent}'")
+        }
+        _ => return,
+    };
+    if let Err(e) = connection.execute(sql.as_str()).await {
+        log::debug!("Failed to set trace context on connection: {e}");
     }
 }
 
