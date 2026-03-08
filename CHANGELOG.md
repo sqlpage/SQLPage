@@ -1,10 +1,12 @@
 # CHANGELOG.md
 
-## unreleased
- - OIDC protected and public paths now respect the site prefix when it is defined.
- - Fix: forms without submit or reset buttons no longer keep extra bottom spacing.
- - add submit and reset form button icons: validate_icon, reset_icon, reset_color
- - improve error messages when sqlpage functions are used incorrectly. Include precise file reference and line number
+## 0.43.0
+
+- OIDC protected and public paths now respect the site prefix when it is defined.
+- Fix: OIDC provider metadata refreshes now always happen in the background, and with a timeout. Previously, a slow OIDC provider could prevent SQLPage from handling requests for an arbitrary amount of time.
+- Fix: forms without submit or reset buttons no longer keep extra bottom spacing.
+- add submit and reset form button icons: validate_icon, reset_icon, reset_color
+- improve error messages when sqlpage functions are used incorrectly. Include precise file reference and line number
 
 ## 0.42.0 (2026-01-17)
 
@@ -958,6 +960,7 @@ select
 - Improve truncation of long page titles
   - ![screenshot long title](https://github.com/sqlpage/SQLPage/assets/552629/9859023e-c706-47b3-aa9e-1c613046fdfa)
 - new function: [`sqlpage.link`](https://sql-page.com/functions.sql?function=link#function) to easily create links with parameters between pages. For instance, you can now use
+
   ```sql
   select 'list' as component;
   select
@@ -967,6 +970,7 @@ select
   ```
 
   - Before, you would usually build the link manually with `CONCAT('/product.sql?product=', product_name)`, which would fail if the product name contained special characters like '&'. The new `sqlpage.link` function takes care of encoding the parameters correctly.
+
 - Calls to `json_object` are now accepted as arguments to SQLPage functions. This allows you to pass complex data structures to functions such as `sqlpage.fetch`, `sqlpage.run_sql`, and `sqlpage.link`.
 - Better syntax error messages, with a short quotation of the part of the SQL file that caused the error:
 - ![syntax error](https://github.com/user-attachments/assets/86ab5628-87bd-4dea-b6fe-64ea19afcdc3)
@@ -1438,6 +1442,7 @@ and to create JSON APIs.
 - `attribution` parameter to customize or remove the small copyright information text box at the bottom of the map.
 - Add the ability to customize top navigation links and to create submenus in the `shell` component.
   - Postgres example:
+
   ```sql
   select
     'shell' as component,
@@ -1450,6 +1455,7 @@ and to create JSON APIs.
   ```
 
   - _note_: this requires a database that supports json objects natively. If you are using SQLite, you can work around this limitation by using the `dynamic` component.
+
 - Updated the embedded database to [SQLite 3.44](https://antonz.org/sqlite-3-44/), which improves performance, compatibility with other databases, and brings new date formatting functions. The new `ORDER BY` clause in aggregate functions is not supported yet in SQLPage.
 
 ## 0.15.1 (2023-11-07)
