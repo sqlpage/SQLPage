@@ -1,6 +1,5 @@
 use actix_web::{
     cookie::Cookie,
-    dev::Service,
     http::{header, StatusCode},
     test,
     web::{self, Data},
@@ -287,7 +286,6 @@ async fn setup_oidc_test(
         Error = actix_web::Error,
     >,
     FakeOidcProvider,
-    Data<sqlpage::AppState>,
 ) {
     use sqlpage::{
         app_config::{test_database_url, AppConfig},
@@ -319,14 +317,13 @@ async fn setup_oidc_test(
 
     let config: AppConfig = serde_json::from_str(&config_json).unwrap();
     let app_state = AppState::init(&config).await.unwrap();
-    let app_data = Data::new(app_state);
-    let app = test::init_service(create_app(app_data.clone())).await;
-    (app, provider, app_data)
+    let app = test::init_service(create_app(Data::new(app_state))).await;
+    (app, provider)
 }
 
 #[actix_web::test]
 async fn test_oidc_happy_path() {
-    let (app, provider, _) = setup_oidc_test(|_| {}).await;
+    let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
     let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
@@ -355,7 +352,7 @@ async fn assert_oidc_login_fails(
     provider_mutator: impl FnOnce(&mut ProviderState),
     state_override: Option<String>,
 ) {
-    let (app, provider, _) = setup_oidc_test(provider_mutator).await;
+    let (app, provider) = setup_oidc_test(provider_mutator).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
     let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
@@ -638,15 +635,12 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
         test::call_service(&app, req.to_request()).await
     });
 
-    // Let the localhost TCP round-trip complete so awc reads response headers.
+    // Let the TCP round-trip complete so awc reads HTTP headers,
+    // then advance past the body-read timeout.
     tokio::time::sleep(Duration::from_millis(50)).await;
-
-    // Freeze time and advance past the body-read timeout.
     tokio::time::pause();
     tokio::time::advance(Duration::from_secs(60)).await;
 
-    // The body timeout should have fired, completing the request with an error
-    // that SQLPage handles by redirecting to the OIDC provider.
     let resp = tokio::time::timeout(Duration::from_secs(1), handle)
         .await
         .expect("OIDC callback hung on a slow token endpoint")

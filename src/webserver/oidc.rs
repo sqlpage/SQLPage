@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 use std::future::ready;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::time::Instant;
 use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 
 use crate::webserver::http_client::get_http_client_from_appdata;
@@ -256,19 +257,6 @@ impl OidcState {
         });
     }
 
-    /// Forces the OIDC client to appear stale so that the next request triggers a refresh.
-    #[doc(hidden)]
-    pub fn force_expire(&self) {
-        let mut guard = self.snapshot.write().unwrap();
-        let old = &**guard;
-        *guard = Arc::new(OidcSnapshot {
-            client: old.client.clone(),
-            end_session_endpoint: old.end_session_endpoint.clone(),
-            created_at: Instant::now()
-                .checked_sub(OIDC_CLIENT_MAX_REFRESH_INTERVAL + Duration::from_secs(1))
-                .unwrap_or(Instant::now()),
-        });
-    }
 
     pub fn end_session_endpoint(&self) -> Option<EndSessionUrl> {
         self.snapshot().end_session_endpoint.clone()
