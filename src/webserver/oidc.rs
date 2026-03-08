@@ -265,13 +265,18 @@ impl OidcState {
         id_token: OidcToken,
         expected_nonce: &Nonce,
     ) -> anyhow::Result<OidcClaims> {
-        let _span = tracing::info_span!("oidc.jwt.verify").entered();
+        let span = tracing::info_span!(
+            "oidc.jwt.verify",
+            enduser.id = tracing::field::Empty,
+        );
+        let _guard = span.enter();
         let snapshot = self.snapshot();
         let verifier = self.config.create_id_token_verifier(&snapshot.client);
         let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, expected_nonce);
         let claims: OidcClaims = id_token
             .into_claims(&verifier, nonce_verifier)
             .map_err(|e| anyhow::anyhow!("Could not verify the ID token: {e}"))?;
+        span.record("enduser.id", claims.subject().as_str());
         Ok(claims)
     }
 
