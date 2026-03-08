@@ -17,6 +17,32 @@ compactor:
   compaction:
     block_retention: 1h
 
+metrics_generator:
+  ring:
+    kvstore:
+      store: inmemory
+  registry:
+    external_labels:
+      source: tempo
+      cluster: docker-compose
+  processor:
+    service_graphs: {}
+    span_metrics: {}
+    local_blocks:
+      flush_to_storage: true
+  storage:
+    path: /tmp/tempo/generator/wal
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics
+        - local-blocks
+
 storage:
   trace:
     backend: local

@@ -10,12 +10,11 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 
-/// Initializes logging / tracing. Returns `true` if OTel was activated.
+/// Initializes logging / tracing. Returns `true` if `OTel` was activated.
+#[must_use]
 pub fn init_telemetry() -> bool {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
-    let otel_active = otel_endpoint
-        .as_deref()
-        .is_some_and(|v| !v.is_empty());
+    let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
 
     if otel_active {
         init_otel_tracing();
@@ -26,7 +25,7 @@ pub fn init_telemetry() -> bool {
     otel_active
 }
 
-/// Shuts down the OTel tracer provider, flushing pending spans.
+/// Shuts down the `OTel` tracer provider, flushing pending spans.
 pub fn shutdown_telemetry() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         if let Err(e) = provider.shutdown() {
@@ -69,13 +68,12 @@ fn init_otel_tracing() {
     let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            "sqlpage=info,actix_web=info,tracing_actix_web=info".into()
-        });
+        .unwrap_or_else(|_| "sqlpage=info,actix_web=info,tracing_actix_web=info".into());
 
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        .with_timer(tracing_subscriber::fmt::time::uptime())
-        .with_target(true);
+    let fmt_layer = json_subscriber::layer()
+        .with_current_span(true)
+        .with_span_list(false)
+        .with_opentelemetry_ids(true);
 
     // Build the subscriber and set it as global default.
     // We use tracing_log::LogTracer to bridge log::* → tracing,

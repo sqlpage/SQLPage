@@ -1,7 +1,6 @@
 use sqlpage::{
     app_config::AppConfig,
-    cli,
-    telemetry,
+    cli, telemetry,
     webserver::{self, Database},
     AppState,
 };

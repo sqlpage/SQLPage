@@ -68,6 +68,8 @@ pub fn stream_query_results_with_conn<'a>(
                         "db.query",
                         db.statement = query.sql,
                         db.system = %request.app_state.db.info.dbms_name,
+                        code.filepath = %source_file.display(),
+                        code.lineno = stmt.query_position.start.line,
                     )
                     .entered();
                     let mut stream = connection.fetch_many(query);
@@ -227,6 +229,8 @@ async fn execute_set_variable_query<'a>(
         "db.query",
         db.statement = query.sql,
         db.system = %request.app_state.db.info.dbms_name,
+        code.filepath = %source_file.display(),
+        code.lineno = statement.query_position.start.line,
     )
     .entered();
     let value = match connection.fetch_optional(query).await {
@@ -301,11 +305,7 @@ async fn take_connection<'a>(
         return Ok(c);
     }
     let pool_size = db.connection.size();
-    let _acquire_span = tracing::info_span!(
-        "db.pool.acquire",
-        db.pool.size = pool_size,
-    )
-    .entered();
+    let _acquire_span = tracing::info_span!("db.pool.acquire", db.pool.size = pool_size,).entered();
     match db.connection.acquire().await {
         Ok(c) => {
             log::debug!("Acquired a database connection");
@@ -324,9 +324,9 @@ async fn take_connection<'a>(
     }
 }
 
-/// Sets the current OTel trace context on the database connection so it is visible
-/// in `pg_stat_activity.application_name` (PostgreSQL) or as a session variable (MySQL).
-/// This allows correlating SQLPage traces with database-side monitoring.
+/// Sets the current `OTel` trace context on the database connection so it is visible
+/// in `pg_stat_activity.application_name` (`PostgreSQL`) or as a session variable (`MySQL`).
+/// This allows correlating `SQLPage` traces with database-side monitoring.
 async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
     use opentelemetry::trace::TraceContextExt;
     use tracing_opentelemetry::OpenTelemetrySpanExt;

@@ -55,9 +55,9 @@ This starts six services:
 Each HTTP request produces a tree of **spans** (timed operations):
 
 ```
-[nginx] GET /                              ← root span (created by nginx)
-  └─ [sqlpage] GET /                       ← HTTP request span
-       └─ sqlpage.exec                     ← SQL file execution (index.sql)
+[nginx] GET /todos                         ← root span (created by nginx)
+  └─ [sqlpage] GET /todos                  ← HTTP request span
+       └─ [sqlpage] SQL website/todos.sql  ← SQL file execution
             ├─ db.pool.acquire             ← time waiting for a DB connection
             └─ db.query                    ← the actual SQL query
                  db.statement = "SELECT title, ..."
@@ -69,7 +69,7 @@ Key attributes on each span:
 | Span               | Key attributes                                                |
 |---------------------|--------------------------------------------------------------|
 | HTTP request        | `http.method`, `http.target`, `http.status_code`, `http.user_agent` |
-| `sqlpage.exec`      | `sqlpage.file` — which `.sql` file was executed              |
+| SQL file execution  | `sqlpage.file` — which `.sql` file was executed              |
 | `db.pool.acquire`   | `db.pool.size` — current pool size when acquiring            |
 | `db.query`          | `db.statement` — the full SQL text; `db.system` — database type |
 
@@ -370,7 +370,9 @@ This means the `traceparent` header is not being propagated. Check that:
 
 - Your reverse proxy is configured to inject/propagate the `traceparent` header.
 - For nginx, you need the `ngx_otel_module` with `otel_trace_context propagate`
-  in the location block. See the `nginx/nginx.conf` in this example.
+  in the location block. Setting `otel_span_name "$request_method $uri"` also keeps
+  the nginx span name aligned with the actual request path. See the `nginx/nginx.conf`
+  in this example.
 
 ### Spans are missing (e.g., no `db.query` spans)
 
