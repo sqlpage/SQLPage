@@ -66,10 +66,10 @@ pub fn stream_query_results_with_conn<'a>(
                     log::trace!("Executing query {:?}", query.sql);
                     let _query_span = tracing::info_span!(
                         "db.query",
-                        db.statement = query.sql,
-                        db.system = %request.app_state.db.info.dbms_name,
-                        code.filepath = %source_file.display(),
-                        code.lineno = stmt.query_position.start.line,
+                        db.query.text = query.sql,
+                        db.system.name = %request.app_state.db.info.dbms_name,
+                        code.file.path = %source_file.display(),
+                        code.line.number = stmt.query_position.start.line,
                     )
                     .entered();
                     let mut stream = connection.fetch_many(query);
@@ -227,10 +227,10 @@ async fn execute_set_variable_query<'a>(
 
     let _query_span = tracing::info_span!(
         "db.query",
-        db.statement = query.sql,
-        db.system = %request.app_state.db.info.dbms_name,
-        code.filepath = %source_file.display(),
-        code.lineno = statement.query_position.start.line,
+        db.query.text = query.sql,
+        db.system.name = %request.app_state.db.info.dbms_name,
+        code.file.path = %source_file.display(),
+        code.line.number = statement.query_position.start.line,
     )
     .entered();
     let value = match connection.fetch_optional(query).await {

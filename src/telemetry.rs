@@ -1,7 +1,7 @@
 //! OpenTelemetry initialization and shutdown.
 //!
 //! When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, sets up a full tracing pipeline
-//! with OTLP export. Otherwise, falls back to `env_logger` as before.
+//! with OTLP export and logfmt log output. Otherwise, falls back to `env_logger`.
 
 use std::env;
 use std::sync::OnceLock;
@@ -10,11 +10,12 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 
-/// Initializes logging / tracing. Returns `true` if `OTel` was activated.
-#[must_use]
+/// Initializes logging / tracing. Returns `true` if OTel was activated.
 pub fn init_telemetry() -> bool {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
-    let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
+    let otel_active = otel_endpoint
+        .as_deref()
+        .is_some_and(|v| !v.is_empty());
 
     if otel_active {
         init_otel_tracing();
@@ -25,7 +26,7 @@ pub fn init_telemetry() -> bool {
     otel_active
 }
 
-/// Shuts down the `OTel` tracer provider, flushing pending spans.
+/// Shuts down the OTel tracer provider, flushing pending spans.
 pub fn shutdown_telemetry() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         if let Err(e) = provider.shutdown() {
@@ -65,25 +66,188 @@ fn init_otel_tracing() {
     global::set_tracer_provider(provider.clone());
     let _ = TRACER_PROVIDER.set(provider);
 
-    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+    let otel_layer = tracing_opentelemetry::layer()
+        .with_tracer(tracer)
+        .with_location(false);
 
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "sqlpage=info,actix_web=info,tracing_actix_web=info".into());
-
-    let fmt_layer = json_subscriber::layer()
-        .with_current_span(true)
-        .with_span_list(false)
-        .with_opentelemetry_ids(true);
 
     // Build the subscriber and set it as global default.
     // We use tracing_log::LogTracer to bridge log::* → tracing,
     // and set_global_default (not .init()) to avoid double-setting the log logger.
     let subscriber = tracing_subscriber::registry()
         .with(filter)
-        .with(fmt_layer)
+        .with(logfmt::LogfmtLayer)
         .with(otel_layer);
 
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set global tracing subscriber");
     tracing_log::LogTracer::init().expect("Failed to set log→tracing bridge");
+}
+
+/// Custom logfmt logging layer.
+///
+/// Outputs one line per event in logfmt format with carefully chosen fields:
+/// ```text
+/// ts=2026-03-08T20:56:15Z level=error target=sqlpage::webserver::error msg="..." method=GET path=/foo client_ip=1.2.3.4 trace_id=abc123
+/// ```
+mod logfmt {
+    use std::collections::HashMap;
+    use std::fmt::Write;
+    use std::io;
+
+    use tracing::field::{Field, Visit};
+    use tracing::Subscriber;
+    use tracing_subscriber::layer::Context;
+    use tracing_subscriber::registry::LookupSpan;
+    use tracing_subscriber::Layer;
+
+    /// Stores span fields so we can access them when formatting events.
+    #[derive(Default)]
+    struct SpanFields(HashMap<&'static str, String>);
+
+    /// Visitor that collects fields into a HashMap.
+    struct FieldCollector<'a>(&'a mut HashMap<&'static str, String>);
+
+    impl Visit for FieldCollector<'_> {
+        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+            self.0.insert(field.name(), format!("{value:?}"));
+        }
+        fn record_str(&mut self, field: &Field, value: &str) {
+            self.0.insert(field.name(), value.to_owned());
+        }
+        fn record_i64(&mut self, field: &Field, value: i64) {
+            self.0.insert(field.name(), value.to_string());
+        }
+        fn record_u64(&mut self, field: &Field, value: u64) {
+            self.0.insert(field.name(), value.to_string());
+        }
+        fn record_bool(&mut self, field: &Field, value: bool) {
+            self.0.insert(field.name(), value.to_string());
+        }
+    }
+
+    /// Fields we pick from spans, in display order.
+    /// (span_field_name, logfmt_key)
+    const SPAN_FIELDS: &[(&str, &str)] = &[
+        ("http.method", "method"),
+        ("http.target", "path"),
+        ("sqlpage.file", "file"),
+        ("http.client_ip", "client_ip"),
+    ];
+
+    pub(super) struct LogfmtLayer;
+
+    impl<S> Layer<S> for LogfmtLayer
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_new_span(
+            &self,
+            attrs: &tracing::span::Attributes<'_>,
+            id: &tracing::span::Id,
+            ctx: Context<'_, S>,
+        ) {
+            let mut fields = SpanFields::default();
+            attrs.record(&mut FieldCollector(&mut fields.0));
+            if let Some(span) = ctx.span(id) {
+                span.extensions_mut().insert(fields);
+            }
+        }
+
+        fn on_record(
+            &self,
+            id: &tracing::span::Id,
+            values: &tracing::span::Record<'_>,
+            ctx: Context<'_, S>,
+        ) {
+            if let Some(span) = ctx.span(id) {
+                let mut ext = span.extensions_mut();
+                if let Some(fields) = ext.get_mut::<SpanFields>() {
+                    values.record(&mut FieldCollector(&mut fields.0));
+                }
+            }
+        }
+
+        fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<'_, S>) {
+            let mut buf = String::with_capacity(256);
+
+            // 1. ts
+            let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ");
+            let _ = write!(buf, "ts={now}");
+
+            // 2. level
+            let level = event.metadata().level();
+            let _ = write!(buf, " level={level}");
+
+            // 3. target — for bridged log events, use log.target; otherwise metadata target
+            let mut event_fields = HashMap::new();
+            event.record(&mut FieldCollector(&mut event_fields));
+
+            let target = event_fields
+                .get("log.target")
+                .map(String::as_str)
+                .unwrap_or_else(|| event.metadata().target());
+            let _ = write!(buf, " target={target}");
+
+            // 4. msg
+            if let Some(msg) = event_fields.get("message") {
+                write_logfmt_value(&mut buf, "msg", msg);
+            }
+
+            // 5. Selected span fields in order
+            let mut seen = [false; SPAN_FIELDS.len()];
+            if let Some(scope) = ctx.event_scope(event) {
+                for span in scope {
+                    let ext = span.extensions();
+                    if let Some(fields) = ext.get::<SpanFields>() {
+                        for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
+                            if !seen[i] {
+                                if let Some(val) = fields.0.get(span_key) {
+                                    write_logfmt_value(&mut buf, logfmt_key, val);
+                                    seen[i] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 6. trace_id from OpenTelemetry span context
+            if let Some(scope) = ctx.event_scope(event) {
+                'outer: for span in scope {
+                    let ext = span.extensions();
+                    if let Some(otel_data) = ext.get::<tracing_opentelemetry::OtelData>() {
+                        if let Some(trace_id) = otel_data.trace_id() {
+                            let _ = write!(buf, " trace_id={trace_id}");
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+
+            buf.push('\n');
+
+            // Write atomically to stderr
+            let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
+        }
+    }
+
+    /// Write a logfmt key=value pair, quoting the value if it contains spaces or special chars.
+    fn write_logfmt_value(buf: &mut String, key: &str, value: &str) {
+        // Replace newlines with spaces for single-line output
+        let needs_quoting = value.contains(' ')
+            || value.contains('"')
+            || value.contains('=')
+            || value.contains('\n')
+            || value.is_empty();
+
+        if needs_quoting {
+            let escaped = value.replace('\n', " ").replace('"', "\\\"");
+            let _ = write!(buf, " {key}=\"{escaped}\"");
+        } else {
+            let _ = write!(buf, " {key}={value}");
+        }
+    }
 }

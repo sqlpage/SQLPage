@@ -232,8 +232,7 @@ async fn render_sql(
     let exec_span = tracing::info_span!(
         "sqlpage.file",
         otel.name = %sql_execution_span_name(&source_path),
-        sqlpage.file = %source_path.display(),
-        code.filepath = %source_path.display(),
+        code.file.path = %source_path.display(),
     );
     actix_web::rt::spawn(tracing::Instrument::instrument(
         async move {
