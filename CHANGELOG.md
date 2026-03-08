@@ -8,6 +8,8 @@
 - add submit and reset form button icons: validate_icon, reset_icon, reset_color
 - improve error messages when sqlpage functions are used incorrectly. Include precise file reference and line number
 - updated sql parser: https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.61.0.md
+- Add margin bottom in the [big number](https://sql-page.com/component?component=big%5Fnumber) component
+- In forms without a submit button (such as auto_submit forms), remove awkward padding at the end of the form
 
 ## 0.42.0 (2026-01-17)
 
