@@ -12,6 +12,7 @@ use serde_json::json;
 use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use tokio::sync::Notify;
 use tokio_util::sync::{CancellationToken, DropGuard};
 
 fn base64url_encode(data: &[u8]) -> String {
@@ -50,6 +51,7 @@ struct ProviderState<'a> {
     client_id: String,
     auth_codes: HashMap<String, String>, // code -> nonce
     jwt_customizer: Option<Box<JwtCustomizer<'a>>>,
+    token_endpoint_gate: Option<Arc<Notify>>,
 }
 
 type ProviderStateWithLifetime<'a> = ProviderState<'a>;
@@ -117,6 +119,19 @@ async fn token_endpoint(
     state: Data<SharedProviderState>,
     req: web::Form<HashMap<String, String>>,
 ) -> impl Responder {
+    let gate = state.lock().unwrap().token_endpoint_gate.clone();
+    if let Some(gate) = gate {
+        // Send HTTP response headers immediately, but stall the body.
+        // This reproduces the exact bug: send_body().await succeeds (headers arrived),
+        // but response.body().await hangs forever with no timeout.
+        let body = futures_util::stream::once(async move {
+            gate.notified().await;
+            Ok::<web::Bytes, actix_web::Error>(web::Bytes::new())
+        });
+        return HttpResponse::Ok()
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .streaming(body);
+    }
     let mut state = state.lock().unwrap();
     let Some(code) = req.get("code") else {
         return HttpResponse::BadRequest().body("Missing code");
@@ -185,6 +200,7 @@ impl FakeOidcProvider {
             client_id: client_id.clone(),
             auth_codes: HashMap::new(),
             jwt_customizer: None,
+            token_endpoint_gate: None,
         }));
 
         let state_for_server = Arc::clone(&state);
@@ -224,6 +240,12 @@ impl FakeOidcProvider {
     fn with_state_mut<R>(&self, f: impl FnOnce(&mut ProviderState) -> R) -> R {
         let mut state = self.state.lock().unwrap();
         f(&mut state)
+    }
+
+    pub fn gate_token_endpoint(&self) -> Arc<Notify> {
+        let gate = Arc::new(Notify::new());
+        self.with_state_mut(|s| s.token_endpoint_gate = Some(gate.clone()));
+        gate
     }
 
     pub fn store_auth_code(&self, code: String, nonce: String) {
@@ -539,4 +561,64 @@ async fn test_oidc_logout_uses_correct_scheme() {
     let params: HashMap<String, String> = location_url.query_pairs().into_owned().collect();
     let post_logout = params.get("post_logout_redirect_uri").unwrap();
     assert_eq!(post_logout, "https://example.com/logged_out");
+}
+
+/// Regression test: a stalled OIDC provider must not freeze the server.
+/// See https://github.com/sqlpage/SQLPage/issues/1231
+#[actix_web::test]
+async fn test_stalled_token_endpoint_does_not_freeze_server() {
+    let (app, provider) = setup_oidc_test(|_| {}).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    // Step 1: initiate login — get redirected to auth provider
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+    let state_param = get_query_param(&auth_url, "state");
+    let nonce = get_query_param(&auth_url, "nonce");
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    provider.store_auth_code("test_auth_code".to_string(), nonce);
+
+    // Step 2: gate the token endpoint so it sends headers but stalls the body
+    let _gate = provider.gate_token_endpoint();
+
+    // Step 3: hit the OIDC callback — the server will try to exchange the auth
+    // code for a token. The token endpoint sends headers but the body never
+    // arrives. With the bug, response.body().await hangs forever (no timeout).
+    let callback_uri = format!(
+        "{}?code=test_auth_code&state={}",
+        Url::parse(&redirect_uri).unwrap().path(),
+        state_param
+    );
+
+    // Detect the hang without wall-clock delays using a two-phase approach:
+    // Phase 1 (yields): let the localhost TCP round trip complete so the awc
+    //   client receives HTTP headers and enters body().await.
+    // Phase 2 (pause + sleep): freeze tokio time then sleep past the body
+    //   timeout. With auto-advance this resolves instantly. If there IS a body
+    //   timeout (fix applied), auto-advance fires it and the request completes.
+    //   If there is NO body timeout (bug), nothing wakes the body read, and
+    //   the sleep branch completes first → panic.
+    tokio::select! {
+        _resp = async {
+            let mut req = test::TestRequest::get().uri(&callback_uri);
+            for cookie in cookies.iter() {
+                req = req.cookie(cookie.clone());
+            }
+            test::call_service(&app, req.to_request()).await
+        } => {} // request completed — bug is fixed
+        _ = async {
+            for _ in 0..1000 {
+                tokio::task::yield_now().await;
+            }
+            tokio::time::pause();
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        } => {
+            panic!(
+                "OIDC callback request hung — the server froze because \
+                 response.body().await has no timeout when the OIDC provider \
+                 stalls after sending headers"
+            );
+        }
+    }
 }

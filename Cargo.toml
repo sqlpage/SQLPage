@@ -89,6 +89,7 @@ lambda-web = ["dep:lambda-web", "odbc-static"]
 
 [dev-dependencies]
 actix-http = "3"
+tokio = { version = "1", features = ["macros", "rt", "time", "test-util"] }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
