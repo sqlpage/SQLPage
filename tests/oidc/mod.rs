@@ -52,6 +52,7 @@ struct ProviderState<'a> {
     auth_codes: HashMap<String, String>, // code -> nonce
     jwt_customizer: Option<Box<JwtCustomizer<'a>>>,
     token_endpoint_delay: Duration,
+    discovery_count: usize,
 }
 
 type ProviderStateWithLifetime<'a> = ProviderState<'a>;
@@ -84,7 +85,8 @@ struct TokenResponse {
 
 async fn discovery_endpoint(state: Data<SharedProviderState>) -> impl Responder {
     let (discovery, delay) = {
-        let state = state.lock().unwrap();
+        let mut state = state.lock().unwrap();
+        state.discovery_count += 1;
         let discovery = DiscoveryResponse {
             issuer: state.issuer_url.clone(),
             authorization_endpoint: format!("{}/auth", state.issuer_url),
@@ -200,6 +202,7 @@ impl FakeOidcProvider {
             auth_codes: HashMap::new(),
             jwt_customizer: None,
             token_endpoint_delay: Duration::ZERO,
+            discovery_count: 0,
         }));
 
         let state_for_server = Arc::clone(&state);
@@ -243,6 +246,10 @@ impl FakeOidcProvider {
 
     pub fn set_token_endpoint_delay(&self, delay: Duration) {
         self.with_state_mut(|s| s.token_endpoint_delay = delay);
+    }
+
+    pub fn discovery_count(&self) -> usize {
+        self.state.lock().unwrap().discovery_count
     }
 
     pub fn store_auth_code(&self, code: String, nonce: String) {
