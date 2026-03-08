@@ -838,7 +838,7 @@ async fn execute_oidc_request_with_awc(
         req = req.insert_header((name.as_str(), value.to_str()?));
     }
     let (req_head, body) = request.into_parts();
-    let mut response = req.send_body(body).await.map_err(|e| {
+    let response = req.send_body(body).await.map_err(|e| {
         anyhow!(e.to_string()).context(format!(
             "Failed to send request: {} {}",
             &req_head.method, &req_head.uri
