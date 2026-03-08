@@ -220,9 +220,12 @@ async fn render_sql(
         .map(|accept| ResponseFormat::from_accept_header(&accept))
         .unwrap_or_default();
 
-    let exec_ctx = extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
-        .await
-        .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
+    let exec_ctx = {
+        let _parse_span = tracing::info_span!("http.parse_request").entered();
+        extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
+            .await
+            .map_err(|e| anyhow_err_to_actix(e, &app_state))?
+    };
     log::debug!("Received a request with the following parameters: {exec_ctx:?}");
 
     exec_ctx.request().server_timing.record("parse_req");
@@ -263,7 +266,11 @@ async fn render_sql(
                     resp_send
                         .send(http_response)
                         .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
-                    stream_response(database_entries_stream, renderer).await;
+                    tracing::Instrument::instrument(
+                        stream_response(database_entries_stream, renderer),
+                        tracing::info_span!("render"),
+                    )
+                    .await;
                 }
                 Ok(ResponseWithWriter::FinishedResponse { http_response }) => {
                     resp_send

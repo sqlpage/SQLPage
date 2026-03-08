@@ -136,6 +136,13 @@ async fn exec<'a>(
         Make sure you understand the security implications before enabling it, and never allow user input to be passed as the first argument to this function.
         You can enable it by setting the allow_exec option to true in the sqlpage.json configuration file.")
     }
+    let _exec_span = tracing::info_span!(
+        "subprocess",
+        otel.name = format!("EXEC {program_name}"),
+        process.command = %program_name,
+        process.args_count = args.len(),
+    )
+    .entered();
     let res = tokio::process::Command::new(&*program_name)
         .args(args.iter().map(|x| &**x))
         .output()
@@ -205,6 +212,16 @@ async fn fetch(
     let Some(http_request) = http_request else {
         return Ok(None);
     };
+    let method = http_request.method.as_deref().unwrap_or("GET");
+    let fetch_span = tracing::info_span!(
+        "http.client",
+        otel.name = format!("{method}"),
+        http.request.method = method,
+        url.full = %http_request.url,
+        http.response.status_code = tracing::field::Empty,
+    );
+    let _guard = fetch_span.enter();
+
     let client = make_http_client(&request.app_state.config)
         .with_context(|| "Unable to create an HTTP client")?;
     let req = build_request(&client, &http_request)?;
@@ -218,6 +235,8 @@ async fn fetch(
     }
     .await
     .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
+
+    fetch_span.record("http.response.status_code", response.status().as_u16() as i64);
 
     log::debug!(
         "Finished fetching {}. Status: {}",
@@ -285,6 +304,16 @@ async fn fetch_with_meta(
         return Ok(None);
     };
 
+    let method = http_request.method.as_deref().unwrap_or("GET");
+    let fetch_span = tracing::info_span!(
+        "http.client",
+        otel.name = format!("{method}"),
+        http.request.method = method,
+        url.full = %http_request.url,
+        http.response.status_code = tracing::field::Empty,
+    );
+    let _guard = fetch_span.enter();
+
     let client = make_http_client(&request.app_state.config)
         .with_context(|| "Unable to create an HTTP client")?;
     let req = build_request(&client, &http_request)?;
@@ -303,6 +332,7 @@ async fn fetch_with_meta(
     match response_result {
         Ok(mut response) => {
             let status = response.status();
+            fetch_span.record("http.response.status_code", status.as_u16() as i64);
             obj.serialize_entry("status", &status.as_u16())?;
             let mut has_error = false;
             if status.is_server_error() {
@@ -577,6 +607,12 @@ async fn run_sql<'a>(
         log::debug!("run_sql: first argument is NULL, returning NULL");
         return Ok(None);
     };
+    let _run_sql_span = tracing::info_span!(
+        "sqlpage.file",
+        otel.name = format!("SQL {sql_file_path}"),
+        code.file.path = %sql_file_path,
+    )
+    .entered();
     let app_state = &request.app_state;
     let sql_file = app_state
         .sql_file_cache

@@ -463,6 +463,7 @@ async fn handle_oidc_callback(
     oidc_state: &Arc<OidcState>,
     request: ServiceRequest,
 ) -> ServiceResponse {
+    let _span = tracing::info_span!("oidc.callback").entered();
     match process_oidc_callback(oidc_state, &request).await {
         Ok(mut response) => {
             clear_redirect_count_cookie(&mut response);
@@ -698,6 +699,12 @@ async fn exchange_code_for_token(
     http_client: &awc::Client,
     oidc_callback_params: OidcCallbackParams,
 ) -> anyhow::Result<OidcToken> {
+    let _span = tracing::info_span!(
+        "http.client",
+        otel.name = "POST token_endpoint",
+        http.request.method = "POST",
+    )
+    .entered();
     let token_response = oidc_client
         .exchange_code(openidconnect::AuthorizationCode::new(
             oidc_callback_params.code,
