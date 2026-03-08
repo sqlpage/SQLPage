@@ -12,7 +12,7 @@ use serde_json::json;
 use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::Notify;
+use std::time::Duration;
 use tokio_util::sync::{CancellationToken, DropGuard};
 
 fn base64url_encode(data: &[u8]) -> String {
@@ -51,7 +51,7 @@ struct ProviderState<'a> {
     client_id: String,
     auth_codes: HashMap<String, String>, // code -> nonce
     jwt_customizer: Option<Box<JwtCustomizer<'a>>>,
-    token_endpoint_gate: Option<Arc<Notify>>,
+    token_endpoint_delay: Duration,
 }
 
 type ProviderStateWithLifetime<'a> = ProviderState<'a>;
@@ -119,18 +119,6 @@ async fn token_endpoint(
     state: Data<SharedProviderState>,
     req: web::Form<HashMap<String, String>>,
 ) -> impl Responder {
-    let gate = state.lock().unwrap().token_endpoint_gate.clone();
-    if let Some(gate) = gate {
-        // Simulate a provider that stalls mid-response: send headers
-        // immediately but never complete the body.
-        let body = futures_util::stream::once(async move {
-            gate.notified().await;
-            Ok::<web::Bytes, actix_web::Error>(web::Bytes::new())
-        });
-        return HttpResponse::Ok()
-            .insert_header((header::CONTENT_TYPE, "application/json"))
-            .streaming(body);
-    }
     let mut state = state.lock().unwrap();
     let Some(code) = req.get("code") else {
         return HttpResponse::BadRequest().body("Missing code");
@@ -156,6 +144,9 @@ async fn token_endpoint(
         .map(|customizer| customizer(claims.clone(), &state.secret))
         .unwrap_or_else(|| make_jwt(&claims, &state.secret));
 
+    let delay = state.token_endpoint_delay;
+    drop(state);
+
     let response = TokenResponse {
         access_token: "test_access_token".to_string(),
         token_type: "Bearer".to_string(),
@@ -163,9 +154,14 @@ async fn token_endpoint(
         expires_in: 3600,
     };
 
+    let json_bytes = serde_json::to_vec(&response).unwrap();
+    let body = futures_util::stream::once(async move {
+        tokio::time::sleep(delay).await;
+        Ok::<web::Bytes, actix_web::Error>(web::Bytes::from(json_bytes))
+    });
     HttpResponse::Ok()
         .insert_header((header::CONTENT_TYPE, "application/json"))
-        .json(response)
+        .streaming(body)
 }
 
 pub struct FakeOidcProvider {
@@ -199,7 +195,7 @@ impl FakeOidcProvider {
             client_id: client_id.clone(),
             auth_codes: HashMap::new(),
             jwt_customizer: None,
-            token_endpoint_gate: None,
+            token_endpoint_delay: Duration::ZERO,
         }));
 
         let state_for_server = Arc::clone(&state);
@@ -241,10 +237,8 @@ impl FakeOidcProvider {
         f(&mut state)
     }
 
-    pub fn gate_token_endpoint(&self) -> Arc<Notify> {
-        let gate = Arc::new(Notify::new());
-        self.with_state_mut(|s| s.token_endpoint_gate = Some(gate.clone()));
-        gate
+    pub fn set_token_endpoint_delay(&self, delay: Duration) {
+        self.with_state_mut(|s| s.token_endpoint_delay = delay);
     }
 
     pub fn store_auth_code(&self, code: String, nonce: String) {
@@ -562,14 +556,13 @@ async fn test_oidc_logout_uses_correct_scheme() {
     assert_eq!(post_logout, "https://example.com/logged_out");
 }
 
-/// Regression test: a stalled OIDC provider must not freeze the server.
+/// A slow OIDC provider must not freeze the server.
 /// See https://github.com/sqlpage/SQLPage/issues/1231
 #[actix_web::test]
-async fn test_stalled_token_endpoint_does_not_freeze_server() {
+async fn test_slow_token_endpoint_does_not_freeze_server() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
-    // Step 1: initiate login — get redirected to auth provider
     let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
     let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
@@ -578,26 +571,18 @@ async fn test_stalled_token_endpoint_does_not_freeze_server() {
     let redirect_uri = get_query_param(&auth_url, "redirect_uri");
     provider.store_auth_code("test_auth_code".to_string(), nonce);
 
-    // Step 2: gate the token endpoint so it sends headers but stalls the body
-    let _gate = provider.gate_token_endpoint();
+    provider.set_token_endpoint_delay(Duration::from_secs(999));
 
-    // Step 3: hit the OIDC callback — the server will try to exchange the auth
-    // code for a token. The token endpoint sends headers but the body never
-    // arrives. With the bug, response.body().await hangs forever (no timeout).
     let callback_uri = format!(
         "{}?code=test_auth_code&state={}",
         Url::parse(&redirect_uri).unwrap().path(),
         state_param
     );
 
-    // Detect the hang without wall-clock delays using a two-phase approach:
-    // Phase 1 (yields): let the localhost TCP round trip complete so the awc
-    //   client receives HTTP headers and enters body().await.
-    // Phase 2 (pause + sleep): freeze tokio time then sleep past the body
-    //   timeout. With auto-advance this resolves instantly. If there IS a body
-    //   timeout (fix applied), auto-advance fires it and the request completes.
-    //   If there is NO body timeout (bug), nothing wakes the body read, and
-    //   the sleep branch completes first → panic.
+    // Race the callback request against a deadline to detect hangs without
+    // wall-clock delays. Phase 1 (yields) lets the localhost TCP round trip
+    // complete. Phase 2 (pause + sleep) uses tokio auto-advance to instantly
+    // skip past any body-read timeout that may be set on the HTTP client.
     tokio::select! {
         _resp = async {
             let mut req = test::TestRequest::get().uri(&callback_uri);
@@ -605,19 +590,15 @@ async fn test_stalled_token_endpoint_does_not_freeze_server() {
                 req = req.cookie(cookie.clone());
             }
             test::call_service(&app, req.to_request()).await
-        } => {} // request completed — bug is fixed
+        } => {}
         _ = async {
             for _ in 0..1000 {
                 tokio::task::yield_now().await;
             }
             tokio::time::pause();
-            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            tokio::time::sleep(Duration::from_secs(60)).await;
         } => {
-            panic!(
-                "OIDC callback request hung — the server froze because \
-                 response.body().await has no timeout when the OIDC provider \
-                 stalls after sending headers"
-            );
+            panic!("OIDC callback hung on a slow token endpoint");
         }
     }
 }
