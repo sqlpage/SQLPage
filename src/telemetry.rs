@@ -244,9 +244,14 @@ mod logfmt {
                 let _ = write!(buf, " target={target}");
             }
 
-            // 4. msg
-            if let Some(msg) = event_fields.get("message") {
-                write_logfmt_value(&mut buf, "msg", msg);
+            // 4. msg — for terminal, preserve multi-line formatting (e.g. SQL
+            //    error highlighting with arrows); for machine output, flatten.
+            let msg = event_fields.get("message");
+            let multiline_msg = colors && msg.is_some_and(|m| m.contains('\n'));
+            if !multiline_msg {
+                if let Some(msg) = msg {
+                    write_logfmt_value(&mut buf, "msg", msg);
+                }
             }
 
             // 5. Selected span fields in order
@@ -288,6 +293,15 @@ mod logfmt {
             }
 
             buf.push('\n');
+
+            // For multi-line messages on a terminal, print the message below
+            // the metadata line with its original formatting preserved.
+            if multiline_msg {
+                if let Some(msg) = msg {
+                    buf.push_str(msg);
+                    buf.push('\n');
+                }
+            }
 
             // Write atomically to stderr
             let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
