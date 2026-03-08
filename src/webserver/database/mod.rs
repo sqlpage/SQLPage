@@ -59,7 +59,7 @@ impl SupportedDatabase {
         }
     }
 
-    /// Returns the OTel `db.system.name` well-known value.
+    /// Returns the `OTel` `db.system.name` well-known value.
     /// See <https://opentelemetry.io/docs/specs/semconv/registry/attributes/db/#db-system-name>
     #[must_use]
     pub fn otel_name(self) -> &'static str {

@@ -29,6 +29,10 @@ use sqlx::{
 
 pub type DbConn = Option<PoolConnection<sqlx::Any>>;
 
+fn source_line_number(line: usize) -> i64 {
+    i64::try_from(line).unwrap_or(i64::MAX)
+}
+
 impl Database {
     pub(crate) async fn prepare_with(
         &self,
@@ -69,7 +73,7 @@ pub fn stream_query_results_with_conn<'a>(
                         db.query.text = query.sql,
                         db.system.name = request.app_state.db.info.database_type.otel_name(),
                         code.file.path = %source_file.display(),
-                        code.line.number = stmt.query_position.start.line as i64,
+                        code.line.number = source_line_number(stmt.query_position.start.line),
                     )
                     .entered();
                     let mut stream = connection.fetch_many(query);
@@ -230,7 +234,7 @@ async fn execute_set_variable_query<'a>(
         db.query.text = query.sql,
         db.system.name = request.app_state.db.info.database_type.otel_name(),
         code.file.path = %source_file.display(),
-        code.line.number = statement.query_position.start.line as i64,
+        code.line.number = source_line_number(statement.query_position.start.line),
     )
     .entered();
     let value = match connection.fetch_optional(query).await {

@@ -236,7 +236,10 @@ async fn fetch(
     .await
     .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
 
-    fetch_span.record("http.response.status_code", response.status().as_u16() as i64);
+    fetch_span.record(
+        "http.response.status_code",
+        i64::from(response.status().as_u16()),
+    );
 
     log::debug!(
         "Finished fetching {}. Status: {}",
@@ -332,7 +335,7 @@ async fn fetch_with_meta(
     match response_result {
         Ok(mut response) => {
             let status = response.status();
-            fetch_span.record("http.response.status_code", status.as_u16() as i64);
+            fetch_span.record("http.response.status_code", i64::from(status.as_u16()));
             obj.serialize_entry("status", &status.as_u16())?;
             let mut has_error = false;
             if status.is_server_error() {

@@ -10,12 +10,11 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 
-/// Initializes logging / tracing. Returns `true` if OTel was activated.
+/// Initializes logging / tracing. Returns `true` if `OTel` was activated.
+#[must_use]
 pub fn init_telemetry() -> bool {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
-    let otel_active = otel_endpoint
-        .as_deref()
-        .is_some_and(|v| !v.is_empty());
+    let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
 
     if otel_active {
         init_otel_tracing();
@@ -26,7 +25,7 @@ pub fn init_telemetry() -> bool {
     otel_active
 }
 
-/// Shuts down the OTel tracer provider, flushing pending spans.
+/// Shuts down the `OTel` tracer provider, flushing pending spans.
 pub fn shutdown_telemetry() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         if let Err(e) = provider.shutdown() {
@@ -107,7 +106,7 @@ mod logfmt {
     #[derive(Default)]
     struct SpanFields(HashMap<&'static str, String>);
 
-    /// Visitor that collects fields into a HashMap.
+    /// Visitor that collects fields into a `HashMap`.
     struct FieldCollector<'a>(&'a mut HashMap<&'static str, String>);
 
     impl Visit for FieldCollector<'_> {
@@ -129,7 +128,7 @@ mod logfmt {
     }
 
     /// Fields we pick from spans, in display order.
-    /// (span_field_name, logfmt_key)
+    /// (`span_field_name`, `logfmt_key`)
     const SPAN_FIELDS: &[(&str, &str)] = &[
         ("http.method", "method"),
         ("http.target", "path"),
@@ -187,8 +186,7 @@ mod logfmt {
 
             let target = event_fields
                 .get("log.target")
-                .map(String::as_str)
-                .unwrap_or_else(|| event.metadata().target());
+                .map_or_else(|| event.metadata().target(), String::as_str);
             let _ = write!(buf, " target={target}");
 
             // 4. msg
