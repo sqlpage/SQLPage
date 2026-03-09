@@ -29,7 +29,7 @@ OpenTelemetry experience is needed.
 ### Run
 
 ```bash
-cd examples/opentelemetry-grafana
+cd examples/telemetry
 docker compose up --build
 ```
 

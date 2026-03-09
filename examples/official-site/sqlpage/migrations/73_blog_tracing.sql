@@ -17,7 +17,7 @@ When a page is slow, a log line telling you that the request took 1.8 seconds is
 
 SQLPage now supports [OpenTelemetry](https://opentelemetry.io/), the standard way to emit distributed traces. Combined with Grafana, Tempo, Loki, and an OpenTelemetry collector, this gives you a detailed timeline of each request and lets you jump directly from logs to traces.
 
-If you want a ready-to-run demo, see the [OpenTelemetry + Grafana example](https://github.com/sqlpage/SQLPage/tree/main/examples/opentelemetry-grafana), which this article is based on.
+If you want a ready-to-run demo, see the [OpenTelemetry + Grafana example](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry), which this article is based on.
 
 ## What tracing gives you
 
@@ -44,7 +44,7 @@ Tracing is especially helpful in SQLPage because one request often maps cleanly 
 The simplest way to explore tracing is to run the example shipped with SQLPage:
 
 ```bash
-cd examples/opentelemetry-grafana
+cd examples/telemetry
 docker compose up --build
 ```
 
@@ -169,6 +169,6 @@ SQLPage already makes the application logic easy to inspect because it lives in 
 
 By enabling OpenTelemetry and connecting SQLPage to Grafana, you can see not just that a request was slow, but why it was slow, where the time was spent, and which query or resource caused the delay.
 
-For a complete working setup, start with the [OpenTelemetry + Grafana example](https://github.com/sqlpage/SQLPage/tree/main/examples/opentelemetry-grafana) and adapt it to your own deployment.
+For a complete working setup, start with the [OpenTelemetry + Grafana example](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry) and adapt it to your own deployment.
 '
     );
