@@ -214,8 +214,8 @@ mod logfmt {
 
             write_timestamp(&mut buf, colors);
             write_level(&mut buf, *event.metadata().level(), colors);
-            write_dimmed_field(&mut buf, "target", target, colors);
             write_message(&mut buf, msg, multiline_msg);
+            write_dimmed_field(&mut buf, "target", target, colors);
             write_span_fields(&mut buf, ctx.event_scope(event));
             write_trace_id(&mut buf, ctx.event_scope(event), colors);
 
@@ -250,7 +250,7 @@ mod logfmt {
     fn write_level(buf: &mut String, level: tracing::Level, colors: bool) {
         if colors {
             let (color, label) = level_style(level);
-            let _ = write!(buf, " {BOLD}{color}level={label}{RESET}");
+            let _ = write!(buf, " {DIM}level={RESET}{BOLD}{color}{label}{RESET}");
         } else {
             let _ = write!(buf, " level={}", level.as_str().to_ascii_lowercase());
         }
@@ -350,11 +350,7 @@ mod logfmt {
 
     /// Write a logfmt key=value pair, quoting the value if it contains spaces or special chars.
     fn write_logfmt_value(buf: &mut String, key: &str, value: &str) {
-        let needs_quoting = value.contains(' ')
-            || value.contains('"')
-            || value.contains('=')
-            || value.contains('\n')
-            || value.is_empty();
+        let needs_quoting = value.contains([' ', '"', '=', '\n', '\t']) || value.is_empty();
 
         if needs_quoting {
             let escaped = value.replace('\n', " ").replace('"', "\\\"");
