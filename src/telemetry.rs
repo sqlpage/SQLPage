@@ -103,6 +103,7 @@ fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) {
 ///
 /// With terminal colors when stderr is a TTY.
 mod logfmt {
+    use std::collections::BTreeMap;
     use std::collections::HashMap;
     use std::fmt::Write;
     use std::io::{self, IsTerminal};
@@ -206,6 +207,8 @@ mod logfmt {
         fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<'_, S>) {
             let mut buf = String::with_capacity(256);
             let colors = self.use_colors;
+            let level = *event.metadata().level();
+            let include_all_span_fields = includes_all_span_fields();
             let mut event_fields = HashMap::new();
             event.record(&mut FieldCollector(&mut event_fields));
             let target = event_target(event, &event_fields);
@@ -213,10 +216,10 @@ mod logfmt {
             let multiline_msg = is_multiline_terminal_message(colors, msg);
 
             write_timestamp(&mut buf, colors);
-            write_level(&mut buf, *event.metadata().level(), colors);
+            write_level(&mut buf, level, colors);
             write_message(&mut buf, msg, multiline_msg);
             write_dimmed_field(&mut buf, "target", target, colors);
-            write_span_fields(&mut buf, ctx.event_scope(event));
+            write_span_fields(&mut buf, ctx.event_scope(event), include_all_span_fields);
             write_trace_id(&mut buf, ctx.event_scope(event), colors);
 
             buf.push('\n');
@@ -285,24 +288,81 @@ mod logfmt {
     fn write_span_fields<S>(
         buf: &mut String,
         scope: Option<tracing_subscriber::registry::Scope<'_, S>>,
+        include_all_span_fields: bool,
     ) where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        let mut seen = [false; SPAN_FIELDS.len()];
         if let Some(scope) = scope {
+            let mut seen_mapped_fields = [false; SPAN_FIELDS.len()];
+            let mut extra_fields = BTreeMap::new();
+
             for span in scope {
                 let ext = span.extensions();
                 if let Some(fields) = ext.get::<SpanFields>() {
                     for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
-                        if seen[i] {
+                        if seen_mapped_fields[i] {
                             continue;
                         }
                         if let Some(val) = fields.0.get(span_key) {
                             write_logfmt_value(buf, logfmt_key, val);
-                            seen[i] = true;
+                            seen_mapped_fields[i] = true;
+                        }
+                    }
+                    if include_all_span_fields {
+                        for (&key, val) in &fields.0 {
+                            if SPAN_FIELDS.iter().any(|(span_key, _)| key == *span_key) {
+                                continue;
+                            }
+                            extra_fields.entry(key).or_insert_with(|| val.clone());
                         }
                     }
                 }
+            }
+
+            if include_all_span_fields {
+                for (key, val) in extra_fields {
+                    write_logfmt_value(buf, key, &val);
+                }
+            }
+        }
+    }
+
+    fn includes_all_span_fields() -> bool {
+        tracing::level_filters::LevelFilter::current() >= tracing::level_filters::LevelFilter::DEBUG
+    }
+
+    #[cfg(test)]
+    fn write_span_field_maps<'a>(
+        buf: &mut String,
+        span_fields: impl IntoIterator<Item = &'a HashMap<&'static str, String>>,
+        include_all_span_fields: bool,
+    ) {
+        let mut seen_mapped_fields = [false; SPAN_FIELDS.len()];
+        let mut extra_fields = BTreeMap::new();
+
+        for fields in span_fields {
+            for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
+                if seen_mapped_fields[i] {
+                    continue;
+                }
+                if let Some(val) = fields.get(span_key) {
+                    write_logfmt_value(buf, logfmt_key, val);
+                    seen_mapped_fields[i] = true;
+                }
+            }
+            if include_all_span_fields {
+                for (&key, val) in fields {
+                    if SPAN_FIELDS.iter().any(|(span_key, _)| key == *span_key) {
+                        continue;
+                    }
+                    extra_fields.entry(key).or_insert_with(|| val.clone());
+                }
+            }
+        }
+
+        if include_all_span_fields {
+            for (key, val) in extra_fields {
+                write_logfmt_value(buf, key, &val);
             }
         }
     }
@@ -357,6 +417,39 @@ mod logfmt {
             let _ = write!(buf, " {key}=\"{escaped}\"");
         } else {
             let _ = write!(buf, " {key}={value}");
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn debug_logs_include_unmapped_span_fields() {
+            let mut buf = String::new();
+            let span_fields = HashMap::from([
+                ("http.method", "GET".to_string()),
+                ("http.route", "/users/:id".to_string()),
+                ("otel.kind", "server".to_string()),
+            ]);
+
+            write_span_field_maps(&mut buf, [&span_fields], true);
+
+            assert_eq!(buf, " method=GET http.route=/users/:id otel.kind=server");
+        }
+
+        #[test]
+        fn info_logs_keep_only_mapped_span_fields_when_not_in_debug_mode() {
+            let mut buf = String::new();
+            let span_fields = HashMap::from([
+                ("http.method", "GET".to_string()),
+                ("http.route", "/users/:id".to_string()),
+                ("otel.kind", "server".to_string()),
+            ]);
+
+            write_span_field_maps(&mut buf, [&span_fields], false);
+
+            assert_eq!(buf, " method=GET");
         }
     }
 }
