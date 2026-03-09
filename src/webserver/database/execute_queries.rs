@@ -30,6 +30,18 @@ use sqlx::{
 
 pub type DbConn = Option<PoolConnection<sqlx::Any>>;
 
+fn record_query_params(span: &tracing::Span, params: &[Option<String>]) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+    for (idx, value) in params.iter().enumerate() {
+        let key = opentelemetry::Key::new(format!("db.query.parameter.{idx}"));
+        let otel_value = match value {
+            Some(v) => opentelemetry::Value::String(v.clone().into()),
+            None => opentelemetry::Value::String("NULL".into()),
+        };
+        span.set_attribute(key, otel_value);
+    }
+}
+
 fn source_line_number(line: usize) -> i64 {
     i64::try_from(line).unwrap_or(i64::MAX)
 }
@@ -75,14 +87,20 @@ pub fn stream_query_results_with_conn<'a>(
                         db.system.name = request.app_state.db.info.database_type.otel_name(),
                         code.file.path = %source_file.display(),
                         code.line.number = source_line_number(stmt.query_position.start.line),
+                        db.response.returned_rows = tracing::field::Empty,
                     );
+                    record_query_params(&query_span, &query.param_values);
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
+                    let mut returned_rows: i64 = 0;
                     while let Some(elem) = stream.next().instrument(query_span.clone()).await {
                         let mut query_result = parse_single_sql_result(source_file, stmt, elem);
                         if let DbItem::Error(e) = query_result {
                             error = Some(e);
                             break;
+                        }
+                        if matches!(query_result, DbItem::Row(_)) {
+                            returned_rows += 1;
                         }
                         apply_json_columns(&mut query_result, &stmt.json_columns);
                         apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).instrument(query_span.clone()).await?;
@@ -91,6 +109,7 @@ pub fn stream_query_results_with_conn<'a>(
                         }
                     }
                     drop(stream);
+                    query_span.record("db.response.returned_rows", returned_rows);
                     if let Some(error) = error {
                         try_rollback_transaction(connection).await;
                         yield DbItem::Error(error);
@@ -235,10 +254,18 @@ async fn execute_set_variable_query<'a>(
         db.system.name = request.app_state.db.info.database_type.otel_name(),
         code.file.path = %source_file.display(),
         code.line.number = source_line_number(statement.query_position.start.line),
+        db.response.returned_rows = tracing::field::Empty,
     );
-    let value = match connection.fetch_optional(query).instrument(query_span).await {
-        Ok(Some(row)) => row_to_string(&row),
-        Ok(None) => None,
+    record_query_params(&query_span, &query.param_values);
+    let value = match connection.fetch_optional(query).instrument(query_span.clone()).await {
+        Ok(Some(row)) => {
+            query_span.record("db.response.returned_rows", 1_i64);
+            row_to_string(&row)
+        }
+        Ok(None) => {
+            query_span.record("db.response.returned_rows", 0_i64);
+            None
+        }
         Err(e) => {
             try_rollback_transaction(connection).await;
             let err = display_stmt_db_error(source_file, statement, e);
@@ -431,6 +458,7 @@ async fn bind_parameters<'a>(
     let sql = stmt.query.as_str();
     log::debug!("Preparing statement: {sql}");
     let mut arguments = AnyArguments::default();
+    let mut param_values = Vec::with_capacity(stmt.params.len());
     for (param_idx, param) in stmt.params.iter().enumerate() {
         log::trace!("\tevaluating parameter {}: {}", param_idx + 1, param);
         let argument = extract_req_param(param, request, db_connection).await?;
@@ -439,6 +467,7 @@ async fn bind_parameters<'a>(
             param_idx + 1,
             argument.as_ref().unwrap_or(&Cow::Borrowed("NULL"))
         );
+        param_values.push(argument.as_deref().map(str::to_owned));
         match argument {
             None => arguments.add(None::<String>),
             Some(Cow::Owned(s)) => arguments.add(s),
@@ -450,6 +479,7 @@ async fn bind_parameters<'a>(
         sql,
         arguments,
         has_arguments,
+        param_values,
     })
 }
 
@@ -535,6 +565,7 @@ pub struct StatementWithParams<'a> {
     sql: &'a str,
     arguments: AnyArguments<'a>,
     has_arguments: bool,
+    param_values: Vec<Option<String>>,
 }
 
 impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
