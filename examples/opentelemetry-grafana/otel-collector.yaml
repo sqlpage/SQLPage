@@ -7,12 +7,8 @@ receivers:
         endpoint: 0.0.0.0:4318
   syslog/sqlpage:
     protocol: rfc5424
-    udp:
+    tcp:
       listen_address: 0.0.0.0:1514
-  syslog/postgresql:
-    protocol: rfc5424
-    udp:
-      listen_address: 0.0.0.0:1515
   postgresql:
     endpoint: postgres:5432
     transport: tcp
@@ -23,6 +19,16 @@ receivers:
     databases:
       - sqlpage
     collection_interval: 1s
+    events:
+      db.server.query_sample:
+        enabled: true
+      db.server.top_query:
+        enabled: true
+    query_sample_collection:
+      max_rows_per_query: 1000
+    top_query_collection:
+      collection_interval: 1s
+      max_rows_per_query: 1000
 
 processors:
   transform/sqlpage_logs:
@@ -48,7 +54,7 @@ processors:
           - set(log.severity_number, SEVERITY_NUMBER_WARN) where log.cache["level"] == "warn"
           - set(log.severity_text, "ERROR") where log.cache["level"] == "error"
           - set(log.severity_number, SEVERITY_NUMBER_ERROR) where log.cache["level"] == "error"
-  transform/postgresql_logs:
+  transform/postgresql_events:
     error_mode: ignore
     log_statements:
       - context: resource
@@ -56,19 +62,7 @@ processors:
           - set(resource.attributes["service.name"], "postgresql")
       - context: log
         statements:
-          - set(log.body, log.attributes["message"]) where log.attributes["message"] != nil
-          - merge_maps(log.cache, ExtractPatterns(log.body, "app=\\[[^\\]]*00-(?P<trace_id>[0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}\\]"), "upsert") where IsString(log.body)
-          - merge_maps(log.cache, ExtractPatterns(log.body, "(?P<level>LOG|ERROR|WARNING|FATAL|PANIC|NOTICE|INFO|DEBUG):"), "upsert") where IsString(log.body)
-          - set(log.attributes["trace_id"], log.cache["trace_id"]) where log.cache["trace_id"] != nil
-          - set(log.attributes["level"], log.cache["level"]) where log.cache["level"] != nil
-          - set(log.severity_text, "DEBUG") where log.cache["level"] == "DEBUG"
-          - set(log.severity_number, SEVERITY_NUMBER_DEBUG) where log.cache["level"] == "DEBUG"
-          - set(log.severity_text, "INFO") where log.cache["level"] == "LOG" or log.cache["level"] == "INFO" or log.cache["level"] == "NOTICE"
-          - set(log.severity_number, SEVERITY_NUMBER_INFO) where log.cache["level"] == "LOG" or log.cache["level"] == "INFO" or log.cache["level"] == "NOTICE"
-          - set(log.severity_text, "WARN") where log.cache["level"] == "WARNING"
-          - set(log.severity_number, SEVERITY_NUMBER_WARN) where log.cache["level"] == "WARNING"
-          - set(log.severity_text, "ERROR") where log.cache["level"] == "ERROR" or log.cache["level"] == "FATAL" or log.cache["level"] == "PANIC"
-          - set(log.severity_number, SEVERITY_NUMBER_ERROR) where log.cache["level"] == "ERROR" or log.cache["level"] == "FATAL" or log.cache["level"] == "PANIC"
+          - set(log.body, log.attributes["db.query.text"]) where log.attributes["db.query.text"] != nil
   batch:
     timeout: 1s
 
@@ -97,6 +91,6 @@ service:
       processors: [transform/sqlpage_logs, batch]
       exporters: [otlp_http/loki]
     logs/postgresql:
-      receivers: [syslog/postgresql]
-      processors: [transform/postgresql_logs, batch]
+      receivers: [postgresql]
+      processors: [transform/postgresql_events, batch]
       exporters: [otlp_http/loki]
