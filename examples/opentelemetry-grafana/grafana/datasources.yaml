@@ -12,11 +12,10 @@ datasources:
         enabled: true
       tracesToLogsV2:
         datasourceUid: loki
-        filterByTraceID: true
-        filterBySpanID: true
         spanStartTimeShift: "-5m"
         spanEndTimeShift: "5m"
-        customQuery: false
+        customQuery: true
+        query: '{service_name="postgresql"} | trace_id="$${__span.traceId}" | span_id="$${__span.spanId}"'
   - name: Loki
     type: loki
     uid: loki
@@ -25,7 +24,7 @@ datasources:
     jsonData:
       derivedFields:
         - name: trace_id
-          matcherRegex: 'trace_id=([0-9a-f]+)'
+          matcherRegex: '(?:trace_id=|00-)([0-9a-f]{32})'
           datasourceUid: tempo
           url: '$${__value.raw}'
   - name: Prometheus
