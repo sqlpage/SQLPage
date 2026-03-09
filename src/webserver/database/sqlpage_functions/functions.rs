@@ -334,7 +334,10 @@ async fn fetch_with_meta(
         log::info!("Fetching {} with metadata", http_request.url);
         let response_result = if let Some(body) = &http_request.body {
             let (body, req) = prepare_request_body(body, req)?;
-            tracing::Span::current().record("http.request.body.size", body.len() as i64);
+            tracing::Span::current().record(
+                "http.request.body.size",
+                i64::try_from(body.len()).unwrap_or(i64::MAX),
+            );
             req.send_body(body).await
         } else {
             req.send().await
