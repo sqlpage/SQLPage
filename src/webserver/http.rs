@@ -226,10 +226,23 @@ async fn render_sql(
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
+        let content_length = srv_req
+            .headers()
+            .get("content-length")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<i64>().ok());
+        let url_query = srv_req.query_string();
+        let url_query = if url_query.is_empty() {
+            None
+        } else {
+            Some(url_query)
+        };
         let parse_span = tracing::info_span!(
             "http.parse_request",
             http.request.method = %srv_req.method(),
             http.request.header.content_type = content_type,
+            http.request.body.size = content_length,
+            url.query = url_query,
         );
         extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
             .instrument(parse_span)

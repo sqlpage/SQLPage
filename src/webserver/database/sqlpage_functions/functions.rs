@@ -12,10 +12,10 @@ use crate::webserver::{
 };
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
-use tracing::Instrument;
 use mime_guess::mime;
 use std::fmt::Write;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
+use tracing::Instrument;
 
 super::function_definition_macro::sqlpage_functions! {
     basic_auth_password((&RequestInfo));
@@ -219,6 +219,7 @@ async fn fetch(
         otel.name = format!("{method}"),
         http.request.method = method,
         url.full = %http_request.url,
+        http.request.body.size = tracing::field::Empty,
         http.response.status_code = tracing::field::Empty,
     );
 
@@ -230,6 +231,8 @@ async fn fetch(
         log::info!("Fetching {}", http_request.url);
         let mut response = if let Some(body) = &http_request.body {
             let (body, req) = prepare_request_body(body, req)?;
+            tracing::Span::current()
+                .record("http.request.body.size", body.len() as i64);
             req.send_body(body)
         } else {
             req.send()
@@ -317,6 +320,7 @@ async fn fetch_with_meta(
         otel.name = format!("{method}"),
         http.request.method = method,
         url.full = %http_request.url,
+        http.request.body.size = tracing::field::Empty,
         http.response.status_code = tracing::field::Empty,
     );
 
@@ -328,6 +332,8 @@ async fn fetch_with_meta(
         log::info!("Fetching {} with metadata", http_request.url);
         let response_result = if let Some(body) = &http_request.body {
             let (body, req) = prepare_request_body(body, req)?;
+            tracing::Span::current()
+                .record("http.request.body.size", body.len() as i64);
             req.send_body(body).await
         } else {
             req.send().await
