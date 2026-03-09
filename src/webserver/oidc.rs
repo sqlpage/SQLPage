@@ -17,7 +17,6 @@ use actix_web::{
     Error, HttpMessage, HttpResponse,
 };
 use anyhow::{anyhow, Context};
-use tracing::Instrument;
 use awc::Client;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
@@ -36,6 +35,7 @@ use openidconnect::{
     StandardTokenResponse,
 };
 use serde::{Deserialize, Serialize};
+use tracing::Instrument;
 
 use super::error::anyhow_err_to_actix_resp;
 use super::http_client::make_http_client;
@@ -486,7 +486,10 @@ async fn handle_oidc_callback(
     request: ServiceRequest,
 ) -> ServiceResponse {
     let span = tracing::info_span!("oidc.callback");
-    match process_oidc_callback(oidc_state, &request).instrument(span).await {
+    match process_oidc_callback(oidc_state, &request)
+        .instrument(span)
+        .await
+    {
         Ok(mut response) => {
             clear_redirect_count_cookie(&mut response);
             request.into_response(response)

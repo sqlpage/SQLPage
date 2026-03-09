@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Context};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
-use tracing::Instrument;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::path::Path;
 use std::pin::Pin;
+use tracing::Instrument;
 
 use super::csv_import::run_csv_import;
 use super::error_highlighting::{display_stmt_db_error, display_stmt_error};
@@ -257,7 +257,11 @@ async fn execute_set_variable_query<'a>(
         db.response.returned_rows = tracing::field::Empty,
     );
     record_query_params(&query_span, &query.param_values);
-    let value = match connection.fetch_optional(query).instrument(query_span.clone()).await {
+    let value = match connection
+        .fetch_optional(query)
+        .instrument(query_span.clone())
+        .await
+    {
         Ok(Some(row)) => {
             query_span.record("db.response.returned_rows", 1_i64);
             row_to_string(&row)
@@ -376,7 +380,8 @@ async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
     );
     let sql = match db.info.kind {
         sqlx::any::AnyKind::Postgres => {
-            format!("SET application_name = 'sqlpage {traceparent}'")
+            // postgresqlreceiver expects application_name to be a raw W3C traceparent value.
+            format!("SET application_name = '{traceparent}'")
         }
         sqlx::any::AnyKind::MySql => {
             format!("SET @traceparent = '{traceparent}'")
