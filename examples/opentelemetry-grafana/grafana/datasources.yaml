@@ -15,7 +15,7 @@ datasources:
         spanStartTimeShift: "-5m"
         spanEndTimeShift: "5m"
         customQuery: true
-        query: '{service_name="postgresql"} | trace_id="$${__span.traceId}" | span_id="$${__span.spanId}"'
+        query: '{service_name=~"nginx|sqlpage|postgresql"} | trace_id="$${__span.traceId}"'
   - name: Loki
     type: loki
     uid: loki

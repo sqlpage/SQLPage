@@ -8,6 +8,12 @@ services:
     depends_on:
       - sqlpage
       - otel-collector
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://localhost:1516"
+        syslog-format: "rfc5424micro"
+        tag: "nginx"
 
   sqlpage:
     build:
@@ -74,6 +80,7 @@ services:
       - "4318:4318"
       - "1514:1514/udp"
       - "1515:1515/udp"
+      - "1516:1516/udp"
     depends_on:
       - tempo
       - postgres
