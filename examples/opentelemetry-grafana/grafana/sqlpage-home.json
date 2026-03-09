@@ -39,12 +39,168 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<div style=\"padding: 4px 2px 0; font-size: 15px; line-height: 1.55;\"><h1 style=\"margin: 0 0 10px; font-size: 28px;\">Recent SQLPage traces and logs</h1><p style=\"margin: 0 0 8px;\">Open <a href=\"http://localhost\" target=\"_blank\" rel=\"noopener noreferrer\">http://localhost</a> and interact with the app. New requests will appear here automatically.</p><p style=\"margin: 0; color: #666;\">The trace table shows recent requests. The logs panel shows SQLPage container logs, including the trace ID so you can jump from a log line to the full span waterfall.</p></div>",
+        "content": "<div style=\"padding: 4px 2px 0; font-size: 15px; line-height: 1.55;\"><h1 style=\"margin: 0 0 10px; font-size: 28px;\">Recent SQLPage traces, logs, and PostgreSQL metrics</h1><p style=\"margin: 0 0 8px;\">Open <a href=\"http://localhost\" target=\"_blank\" rel=\"noopener noreferrer\">http://localhost</a> and interact with the app. New requests will appear here automatically.</p><p style=\"margin: 0; color: #666;\">The trace table shows recent requests. Click any trace ID to open the full span waterfall in Grafana. The metrics panels come from the OpenTelemetry PostgreSQL receiver via Prometheus.</p></div>",
         "mode": "html"
       },
       "pluginVersion": "12.4.0",
       "title": "Overview",
       "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(postgresql_backends)",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL Backends",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(postgresql_db_size) by (postgresql_database_name)",
+          "legendFormat": "{{postgresql_database_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL Database Size",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -128,7 +284,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 8
       },
       "id": 2,
       "options": {
@@ -199,7 +355,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 20
       },
       "id": 3,
       "options": {
@@ -221,7 +377,7 @@
           },
           "direction": "backward",
           "editorMode": "builder",
-          "expr": "{compose_service=\"sqlpage\"}",
+          "expr": "{service_name=\"sqlpage\"}",
           "queryType": "range",
           "refId": "A"
         }
@@ -244,7 +400,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "SQLPage Tracing and Logs Home",
+  "title": "SQLPage Observability Home",
   "uid": "sqlpage-tracing-home",
-  "version": 3
+  "version": 4
 }

@@ -5,8 +5,63 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+  syslog/sqlpage:
+    protocol: rfc5424
+    tcp:
+      listen_address: 0.0.0.0:1514
+  postgresql:
+    endpoint: postgres:5432
+    transport: tcp
+    username: sqlpage
+    password: sqlpage
+    tls:
+      insecure: true
+    databases:
+      - sqlpage
+    collection_interval: 1s
+    events:
+      db.server.query_sample:
+        enabled: true
+      db.server.top_query:
+        enabled: true
+    query_sample_collection:
+      max_rows_per_query: 1000
+    top_query_collection:
+      collection_interval: 1s
+      max_rows_per_query: 1000
 
 processors:
+  transform/sqlpage_logs:
+    error_mode: ignore
+    log_statements:
+      - context: resource
+        statements:
+          - set(attributes["service.name"], "sqlpage")
+      - context: log
+        statements:
+          - set(body, attributes["message"]) where attributes["message"] != nil
+          - merge_maps(cache, ExtractPatterns(body, "level=(?P<level>[^ ]+)"), "upsert") where IsString(body)
+          - merge_maps(cache, ExtractPatterns(body, "trace_id=(?P<trace_id>[0-9a-f]+)"), "upsert") where IsString(body)
+          - set(attributes["level"], cache["level"]) where cache["level"] != nil
+          - set(attributes["trace_id"], cache["trace_id"]) where cache["trace_id"] != nil
+          - set(severity_text, "TRACE") where cache["level"] == "trace"
+          - set(severity_number, SEVERITY_NUMBER_TRACE) where cache["level"] == "trace"
+          - set(severity_text, "DEBUG") where cache["level"] == "debug"
+          - set(severity_number, SEVERITY_NUMBER_DEBUG) where cache["level"] == "debug"
+          - set(severity_text, "INFO") where cache["level"] == "info"
+          - set(severity_number, SEVERITY_NUMBER_INFO) where cache["level"] == "info"
+          - set(severity_text, "WARN") where cache["level"] == "warn"
+          - set(severity_number, SEVERITY_NUMBER_WARN) where cache["level"] == "warn"
+          - set(severity_text, "ERROR") where cache["level"] == "error"
+          - set(severity_number, SEVERITY_NUMBER_ERROR) where cache["level"] == "error"
+  transform/postgresql_events:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(log.attributes["trace_id"], log.trace_id.string) where log.trace_id.string != ""
+          - set(log.attributes["span_id"], log.span_id.string) where log.span_id.string != ""
+          - set(log.attributes["event_name"], log.event_name) where log.event_name != ""
   batch:
     timeout: 1s
 
@@ -15,6 +70,12 @@ exporters:
     endpoint: tempo:4317
     tls:
       insecure: true
+  otlp_http/loki:
+    endpoint: http://loki:3100/otlp
+  debug/postgresql_logs:
+    verbosity: detailed
+  prometheus:
+    endpoint: 0.0.0.0:9464
 
 service:
   pipelines:
@@ -22,3 +83,15 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlp_grpc/tempo]
+    metrics:
+      receivers: [postgresql]
+      processors: [batch]
+      exporters: [prometheus]
+    logs/sqlpage:
+      receivers: [syslog/sqlpage]
+      processors: [transform/sqlpage_logs, batch]
+      exporters: [otlp_http/loki]
+    logs:
+      receivers: [postgresql]
+      processors: [transform/postgresql_events, batch]
+      exporters: [otlp_http/loki, debug/postgresql_logs]

@@ -18,7 +18,8 @@ This is useful for:
 ## Quick start (this example)
 
 This directory contains a ready-to-run Docker Compose stack that demonstrates
-the full tracing and logging pipeline. No prior OpenTelemetry experience is needed.
+the full tracing, logging, and PostgreSQL metrics pipeline. No prior
+OpenTelemetry experience is needed.
 
 ### Prerequisites
 
@@ -39,21 +40,22 @@ This starts eight services:
 | **nginx**        | Reverse proxy, creates the root trace span                | `localhost:80`  |
 | **SQLPage**      | Your application, sends traces to the collector           | (internal 8080) |
 | **PostgreSQL**   | Database                                                  | (internal 5432) |
-| **OTel Collector** | Receives traces and forwards them to Tempo              | `localhost:4318` |
+| **Prometheus**    | Stores PostgreSQL metrics scraped from the OTel Collector | (internal 9090) |
 | **Tempo**        | Trace storage backend                                     | (internal 3200) |
 | **Loki**         | Log storage backend                                       | (internal 3100) |
-| **Promtail**     | Scrapes container logs and pushes them to Loki            | (internal) |
+| **OTel Collector** | Receives traces, PostgreSQL metrics, and SQLPage logs   | `localhost:4318`, `localhost:1514` |
 | **Grafana**      | Web UI to explore traces and logs                         | `localhost:3000` |
 
 ### Explore traces and logs
 
 1. Open the todo app at [http://localhost](http://localhost) — add a few items, click to toggle them.
 2. Open Grafana at [http://localhost:3000](http://localhost:3000).
-3. The default home dashboard now shows recent traces and recent SQLPage logs.
+3. The default home dashboard now shows recent traces, recent SQLPage logs, and PostgreSQL metrics.
 4. Click any trace ID in the trace table to see the full span waterfall.
 5. In the logs panel, click a `trace_id` derived field to jump straight to the matching trace.
-6. In the left sidebar, click **Explore** (compass icon) if you want to search manually.
-7. Select **Tempo** to search traces or **Loki** to search logs.
+6. The PostgreSQL metrics panels are populated by the collector's `postgresqlreceiver`.
+7. In the left sidebar, click **Explore** (compass icon) if you want to search manually.
+8. Select **Tempo** to search traces, **Loki** to search logs, or **Prometheus** to query metrics.
 
 ### What you will see in a trace
 
@@ -86,8 +88,9 @@ SQLPage writes one structured log line per event, for example:
 ts=2026-03-08T20:56:15.000Z level=info target=sqlpage::webserver::http msg="request completed" method=GET path=/ trace_id=4f2d...
 ```
 
-Promtail scrapes these container logs, parses the logfmt fields, and sends them to Loki.
-The homepage dashboard filters to the `sqlpage` container so you can see request logs update
+The OpenTelemetry Collector receives these SQLPage container logs through Docker's syslog
+logging driver and forwards them to Loki.
+The homepage dashboard filters to the `sqlpage` service so you can see request logs update
 live while you use the sample app.
 
 ### PostgreSQL correlation
@@ -156,15 +159,16 @@ understood by all OTel-compatible tools. SQLPage reads them directly — no
 sending trace data. Here is how the pieces fit together:
 
 ```
- Traces: SQLPage -> OTel Collector -> Tempo -> Grafana
- Logs:   SQLPage stdout/stderr -> Promtail -> Loki -> Grafana
+ Traces:  SQLPage -> OTel Collector -> Tempo -> Grafana
+ Logs:    SQLPage -> Docker syslog logging driver -> OTel Collector -> Loki -> Grafana
+ Metrics: PostgreSQL -> OTel Collector postgresqlreceiver -> Prometheus -> Grafana
 ```
 
 - **SQLPage** generates trace data and sends it via the OTLP HTTP protocol.
 - A **collector** (optional) receives traces and forwards them to one or more backends.
   Useful for buffering, sampling, or fanning out to multiple destinations.
   You can skip the collector and send directly from SQLPage to most backends.
-- **Promtail** scrapes Docker container logs and forwards them to Loki.
+- The **OTel Collector** also receives SQLPage container logs and forwards them to Loki.
 - **Tempo** stores traces, **Loki** stores logs, and **Grafana** lets you search both.
 
 ### Trace context propagation
@@ -194,10 +198,8 @@ This is what the Docker Compose example in this directory uses.
 - [Grafana Tempo](https://grafana.com/docs/tempo/latest/) stores the traces.
 - [Grafana Loki](https://grafana.com/docs/loki/latest/) stores the logs.
 - [Grafana](https://grafana.com/docs/grafana/latest/) provides the web UI.
-- An [OTel Collector](https://opentelemetry.io/docs/collector/) sits between
-  SQLPage and Tempo (optional but recommended for production).
-- [Promtail](https://grafana.com/docs/loki/latest/send-data/promtail/) scrapes container logs
-  and forwards them to Loki.
+- An [OTel Collector](https://opentelemetry.io/docs/collector/) receives SQLPage traces,
+  SQLPage logs, and PostgreSQL metrics in this example.
 
 **SQLPage environment variables:**
 

@@ -22,15 +22,31 @@ services:
       - ./website:/var/www
       - ./sqlpage:/etc/sqlpage
     depends_on:
+      otel-collector:
+        condition: service_started
       postgres:
         condition: service_healthy
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "tcp://localhost:1514"
+        syslog-format: "rfc5424micro"
+        tag: "sqlpage"
 
   postgres:
     image: postgres:16
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track_utility=off
     environment:
       POSTGRES_USER: sqlpage
       POSTGRES_PASSWORD: sqlpage
       POSTGRES_DB: sqlpage
+    volumes:
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sqlpage"]
       interval: 2s
@@ -44,8 +60,19 @@ services:
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
+      - "1514:1514"   # Syslog TCP (SQLPage container logs)
     depends_on:
       - tempo
+      - postgres
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   tempo:
     image: grafana/tempo:2.6.1
@@ -56,15 +83,6 @@ services:
   loki:
     image: grafana/loki:3.4.1
     command: ["-config.file=/etc/loki/local-config.yaml"]
-
-  promtail:
-    image: grafana/promtail:3.4.1
-    command: ["-config.file=/etc/promtail/config.yml"]
-    volumes:
-      - ./promtail.yaml:/etc/promtail/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - loki
 
   grafana:
     image: grafana/grafana:latest
@@ -82,3 +100,4 @@ services:
     depends_on:
       - tempo
       - loki
+      - prometheus
