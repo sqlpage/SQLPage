@@ -19,16 +19,6 @@ receivers:
     databases:
       - sqlpage
     collection_interval: 1s
-    events:
-      db.server.query_sample:
-        enabled: true
-      db.server.top_query:
-        enabled: true
-    query_sample_collection:
-      max_rows_per_query: 1000
-    top_query_collection:
-      collection_interval: 1s
-      max_rows_per_query: 1000
 
 processors:
   transform/sqlpage_logs:
@@ -36,32 +26,24 @@ processors:
     log_statements:
       - context: resource
         statements:
-          - set(attributes["service.name"], "sqlpage")
+          - set(resource.attributes["service.name"], "sqlpage")
       - context: log
         statements:
-          - set(body, attributes["message"]) where attributes["message"] != nil
-          - merge_maps(cache, ExtractPatterns(body, "level=(?P<level>[^ ]+)"), "upsert") where IsString(body)
-          - merge_maps(cache, ExtractPatterns(body, "trace_id=(?P<trace_id>[0-9a-f]+)"), "upsert") where IsString(body)
-          - set(attributes["level"], cache["level"]) where cache["level"] != nil
-          - set(attributes["trace_id"], cache["trace_id"]) where cache["trace_id"] != nil
-          - set(severity_text, "TRACE") where cache["level"] == "trace"
-          - set(severity_number, SEVERITY_NUMBER_TRACE) where cache["level"] == "trace"
-          - set(severity_text, "DEBUG") where cache["level"] == "debug"
-          - set(severity_number, SEVERITY_NUMBER_DEBUG) where cache["level"] == "debug"
-          - set(severity_text, "INFO") where cache["level"] == "info"
-          - set(severity_number, SEVERITY_NUMBER_INFO) where cache["level"] == "info"
-          - set(severity_text, "WARN") where cache["level"] == "warn"
-          - set(severity_number, SEVERITY_NUMBER_WARN) where cache["level"] == "warn"
-          - set(severity_text, "ERROR") where cache["level"] == "error"
-          - set(severity_number, SEVERITY_NUMBER_ERROR) where cache["level"] == "error"
-  transform/postgresql_events:
-    error_mode: ignore
-    log_statements:
-      - context: log
-        statements:
-          - set(log.attributes["trace_id"], log.trace_id.string) where log.trace_id.string != ""
-          - set(log.attributes["span_id"], log.span_id.string) where log.span_id.string != ""
-          - set(log.attributes["event_name"], log.event_name) where log.event_name != ""
+          - set(log.body, log.attributes["message"]) where log.attributes["message"] != nil
+          - merge_maps(log.cache, ExtractPatterns(log.body, "level=(?P<level>[^ ]+)"), "upsert") where IsString(log.body)
+          - merge_maps(log.cache, ExtractPatterns(log.body, "trace_id=(?P<trace_id>[0-9a-f]+)"), "upsert") where IsString(log.body)
+          - set(log.attributes["level"], log.cache["level"]) where log.cache["level"] != nil
+          - set(log.attributes["trace_id"], log.cache["trace_id"]) where log.cache["trace_id"] != nil
+          - set(log.severity_text, "TRACE") where log.cache["level"] == "trace"
+          - set(log.severity_number, SEVERITY_NUMBER_TRACE) where log.cache["level"] == "trace"
+          - set(log.severity_text, "DEBUG") where log.cache["level"] == "debug"
+          - set(log.severity_number, SEVERITY_NUMBER_DEBUG) where log.cache["level"] == "debug"
+          - set(log.severity_text, "INFO") where log.cache["level"] == "info"
+          - set(log.severity_number, SEVERITY_NUMBER_INFO) where log.cache["level"] == "info"
+          - set(log.severity_text, "WARN") where log.cache["level"] == "warn"
+          - set(log.severity_number, SEVERITY_NUMBER_WARN) where log.cache["level"] == "warn"
+          - set(log.severity_text, "ERROR") where log.cache["level"] == "error"
+          - set(log.severity_number, SEVERITY_NUMBER_ERROR) where log.cache["level"] == "error"
   batch:
     timeout: 1s
 
@@ -72,8 +54,6 @@ exporters:
       insecure: true
   otlp_http/loki:
     endpoint: http://loki:3100/otlp
-  debug/postgresql_logs:
-    verbosity: detailed
   prometheus:
     endpoint: 0.0.0.0:9464
 
@@ -91,7 +71,3 @@ service:
       receivers: [syslog/sqlpage]
       processors: [transform/sqlpage_logs, batch]
       exporters: [otlp_http/loki]
-    logs:
-      receivers: [postgresql]
-      processors: [transform/postgresql_events, batch]
-      exporters: [otlp_http/loki, debug/postgresql_logs]
