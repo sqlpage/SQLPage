@@ -83,17 +83,21 @@ processors:
         statements:
           - set(log.body, log.attributes["message"]) where log.attributes["message"] != nil
           - merge_maps(log.cache, ExtractPatterns(log.body, "level=(?P<level>[^ ]+)"), "upsert") where IsString(log.body)
+          - merge_maps(log.cache, ExtractPatterns(log.body, "\\[(?P<nginx_level>info|error|warn|notice|debug)\\]"), "upsert") where IsString(log.body)
           - merge_maps(log.cache, ExtractPatterns(log.body, "trace_id=(?P<trace_id>[0-9a-f]{32})"), "upsert") where IsString(log.body)
           - merge_maps(log.cache, ExtractPatterns(log.body, "span_id=(?P<span_id>[0-9a-f]{16})"), "upsert") where IsString(log.body)
           - set(log.attributes["trace_id"], log.cache["trace_id"]) where log.cache["trace_id"] != nil
           - set(log.attributes["span_id"], log.cache["span_id"]) where log.cache["span_id"] != nil
           - set(log.attributes["level"], log.cache["level"]) where log.cache["level"] != nil
-          - set(log.severity_text, "INFO") where log.cache["level"] == "info"
-          - set(log.severity_number, SEVERITY_NUMBER_INFO) where log.cache["level"] == "info"
-          - set(log.severity_text, "ERROR") where log.cache["level"] == "error"
-          - set(log.severity_number, SEVERITY_NUMBER_ERROR) where log.cache["level"] == "error"
-          - set(log.severity_text, "ERROR") where IsMatch(log.body, "\\[error\\]")
-          - set(log.severity_number, SEVERITY_NUMBER_ERROR) where IsMatch(log.body, "\\[error\\]")
+          - set(log.attributes["level"], log.cache["nginx_level"]) where log.cache["level"] == nil and log.cache["nginx_level"] != nil
+          - set(log.severity_text, "DEBUG") where log.attributes["level"] == "debug"
+          - set(log.severity_number, SEVERITY_NUMBER_DEBUG) where log.attributes["level"] == "debug"
+          - set(log.severity_text, "INFO") where log.attributes["level"] == "info" or log.attributes["level"] == "notice"
+          - set(log.severity_number, SEVERITY_NUMBER_INFO) where log.attributes["level"] == "info" or log.attributes["level"] == "notice"
+          - set(log.severity_text, "WARN") where log.attributes["level"] == "warn"
+          - set(log.severity_number, SEVERITY_NUMBER_WARN) where log.attributes["level"] == "warn"
+          - set(log.severity_text, "ERROR") where log.attributes["level"] == "error"
+          - set(log.severity_number, SEVERITY_NUMBER_ERROR) where log.attributes["level"] == "error"
   batch:
     timeout: 1s
 
