@@ -18,6 +18,7 @@ use actix_web::{
 };
 use anyhow::{anyhow, Context};
 use awc::Client;
+use futures_util::StreamExt;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
     CoreJweContentEncryptionAlgorithm, CoreJwsSigningAlgorithm, CoreRevocableToken,
@@ -429,21 +430,21 @@ async fn handle_request(
         }
         Ok(None) => {
             log::trace!("No authenticated user found");
-            handle_unauthenticated_request(oidc_state, request)
+            handle_unauthenticated_request(oidc_state, request).await
         }
         Err(e) => {
             log::debug!("An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}");
             if let Some(c) = http_client {
                 oidc_state.maybe_refresh(c, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
             }
-            handle_unauthenticated_request(oidc_state, request)
+            handle_unauthenticated_request(oidc_state, request).await
         }
     }
 }
 
-fn handle_unauthenticated_request(
+async fn handle_unauthenticated_request(
     oidc_state: &OidcState,
-    request: ServiceRequest,
+    mut request: ServiceRequest,
 ) -> MiddlewareResponse {
     log::debug!("Handling unauthenticated request to {}", request.path());
 
@@ -452,6 +453,17 @@ fn handle_unauthenticated_request(
     }
 
     log::debug!("Redirecting to OIDC provider");
+
+    // Drain the request body to prevent broken pipes with buffering proxies
+    if request.method() != actix_web::http::Method::GET {
+        let mut payload = request.take_payload();
+        while let Some(chunk) = payload.next().await {
+            if let Err(e) = chunk {
+                log::warn!("Error draining payload: {}", e);
+                break;
+            }
+        }
+    }
 
     let initial_url = request.uri().to_string();
     let redirect_count = get_redirect_count(&request);

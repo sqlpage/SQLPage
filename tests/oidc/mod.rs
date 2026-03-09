@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_util::sync::{CancellationToken, DropGuard};
@@ -653,3 +654,74 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 }
+
+#[actix_web::test]
+async fn test_oidc_unauthenticated_post_drains_body() {
+    use sqlpage::AppState;
+    crate::common::init_log();
+    let provider = FakeOidcProvider::new().await;
+
+    let tmp_dir_path = std::env::temp_dir().join(format!("sqlpage_test_{}", rand::random::<u64>()));
+    std::fs::create_dir_all(&tmp_dir_path).unwrap();
+    let web_root = tmp_dir_path.display().to_string().replace('\\', "/");
+    std::fs::write(tmp_dir_path.join("index.sql"), "SELECT 'debug' AS component;").unwrap();
+
+    let mut config = crate::common::test_config();
+    config.oidc_issuer_url = Some(openidconnect::IssuerUrl::new(provider.issuer_url.clone()).unwrap());
+    config.oidc_client_id = provider.client_id.clone();
+    config.oidc_client_secret = Some(provider.client_secret.clone());
+    config.oidc_protected_paths = vec!["/".to_string()];
+    config.web_root = PathBuf::from(&web_root);
+    config.environment = sqlpage::app_config::DevOrProd::Production;
+
+    let app_state = Arc::new(AppState::init(&config).await.unwrap());
+
+    let server_state = Arc::clone(&app_state);
+    let server = HttpServer::new(move || {
+        create_app(Data::from(Arc::clone(&server_state)))
+    })
+    .bind("127.0.0.1:0")
+    .unwrap();
+    let addr = server.addrs()[0];
+    let server_handle = tokio::spawn(server.run());
+
+    let payload = vec![0u8; 1024 * 1024]; // 1MB payload
+
+    // Use a raw TCP stream to see if we get a broken pipe when writing the payload
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let request_header = format!(
+        "POST / HTTP/1.1\r\nHost: {}\r\nContent-Length: {}\r\nAccept: text/html\r\n\r\n",
+        addr, payload.len()
+    );
+    stream.write_all(request_header.as_bytes()).await.unwrap();
+
+    let (mut reader, mut writer) = stream.into_split();
+    
+    // Start a task to write the payload
+    let writer_handle = tokio::spawn(async move {
+        let chunk_iter = payload.chunks(64 * 1024);
+        for chunk in chunk_iter {
+            if let Err(e) = writer.write_all(chunk).await {
+                return Err(e);
+            }
+            tokio::task::yield_now().await;
+        }
+        Ok(())
+    });
+
+    // Read the response
+    let mut buf = [0u8; 1024];
+    let n = reader.read(&mut buf).await.unwrap();
+    let response = String::from_utf8_lossy(&buf[..n]);
+    assert!(response.contains("HTTP/1.1 303 See Other"));
+
+    // Ensure the writer finished successfully. Without the fix, this might return a Broken Pipe error.
+    let write_res = writer_handle.await.unwrap();
+    if let Err(e) = write_res {
+        panic!("Failed to write payload after receiving 303: {:?}. This is the bug!", e);
+    }
+
+    server_handle.abort();
+}
+
