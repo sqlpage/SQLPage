@@ -13,12 +13,11 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 
-/// Initializes logging / tracing. Returns `true` if OTel was activated.
+/// Initializes logging / tracing. Returns `true` if `OTel` was activated.
+#[must_use]
 pub fn init_telemetry() -> bool {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
-    let otel_active = otel_endpoint
-        .as_deref()
-        .is_some_and(|v| !v.is_empty());
+    let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
 
     if otel_active {
         init_otel_tracing();
@@ -29,7 +28,7 @@ pub fn init_telemetry() -> bool {
     otel_active
 }
 
-/// Shuts down the OTel tracer provider, flushing pending spans.
+/// Shuts down the `OTel` tracer provider, flushing pending spans.
 pub fn shutdown_telemetry() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         if let Err(e) = provider.shutdown() {
@@ -38,21 +37,15 @@ pub fn shutdown_telemetry() {
     }
 }
 
-/// Tracing subscriber without OTel export — logfmt output only.
+/// Tracing subscriber without `OTel` export — logfmt output only.
 fn init_tracing() {
     use tracing_subscriber::layer::SubscriberExt;
 
-    let filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-        "sqlpage=info,actix_web=info,tracing_actix_web=info".into()
-    });
-
     let subscriber = tracing_subscriber::registry()
-        .with(filter)
+        .with(default_env_filter())
         .with(logfmt::LogfmtLayer::new());
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set global tracing subscriber");
-    tracing_log::LogTracer::init().expect("Failed to set log→tracing bridge");
+    set_global_subscriber(subscriber);
 }
 
 fn init_otel_tracing() {
@@ -82,14 +75,20 @@ fn init_otel_tracing() {
         .with_tracer(tracer)
         .with_location(false);
 
-    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "sqlpage=info,actix_web=info,tracing_actix_web=info".into());
-
     let subscriber = tracing_subscriber::registry()
-        .with(filter)
+        .with(default_env_filter())
         .with(logfmt::LogfmtLayer::new())
         .with(otel_layer);
 
+    set_global_subscriber(subscriber);
+}
+
+fn default_env_filter() -> tracing_subscriber::EnvFilter {
+    tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "sqlpage=info,actix_web=info,tracing_actix_web=info".into())
+}
+
+fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set global tracing subscriber");
     tracing_log::LogTracer::init().expect("Failed to set log→tracing bridge");
@@ -118,7 +117,7 @@ mod logfmt {
     #[derive(Default)]
     struct SpanFields(HashMap<&'static str, String>);
 
-    /// Visitor that collects fields into a HashMap.
+    /// Visitor that collects fields into a `HashMap`.
     struct FieldCollector<'a>(&'a mut HashMap<&'static str, String>);
 
     impl Visit for FieldCollector<'_> {
@@ -140,7 +139,7 @@ mod logfmt {
     }
 
     /// Fields we pick from spans, in display order.
-    /// (span_field_name, logfmt_key)
+    /// (`span_field_name`, `logfmt_key`)
     const SPAN_FIELDS: &[(&str, &str)] = &[
         ("http.method", "method"),
         ("http.target", "path"),
@@ -207,104 +206,145 @@ mod logfmt {
         fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<'_, S>) {
             let mut buf = String::with_capacity(256);
             let colors = self.use_colors;
-
-            // 1. ts
-            let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ");
-            if colors {
-                let _ = write!(buf, "{DIM}ts={now}{RESET}");
-            } else {
-                let _ = write!(buf, "ts={now}");
-            }
-
-            // 2. level (with color)
-            let level = event.metadata().level();
-            if colors {
-                let (color, label) = match *level {
-                    tracing::Level::ERROR => (RED, "error"),
-                    tracing::Level::WARN => (YELLOW, "warn"),
-                    tracing::Level::INFO => (GREEN, "info"),
-                    tracing::Level::DEBUG => (BLUE, "debug"),
-                    tracing::Level::TRACE => (DIM, "trace"),
-                };
-                let _ = write!(buf, " {BOLD}{color}level={label}{RESET}");
-            } else {
-                let _ = write!(buf, " level={}", level.as_str().to_ascii_lowercase());
-            }
-
-            // 3. target — for bridged log events, use log.target; otherwise metadata target
             let mut event_fields = HashMap::new();
             event.record(&mut FieldCollector(&mut event_fields));
-
-            let target = event_fields
-                .get("log.target")
-                .map_or_else(|| event.metadata().target(), String::as_str);
-            if colors {
-                let _ = write!(buf, " {DIM}target={target}{RESET}");
-            } else {
-                let _ = write!(buf, " target={target}");
-            }
-
-            // 4. msg — for terminal, preserve multi-line formatting (e.g. SQL
-            //    error highlighting with arrows); for machine output, flatten.
+            let target = event_target(event, &event_fields);
             let msg = event_fields.get("message");
-            let multiline_msg = colors && msg.is_some_and(|m| m.contains('\n'));
-            if !multiline_msg {
-                if let Some(msg) = msg {
-                    write_logfmt_value(&mut buf, "msg", msg);
-                }
-            }
+            let multiline_msg = is_multiline_terminal_message(colors, msg);
 
-            // 5. Selected span fields in order
-            let mut seen = [false; SPAN_FIELDS.len()];
-            if let Some(scope) = ctx.event_scope(event) {
-                for span in scope {
-                    let ext = span.extensions();
-                    if let Some(fields) = ext.get::<SpanFields>() {
-                        for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
-                            if !seen[i] {
-                                if let Some(val) = fields.0.get(span_key) {
-                                    write_logfmt_value(&mut buf, logfmt_key, val);
-                                    seen[i] = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 6. trace_id from OpenTelemetry span context (only if valid)
-            if let Some(scope) = ctx.event_scope(event) {
-                'outer: for span in scope {
-                    let ext = span.extensions();
-                    if let Some(otel_data) = ext.get::<tracing_opentelemetry::OtelData>() {
-                        if let Some(trace_id) = otel_data.trace_id() {
-                            let id = trace_id.to_string();
-                            if id != INVALID_TRACE_ID {
-                                if colors {
-                                    let _ = write!(buf, " {DIM}trace_id={id}{RESET}");
-                                } else {
-                                    let _ = write!(buf, " trace_id={id}");
-                                }
-                                break 'outer;
-                            }
-                        }
-                    }
-                }
-            }
+            write_timestamp(&mut buf, colors);
+            write_level(&mut buf, *event.metadata().level(), colors);
+            write_dimmed_field(&mut buf, "target", target, colors);
+            write_message(&mut buf, msg, multiline_msg);
+            write_span_fields(&mut buf, ctx.event_scope(event));
+            write_trace_id(&mut buf, ctx.event_scope(event), colors);
 
             buf.push('\n');
+            write_multiline_message(&mut buf, msg, multiline_msg);
+            let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
+        }
+    }
 
-            // For multi-line messages on a terminal, print the message below
-            // the metadata line with its original formatting preserved.
-            if multiline_msg {
-                if let Some(msg) = msg {
-                    buf.push_str(msg);
-                    buf.push('\n');
+    fn event_target<'a>(
+        event: &'a tracing::Event<'_>,
+        event_fields: &'a HashMap<&'static str, String>,
+    ) -> &'a str {
+        event_fields
+            .get("log.target")
+            .map_or_else(|| event.metadata().target(), String::as_str)
+    }
+
+    fn is_multiline_terminal_message(colors: bool, msg: Option<&String>) -> bool {
+        colors && msg.is_some_and(|message| message.contains('\n'))
+    }
+
+    fn write_timestamp(buf: &mut String, colors: bool) {
+        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ");
+        if colors {
+            let _ = write!(buf, "{DIM}ts={now}{RESET}");
+        } else {
+            let _ = write!(buf, "ts={now}");
+        }
+    }
+
+    fn write_level(buf: &mut String, level: tracing::Level, colors: bool) {
+        if colors {
+            let (color, label) = level_style(level);
+            let _ = write!(buf, " {BOLD}{color}level={label}{RESET}");
+        } else {
+            let _ = write!(buf, " level={}", level.as_str().to_ascii_lowercase());
+        }
+    }
+
+    fn level_style(level: tracing::Level) -> (&'static str, &'static str) {
+        match level {
+            tracing::Level::ERROR => (RED, "error"),
+            tracing::Level::WARN => (YELLOW, "warn"),
+            tracing::Level::INFO => (GREEN, "info"),
+            tracing::Level::DEBUG => (BLUE, "debug"),
+            tracing::Level::TRACE => (DIM, "trace"),
+        }
+    }
+
+    fn write_dimmed_field(buf: &mut String, key: &str, value: &str, colors: bool) {
+        if colors {
+            let _ = write!(buf, " {DIM}{key}={value}{RESET}");
+        } else {
+            let _ = write!(buf, " {key}={value}");
+        }
+    }
+
+    fn write_message(buf: &mut String, msg: Option<&String>, multiline_msg: bool) {
+        if !multiline_msg {
+            if let Some(msg) = msg {
+                write_logfmt_value(buf, "msg", msg);
+            }
+        }
+    }
+
+    fn write_span_fields<S>(
+        buf: &mut String,
+        scope: Option<tracing_subscriber::registry::Scope<'_, S>>,
+    ) where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        let mut seen = [false; SPAN_FIELDS.len()];
+        if let Some(scope) = scope {
+            for span in scope {
+                let ext = span.extensions();
+                if let Some(fields) = ext.get::<SpanFields>() {
+                    for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
+                        if seen[i] {
+                            continue;
+                        }
+                        if let Some(val) = fields.0.get(span_key) {
+                            write_logfmt_value(buf, logfmt_key, val);
+                            seen[i] = true;
+                        }
+                    }
                 }
             }
+        }
+    }
 
-            // Write atomically to stderr
-            let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
+    fn write_trace_id<S>(
+        buf: &mut String,
+        scope: Option<tracing_subscriber::registry::Scope<'_, S>>,
+        colors: bool,
+    ) where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        if let Some(trace_id) = first_valid_trace_id(scope) {
+            write_dimmed_field(buf, "trace_id", &trace_id, colors);
+        }
+    }
+
+    fn first_valid_trace_id<S>(
+        scope: Option<tracing_subscriber::registry::Scope<'_, S>>,
+    ) -> Option<String>
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        for span in scope? {
+            let ext = span.extensions();
+            if let Some(otel_data) = ext.get::<tracing_opentelemetry::OtelData>() {
+                if let Some(trace_id) = otel_data.trace_id() {
+                    let trace_id = trace_id.to_string();
+                    if trace_id != INVALID_TRACE_ID {
+                        return Some(trace_id);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn write_multiline_message(buf: &mut String, msg: Option<&String>, multiline_msg: bool) {
+        if multiline_msg {
+            if let Some(msg) = msg {
+                buf.push_str(msg);
+                buf.push('\n');
+            }
         }
     }
 
