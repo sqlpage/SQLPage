@@ -9,14 +9,19 @@ receivers:
     protocol: rfc5424
     udp:
       listen_address: 0.0.0.0:1514
-  syslog/postgresql:
-    protocol: rfc5424
-    udp:
-      listen_address: 0.0.0.0:1515
   syslog/nginx:
     protocol: rfc5424
     udp:
       listen_address: 0.0.0.0:1516
+  filelog/postgresql:
+    include:
+      - /var/log/postgresql/postgresql.json
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: json_parser
+        parse_from: body
+        parse_to: attributes
   postgresql:
     endpoint: postgres:5432
     transport: tcp
@@ -61,18 +66,17 @@ processors:
       - context: log
         statements:
           - set(log.body, log.attributes["message"]) where log.attributes["message"] != nil
-          - merge_maps(log.cache, ExtractPatterns(log.body, "app=\\[[^\\]]*00-(?P<trace_id>[0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}\\]"), "upsert") where IsString(log.body)
-          - merge_maps(log.cache, ExtractPatterns(log.body, "(?P<level>LOG|ERROR|WARNING|FATAL|PANIC|NOTICE|INFO|DEBUG):"), "upsert") where IsString(log.body)
+          - merge_maps(log.cache, ExtractPatterns(log.attributes["application_name"], "00-(?P<trace_id>[0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}"), "upsert") where IsString(log.attributes["application_name"])
+          - set(log.attributes["level"], log.attributes["error_severity"]) where log.attributes["error_severity"] != nil
           - set(log.attributes["trace_id"], log.cache["trace_id"]) where log.cache["trace_id"] != nil
-          - set(log.attributes["level"], log.cache["level"]) where log.cache["level"] != nil
-          - set(log.severity_text, "DEBUG") where log.cache["level"] == "DEBUG"
-          - set(log.severity_number, SEVERITY_NUMBER_DEBUG) where log.cache["level"] == "DEBUG"
-          - set(log.severity_text, "INFO") where log.cache["level"] == "LOG" or log.cache["level"] == "INFO" or log.cache["level"] == "NOTICE"
-          - set(log.severity_number, SEVERITY_NUMBER_INFO) where log.cache["level"] == "LOG" or log.cache["level"] == "INFO" or log.cache["level"] == "NOTICE"
-          - set(log.severity_text, "WARN") where log.cache["level"] == "WARNING"
-          - set(log.severity_number, SEVERITY_NUMBER_WARN) where log.cache["level"] == "WARNING"
-          - set(log.severity_text, "ERROR") where log.cache["level"] == "ERROR" or log.cache["level"] == "FATAL" or log.cache["level"] == "PANIC"
-          - set(log.severity_number, SEVERITY_NUMBER_ERROR) where log.cache["level"] == "ERROR" or log.cache["level"] == "FATAL" or log.cache["level"] == "PANIC"
+          - set(log.severity_text, "DEBUG") where log.attributes["level"] == "DEBUG1" or log.attributes["level"] == "DEBUG2" or log.attributes["level"] == "DEBUG3" or log.attributes["level"] == "DEBUG4" or log.attributes["level"] == "DEBUG5" or log.attributes["level"] == "DEBUG"
+          - set(log.severity_number, SEVERITY_NUMBER_DEBUG) where log.severity_text == "DEBUG"
+          - set(log.severity_text, "INFO") where log.attributes["level"] == "LOG" or log.attributes["level"] == "INFO" or log.attributes["level"] == "NOTICE"
+          - set(log.severity_number, SEVERITY_NUMBER_INFO) where log.severity_text == "INFO"
+          - set(log.severity_text, "WARN") where log.attributes["level"] == "WARNING"
+          - set(log.severity_number, SEVERITY_NUMBER_WARN) where log.severity_text == "WARN"
+          - set(log.severity_text, "ERROR") where log.attributes["level"] == "ERROR" or log.attributes["level"] == "FATAL" or log.attributes["level"] == "PANIC"
+          - set(log.severity_number, SEVERITY_NUMBER_ERROR) where log.severity_text == "ERROR"
   transform/nginx_logs:
     error_mode: ignore
     log_statements:
@@ -126,7 +130,7 @@ service:
       processors: [transform/sqlpage_logs, batch]
       exporters: [otlp_http/loki]
     logs/postgresql:
-      receivers: [syslog/postgresql]
+      receivers: [filelog/postgresql]
       processors: [transform/postgresql_logs, batch]
       exporters: [otlp_http/loki]
     logs/nginx:

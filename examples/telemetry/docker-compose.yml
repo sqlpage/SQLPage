@@ -44,42 +44,73 @@ services:
     command:
       - postgres
       - -c
-      - shared_preload_libraries=pg_stat_statements
+      - shared_preload_libraries=pg_stat_statements,auto_explain
       - -c
       - pg_stat_statements.track_utility=off
       - -c
-      - log_destination=stderr
+      - logging_collector=on
+      - -c
+      - log_destination=jsonlog
+      - -c
+      - log_directory=/var/log/postgresql
+      - -c
+      - log_filename=postgresql
+      - -c
+      - log_file_mode=0644
+      - -c
+      - log_rotation_age=0
+      - -c
+      - log_rotation_size=0
       - -c
       - log_line_prefix=ts=%m pid=%p db=%d user=%u app=[%a] 
       - -c
+      - log_min_messages=info
+      - -c
+      - log_error_verbosity=verbose
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_duration=on
+      - -c
+      - log_statement=all
+      - -c
       - log_min_duration_statement=25
+      - -c
+      - auto_explain.log_min_duration=25ms
+      - -c
+      - auto_explain.log_analyze=on
+      - -c
+      - auto_explain.log_buffers=on
+      - -c
+      - auto_explain.log_timing=on
+      - -c
+      - auto_explain.log_verbose=on
+      - -c
+      - auto_explain.log_format=json
     environment:
       POSTGRES_USER: sqlpage
       POSTGRES_PASSWORD: sqlpage
       POSTGRES_DB: sqlpage
     volumes:
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
+      - postgres-logs:/var/log/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sqlpage"]
       interval: 2s
       timeout: 5s
       retries: 5
-    logging:
-      driver: syslog
-      options:
-        syslog-address: "udp://localhost:1515"
-        syslog-format: "rfc5424micro"
-        tag: "postgres"
-
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
+    user: "0:0"
     volumes:
       - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - postgres-logs:/var/log/postgresql:ro
     ports:
       - "4317:4317"
       - "4318:4318"
       - "1514:1514/udp"
-      - "1515:1515/udp"
       - "1516:1516/udp"
     depends_on:
       - tempo
@@ -121,3 +152,6 @@ services:
       - tempo
       - loki
       - prometheus
+
+volumes:
+  postgres-logs:

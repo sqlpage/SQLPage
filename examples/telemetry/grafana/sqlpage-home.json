@@ -39,7 +39,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<div style=\"padding: 4px 2px 0; font-size: 15px; line-height: 1.55;\"><h1 style=\"margin: 0 0 10px; font-size: 28px;\">Recent SQLPage traces, logs, and PostgreSQL metrics</h1><p style=\"margin: 0 0 8px;\">Open <a href=\"http://localhost\" target=\"_blank\" rel=\"noopener noreferrer\">http://localhost</a> and interact with the app. New requests will appear here automatically.</p><p style=\"margin: 0; color: #666;\">The trace table shows recent requests. Click any trace ID to open the full span waterfall in Grafana. The metrics panels come from the OpenTelemetry PostgreSQL receiver via Prometheus.</p></div>",
+        "content": "<div style=\"padding: 4px 2px 0; font-size: 15px; line-height: 1.55;\"><h1 style=\"margin: 0 0 10px; font-size: 28px;\">Recent SQLPage traces, logs, and PostgreSQL metrics</h1><p style=\"margin: 0 0 8px;\">Open <a href=\"http://localhost\" target=\"_blank\" rel=\"noopener noreferrer\">http://localhost</a> and interact with the app. New requests will appear here automatically.</p><p style=\"margin: 0; color: #666;\">The trace table shows recent requests. Click any trace ID to open the full span waterfall in Grafana. PostgreSQL slow-query explain plans appear in the PostgreSQL Logs panel and link back to the same trace via the extracted trace ID. The metrics panels come from the OpenTelemetry PostgreSQL receiver via Prometheus.</p></div>",
         "mode": "html"
       },
       "pluginVersion": "12.4.0",
@@ -351,7 +351,7 @@
       },
       "gridPos": {
         "h": 10,
-        "w": 24,
+        "w": 12,
         "x": 0,
         "y": 20
       },
@@ -383,6 +383,46 @@
       "timeFrom": "1h",
       "title": "SQLPage Logs",
       "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 6,
+      "options": {
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": false,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{service_name=\"postgresql\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": "1h",
+      "title": "PostgreSQL Logs",
+      "type": "logs"
     }
   ],
   "refresh": "5s",
@@ -400,5 +440,5 @@
   "timezone": "browser",
   "title": "SQLPage Observability Home",
   "uid": "sqlpage-tracing-home",
-  "version": 4
+  "version": 5
 }

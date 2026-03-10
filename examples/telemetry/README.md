@@ -93,7 +93,7 @@ logging driver and forwards them to Loki.
 The homepage dashboard filters to the `sqlpage` service so you can see request logs update
 live while you use the sample app.
 
-### PostgreSQL correlation
+### PostgreSQL correlation and explain plans
 
 SQLPage automatically sets the
 [`application_name`](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-APPLICATION-NAME)
@@ -108,6 +108,13 @@ This means you can:
   ```
 - Include trace IDs in PostgreSQL logs by adding `%a` to
   [`log_line_prefix`](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-LINE-PREFIX).
+
+This example also enables PostgreSQL's
+[`auto_explain`](https://www.postgresql.org/docs/current/auto-explain.html)
+extension for queries slower than 25 ms. The plans are logged in JSON and keep
+the SQLPage trace context in the `app=[...]` prefix, so Grafana's Loki
+`trace_id` derived field links each slow-query plan back to the originating
+SQLPage trace.
 
 ### Testing pool pressure
 
