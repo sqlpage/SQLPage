@@ -51,6 +51,7 @@ const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
 const OIDC_HTTP_BODY_TIMEOUT: Duration = OIDC_CLIENT_MIN_REFRESH_INTERVAL;
 const SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE: &str = "sqlpage_oidc_redirect_count";
 const MAX_OIDC_REDIRECTS: u8 = 3;
+const MAX_OIDC_PARALLEL_LOGIN_FLOWS: usize = 8;
 const AUTH_COOKIE_EXPIRATION: awc::cookie::time::Duration =
     actix_web::cookie::time::Duration::days(7);
 const LOGIN_FLOW_STATE_COOKIE_EXPIRATION: awc::cookie::time::Duration =
@@ -455,7 +456,8 @@ fn handle_unauthenticated_request(
 
     let initial_url = request.uri().to_string();
     let redirect_count = get_redirect_count(&request);
-    let response = build_auth_provider_redirect_response(oidc_state, &initial_url, redirect_count);
+    let response =
+        build_auth_provider_redirect_response(oidc_state, &request, &initial_url, redirect_count);
     MiddlewareResponse::Respond(request.into_response(response))
 }
 
@@ -487,7 +489,7 @@ fn handle_oidc_callback_error(
     if let Ok(http_client) = get_http_client_from_appdata(&request) {
         oidc_state.maybe_refresh(http_client, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
     }
-    let resp = build_auth_provider_redirect_response(oidc_state, "/", redirect_count);
+    let resp = build_auth_provider_redirect_response(oidc_state, &request, "/", redirect_count);
     request.into_response(resp)
 }
 
@@ -585,7 +587,6 @@ fn process_oidc_logout(
             .path("/")
             .finish(),
     )?;
-
     log::debug!("User logged out successfully");
     Ok(response)
 }
@@ -736,6 +737,7 @@ fn set_auth_cookie(response: &mut HttpResponse, id_token: &OidcToken) {
 
 fn build_auth_provider_redirect_response(
     oidc_state: &OidcState,
+    request: &ServiceRequest,
     initial_url: &str,
     redirect_count: u8,
 ) -> HttpResponse {
@@ -750,11 +752,15 @@ fn build_auth_provider_redirect_response(
     .same_site(actix_web::cookie::SameSite::Lax)
     .max_age(LOGIN_FLOW_STATE_COOKIE_EXPIRATION)
     .finish();
-    HttpResponse::SeeOther()
-        .append_header((header::LOCATION, url.to_string()))
-        .cookie(tmp_login_flow_state_cookie)
-        .cookie(redirect_count_cookie)
-        .body("Redirecting...")
+    let mut response = HttpResponse::SeeOther();
+    response.append_header((header::LOCATION, url.to_string()));
+    for mut cookie in get_tmp_login_flow_state_cookies_to_evict(request) {
+        cookie.make_removal();
+        response.cookie(cookie);
+    }
+    response.cookie(tmp_login_flow_state_cookie);
+    response.cookie(redirect_count_cookie);
+    response.body("Redirecting...")
 }
 
 fn build_redirect_response(target_url: String) -> HttpResponse {
@@ -1078,6 +1084,38 @@ fn get_tmp_login_flow_state_cookie(
         .with_context(|| format!("No {cookie_name} cookie found"))
 }
 
+fn get_tmp_login_flow_state_cookies_to_evict(request: &ServiceRequest) -> Vec<Cookie<'static>> {
+    request
+        .cookies()
+        .map(|cookies| {
+            let excess_cookie_count = cookies
+                .iter()
+                .filter(|cookie| {
+                    cookie
+                        .name()
+                        .starts_with(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX)
+                })
+                .count()
+                .saturating_add(1)
+                .saturating_sub(MAX_OIDC_PARALLEL_LOGIN_FLOWS);
+            cookies
+                .iter()
+                .filter(|cookie| {
+                    cookie
+                        .name()
+                        .starts_with(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX)
+                })
+                .take(excess_cookie_count)
+                .map(|cookie| {
+                    let mut cookie = cookie.clone().into_owned();
+                    cookie.set_path("/");
+                    cookie
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct LoginFlowState<'a> {
     #[serde(rename = "n")]
@@ -1127,6 +1165,7 @@ fn validate_redirect_url(url: String, redirect_uri: &str) -> String {
 mod tests {
     use super::*;
     use actix_web::http::StatusCode;
+    use actix_web::{cookie::Cookie, test::TestRequest};
     use openidconnect::url::Url;
 
     #[test]
@@ -1181,5 +1220,24 @@ mod tests {
         let params = parse_logout_params(parsed.query().expect("query string is present"))
             .expect("generated URL should parse");
         verify_logout_params(&params, secret).expect("generated URL should validate");
+    }
+
+    #[test]
+    fn evicts_excess_tmp_login_flow_state_cookies() {
+        let request = (0..MAX_OIDC_PARALLEL_LOGIN_FLOWS)
+            .fold(TestRequest::default(), |request, i| {
+                request.cookie(Cookie::new(
+                    format!("{SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX}{i}"),
+                    format!("value-{i}"),
+                ))
+            })
+            .to_srv_request();
+
+        let cookies_to_evict = get_tmp_login_flow_state_cookies_to_evict(&request);
+
+        assert_eq!(cookies_to_evict.len(), 1);
+        assert!(cookies_to_evict[0]
+            .name()
+            .starts_with(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX));
     }
 }
