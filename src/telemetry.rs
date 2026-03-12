@@ -84,8 +84,22 @@ fn init_otel_tracing() {
 }
 
 fn default_env_filter() -> tracing_subscriber::EnvFilter {
-    tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "sqlpage=info,actix_web=info,tracing_actix_web=info".into())
+    env_filter_directives(
+        env::var("LOG_LEVEL").ok().as_deref(),
+        env::var("RUST_LOG").ok().as_deref(),
+    )
+    .parse()
+    .expect("Invalid log filter value in LOG_LEVEL or RUST_LOG")
+}
+
+fn env_filter_directives(log_level: Option<&str>, rust_log: Option<&str>) -> String {
+    match (
+        log_level.filter(|value| !value.is_empty()),
+        rust_log.filter(|value| !value.is_empty()),
+    ) {
+        (Some(value), _) | (None, Some(value)) => value.to_owned(),
+        (None, None) => "sqlpage=info,actix_web=info,tracing_actix_web=info".to_owned(),
+    }
 }
 
 fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) {
@@ -423,6 +437,31 @@ mod logfmt {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::telemetry::env_filter_directives;
+
+        #[test]
+        fn log_level_takes_precedence_over_rust_log() {
+            assert_eq!(
+                env_filter_directives(Some("sqlpage=debug"), Some("sqlpage=trace")),
+                "sqlpage=debug"
+            );
+        }
+
+        #[test]
+        fn rust_log_is_used_as_alias_when_log_level_is_missing() {
+            assert_eq!(
+                env_filter_directives(None, Some("sqlpage=trace")),
+                "sqlpage=trace"
+            );
+        }
+
+        #[test]
+        fn empty_values_fall_back_to_default_filter() {
+            assert_eq!(
+                env_filter_directives(Some(""), Some("")),
+                "sqlpage=info,actix_web=info,tracing_actix_web=info"
+            );
+        }
 
         #[test]
         fn debug_logs_include_unmapped_span_fields() {

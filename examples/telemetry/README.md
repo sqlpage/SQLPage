@@ -404,7 +404,7 @@ This means the `traceparent` header is not being propagated. Check that:
 
 ### Spans are missing (e.g., no `db.query` spans)
 
-The `RUST_LOG` / `OTEL_LOG_LEVEL` filter might be too restrictive.
+The `RUST_LOG` filter might be too restrictive.
 SQLPage emits spans at the `INFO` level by default. Make sure your filter
 includes `sqlpage=info`:
 

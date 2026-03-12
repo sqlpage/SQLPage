@@ -58,7 +58,8 @@ but in uppercase.
 
 The environment variable name can optionally be prefixed with `SQLPAGE_`.
 
-Additionnally, when troubleshooting, you can set the [`RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging)
+Additionnally, when troubleshooting, you can set the
+[`LOG_LEVEL`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html)
 environment variable to `sqlpage=debug` to get more detailed logs and see exactly what SQLPage is doing.
 
 If you have a `.env` file in the current directory or in any of its parent directories, SQLPage will automatically load environment variables from it.
