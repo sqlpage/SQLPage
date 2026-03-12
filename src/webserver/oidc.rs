@@ -754,9 +754,11 @@ fn build_auth_provider_redirect_response(
     .finish();
     let mut response = HttpResponse::SeeOther();
     response.append_header((header::LOCATION, url.to_string()));
-    for mut cookie in get_tmp_login_flow_state_cookies_to_evict(request) {
-        cookie.make_removal();
-        response.cookie(cookie);
+    if let Ok(cookies) = request.cookies() {
+        for mut cookie in get_tmp_login_flow_state_cookies_to_evict(&cookies).cloned() {
+            cookie.make_removal();
+            response.cookie(cookie);
+        }
     }
     response.cookie(tmp_login_flow_state_cookie);
     response.cookie(redirect_count_cookie);
@@ -1084,33 +1086,13 @@ fn get_tmp_login_flow_state_cookie(
         .with_context(|| format!("No {cookie_name} cookie found"))
 }
 
-fn get_tmp_login_flow_state_cookies_to_evict(request: &ServiceRequest) -> Vec<Cookie<'static>> {
-    request
-        .cookies()
-        .map(|cookies| {
-            let mut tmp_login_flow_state_cookies = cookies
-                .iter()
-                .filter(|cookie| {
-                    cookie
-                        .name()
-                        .starts_with(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX)
-                })
-                .cloned()
-                .collect::<Vec<_>>();
-            let excess_cookie_count = tmp_login_flow_state_cookies
-                .len()
-                .saturating_add(1)
-                .saturating_sub(MAX_OIDC_PARALLEL_LOGIN_FLOWS);
-            tmp_login_flow_state_cookies
-                .drain(..excess_cookie_count)
-                .map(|cookie| {
-                    let mut cookie = cookie.into_owned();
-                    cookie.set_path("/");
-                    cookie
-                })
-                .collect()
-        })
-        .unwrap_or_default()
+fn get_tmp_login_flow_state_cookies_to_evict<'a>(
+    cookies: &'a [Cookie<'static>],
+) -> impl Iterator<Item = &'a Cookie<'static>> + 'a {
+    let is_state = &|c: &Cookie<'_>| c.name().starts_with(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX);
+    let login_state_count = cookies.iter().filter(|c| is_state(c)).count();
+    let to_evict = login_state_count.saturating_sub(MAX_OIDC_PARALLEL_LOGIN_FLOWS - 1);
+    cookies.iter().filter(|c| is_state(c)).take(to_evict)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1230,7 +1212,9 @@ mod tests {
             })
             .to_srv_request();
 
-        let cookies_to_evict = get_tmp_login_flow_state_cookies_to_evict(&request);
+        let cookies = request.cookies().unwrap();
+        let cookies_to_evict: Vec<_> =
+            get_tmp_login_flow_state_cookies_to_evict(&cookies).collect();
 
         assert_eq!(cookies_to_evict.len(), 1);
         assert!(cookies_to_evict[0]
