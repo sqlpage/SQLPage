@@ -1,5 +1,8 @@
 # CHANGELOG.md
 
+## unreleased
+ - Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
+
 ## 0.43.0
 
 - OIDC protected and public paths now respect the site prefix when it is defined.
