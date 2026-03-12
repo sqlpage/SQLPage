@@ -46,6 +46,18 @@ fn source_line_number(line: usize) -> i64 {
     i64::try_from(line).unwrap_or(i64::MAX)
 }
 
+fn record_db_query_success(span: &tracing::Span, returned_rows: i64) {
+    span.record("db.response.returned_rows", returned_rows);
+    span.record("otel.status_code", "OK");
+}
+
+fn record_db_query_error(span: &tracing::Span, returned_rows: i64, error: &anyhow::Error) {
+    span.record("db.response.returned_rows", returned_rows);
+    span.record("otel.status_code", "ERROR");
+    span.record("exception.message", tracing::field::display(error));
+    span.record("exception.details", tracing::field::debug(error));
+}
+
 impl Database {
     pub(crate) async fn prepare_with(
         &self,
@@ -87,6 +99,9 @@ pub fn stream_query_results_with_conn<'a>(
                         db.system.name = request.app_state.db.info.database_type.otel_name(),
                         code.file.path = %source_file.display(),
                         code.line.number = source_line_number(stmt.query_position.start.line),
+                        otel.status_code = tracing::field::Empty,
+                        exception.message = tracing::field::Empty,
+                        exception.details = tracing::field::Empty,
                         db.response.returned_rows = tracing::field::Empty,
                     );
                     record_query_params(&query_span, &query.param_values);
@@ -103,16 +118,24 @@ pub fn stream_query_results_with_conn<'a>(
                             returned_rows += 1;
                         }
                         apply_json_columns(&mut query_result, &stmt.json_columns);
-                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).instrument(query_span.clone()).await?;
+                        if let Err(err) = apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result)
+                            .instrument(query_span.clone())
+                            .await
+                        {
+                            error = Some(err);
+                            break;
+                        }
                         for db_item in parse_dynamic_rows(query_result) {
                             yield db_item;
                         }
                     }
                     drop(stream);
-                    query_span.record("db.response.returned_rows", returned_rows);
                     if let Some(error) = error {
+                        record_db_query_error(&query_span, returned_rows, &error);
                         try_rollback_transaction(connection).await;
                         yield DbItem::Error(error);
+                    } else {
+                        record_db_query_success(&query_span, returned_rows);
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
@@ -254,6 +277,9 @@ async fn execute_set_variable_query<'a>(
         db.system.name = request.app_state.db.info.database_type.otel_name(),
         code.file.path = %source_file.display(),
         code.line.number = source_line_number(statement.query_position.start.line),
+        otel.status_code = tracing::field::Empty,
+        exception.message = tracing::field::Empty,
+        exception.details = tracing::field::Empty,
         db.response.returned_rows = tracing::field::Empty,
     );
     record_query_params(&query_span, &query.param_values);
@@ -263,16 +289,17 @@ async fn execute_set_variable_query<'a>(
         .await
     {
         Ok(Some(row)) => {
-            query_span.record("db.response.returned_rows", 1_i64);
+            record_db_query_success(&query_span, 1_i64);
             row_to_string(&row)
         }
         Ok(None) => {
-            query_span.record("db.response.returned_rows", 0_i64);
+            record_db_query_success(&query_span, 0_i64);
             None
         }
         Err(e) => {
             try_rollback_transaction(connection).await;
             let err = display_stmt_db_error(source_file, statement, e);
+            record_db_query_error(&query_span, 0_i64, &err);
             return Err(err);
         }
     };
@@ -599,7 +626,15 @@ impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex};
+
     use serde_json::{json, Value};
+    use tracing::field::{Field, Visit};
+    use tracing_subscriber::layer::Context;
+    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::registry::LookupSpan;
+    use tracing_subscriber::Layer;
 
     fn create_row_item(value: Value) -> DbItem {
         DbItem::Row(value)
@@ -671,5 +706,126 @@ mod tests {
         apply_json_columns(&mut item, &["json_col".to_string(), "json_col".to_string()]);
         assert_json_value(&item, "json_col", json!({"key": "value"}));
         assert_json_value(&item, "normal_col", json!("text"));
+    }
+
+    #[derive(Default)]
+    struct RecordedFields(HashMap<&'static str, String>);
+
+    #[derive(Clone, Default)]
+    struct TestSpanLayer {
+        closed_spans: Arc<Mutex<Vec<HashMap<&'static str, String>>>>,
+    }
+
+    struct TestFieldVisitor<'a>(&'a mut HashMap<&'static str, String>);
+
+    impl Visit for TestFieldVisitor<'_> {
+        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+            self.0.insert(field.name(), format!("{value:?}"));
+        }
+
+        fn record_str(&mut self, field: &Field, value: &str) {
+            self.0.insert(field.name(), value.to_owned());
+        }
+
+        fn record_i64(&mut self, field: &Field, value: i64) {
+            self.0.insert(field.name(), value.to_string());
+        }
+    }
+
+    impl<S> Layer<S> for TestSpanLayer
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_new_span(
+            &self,
+            attrs: &tracing::span::Attributes<'_>,
+            id: &tracing::span::Id,
+            ctx: Context<'_, S>,
+        ) {
+            let mut fields = RecordedFields::default();
+            attrs.record(&mut TestFieldVisitor(&mut fields.0));
+            if let Some(span) = ctx.span(id) {
+                span.extensions_mut().insert(fields);
+            }
+        }
+
+        fn on_record(
+            &self,
+            id: &tracing::span::Id,
+            values: &tracing::span::Record<'_>,
+            ctx: Context<'_, S>,
+        ) {
+            if let Some(span) = ctx.span(id) {
+                let mut extensions = span.extensions_mut();
+                let fields = extensions
+                    .get_mut::<RecordedFields>()
+                    .expect("recorded fields");
+                values.record(&mut TestFieldVisitor(&mut fields.0));
+            }
+        }
+
+        fn on_close(&self, id: tracing::span::Id, ctx: Context<'_, S>) {
+            if let Some(span) = ctx.span(&id) {
+                let extensions = span.extensions();
+                let fields = extensions.get::<RecordedFields>().expect("recorded fields");
+                self.closed_spans.lock().unwrap().push(fields.0.clone());
+            }
+        }
+    }
+
+    fn with_recorded_span_fields(
+        f: impl FnOnce() + Send + 'static,
+    ) -> HashMap<&'static str, String> {
+        let layer = TestSpanLayer::default();
+        let closed_spans = layer.closed_spans.clone();
+        let subscriber = tracing_subscriber::registry().with(layer);
+        tracing::subscriber::with_default(subscriber, f);
+        let fields = closed_spans
+            .lock()
+            .unwrap()
+            .pop()
+            .expect("closed span fields");
+        fields
+    }
+
+    #[test]
+    fn db_query_success_records_ok_status_and_row_count() {
+        let fields = with_recorded_span_fields(|| {
+            let span = tracing::info_span!(
+                "db.query",
+                otel.status_code = tracing::field::Empty,
+                exception.message = tracing::field::Empty,
+                exception.details = tracing::field::Empty,
+                db.response.returned_rows = tracing::field::Empty,
+            );
+            record_db_query_success(&span, 3);
+            drop(span);
+        });
+
+        assert_eq!(fields["otel.status_code"], "OK");
+        assert_eq!(fields["db.response.returned_rows"], "3");
+        assert!(!fields.contains_key("exception.message"));
+        assert!(!fields.contains_key("exception.details"));
+    }
+
+    #[test]
+    fn db_query_error_records_error_status_and_exception_fields() {
+        let fields = with_recorded_span_fields(|| {
+            let span = tracing::info_span!(
+                "db.query",
+                otel.status_code = tracing::field::Empty,
+                exception.message = tracing::field::Empty,
+                exception.details = tracing::field::Empty,
+                db.response.returned_rows = tracing::field::Empty,
+            );
+            let error = anyhow!("query failed").context("while executing SELECT 1");
+            record_db_query_error(&span, 2, &error);
+            drop(span);
+        });
+
+        assert_eq!(fields["otel.status_code"], "ERROR");
+        assert_eq!(fields["db.response.returned_rows"], "2");
+        assert!(fields["exception.message"].contains("while executing SELECT 1"));
+        assert!(fields["exception.details"].contains("query failed"));
     }
 }
