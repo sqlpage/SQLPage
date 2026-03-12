@@ -273,7 +273,14 @@ async fn extract_text(
         .await
         .map(|bytes| bytes.data)
         .map_err(|e| anyhow!("failed to read form field data: {e}"))?;
-    Ok(String::from_utf8(data.to_vec())?)
+    String::from_utf8(data.to_vec()).map_err(|e| {
+        anyhow!(super::ErrorWithStatus {
+            status: actix_web::http::StatusCode::BAD_REQUEST,
+        })
+        .context(format!(
+            "could not parse multipart form field as utf-8 text: {e}"
+        ))
+    })
 }
 
 async fn extract_file(

@@ -1,7 +1,9 @@
 # CHANGELOG.md
 
 ## unreleased
- - Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
+
+- Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
+- Fix: invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
 
 ## 0.43.0
 
