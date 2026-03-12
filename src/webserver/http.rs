@@ -357,7 +357,6 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
             otel.name = %otel_name,
             otel.kind = "server",
             otel.status_code = tracing::field::Empty,
-            trace_id = tracing::field::Empty,
             request_id = %request_id,
             exception.message = tracing::field::Empty,
             exception.details = tracing::field::Empty,
