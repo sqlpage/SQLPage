@@ -3,7 +3,8 @@
 ## unreleased
 
 - Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
-- Fix: invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
+- Improve HTTP status codes returned by SQLPage. This helps with monitoring sqlpage applications: it is now easier to distinguish client errors (code 4xx, often caused by vulnerability scanning bots, not actionnable for you) and server errors (code 5xx, when something is wrong on your servers and you should do something).
+  - For instance, invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
 
 ## 0.43.0
 
