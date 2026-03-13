@@ -76,6 +76,7 @@ pub trait ActixErrorStatusExt<T> {
 
 impl<T> ActixErrorStatusExt<T> for Result<T, actix_web::Error> {
     fn with_actix_error_status(self) -> anyhow::Result<T> {
+        // Snapshot the HTTP status before converting to anyhow, which does not preserve Actix's response mapping for later inspection.
         self.with_status_from(|e| e.as_response_error().status_code())
     }
 }
