@@ -63,11 +63,7 @@ async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     // body_str contains the path to the persisted file
     // The path is relative to web root, we need to find it on disk.
     // In tests, web root is the repo root.
-    // We need to use platform-specific separators for the file system.
-    let file_path_str = persisted_path
-        .trim_start_matches('/')
-        .replace('/', std::path::MAIN_SEPARATOR_STR);
-    let file_path = std::path::Path::new(&file_path_str);
+    let file_path = std::path::Path::new(persisted_path.trim_start_matches('/'));
     assert!(
         file_path.exists(),
         "Persisted file {} does not exist. Body: {}",

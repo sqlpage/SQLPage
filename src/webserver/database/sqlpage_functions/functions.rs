@@ -460,7 +460,7 @@ async fn persist_uploaded_file<'a>(
     set_file_mode(&target_path, mode.as_deref()).await?;
     // remove the WEB_ROOT prefix from the path, but keep the leading slash
     let path = "/".to_string()
-        + &target_path
+        + target_path
             .strip_prefix(web_root)?
             .to_str()
             .with_context(|| {
@@ -468,8 +468,7 @@ async fn persist_uploaded_file<'a>(
                     "unable to convert path \"{}\" to a string",
                     target_path.display()
                 )
-            })?
-            .replace('\\', "/");
+            })?;
     Ok(Some(path))
 }
 
