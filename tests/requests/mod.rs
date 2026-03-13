@@ -218,4 +218,33 @@ async fn test_invalid_utf8_multipart_text_field_returns_bad_request() -> actix_w
     Ok(())
 }
 
+#[actix_web::test]
+async fn test_missing_multipart_content_disposition_returns_bad_request() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/requests/variables.sql")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            b"--1234567890\r\n\
+            Content-Type: text/plain\r\n\
+            \r\n\
+            hello\r\n\
+            --1234567890--\r\n"
+                .as_slice(),
+        )
+        .to_srv_request();
+    let status = match main_handler(req).await {
+        Ok(resp) => resp.status(),
+        Err(err) => err.as_response_error().status_code(),
+    };
+
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "expected 400 bad request on malformed multipart payload, got {}",
+        status
+    );
+
+    Ok(())
+}
+
 mod webhook_hmac;

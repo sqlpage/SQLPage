@@ -41,7 +41,7 @@ pub mod request_variables;
 pub mod server_timing;
 
 pub use database::Database;
-pub use error_with_status::ErrorWithStatus;
+pub use error_with_status::{ActixErrorStatusExt, ErrorWithStatus, StatusCodeResultExt};
 
 pub use database::make_placeholder;
 pub use database::migrations::apply;
