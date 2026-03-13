@@ -32,6 +32,7 @@ async fn test_file_upload(target: &str) -> actix_web::Result<()> {
 async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     let req = get_request_to("/tests/uploads/persist_with_mode.sql?mode=644")
         .await?
+        .insert_header((actix_web::http::header::ACCEPT, "application/json"))
         .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
         .set_payload(
             "--1234567890\r\n\
@@ -45,30 +46,19 @@ async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     let resp = main_handler(req).await?;
 
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
-    // body_str is an HTML page containing the path. We need to extract the path.
-    // It's in a <p> tag.
-    let path_prefix = "/tests_uploads/";
-    let start_idx = body_str
-        .find(path_prefix)
-        .unwrap_or_else(|| panic!("Could not find path in response: {body_str}"));
-    let end_idx = body_str[start_idx..]
-        .find(".txt")
-        .expect("Could not find .txt extension in response")
-        + start_idx
-        + 4;
-    let persisted_path = &body_str[start_idx..end_idx];
+    let body_json: serde_json::Value = test::read_body_json(resp).await;
+    let persisted_path = body_json[0]["contents"]
+        .as_str()
+        .expect("Path not found in JSON response");
 
-    // body_str contains the path to the persisted file
     // The path is relative to web root, we need to find it on disk.
     // In tests, web root is the repo root.
     let file_path = std::path::Path::new(persisted_path.trim_start_matches('/'));
     assert!(
         file_path.exists(),
-        "Persisted file {} does not exist. Body: {}",
+        "Persisted file {} does not exist. JSON: {}",
         file_path.display(),
-        body_str
+        body_json
     );
     let contents = std::fs::read_to_string(file_path)?;
     assert_eq!(contents, "Hello");
