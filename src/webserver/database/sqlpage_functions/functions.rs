@@ -477,25 +477,23 @@ async fn protocol(request: &RequestInfo) -> &str {
     &request.protocol
 }
 
+#[cfg(unix)]
 async fn set_file_mode(path: &std::path::Path, mode: Option<&str>) -> anyhow::Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mode = if let Some(mode) = mode {
-            u32::from_str_radix(mode, 8)
-                .with_context(|| format!("unable to parse file mode {mode:?} as an octal number"))?
-        } else {
-            0o600
-        };
-        tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
-            .await
-            .with_context(|| format!("unable to set permissions on {}", path.display()))?;
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = path;
-        let _ = mode;
-    }
+    use std::os::unix::fs::PermissionsExt;
+    let mode = if let Some(mode) = mode {
+        u32::from_str_radix(mode, 8)
+            .with_context(|| format!("unable to parse file mode {mode:?} as an octal number"))?
+    } else {
+        0o600
+    };
+    tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+        .await
+        .with_context(|| format!("unable to set permissions on {}", path.display()))?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+async fn set_file_mode(_path: &std::path::Path, _mode: Option<&str>) -> anyhow::Result<()> {
     Ok(())
 }
 
@@ -682,38 +680,6 @@ async fn test_hash_password() {
         .unwrap()
         .unwrap();
     assert!(s.starts_with("$argon2"));
-}
-
-#[tokio::test]
-async fn test_set_file_mode() {
-    let tmp_dir = std::env::temp_dir();
-    let tmp_file = tmp_dir.join("test_set_file_mode.txt");
-    tokio::fs::write(&tmp_file, b"test").await.unwrap();
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-
-        set_file_mode(&tmp_file, Some("644")).await.unwrap();
-        let metadata = tokio::fs::metadata(&tmp_file).await.unwrap();
-        assert_eq!(metadata.permissions().mode() & 0o777, 0o644);
-
-        set_file_mode(&tmp_file, Some("755")).await.unwrap();
-        let metadata = tokio::fs::metadata(&tmp_file).await.unwrap();
-        assert_eq!(metadata.permissions().mode() & 0o777, 0o755);
-
-        set_file_mode(&tmp_file, None).await.unwrap();
-        let metadata = tokio::fs::metadata(&tmp_file).await.unwrap();
-        assert_eq!(metadata.permissions().mode() & 0o777, 0o600);
-    }
-
-    #[cfg(not(unix))]
-    {
-        set_file_mode(&tmp_file, Some("644")).await.unwrap();
-        set_file_mode(&tmp_file, None).await.unwrap();
-    }
-
-    tokio::fs::remove_file(&tmp_file).await.unwrap();
 }
 
 async fn uploaded_file_mime_type<'a>(

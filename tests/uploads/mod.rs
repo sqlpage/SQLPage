@@ -29,6 +29,60 @@ async fn test_file_upload(target: &str) -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
+    let req = get_request_to("/tests/uploads/persist_with_mode.sql?mode=644")
+        .await?
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"test.txt\"\r\n\
+            Content-Type: text/plain\r\n\
+            \r\n\
+            Hello\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    // body_str is an HTML page containing the path. We need to extract the path.
+    // It's in a <p> tag.
+    let path_prefix = "/tests_uploads/";
+    let start_idx = body_str
+        .find(path_prefix)
+        .expect("Could not find path in response");
+    let end_idx = body_str[start_idx..]
+        .find(".txt")
+        .expect("Could not find .txt extension in response")
+        + start_idx
+        + 4;
+    let persisted_path = &body_str[start_idx..end_idx];
+
+    // body_str contains the path to the persisted file
+    // The path is relative to web root, we need to find it on disk.
+    // In tests, web root is the repo root.
+    let file_path = std::path::Path::new(persisted_path.trim_start_matches('/'));
+    assert!(
+        file_path.exists(),
+        "Persisted file {} does not exist. Body: {}",
+        file_path.display(),
+        body_str
+    );
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let metadata = std::fs::metadata(file_path)?;
+        assert_eq!(metadata.permissions().mode() & 0o777, 0o644);
+    }
+
+    std::fs::remove_file(file_path)?;
+    Ok(())
+}
+
+#[actix_web::test]
 async fn test_file_upload_direct() -> actix_web::Result<()> {
     test_file_upload("/tests/uploads/upload_file_test.sql").await
 }
