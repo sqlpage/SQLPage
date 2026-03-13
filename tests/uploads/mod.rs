@@ -74,6 +74,8 @@ async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
         file_path.display(),
         body_str
     );
+    let contents = std::fs::read_to_string(file_path)?;
+    assert_eq!(contents, "Hello");
 
     #[cfg(unix)]
     {
