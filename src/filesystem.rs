@@ -1,6 +1,6 @@
 use crate::webserver::database::SupportedDatabase;
 use crate::webserver::ErrorWithStatus;
-use crate::webserver::{make_placeholder, Database};
+use crate::webserver::{make_placeholder, Database, StatusCodeResultExt};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -51,15 +51,19 @@ impl FileSystem {
         );
         match (local_result, &self.db_fs_queries) {
             (Ok(modified), _) => Ok(modified),
-            (Err(e), Some(db_fs)) if e.kind() == ErrorKind::NotFound => {
+            (Err(e), Some(db_fs)) if is_path_missing_error(&e) => {
                 // no local file, try the database
                 db_fs
                     .file_modified_since_in_db(app_state, path, since)
                     .await
             }
-            (Err(e), _) => Err(e).with_context(|| {
-                format!("Unable to read local file metadata for {}", path.display())
-            }),
+            (Err(e), _) => {
+                let status = io_error_status(&e)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Err(e).with_status(status).with_context(|| {
+                    format!("Unable to read local file metadata for {}", path.display())
+                })
+            }
         }
     }
 
@@ -109,16 +113,19 @@ impl FileSystem {
         let local_result = tokio::fs::read(&local_path).await;
         match (local_result, &self.db_fs_queries) {
             (Ok(f), _) => Ok(f),
-            (Err(e), Some(db_fs)) if e.kind() == ErrorKind::NotFound => {
+            (Err(e), Some(db_fs)) if is_path_missing_error(&e) => {
                 // no local file, try the database
                 db_fs.read_file(app_state, path.as_ref()).await
             }
-            (Err(e), None) if e.kind() == ErrorKind::NotFound => Err(ErrorWithStatus {
-                status: actix_web::http::StatusCode::NOT_FOUND,
-            }
-            .into()),
+            (Err(e), None) if is_path_missing_error(&e) => Err(e)
+                .with_status(actix_web::http::StatusCode::NOT_FOUND)
+                .with_context(|| format!("Unable to read local file {}", path.display())),
             (Err(e), _) => {
-                Err(e).with_context(|| format!("Unable to read local file {}", path.display()))
+                let status = io_error_status(&e)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Err(e)
+                    .with_status(status)
+                    .with_context(|| format!("Unable to read local file {}", path.display()))
             }
         }
     }
@@ -163,10 +170,15 @@ impl FileSystem {
                         .with_context(|| "Directory traversal is not allowed");
                     }
                 } else {
-                    anyhow::bail!(
-                        "Unsupported path: {}. Path component '{component:?}' is not allowed.",
-                        path.display()
-                    );
+                    return Err(ErrorWithStatus {
+                        status: actix_web::http::StatusCode::FORBIDDEN,
+                    })
+                    .with_context(|| {
+                        format!(
+                            "Unsupported path: {}. Path component '{component:?}' is not allowed.",
+                            path.display()
+                        )
+                    });
                 }
             }
         }
@@ -179,7 +191,17 @@ impl FileSystem {
         path: &Path,
     ) -> anyhow::Result<bool> {
         let local_exists = match self.safe_local_path(app_state, path, false) {
-            Ok(safe_path) => tokio::fs::try_exists(safe_path).await?,
+            Ok(safe_path) => match tokio::fs::try_exists(safe_path).await {
+                Ok(exists) => exists,
+                Err(e) if is_path_missing_error(&e) => false,
+                Err(e) => {
+                    let status = io_error_status(&e)
+                        .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                    return Err(e).with_status(status).with_context(|| {
+                        format!("Unable to check if {} exists locally", path.display())
+                    });
+                }
+            },
             Err(e) => return Err(e),
         };
 
@@ -194,6 +216,20 @@ impl FileSystem {
             }
         }
         Ok(local_exists)
+    }
+}
+
+fn is_path_missing_error(error: &std::io::Error) -> bool {
+    matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory)
+}
+
+fn io_error_status(error: &std::io::Error) -> Option<actix_web::http::StatusCode> {
+    match error.kind() {
+        ErrorKind::NotFound | ErrorKind::NotADirectory => {
+            Some(actix_web::http::StatusCode::NOT_FOUND)
+        }
+        ErrorKind::PermissionDenied => Some(actix_web::http::StatusCode::FORBIDDEN),
+        _ => None,
     }
 }
 

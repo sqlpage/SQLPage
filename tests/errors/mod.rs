@@ -98,3 +98,19 @@ async fn test_default_404_with_redirect() {
     );
     assert!(!body.contains("error"));
 }
+
+#[actix_web::test]
+async fn test_default_404_when_request_path_descends_into_file() {
+    let resp_result = req_path("/tests/it_works.txt/site/wp-includes/wlwmanifest.xml").await;
+    let resp = resp_result.unwrap();
+    assert_eq!(
+        resp.status(),
+        http::StatusCode::NOT_FOUND,
+        "descending into a file path should behave like a missing resource"
+    );
+
+    let body = test::read_body(resp).await;
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body.contains("The page you were looking for does not exist"));
+    assert!(!body.contains("error"));
+}

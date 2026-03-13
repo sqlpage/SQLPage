@@ -28,6 +28,7 @@ use tokio_stream::StreamExt;
 use super::oidc::OidcClaims;
 use super::request_variables::param_map;
 use super::request_variables::ParamMap;
+use super::{ActixErrorStatusExt, StatusCodeResultExt};
 
 #[derive(Debug)]
 pub struct RequestInfo {
@@ -195,14 +196,8 @@ async fn extract_urlencoded_post_variables(
     Form::<Vec<(String, String)>>::from_request(http_req, payload)
         .await
         .map(Form::into_inner)
-        .map_err(|e| {
-            anyhow!(super::ErrorWithStatus {
-                status: actix_web::http::StatusCode::BAD_REQUEST,
-            })
-            .context(format!(
-                "could not parse request as urlencoded form data: {e}"
-            ))
-        })
+        .with_actix_error_status()
+        .context("could not parse request as urlencoded form data")
 }
 
 async fn extract_multipart_post_data(
@@ -215,7 +210,8 @@ async fn extract_multipart_post_data(
 
     let mut multipart = Multipart::from_request(http_req, payload)
         .await
-        .map_err(|e| anyhow!("could not parse request as multipart form data: {e}"))?;
+        .with_actix_error_status()
+        .context("could not parse request as multipart form data")?;
 
     let mut limits = Limits::new(config.max_uploaded_file_size, config.max_uploaded_file_size);
     log::trace!(
@@ -224,10 +220,13 @@ async fn extract_multipart_post_data(
     );
 
     while let Some(part) = multipart.next().await {
-        let field = part.map_err(|e| anyhow!("unable to read form field: {e}"))?;
+        let field = part
+            .with_response_status()
+            .context("unable to read form field")?;
         let content_disposition = field
             .content_disposition()
-            .ok_or_else(|| anyhow!("missing Content-Disposition in form field"))?;
+            .ok_or_else(|| anyhow!("missing Content-Disposition in form field"))
+            .with_status(actix_web::http::StatusCode::BAD_REQUEST)?;
         // test if field is a file
         let filename = content_disposition.get_filename();
         let field_name = content_disposition
@@ -272,15 +271,11 @@ async fn extract_text(
     let data = Bytes::read_field(req, field, limits)
         .await
         .map(|bytes| bytes.data)
-        .map_err(|e| anyhow!("failed to read form field data: {e}"))?;
-    String::from_utf8(data.to_vec()).map_err(|e| {
-        anyhow!(super::ErrorWithStatus {
-            status: actix_web::http::StatusCode::BAD_REQUEST,
-        })
-        .context(format!(
-            "could not parse multipart form field as utf-8 text: {e}"
-        ))
-    })
+        .with_response_status()
+        .context("failed to read form field data")?;
+    String::from_utf8(data.to_vec())
+        .with_status(actix_web::http::StatusCode::BAD_REQUEST)
+        .context("could not parse multipart form field as utf-8 text")
 }
 
 async fn extract_file(
@@ -291,7 +286,8 @@ async fn extract_file(
     // extract a tempfile from the field
     let file = TempFile::read_field(req, field, limits)
         .await
-        .map_err(|e| anyhow!("Failed to save uploaded file: {e}"))?;
+        .with_response_status()
+        .context("failed to save uploaded file")?;
     Ok(file)
 }
 

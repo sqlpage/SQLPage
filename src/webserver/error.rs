@@ -56,7 +56,7 @@ pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> H
     let mut resp = HttpResponseBuilder::new(StatusCode::INTERNAL_SERVER_ERROR);
     resp.insert_header((header::CONTENT_TYPE, header::ContentType::plaintext()));
 
-    if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
+    if let Some(status) = anyhow_error_status(e) {
         resp.status(status);
         if status == StatusCode::UNAUTHORIZED {
             resp.append_header((
@@ -86,6 +86,16 @@ pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> H
                 {second_err:#}"
             ))
         }
+    }
+}
+
+fn anyhow_error_status(e: &anyhow::Error) -> Option<StatusCode> {
+    if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
+        Some(status)
+    } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
+        Some(StatusCode::TOO_MANY_REQUESTS)
+    } else {
+        None
     }
 }
 
