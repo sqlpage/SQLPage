@@ -30,8 +30,12 @@ async fn test_file_upload(target: &str) -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
-    let req = get_request_to("/tests/uploads/persist_with_mode.sql?mode=644")
-        .await?
+    let app_data = crate::common::make_app_data().await;
+    let req = actix_web::test::TestRequest::get()
+        .uri("/tests/uploads/persist_with_mode.sql?mode=644")
+        .app_data(app_data.clone())
+        .app_data(sqlpage::webserver::http::payload_config(&app_data))
+        .app_data(sqlpage::webserver::http::form_config(&app_data))
         .insert_header((actix_web::http::header::ACCEPT, "application/json"))
         .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
         .set_payload(
@@ -53,11 +57,17 @@ async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
 
     // The path is relative to web root, we need to find it on disk.
     // In tests, web root is the repo root.
-    let file_path = std::path::Path::new(persisted_path.trim_start_matches('/'));
+    // We normalize the path separators to be platform-specific for the file system check.
+    let normalized_path = persisted_path
+        .replace('\\', "/")
+        .trim_start_matches('/')
+        .replace('/', std::path::MAIN_SEPARATOR_STR);
+    let file_path = std::path::Path::new(&normalized_path);
     assert!(
         file_path.exists(),
-        "Persisted file {} does not exist. JSON: {}",
+        "Persisted file {} does not exist. Persisted path: {}, JSON: {}",
         file_path.display(),
+        persisted_path,
         body_json
     );
     let contents = std::fs::read_to_string(file_path)?;
