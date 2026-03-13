@@ -11,3 +11,4 @@ xbed.sql
 **/sqlpage.bin
 node_modules/
 sqlpage/sqlpage.db
+tests_uploads/

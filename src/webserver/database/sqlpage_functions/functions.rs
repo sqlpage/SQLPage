@@ -42,7 +42,7 @@ super::function_definition_macro::sqlpage_functions! {
     link(file: Cow<str>, parameters: Option<Cow<str>>, hash: Option<Cow<str>>);
 
     path((&RequestInfo));
-    persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>);
+    persist_uploaded_file((&RequestInfo), field_name: Cow<str>, folder: Option<Cow<str>>, allowed_extensions: Option<Cow<str>>, mode: Option<Cow<str>>);
     protocol((&RequestInfo));
 
     random_string(string_length: SqlPageFunctionParam<usize>);
@@ -420,6 +420,7 @@ async fn persist_uploaded_file<'a>(
     field_name: Cow<'a, str>,
     folder: Option<Cow<'a, str>>,
     allowed_extensions: Option<Cow<'a, str>>,
+    mode: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<String>> {
     let folder = folder.unwrap_or(Cow::Borrowed("uploads"));
     let allowed_extensions_str =
@@ -456,6 +457,7 @@ async fn persist_uploaded_file<'a>(
                 target_path.display()
             )
         })?;
+    set_file_mode(&target_path, mode.as_deref()).await?;
     // remove the WEB_ROOT prefix from the path, but keep the leading slash
     let path = "/".to_string()
         + target_path
@@ -473,6 +475,26 @@ async fn persist_uploaded_file<'a>(
 /// Returns the protocol of the current request (http or https).
 async fn protocol(request: &RequestInfo) -> &str {
     &request.protocol
+}
+
+#[cfg(unix)]
+async fn set_file_mode(path: &std::path::Path, mode: Option<&str>) -> anyhow::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let mode = if let Some(mode) = mode {
+        u32::from_str_radix(mode, 8)
+            .with_context(|| format!("unable to parse file mode {mode:?} as an octal number"))?
+    } else {
+        0o600
+    };
+    tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+        .await
+        .with_context(|| format!("unable to set permissions on {}", path.display()))?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+async fn set_file_mode(_path: &std::path::Path, _mode: Option<&str>) -> anyhow::Result<()> {
+    Ok(())
 }
 
 /// Returns a random string of the specified length.
