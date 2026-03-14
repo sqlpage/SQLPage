@@ -9,38 +9,41 @@ fn get_counter() -> UpDownCounter<i64> {
         .build()
 }
 
-pub fn on_acquire(system_name: &'static str) {
+pub fn on_acquire() {
     let counter = get_counter();
+    let db_system_name = super::get_discovered_db_type().otel_name();
     counter.add(1, &[
-        KeyValue::new("db.system.name", system_name),
+        KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),
         KeyValue::new("db.client.connection.state", "used"),
     ]);
     counter.add(-1, &[
-        KeyValue::new("db.system.name", system_name),
+        KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),
         KeyValue::new("db.client.connection.state", "idle"),
     ]);
 }
 
-pub fn on_release(system_name: &'static str) {
+pub fn on_release() {
     let counter = get_counter();
+    let db_system_name = super::get_discovered_db_type().otel_name();
     counter.add(-1, &[
-        KeyValue::new("db.system.name", system_name),
+        KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),
         KeyValue::new("db.client.connection.state", "used"),
     ]);
     counter.add(1, &[
-        KeyValue::new("db.system.name", system_name),
+        KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),
         KeyValue::new("db.client.connection.state", "idle"),
     ]);
 }
 
-pub fn on_connect(system_name: &'static str) {
+pub fn on_connect() {
     let counter = get_counter();
+    let db_system_name = super::get_discovered_db_type().otel_name();
     counter.add(1, &[
-        KeyValue::new("db.system.name", system_name),
+        KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),
         KeyValue::new("db.client.connection.state", "idle"),
     ]);
