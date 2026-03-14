@@ -9,8 +9,8 @@
 use std::env;
 use std::sync::OnceLock;
 
-use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
@@ -172,7 +172,7 @@ mod logfmt {
         }
     }
 
-use opentelemetry_semantic_conventions::attribute as otel;
+    use opentelemetry_semantic_conventions::attribute as otel;
     /// Fields we pick from spans, in display order.
     /// (`span_field_name`, `logfmt_key`)
     const SPAN_FIELDS: &[(&str, &str)] = &[

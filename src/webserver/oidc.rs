@@ -34,8 +34,8 @@ use openidconnect::{
     EmptyExtraTokenFields, IdTokenFields, IdTokenVerifier, StandardErrorResponse,
     StandardTokenResponse,
 };
-use serde::{Deserialize, Serialize};
 use opentelemetry_semantic_conventions::attribute as otel;
+use serde::{Deserialize, Serialize};
 use tracing::Instrument;
 
 use super::error::anyhow_err_to_actix_resp;

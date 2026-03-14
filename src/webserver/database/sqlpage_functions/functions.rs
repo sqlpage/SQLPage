@@ -13,9 +13,9 @@ use crate::webserver::{
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use mime_guess::mime;
+use opentelemetry_semantic_conventions::attribute as otel;
 use std::fmt::Write;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
-use opentelemetry_semantic_conventions::attribute as otel;
 use tracing::Instrument;
 
 super::function_definition_macro::sqlpage_functions! {
