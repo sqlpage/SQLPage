@@ -10,8 +10,10 @@ use std::env;
 use std::sync::OnceLock;
 
 use opentelemetry_sdk::trace::SdkTracerProvider;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
+static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 
 /// Initializes logging / tracing. Returns `true` if `OTel` was activated.
 #[must_use]
@@ -33,6 +35,11 @@ pub fn shutdown_telemetry() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         if let Err(e) = provider.shutdown() {
             eprintln!("Error shutting down tracer provider: {e}");
+        }
+    }
+    if let Some(provider) = METER_PROVIDER.get() {
+        if let Err(e) = provider.shutdown() {
+            eprintln!("Error shutting down meter provider: {e}");
         }
     }
 }
@@ -71,6 +78,17 @@ fn init_otel_tracing() {
     global::set_tracer_provider(provider.clone());
     let _ = TRACER_PROVIDER.set(provider);
 
+    // OTLP Metric exporter
+    let metric_exporter = opentelemetry_otlp::MetricExporter::builder()
+        .with_http()
+        .build()
+        .expect("Failed to build OTLP metric exporter");
+
+    let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(metric_exporter).build();
+    let meter_provider = SdkMeterProvider::builder().with_reader(reader).build();
+    global::set_meter_provider(meter_provider.clone());
+    let _ = METER_PROVIDER.set(meter_provider.clone());
+
     let otel_layer = tracing_opentelemetry::layer()
         .with_tracer(tracer)
         .with_location(false);
@@ -78,7 +96,8 @@ fn init_otel_tracing() {
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
         .with(logfmt::LogfmtLayer::new())
-        .with(otel_layer);
+        .with(otel_layer)
+        .with(tracing_opentelemetry::MetricsLayer::new(meter_provider));
 
     set_global_subscriber(subscriber);
 }
