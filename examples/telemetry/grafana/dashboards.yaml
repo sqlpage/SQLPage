@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: SQLPage Tracing
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards/sqlpage

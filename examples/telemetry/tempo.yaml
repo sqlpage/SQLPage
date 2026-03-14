@@ -1,0 +1,52 @@
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 1h
+
+metrics_generator:
+  ring:
+    kvstore:
+      store: inmemory
+  registry:
+    external_labels:
+      source: tempo
+      cluster: docker-compose
+  processor:
+    service_graphs: {}
+    span_metrics: {}
+    local_blocks:
+      flush_to_storage: true
+  storage:
+    path: /tmp/tempo/generator/wal
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics
+        - local-blocks
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+    local:
+      path: /tmp/tempo/blocks

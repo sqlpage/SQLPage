@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::borrow::Cow;
 use std::path::Path;
 use std::pin::Pin;
+use tracing::Instrument;
 
 use super::csv_import::run_csv_import;
 use super::error_highlighting::{display_stmt_db_error, display_stmt_error};
@@ -28,6 +29,34 @@ use sqlx::{
 };
 
 pub type DbConn = Option<PoolConnection<sqlx::Any>>;
+
+fn record_query_params(span: &tracing::Span, params: &[Option<String>]) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+    for (idx, value) in params.iter().enumerate() {
+        let key = opentelemetry::Key::new(format!("db.query.parameter.{idx}"));
+        let otel_value = match value {
+            Some(v) => opentelemetry::Value::String(v.clone().into()),
+            None => opentelemetry::Value::String("NULL".into()),
+        };
+        span.set_attribute(key, otel_value);
+    }
+}
+
+fn source_line_number(line: usize) -> i64 {
+    i64::try_from(line).unwrap_or(i64::MAX)
+}
+
+fn record_db_query_success(span: &tracing::Span, returned_rows: i64) {
+    span.record("db.response.returned_rows", returned_rows);
+    span.record("otel.status_code", "OK");
+}
+
+fn record_db_query_error(span: &tracing::Span, returned_rows: i64, error: &anyhow::Error) {
+    span.record("db.response.returned_rows", returned_rows);
+    span.record("otel.status_code", "ERROR");
+    span.record("exception.message", tracing::field::display(error));
+    span.record("exception.details", tracing::field::debug(error));
+}
 
 impl Database {
     pub(crate) async fn prepare_with(
@@ -64,24 +93,49 @@ pub fn stream_query_results_with_conn<'a>(
                     request.server_timing.record("bind_params");
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
+                    let query_span = tracing::info_span!(
+                        "db.query",
+                        db.query.text = query.sql,
+                        db.system.name = request.app_state.db.info.database_type.otel_name(),
+                        code.file.path = %source_file.display(),
+                        code.line.number = source_line_number(stmt.query_position.start.line),
+                        otel.status_code = tracing::field::Empty,
+                        exception.message = tracing::field::Empty,
+                        exception.details = tracing::field::Empty,
+                        db.response.returned_rows = tracing::field::Empty,
+                    );
+                    record_query_params(&query_span, &query.param_values);
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
-                    while let Some(elem) = stream.next().await {
+                    let mut returned_rows: i64 = 0;
+                    while let Some(elem) = stream.next().instrument(query_span.clone()).await {
                         let mut query_result = parse_single_sql_result(source_file, stmt, elem);
                         if let DbItem::Error(e) = query_result {
                             error = Some(e);
                             break;
                         }
+                        if matches!(query_result, DbItem::Row(_)) {
+                            returned_rows += 1;
+                        }
                         apply_json_columns(&mut query_result, &stmt.json_columns);
-                        apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result).await?;
+                        if let Err(err) = apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result)
+                            .instrument(query_span.clone())
+                            .await
+                        {
+                            error = Some(err);
+                            break;
+                        }
                         for db_item in parse_dynamic_rows(query_result) {
                             yield db_item;
                         }
                     }
                     drop(stream);
                     if let Some(error) = error {
+                        record_db_query_error(&query_span, returned_rows, &error);
                         try_rollback_transaction(connection).await;
                         yield DbItem::Error(error);
+                    } else {
+                        record_db_query_success(&query_span, returned_rows);
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
@@ -217,12 +271,35 @@ async fn execute_set_variable_query<'a>(
         query.sql
     );
 
-    let value = match connection.fetch_optional(query).await {
-        Ok(Some(row)) => row_to_string(&row),
-        Ok(None) => None,
+    let query_span = tracing::info_span!(
+        "db.query",
+        db.query.text = query.sql,
+        db.system.name = request.app_state.db.info.database_type.otel_name(),
+        code.file.path = %source_file.display(),
+        code.line.number = source_line_number(statement.query_position.start.line),
+        otel.status_code = tracing::field::Empty,
+        exception.message = tracing::field::Empty,
+        exception.details = tracing::field::Empty,
+        db.response.returned_rows = tracing::field::Empty,
+    );
+    record_query_params(&query_span, &query.param_values);
+    let value = match connection
+        .fetch_optional(query)
+        .instrument(query_span.clone())
+        .await
+    {
+        Ok(Some(row)) => {
+            record_db_query_success(&query_span, 1_i64);
+            row_to_string(&row)
+        }
+        Ok(None) => {
+            record_db_query_success(&query_span, 0_i64);
+            None
+        }
         Err(e) => {
             try_rollback_transaction(connection).await;
             let err = display_stmt_db_error(source_file, statement, e);
+            record_db_query_error(&query_span, 0_i64, &err);
             return Err(err);
         }
     };
@@ -288,12 +365,16 @@ async fn take_connection<'a>(
     if let Some(c) = conn {
         return Ok(c);
     }
-    match db.connection.acquire().await {
+    let pool_size = db.connection.size();
+    let acquire_span = tracing::info_span!("db.pool.acquire", db.pool.size = pool_size,);
+    match db.connection.acquire().instrument(acquire_span).await {
         Ok(c) => {
             log::debug!("Acquired a database connection");
             request.server_timing.record("db_conn");
             *conn = Some(c);
-            Ok(conn.as_mut().unwrap())
+            let connection = conn.as_mut().unwrap();
+            set_trace_context(connection, db).await;
+            Ok(connection)
         }
         Err(e) => {
             let db_name = db.connection.any_kind();
@@ -301,6 +382,41 @@ async fn take_connection<'a>(
             let err_msg = format!("Unable to connect to {db_name:?}. The connection pool currently has {active_count} active connections.");
             Err(anyhow::Error::new(e).context(err_msg))
         }
+    }
+}
+
+/// Sets the current `OTel` trace context on the database connection so it is visible
+/// in `pg_stat_activity.application_name` (`PostgreSQL`) or as a session variable (`MySQL`).
+/// This allows correlating `SQLPage` traces with database-side monitoring.
+async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
+    use opentelemetry::trace::TraceContextExt;
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+    let span = tracing::Span::current();
+    let context = span.context();
+    let otel_span = context.span();
+    let span_context = otel_span.span_context();
+    if !span_context.is_valid() {
+        return;
+    }
+    let traceparent = format!(
+        "00-{}-{}-{:02x}",
+        span_context.trace_id(),
+        span_context.span_id(),
+        span_context.trace_flags()
+    );
+    let sql = match db.info.kind {
+        sqlx::any::AnyKind::Postgres => {
+            // postgresqlreceiver expects application_name to be a raw W3C traceparent value.
+            format!("SET application_name = '{traceparent}'")
+        }
+        sqlx::any::AnyKind::MySql => {
+            format!("SET @traceparent = '{traceparent}'")
+        }
+        _ => return,
+    };
+    if let Err(e) = connection.execute(sql.as_str()).await {
+        log::debug!("Failed to set trace context on connection: {e}");
     }
 }
 
@@ -374,6 +490,7 @@ async fn bind_parameters<'a>(
     let sql = stmt.query.as_str();
     log::debug!("Preparing statement: {sql}");
     let mut arguments = AnyArguments::default();
+    let mut param_values = Vec::with_capacity(stmt.params.len());
     for (param_idx, param) in stmt.params.iter().enumerate() {
         log::trace!("\tevaluating parameter {}: {}", param_idx + 1, param);
         let argument = extract_req_param(param, request, db_connection).await?;
@@ -382,6 +499,7 @@ async fn bind_parameters<'a>(
             param_idx + 1,
             argument.as_ref().unwrap_or(&Cow::Borrowed("NULL"))
         );
+        param_values.push(argument.as_deref().map(str::to_owned));
         match argument {
             None => arguments.add(None::<String>),
             Some(Cow::Owned(s)) => arguments.add(s),
@@ -393,6 +511,7 @@ async fn bind_parameters<'a>(
         sql,
         arguments,
         has_arguments,
+        param_values,
     })
 }
 
@@ -478,6 +597,7 @@ pub struct StatementWithParams<'a> {
     sql: &'a str,
     arguments: AnyArguments<'a>,
     has_arguments: bool,
+    param_values: Vec<Option<String>>,
 }
 
 impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
@@ -506,7 +626,15 @@ impl<'q> sqlx::Execute<'q, Any> for StatementWithParams<'q> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex};
+
     use serde_json::{json, Value};
+    use tracing::field::{Field, Visit};
+    use tracing_subscriber::layer::Context;
+    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::registry::LookupSpan;
+    use tracing_subscriber::Layer;
 
     fn create_row_item(value: Value) -> DbItem {
         DbItem::Row(value)
@@ -578,5 +706,126 @@ mod tests {
         apply_json_columns(&mut item, &["json_col".to_string(), "json_col".to_string()]);
         assert_json_value(&item, "json_col", json!({"key": "value"}));
         assert_json_value(&item, "normal_col", json!("text"));
+    }
+
+    #[derive(Default)]
+    struct RecordedFields(HashMap<&'static str, String>);
+
+    #[derive(Clone, Default)]
+    struct TestSpanLayer {
+        closed_spans: Arc<Mutex<Vec<HashMap<&'static str, String>>>>,
+    }
+
+    struct TestFieldVisitor<'a>(&'a mut HashMap<&'static str, String>);
+
+    impl Visit for TestFieldVisitor<'_> {
+        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+            self.0.insert(field.name(), format!("{value:?}"));
+        }
+
+        fn record_str(&mut self, field: &Field, value: &str) {
+            self.0.insert(field.name(), value.to_owned());
+        }
+
+        fn record_i64(&mut self, field: &Field, value: i64) {
+            self.0.insert(field.name(), value.to_string());
+        }
+    }
+
+    impl<S> Layer<S> for TestSpanLayer
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_new_span(
+            &self,
+            attrs: &tracing::span::Attributes<'_>,
+            id: &tracing::span::Id,
+            ctx: Context<'_, S>,
+        ) {
+            let mut fields = RecordedFields::default();
+            attrs.record(&mut TestFieldVisitor(&mut fields.0));
+            if let Some(span) = ctx.span(id) {
+                span.extensions_mut().insert(fields);
+            }
+        }
+
+        fn on_record(
+            &self,
+            id: &tracing::span::Id,
+            values: &tracing::span::Record<'_>,
+            ctx: Context<'_, S>,
+        ) {
+            if let Some(span) = ctx.span(id) {
+                let mut extensions = span.extensions_mut();
+                let fields = extensions
+                    .get_mut::<RecordedFields>()
+                    .expect("recorded fields");
+                values.record(&mut TestFieldVisitor(&mut fields.0));
+            }
+        }
+
+        fn on_close(&self, id: tracing::span::Id, ctx: Context<'_, S>) {
+            if let Some(span) = ctx.span(&id) {
+                let extensions = span.extensions();
+                let fields = extensions.get::<RecordedFields>().expect("recorded fields");
+                self.closed_spans.lock().unwrap().push(fields.0.clone());
+            }
+        }
+    }
+
+    fn with_recorded_span_fields(
+        f: impl FnOnce() + Send + 'static,
+    ) -> HashMap<&'static str, String> {
+        let layer = TestSpanLayer::default();
+        let closed_spans = layer.closed_spans.clone();
+        let subscriber = tracing_subscriber::registry().with(layer);
+        tracing::subscriber::with_default(subscriber, f);
+        let fields = closed_spans
+            .lock()
+            .unwrap()
+            .pop()
+            .expect("closed span fields");
+        fields
+    }
+
+    #[test]
+    fn db_query_success_records_ok_status_and_row_count() {
+        let fields = with_recorded_span_fields(|| {
+            let span = tracing::info_span!(
+                "db.query",
+                otel.status_code = tracing::field::Empty,
+                exception.message = tracing::field::Empty,
+                exception.details = tracing::field::Empty,
+                db.response.returned_rows = tracing::field::Empty,
+            );
+            record_db_query_success(&span, 3);
+            drop(span);
+        });
+
+        assert_eq!(fields["otel.status_code"], "OK");
+        assert_eq!(fields["db.response.returned_rows"], "3");
+        assert!(!fields.contains_key("exception.message"));
+        assert!(!fields.contains_key("exception.details"));
+    }
+
+    #[test]
+    fn db_query_error_records_error_status_and_exception_fields() {
+        let fields = with_recorded_span_fields(|| {
+            let span = tracing::info_span!(
+                "db.query",
+                otel.status_code = tracing::field::Empty,
+                exception.message = tracing::field::Empty,
+                exception.details = tracing::field::Empty,
+                db.response.returned_rows = tracing::field::Empty,
+            );
+            let error = anyhow!("query failed").context("while executing SELECT 1");
+            record_db_query_error(&span, 2, &error);
+            drop(span);
+        });
+
+        assert_eq!(fields["otel.status_code"], "ERROR");
+        assert_eq!(fields["db.response.returned_rows"], "2");
+        assert!(fields["exception.message"].contains("while executing SELECT 1"));
+        assert!(fields["exception.details"].contains("query failed"));
     }
 }

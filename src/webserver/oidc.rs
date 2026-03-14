@@ -35,6 +35,7 @@ use openidconnect::{
     StandardTokenResponse,
 };
 use serde::{Deserialize, Serialize};
+use tracing::Instrument;
 
 use super::error::anyhow_err_to_actix_resp;
 use super::http_client::make_http_client;
@@ -266,12 +267,33 @@ impl OidcState {
         id_token: OidcToken,
         expected_nonce: &Nonce,
     ) -> anyhow::Result<OidcClaims> {
+        let span = tracing::info_span!(
+            "oidc.jwt.verify",
+            enduser.id = tracing::field::Empty,
+            user.id = tracing::field::Empty,
+            user.name = tracing::field::Empty,
+            user.full_name = tracing::field::Empty,
+            user.email = tracing::field::Empty,
+        );
+        let _guard = span.enter();
         let snapshot = self.snapshot();
         let verifier = self.config.create_id_token_verifier(&snapshot.client);
         let nonce_verifier = |nonce: Option<&Nonce>| check_nonce(nonce, expected_nonce);
         let claims: OidcClaims = id_token
             .into_claims(&verifier, nonce_verifier)
             .map_err(|e| anyhow::anyhow!("Could not verify the ID token: {e}"))?;
+        let sub = claims.subject().as_str();
+        span.record("enduser.id", sub);
+        span.record("user.id", sub);
+        if let Some(name) = claims.preferred_username() {
+            span.record("user.name", name.as_str());
+        }
+        if let Some(name) = claims.name().and_then(|n| n.get(None)) {
+            span.record("user.full_name", name.as_str());
+        }
+        if let Some(email) = claims.email() {
+            span.record("user.email", email.as_str());
+        }
         Ok(claims)
     }
 
@@ -465,7 +487,11 @@ async fn handle_oidc_callback(
     oidc_state: &Arc<OidcState>,
     request: ServiceRequest,
 ) -> ServiceResponse {
-    match process_oidc_callback(oidc_state, &request).await {
+    let span = tracing::info_span!("oidc.callback");
+    match process_oidc_callback(oidc_state, &request)
+        .instrument(span)
+        .await
+    {
         Ok(mut response) => {
             clear_redirect_count_cookie(&mut response);
             request.into_response(response)
@@ -699,11 +725,17 @@ async fn exchange_code_for_token(
     http_client: &awc::Client,
     oidc_callback_params: OidcCallbackParams,
 ) -> anyhow::Result<OidcToken> {
+    let span = tracing::info_span!(
+        "http.client",
+        otel.name = "POST token_endpoint",
+        http.request.method = "POST",
+    );
     let token_response = oidc_client
         .exchange_code(openidconnect::AuthorizationCode::new(
             oidc_callback_params.code,
         ))?
         .request_async(&AwcHttpClient::from_client(http_client))
+        .instrument(span)
         .await
         .context("Failed to exchange code for token")?;
     let access_token = token_response.access_token();
