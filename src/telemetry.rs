@@ -85,7 +85,31 @@ fn init_otel_tracing() {
         .expect("Failed to build OTLP metric exporter");
 
     let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(metric_exporter).build();
-    let meter_provider = SdkMeterProvider::builder().with_reader(reader).build();
+    let meter_provider = SdkMeterProvider::builder()
+        .with_reader(reader)
+        .with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
+            if instrument.name() == "http.server.request.duration"
+                || instrument.name() == "db.client.operation.duration"
+            {
+                Some(
+                    opentelemetry_sdk::metrics::Stream::builder()
+                        .with_aggregation(
+                            opentelemetry_sdk::metrics::Aggregation::ExplicitBucketHistogram {
+                                boundaries: vec![
+                                    0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75,
+                                    1.0, 2.5, 5.0, 7.5, 10.0,
+                                ],
+                                record_min_max: true,
+                            },
+                        )
+                        .build()
+                        .expect("Failed to build metrics stream"),
+                )
+            } else {
+                None
+            }
+        })
+        .build();
     global::set_meter_provider(meter_provider.clone());
     let _ = METER_PROVIDER.set(meter_provider.clone());
 

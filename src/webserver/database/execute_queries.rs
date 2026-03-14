@@ -51,7 +51,7 @@ fn record_query_params(span: &tracing::Span, params: &[Option<String>]) {
 
 struct DbQueryMetricsContext<'a> {
     span: tracing::Span,
-    start_time: std::time::Instant,
+    duration: std::time::Duration,
     db_system_name: &'static str,
     operation_name: String,
     metrics: &'a TelemetryMetrics,
@@ -66,24 +66,29 @@ impl<'a> DbQueryMetricsContext<'a> {
     ) -> Self {
         Self {
             span,
-            start_time: std::time::Instant::now(),
+            duration: std::time::Duration::ZERO,
             db_system_name,
             operation_name,
             metrics,
         }
     }
 
+    fn add_duration(&mut self, duration: std::time::Duration) {
+        self.duration += duration;
+    }
+
     fn record_success(&self, returned_rows: i64) {
         self.span
             .record(otel::DB_RESPONSE_RETURNED_ROWS, returned_rows);
         self.span.record(otel::OTEL_STATUS_CODE, "OK");
-        let duration = self.start_time.elapsed().as_secs_f64();
         let attributes = [
             opentelemetry::KeyValue::new(otel::DB_SYSTEM_NAME, self.db_system_name),
             opentelemetry::KeyValue::new(otel::DB_OPERATION_NAME, self.operation_name.clone()),
             opentelemetry::KeyValue::new(otel::OTEL_STATUS_CODE, "OK"),
         ];
-        self.metrics.db_query_duration.record(duration, &attributes);
+        self.metrics
+            .db_query_duration
+            .record(self.duration.as_secs_f64(), &attributes);
     }
 
     fn record_error(&self, returned_rows: i64, error: &anyhow::Error) {
@@ -94,14 +99,15 @@ impl<'a> DbQueryMetricsContext<'a> {
             .record(otel::EXCEPTION_MESSAGE, tracing::field::display(error));
         self.span
             .record("exception.details", tracing::field::debug(error));
-        let duration = self.start_time.elapsed().as_secs_f64();
         let attributes = [
             opentelemetry::KeyValue::new(otel::DB_SYSTEM_NAME, self.db_system_name),
             opentelemetry::KeyValue::new(otel::DB_OPERATION_NAME, self.operation_name.clone()),
             opentelemetry::KeyValue::new(otel::OTEL_STATUS_CODE, "ERROR"),
             opentelemetry::KeyValue::new(otel::ERROR_TYPE, error.to_string()),
         ];
-        self.metrics.db_query_duration.record(duration, &attributes);
+        self.metrics
+            .db_query_duration
+            .record(self.duration.as_secs_f64(), &attributes);
     }
 }
 
@@ -169,7 +175,7 @@ pub fn stream_query_results_with_conn<'a>(
                         stmt.query_position.start.line,
                         db_system_name,
                     );
-                    let query_metrics = DbQueryMetricsContext::new(
+                    let mut query_metrics = DbQueryMetricsContext::new(
                         query_span.clone(),
                         operation_name,
                         db_system_name,
@@ -179,7 +185,12 @@ pub fn stream_query_results_with_conn<'a>(
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
                     let mut returned_rows: i64 = 0;
-                    while let Some(elem) = stream.next().instrument(query_span.clone()).await {
+                    loop {
+                        let start_next = std::time::Instant::now();
+                        let next_elem = stream.next().instrument(query_span.clone()).await;
+                        query_metrics.add_duration(start_next.elapsed());
+                        let Some(elem) = next_elem else { break; };
+
                         let mut query_result = parse_single_sql_result(source_file, stmt, elem);
                         if let DbItem::Error(e) = query_result {
                             error = Some(e);
@@ -349,27 +360,31 @@ async fn execute_set_variable_query<'a>(
         statement.query_position.start.line,
         db_system_name,
     );
-    let query_metrics = DbQueryMetricsContext::new(
+    let mut query_metrics = DbQueryMetricsContext::new(
         query_span.clone(),
         operation_name,
         db_system_name,
         &request.app_state.telemetry_metrics,
     );
     record_query_params(&query_metrics.span, &query.param_values);
+    let start_time = std::time::Instant::now();
     let value = match connection
         .fetch_optional(query)
         .instrument(query_span.clone())
         .await
     {
         Ok(Some(row)) => {
+            query_metrics.add_duration(start_time.elapsed());
             query_metrics.record_success(1_i64);
             row_to_string(&row)
         }
         Ok(None) => {
+            query_metrics.add_duration(start_time.elapsed());
             query_metrics.record_success(0_i64);
             None
         }
         Err(e) => {
+            query_metrics.add_duration(start_time.elapsed());
             try_rollback_transaction(connection).await;
             let err = display_stmt_db_error(source_file, statement, e);
             query_metrics.record_error(0_i64, &err);
