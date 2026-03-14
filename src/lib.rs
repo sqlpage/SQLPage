@@ -90,8 +90,8 @@ use crate::webserver::oidc::OidcState;
 use file_cache::FileCache;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use templates::AllTemplates;
 use telemetry_metrics::TelemetryMetrics;
+use templates::AllTemplates;
 use webserver::Database;
 
 /// `TEMPLATES_DIR` is the directory where .handlebars files are stored

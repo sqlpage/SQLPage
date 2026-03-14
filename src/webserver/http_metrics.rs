@@ -52,10 +52,12 @@ where
         let scheme = http_scheme(connection_info.scheme()).to_string();
         let host = connection_info.host().to_string();
         drop(connection_info);
-        
+
         // We get the route pattern. In Actix, req.match_pattern() returns the matched route
-        let route = req.match_pattern().unwrap_or_else(|| req.path().to_string());
-        
+        let route = req
+            .match_pattern()
+            .unwrap_or_else(|| req.path().to_string());
+
         let fut = self.service.call(req);
 
         Box::pin(async move {
