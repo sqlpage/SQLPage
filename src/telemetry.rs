@@ -177,10 +177,10 @@ use opentelemetry_semantic_conventions::attribute as otel;
     /// (`span_field_name`, `logfmt_key`)
     const SPAN_FIELDS: &[(&str, &str)] = &[
         (otel::HTTP_REQUEST_METHOD, "method"),
-        (otel::HTTP_TARGET, "path"),
+        (otel::URL_PATH, "path"),
         (otel::HTTP_RESPONSE_STATUS_CODE, "status"),
         ("sqlpage.file", "file"),
-        (otel::HTTP_CLIENT_IP, "client_ip"),
+        (otel::CLIENT_ADDRESS, "client_ip"),
     ];
 
     /// All-zeros trace ID means no real trace context.

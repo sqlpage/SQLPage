@@ -3,14 +3,14 @@ use std::time::Instant;
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    Error,
+    web, Error,
 };
 use futures_util::future::LocalBoxFuture;
-use opentelemetry::{global, KeyValue};
-use opentelemetry::metrics::Histogram;
+use opentelemetry::KeyValue;
 use opentelemetry_semantic_conventions::attribute as otel;
-use opentelemetry_semantic_conventions::metric as otel_metric;
 use tracing_actix_web::root_span_macro::private::{http_method_str, http_scheme};
+
+use crate::AppState;
 
 pub struct HttpMetrics;
 
@@ -26,22 +26,12 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        let histogram = global::meter("sqlpage")
-            .f64_histogram(otel_metric::HTTP_SERVER_REQUEST_DURATION)
-            .with_unit("s")
-            .with_description("Duration of HTTP requests processed by the server.")
-            .build();
-            
-        ready(Ok(HttpMetricsMiddleware {
-            service,
-            histogram,
-        }))
+        ready(Ok(HttpMetricsMiddleware { service }))
     }
 }
 
 pub struct HttpMetricsMiddleware<S> {
     service: S,
-    histogram: Histogram<f64>,
 }
 
 impl<S, B> Service<ServiceRequest> for HttpMetricsMiddleware<S>
@@ -66,7 +56,6 @@ where
         // We get the route pattern. In Actix, req.match_pattern() returns the matched route
         let route = req.match_pattern().unwrap_or_else(|| req.path().to_string());
         
-        let histogram = self.histogram.clone();
         let fut = self.service.call(req);
 
         Box::pin(async move {
@@ -86,7 +75,12 @@ where
                 attributes.push(KeyValue::new(otel::ERROR_TYPE, status.to_string()));
             }
 
-            histogram.record(duration, &attributes);
+            if let Some(app_state) = res.request().app_data::<web::Data<AppState>>() {
+                app_state
+                    .telemetry_metrics
+                    .http_request_duration
+                    .record(duration, &attributes);
+            }
 
             Ok(res)
         })

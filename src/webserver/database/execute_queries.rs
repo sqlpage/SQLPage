@@ -139,7 +139,7 @@ pub fn stream_query_results_with_conn<'a>(
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
                     let db_system_name = request.app_state.db.info.database_type.otel_name();
-                    let (query_span, operation_name) = create_db_query_span(&query.sql, source_file, stmt.query_position.start.line, db_system_name);
+                    let (query_span, operation_name) = create_db_query_span(query.sql, source_file, stmt.query_position.start.line, db_system_name);
                     record_query_params(&query_span, &query.param_values);
                     
                     let start_time = std::time::Instant::now();
@@ -311,7 +311,7 @@ async fn execute_set_variable_query<'a>(
 
     let db_system_name = request.app_state.db.info.database_type.otel_name();
     let (query_span, operation_name) = create_db_query_span(
-        &query.sql,
+        query.sql,
         source_file,
         statement.query_position.start.line,
         db_system_name,

@@ -345,15 +345,14 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
             "HTTP request",
             { otel::HTTP_REQUEST_METHOD } = %http_method,
             { otel::HTTP_ROUTE } = %http_route,
-            { otel::HTTP_FLAVOR } = %tracing_actix_web::root_span_macro::private::http_flavor(request.version()),
+            { otel::NETWORK_PROTOCOL_NAME } = "http",
+            { otel::NETWORK_PROTOCOL_VERSION } = %tracing_actix_web::root_span_macro::private::http_flavor(request.version()),
             { otel::URL_SCHEME } = %tracing_actix_web::root_span_macro::private::http_scheme(connection_info.scheme()),
-            { otel::HTTP_HOST } = %connection_info.host(),
-            { otel::HTTP_CLIENT_IP } = %request.connection_info().realip_remote_addr().unwrap_or(""),
-            { otel::HTTP_USER_AGENT } = %user_agent,
-            { otel::HTTP_TARGET } = %request
-                .uri()
-                .path_and_query()
-                .map_or("", actix_web::http::uri::PathAndQuery::as_str),
+            { otel::SERVER_ADDRESS } = %connection_info.host(),
+            { otel::CLIENT_ADDRESS } = %request.connection_info().realip_remote_addr().unwrap_or(""),
+            { otel::USER_AGENT_ORIGINAL } = %user_agent,
+            { otel::URL_PATH } = %request.path(),
+            { otel::URL_QUERY } = %request.query_string(),
             { otel::HTTP_RESPONSE_STATUS_CODE } = tracing::field::Empty,
             "otel.name" = %otel_name,
             "otel.kind" = "server",

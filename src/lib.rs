@@ -77,6 +77,7 @@ pub mod file_cache;
 pub mod filesystem;
 pub mod render;
 pub mod telemetry;
+pub mod telemetry_metrics;
 pub mod template_helpers;
 pub mod templates;
 pub mod utils;
@@ -90,6 +91,7 @@ use file_cache::FileCache;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use templates::AllTemplates;
+use telemetry_metrics::TelemetryMetrics;
 use webserver::Database;
 
 /// `TEMPLATES_DIR` is the directory where .handlebars files are stored
@@ -108,6 +110,7 @@ pub struct AppState {
     file_system: FileSystem,
     config: AppConfig,
     pub oidc_state: Option<Arc<OidcState>>,
+    pub telemetry_metrics: TelemetryMetrics,
 }
 
 impl AppState {
@@ -133,6 +136,7 @@ impl AppState {
         );
 
         let oidc_state = crate::webserver::oidc::initialize_oidc_state(config).await?;
+        let telemetry_metrics = TelemetryMetrics::new();
 
         Ok(AppState {
             db,
@@ -141,6 +145,7 @@ impl AppState {
             file_system,
             config: config.clone(),
             oidc_state,
+            telemetry_metrics,
         })
     }
 }
