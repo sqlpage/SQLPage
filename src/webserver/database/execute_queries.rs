@@ -214,12 +214,10 @@ pub fn stream_query_results_with_conn<'a>(
                     drop(stream);
                     if let Some(error) = error {
                         query_metrics.record_error(returned_rows, &error);
-                        record_pool_snapshot(request);
                         try_rollback_transaction(connection).await;
                         yield DbItem::Error(error);
                     } else {
                         query_metrics.record_success(returned_rows);
-                        record_pool_snapshot(request);
                     }
                 },
                 ParsedStatement::SetVariable { variable, value} => {
@@ -378,13 +376,11 @@ async fn execute_set_variable_query<'a>(
         Ok(Some(row)) => {
             query_metrics.add_duration(start_time.elapsed());
             query_metrics.record_success(1_i64);
-            record_pool_snapshot(request);
             row_to_string(&row)
         }
         Ok(None) => {
             query_metrics.add_duration(start_time.elapsed());
             query_metrics.record_success(0_i64);
-            record_pool_snapshot(request);
             None
         }
         Err(e) => {
@@ -392,7 +388,6 @@ async fn execute_set_variable_query<'a>(
             try_rollback_transaction(connection).await;
             let err = display_stmt_db_error(source_file, statement, e);
             query_metrics.record_error(0_i64, &err);
-            record_pool_snapshot(request);
             return Err(err);
         }
     };
@@ -450,15 +445,6 @@ fn vars_and_name<'a, 'b>(
     }
 }
 
-fn record_pool_snapshot(request: &ExecutionContext) {
-    let db = &request.app_state.db;
-    request.app_state.telemetry_metrics.record_pool_snapshot(
-        db.info.database_type.otel_name(),
-        db.connection.size(),
-        db.connection.num_idle(),
-    );
-}
-
 async fn take_connection<'a>(
     db: &'a Database,
     conn: &'a mut DbConn,
@@ -476,7 +462,6 @@ async fn take_connection<'a>(
             *conn = Some(c);
             let connection = conn.as_mut().unwrap();
             set_trace_context(connection, db).await;
-            record_pool_snapshot(request);
             Ok(connection)
         }
         Err(e) => {
@@ -901,7 +886,7 @@ mod tests {
                 exception.details = tracing::field::Empty,
                 db.response.returned_rows = tracing::field::Empty,
             );
-            let metrics = crate::telemetry_metrics::TelemetryMetrics::new("sqlite");
+            let metrics = crate::telemetry_metrics::TelemetryMetrics::default();
             let query_metrics =
                 DbQueryMetricsContext::new(span.clone(), "SELECT".to_string(), "sqlite", &metrics);
             query_metrics.record_success(3);
@@ -925,7 +910,7 @@ mod tests {
                 db.response.returned_rows = tracing::field::Empty,
             );
             let error = anyhow!("query failed").context("while executing SELECT 1");
-            let metrics = crate::telemetry_metrics::TelemetryMetrics::new("sqlite");
+            let metrics = crate::telemetry_metrics::TelemetryMetrics::default();
             let query_metrics =
                 DbQueryMetricsContext::new(span.clone(), "SELECT".to_string(), "sqlite", &metrics);
             query_metrics.record_error(2, &error);
