@@ -88,9 +88,7 @@ fn init_otel_tracing() {
     let meter_provider = SdkMeterProvider::builder()
         .with_reader(reader)
         .with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
-            if instrument.name() == "http.server.request.duration"
-                || instrument.name() == "db.client.operation.duration"
-            {
+            if instrument.kind() == opentelemetry_sdk::metrics::InstrumentKind::Histogram {
                 Some(
                     opentelemetry_sdk::metrics::Stream::builder()
                         .with_aggregation(
