@@ -553,6 +553,7 @@ pub fn create_app(
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
         .wrap(OidcMiddleware::new(&app_state))
+        .wrap(super::http_metrics::HttpMetrics)
         .wrap(TracingLogger::<SqlPageRootSpanBuilder>::new())
         .wrap(default_headers())
         .wrap(middleware::Condition::new(
