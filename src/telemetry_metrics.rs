@@ -8,6 +8,12 @@ pub struct TelemetryMetrics {
     pub db_query_duration: Histogram<f64>,
 }
 
+impl Default for TelemetryMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TelemetryMetrics {
     #[must_use]
     pub fn new() -> Self {
