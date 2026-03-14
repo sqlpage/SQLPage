@@ -55,11 +55,10 @@ impl Database {
         };
         let dbms_name: String = conn.dbms_name().await?;
         let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
-        super::set_discovered_db_type(database_type);
         drop(conn);
 
         let db_kind = connect_options.kind();
-        let pool = Self::create_pool_options(config, db_kind)
+        let pool = Self::create_pool_options(config, db_kind, database_type)
             .connect_with(connect_options)
             .await
             .with_context(|| format!("Unable to open connection pool to {database_url}"))?;
@@ -75,7 +74,7 @@ impl Database {
         })
     }
 
-    fn create_pool_options(config: &AppConfig, kind: AnyKind) -> PoolOptions<Any> {
+    fn create_pool_options(config: &AppConfig, kind: AnyKind, database_type: SupportedDatabase) -> PoolOptions<Any> {
         let mut pool_options = PoolOptions::new()
             .max_connections(if let Some(max) = config.max_database_pool_connections {
                 max
@@ -99,10 +98,11 @@ impl Database {
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
             ));
-        pool_options = add_on_return_to_pool(config, pool_options);
-        pool_options = add_on_connection_handler(config, pool_options);
+        let db_system_name = database_type.otel_name();
+        pool_options = add_on_return_to_pool(config, pool_options, db_system_name);
+        pool_options = add_on_connection_handler(config, pool_options, db_system_name);
         pool_options = pool_options.before_acquire(move |_, _| {
-            super::pool_metrics::on_acquire();
+            super::pool_metrics::on_acquire(db_system_name);
             Box::pin(async move { Ok(true) })
         });
         pool_options
@@ -112,6 +112,7 @@ impl Database {
 fn add_on_return_to_pool(
     config: &AppConfig,
     pool_options: PoolOptions<Any>,
+    db_system_name: &'static str,
 ) -> PoolOptions<Any> {
     let on_disconnect_file = config.configuration_directory.join(ON_RESET_FILE);
     let sql = if on_disconnect_file.exists() {
@@ -132,7 +133,7 @@ fn add_on_return_to_pool(
 
     pool_options.after_release(move |conn, meta| {
         let sql = sql.clone();
-        super::pool_metrics::on_release();
+        super::pool_metrics::on_release(db_system_name);
         Box::pin(async move {
             if let Some(sql) = sql {
                 on_return_to_pool(conn, meta, sql).await
@@ -166,6 +167,7 @@ fn on_return_to_pool(
 fn add_on_connection_handler(
     config: &AppConfig,
     pool_options: PoolOptions<Any>,
+    db_system_name: &'static str,
 ) -> PoolOptions<Any> {
     let on_connect_file = config.configuration_directory.join(ON_CONNECT_FILE);
     let sql = if on_connect_file.exists() {
@@ -186,7 +188,7 @@ fn add_on_connection_handler(
 
     pool_options.after_connect(move |conn, _| {
         let sql = sql.clone();
-        super::pool_metrics::on_connect();
+        super::pool_metrics::on_connect(db_system_name);
         Box::pin(async move {
             if let Some(sql) = sql {
                 log::debug!("Running connection handler on new connection");

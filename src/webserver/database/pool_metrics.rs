@@ -9,9 +9,8 @@ fn get_counter() -> UpDownCounter<i64> {
         .build()
 }
 
-pub fn on_acquire() {
+pub fn on_acquire(db_system_name: &'static str) {
     let counter = get_counter();
-    let db_system_name = super::get_discovered_db_type().otel_name();
     counter.add(1, &[
         KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),
@@ -24,9 +23,8 @@ pub fn on_acquire() {
     ]);
 }
 
-pub fn on_release() {
+pub fn on_release(db_system_name: &'static str) {
     let counter = get_counter();
-    let db_system_name = super::get_discovered_db_type().otel_name();
     counter.add(-1, &[
         KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),
@@ -39,9 +37,8 @@ pub fn on_release() {
     ]);
 }
 
-pub fn on_connect() {
+pub fn on_connect(db_system_name: &'static str) {
     let counter = get_counter();
-    let db_system_name = super::get_discovered_db_type().otel_name();
     counter.add(1, &[
         KeyValue::new("db.system.name", db_system_name),
         KeyValue::new("db.client.connection.pool.name", "sqlpage"),

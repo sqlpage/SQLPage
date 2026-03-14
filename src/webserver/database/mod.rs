@@ -99,17 +99,6 @@ pub struct Database {
     pub info: DbInfo,
 }
 
-static DB_TYPE: std::sync::OnceLock<SupportedDatabase> = std::sync::OnceLock::new();
-
-pub fn set_discovered_db_type(db_type: SupportedDatabase) {
-    let _ = DB_TYPE.set(db_type);
-}
-
-#[must_use]
-pub fn get_discovered_db_type() -> SupportedDatabase {
-    DB_TYPE.get().copied().unwrap_or(SupportedDatabase::Generic)
-}
-
 #[derive(Debug, Clone)]
 pub struct DbInfo {
     pub dbms_name: String,
