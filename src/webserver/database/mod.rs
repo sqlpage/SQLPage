@@ -3,9 +3,9 @@ mod connect;
 mod csv_import;
 pub mod execute_queries;
 pub mod migrations;
+mod pool_metrics;
 mod sql;
 mod sqlpage_functions;
-mod pool_metrics;
 mod syntax_tree;
 
 mod error_highlighting;

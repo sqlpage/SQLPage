@@ -10,7 +10,7 @@ use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::odbc::OdbcConnectOptions;
 use sqlx::{
-    any::{Any, AnyConnectOptions, AnyKind, AnyConnection},
+    any::{Any, AnyConnectOptions, AnyConnection, AnyKind},
     pool::PoolOptions,
     sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
     ConnectOptions, Connection, Executor,
@@ -74,7 +74,11 @@ impl Database {
         })
     }
 
-    fn create_pool_options(config: &AppConfig, kind: AnyKind, database_type: SupportedDatabase) -> PoolOptions<Any> {
+    fn create_pool_options(
+        config: &AppConfig,
+        kind: AnyKind,
+        database_type: SupportedDatabase,
+    ) -> PoolOptions<Any> {
         let mut pool_options = PoolOptions::new()
             .max_connections(if let Some(max) = config.max_database_pool_connections {
                 max
