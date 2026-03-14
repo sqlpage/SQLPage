@@ -1,10 +1,11 @@
 use opentelemetry::{global, KeyValue};
 use opentelemetry::metrics::UpDownCounter;
 use opentelemetry_semantic_conventions::attribute as otel;
+use opentelemetry_semantic_conventions::metric as otel_metric;
 
 fn get_counter() -> UpDownCounter<i64> {
     global::meter("sqlpage")
-        .i64_up_down_counter("db.client.connection.count")
+        .i64_up_down_counter(otel_metric::DB_CLIENT_CONNECTION_COUNT)
         .with_unit("{connection}")
         .with_description("Number of connections in the database pool.")
         .build()

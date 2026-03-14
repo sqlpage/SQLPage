@@ -172,14 +172,15 @@ mod logfmt {
         }
     }
 
+use opentelemetry_semantic_conventions::attribute as otel;
     /// Fields we pick from spans, in display order.
     /// (`span_field_name`, `logfmt_key`)
     const SPAN_FIELDS: &[(&str, &str)] = &[
-        ("http.method", "method"),
-        ("http.target", "path"),
-        ("http.status_code", "status"),
+        (otel::HTTP_REQUEST_METHOD, "method"),
+        (otel::HTTP_TARGET, "path"),
+        (otel::HTTP_RESPONSE_STATUS_CODE, "status"),
         ("sqlpage.file", "file"),
-        ("http.client_ip", "client_ip"),
+        (otel::HTTP_CLIENT_IP, "client_ip"),
     ];
 
     /// All-zeros trace ID means no real trace context.
@@ -486,8 +487,8 @@ mod logfmt {
         fn debug_logs_include_unmapped_span_fields() {
             let mut buf = String::new();
             let span_fields = HashMap::from([
-                ("http.method", "GET".to_string()),
-                ("http.route", "/users/:id".to_string()),
+                (otel::HTTP_REQUEST_METHOD, "GET".to_string()),
+                (otel::HTTP_ROUTE, "/users/:id".to_string()),
                 ("otel.kind", "server".to_string()),
             ]);
 
@@ -500,8 +501,8 @@ mod logfmt {
         fn info_logs_keep_only_mapped_span_fields_when_not_in_debug_mode() {
             let mut buf = String::new();
             let span_fields = HashMap::from([
-                ("http.method", "GET".to_string()),
-                ("http.route", "/users/:id".to_string()),
+                (otel::HTTP_REQUEST_METHOD, "GET".to_string()),
+                (otel::HTTP_ROUTE, "/users/:id".to_string()),
                 ("otel.kind", "server".to_string()),
             ]);
 

@@ -30,23 +30,12 @@ use sqlx::{
 
 pub type DbConn = Option<PoolConnection<sqlx::Any>>;
 
-fn record_query_params(span: &tracing::Span, params: &[Option<String>]) {
-    use tracing_opentelemetry::OpenTelemetrySpanExt;
-    for (idx, value) in params.iter().enumerate() {
-        let key = opentelemetry::Key::new(format!("db.query.parameter.{idx}"));
-        let otel_value = match value {
-            Some(v) => opentelemetry::Value::String(v.clone().into()),
-            None => opentelemetry::Value::String("NULL".into()),
-        };
-        span.set_attribute(key, otel_value);
-    }
-}
-
 fn source_line_number(line: usize) -> i64 {
     i64::try_from(line).unwrap_or(i64::MAX)
 }
 
 use opentelemetry_semantic_conventions::attribute as otel;
+use opentelemetry_semantic_conventions::metric as otel_metric;
 
 fn record_query_params(span: &tracing::Span, params: &[Option<String>]) {
     use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -65,7 +54,7 @@ fn record_db_query_success(span: &tracing::Span, returned_rows: i64, start_time:
     span.record(otel::OTEL_STATUS_CODE, "OK");
     let duration = start_time.elapsed().as_secs_f64();
     let histogram = opentelemetry::global::meter("sqlpage")
-        .f64_histogram("db.client.operation.duration")
+        .f64_histogram(otel_metric::DB_CLIENT_OPERATION_DURATION)
         .with_unit("s")
         .with_description("Duration of executing SQL queries.")
         .build();
@@ -84,7 +73,7 @@ fn record_db_query_error(span: &tracing::Span, returned_rows: i64, error: &anyho
     span.record("exception.details", tracing::field::debug(error));
     let duration = start_time.elapsed().as_secs_f64();
     let histogram = opentelemetry::global::meter("sqlpage")
-        .f64_histogram("db.client.operation.duration")
+        .f64_histogram(otel_metric::DB_CLIENT_OPERATION_DURATION)
         .with_unit("s")
         .with_description("Duration of executing SQL queries.")
         .build();
@@ -848,9 +837,9 @@ mod tests {
             drop(span);
         });
 
-        assert_eq!(fields["otel.status_code"], "OK");
-        assert_eq!(fields["db.response.returned_rows"], "3");
-        assert!(!fields.contains_key("exception.message"));
+        assert_eq!(fields[otel::OTEL_STATUS_CODE], "OK");
+        assert_eq!(fields[otel::DB_RESPONSE_RETURNED_ROWS], "3");
+        assert!(!fields.contains_key(otel::EXCEPTION_MESSAGE));
         assert!(!fields.contains_key("exception.details"));
     }
 
@@ -869,9 +858,9 @@ mod tests {
             drop(span);
         });
 
-        assert_eq!(fields["otel.status_code"], "ERROR");
-        assert_eq!(fields["db.response.returned_rows"], "2");
-        assert!(fields["exception.message"].contains("while executing SELECT 1"));
+        assert_eq!(fields[otel::OTEL_STATUS_CODE], "ERROR");
+        assert_eq!(fields[otel::DB_RESPONSE_RETURNED_ROWS], "2");
+        assert!(fields[otel::EXCEPTION_MESSAGE].contains("while executing SELECT 1"));
         assert!(fields["exception.details"].contains("query failed"));
     }
 }

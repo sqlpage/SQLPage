@@ -9,6 +9,7 @@ use futures_util::future::LocalBoxFuture;
 use opentelemetry::{global, KeyValue};
 use opentelemetry::metrics::Histogram;
 use opentelemetry_semantic_conventions::attribute as otel;
+use opentelemetry_semantic_conventions::metric as otel_metric;
 use tracing_actix_web::root_span_macro::private::{http_method_str, http_scheme};
 
 pub struct HttpMetrics;
@@ -26,7 +27,7 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         let histogram = global::meter("sqlpage")
-            .f64_histogram("http.server.request.duration")
+            .f64_histogram(otel_metric::HTTP_SERVER_REQUEST_DURATION)
             .with_unit("s")
             .with_description("Duration of HTTP requests processed by the server.")
             .build();

@@ -90,7 +90,7 @@ tracing-log = "0.2"
 opentelemetry = "0.31"
 opentelemetry_sdk = { version = "0.31", features = ["metrics", "rt-tokio-current-thread"] }
 opentelemetry-otlp = { version = "0.31", features = ["http-proto", "grpc-tonic", "metrics"] }
-opentelemetry-semantic-conventions = "0.31"
+opentelemetry-semantic-conventions = { version = "0.31", features = ["semconv_experimental"] }
 
 
 [features]
