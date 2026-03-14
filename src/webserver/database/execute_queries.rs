@@ -93,10 +93,13 @@ pub fn stream_query_results_with_conn<'a>(
                     request.server_timing.record("bind_params");
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::trace!("Executing query {:?}", query.sql);
+                    let operation_name = query.sql.split_whitespace().next().unwrap_or("").to_uppercase();
+                    let db_system_name = request.app_state.db.info.database_type.otel_name();
                     let query_span = tracing::info_span!(
                         "db.query",
                         db.query.text = query.sql,
-                        db.system.name = request.app_state.db.info.database_type.otel_name(),
+                        db.system.name = db_system_name,
+                        db.operation.name = operation_name,
                         code.file.path = %source_file.display(),
                         code.line.number = source_line_number(stmt.query_position.start.line),
                         otel.status_code = tracing::field::Empty,
@@ -105,6 +108,8 @@ pub fn stream_query_results_with_conn<'a>(
                         db.response.returned_rows = tracing::field::Empty,
                     );
                     record_query_params(&query_span, &query.param_values);
+                    
+                    let start_time = std::time::Instant::now();
                     let mut stream = connection.fetch_many(query);
                     let mut error = None;
                     let mut returned_rows: i64 = 0;
@@ -130,11 +135,29 @@ pub fn stream_query_results_with_conn<'a>(
                         }
                     }
                     drop(stream);
+                    
+                    let duration = start_time.elapsed().as_secs_f64();
+                    let histogram = opentelemetry::global::meter("sqlpage")
+                        .f64_histogram("db.client.operation.duration")
+                        .with_unit("s")
+                        .with_description("Duration of executing SQL queries.")
+                        .build();
+
+                    let mut attributes = vec![
+                        opentelemetry::KeyValue::new("db.system.name", db_system_name),
+                        opentelemetry::KeyValue::new("db.operation.name", operation_name),
+                    ];
+                    
                     if let Some(error) = error {
+                        attributes.push(opentelemetry::KeyValue::new("otel.status_code", "ERROR"));
+                        attributes.push(opentelemetry::KeyValue::new("error.type", error.to_string()));
+                        histogram.record(duration, &attributes);
                         record_db_query_error(&query_span, returned_rows, &error);
                         try_rollback_transaction(connection).await;
                         yield DbItem::Error(error);
                     } else {
+                        attributes.push(opentelemetry::KeyValue::new("otel.status_code", "OK"));
+                        histogram.record(duration, &attributes);
                         record_db_query_success(&query_span, returned_rows);
                     }
                 },
