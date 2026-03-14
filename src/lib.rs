@@ -136,7 +136,7 @@ impl AppState {
         );
 
         let oidc_state = crate::webserver::oidc::initialize_oidc_state(config).await?;
-        let telemetry_metrics = TelemetryMetrics::new();
+        let telemetry_metrics = TelemetryMetrics::new(db.info.database_type.otel_name());
 
         Ok(AppState {
             db,
