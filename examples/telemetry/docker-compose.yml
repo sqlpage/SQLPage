@@ -23,6 +23,7 @@ services:
     environment:
       - DATABASE_URL=postgres://sqlpage:sqlpage@postgres:5432/sqlpage
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_METRIC_EXPORT_INTERVAL=1000
       - OTEL_SERVICE_NAME=sqlpage
     volumes:
       - ./website:/var/www
