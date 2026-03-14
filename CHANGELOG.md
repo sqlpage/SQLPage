@@ -5,6 +5,7 @@
 - Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
 - Fix: invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Logging: `LOG_LEVEL` is now the primary environment variable for configuring SQLPage's log filter. `RUST_LOG` remains supported as an alias.
+- added support for OpenTelemetry tracing: you can now connect SQLPage to an OpenTelemetry tracing backend via the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable.
 
 ## 0.43.0
 
