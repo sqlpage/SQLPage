@@ -46,9 +46,23 @@ fn source_line_number(line: usize) -> i64 {
     i64::try_from(line).unwrap_or(i64::MAX)
 }
 
+use opentelemetry_semantic_conventions::attribute as otel;
+
+fn record_query_params(span: &tracing::Span, params: &[Option<String>]) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+    for (idx, value) in params.iter().enumerate() {
+        let key = opentelemetry::Key::new(format!("{}.{idx}", otel::DB_QUERY_PARAMETER));
+        let otel_value = match value {
+            Some(v) => opentelemetry::Value::String(v.clone().into()),
+            None => opentelemetry::Value::String("NULL".into()),
+        };
+        span.set_attribute(key, otel_value);
+    }
+}
+
 fn record_db_query_success(span: &tracing::Span, returned_rows: i64, start_time: std::time::Instant, db_system_name: &'static str, operation_name: String) {
-    span.record("db.response.returned_rows", returned_rows);
-    span.record("otel.status_code", "OK");
+    span.record(otel::DB_RESPONSE_RETURNED_ROWS, returned_rows);
+    span.record(otel::OTEL_STATUS_CODE, "OK");
     let duration = start_time.elapsed().as_secs_f64();
     let histogram = opentelemetry::global::meter("sqlpage")
         .f64_histogram("db.client.operation.duration")
@@ -56,17 +70,17 @@ fn record_db_query_success(span: &tracing::Span, returned_rows: i64, start_time:
         .with_description("Duration of executing SQL queries.")
         .build();
     let attributes = [
-        opentelemetry::KeyValue::new("db.system.name", db_system_name),
-        opentelemetry::KeyValue::new("db.operation.name", operation_name),
-        opentelemetry::KeyValue::new("otel.status_code", "OK"),
+        opentelemetry::KeyValue::new(otel::DB_SYSTEM_NAME, db_system_name),
+        opentelemetry::KeyValue::new(otel::DB_OPERATION_NAME, operation_name),
+        opentelemetry::KeyValue::new(otel::OTEL_STATUS_CODE, "OK"),
     ];
     histogram.record(duration, &attributes);
 }
 
 fn record_db_query_error(span: &tracing::Span, returned_rows: i64, error: &anyhow::Error, start_time: std::time::Instant, db_system_name: &'static str, operation_name: String) {
-    span.record("db.response.returned_rows", returned_rows);
-    span.record("otel.status_code", "ERROR");
-    span.record("exception.message", tracing::field::display(error));
+    span.record(otel::DB_RESPONSE_RETURNED_ROWS, returned_rows);
+    span.record(otel::OTEL_STATUS_CODE, "ERROR");
+    span.record(otel::EXCEPTION_MESSAGE, tracing::field::display(error));
     span.record("exception.details", tracing::field::debug(error));
     let duration = start_time.elapsed().as_secs_f64();
     let histogram = opentelemetry::global::meter("sqlpage")
@@ -75,10 +89,10 @@ fn record_db_query_error(span: &tracing::Span, returned_rows: i64, error: &anyho
         .with_description("Duration of executing SQL queries.")
         .build();
     let attributes = [
-        opentelemetry::KeyValue::new("db.system.name", db_system_name),
-        opentelemetry::KeyValue::new("db.operation.name", operation_name),
-        opentelemetry::KeyValue::new("otel.status_code", "ERROR"),
-        opentelemetry::KeyValue::new("error.type", error.to_string()),
+        opentelemetry::KeyValue::new(otel::DB_SYSTEM_NAME, db_system_name),
+        opentelemetry::KeyValue::new(otel::DB_OPERATION_NAME, operation_name),
+        opentelemetry::KeyValue::new(otel::OTEL_STATUS_CODE, "ERROR"),
+        opentelemetry::KeyValue::new(otel::ERROR_TYPE, error.to_string()),
     ];
     histogram.record(duration, &attributes);
 }
@@ -87,15 +101,15 @@ fn create_db_query_span(sql: &str, source_file: &Path, line: usize, db_system_na
     let operation_name = sql.split_whitespace().next().unwrap_or("").to_uppercase();
     let span = tracing::info_span!(
         "db.query",
-        db.query.text = sql,
-        db.system.name = db_system_name,
-        db.operation.name = operation_name,
-        code.file.path = %source_file.display(),
-        code.line.number = source_line_number(line),
-        otel.status_code = tracing::field::Empty,
-        exception.message = tracing::field::Empty,
-        exception.details = tracing::field::Empty,
-        db.response.returned_rows = tracing::field::Empty,
+        { otel::DB_QUERY_TEXT } = sql,
+        { otel::DB_SYSTEM_NAME } = db_system_name,
+        { otel::DB_OPERATION_NAME } = operation_name,
+        { otel::CODE_FILE_PATH } = %source_file.display(),
+        { otel::CODE_LINE_NUMBER } = source_line_number(line),
+        { otel::OTEL_STATUS_CODE } = tracing::field::Empty,
+        { otel::EXCEPTION_MESSAGE } = tracing::field::Empty,
+        "exception.details" = tracing::field::Empty,
+        { otel::DB_RESPONSE_RETURNED_ROWS } = tracing::field::Empty,
     );
     (span, operation_name)
 }

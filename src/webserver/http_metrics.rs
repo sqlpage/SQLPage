@@ -8,6 +8,7 @@ use actix_web::{
 use futures_util::future::LocalBoxFuture;
 use opentelemetry::{global, KeyValue};
 use opentelemetry::metrics::Histogram;
+use opentelemetry_semantic_conventions::attribute as otel;
 use tracing_actix_web::root_span_macro::private::{http_method_str, http_scheme};
 
 pub struct HttpMetrics;
@@ -73,15 +74,15 @@ where
             let status = res.status().as_u16();
 
             let mut attributes = vec![
-                KeyValue::new("http.request.method", method),
-                KeyValue::new("http.response.status_code", status.to_string()),
-                KeyValue::new("http.route", route),
-                KeyValue::new("url.scheme", scheme),
-                KeyValue::new("server.address", host),
+                KeyValue::new(otel::HTTP_REQUEST_METHOD, method),
+                KeyValue::new(otel::HTTP_RESPONSE_STATUS_CODE, status.to_string()),
+                KeyValue::new(otel::HTTP_ROUTE, route),
+                KeyValue::new(otel::URL_SCHEME, scheme),
+                KeyValue::new(otel::SERVER_ADDRESS, host),
             ];
 
             if status >= 500 {
-                attributes.push(KeyValue::new("error.type", status.to_string()));
+                attributes.push(KeyValue::new(otel::ERROR_TYPE, status.to_string()));
             }
 
             histogram.record(duration, &attributes);

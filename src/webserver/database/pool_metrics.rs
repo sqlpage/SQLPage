@@ -1,5 +1,6 @@
 use opentelemetry::{global, KeyValue};
 use opentelemetry::metrics::UpDownCounter;
+use opentelemetry_semantic_conventions::attribute as otel;
 
 fn get_counter() -> UpDownCounter<i64> {
     global::meter("sqlpage")
@@ -12,36 +13,36 @@ fn get_counter() -> UpDownCounter<i64> {
 pub fn on_acquire(db_system_name: &'static str) {
     let counter = get_counter();
     counter.add(1, &[
-        KeyValue::new("db.system.name", db_system_name),
-        KeyValue::new("db.client.connection.pool.name", "sqlpage"),
-        KeyValue::new("db.client.connection.state", "used"),
+        KeyValue::new(otel::DB_SYSTEM_NAME, db_system_name),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_POOL_NAME, "sqlpage"),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_STATE, "used"),
     ]);
     counter.add(-1, &[
-        KeyValue::new("db.system.name", db_system_name),
-        KeyValue::new("db.client.connection.pool.name", "sqlpage"),
-        KeyValue::new("db.client.connection.state", "idle"),
+        KeyValue::new(otel::DB_SYSTEM_NAME, db_system_name),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_POOL_NAME, "sqlpage"),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_STATE, "idle"),
     ]);
 }
 
 pub fn on_release(db_system_name: &'static str) {
     let counter = get_counter();
     counter.add(-1, &[
-        KeyValue::new("db.system.name", db_system_name),
-        KeyValue::new("db.client.connection.pool.name", "sqlpage"),
-        KeyValue::new("db.client.connection.state", "used"),
+        KeyValue::new(otel::DB_SYSTEM_NAME, db_system_name),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_POOL_NAME, "sqlpage"),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_STATE, "used"),
     ]);
     counter.add(1, &[
-        KeyValue::new("db.system.name", db_system_name),
-        KeyValue::new("db.client.connection.pool.name", "sqlpage"),
-        KeyValue::new("db.client.connection.state", "idle"),
+        KeyValue::new(otel::DB_SYSTEM_NAME, db_system_name),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_POOL_NAME, "sqlpage"),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_STATE, "idle"),
     ]);
 }
 
 pub fn on_connect(db_system_name: &'static str) {
     let counter = get_counter();
     counter.add(1, &[
-        KeyValue::new("db.system.name", db_system_name),
-        KeyValue::new("db.client.connection.pool.name", "sqlpage"),
-        KeyValue::new("db.client.connection.state", "idle"),
+        KeyValue::new(otel::DB_SYSTEM_NAME, db_system_name),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_POOL_NAME, "sqlpage"),
+        KeyValue::new(otel::DB_CLIENT_CONNECTION_STATE, "idle"),
     ]);
 }
