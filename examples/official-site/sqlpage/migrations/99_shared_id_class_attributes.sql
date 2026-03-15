@@ -7,6 +7,7 @@ FROM (VALUES
     ('code', TRUE),
     ('csv', TRUE),
     ('datagrid', TRUE),
+    ('datagrid', FALSE),
     ('hero', TRUE),
     ('list', TRUE),
     ('list', FALSE),
