@@ -95,8 +95,14 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
         .build()
         .expect("Failed to build OTLP span exporter");
 
+    let span_processor =
+        opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(
+            exporter,
+            opentelemetry_sdk::runtime::Tokio,
+        )
+        .build();
     let provider = SdkTracerProvider::builder()
-        .with_batch_exporter(exporter)
+        .with_span_processor(span_processor)
         .build();
 
     let tracer = provider.tracer("sqlpage");
@@ -109,7 +115,12 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
         .build()
         .expect("Failed to build OTLP metric exporter");
 
-    let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(metric_exporter).build();
+    let reader =
+        opentelemetry_sdk::metrics::periodic_reader_with_async_runtime::PeriodicReader::builder(
+            metric_exporter,
+            opentelemetry_sdk::runtime::Tokio,
+        )
+        .build();
     let meter_provider = SdkMeterProvider::builder()
         .with_reader(reader)
         .with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
