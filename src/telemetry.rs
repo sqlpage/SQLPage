@@ -89,7 +89,6 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
 
     // W3C TraceContext propagation (traceparent header)
     global::set_text_map_propagator(TraceContextPropagator::new());
-
     // OTLP exporter — reads OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, etc.
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_http()
