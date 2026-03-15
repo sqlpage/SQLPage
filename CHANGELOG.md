@@ -13,6 +13,7 @@
   - <img width="2926" height="1664" alt="image" src="https://github.com/user-attachments/assets/11ae3644-a4f4-4218-98b2-4bf5afb345f8" />
 - Added an argument to `sqlpage.persist_uploaded_file(...)` to control the permissions of the newly created file.
   - Notably, this makes it easier to accelerate serving of uploaded files by letting a reverse proxy like nginx serve them directly.
+- Added an [`id` row-level parameter to the datagrid component](https://github.com/sqlpage/SQLPage/issues/1243)
 
 ## 0.43.0
 
