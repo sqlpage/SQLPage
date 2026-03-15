@@ -19,13 +19,17 @@ static TEST_LOGGING_INIT: Once = Once::new();
 /// Initializes logging / tracing. Returns `true` if `OTel` was activated.
 #[must_use]
 pub fn init_telemetry() -> bool {
+    init_telemetry_with_log_layer(logfmt::LogfmtLayer::new())
+}
+
+fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> bool {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
     let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
 
     if otel_active {
-        init_otel_tracing();
+        init_otel_tracing(logfmt_layer);
     } else {
-        init_tracing();
+        init_tracing(logfmt_layer);
     }
 
     otel_active
@@ -34,7 +38,7 @@ pub fn init_telemetry() -> bool {
 /// Initializes logging once for tests, reusing the production telemetry setup.
 pub fn init_test_logging() {
     TEST_LOGGING_INIT.call_once(|| {
-        let _ = init_telemetry();
+        let _ = init_telemetry_with_log_layer(logfmt::LogfmtLayer::test_writer());
     });
 }
 
@@ -53,17 +57,17 @@ pub fn shutdown_telemetry() {
 }
 
 /// Tracing subscriber without `OTel` export — logfmt output only.
-fn init_tracing() {
+fn init_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     use tracing_subscriber::layer::SubscriberExt;
 
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
-        .with(logfmt::LogfmtLayer::new());
+        .with(logfmt_layer);
 
     set_global_subscriber(subscriber);
 }
 
-fn init_otel_tracing() {
+fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     use opentelemetry::global;
     use opentelemetry::trace::TracerProvider as _;
     use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -125,7 +129,7 @@ fn init_otel_tracing() {
 
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
-        .with(logfmt::LogfmtLayer::new())
+        .with(logfmt_layer)
         .with(otel_layer)
         .with(tracing_opentelemetry::MetricsLayer::new(meter_provider));
 
@@ -225,14 +229,29 @@ mod logfmt {
     const BOLD: &str = "\x1b[1m";
     const RESET: &str = "\x1b[0m";
 
+    #[derive(Copy, Clone)]
+    enum OutputMode {
+        Stderr,
+        TestWriter,
+    }
+
     pub(super) struct LogfmtLayer {
         use_colors: bool,
+        output_mode: OutputMode,
     }
 
     impl LogfmtLayer {
         pub fn new() -> Self {
             Self {
                 use_colors: io::stderr().is_terminal(),
+                output_mode: OutputMode::Stderr,
+            }
+        }
+
+        pub fn test_writer() -> Self {
+            Self {
+                use_colors: false,
+                output_mode: OutputMode::TestWriter,
             }
         }
     }
@@ -288,7 +307,14 @@ mod logfmt {
 
             buf.push('\n');
             write_multiline_message(&mut buf, msg, multiline_msg);
-            let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
+            match self.output_mode {
+                OutputMode::Stderr => {
+                    let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
+                }
+                OutputMode::TestWriter => {
+                    eprint!("{buf}");
+                }
+            }
         }
     }
 
