@@ -63,14 +63,31 @@ fn otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::UnboundedSende
 fn init_otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>>
 {
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<OtlpHttpJob>();
+    let (init_result_sender, init_result_receiver) = std::sync::mpsc::sync_channel(1);
+    let use_system_root_ca_certificates =
+        crate::webserver::http_client::default_system_root_ca_certificates_from_env();
 
     std::thread::Builder::new()
         .name("sqlpage-otlp-http".to_owned())
         .spawn(move || {
             actix_web::rt::System::new().block_on(async move {
-                let awc_client = awc::Client::builder()
-                    .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
-                    .finish();
+                let awc_client =
+                    match crate::webserver::http_client::make_http_client_with_system_roots(
+                        use_system_root_ca_certificates,
+                    ) {
+                        Ok(client) => {
+                            let _ = init_result_sender.send(Ok(()));
+                            client
+                        }
+                        Err(error) => {
+                            let error = format!("Failed to initialize OTLP AWC client: {error:#}");
+                            let _ = init_result_sender.send(Err(error.clone()));
+                            while let Some(job) = receiver.recv().await {
+                                let _ = job.response_sender.send(Err(error.clone()));
+                            }
+                            return;
+                        }
+                    };
 
                 while let Some(job) = receiver.recv().await {
                     let response = execute_otlp_http_request_with_awc(&awc_client, job.request)
@@ -81,6 +98,12 @@ fn init_otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::Unbounded
             });
         })
         .context("Failed to spawn OTLP AWC worker thread")?;
+
+    match init_result_receiver.recv() {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => anyhow::bail!("{error}"),
+        Err(error) => anyhow::bail!("OTLP AWC worker initialization channel closed: {error}"),
+    }
 
     Ok(sender)
 }

@@ -6,7 +6,18 @@ use std::sync::OnceLock;
 static NATIVE_CERTS: OnceLock<anyhow::Result<rustls::RootCertStore>> = OnceLock::new();
 
 pub fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result<awc::Client> {
-    let connector = if config.system_root_ca_certificates {
+    make_http_client_with_system_roots(config.system_root_ca_certificates)
+}
+
+pub(crate) fn default_system_root_ca_certificates_from_env() -> bool {
+    std::env::var("SSL_CERT_FILE").is_ok_and(|value| !value.is_empty())
+        || std::env::var("SSL_CERT_DIR").is_ok_and(|value| !value.is_empty())
+}
+
+pub(crate) fn make_http_client_with_system_roots(
+    system_root_ca_certificates: bool,
+) -> anyhow::Result<awc::Client> {
+    let connector = if system_root_ca_certificates {
         let roots = NATIVE_CERTS
             .get_or_init(|| {
                 log::debug!("Loading native certificates because system_root_ca_certificates is enabled");
