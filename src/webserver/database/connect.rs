@@ -107,8 +107,15 @@ impl Database {
 fn add_on_return_to_pool(config: &AppConfig, pool_options: PoolOptions<Any>) -> PoolOptions<Any> {
     let on_disconnect_file = config.configuration_directory.join(ON_RESET_FILE);
     let sql = if on_disconnect_file.exists() {
+        log::info!(
+            "Creating a custom SQL connection cleanup handler from {}",
+            on_disconnect_file.display()
+        );
         match std::fs::read_to_string(&on_disconnect_file) {
-            Ok(sql) => Some(std::sync::Arc::new(sql)),
+            Ok(sql) => {
+                log::trace!("The custom SQL connection cleanup handler is:\n{sql}");
+                Some(std::sync::Arc::new(sql))
+            }
             Err(e) => {
                 log::error!(
                     "Unable to read the file {}: {}",
@@ -119,6 +126,10 @@ fn add_on_return_to_pool(config: &AppConfig, pool_options: PoolOptions<Any>) -> 
             }
         }
     } else {
+        log::debug!(
+            "Not creating a custom SQL connection cleanup handler because {} does not exist",
+            on_disconnect_file.display()
+        );
         None
     };
 
@@ -159,9 +170,17 @@ fn add_on_connection_handler(
     pool_options: PoolOptions<Any>,
 ) -> PoolOptions<Any> {
     let on_connect_file = config.configuration_directory.join(ON_CONNECT_FILE);
+    let on_connect_file_display = on_connect_file.display().to_string();
     let sql = if on_connect_file.exists() {
+        log::info!(
+            "Creating a custom SQL database connection handler from {}",
+            on_connect_file.display()
+        );
         match std::fs::read_to_string(&on_connect_file) {
-            Ok(sql) => Some(std::sync::Arc::new(sql)),
+            Ok(sql) => {
+                log::trace!("The custom SQL database connection handler is:\n{sql}");
+                Some(std::sync::Arc::new(sql))
+            }
             Err(e) => {
                 log::error!(
                     "Unable to read the file {}: {}",
@@ -172,14 +191,19 @@ fn add_on_connection_handler(
             }
         }
     } else {
+        log::debug!(
+            "Not creating a custom SQL database connection handler because {} does not exist",
+            on_connect_file.display()
+        );
         None
     };
 
     pool_options.after_connect(move |conn, _| {
         let sql = sql.clone();
+        let on_connect_file_display = on_connect_file_display.clone();
         Box::pin(async move {
             if let Some(sql) = sql {
-                log::debug!("Running connection handler on new connection");
+                log::debug!("Running {on_connect_file_display} on new connection");
                 let r = conn.execute(sql.as_str()).await?;
                 log::debug!("Finished running connection handler on new connection: {r:?}");
             }
