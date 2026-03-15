@@ -16,7 +16,8 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 static TEST_LOGGING_INIT: Once = Once::new();
-const DEFAULT_ENV_FILTER_DIRECTIVES: &str = "sqlpage=info,actix_web=info,tracing_actix_web=info";
+const DEFAULT_ENV_FILTER_DIRECTIVES: &str =
+    "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn";
 
 /// Initializes logging / tracing. Returns whether `OTel` was activated.
 pub fn init_telemetry() -> anyhow::Result<bool> {
@@ -335,11 +336,14 @@ mod logfmt {
             let target = event_target(event, &event_fields);
             let msg = event_fields.get("message");
             let multiline_msg = is_multiline_terminal_message(colors, msg);
+            let include_all_event_fields =
+                include_all_span_fields || msg.is_none_or(String::is_empty);
 
             write_timestamp(&mut buf, colors);
             write_level(&mut buf, level, colors);
             write_message(&mut buf, msg, multiline_msg);
             write_dimmed_field(&mut buf, "target", target, colors);
+            write_event_fields(&mut buf, &event_fields, include_all_event_fields);
             write_span_fields(&mut buf, ctx.event_scope(event), include_all_span_fields);
             write_trace_id(&mut buf, ctx.event_scope(event), colors);
 
@@ -407,9 +411,31 @@ mod logfmt {
 
     fn write_message(buf: &mut String, msg: Option<&String>, multiline_msg: bool) {
         if !multiline_msg {
-            if let Some(msg) = msg {
+            if let Some(msg) = msg.filter(|msg| !msg.is_empty()) {
                 write_logfmt_value(buf, "msg", msg);
             }
+        }
+    }
+
+    fn write_event_fields(
+        buf: &mut String,
+        event_fields: &HashMap<&'static str, String>,
+        include_all_event_fields: bool,
+    ) {
+        if !include_all_event_fields {
+            return;
+        }
+
+        let mut extra_fields = BTreeMap::new();
+        for (&key, value) in event_fields {
+            if key == "message" || key == "log.target" {
+                continue;
+            }
+            extra_fields.insert(key, value);
+        }
+
+        for (key, value) in extra_fields {
+            write_logfmt_value(buf, key, value);
         }
     }
 
@@ -573,7 +599,7 @@ mod logfmt {
         fn empty_values_fall_back_to_default_filter() {
             assert_eq!(
                 env_filter_directives(Some(""), Some("")),
-                "sqlpage=info,actix_web=info,tracing_actix_web=info"
+                "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn"
             );
         }
 
@@ -603,6 +629,24 @@ mod logfmt {
             write_span_field_maps(&mut buf, [&span_fields], false);
 
             assert_eq!(buf, " method=GET");
+        }
+
+        #[test]
+        fn event_fields_are_rendered_when_message_is_missing() {
+            let mut buf = String::new();
+            let event_fields = HashMap::from([
+                ("message", String::new()),
+                ("log.target", "opentelemetry_sdk".to_string()),
+                ("name", "BatchSpanProcessor.ExportFailed".to_string()),
+                ("reason", "connection error".to_string()),
+            ]);
+
+            write_event_fields(&mut buf, &event_fields, true);
+
+            assert_eq!(
+                buf,
+                " name=BatchSpanProcessor.ExportFailed reason=\"connection error\""
+            );
         }
     }
 }
