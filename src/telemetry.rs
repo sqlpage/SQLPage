@@ -9,6 +9,7 @@
 use std::env;
 use std::sync::{Once, OnceLock};
 
+use anyhow::Context as _;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 
@@ -17,23 +18,22 @@ static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 static TEST_LOGGING_INIT: Once = Once::new();
 const DEFAULT_ENV_FILTER_DIRECTIVES: &str = "sqlpage=info,actix_web=info,tracing_actix_web=info";
 
-/// Initializes logging / tracing. Returns `true` if `OTel` was activated.
-#[must_use]
-pub fn init_telemetry() -> bool {
+/// Initializes logging / tracing. Returns whether `OTel` was activated.
+pub fn init_telemetry() -> anyhow::Result<bool> {
     init_telemetry_with_log_layer(logfmt::LogfmtLayer::new())
 }
 
-fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> bool {
+fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<bool> {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
     let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
 
     if otel_active {
-        init_otel_tracing(logfmt_layer);
+        init_otel_tracing(logfmt_layer)?;
     } else {
-        init_tracing(logfmt_layer);
+        init_tracing(logfmt_layer)?;
     }
 
-    otel_active
+    Ok(otel_active)
 }
 
 /// Initializes logging once for tests using the same formatter as production.
@@ -61,14 +61,14 @@ pub fn shutdown_telemetry() {
 }
 
 /// Tracing subscriber without `OTel` export — logfmt output only.
-fn init_tracing(logfmt_layer: logfmt::LogfmtLayer) {
+fn init_tracing(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<()> {
     use tracing_subscriber::layer::SubscriberExt;
 
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
         .with(logfmt_layer);
 
-    set_global_subscriber(subscriber);
+    set_global_subscriber(subscriber)
 }
 
 fn init_test_tracing() {
@@ -78,12 +78,13 @@ fn init_test_tracing() {
         .with(test_env_filter())
         .with(logfmt::LogfmtLayer::test_writer());
 
-    set_global_subscriber(subscriber);
+    set_global_subscriber(subscriber).expect("Failed to initialize test tracing subscriber");
 }
 
-fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
+fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<()> {
     use opentelemetry::global;
     use opentelemetry::trace::TracerProvider as _;
+    use opentelemetry_otlp::WithExportConfig as _;
     use opentelemetry_sdk::propagation::TraceContextPropagator;
     use tracing_subscriber::layer::SubscriberExt;
 
@@ -92,8 +93,9 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     // OTLP exporter — reads OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, etc.
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_http()
+        .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
         .build()
-        .expect("Failed to build OTLP span exporter");
+        .context("Failed to build OTLP span exporter")?;
 
     let span_processor =
         opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(
@@ -112,8 +114,9 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     // OTLP Metric exporter
     let metric_exporter = opentelemetry_otlp::MetricExporter::builder()
         .with_http()
+        .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
         .build()
-        .expect("Failed to build OTLP metric exporter");
+        .context("Failed to build OTLP metric exporter")?;
 
     let reader =
         opentelemetry_sdk::metrics::periodic_reader_with_async_runtime::PeriodicReader::builder(
@@ -125,20 +128,18 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
         .with_reader(reader)
         .with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
             if instrument.kind() == opentelemetry_sdk::metrics::InstrumentKind::Histogram {
-                Some(
-                    opentelemetry_sdk::metrics::Stream::builder()
-                        .with_aggregation(
-                            opentelemetry_sdk::metrics::Aggregation::ExplicitBucketHistogram {
-                                boundaries: vec![
-                                    0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75,
-                                    1.0, 2.5, 5.0, 7.5, 10.0,
-                                ],
-                                record_min_max: true,
-                            },
-                        )
-                        .build()
-                        .expect("Failed to build metrics stream"),
-                )
+                opentelemetry_sdk::metrics::Stream::builder()
+                    .with_aggregation(
+                        opentelemetry_sdk::metrics::Aggregation::ExplicitBucketHistogram {
+                            boundaries: vec![
+                                0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0,
+                                2.5, 5.0, 7.5, 10.0,
+                            ],
+                            record_min_max: true,
+                        },
+                    )
+                    .build()
+                    .ok()
             } else {
                 None
             }
@@ -157,7 +158,7 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
         .with(otel_layer)
         .with(tracing_opentelemetry::MetricsLayer::new(meter_provider));
 
-    set_global_subscriber(subscriber);
+    set_global_subscriber(subscriber)
 }
 
 fn default_env_filter() -> tracing_subscriber::EnvFilter {
@@ -192,10 +193,10 @@ fn env_filter_directives(log_level: Option<&str>, rust_log: Option<&str>) -> Str
     }
 }
 
-fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) {
+fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set global tracing subscriber");
-    tracing_log::LogTracer::init().expect("Failed to set log→tracing bridge");
+        .context("Failed to set global tracing subscriber")?;
+    tracing_log::LogTracer::init().context("Failed to set log→tracing bridge")
 }
 
 /// Custom logfmt logging layer.
