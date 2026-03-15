@@ -15,6 +15,7 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 static TEST_LOGGING_INIT: Once = Once::new();
+const DEFAULT_ENV_FILTER_DIRECTIVES: &str = "sqlpage=info,actix_web=info,tracing_actix_web=info";
 
 /// Initializes logging / tracing. Returns `true` if `OTel` was activated.
 #[must_use]
@@ -35,10 +36,13 @@ fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> bool {
     otel_active
 }
 
-/// Initializes logging once for tests, reusing the production telemetry setup.
+/// Initializes logging once for tests using the same formatter as production.
+///
+/// Unlike `init_telemetry`, this does not initialize OTEL exporters and does
+/// not panic on invalid `LOG_LEVEL` / `RUST_LOG` values.
 pub fn init_test_logging() {
     TEST_LOGGING_INIT.call_once(|| {
-        let _ = init_telemetry_with_log_layer(logfmt::LogfmtLayer::test_writer());
+        init_test_tracing();
     });
 }
 
@@ -63,6 +67,16 @@ fn init_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
         .with(logfmt_layer);
+
+    set_global_subscriber(subscriber);
+}
+
+fn init_test_tracing() {
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let subscriber = tracing_subscriber::registry()
+        .with(test_env_filter())
+        .with(logfmt::LogfmtLayer::test_writer());
 
     set_global_subscriber(subscriber);
 }
@@ -145,13 +159,26 @@ fn default_env_filter() -> tracing_subscriber::EnvFilter {
     .expect("Invalid log filter value in LOG_LEVEL or RUST_LOG")
 }
 
+fn test_env_filter() -> tracing_subscriber::EnvFilter {
+    env_filter_directives(
+        env::var("LOG_LEVEL").ok().as_deref(),
+        env::var("RUST_LOG").ok().as_deref(),
+    )
+    .parse()
+    .unwrap_or_else(|_| {
+        DEFAULT_ENV_FILTER_DIRECTIVES
+            .parse()
+            .expect("Default filter directives should always be valid")
+    })
+}
+
 fn env_filter_directives(log_level: Option<&str>, rust_log: Option<&str>) -> String {
     match (
         log_level.filter(|value| !value.is_empty()),
         rust_log.filter(|value| !value.is_empty()),
     ) {
         (Some(value), _) | (None, Some(value)) => value.to_owned(),
-        (None, None) => "sqlpage=info,actix_web=info,tracing_actix_web=info".to_owned(),
+        (None, None) => DEFAULT_ENV_FILTER_DIRECTIVES.to_owned(),
     }
 }
 

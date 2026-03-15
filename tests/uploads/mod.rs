@@ -141,9 +141,10 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
         .await
         .expect_err("Expected an error response")
         .to_string();
+    let msg = "max file size";
     assert!(
-        err_str.to_ascii_lowercase().contains("max file size"),
-        "{err_str}\nexpected to contain: File too large"
+        err_str.to_ascii_lowercase().contains(msg),
+        "{err_str}\nexpected to contain: {msg}"
     );
     Ok(())
 }
