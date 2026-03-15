@@ -16,8 +16,147 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 static TEST_LOGGING_INIT: Once = Once::new();
+static OTLP_HTTP_WORKER_SENDER: OnceLock<
+    Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>, String>,
+> = OnceLock::new();
 const DEFAULT_ENV_FILTER_DIRECTIVES: &str =
     "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn";
+
+type OtlpHttpResponse = Result<opentelemetry_http::Response<opentelemetry_http::Bytes>, String>;
+
+struct OtlpHttpJob {
+    request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
+    response_sender: tokio::sync::oneshot::Sender<OtlpHttpResponse>,
+}
+
+#[derive(Clone)]
+struct AwcOtlpHttpClient {
+    sender: tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>,
+}
+
+impl AwcOtlpHttpClient {
+    fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            sender: otlp_http_worker_sender()?,
+        })
+    }
+}
+
+impl std::fmt::Debug for AwcOtlpHttpClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AwcOtlpHttpClient").finish_non_exhaustive()
+    }
+}
+
+fn otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>> {
+    let sender_result = OTLP_HTTP_WORKER_SENDER
+        .get_or_init(|| init_otlp_http_worker_sender().map_err(|error| error.to_string()));
+
+    match sender_result {
+        Ok(sender) => Ok(sender.clone()),
+        Err(error) => {
+            anyhow::bail!("Failed to initialize OTLP AWC worker thread: {error}");
+        }
+    }
+}
+
+fn init_otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>>
+{
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<OtlpHttpJob>();
+
+    std::thread::Builder::new()
+        .name("sqlpage-otlp-http".to_owned())
+        .spawn(move || {
+            actix_web::rt::System::new().block_on(async move {
+                let awc_client = awc::Client::builder()
+                    .add_default_header((awc::http::header::USER_AGENT, env!("CARGO_PKG_NAME")))
+                    .finish();
+
+                while let Some(job) = receiver.recv().await {
+                    let response = execute_otlp_http_request_with_awc(&awc_client, job.request)
+                        .await
+                        .map_err(|error| error.to_string());
+                    let _ = job.response_sender.send(response);
+                }
+            });
+        })
+        .context("Failed to spawn OTLP AWC worker thread")?;
+
+    Ok(sender)
+}
+
+async fn execute_otlp_http_request_with_awc(
+    awc_client: &awc::Client,
+    request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
+) -> anyhow::Result<opentelemetry_http::Response<opentelemetry_http::Bytes>> {
+    let (request_parts, request_body) = request.into_parts();
+
+    let awc_method = awc::http::Method::from_bytes(request_parts.method.as_str().as_bytes())
+        .with_context(|| format!("Invalid OTLP HTTP method: {}", request_parts.method))?;
+    let awc_uri: awc::http::Uri = request_parts
+        .uri
+        .to_string()
+        .parse()
+        .with_context(|| format!("Invalid OTLP collector URI: {}", request_parts.uri))?;
+
+    let mut awc_request = awc_client.request(awc_method, awc_uri.clone());
+    for (header_name, header_value) in &request_parts.headers {
+        let header_name_str = header_name.as_str();
+        let awc_header_name = awc::http::header::HeaderName::from_bytes(header_name_str.as_bytes())
+            .with_context(|| format!("Invalid OTLP header name: {header_name_str}"))?;
+        let awc_header_value = awc::http::header::HeaderValue::from_bytes(header_value.as_bytes())
+            .with_context(|| format!("Invalid OTLP header value for {header_name_str}"))?;
+        awc_request = awc_request.insert_header((awc_header_name, awc_header_value));
+    }
+
+    let mut awc_response = awc_request.send_body(request_body).await.map_err(|error| {
+        anyhow::anyhow!("Failed to send OTLP HTTP request to {awc_uri}: {error}")
+    })?;
+
+    let mut response_builder =
+        opentelemetry_http::Response::builder().status(awc_response.status().as_u16());
+    for (header_name, header_value) in awc_response.headers() {
+        let header_value = header_value.to_str().map_err(|error| {
+            anyhow::anyhow!(
+                "Invalid OTLP response header value for {}: {error}",
+                header_name.as_str()
+            )
+        })?;
+        response_builder = response_builder.header(header_name.as_str(), header_value);
+    }
+
+    let response_body = awc_response.body().await.map_err(|error| {
+        anyhow::anyhow!("Failed to read OTLP HTTP response body from {awc_uri}: {error}")
+    })?;
+
+    response_builder
+        .body(response_body)
+        .context("Failed to build OTLP HTTP response")
+}
+
+#[async_trait::async_trait]
+impl opentelemetry_http::HttpClient for AwcOtlpHttpClient {
+    async fn send_bytes(
+        &self,
+        request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
+    ) -> Result<
+        opentelemetry_http::Response<opentelemetry_http::Bytes>,
+        opentelemetry_http::HttpError,
+    > {
+        let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(OtlpHttpJob {
+                request,
+                response_sender,
+            })
+            .map_err(|_| anyhow::anyhow!("OTLP AWC worker thread is unavailable"))?;
+
+        response_receiver
+            .await
+            .map_err(|_| anyhow::anyhow!("OTLP AWC worker dropped response channel"))?
+            .map_err(Into::into)
+    }
+}
 
 /// Initializes logging / tracing. Returns whether `OTel` was activated.
 pub fn init_telemetry() -> anyhow::Result<bool> {
@@ -86,14 +225,18 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<()> {
     use opentelemetry::global;
     use opentelemetry::trace::TracerProvider as _;
     use opentelemetry_otlp::WithExportConfig as _;
+    use opentelemetry_otlp::WithHttpConfig as _;
     use opentelemetry_sdk::propagation::TraceContextPropagator;
     use tracing_subscriber::layer::SubscriberExt;
+
+    let http_client = AwcOtlpHttpClient::new().context("Failed to initialize OTLP AWC client")?;
 
     // W3C TraceContext propagation (traceparent header)
     global::set_text_map_propagator(TraceContextPropagator::new());
     // OTLP exporter — reads OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, etc.
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_http()
+        .with_http_client(http_client.clone())
         .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
         .build()
         .context("Failed to build OTLP span exporter")?;
@@ -115,6 +258,7 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<()> {
     // OTLP Metric exporter
     let metric_exporter = opentelemetry_otlp::MetricExporter::builder()
         .with_http()
+        .with_http_client(http_client)
         .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
         .build()
         .context("Failed to build OTLP metric exporter")?;
