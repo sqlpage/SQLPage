@@ -371,7 +371,7 @@ mod test {
 
     #[actix_web::test]
     async fn test_extract_multipart_form_data() {
-        let _ = env_logger::try_init();
+        crate::telemetry::init_test_logging();
         let config =
             serde_json::from_str::<AppConfig>(r#"{"listen_on": "localhost:1234"}"#).unwrap();
         let mut service_request = TestRequest::get()

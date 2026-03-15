@@ -7,13 +7,14 @@
 //! fields for human readability and machine parseability.
 
 use std::env;
-use std::sync::OnceLock;
+use std::sync::{Once, OnceLock};
 
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
+static TEST_LOGGING_INIT: Once = Once::new();
 
 /// Initializes logging / tracing. Returns `true` if `OTel` was activated.
 #[must_use]
@@ -28,6 +29,13 @@ pub fn init_telemetry() -> bool {
     }
 
     otel_active
+}
+
+/// Initializes logging once for tests, reusing the production telemetry setup.
+pub fn init_test_logging() {
+    TEST_LOGGING_INIT.call_once(|| {
+        let _ = init_telemetry();
+    });
 }
 
 /// Shuts down the `OTel` tracer provider, flushing pending spans.
