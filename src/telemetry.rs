@@ -9,9 +9,11 @@
 use std::env;
 use std::sync::OnceLock;
 
+use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
+static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 
 /// Initializes logging / tracing. Returns `true` if `OTel` was activated.
 #[must_use]
@@ -33,6 +35,11 @@ pub fn shutdown_telemetry() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         if let Err(e) = provider.shutdown() {
             eprintln!("Error shutting down tracer provider: {e}");
+        }
+    }
+    if let Some(provider) = METER_PROVIDER.get() {
+        if let Err(e) = provider.shutdown() {
+            eprintln!("Error shutting down meter provider: {e}");
         }
     }
 }
@@ -71,6 +78,39 @@ fn init_otel_tracing() {
     global::set_tracer_provider(provider.clone());
     let _ = TRACER_PROVIDER.set(provider);
 
+    // OTLP Metric exporter
+    let metric_exporter = opentelemetry_otlp::MetricExporter::builder()
+        .with_http()
+        .build()
+        .expect("Failed to build OTLP metric exporter");
+
+    let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(metric_exporter).build();
+    let meter_provider = SdkMeterProvider::builder()
+        .with_reader(reader)
+        .with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
+            if instrument.kind() == opentelemetry_sdk::metrics::InstrumentKind::Histogram {
+                Some(
+                    opentelemetry_sdk::metrics::Stream::builder()
+                        .with_aggregation(
+                            opentelemetry_sdk::metrics::Aggregation::ExplicitBucketHistogram {
+                                boundaries: vec![
+                                    0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75,
+                                    1.0, 2.5, 5.0, 7.5, 10.0,
+                                ],
+                                record_min_max: true,
+                            },
+                        )
+                        .build()
+                        .expect("Failed to build metrics stream"),
+                )
+            } else {
+                None
+            }
+        })
+        .build();
+    global::set_meter_provider(meter_provider.clone());
+    let _ = METER_PROVIDER.set(meter_provider.clone());
+
     let otel_layer = tracing_opentelemetry::layer()
         .with_tracer(tracer)
         .with_location(false);
@@ -78,7 +118,8 @@ fn init_otel_tracing() {
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
         .with(logfmt::LogfmtLayer::new())
-        .with(otel_layer);
+        .with(otel_layer)
+        .with(tracing_opentelemetry::MetricsLayer::new(meter_provider));
 
     set_global_subscriber(subscriber);
 }
@@ -153,14 +194,15 @@ mod logfmt {
         }
     }
 
+    use opentelemetry_semantic_conventions::attribute as otel;
     /// Fields we pick from spans, in display order.
     /// (`span_field_name`, `logfmt_key`)
     const SPAN_FIELDS: &[(&str, &str)] = &[
-        ("http.method", "method"),
-        ("http.target", "path"),
-        ("http.status_code", "status"),
+        (otel::HTTP_REQUEST_METHOD, "method"),
+        (otel::URL_PATH, "path"),
+        (otel::HTTP_RESPONSE_STATUS_CODE, "status"),
         ("sqlpage.file", "file"),
-        ("http.client_ip", "client_ip"),
+        (otel::CLIENT_ADDRESS, "client_ip"),
     ];
 
     /// All-zeros trace ID means no real trace context.
@@ -467,8 +509,8 @@ mod logfmt {
         fn debug_logs_include_unmapped_span_fields() {
             let mut buf = String::new();
             let span_fields = HashMap::from([
-                ("http.method", "GET".to_string()),
-                ("http.route", "/users/:id".to_string()),
+                (otel::HTTP_REQUEST_METHOD, "GET".to_string()),
+                (otel::HTTP_ROUTE, "/users/:id".to_string()),
                 ("otel.kind", "server".to_string()),
             ]);
 
@@ -481,8 +523,8 @@ mod logfmt {
         fn info_logs_keep_only_mapped_span_fields_when_not_in_debug_mode() {
             let mut buf = String::new();
             let span_fields = HashMap::from([
-                ("http.method", "GET".to_string()),
-                ("http.route", "/users/:id".to_string()),
+                (otel::HTTP_REQUEST_METHOD, "GET".to_string()),
+                (otel::HTTP_ROUTE, "/users/:id".to_string()),
                 ("otel.kind", "server".to_string()),
             ]);
 

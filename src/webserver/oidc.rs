@@ -34,6 +34,7 @@ use openidconnect::{
     EmptyExtraTokenFields, IdTokenFields, IdTokenVerifier, StandardErrorResponse,
     StandardTokenResponse,
 };
+use opentelemetry_semantic_conventions::attribute as otel;
 use serde::{Deserialize, Serialize};
 use tracing::Instrument;
 
@@ -727,8 +728,8 @@ async fn exchange_code_for_token(
 ) -> anyhow::Result<OidcToken> {
     let span = tracing::info_span!(
         "http.client",
-        otel.name = "POST token_endpoint",
-        http.request.method = "POST",
+        "otel.name" = "POST token_endpoint",
+        { otel::HTTP_REQUEST_METHOD } = "POST",
     );
     let token_response = oidc_client
         .exchange_code(openidconnect::AuthorizationCode::new(

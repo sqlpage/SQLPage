@@ -13,6 +13,7 @@ use crate::webserver::{
 use anyhow::{anyhow, Context};
 use futures_util::StreamExt;
 use mime_guess::mime;
+use opentelemetry_semantic_conventions::attribute as otel;
 use std::fmt::Write;
 use std::{borrow::Cow, ffi::OsStr, str::FromStr};
 use tracing::Instrument;
@@ -216,11 +217,11 @@ async fn fetch(
     let method = http_request.method.as_deref().unwrap_or("GET");
     let fetch_span = tracing::info_span!(
         "http.client",
-        otel.name = format!("{method}"),
-        http.request.method = method,
-        url.full = %http_request.url,
-        http.request.body.size = tracing::field::Empty,
-        http.response.status_code = tracing::field::Empty,
+        "otel.name" = format!("{method}"),
+        { otel::HTTP_REQUEST_METHOD } = method,
+        { otel::URL_FULL } = %http_request.url,
+        { otel::HTTP_REQUEST_BODY_SIZE } = tracing::field::Empty,
+        { otel::HTTP_RESPONSE_STATUS_CODE } = tracing::field::Empty,
     );
 
     async {
@@ -232,7 +233,7 @@ async fn fetch(
         let mut response = if let Some(body) = &http_request.body {
             let (body, req) = prepare_request_body(body, req)?;
             tracing::Span::current().record(
-                "http.request.body.size",
+                otel::HTTP_REQUEST_BODY_SIZE,
                 i64::try_from(body.len()).unwrap_or(i64::MAX),
             );
             req.send_body(body)
@@ -243,7 +244,7 @@ async fn fetch(
         .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
 
         tracing::Span::current().record(
-            "http.response.status_code",
+            otel::HTTP_RESPONSE_STATUS_CODE,
             i64::from(response.status().as_u16()),
         );
 
@@ -319,11 +320,11 @@ async fn fetch_with_meta(
     let method = http_request.method.as_deref().unwrap_or("GET");
     let fetch_span = tracing::info_span!(
         "http.client",
-        otel.name = format!("{method}"),
-        http.request.method = method,
-        url.full = %http_request.url,
-        http.request.body.size = tracing::field::Empty,
-        http.response.status_code = tracing::field::Empty,
+        "otel.name" = format!("{method}"),
+        { otel::HTTP_REQUEST_METHOD } = method,
+        { otel::URL_FULL } = %http_request.url,
+        { otel::HTTP_REQUEST_BODY_SIZE } = tracing::field::Empty,
+        { otel::HTTP_RESPONSE_STATUS_CODE } = tracing::field::Empty,
     );
 
     async {
@@ -335,7 +336,7 @@ async fn fetch_with_meta(
         let response_result = if let Some(body) = &http_request.body {
             let (body, req) = prepare_request_body(body, req)?;
             tracing::Span::current().record(
-                "http.request.body.size",
+                otel::HTTP_REQUEST_BODY_SIZE,
                 i64::try_from(body.len()).unwrap_or(i64::MAX),
             );
             req.send_body(body).await
@@ -350,7 +351,7 @@ async fn fetch_with_meta(
             Ok(mut response) => {
                 let status = response.status();
                 tracing::Span::current()
-                    .record("http.response.status_code", i64::from(status.as_u16()));
+                    .record(otel::HTTP_RESPONSE_STATUS_CODE, i64::from(status.as_u16()));
                 obj.serialize_entry("status", &status.as_u16())?;
                 let mut has_error = false;
                 if status.is_server_error() {

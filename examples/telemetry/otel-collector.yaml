@@ -118,22 +118,41 @@ exporters:
 service:
   pipelines:
     traces:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [otlp_grpc/tempo]
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - otlp_grpc/tempo
     metrics:
-      receivers: [postgresql]
-      processors: [batch]
-      exporters: [prometheus]
+      receivers:
+        - otlp
+        - postgresql
+      processors:
+        - batch
+      exporters:
+        - prometheus
     logs/sqlpage:
-      receivers: [syslog/sqlpage]
-      processors: [transform/sqlpage_logs, batch]
-      exporters: [otlp_http/loki]
+      receivers:
+        - syslog/sqlpage
+      processors:
+        - transform/sqlpage_logs
+        - batch
+      exporters:
+        - otlp_http/loki
     logs/postgresql:
-      receivers: [filelog/postgresql]
-      processors: [transform/postgresql_logs, batch]
-      exporters: [otlp_http/loki]
+      receivers:
+        - filelog/postgresql
+      processors:
+        - transform/postgresql_logs
+        - batch
+      exporters:
+        - otlp_http/loki
     logs/nginx:
-      receivers: [syslog/nginx]
-      processors: [transform/nginx_logs, batch]
-      exporters: [otlp_http/loki]
+      receivers:
+        - syslog/nginx
+      processors:
+        - transform/nginx_logs
+        - batch
+      exporters:
+        - otlp_http/loki

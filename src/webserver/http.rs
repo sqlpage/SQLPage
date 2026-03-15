@@ -17,6 +17,7 @@ use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, La
 use actix_web::http::{header, StatusCode};
 use actix_web::web::PayloadConfig;
 use actix_web::{dev::ServiceResponse, middleware, web, App, Error, HttpResponse, HttpServer};
+use opentelemetry_semantic_conventions::attribute as otel;
 use tracing::{Instrument, Span};
 use tracing_actix_web::{DefaultRootSpanBuilder, RootSpanBuilder, TracingLogger};
 
@@ -258,7 +259,7 @@ async fn render_sql(
     let exec_span = tracing::info_span!(
         "sqlpage.file",
         otel.name = %sql_execution_span_name(&source_path),
-        code.file.path = %source_path.display(),
+        { otel::CODE_FILE_PATH } = %source_path.display(),
     );
     actix_web::rt::spawn(tracing::Instrument::instrument(
         async move {
@@ -342,24 +343,23 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
         let span = tracing::span!(
             tracing::Level::INFO,
             "HTTP request",
-            http.method = %http_method,
-            http.route = %http_route,
-            http.flavor = %tracing_actix_web::root_span_macro::private::http_flavor(request.version()),
-            http.scheme = %tracing_actix_web::root_span_macro::private::http_scheme(connection_info.scheme()),
-            http.host = %connection_info.host(),
-            http.client_ip = %request.connection_info().realip_remote_addr().unwrap_or(""),
-            http.user_agent = %user_agent,
-            http.target = %request
-                .uri()
-                .path_and_query()
-                .map_or("", actix_web::http::uri::PathAndQuery::as_str),
-            http.status_code = tracing::field::Empty,
-            otel.name = %otel_name,
-            otel.kind = "server",
-            otel.status_code = tracing::field::Empty,
+            { otel::HTTP_REQUEST_METHOD } = %http_method,
+            { otel::HTTP_ROUTE } = %http_route,
+            { otel::NETWORK_PROTOCOL_NAME } = "http",
+            { otel::NETWORK_PROTOCOL_VERSION } = %tracing_actix_web::root_span_macro::private::http_flavor(request.version()),
+            { otel::URL_SCHEME } = %tracing_actix_web::root_span_macro::private::http_scheme(connection_info.scheme()),
+            { otel::SERVER_ADDRESS } = %connection_info.host(),
+            { otel::CLIENT_ADDRESS } = %request.connection_info().realip_remote_addr().unwrap_or(""),
+            { otel::USER_AGENT_ORIGINAL } = %user_agent,
+            { otel::URL_PATH } = %request.path(),
+            { otel::URL_QUERY } = %request.query_string(),
+            { otel::HTTP_RESPONSE_STATUS_CODE } = tracing::field::Empty,
+            "otel.name" = %otel_name,
+            "otel.kind" = "server",
+            { otel::OTEL_STATUS_CODE } = tracing::field::Empty,
             request_id = %request_id,
-            exception.message = tracing::field::Empty,
-            exception.details = tracing::field::Empty,
+            { otel::EXCEPTION_MESSAGE } = tracing::field::Empty,
+            "exception.details" = tracing::field::Empty,
         );
         std::mem::drop(connection_info);
         tracing_actix_web::root_span_macro::private::set_otel_parent(request, &span);
@@ -392,7 +392,7 @@ async fn process_sql_request(
     let sql_file = {
         let span = tracing::info_span!(
             "sqlpage.file.load",
-            code.file.path = %sql_path.display(),
+            { otel::CODE_FILE_PATH } = %sql_path.display(),
         );
         app_state
             .sql_file_cache
@@ -553,6 +553,7 @@ pub fn create_app(
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
         .wrap(OidcMiddleware::new(&app_state))
+        .wrap(super::http_metrics::HttpMetrics)
         .wrap(TracingLogger::<SqlPageRootSpanBuilder>::new())
         .wrap(default_headers())
         .wrap(middleware::Condition::new(
