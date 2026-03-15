@@ -7,27 +7,43 @@
 //! fields for human readability and machine parseability.
 
 use std::env;
-use std::sync::OnceLock;
+use std::sync::{Once, OnceLock};
 
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
+static TEST_LOGGING_INIT: Once = Once::new();
+const DEFAULT_ENV_FILTER_DIRECTIVES: &str = "sqlpage=info,actix_web=info,tracing_actix_web=info";
 
 /// Initializes logging / tracing. Returns `true` if `OTel` was activated.
 #[must_use]
 pub fn init_telemetry() -> bool {
+    init_telemetry_with_log_layer(logfmt::LogfmtLayer::new())
+}
+
+fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> bool {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
     let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
 
     if otel_active {
-        init_otel_tracing();
+        init_otel_tracing(logfmt_layer);
     } else {
-        init_tracing();
+        init_tracing(logfmt_layer);
     }
 
     otel_active
+}
+
+/// Initializes logging once for tests using the same formatter as production.
+///
+/// Unlike `init_telemetry`, this does not initialize OTEL exporters and does
+/// not panic on invalid `LOG_LEVEL` / `RUST_LOG` values.
+pub fn init_test_logging() {
+    TEST_LOGGING_INIT.call_once(|| {
+        init_test_tracing();
+    });
 }
 
 /// Shuts down the `OTel` tracer provider, flushing pending spans.
@@ -45,17 +61,27 @@ pub fn shutdown_telemetry() {
 }
 
 /// Tracing subscriber without `OTel` export — logfmt output only.
-fn init_tracing() {
+fn init_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     use tracing_subscriber::layer::SubscriberExt;
 
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
-        .with(logfmt::LogfmtLayer::new());
+        .with(logfmt_layer);
 
     set_global_subscriber(subscriber);
 }
 
-fn init_otel_tracing() {
+fn init_test_tracing() {
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let subscriber = tracing_subscriber::registry()
+        .with(test_env_filter())
+        .with(logfmt::LogfmtLayer::test_writer());
+
+    set_global_subscriber(subscriber);
+}
+
+fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     use opentelemetry::global;
     use opentelemetry::trace::TracerProvider as _;
     use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -117,7 +143,7 @@ fn init_otel_tracing() {
 
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
-        .with(logfmt::LogfmtLayer::new())
+        .with(logfmt_layer)
         .with(otel_layer)
         .with(tracing_opentelemetry::MetricsLayer::new(meter_provider));
 
@@ -133,13 +159,26 @@ fn default_env_filter() -> tracing_subscriber::EnvFilter {
     .expect("Invalid log filter value in LOG_LEVEL or RUST_LOG")
 }
 
+fn test_env_filter() -> tracing_subscriber::EnvFilter {
+    env_filter_directives(
+        env::var("LOG_LEVEL").ok().as_deref(),
+        env::var("RUST_LOG").ok().as_deref(),
+    )
+    .parse()
+    .unwrap_or_else(|_| {
+        DEFAULT_ENV_FILTER_DIRECTIVES
+            .parse()
+            .expect("Default filter directives should always be valid")
+    })
+}
+
 fn env_filter_directives(log_level: Option<&str>, rust_log: Option<&str>) -> String {
     match (
         log_level.filter(|value| !value.is_empty()),
         rust_log.filter(|value| !value.is_empty()),
     ) {
         (Some(value), _) | (None, Some(value)) => value.to_owned(),
-        (None, None) => "sqlpage=info,actix_web=info,tracing_actix_web=info".to_owned(),
+        (None, None) => DEFAULT_ENV_FILTER_DIRECTIVES.to_owned(),
     }
 }
 
@@ -217,14 +256,29 @@ mod logfmt {
     const BOLD: &str = "\x1b[1m";
     const RESET: &str = "\x1b[0m";
 
+    #[derive(Copy, Clone)]
+    enum OutputMode {
+        Stderr,
+        TestWriter,
+    }
+
     pub(super) struct LogfmtLayer {
         use_colors: bool,
+        output_mode: OutputMode,
     }
 
     impl LogfmtLayer {
         pub fn new() -> Self {
             Self {
                 use_colors: io::stderr().is_terminal(),
+                output_mode: OutputMode::Stderr,
+            }
+        }
+
+        pub fn test_writer() -> Self {
+            Self {
+                use_colors: false,
+                output_mode: OutputMode::TestWriter,
             }
         }
     }
@@ -280,7 +334,14 @@ mod logfmt {
 
             buf.push('\n');
             write_multiline_message(&mut buf, msg, multiline_msg);
-            let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
+            match self.output_mode {
+                OutputMode::Stderr => {
+                    let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
+                }
+                OutputMode::TestWriter => {
+                    eprint!("{buf}");
+                }
+            }
         }
     }
 
