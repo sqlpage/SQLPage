@@ -87,8 +87,8 @@ tracing-opentelemetry = "0.32"
 tracing-actix-web = { version = "0.7", default-features = false, features = ["opentelemetry_0_31"] }
 tracing-log = "0.2"
 opentelemetry = "0.31"
-opentelemetry_sdk = { version = "0.31", features = ["metrics", "rt-tokio-current-thread", "spec_unstable_metrics_views"] }
-opentelemetry-otlp = { version = "0.31", features = ["http-proto", "grpc-tonic", "metrics"] }
+opentelemetry_sdk = { version = "0.31", features = ["metrics", "rt-tokio", "spec_unstable_metrics_views", "experimental_trace_batch_span_processor_with_async_runtime", "experimental_metrics_periodicreader_with_async_runtime"] }
+opentelemetry-otlp = { version = "0.31", default-features = false, features = ["http-proto", "metrics", "hyper-client"] }
 opentelemetry-semantic-conventions = { version = "0.31", features = ["semconv_experimental"] }
 
 
