@@ -174,10 +174,7 @@ mod tests {
     use sqlx::Connection;
 
     fn setup_logging() {
-        let _ = env_logger::builder()
-            .parse_default_env()
-            .is_test(true)
-            .try_init();
+        crate::telemetry::init_test_logging();
     }
 
     fn db_specific_test(db_type: &str) -> Option<String> {

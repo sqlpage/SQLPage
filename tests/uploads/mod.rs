@@ -29,6 +29,62 @@ async fn test_file_upload(target: &str) -> actix_web::Result<()> {
 }
 
 #[actix_web::test]
+async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
+    let app_data = crate::common::make_app_data().await;
+    let req = actix_web::test::TestRequest::get()
+        .uri("/tests/uploads/persist_with_mode.sql?mode=644")
+        .app_data(app_data.clone())
+        .app_data(sqlpage::webserver::http::payload_config(&app_data))
+        .app_data(sqlpage::webserver::http::form_config(&app_data))
+        .insert_header((actix_web::http::header::ACCEPT, "application/json"))
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(
+            "--1234567890\r\n\
+            Content-Disposition: form-data; name=\"my_file\"; filename=\"test.txt\"\r\n\
+            Content-Type: text/plain\r\n\
+            \r\n\
+            Hello\r\n\
+            --1234567890--\r\n",
+        )
+        .to_srv_request();
+    let resp = main_handler(req).await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body_json: serde_json::Value = test::read_body_json(resp).await;
+    let persisted_path = body_json[0]["contents"]
+        .as_str()
+        .expect("Path not found in JSON response");
+
+    // The path is relative to web root, we need to find it on disk.
+    // In tests, web root is the repo root.
+    // We normalize the path separators to be platform-specific for the file system check.
+    let normalized_path = persisted_path
+        .replace('\\', "/")
+        .trim_start_matches('/')
+        .replace('/', std::path::MAIN_SEPARATOR_STR);
+    let file_path = std::path::Path::new(&normalized_path);
+    assert!(
+        file_path.exists(),
+        "Persisted file {} does not exist. Persisted path: {}, JSON: {}",
+        file_path.display(),
+        persisted_path,
+        body_json
+    );
+    let contents = std::fs::read_to_string(file_path)?;
+    assert_eq!(contents, "Hello");
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let metadata = std::fs::metadata(file_path)?;
+        assert_eq!(metadata.permissions().mode() & 0o777, 0o644);
+    }
+
+    std::fs::remove_file(file_path)?;
+    Ok(())
+}
+
+#[actix_web::test]
 async fn test_file_upload_direct() -> actix_web::Result<()> {
     test_file_upload("/tests/uploads/upload_file_test.sql").await
 }
@@ -85,9 +141,10 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
         .await
         .expect_err("Expected an error response")
         .to_string();
+    let msg = "max file size";
     assert!(
-        err_str.to_ascii_lowercase().contains("max file size"),
-        "{err_str}\nexpected to contain: File too large"
+        err_str.to_ascii_lowercase().contains(msg),
+        "{err_str}\nexpected to contain: {msg}"
     );
     Ok(())
 }

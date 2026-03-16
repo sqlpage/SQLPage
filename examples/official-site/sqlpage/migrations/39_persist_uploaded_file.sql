@@ -62,4 +62,14 @@ VALUES (
         'Optional. Comma-separated list of allowed file extensions. By default: jpg,jpeg,png,gif,bmp,webp,pdf,txt,doc,docx,xls,xlsx,csv,mp3,mp4,wav,avi,mov.
 Changing this may be dangerous ! If you add "sql", "svg" or "html" to the list, an attacker could execute arbitrary SQL queries on your database, or impersonate other users.',
         'TEXT'
+    ),
+    (
+        'persist_uploaded_file',
+        4,
+        'mode',
+        'Optional. Unix permissions to set on the file, in octal notation. By default, the file will be saved with "600" (read/write for the owner only).
+Octal notation works by using three digits from 0 to 7: the first for the owner, the second for the group, and the third for others.
+For example, "644" means read/write for the owner, and read-only for others.
+[Learn more about numeric notation for file-system permissions on Wikipedia](https://en.wikipedia.org/wiki/File-system_permissions#Numeric_notation).',
+        'TEXT'
     );

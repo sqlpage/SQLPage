@@ -16,9 +16,10 @@ use actix_web::http::header::Accept;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{header, StatusCode};
 use actix_web::web::PayloadConfig;
-use actix_web::{
-    dev::ServiceResponse, middleware, middleware::Logger, web, App, HttpResponse, HttpServer,
-};
+use actix_web::{dev::ServiceResponse, middleware, web, App, Error, HttpResponse, HttpServer};
+use opentelemetry_semantic_conventions::attribute as otel;
+use tracing::{Instrument, Span};
+use tracing_actix_web::{DefaultRootSpanBuilder, RootSpanBuilder, TracingLogger};
 
 use super::error::{anyhow_err_to_actix, bind_error, send_anyhow_error};
 use super::http_client::make_http_client;
@@ -35,6 +36,7 @@ use anyhow::{bail, Context};
 use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
+use std::borrow::Cow;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -219,56 +221,165 @@ async fn render_sql(
         .map(|accept| ResponseFormat::from_accept_header(&accept))
         .unwrap_or_default();
 
-    let exec_ctx = extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
-        .await
-        .map_err(|e| anyhow_err_to_actix(e, &app_state))?;
+    let exec_ctx = {
+        let content_type = srv_req
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let content_length = srv_req
+            .headers()
+            .get("content-length")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<i64>().ok());
+        let url_query = srv_req.query_string();
+        let url_query = if url_query.is_empty() {
+            None
+        } else {
+            Some(url_query)
+        };
+        let parse_span = tracing::info_span!(
+            "http.parse_request",
+            http.request.method = %srv_req.method(),
+            http.request.header.content_type = content_type,
+            http.request.body.size = content_length,
+            url.query = url_query,
+        );
+        extract_request_info(srv_req, Arc::clone(&app_state), server_timing)
+            .instrument(parse_span)
+            .await
+            .map_err(|e| anyhow_err_to_actix(e, &app_state))?
+    };
     log::debug!("Received a request with the following parameters: {exec_ctx:?}");
 
     exec_ctx.request().server_timing.record("parse_req");
 
     let (resp_send, resp_recv) = tokio::sync::oneshot::channel::<HttpResponse>();
     let source_path: PathBuf = sql_file.source_path.clone();
-    actix_web::rt::spawn(async move {
-        let request_info = exec_ctx.request();
-        let request_context = RequestContext {
-            is_embedded: request_info.url_params.contains_key("_sqlpage_embed"),
-            source_path,
-            content_security_policy: ContentSecurityPolicy::with_random_nonce(),
-            server_timing: Arc::clone(&request_info.server_timing),
-            response_format,
-        };
-        let mut conn = None;
-        let database_entries_stream =
-            stream_query_results_with_conn(&sql_file, &exec_ctx, &mut conn);
-        let database_entries_stream = stop_at_first_error(database_entries_stream);
-        let response_with_writer = build_response_header_and_stream(
-            Arc::clone(&app_state),
-            database_entries_stream,
-            request_context,
-        )
-        .await;
-        match response_with_writer {
-            Ok(ResponseWithWriter::RenderStream {
-                http_response,
-                renderer,
+    let exec_span = tracing::info_span!(
+        "sqlpage.file",
+        otel.name = %sql_execution_span_name(&source_path),
+        { otel::CODE_FILE_PATH } = %source_path.display(),
+    );
+    actix_web::rt::spawn(tracing::Instrument::instrument(
+        async move {
+            let request_info = exec_ctx.request();
+            let request_context = RequestContext {
+                is_embedded: request_info.url_params.contains_key("_sqlpage_embed"),
+                source_path,
+                content_security_policy: ContentSecurityPolicy::with_random_nonce(),
+                server_timing: Arc::clone(&request_info.server_timing),
+                response_format,
+            };
+            let mut conn = None;
+            let database_entries_stream =
+                stream_query_results_with_conn(&sql_file, &exec_ctx, &mut conn);
+            let database_entries_stream = stop_at_first_error(database_entries_stream);
+            let response_with_writer = build_response_header_and_stream(
+                Arc::clone(&app_state),
                 database_entries_stream,
-            }) => {
-                resp_send
-                    .send(http_response)
-                    .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
-                stream_response(database_entries_stream, renderer).await;
+                request_context,
+            )
+            .await;
+            match response_with_writer {
+                Ok(ResponseWithWriter::RenderStream {
+                    http_response,
+                    renderer,
+                    database_entries_stream,
+                }) => {
+                    resp_send
+                        .send(http_response)
+                        .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
+                    tracing::Instrument::instrument(
+                        stream_response(database_entries_stream, renderer),
+                        tracing::info_span!("render"),
+                    )
+                    .await;
+                }
+                Ok(ResponseWithWriter::FinishedResponse { http_response }) => {
+                    resp_send
+                        .send(http_response)
+                        .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
+                }
+                Err(err) => {
+                    send_anyhow_error(&err, resp_send, &app_state);
+                }
             }
-            Ok(ResponseWithWriter::FinishedResponse { http_response }) => {
-                resp_send
-                    .send(http_response)
-                    .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
-            }
-            Err(err) => {
-                send_anyhow_error(&err, resp_send, &app_state);
+        },
+        exec_span,
+    ));
+    resp_recv.await.map_err(ErrorInternalServerError)
+}
+
+fn request_span_route(request: &ServiceRequest) -> Cow<'_, str> {
+    request
+        .match_pattern()
+        .map_or_else(|| request.path().to_owned().into(), Cow::from)
+}
+
+fn request_span_name(request: &ServiceRequest) -> String {
+    format!("{} {}", request.method(), request_span_route(request))
+}
+
+fn sql_execution_span_name(source_path: &std::path::Path) -> String {
+    format!("SQL {}", source_path.display())
+}
+
+struct SqlPageRootSpanBuilder;
+
+impl RootSpanBuilder for SqlPageRootSpanBuilder {
+    fn on_request_start(request: &ServiceRequest) -> Span {
+        let user_agent = request
+            .headers()
+            .get("User-Agent")
+            .map_or("", |h| h.to_str().unwrap_or(""));
+        let http_route = request_span_route(request);
+        let http_method =
+            tracing_actix_web::root_span_macro::private::http_method_str(request.method());
+        let otel_name = request_span_name(request);
+        let connection_info = request.connection_info();
+        let request_id = tracing_actix_web::root_span_macro::private::get_request_id(request);
+
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "HTTP request",
+            { otel::HTTP_REQUEST_METHOD } = %http_method,
+            { otel::HTTP_ROUTE } = %http_route,
+            { otel::NETWORK_PROTOCOL_NAME } = "http",
+            { otel::NETWORK_PROTOCOL_VERSION } = %tracing_actix_web::root_span_macro::private::http_flavor(request.version()),
+            { otel::URL_SCHEME } = %tracing_actix_web::root_span_macro::private::http_scheme(connection_info.scheme()),
+            { otel::SERVER_ADDRESS } = %connection_info.host(),
+            { otel::CLIENT_ADDRESS } = %request.connection_info().realip_remote_addr().unwrap_or(""),
+            { otel::USER_AGENT_ORIGINAL } = %user_agent,
+            { otel::URL_PATH } = %request.path(),
+            { otel::URL_QUERY } = %request.query_string(),
+            { otel::HTTP_RESPONSE_STATUS_CODE } = tracing::field::Empty,
+            "otel.name" = %otel_name,
+            "otel.kind" = "server",
+            { otel::OTEL_STATUS_CODE } = tracing::field::Empty,
+            request_id = %request_id,
+            { otel::EXCEPTION_MESSAGE } = tracing::field::Empty,
+            "exception.details" = tracing::field::Empty,
+        );
+        std::mem::drop(connection_info);
+        tracing_actix_web::root_span_macro::private::set_otel_parent(request, &span);
+        span
+    }
+
+    fn on_request_end<B: MessageBody>(span: Span, outcome: &Result<ServiceResponse<B>, Error>) {
+        let span_ref = span.clone();
+        DefaultRootSpanBuilder::on_request_end(span, outcome);
+
+        // Emit a single log event per completed request so it appears in logs.
+        // Error responses (4xx/5xx) are already logged by our error handlers.
+        let _enter = span_ref.enter();
+        if let Ok(response) = outcome {
+            let status = response.response().status();
+            if status.is_success() || status.is_redirection() {
+                log::info!("{}", status.canonical_reason().unwrap_or("ok"));
             }
         }
-    });
-    resp_recv.await.map_err(ErrorInternalServerError)
+    }
 }
 
 async fn process_sql_request(
@@ -278,12 +389,19 @@ async fn process_sql_request(
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
     let server_timing = ServerTiming::for_env(app_state.config.environment);
 
-    let sql_file = app_state
-        .sql_file_cache
-        .get_with_privilege(app_state, &sql_path, false)
-        .await
-        .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
-        .map_err(|e| anyhow_err_to_actix(e, app_state))?;
+    let sql_file = {
+        let span = tracing::info_span!(
+            "sqlpage.file.load",
+            { otel::CODE_FILE_PATH } = %sql_path.display(),
+        );
+        app_state
+            .sql_file_cache
+            .get_with_privilege(app_state, &sql_path, false)
+            .instrument(span)
+            .await
+            .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
+            .map_err(|e| anyhow_err_to_actix(e, app_state))?
+    };
     server_timing.record("sql_file");
 
     render_sql(req, sql_file, server_timing).await
@@ -435,7 +553,8 @@ pub fn create_app(
         // when receiving a request outside of the prefix, redirect to the prefix
         .default_service(fn_service(default_prefix_redirect))
         .wrap(OidcMiddleware::new(&app_state))
-        .wrap(Logger::default())
+        .wrap(super::http_metrics::HttpMetrics)
+        .wrap(TracingLogger::<SqlPageRootSpanBuilder>::new())
         .wrap(default_headers())
         .wrap(middleware::Condition::new(
             app_state.config.compress_responses,
@@ -561,8 +680,8 @@ fn log_welcome_message(config: &AppConfig) {
     let version = env!("CARGO_PKG_VERSION");
     let web_root = config.web_root.display();
 
-    eprintln!(
-        "{sparkle} SQLPage v{version} started successfully! {sparkle}\n\n\
+    log::info!(
+        "\n{sparkle} SQLPage v{version} started successfully! {sparkle}\n\n\
         View your website at:\n{link} {address_message}\n\n\
         Create your pages with SQL files in:\n{computer} {web_root}\n\n\
         Happy coding! {rocket}"
@@ -584,4 +703,25 @@ fn bind_unix_socket_err(e: std::io::Error, unix_socket: &std::path::Path) -> any
         )
     };
     anyhow::anyhow!(e).context(ctx)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{request_span_name, sql_execution_span_name};
+    use actix_web::test::TestRequest;
+    use std::path::Path;
+
+    #[test]
+    fn request_span_name_uses_request_path_when_no_matched_route_exists() {
+        let request = TestRequest::with_uri("/todos/42?filter=open").to_srv_request();
+        assert_eq!(request_span_name(&request), "GET /todos/42");
+    }
+
+    #[test]
+    fn sql_execution_span_name_uses_sql_file_path() {
+        assert_eq!(
+            sql_execution_span_name(Path::new("website/todos.sql")),
+            "SQL website/todos.sql"
+        );
+    }
 }

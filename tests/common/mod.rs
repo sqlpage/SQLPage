@@ -11,6 +11,7 @@ use actix_web::{
 };
 use sqlpage::{
     app_config::{test_database_url, AppConfig},
+    telemetry,
     webserver::http::{form_config, main_handler, payload_config},
     AppState,
 };
@@ -111,10 +112,7 @@ pub fn test_config() -> AppConfig {
 }
 
 pub fn init_log() {
-    let _ = env_logger::builder()
-        .parse_default_env()
-        .is_test(true)
-        .try_init();
+    telemetry::init_test_logging();
 }
 
 fn format_request_line_and_headers(req: &ServiceRequest) -> String {

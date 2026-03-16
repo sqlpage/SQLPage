@@ -1,0 +1,164 @@
+services:
+  nginx:
+    image: nginx:otel
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - sqlpage
+      - otel-collector
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://localhost:1516"
+        syslog-format: "rfc5424micro"
+        tag: "nginx"
+
+  sqlpage:
+    build:
+      context: ../..
+      args:
+        CARGO_PROFILE: release
+    environment:
+      - DATABASE_URL=postgres://sqlpage:sqlpage@postgres:5432/sqlpage
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_METRIC_EXPORT_INTERVAL=1000
+      - OTEL_SERVICE_NAME=sqlpage
+    volumes:
+      - ./website:/var/www
+      - ./sqlpage:/etc/sqlpage
+    depends_on:
+      otel-collector:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://localhost:1514"
+        syslog-format: "rfc5424micro"
+        tag: "sqlpage"
+
+  postgres:
+    image: postgres:16
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - pg_stat_statements.track_utility=off
+      - -c
+      - logging_collector=on
+      - -c
+      - log_destination=jsonlog
+      - -c
+      - log_directory=/var/log/postgresql
+      - -c
+      - log_filename=postgresql
+      - -c
+      - log_file_mode=0644
+      - -c
+      - log_rotation_age=0
+      - -c
+      - log_rotation_size=0
+      - -c
+      - log_line_prefix=ts=%m pid=%p db=%d user=%u app=[%a] 
+      - -c
+      - log_min_messages=info
+      - -c
+      - log_error_verbosity=verbose
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_duration=on
+      - -c
+      - log_statement=all
+      - -c
+      - log_min_duration_statement=25
+      - -c
+      - auto_explain.log_min_duration=25ms
+      - -c
+      - auto_explain.log_analyze=on
+      - -c
+      - auto_explain.log_buffers=on
+      - -c
+      - auto_explain.log_timing=on
+      - -c
+      - auto_explain.log_verbose=on
+      - -c
+      - auto_explain.log_format=json
+    environment:
+      POSTGRES_USER: sqlpage
+      POSTGRES_PASSWORD: sqlpage
+      POSTGRES_DB: sqlpage
+    volumes:
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+      - ./postgres-logs:/var/log/postgresql:z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sqlpage"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    user: "0:0"
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - ./postgres-logs:/var/log/postgresql:ro,z
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "1514:1514/udp"
+      - "1516:1516/udp"
+    depends_on:
+      tempo:
+        condition: service_started
+      postgres:
+        condition: service_started
+      loki:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    volumes:
+      - ./tempo.yaml:/etc/tempo/config.yaml:ro
+    command: ["-config.file=/etc/tempo/config.yaml"]
+
+  loki:
+    image: grafana/loki:3.4.1
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3100/ready >/dev/null 2>&1"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/sqlpage/sqlpage-home.json
+      - GF_NEWS_NEWS_FEED_ENABLED=false
+    volumes:
+      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro,z
+      - ./grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro,z
+      - ./grafana:/etc/grafana/provisioning/dashboards/sqlpage:ro,z
+    depends_on:
+      - tempo
+      - loki
+      - prometheus

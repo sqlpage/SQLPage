@@ -3,8 +3,17 @@
 ## unreleased
 
 - Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
-- Improve HTTP status codes returned by SQLPage. This helps with monitoring sqlpage applications: it is now easier to distinguish client errors (code 4xx, often caused by vulnerability scanning bots, not actionnable for you) and server errors (code 5xx, when something is wrong on your servers and you should do something).
-  - For instance, invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
+- Fixed multiple incorrect or imprecise HTTP statuses returned by sqlpage on error
+  - this makes it easier for an administrator to distinguish between user errors (4xx, non actionnable) and server errors (5xx, when you see them you should do something) 
+  - for instance: invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
+- Logging: `LOG_LEVEL` is now the primary environment variable for configuring SQLPage's log filter. `RUST_LOG` remains supported as an alias.
+- You can now easily understand and debug slow page loads thanks to the added support for [OpenTelemetry](https://opentelemetry.io) tracing & metrics
+  - connect SQLPage to an OpenTelemetry tracing backend via the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable.
+  - see the [sqlpage monitoring example](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry#readme)
+  - <img width="2926" height="1664" alt="image" src="https://github.com/user-attachments/assets/11ae3644-a4f4-4218-98b2-4bf5afb345f8" />
+- Added an argument to `sqlpage.persist_uploaded_file(...)` to control the permissions of the newly created file.
+  - Notably, this makes it easier to accelerate serving of uploaded files by letting a reverse proxy like nginx serve them directly.
+- Added an [`id` row-level parameter to the datagrid component](https://github.com/sqlpage/SQLPage/issues/1243)
 
 ## 0.43.0
 

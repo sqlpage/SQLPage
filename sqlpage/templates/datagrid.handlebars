@@ -21,7 +21,7 @@
     <div class="card-body">
         <div class="datagrid">
             {{#each_row}}
-                <div class="datagrid-item">
+                <div class="datagrid-item" {{#if id}}id="{{id}}"{{/if}}>
                     <div class="datagrid-title">{{title}}</div>
                     <div class="datagrid-content {{#if active}}fw-bold{{/if}}">
                         {{~#if link}}
