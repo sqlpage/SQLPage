@@ -7,7 +7,10 @@ use sqlpage::{
 
 #[actix_web::main]
 async fn main() {
-    init_logging();
+    if let Err(e) = init_logging() {
+        eprintln!("Failed to initialize logging/telemetry: {e:#}");
+        std::process::exit(1);
+    }
     if let Err(e) = start().await {
         log::error!("{e:?}");
         std::process::exit(1);
@@ -33,10 +36,10 @@ async fn start() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn init_logging() {
+fn init_logging() -> anyhow::Result<()> {
     let load_env = dotenvy::dotenv();
 
-    let otel_active = telemetry::init_telemetry();
+    let otel_active = telemetry::init_telemetry()?;
 
     match load_env {
         Ok(path) => log::info!("Loaded environment variables from {path:?}"),
@@ -49,4 +52,6 @@ fn init_logging() {
     if otel_active {
         log::info!("OpenTelemetry tracing enabled (OTEL_EXPORTER_OTLP_ENDPOINT is set)");
     }
+
+    Ok(())
 }

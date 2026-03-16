@@ -9,31 +9,194 @@
 use std::env;
 use std::sync::{Once, OnceLock};
 
+use anyhow::Context as _;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 static TEST_LOGGING_INIT: Once = Once::new();
-const DEFAULT_ENV_FILTER_DIRECTIVES: &str = "sqlpage=info,actix_web=info,tracing_actix_web=info";
+static OTLP_HTTP_WORKER_SENDER: OnceLock<
+    Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>, String>,
+> = OnceLock::new();
+const DEFAULT_ENV_FILTER_DIRECTIVES: &str =
+    "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn";
 
-/// Initializes logging / tracing. Returns `true` if `OTel` was activated.
-#[must_use]
-pub fn init_telemetry() -> bool {
+type OtlpHttpResponse = Result<opentelemetry_http::Response<opentelemetry_http::Bytes>, String>;
+
+struct OtlpHttpJob {
+    request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
+    response_sender: tokio::sync::oneshot::Sender<OtlpHttpResponse>,
+}
+
+#[derive(Clone)]
+struct AwcOtlpHttpClient {
+    sender: tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>,
+}
+
+impl AwcOtlpHttpClient {
+    fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            sender: otlp_http_worker_sender()?,
+        })
+    }
+}
+
+impl std::fmt::Debug for AwcOtlpHttpClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AwcOtlpHttpClient").finish_non_exhaustive()
+    }
+}
+
+fn otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>> {
+    let sender_result = OTLP_HTTP_WORKER_SENDER
+        .get_or_init(|| init_otlp_http_worker_sender().map_err(|error| error.to_string()));
+
+    match sender_result {
+        Ok(sender) => Ok(sender.clone()),
+        Err(error) => {
+            anyhow::bail!("Failed to initialize OTLP AWC worker thread: {error}");
+        }
+    }
+}
+
+fn init_otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>>
+{
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<OtlpHttpJob>();
+    let (init_result_sender, init_result_receiver) = std::sync::mpsc::sync_channel(1);
+    let use_system_root_ca_certificates =
+        crate::webserver::http_client::default_system_root_ca_certificates_from_env();
+
+    std::thread::Builder::new()
+        .name("sqlpage-otlp-http".to_owned())
+        .spawn(move || {
+            actix_web::rt::System::new().block_on(async move {
+                let awc_client =
+                    match crate::webserver::http_client::make_http_client_with_system_roots(
+                        use_system_root_ca_certificates,
+                    ) {
+                        Ok(client) => {
+                            let _ = init_result_sender.send(Ok(()));
+                            client
+                        }
+                        Err(error) => {
+                            let error = format!("Failed to initialize OTLP AWC client: {error:#}");
+                            let _ = init_result_sender.send(Err(error.clone()));
+                            while let Some(job) = receiver.recv().await {
+                                let _ = job.response_sender.send(Err(error.clone()));
+                            }
+                            return;
+                        }
+                    };
+
+                while let Some(job) = receiver.recv().await {
+                    let response = execute_otlp_http_request_with_awc(&awc_client, job.request)
+                        .await
+                        .map_err(|error| error.to_string());
+                    let _ = job.response_sender.send(response);
+                }
+            });
+        })
+        .context("Failed to spawn OTLP AWC worker thread")?;
+
+    match init_result_receiver.recv() {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => anyhow::bail!("{error}"),
+        Err(error) => anyhow::bail!("OTLP AWC worker initialization channel closed: {error}"),
+    }
+
+    Ok(sender)
+}
+
+async fn execute_otlp_http_request_with_awc(
+    awc_client: &awc::Client,
+    request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
+) -> anyhow::Result<opentelemetry_http::Response<opentelemetry_http::Bytes>> {
+    let (request_parts, request_body) = request.into_parts();
+
+    let awc_method = awc::http::Method::from_bytes(request_parts.method.as_str().as_bytes())
+        .with_context(|| format!("Invalid OTLP HTTP method: {}", request_parts.method))?;
+    let awc_uri: awc::http::Uri = request_parts
+        .uri
+        .to_string()
+        .parse()
+        .with_context(|| format!("Invalid OTLP collector URI: {}", request_parts.uri))?;
+
+    let mut awc_request = awc_client.request(awc_method, awc_uri.clone());
+    for (header_name, header_value) in &request_parts.headers {
+        let header_name_str = header_name.as_str();
+        let awc_header_name = awc::http::header::HeaderName::from_bytes(header_name_str.as_bytes())
+            .with_context(|| format!("Invalid OTLP header name: {header_name_str}"))?;
+        let awc_header_value = awc::http::header::HeaderValue::from_bytes(header_value.as_bytes())
+            .with_context(|| format!("Invalid OTLP header value for {header_name_str}"))?;
+        awc_request = awc_request.insert_header((awc_header_name, awc_header_value));
+    }
+
+    let mut awc_response = awc_request.send_body(request_body).await.map_err(|error| {
+        anyhow::anyhow!("Failed to send OTLP HTTP request to {awc_uri}: {error}")
+    })?;
+
+    let mut response_builder =
+        opentelemetry_http::Response::builder().status(awc_response.status().as_u16());
+    for (header_name, header_value) in awc_response.headers() {
+        let header_value = header_value.to_str().map_err(|error| {
+            anyhow::anyhow!(
+                "Invalid OTLP response header value for {}: {error}",
+                header_name.as_str()
+            )
+        })?;
+        response_builder = response_builder.header(header_name.as_str(), header_value);
+    }
+
+    let response_body = awc_response.body().await.map_err(|error| {
+        anyhow::anyhow!("Failed to read OTLP HTTP response body from {awc_uri}: {error}")
+    })?;
+
+    response_builder
+        .body(response_body)
+        .context("Failed to build OTLP HTTP response")
+}
+
+#[async_trait::async_trait]
+impl opentelemetry_http::HttpClient for AwcOtlpHttpClient {
+    async fn send_bytes(
+        &self,
+        request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
+    ) -> Result<
+        opentelemetry_http::Response<opentelemetry_http::Bytes>,
+        opentelemetry_http::HttpError,
+    > {
+        let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(OtlpHttpJob {
+                request,
+                response_sender,
+            })
+            .map_err(|_| anyhow::anyhow!("OTLP AWC worker thread is unavailable"))?;
+
+        response_receiver
+            .await
+            .map_err(|_| anyhow::anyhow!("OTLP AWC worker dropped response channel"))?
+            .map_err(Into::into)
+    }
+}
+
+/// Initializes logging / tracing. Returns whether `OTel` was activated.
+pub fn init_telemetry() -> anyhow::Result<bool> {
     init_telemetry_with_log_layer(logfmt::LogfmtLayer::new())
 }
 
-fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> bool {
+fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<bool> {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
     let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
 
     if otel_active {
-        init_otel_tracing(logfmt_layer);
+        init_otel_tracing(logfmt_layer)?;
     } else {
-        init_tracing(logfmt_layer);
+        init_tracing(logfmt_layer)?;
     }
 
-    otel_active
+    Ok(otel_active)
 }
 
 /// Initializes logging once for tests using the same formatter as production.
@@ -61,14 +224,14 @@ pub fn shutdown_telemetry() {
 }
 
 /// Tracing subscriber without `OTel` export — logfmt output only.
-fn init_tracing(logfmt_layer: logfmt::LogfmtLayer) {
+fn init_tracing(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<()> {
     use tracing_subscriber::layer::SubscriberExt;
 
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
         .with(logfmt_layer);
 
-    set_global_subscriber(subscriber);
+    set_global_subscriber(subscriber)
 }
 
 fn init_test_tracing() {
@@ -78,26 +241,37 @@ fn init_test_tracing() {
         .with(test_env_filter())
         .with(logfmt::LogfmtLayer::test_writer());
 
-    set_global_subscriber(subscriber);
+    set_global_subscriber(subscriber).expect("Failed to initialize test tracing subscriber");
 }
 
-fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
+fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<()> {
     use opentelemetry::global;
     use opentelemetry::trace::TracerProvider as _;
+    use opentelemetry_otlp::WithExportConfig as _;
+    use opentelemetry_otlp::WithHttpConfig as _;
     use opentelemetry_sdk::propagation::TraceContextPropagator;
     use tracing_subscriber::layer::SubscriberExt;
 
+    let http_client = AwcOtlpHttpClient::new().context("Failed to initialize OTLP AWC client")?;
+
     // W3C TraceContext propagation (traceparent header)
     global::set_text_map_propagator(TraceContextPropagator::new());
-
     // OTLP exporter — reads OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, etc.
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_http()
+        .with_http_client(http_client.clone())
+        .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
         .build()
-        .expect("Failed to build OTLP span exporter");
+        .context("Failed to build OTLP span exporter")?;
 
+    let span_processor =
+        opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor::builder(
+            exporter,
+            opentelemetry_sdk::runtime::Tokio,
+        )
+        .build();
     let provider = SdkTracerProvider::builder()
-        .with_batch_exporter(exporter)
+        .with_span_processor(span_processor)
         .build();
 
     let tracer = provider.tracer("sqlpage");
@@ -107,28 +281,33 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
     // OTLP Metric exporter
     let metric_exporter = opentelemetry_otlp::MetricExporter::builder()
         .with_http()
+        .with_http_client(http_client)
+        .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
         .build()
-        .expect("Failed to build OTLP metric exporter");
+        .context("Failed to build OTLP metric exporter")?;
 
-    let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(metric_exporter).build();
+    let reader =
+        opentelemetry_sdk::metrics::periodic_reader_with_async_runtime::PeriodicReader::builder(
+            metric_exporter,
+            opentelemetry_sdk::runtime::Tokio,
+        )
+        .build();
     let meter_provider = SdkMeterProvider::builder()
         .with_reader(reader)
         .with_view(|instrument: &opentelemetry_sdk::metrics::Instrument| {
             if instrument.kind() == opentelemetry_sdk::metrics::InstrumentKind::Histogram {
-                Some(
-                    opentelemetry_sdk::metrics::Stream::builder()
-                        .with_aggregation(
-                            opentelemetry_sdk::metrics::Aggregation::ExplicitBucketHistogram {
-                                boundaries: vec![
-                                    0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75,
-                                    1.0, 2.5, 5.0, 7.5, 10.0,
-                                ],
-                                record_min_max: true,
-                            },
-                        )
-                        .build()
-                        .expect("Failed to build metrics stream"),
-                )
+                opentelemetry_sdk::metrics::Stream::builder()
+                    .with_aggregation(
+                        opentelemetry_sdk::metrics::Aggregation::ExplicitBucketHistogram {
+                            boundaries: vec![
+                                0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0,
+                                2.5, 5.0, 7.5, 10.0,
+                            ],
+                            record_min_max: true,
+                        },
+                    )
+                    .build()
+                    .ok()
             } else {
                 None
             }
@@ -147,7 +326,7 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) {
         .with(otel_layer)
         .with(tracing_opentelemetry::MetricsLayer::new(meter_provider));
 
-    set_global_subscriber(subscriber);
+    set_global_subscriber(subscriber)
 }
 
 fn default_env_filter() -> tracing_subscriber::EnvFilter {
@@ -182,10 +361,10 @@ fn env_filter_directives(log_level: Option<&str>, rust_log: Option<&str>) -> Str
     }
 }
 
-fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) {
+fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set global tracing subscriber");
-    tracing_log::LogTracer::init().expect("Failed to set log→tracing bridge");
+        .context("Failed to set global tracing subscriber")?;
+    tracing_log::LogTracer::init().context("Failed to set log→tracing bridge")
 }
 
 /// Custom logfmt logging layer.
@@ -324,11 +503,14 @@ mod logfmt {
             let target = event_target(event, &event_fields);
             let msg = event_fields.get("message");
             let multiline_msg = is_multiline_terminal_message(colors, msg);
+            let include_all_event_fields =
+                include_all_span_fields || msg.is_none_or(String::is_empty);
 
             write_timestamp(&mut buf, colors);
             write_level(&mut buf, level, colors);
             write_message(&mut buf, msg, multiline_msg);
             write_dimmed_field(&mut buf, "target", target, colors);
+            write_event_fields(&mut buf, &event_fields, include_all_event_fields);
             write_span_fields(&mut buf, ctx.event_scope(event), include_all_span_fields);
             write_trace_id(&mut buf, ctx.event_scope(event), colors);
 
@@ -396,9 +578,31 @@ mod logfmt {
 
     fn write_message(buf: &mut String, msg: Option<&String>, multiline_msg: bool) {
         if !multiline_msg {
-            if let Some(msg) = msg {
+            if let Some(msg) = msg.filter(|msg| !msg.is_empty()) {
                 write_logfmt_value(buf, "msg", msg);
             }
+        }
+    }
+
+    fn write_event_fields(
+        buf: &mut String,
+        event_fields: &HashMap<&'static str, String>,
+        include_all_event_fields: bool,
+    ) {
+        if !include_all_event_fields {
+            return;
+        }
+
+        let mut extra_fields = BTreeMap::new();
+        for (&key, value) in event_fields {
+            if key == "message" || key == "log.target" {
+                continue;
+            }
+            extra_fields.insert(key, value);
+        }
+
+        for (key, value) in extra_fields {
+            write_logfmt_value(buf, key, value);
         }
     }
 
@@ -562,7 +766,7 @@ mod logfmt {
         fn empty_values_fall_back_to_default_filter() {
             assert_eq!(
                 env_filter_directives(Some(""), Some("")),
-                "sqlpage=info,actix_web=info,tracing_actix_web=info"
+                "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn"
             );
         }
 
@@ -592,6 +796,24 @@ mod logfmt {
             write_span_field_maps(&mut buf, [&span_fields], false);
 
             assert_eq!(buf, " method=GET");
+        }
+
+        #[test]
+        fn event_fields_are_rendered_when_message_is_missing() {
+            let mut buf = String::new();
+            let event_fields = HashMap::from([
+                ("message", String::new()),
+                ("log.target", "opentelemetry_sdk".to_string()),
+                ("name", "BatchSpanProcessor.ExportFailed".to_string()),
+                ("reason", "connection error".to_string()),
+            ]);
+
+            write_event_fields(&mut buf, &event_fields, true);
+
+            assert_eq!(
+                buf,
+                " name=BatchSpanProcessor.ExportFailed reason=\"connection error\""
+            );
         }
     }
 }
