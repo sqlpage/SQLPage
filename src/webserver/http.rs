@@ -371,12 +371,16 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
         DefaultRootSpanBuilder::on_request_end(span, outcome);
 
         // Emit a single log event per completed request so it appears in logs.
-        // Error responses (4xx/5xx) are already logged by our error handlers.
         let _enter = span_ref.enter();
         if let Ok(response) = outcome {
             let status = response.response().status();
-            if status.is_success() || status.is_redirection() {
-                log::info!("{}", status.canonical_reason().unwrap_or("ok"));
+            let reason = status.canonical_reason().unwrap_or("Unknown Status");
+            if status.is_server_error() {
+                log::error!("{status} {reason}");
+            } else if status.is_client_error() {
+                log::warn!("{status} {reason}");
+            } else {
+                log::info!("{status} {reason}");
             }
         }
     }
