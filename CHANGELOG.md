@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- Made OIDC and `sqlpage.fetch` debug logs safer and simpler by removing raw token, cookie, claims, and response body dumps while keeping useful request and response metadata.
 - Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
 - Fixed multiple incorrect or imprecise HTTP statuses returned by sqlpage on error
   - this makes it easier for an administrator to distinguish between user errors (4xx, non actionnable) and server errors (5xx, when you see them you should do something) 

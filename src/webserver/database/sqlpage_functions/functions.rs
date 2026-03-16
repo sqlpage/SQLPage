@@ -253,6 +253,14 @@ async fn fetch(
             http_request.url,
             response.status()
         );
+        log::debug!(
+            "Fetch response headers for {}: content_type={:?}",
+            http_request.url,
+            response
+                .headers()
+                .get("content-type")
+                .and_then(|value| value.to_str().ok())
+        );
 
         let body = response
             .body()
@@ -264,8 +272,13 @@ async fn fetch(
                 )
             })?
             .to_vec();
+        log::debug!(
+            "Fetched {} response body: body_len={} bytes, encoding={:?}",
+            http_request.url,
+            body.len(),
+            http_request.response_encoding
+        );
         let response_str = decode_response(body, http_request.response_encoding.as_deref())?;
-        log::debug!("Fetch response: {response_str}");
         Ok(Some(response_str))
     }
     .instrument(fetch_span)

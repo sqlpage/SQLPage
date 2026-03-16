@@ -694,12 +694,15 @@ async fn process_oidc_callback(
     let params = Query::<OidcCallbackParams>::from_query(request.query_string())
         .with_context(|| format!("{SQLPAGE_REDIRECT_URI}: invalid url parameters"))?
         .into_inner();
-    log::debug!("Processing OIDC callback with params: {params:?}. Requesting token...");
+    log::debug!(
+        "Processing OIDC callback. Requesting token for state length {}",
+        params.state.secret().len()
+    );
     let mut tmp_login_flow_state_cookie = get_tmp_login_flow_state_cookie(request, &params.state)?;
     let snapshot = oidc_state.snapshot();
     let http_client = get_http_client_from_appdata(request)?;
     let id_token = exchange_code_for_token(&snapshot.client, http_client, params.clone()).await?;
-    log::debug!("Received token response: {id_token:?}");
+    log::debug!("Received OIDC token response with an ID token");
     let LoginFlowState {
         nonce,
         redirect_target,
@@ -740,7 +743,10 @@ async fn exchange_code_for_token(
         .await
         .context("Failed to exchange code for token")?;
     let access_token = token_response.access_token();
-    log::trace!("Received access token: {}", access_token.secret());
+    log::trace!(
+        "Received OIDC access token with length {}",
+        access_token.secret().len()
+    );
     let id_token = token_response
         .id_token()
         .context("No ID token found in the token response. You may have specified an oauth2 provider that does not support OIDC.")?;
@@ -749,8 +755,11 @@ async fn exchange_code_for_token(
 
 fn set_auth_cookie(response: &mut HttpResponse, id_token: &OidcToken) {
     let id_token_str = id_token.to_string();
-    log::trace!("Setting auth cookie: {SQLPAGE_AUTH_COOKIE_NAME}=\"{id_token_str}\"");
     let id_token_size_kb = id_token_str.len() / 1024;
+    log::trace!(
+        "Setting auth cookie {SQLPAGE_AUTH_COOKIE_NAME} with value length {} bytes",
+        id_token_str.len()
+    );
     if id_token_size_kb > 4 {
         log::warn!(
             "The ID token cookie from the OIDC provider is {id_token_size_kb}kb. \
@@ -839,9 +848,12 @@ fn get_authenticated_user_info(
         .with_context(|| format!("Invalid SQLPage auth cookie: {cookie_value:?}"))?;
 
     let nonce = get_final_nonce_from_cookie(request)?;
-    log::debug!("Verifying id token: {id_token:?}");
+    log::debug!(
+        "Verifying ID token from auth cookie with length {} bytes",
+        cookie_value.len()
+    );
     let claims = oidc_state.get_token_claims(id_token, &nonce)?;
-    log::debug!("The current user is: {claims:?}");
+    log::debug!("Authenticated user subject: {}", claims.subject().as_str());
     Ok(Some(claims))
 }
 
@@ -890,6 +902,12 @@ async fn execute_oidc_request_with_awc(
         ))
     })?;
     let head = response.headers();
+    log::debug!(
+        "Received OIDC response headers: status={}, content_type={:?}",
+        response.status(),
+        head.get(header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+    );
     let mut resp_builder =
         openidconnect::http::Response::builder().status(response.status().as_u16());
     for (name, value) in head {
@@ -900,11 +918,7 @@ async fn execute_oidc_request_with_awc(
         .body()
         .await
         .with_context(|| format!("Couldnt read from {}", &req_head.uri))?;
-    log::debug!(
-        "Received OIDC response with status {}: {}",
-        response.status(),
-        String::from_utf8_lossy(&body)
-    );
+    log::debug!("Received OIDC response body_len={} bytes", body.len());
     let resp = resp_builder.body(body.to_vec())?;
     Ok(resp)
 }
