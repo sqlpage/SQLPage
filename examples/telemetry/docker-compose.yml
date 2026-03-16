@@ -96,7 +96,7 @@ services:
       POSTGRES_DB: sqlpage
     volumes:
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
-      - postgres-logs:/var/log/postgresql
+      - ./postgres-logs:/var/log/postgresql:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sqlpage"]
       interval: 2s
@@ -107,7 +107,7 @@ services:
     user: "0:0"
     volumes:
       - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
-      - postgres-logs:/var/log/postgresql:ro
+      - ./postgres-logs:/var/log/postgresql:ro,z
     ports:
       - "4317:4317"
       - "4318:4318"
@@ -155,13 +155,10 @@ services:
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/sqlpage/sqlpage-home.json
       - GF_NEWS_NEWS_FEED_ENABLED=false
     volumes:
-      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
-      - ./grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
-      - ./grafana:/etc/grafana/provisioning/dashboards/sqlpage:ro
+      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro,z
+      - ./grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro,z
+      - ./grafana:/etc/grafana/provisioning/dashboards/sqlpage:ro,z
     depends_on:
       - tempo
       - loki
       - prometheus
-
-volumes:
-  postgres-logs:
