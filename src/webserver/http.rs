@@ -496,12 +496,11 @@ pub async fn main_handler(
         Serve(path) => {
             let if_modified_since = IfModifiedSince::parse(&service_request).ok();
             let app_state: &web::Data<AppState> = service_request.app_data().expect("app_state");
-            serve_file(
-                path.as_os_str().to_str().unwrap(),
-                app_state,
-                if_modified_since,
-            )
-            .await
+            let path = path
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| ErrorBadRequest("requested file path must be valid unicode"))?;
+            serve_file(path, app_state, if_modified_since).await
         }
     }
     .map(|response| service_request.into_response(response))
