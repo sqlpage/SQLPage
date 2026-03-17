@@ -158,6 +158,18 @@ impl HeaderContext {
         Ok(self)
     }
 
+    fn insert_header(&mut self, header: impl TryIntoHeaderPair) -> anyhow::Result<()> {
+        let pair = header.try_into_pair().map_err(Into::into)?;
+        self.response.insert_header(pair);
+        Ok(())
+    }
+
+    fn append_header(&mut self, header: impl TryIntoHeaderPair) -> anyhow::Result<()> {
+        let pair = header.try_into_pair().map_err(Into::into)?;
+        self.response.append_header(pair);
+        Ok(())
+    }
+
     fn add_http_header(mut self, data: &JsonValue) -> anyhow::Result<Self> {
         let obj = data.as_object().with_context(|| "expected object")?;
         for (name, value) in obj {
@@ -173,7 +185,7 @@ impl HeaderContext {
             }
             let header = TryIntoHeaderPair::try_into_pair((name.as_str(), value_str))
                 .map_err(|e| anyhow::anyhow!("Invalid header: {name}:{value_str}: {e:#?}"))?;
-            self.response.insert_header(header);
+            self.insert_header(header)?;
         }
         Ok(self)
     }
@@ -238,8 +250,7 @@ impl HeaderContext {
             }));
         }
         log::trace!("Setting cookie {cookie}");
-        self.response
-            .append_header((header::SET_COOKIE, cookie.encoded().to_string()));
+        self.append_header((header::SET_COOKIE, cookie.encoded().to_string()))?;
         Ok(self)
     }
 
@@ -248,14 +259,13 @@ impl HeaderContext {
         self.has_status = true;
         let link = get_object_str(data, "link")
             .with_context(|| "The redirect component requires a 'link' property")?;
-        self.response.insert_header((header::LOCATION, link));
+        self.insert_header((header::LOCATION, link))?;
         self.close_with_body(())
     }
 
     /// Answers to the HTTP request with a single json object
     fn json(mut self, data: &JsonValue) -> anyhow::Result<PageContext> {
-        self.response
-            .insert_header((header::CONTENT_TYPE, "application/json"));
+        self.insert_header((header::CONTENT_TYPE, "application/json"))?;
         if let Some(contents) = data.get("contents") {
             let json_response = if let Some(s) = contents.as_str() {
                 s.as_bytes().to_owned()
@@ -269,8 +279,7 @@ impl HeaderContext {
                 None | Some("array") => JsonBodyRenderer::new_array(self.writer),
                 Some("jsonlines") => JsonBodyRenderer::new_jsonlines(self.writer),
                 Some("sse") => {
-                    self.response
-                        .insert_header((header::CONTENT_TYPE, "text/event-stream"));
+                    self.insert_header((header::CONTENT_TYPE, "text/event-stream"))?;
                     JsonBodyRenderer::new_server_sent_events(self.writer)
                 }
                 _ => bail!(
@@ -287,16 +296,15 @@ impl HeaderContext {
     }
 
     async fn csv(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
-        self.response
-            .insert_header((header::CONTENT_TYPE, "text/csv; charset=utf-8"));
+        self.insert_header((header::CONTENT_TYPE, "text/csv; charset=utf-8"))?;
         if let Some(filename) =
             get_object_str(options, "filename").or_else(|| get_object_str(options, "title"))
         {
             let extension = if filename.contains('.') { "" } else { ".csv" };
-            self.response.insert_header((
+            self.insert_header((
                 header::CONTENT_DISPOSITION,
                 format!("attachment; filename={filename}{extension}"),
-            ));
+            ))?;
         }
         let csv_renderer = CsvBodyRenderer::new(self.writer, options).await?;
         let renderer = AnyRenderBodyContext::Csv(csv_renderer);
@@ -320,10 +328,9 @@ impl HeaderContext {
         log::debug!("Authentication failed");
         // The authentication failed
         if let Some(link) = get_object_str(&data, "link") {
-            self.response
-                .status(StatusCode::FOUND)
-                .insert_header((header::LOCATION, link));
+            self.response.status(StatusCode::FOUND);
             self.has_status = true;
+            self.insert_header((header::LOCATION, link))?;
             let response = self.into_response(
                 "Sorry, but you are not authorized to access this page. \
                 Redirecting to the login page...",
@@ -338,10 +345,10 @@ impl HeaderContext {
 
     fn download(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         if let Some(filename) = get_object_str(options, "filename") {
-            self.response.insert_header((
+            self.insert_header((
                 header::CONTENT_DISPOSITION,
                 format!("attachment; filename=\"{filename}\""),
-            ));
+            ))?;
         }
         let data_url = get_object_str(options, "data_url")
             .with_context(|| "The download component requires a 'data_url' property")?;
@@ -360,8 +367,7 @@ impl HeaderContext {
                     .into();
         }
         if !content_type.is_empty() {
-            self.response
-                .insert_header((header::CONTENT_TYPE, content_type));
+            self.insert_header((header::CONTENT_TYPE, content_type))?;
         }
         self.close_with_body(body_bytes.into_owned())
     }
@@ -371,14 +377,15 @@ impl HeaderContext {
         Ok(PageContext::Header(self))
     }
 
-    fn add_server_timing_header(&mut self) {
+    fn add_server_timing_header(&mut self) -> anyhow::Result<()> {
         if let Some(header_value) = self.request_context.server_timing.header_value() {
-            self.response.insert_header(("Server-Timing", header_value));
+            self.insert_header(("Server-Timing", header_value))?;
         }
+        Ok(())
     }
 
     fn into_response<B: MessageBody + 'static>(mut self, body: B) -> anyhow::Result<HttpResponse> {
-        self.add_server_timing_header();
+        self.add_server_timing_header()?;
         match self.response.message_body(body) {
             Ok(response) => Ok(response.map_into_boxed_body()),
             Err(e) => Err(anyhow::anyhow!(
@@ -392,7 +399,7 @@ impl HeaderContext {
     }
 
     async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
-        self.add_server_timing_header();
+        self.add_server_timing_header()?;
         let renderer = match self.request_context.response_format {
             ResponseFormat::Json => AnyRenderBodyContext::Json(
                 JsonBodyRenderer::new_array_with_first_row(self.writer, &data),
@@ -417,8 +424,8 @@ impl HeaderContext {
         })
     }
 
-    pub fn close(self) -> HttpResponse {
-        self.into_response(()).unwrap()
+    pub fn close(self) -> anyhow::Result<HttpResponse> {
+        self.into_response(())
     }
 }
 

@@ -190,7 +190,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
         }
     }
     log::debug!("No SQL statements left to execute for the body of the response");
-    let http_response = head_context.close();
+    let http_response = head_context.close()?;
     Ok(ResponseWithWriter::FinishedResponse { http_response })
 }
 

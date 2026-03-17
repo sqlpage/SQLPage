@@ -3,9 +3,9 @@
 ## unreleased
 
 - Made OIDC and `sqlpage.fetch` debug logs safer and simpler by removing raw token, cookie, claims, and response body dumps while keeping useful request and response metadata.
-- Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence. 
+- Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence.
 - Fixed multiple incorrect or imprecise HTTP statuses returned by sqlpage on error
-  - this makes it easier for an administrator to distinguish between user errors (4xx, non actionnable) and server errors (5xx, when you see them you should do something) 
+  - this makes it easier for an administrator to distinguish between user errors (4xx, non actionnable) and server errors (5xx, when you see them you should do something)
   - for instance: invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Logging: `LOG_LEVEL` is now the primary environment variable for configuring SQLPage's log filter. `RUST_LOG` remains supported as an alias.
 - You can now easily understand and debug slow page loads thanks to the added support for [OpenTelemetry](https://opentelemetry.io) tracing & metrics
@@ -15,6 +15,7 @@
 - Added an argument to `sqlpage.persist_uploaded_file(...)` to control the permissions of the newly created file.
   - Notably, this makes it easier to accelerate serving of uploaded files by letting a reverse proxy like nginx serve them directly.
 - Added an [`id` row-level parameter to the datagrid component](https://github.com/sqlpage/SQLPage/issues/1243)
+- Fixed crashes when a header-only page returned an http header containing an invalid character
 
 ## 0.43.0
 
