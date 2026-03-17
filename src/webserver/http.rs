@@ -374,14 +374,14 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
         let _enter = span_ref.enter();
         if let Ok(response) = outcome {
             let status = response.response().status();
-            let reason = status.canonical_reason().unwrap_or("Unknown Status");
-            if status.is_server_error() {
-                log::error!("{status} {reason}");
+            let level = if status.is_server_error() {
+                log::Level::Error
             } else if status.is_client_error() {
-                log::warn!("{status} {reason}");
+                log::Level::Warn
             } else {
-                log::info!("{status} {reason}");
-            }
+                log::Level::Info
+            };
+            log::log!(level, "{status}");
         }
     }
 }
