@@ -4,10 +4,6 @@ use sqlpage::{
     AppState,
 };
 use sqlx::Executor as _;
-#[cfg(unix)]
-use std::ffi::OsString;
-#[cfg(unix)]
-use std::os::unix::ffi::OsStringExt;
 
 use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
 
@@ -91,6 +87,7 @@ async fn test_routing_with_db_fs() {
     );
 }
 
+#[cfg(unix)]
 #[actix_web::test]
 async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let mut config = test_config();
@@ -100,41 +97,30 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     config.database_url =
         "sqlite://file:test_non_unicode_static_path?mode=memory&cache=shared".to_string();
 
-    let expected_db_path = {
-        let decoded = percent_encoding::percent_decode_str("%FF.txt");
-        #[cfg(unix)]
-        {
-            std::path::PathBuf::from(OsString::from_vec(decoded.collect::<Vec<u8>>()))
-                .display()
-                .to_string()
-        }
-        #[cfg(not(unix))]
-        {
-            decoded.decode_utf8_lossy().to_string()
-        }
-    };
+    let state = AppState::init(&config).await.unwrap();
+    let expected_db_path = "\u{FFFD}.txt";
+    let mut conn = state.db.connection.acquire().await.unwrap();
 
-    use sqlx::Connection as _;
-    let mut conn = sqlx::AnyConnection::connect(&config.database_url)
+    (&mut *conn)
+        .execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
+            sqlpage::webserver::database::SupportedDatabase::Sqlite,
+        ))
         .await
         .unwrap();
-    conn.execute("DROP TABLE IF EXISTS sqlpage_files")
-        .await
-        .unwrap();
-    conn.execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
-        sqlpage::webserver::database::SupportedDatabase::Sqlite,
-    ))
-    .await
-    .unwrap();
-    sqlx::query("INSERT INTO sqlpage_files(path, contents) VALUES (?, ?)")
+    let insert_sql = format!(
+        "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
+        make_placeholder(state.db.info.kind, 1),
+        make_placeholder(state.db.info.kind, 2)
+    );
+    sqlx::query(&insert_sql)
         .bind(expected_db_path)
         .bind("file from db fs".as_bytes())
-        .execute(&mut conn)
+        .execute(&mut *conn)
         .await
         .unwrap();
+    drop(conn);
 
     let state = AppState::init(&config).await.unwrap();
-
     let app_data = actix_web::web::Data::new(state);
     let req = test::TestRequest::get()
         .uri("/%FF.txt")
