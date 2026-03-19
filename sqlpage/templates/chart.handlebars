@@ -43,7 +43,15 @@
             {{~ stringify (default series (default ../title "")) ~}},
             {{~ stringify (default x label) ~}},
             {{~ stringify (default y value) ~}}
-            {{~#if z}}, {{~ stringify z ~}} {{~/if~}}
+            {{~#if (or (or z (eq z 0)) link)~}}, {
+                {{~#if (or z (eq z 0))~}}
+                    "z": {{~ stringify z ~}}
+                    {{~#if link~}},{{/if~}}
+                {{~/if~}}
+                {{~#if link~}}
+                    "l": {{~ stringify link ~}}
+                {{~/if~}}
+            }{{~/if~}}
         ]
     {{~/each_row~}}
     ]

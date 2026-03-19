@@ -665,7 +665,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('label', 'An alias for parameter "x"', 'REAL', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
-    ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
+    ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
+    ('link', 'URL opened when user clicks this datapoint or slice.', 'URL', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     ('chart', 'An area chart representing a time series, using the top-level property `time`.
@@ -692,6 +693,23 @@ INSERT INTO example(component, description, properties) VALUES
     ('chart', 'A basic bar chart', json('[
         {"component":"chart", "type": "bar", "title": "Quarterly Results", "horizontal": true, "labels": true},
         {"label": "Tom", "value": 35}, {"label": "Olive", "value": 15}]')),
+    ('chart', 'A bar chart with clickable datapoints. Each row can set a `link` URL; clicking a datapoint opens that URL.', json('[
+        {"component":"chart", "type": "bar", "title": "Linked Sales", "labels": true},
+        {"label": "North", "value": 35, "link": "/documentation.sql?component=table"},
+        {"label": "South", "value": 22},
+        {"label": "West", "value": 41, "link": "/documentation.sql?component=map"}
+    ]')),
+    ('chart', 'A pie chart with per-slice links.', json('[
+        {"component":"chart", "title": "Linked Answers", "type": "pie", "labels": true},
+        {"label": "Yes", "value": 65, "link": "/documentation.sql?component=form"},
+        {"label": "No", "value": 35, "link": "/documentation.sql?component=table"}
+    ]')),
+    ('chart', 'A bubble chart demonstrating `z` and `link` metadata together on points.',
+    json('[
+        {"component":"chart", "title": "Bubbles with links", "type": "bubble", "ztitle": "Population", "marker": 8},
+        {"series": "Europe", "x": 2.1, "y": 18.5, "z": 742, "link": "/documentation.sql?component=chart"},
+        {"series": "Asia", "x": 5.2, "y": 24.1, "z": 4700, "link": "/documentation.sql?component=map"}
+    ]')),
     ('chart', 'A TreeMap Chart allows you to display hierarchical data in a nested layout. This is useful for  visualizing the proportion of each part to the whole.',
         json('[
         {"component":"chart", "type": "treemap", "title": "Quarterly Results By Region (in k$)", "labels": true },
