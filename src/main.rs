@@ -7,18 +7,36 @@ use sqlpage::{
 
 #[actix_web::main]
 async fn main() {
-    if let Err(e) = init_logging() {
-        eprintln!("Failed to initialize logging/telemetry: {e:#}");
-        std::process::exit(1);
+    let cli = match cli::arguments::parse_cli() {
+        Ok(cli) => cli,
+        Err(e) => {
+            eprintln!("{e:#}");
+            std::process::exit(1);
+        }
+    };
+
+    let is_server_mode = cli.command.is_none();
+
+    if is_server_mode {
+        if let Err(e) = init_logging() {
+            eprintln!("Failed to initialize logging/telemetry: {e:#}");
+            std::process::exit(1);
+        }
+    } else {
+        let _ = dotenvy::dotenv();
     }
-    if let Err(e) = start().await {
-        log::error!("{e:?}");
+
+    if let Err(e) = start(cli).await {
+        if is_server_mode {
+            log::error!("{e:?}");
+        } else {
+            eprintln!("{e:#}");
+        }
         std::process::exit(1);
     }
 }
 
-async fn start() -> anyhow::Result<()> {
-    let cli = cli::arguments::parse_cli()?;
+async fn start(cli: cli::arguments::Cli) -> anyhow::Result<()> {
     let app_config = AppConfig::from_cli(&cli)?;
 
     if let Some(command) = cli.command {
