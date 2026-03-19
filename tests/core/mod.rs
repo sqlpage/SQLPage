@@ -4,6 +4,10 @@ use sqlpage::{
     AppState,
 };
 use sqlx::Executor as _;
+#[cfg(unix)]
+use std::ffi::OsString;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStringExt;
 
 use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
 
@@ -84,6 +88,58 @@ async fn test_routing_with_db_fs() {
     assert!(
         body_str.contains("Hi from db !"),
         "{body_str}\nexpected to contain: Hi from db !"
+    );
+}
+
+#[cfg(unix)]
+#[actix_web::test]
+async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
+    let mut config = test_config();
+    if !config.database_url.starts_with("sqlite") {
+        return;
+    }
+    config.database_url =
+        "sqlite://file:test_non_unicode_static_path?mode=memory&cache=shared".to_string();
+
+    let decoded = percent_encoding::percent_decode_str("%FF.txt");
+    let expected_db_path =
+        std::path::PathBuf::from(OsString::from_vec(decoded.collect::<Vec<u8>>()))
+            .display()
+            .to_string();
+
+    use sqlx::Connection as _;
+    let mut conn = sqlx::AnyConnection::connect(&config.database_url)
+        .await
+        .unwrap();
+    conn.execute("DROP TABLE IF EXISTS sqlpage_files")
+        .await
+        .unwrap();
+    conn.execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
+        sqlpage::webserver::database::SupportedDatabase::Sqlite,
+    ))
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO sqlpage_files(path, contents) VALUES (?, ?)")
+        .bind(expected_db_path)
+        .bind("file from db fs".as_bytes())
+        .execute(&mut conn)
+        .await
+        .unwrap();
+
+    let state = AppState::init(&config).await.unwrap();
+
+    let app_data = actix_web::web::Data::new(state);
+    let req = test::TestRequest::get()
+        .uri("/%FF.txt")
+        .app_data(app_data)
+        .to_srv_request();
+
+    let err = sqlpage::webserver::http::main_handler(req)
+        .await
+        .expect_err("non-unicode path should not panic and must return bad request");
+    assert_eq!(
+        err.as_response_error().status_code(),
+        StatusCode::BAD_REQUEST
     );
 }
 
