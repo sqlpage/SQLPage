@@ -60,14 +60,13 @@ bigdecimal = { version = "0.4.8", features = ["serde-json"] }
 include_dir = "0.7.2"
 config = { version = "0.15.4", features = ["json"] }
 markdown = { version = "1.0.0-alpha.23", features = ["log"] }
-password-hash = "0.5.0"
-argon2 = "0.5.3"
+argon2 = { version = "0.6.0-rc.8", features = ["rand_core"] }
 actix-web-httpauth = "0.8.0"
 rand = "0.10.0"
 actix-multipart = "0.7.2"
 base64 = "0.22"
-hmac = "0.12"
-sha2 = "0.10"
+hmac = "0.13"
+sha2 = "0.11"
 rustls-acme = "0.15"
 dotenvy = "0.15.7"
 csv-async = { version = "1.2.6", features = ["tokio"] }

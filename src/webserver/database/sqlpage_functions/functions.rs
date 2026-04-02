@@ -432,10 +432,12 @@ pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Op
         return Ok(None);
     };
     actix_web::rt::task::spawn_blocking(move || {
+        use argon2::PasswordHasher;
+
         // Hashes a password using Argon2. This is a CPU-intensive blocking operation.
         let phf = argon2::Argon2::default();
-        let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
-        let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
+        let password_hash = phf
+            .hash_password(password.as_bytes())
             .map_err(|e| anyhow!("Unable to hash password: {e}"))?;
         Ok(password_hash.to_string())
     })
@@ -902,7 +904,7 @@ async fn hmac<'a>(
     key: Cow<'a, str>,
     algorithm: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<String>> {
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha2::{Sha256, Sha512};
 
     let algorithm = algorithm.as_deref().unwrap_or("sha256");
@@ -936,10 +938,13 @@ async fn hmac<'a>(
 
     // Convert to requested output format
     let output = match output_format.to_lowercase().as_str() {
-        "hex" => result.into_iter().fold(String::new(), |mut acc, byte| {
-            write!(&mut acc, "{byte:02x}").unwrap();
+        "hex" => {
+            let mut acc = String::with_capacity(result.len() * 2);
+            for byte in result {
+                write!(&mut acc, "{byte:02x}").unwrap();
+            }
             acc
-        }),
+        }
         "base64" => base64::Engine::encode(&base64::engine::general_purpose::STANDARD, result),
         _ => {
             anyhow::bail!(
