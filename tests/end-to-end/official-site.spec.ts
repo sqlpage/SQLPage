@@ -24,6 +24,43 @@ test("chart", async ({ page }) => {
   await expect(page.locator(".apexcharts-canvas").first()).toBeVisible();
 });
 
+test("chart point links - bar", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart`);
+  const linkedBarCard = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Linked Sales" }),
+  });
+  await expect(linkedBarCard.locator(".apexcharts-canvas")).toBeVisible();
+  await linkedBarCard
+    .locator(".apexcharts-series path, .apexcharts-series rect")
+    .first()
+    .click();
+  await expect(page).toHaveURL(/component=table/);
+});
+
+test("chart point links - pie", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart`);
+  const linkedPieCard = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Linked Answers" }),
+  });
+  await expect(linkedPieCard.locator(".apexcharts-canvas")).toBeVisible();
+  await linkedPieCard.locator(".apexcharts-pie-series path").first().click();
+  await expect(page).toHaveURL(/component=form/);
+});
+
+test("chart links - no-link datapoint", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart`);
+  const linkedBarCard = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Linked Sales" }),
+  });
+  await expect(linkedBarCard.locator(".apexcharts-canvas")).toBeVisible();
+  const initialUrl = page.url();
+  await linkedBarCard
+    .locator(".apexcharts-series path, .apexcharts-series rect")
+    .nth(1)
+    .click();
+  await expect(page).toHaveURL(initialUrl);
+});
+
 test("map", async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=map#component`);
   await expect(page.getByText("Loading...")).not.toBeVisible();

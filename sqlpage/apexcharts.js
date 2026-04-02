@@ -36,7 +36,7 @@ sqlpage_chart = (() => {
   );
   const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
-  /** @typedef { { [name:string]: {data:{x:number|string|Date,y:number}[], name:string} } } Series */
+  /** @typedef { { [name:string]: {data:{x:number|string|Date,y:number,z?:number|string,l?:string}[], name:string} } } Series */
 
   /**
    * Aligns series data points by their x-axis categories, ensuring all series have data points
@@ -78,17 +78,35 @@ sqlpage_chart = (() => {
         series_idxs.splice(series_idxs.indexOf(idx_of_xmin), 1);
       }
     }
-    // Create a map of category -> value for each series and rebuild
+    // Create a map of category -> point for each series and rebuild
     return series.map((s) => {
-      const valueMap = new Map(s.data.map((point) => [point.x, point.y]));
+      const valueMap = new Map(s.data.map((point) => [point.x, point]));
       return {
         name: s.name,
-        data: Array.from(categoriesSet, (category) => ({
-          x: category,
-          y: valueMap.get(category) || 0,
-        })),
+        data: Array.from(
+          categoriesSet,
+          (category) =>
+            valueMap.get(category) || {
+              x: category,
+              y: 0,
+            },
+        ),
       };
     });
+  }
+
+  function resolvePointLink(data, opts, pieLinks) {
+    if (opts.dataPointIndex == null || opts.dataPointIndex < 0)
+      return undefined;
+    if (data.type === "pie") return pieLinks[opts.dataPointIndex];
+    if (opts.seriesIndex == null || opts.seriesIndex < 0) return undefined;
+    const series = opts.w?.config?.series?.[opts.seriesIndex];
+    const point = series?.data?.[opts.dataPointIndex];
+    return point?.l;
+  }
+
+  function navigateIfLink(link) {
+    if (typeof link === "string" && link) window.location.href = link;
   }
 
   /** @param {HTMLElement} c */
@@ -100,7 +118,27 @@ sqlpage_chart = (() => {
     const is_timeseries = !!data.time;
     /** @type { Series } */
     const series_map = {};
-    for (const [name, old_x, old_y, z] of data.points) {
+    const pieLinks = [];
+    let warnedLegacyPointMetadata = false;
+    for (const point of data.points) {
+      const [name, old_x, old_y] = point;
+      let meta;
+      if (point.length === 4) {
+        if (
+          typeof point[3] === "object" &&
+          point[3] != null &&
+          !Array.isArray(point[3])
+        ) {
+          meta = point[3];
+        } else if (!warnedLegacyPointMetadata) {
+          warnedLegacyPointMetadata = true;
+          console.warn(
+            "Chart point metadata must be an object in the 4th tuple slot. Legacy formats are ignored.",
+          );
+        }
+      }
+      const z = meta?.z;
+      const link = meta?.l;
       series_map[name] = series_map[name] || { name, data: [] };
       let x = old_x;
       let y = old_y;
@@ -110,7 +148,11 @@ sqlpage_chart = (() => {
           y = y.map((y) => new Date(y).getTime());
         else x = new Date(x);
       }
-      series_map[name].data.push({ x, y, z });
+      const seriesPoint = { x, y };
+      if (z != null) seriesPoint.z = z;
+      if (link != null) seriesPoint.l = link;
+      series_map[name].data.push(seriesPoint);
+      pieLinks.push(link);
     }
     if (data.xmin == null) data.xmin = undefined;
     if (data.xmax == null) data.xmax = undefined;
@@ -135,6 +177,16 @@ sqlpage_chart = (() => {
       series = align_categories(series);
 
     const chart_type = data.type || "line";
+    let skipNextChartClick = false;
+    const onDataPointInteraction = (_event, _chartContext, opts) => {
+      const link = resolvePointLink(data, opts, pieLinks);
+      if (!link) return;
+      skipNextChartClick = true;
+      navigateIfLink(link);
+      setTimeout(() => {
+        skipNextChartClick = false;
+      }, 0);
+    };
     const options = {
       chart: {
         type: chart_type,
@@ -150,6 +202,13 @@ sqlpage_chart = (() => {
         },
         zoom: {
           enabled: false,
+        },
+        events: {
+          dataPointSelection: onDataPointInteraction,
+          click: (event, chartContext, opts) => {
+            if (skipNextChartClick) return;
+            onDataPointInteraction(event, chartContext, opts);
+          },
         },
       },
       theme: {
