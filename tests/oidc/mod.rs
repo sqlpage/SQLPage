@@ -20,7 +20,7 @@ fn base64url_encode(data: &[u8]) -> String {
 }
 
 pub fn make_jwt(claims: &serde_json::Value, secret: &str) -> String {
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
 
     let header = json!({

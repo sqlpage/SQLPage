@@ -620,7 +620,7 @@ fn process_oidc_logout(
 
 fn compute_logout_signature(redirect_uri: &str, timestamp: i64, client_secret: &str) -> String {
     use base64::Engine;
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
 
     let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
@@ -1046,13 +1046,12 @@ fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
 }
 
 fn hash_nonce(nonce: &Nonce) -> String {
-    use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
-    let salt = SaltString::generate(&mut OsRng);
+    use argon2::PasswordHasher;
     // low-cost parameters: oidc tokens are short-lived and the source nonce is high-entropy
     let params = argon2::Params::new(8, 1, 1, Some(16)).expect("bug: invalid Argon2 parameters");
     let argon2 = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
     let hash = argon2
-        .hash_password(nonce.secret().as_bytes(), &salt)
+        .hash_password(nonce.secret().as_bytes())
         .expect("bug: failed to hash nonce");
     hash.to_string()
 }
@@ -1070,13 +1069,13 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
         id_token_nonce.secret(),
         state_nonce.secret()
     );
-    let hash = argon2::password_hash::PasswordHash::new(id_token_nonce.secret()).map_err(|e| {
+    let hash = argon2::PasswordHash::new(id_token_nonce.secret()).map_err(|e| {
         format!(
             "Failed to parse state nonce ({}): {e}",
             id_token_nonce.secret()
         )
     })?;
-    argon2::password_hash::PasswordVerifier::verify_password(
+    argon2::PasswordVerifier::verify_password(
         &argon2::Argon2::default(),
         state_nonce.secret().as_bytes(),
         &hash,
