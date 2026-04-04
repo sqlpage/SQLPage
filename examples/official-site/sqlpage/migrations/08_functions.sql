@@ -549,7 +549,7 @@ VALUES (
 
 ```sql
 select ''text'' AS component;
-select sqlpage.is_path_matching(sqlpage.path(),''/api/%/%'') AS contents;
+select sqlpage.is_path_matching(sqlpage.path(),''/api/%/%/%'') AS contents;
 ```
 
 #### Result
