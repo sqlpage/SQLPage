@@ -549,12 +549,12 @@ VALUES (
 
 ```sql
 select ''text'' AS component;
-select sqlpage.is_path_matching(sqlpage.path(),''/api/%/%/%'') AS contents;
+select sqlpage.is_path_matching(sqlpage.path(),''/api/v1/user/%d/%s'') AS contents;
 ```
 
 #### Result
 
-`/api/v1/user/42`
+`/api/v1/user/42/name`
 
 #### Notes
 
@@ -562,8 +562,8 @@ select sqlpage.is_path_matching(sqlpage.path(),''/api/%/%/%'') AS contents;
 - If the path is NULL, or the pattern is NULL, it will return an empty string.
 - If the path and pattern have different numbers of segments, it will return an empty string.
 - If the path and pattern have the same number of segments, it will compare them segment by segment.
-- If a segment in the pattern is ''%'', it will match any non-empty segment in the path.
-- If a segment in the pattern is a string, it will match the corresponding segment in the path if they are equal.
+- If a segment in the pattern is ''%d'', it will match any non-empty segment that is an integer.
+- If a segment in the pattern is ''%s'', it will match any non-empty segment in the path.
 - If all segments match, it will return the path.
 - Otherwise, it will return an empty string.
 '

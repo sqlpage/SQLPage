@@ -829,8 +829,13 @@ async fn is_path_matching<'a>(
     }
 
     for (ps, pat_s) in path_segments.iter().zip(pattern_segments.iter()) {
-        if *pat_s == "%" {
+        if *pat_s == "%s" {
             if ps.is_empty() {
+                return Some(Cow::Borrowed(""));
+            }
+        } else if *pat_s == "%d" {
+            let ps_decoded = percent_encoding::percent_decode_str(ps).decode_utf8_lossy();
+            if ps_decoded.is_empty() || ps_decoded.parse::<i64>().is_err() {
                 return Some(Cow::Borrowed(""));
             }
         } else {
