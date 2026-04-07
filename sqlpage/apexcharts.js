@@ -139,6 +139,7 @@ sqlpage_chart = (() => {
       chart: {
         type: chart_type,
         fontFamily: "inherit",
+        background: "transparent",
         parentHeightOffset: 0,
         height: chartContainer.style.height,
         stacked: !!data.stacked,
@@ -153,6 +154,7 @@ sqlpage_chart = (() => {
         },
       },
       theme: {
+        mode: isDarkTheme ? 'dark' : 'light',
         palette: "palette4",
       },
       dataLabels: {
