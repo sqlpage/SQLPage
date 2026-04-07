@@ -154,7 +154,7 @@ sqlpage_chart = (() => {
         },
       },
       theme: {
-        mode: isDarkTheme ? 'dark' : 'light',
+        mode: isDarkTheme ? "dark" : "light",
         palette: "palette4",
       },
       legend: {
