@@ -61,9 +61,11 @@ where category = $route->>''category''
 ### Details
 
 - Quick regex reminder:
-- `\w+` matches one or more "word" characters
-- `\d+` matches one or more digits
-- `(?<name>...)` creates a named capture group
+  - `\w+` matches one or more "word" characters
+  - `\d+` matches one or more digits
+  - `(?<name>...)` creates a named capture group
+- Some databases, such as MySQL and MariaDB, treat backslashes specially inside SQL strings.
+  In those databases, you may need to write `\\w` and `\\d`, or use portable character classes such as `[A-Za-z0-9_]` and `[0-9]` instead.
 - In SQLite, PostgreSQL, and some other databases, you can read fields from the returned JSON with `->` and `->>`
 - On databases that do not support that syntax, use their JSON extraction function instead, such as `json_extract($route, ''$.category'')`
 - For the full regular expression syntax supported by SQLPage, see the Rust `regex` crate documentation:

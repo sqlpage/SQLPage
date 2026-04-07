@@ -1,5 +1,5 @@
 set route = sqlpage.regex_match(
-    '/categories/(?<category>\w+)/post/(?<id>\d+)',
+    '/categories/(?<category>[A-Za-z0-9_]+)/post/(?<id>[0-9]+)',
     '/categories/sql/post/42'
 );
 
