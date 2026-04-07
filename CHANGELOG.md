@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- Added a `show_legend` top level property to the chart component.
 - Made OIDC and `sqlpage.fetch` debug logs safer and simpler by removing raw token, cookie, claims, and response body dumps while keeping useful request and response metadata.
 - Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence.
 - Fixed multiple incorrect or imprecise HTTP statuses returned by sqlpage on error
