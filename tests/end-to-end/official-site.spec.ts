@@ -24,6 +24,17 @@ test("chart", async ({ page }) => {
   await expect(page.locator(".apexcharts-canvas").first()).toBeVisible();
 });
 
+test("chart supports hiding legend", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+
+  const expensesChart = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Expenses" }),
+  });
+
+  await expect(expensesChart.locator(".apexcharts-canvas")).toBeVisible();
+  await expect(expensesChart.locator(".apexcharts-legend")).toBeHidden();
+});
+
 test("map", async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=map#component`);
   await expect(page.getByText("Loading...")).not.toBeVisible();

@@ -155,6 +155,9 @@ sqlpage_chart = (() => {
       theme: {
         palette: "palette4",
       },
+      legend: {
+        show: data.show_legend !== false,
+      },
       dataLabels: {
         enabled: !!data.labels,
         dropShadow: {
