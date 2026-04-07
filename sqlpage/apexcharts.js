@@ -1,25 +1,6 @@
 /* !include https://cdn.jsdelivr.net/npm/apexcharts@5.3.6/dist/apexcharts.min.js */
 
 sqlpage_chart = (() => {
-  /**
-   * Coerces SQL values to booleans.
-   * SQLite often returns booleans as 0/1 integers.
-   * @param {unknown} value
-   * @param {boolean} defaultValue
-   * @returns {boolean}
-   */
-  function sqlBoolean(value, defaultValue = false) {
-    if (value == null) return defaultValue;
-    if (typeof value === "boolean") return value;
-    if (typeof value === "number") return value !== 0;
-    if (typeof value === "string") {
-      const normalized = value.trim().toLowerCase();
-      if (normalized === "0" || normalized === "false") return false;
-      if (normalized === "1" || normalized === "true") return true;
-    }
-    return Boolean(value);
-  }
-
   function sqlpage_chart() {
     for (const c of document.querySelectorAll("[data-pre-init=chart]")) {
       try {
@@ -175,7 +156,7 @@ sqlpage_chart = (() => {
         palette: "palette4",
       },
       legend: {
-        show: sqlBoolean(data.show_legend, true),
+        show: data.show_legend === null || !!data.show_legend,
       },
       dataLabels: {
         enabled: !!data.labels,
