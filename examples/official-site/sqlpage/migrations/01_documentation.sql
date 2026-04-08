@@ -645,6 +645,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
     ('type', 'The type of chart. One of: "line", "area", "bar", "column", "pie", "scatter", "bubble", "heatmap", "rangeBar"', 'TEXT', TRUE, FALSE),
     ('time', 'Whether the x-axis represents time. If set to true, the x values will be parsed and formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
+    ('xmin', 'The minimal value for the x-axis. When time is true, this can be a date or timestamp.', 'TEXT', TRUE, TRUE),
+    ('xmax', 'The maximum value for the x-axis. When time is true, this can be a date or timestamp.', 'TEXT', TRUE, TRUE),
     ('ymin', 'The minimal value for the y-axis.', 'REAL', TRUE, TRUE),
     ('ymax', 'The maximum value for the y-axis.', 'REAL', TRUE, TRUE),
     ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
