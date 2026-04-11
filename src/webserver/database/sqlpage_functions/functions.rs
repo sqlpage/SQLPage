@@ -30,6 +30,9 @@ super::function_definition_macro::sqlpage_functions! {
     environment_variable(name: Cow<str>);
     exec((&RequestInfo), program_name: Cow<str>, args: Vec<Cow<str>>);
 
+    get_path_segment(path: Option<Cow<str>>, index: SqlPageFunctionParam<usize>);
+    is_path_matching(path: Option<Cow<str>>, pattern: Option<Cow<str>>);
+
     fetch((&RequestInfo), http_request: Option<SqlPageFunctionParam<HttpFetchRequest<'_>>>);
     fetch_with_meta((&RequestInfo), http_request: Option<SqlPageFunctionParam<HttpFetchRequest<'_>>>);
 
@@ -857,6 +860,62 @@ async fn url_encode(raw_text: Option<Cow<'_, str>>) -> Option<Cow<'_, str>> {
             Cow::Owned(encoded.collect())
         }
     })
+}
+
+/// Returns the path if it matches the pattern, otherwise returns an empty string.
+async fn is_path_matching<'a>(
+    path: Option<Cow<'a, str>>,
+    pattern: Option<Cow<'_, str>>,
+) -> Option<Cow<'a, str>> {
+    let (Some(p_val), Some(pattern)) = (path.as_ref(), pattern) else {
+        return Some(Cow::Borrowed(""));
+    };
+
+    let path_segments: Vec<&str> = p_val.split('/').collect();
+    let pattern_segments: Vec<&str> = pattern.split('/').collect();
+
+    if path_segments.len() != pattern_segments.len() {
+        return Some(Cow::Borrowed(""));
+    }
+
+    for (ps, pat_s) in path_segments.iter().zip(pattern_segments.iter()) {
+        if *pat_s == "%s" {
+            if ps.is_empty() {
+                return Some(Cow::Borrowed(""));
+            }
+        } else if *pat_s == "%d" {
+            let ps_decoded = percent_encoding::percent_decode_str(ps).decode_utf8_lossy();
+            if ps_decoded.is_empty() || ps_decoded.parse::<i64>().is_err() {
+                return Some(Cow::Borrowed(""));
+            }
+        } else {
+            let ps_decoded = percent_encoding::percent_decode_str(ps).decode_utf8_lossy();
+            let pat_s_decoded = percent_encoding::percent_decode_str(pat_s).decode_utf8_lossy();
+            if ps_decoded != pat_s_decoded {
+                return Some(Cow::Borrowed(""));
+            }
+        }
+    }
+
+    path
+}
+
+/// Returns the Nth segment of a path. Segments are separated by '/'.
+async fn get_path_segment(path: Option<Cow<'_, str>>, index: usize) -> String {
+    let Some(path) = path else {
+        return String::new();
+    };
+    if index == 0 {
+        return String::new();
+    }
+    let segment = path
+        .trim_start_matches('/')
+        .split('/')
+        .nth(index - 1)
+        .unwrap_or_default();
+    percent_encoding::percent_decode_str(segment)
+        .decode_utf8_lossy()
+        .into_owned()
 }
 
 /// Returns all variables in the request as a JSON object.

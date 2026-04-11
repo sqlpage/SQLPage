@@ -478,3 +478,114 @@ VALUES (
         'The string to encode.',
         'TEXT'
     );
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'get_path_segment',
+        '0.44',
+        'cut',
+        'Returns the Nth segment of a path.
+
+### Example
+
+#### Get the user id from the path ''/api/v1/user/42''
+
+```sql
+select ''text'' AS component;
+select sqlpage.get_path_segment(''/api/v1/user/42'',4) AS contents;
+```
+
+#### Result
+
+`42`
+
+#### Notes
+
+- Segments are separated by ''/''.
+- If the path is NULL, or the index is out of bounds, it will return an empty string.
+- The index is 1-based, so the first segment is at index 1.
+'
+    );
+INSERT INTO sqlpage_function_parameters (
+        "function",
+        "index",
+        "name",
+        "description_md",
+        "type"
+    )
+VALUES (
+        'get_path_segment',
+        1,
+        'path',
+        'The path to extract the segment from.',
+        'TEXT'
+    ),
+    (
+        'get_path_segment',
+        2,
+        'index',
+        'The index of the segment to extract. 1-based.',
+        'INTEGER'
+    );
+INSERT INTO sqlpage_functions (
+        "name",
+        "introduced_in_version",
+        "icon",
+        "description_md"
+    )
+VALUES (
+        'is_path_matching',
+        '0.44',
+        'flip-horizontal',
+        'Returns the path if it matches the pattern, otherwise returns an empty string.
+
+### Example
+
+#### Check if the current path matches a pattern
+
+```sql
+select ''text'' AS component;
+select sqlpage.is_path_matching(sqlpage.path(),''/api/v1/user/%d/%s'') AS contents;
+```
+
+#### Result
+
+`/api/v1/user/42/name`
+
+#### Notes
+
+- The pattern is a list of segments separated by ''/''.
+- If the path is NULL, or the pattern is NULL, it will return an empty string.
+- If the path and pattern have different numbers of segments, it will return an empty string.
+- If the path and pattern have the same number of segments, it will compare them segment by segment.
+- If a segment in the pattern is ''%d'', it will match any non-empty segment that is an integer.
+- If a segment in the pattern is ''%s'', it will match any non-empty segment in the path.
+- If all segments match, it will return the path.
+- Otherwise, it will return an empty string.
+'
+    );
+INSERT INTO sqlpage_function_parameters (
+        "function",
+        "index",
+        "name",
+        "description_md",
+        "type"
+    )
+VALUES (
+        'is_path_matching',
+        1,
+        'path',
+        'The path to match against.',
+        'TEXT'
+    ),
+    (
+        'is_path_matching',
+        2,
+        'pattern',
+        'The template pattern.',
+        'TEXT'
+    );
