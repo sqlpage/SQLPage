@@ -610,7 +610,7 @@ async fn apply_delayed_functions(
 ) -> anyhow::Result<()> {
     // We need to open new connections for each delayed function call, because we are still fetching the results of the current query in the main connection.
     let mut db_conn = None;
-    if let DbItem::Row(serde_json::Value::Object(ref mut results)) = item {
+    if let DbItem::Row(serde_json::Value::Object(results)) = item {
         for f in delayed_functions {
             log::trace!("Applying delayed function {} to {:?}", f.function, results);
             apply_single_delayed_function(request, &mut db_conn, f, results).await?;
@@ -654,7 +654,7 @@ fn json_to_fn_param(json: serde_json::Value) -> Option<Cow<'static, str>> {
 }
 
 fn apply_json_columns(item: &mut DbItem, json_columns: &[String]) {
-    if let DbItem::Row(Value::Object(ref mut row)) = item {
+    if let DbItem::Row(Value::Object(row)) = item {
         for column in json_columns {
             if let Some(value) = row.get_mut(column) {
                 if let Value::String(json_str) = value {

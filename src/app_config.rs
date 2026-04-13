@@ -774,7 +774,7 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        env::set_var("SQLPAGE_CONFIGURATION_DIRECTORY", "/path/to/config");
+        unsafe { env::set_var("SQLPAGE_CONFIGURATION_DIRECTORY", "/path/to/config"); }
 
         let config = load_from_env().unwrap();
 
@@ -784,7 +784,7 @@ mod test {
             "Configuration directory should match the SQLPAGE_CONFIGURATION_DIRECTORY env var"
         );
 
-        env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+        unsafe { env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY"); }
     }
 
     #[test]
@@ -792,12 +792,12 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        env::set_var("SQLPAGE_PORT", "tcp://10.0.0.1:8080");
+        unsafe { env::set_var("SQLPAGE_PORT", "tcp://10.0.0.1:8080"); }
 
         let config = load_from_env().unwrap();
         assert_eq!(config.port, None);
 
-        env::remove_var("SQLPAGE_PORT");
+        unsafe { env::remove_var("SQLPAGE_PORT"); }
     }
 
     #[test]
@@ -805,12 +805,12 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        env::set_var("SQLPAGE_PORT", "9000");
+        unsafe { env::set_var("SQLPAGE_PORT", "9000"); }
 
         let config = load_from_env().unwrap();
         assert_eq!(config.port, Some(9000));
 
-        env::remove_var("SQLPAGE_PORT");
+        unsafe { env::remove_var("SQLPAGE_PORT"); }
     }
 
     #[test]
@@ -818,7 +818,7 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        env::set_var("SQLPAGE_WEB_ROOT", "/");
+        unsafe { env::set_var("SQLPAGE_WEB_ROOT", "/"); }
 
         let cli = Cli {
             web_root: Some(PathBuf::from(".")),
@@ -835,7 +835,7 @@ mod test {
             "CLI argument should take precedence over environment variable"
         );
 
-        env::remove_var("SQLPAGE_WEB_ROOT");
+        unsafe { env::remove_var("SQLPAGE_WEB_ROOT"); }
     }
 
     #[test]
@@ -859,7 +859,7 @@ mod test {
         .to_string();
         std::fs::write(&config_file_path, config_content).unwrap();
 
-        env::set_var("SQLPAGE_WEB_ROOT", env_web_dir.to_str().unwrap());
+        unsafe { env::set_var("SQLPAGE_WEB_ROOT", env_web_dir.to_str().unwrap()); }
 
         let cli = Cli {
             web_root: None,
@@ -898,7 +898,7 @@ mod test {
             "Configuration directory should remain unchanged"
         );
 
-        env::remove_var("SQLPAGE_WEB_ROOT");
+        unsafe { env::remove_var("SQLPAGE_WEB_ROOT"); }
         std::fs::remove_dir_all(&temp_dir).unwrap();
     }
 
@@ -907,8 +907,8 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
-        env::remove_var("SQLPAGE_WEB_ROOT");
+        unsafe { env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY"); }
+        unsafe { env::remove_var("SQLPAGE_WEB_ROOT"); }
 
         let cli = Cli {
             web_root: None,
