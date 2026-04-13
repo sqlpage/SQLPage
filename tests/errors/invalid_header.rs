@@ -1,7 +1,7 @@
 use crate::common::req_path;
 use actix_web::{http::StatusCode, test};
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
-use serde_json::{json, Value};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+use serde_json::{Value, json};
 
 struct InvalidHeaderCase {
     name: &'static str,

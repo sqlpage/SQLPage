@@ -78,12 +78,12 @@
 
 use crate::filesystem::FileSystem;
 use crate::webserver::database::ParsedSqlFile;
-use crate::{file_cache::FileCache, AppState};
+use crate::{AppState, file_cache::FileCache};
+use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
 use awc::http::uri::PathAndQuery;
 use log::debug;
 use percent_encoding;
 use std::path::{Path, PathBuf};
-use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
 
 const INDEX: &str = "index.sql";
 const NOT_FOUND: &str = "404.sql";
@@ -270,12 +270,12 @@ fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
-    use super::{calculate_route, FileStore, RoutingAction, RoutingConfig};
+    use super::{FileStore, RoutingAction, RoutingConfig, calculate_route};
+    use StoreConfig::{Custom, Default, Empty, File};
     use awc::http::uri::PathAndQuery;
     use std::default::Default as StdDefault;
     use std::path::{Path, PathBuf};
     use std::str::FromStr;
-    use StoreConfig::{Custom, Default, Empty, File};
 
     mod execute {
         use super::StoreConfig::{Default, File};
@@ -547,8 +547,8 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn no_extension_site_prefix_and_no_corresponding_file_with_custom_404_does_not_redirect(
-        ) {
+        async fn no_extension_site_prefix_and_no_corresponding_file_with_custom_404_does_not_redirect()
+         {
             let actual = do_route("/prefix/folder", Default, Some("/prefix/")).await;
             let expected = custom_not_found("404.sql");
 
@@ -677,7 +677,7 @@ mod tests {
         use crate::webserver::routing::tests::default_not_found;
 
         use super::StoreConfig::Custom;
-        use super::{custom_not_found, do_route, execute, redirect, RoutingAction};
+        use super::{RoutingAction, custom_not_found, do_route, execute, redirect};
 
         async fn route_with_index_and_folder_404(path: &str) -> RoutingAction {
             do_route(

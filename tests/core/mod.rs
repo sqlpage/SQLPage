@@ -1,7 +1,7 @@
 use actix_web::{http::StatusCode, test};
 use sqlpage::{
-    webserver::{self, make_placeholder},
     AppState,
+    webserver::{self, make_placeholder},
 };
 use sqlx::Executor as _;
 
@@ -202,9 +202,11 @@ async fn test_hidden_files() {
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
     let srv_resp = actix_web::test::TestRequest::default().to_srv_response(resp);
     let body = test::read_body(srv_resp).await;
-    assert!(String::from_utf8_lossy(&body)
-        .to_lowercase()
-        .contains("forbidden"),);
+    assert!(
+        String::from_utf8_lossy(&body)
+            .to_lowercase()
+            .contains("forbidden"),
+    );
 }
 
 #[actix_web::test]

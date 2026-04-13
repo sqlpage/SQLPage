@@ -6,17 +6,17 @@ use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 use tokio::time::Instant;
 
 use crate::webserver::http_client::get_http_client_from_appdata;
-use crate::{app_config::AppConfig, AppState};
+use crate::{AppState, app_config::AppConfig};
 use actix_web::http::header;
 use actix_web::{
+    Error, HttpMessage, HttpResponse,
     body::BoxBody,
     cookie::Cookie,
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
+    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
     middleware::Condition,
     web::{self, Query},
-    Error, HttpMessage, HttpResponse,
 };
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use awc::Client;
 use openidconnect::core::{
     CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreJsonWebKey,
@@ -24,11 +24,11 @@ use openidconnect::core::{
     CoreRevocationErrorResponse, CoreTokenIntrospectionResponse, CoreTokenType,
 };
 use openidconnect::{
-    core::CoreAuthenticationFlow,
-    url::{form_urlencoded, Url},
     AsyncHttpClient, Audience, CsrfToken, EndSessionUrl, EndpointMaybeSet, EndpointNotSet,
     EndpointSet, IssuerUrl, LogoutRequest, Nonce, OAuth2TokenResponse, PostLogoutRedirectUrl,
     ProviderMetadataWithLogout, RedirectUrl, Scope, TokenResponse,
+    core::CoreAuthenticationFlow,
+    url::{Url, form_urlencoded},
 };
 use openidconnect::{
     EmptyExtraTokenFields, IdTokenFields, IdTokenVerifier, StandardErrorResponse,
@@ -456,7 +456,9 @@ async fn handle_request(
             handle_unauthenticated_request(oidc_state, request)
         }
         Err(e) => {
-            log::debug!("An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}");
+            log::debug!(
+                "An auth cookie is present but could not be verified. Redirecting to OIDC provider to re-authenticate. {e:?}"
+            );
             if let Some(c) = http_client {
                 oidc_state.maybe_refresh(c, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
             }
@@ -1046,7 +1048,7 @@ fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
 }
 
 fn hash_nonce(nonce: &Nonce) -> String {
-    use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
+    use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
     let salt = SaltString::generate(&mut OsRng);
     // low-cost parameters: oidc tokens are short-lived and the source nonce is high-entropy
     let params = argon2::Params::new(8, 1, 1, Some(16)).expect("bug: invalid Argon2 parameters");
@@ -1264,8 +1266,10 @@ mod tests {
             get_tmp_login_flow_state_cookies_to_evict(&cookies).collect();
 
         assert_eq!(cookies_to_evict.len(), 1);
-        assert!(cookies_to_evict[0]
-            .name()
-            .starts_with(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX));
+        assert!(
+            cookies_to_evict[0]
+                .name()
+                .starts_with(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX)
+        );
     }
 }

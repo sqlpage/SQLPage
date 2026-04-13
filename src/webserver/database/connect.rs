@@ -2,18 +2,18 @@ use std::{mem::take, time::Duration};
 
 use super::Database;
 use crate::{
+    ON_CONNECT_FILE, ON_RESET_FILE,
     app_config::AppConfig,
     webserver::database::{DbInfo, SupportedDatabase},
-    ON_CONNECT_FILE, ON_RESET_FILE,
 };
 use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::odbc::OdbcConnectOptions;
 use sqlx::{
+    ConnectOptions, Connection, Executor,
     any::{Any, AnyConnectOptions, AnyConnection, AnyKind},
     pool::PoolOptions,
     sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
-    ConnectOptions, Connection, Executor,
 };
 
 impl Database {
@@ -265,8 +265,8 @@ fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
         *opts = take(opts).password(password);
     } else if let Some(_opts) = options.as_odbc_mut() {
         log::warn!(
-			"Setting a password for an ODBC connection is not supported via separate config; include credentials in the DSN or connection string"
-		);
+            "Setting a password for an ODBC connection is not supported via separate config; include credentials in the DSN or connection string"
+        );
     } else if let Some(_opts) = options.as_sqlite_mut() {
         log::warn!("Setting a password for a SQLite database is not supported");
     } else {

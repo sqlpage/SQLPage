@@ -19,8 +19,7 @@ static TEST_LOGGING_INIT: Once = Once::new();
 static OTLP_HTTP_WORKER_SENDER: OnceLock<
     Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>, String>,
 > = OnceLock::new();
-const DEFAULT_ENV_FILTER_DIRECTIVES: &str =
-    "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn";
+const DEFAULT_ENV_FILTER_DIRECTIVES: &str = "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn";
 
 type OtlpHttpResponse = Result<opentelemetry_http::Response<opentelemetry_http::Bytes>, String>;
 
@@ -381,11 +380,11 @@ mod logfmt {
     use std::fmt::Write;
     use std::io::{self, IsTerminal};
 
-    use tracing::field::{Field, Visit};
     use tracing::Subscriber;
+    use tracing::field::{Field, Visit};
+    use tracing_subscriber::Layer;
     use tracing_subscriber::layer::Context;
     use tracing_subscriber::registry::LookupSpan;
-    use tracing_subscriber::Layer;
 
     /// Stores span fields so we can access them when formatting events.
     #[derive(Default)]

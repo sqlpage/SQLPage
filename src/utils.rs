@@ -5,8 +5,8 @@ pub fn add_value_to_map(
     mut map: Map<String, Value>,
     (key, value): (String, Value),
 ) -> Map<String, Value> {
-    use serde_json::map::Entry::{Occupied, Vacant};
     use Value::Array;
+    use serde_json::map::Entry::{Occupied, Vacant};
     match map.entry(key) {
         Vacant(vacant) => {
             vacant.insert(value);

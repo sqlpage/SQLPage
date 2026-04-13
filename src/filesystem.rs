@@ -1,6 +1,6 @@
-use crate::webserver::database::SupportedDatabase;
 use crate::webserver::ErrorWithStatus;
-use crate::webserver::{make_placeholder, Database, StatusCodeResultExt};
+use crate::webserver::database::SupportedDatabase;
+use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -250,10 +250,18 @@ impl DbFsQueries {
     #[must_use]
     pub fn get_create_table_sql(dbms: SupportedDatabase) -> &'static str {
         match dbms {
-            SupportedDatabase::Mssql => "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);",
-            SupportedDatabase::Postgres => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
-            SupportedDatabase::Snowflake => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY, last_modified TIMESTAMP_TZ DEFAULT CONVERT_TIMEZONE('UTC', CURRENT_TIMESTAMP()));",
-            _ => "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            SupportedDatabase::Mssql => {
+                "CREATE TABLE sqlpage_files(path NVARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY(MAX), last_modified DATETIME2(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);"
+            }
+            SupportedDatabase::Postgres => {
+                "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BYTEA, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+            }
+            SupportedDatabase::Snowflake => {
+                "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents VARBINARY, last_modified TIMESTAMP_TZ DEFAULT CONVERT_TIMEZONE('UTC', CURRENT_TIMESTAMP()));"
+            }
+            _ => {
+                "CREATE TABLE IF NOT EXISTS sqlpage_files(path VARCHAR(255) NOT NULL PRIMARY KEY, contents BLOB, last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+            }
         }
     }
 
@@ -390,7 +398,9 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     // Oracle has specific issues with implicit timestamp conversions and empty strings in this test setup
     // so we skip it for Oracle to avoid complex workarounds in the main codebase.
     if config.database_url.contains("Oracle") {
-        log::warn!("Skipping test_sql_file_read_utf8 for Oracle due to date format/implicit conversion issues");
+        log::warn!(
+            "Skipping test_sql_file_read_utf8 for Oracle due to date format/implicit conversion issues"
+        );
         return Ok(());
     }
 

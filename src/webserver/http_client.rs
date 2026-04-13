@@ -1,5 +1,5 @@
 use actix_web::dev::ServiceRequest;
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use rustls_native_certs::CertificateResult;
 use std::sync::OnceLock;
 
@@ -38,9 +38,11 @@ pub(crate) fn make_http_client_with_system_roots(
             .as_ref()
             .map_err(|e| anyhow!("Unable to load native certificates, make sure the system root CA certificates are available: {e}"))?;
 
-        log::trace!("Creating HTTP client with custom TLS connector using native certificates. SSL_CERT_FILE={:?}, SSL_CERT_DIR={:?}",
+        log::trace!(
+            "Creating HTTP client with custom TLS connector using native certificates. SSL_CERT_FILE={:?}, SSL_CERT_DIR={:?}",
             std::env::var("SSL_CERT_FILE").unwrap_or_default(),
-            std::env::var("SSL_CERT_DIR").unwrap_or_default());
+            std::env::var("SSL_CERT_DIR").unwrap_or_default()
+        );
 
         let tls_conf = rustls::ClientConfig::builder()
             .with_root_certificates(roots.clone())
@@ -48,7 +50,9 @@ pub(crate) fn make_http_client_with_system_roots(
 
         awc::Connector::new().rustls_0_23(std::sync::Arc::new(tls_conf))
     } else {
-        log::debug!("Using the default tls connector with builtin certs because system_root_ca_certificates is disabled");
+        log::debug!(
+            "Using the default tls connector with builtin certs because system_root_ca_certificates is disabled"
+        );
         awc::Connector::new()
     };
     let client = awc::Client::builder()

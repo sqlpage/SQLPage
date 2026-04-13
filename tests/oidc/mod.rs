@@ -1,9 +1,9 @@
 use actix_web::{
+    App, HttpResponse, HttpServer, Responder,
     cookie::Cookie,
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     test,
     web::{self, Data},
-    App, HttpResponse, HttpServer, Responder,
 };
 use base64::Engine;
 use openidconnect::url::Url;
@@ -292,8 +292,8 @@ async fn setup_oidc_test(
     FakeOidcProvider,
 ) {
     use sqlpage::{
-        app_config::{test_database_url, AppConfig},
         AppState,
+        app_config::{AppConfig, test_database_url},
     };
     crate::common::init_log();
     let provider = FakeOidcProvider::new().await;
@@ -473,8 +473,8 @@ async fn setup_oidc_test_with_prefix(
     FakeOidcProvider,
 ) {
     use sqlpage::{
-        app_config::{test_database_url, AppConfig},
         AppState,
+        app_config::{AppConfig, test_database_url},
     };
     crate::common::init_log();
     let provider = FakeOidcProvider::new().await;
@@ -521,8 +521,8 @@ async fn test_oidc_with_site_prefix() {
 #[actix_web::test]
 async fn test_oidc_logout_uses_correct_scheme() {
     use sqlpage::{
-        app_config::{test_database_url, AppConfig},
         AppState,
+        app_config::{AppConfig, test_database_url},
     };
 
     crate::common::init_log();

@@ -1,4 +1,4 @@
-use crate::cli::arguments::{parse_cli, Cli};
+use crate::cli::arguments::{Cli, parse_cli};
 use crate::webserver::content_security_policy::ContentSecurityPolicyTemplate;
 use crate::webserver::routing::RoutingConfig;
 use actix_web::http::Uri;
@@ -351,13 +351,8 @@ pub struct AppConfig {
 impl AppConfig {
     #[must_use]
     pub fn cache_stale_duration_ms(&self) -> u64 {
-        self.cache_stale_duration_ms.unwrap_or_else(|| {
-            if self.environment.is_prod() {
-                1000
-            } else {
-                0
-            }
-        })
+        self.cache_stale_duration_ms
+            .unwrap_or_else(|| if self.environment.is_prod() { 1000 } else { 0 })
     }
 
     #[must_use]
@@ -458,7 +453,9 @@ where
         Some(PortOrUrl::Port(p)) => Ok(Some(p)),
         Some(PortOrUrl::Url(u)) => {
             if let Ok(u) = Uri::from_str(&u) {
-                log::warn!("{u} is not a valid value for the SQLPage port number. Ignoring this error since kubernetes may set the SQLPAGE_PORT env variable to a service URI when there is a service named sqlpage. Rename your service to avoid this warning.");
+                log::warn!(
+                    "{u} is not a valid value for the SQLPage port number. Ignoring this error since kubernetes may set the SQLPAGE_PORT env variable to a service URI when there is a service named sqlpage. Rename your service to avoid this warning."
+                );
                 Ok(None)
             } else {
                 Err(D::Error::custom(format!(
@@ -561,7 +558,11 @@ fn create_default_database(configuration_directory: &Path) -> String {
         let old_default_db_path = PathBuf::from(DEFAULT_DATABASE_FILE);
         let default_db_path = config_dir.join(DEFAULT_DATABASE_FILE);
         if let Ok(true) = old_default_db_path.try_exists() {
-            log::warn!("Your sqlite database in {} is publicly accessible through your web server. Please move it to {}.", old_default_db_path.display(), default_db_path.display());
+            log::warn!(
+                "Your sqlite database in {} is publicly accessible through your web server. Please move it to {}.",
+                old_default_db_path.display(),
+                default_db_path.display()
+            );
             return prefix + old_default_db_path.to_str().unwrap();
         } else if let Ok(true) = default_db_path.try_exists() {
             log::debug!(
@@ -578,13 +579,18 @@ fn create_default_database(configuration_directory: &Path) -> String {
             );
             drop(tmp_file);
             if let Err(e) = std::fs::remove_file(&default_db_path) {
-                log::debug!("Unable to remove temporary probe file. It might have already been removed by another instance started concurrently: {e}");
+                log::debug!(
+                    "Unable to remove temporary probe file. It might have already been removed by another instance started concurrently: {e}"
+                );
             }
             return prefix + &encode_uri(&default_db_path) + "?mode=rwc";
         }
     }
 
-    log::warn!("No DATABASE_URL provided, and {} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.", configuration_directory.display());
+    log::warn!(
+        "No DATABASE_URL provided, and {} is not writeable. Using a temporary in-memory SQLite database. All the data created will be lost when this server shuts down.",
+        configuration_directory.display()
+    );
     prefix + ":memory:?cache=shared"
 }
 
@@ -707,8 +713,8 @@ pub fn test_database_url() -> String {
 
 #[cfg(test)]
 pub mod tests {
-    pub use super::test_database_url;
     use super::AppConfig;
+    pub use super::test_database_url;
 
     #[must_use]
     pub fn test_config() -> AppConfig {
@@ -762,9 +768,7 @@ mod test {
         assert_eq!(normalize_site_prefix("a b/c"), "/a%20b/c/");
         assert_eq!(normalize_site_prefix("*-+/:;,?%\"'{"), "/*-+/:;,%3F%%22'{/");
         assert_eq!(
-            normalize_site_prefix(
-                &(0..=0x7F).map(char::from).collect::<String>()
-            ),
+            normalize_site_prefix(&(0..=0x7F).map(char::from).collect::<String>()),
             "/%00%01%02%03%04%05%06%07%08%0B%0C%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%20!%22%23$%&'()*+,-./0123456789:;%3C=%3E%3F@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~%7F/"
         );
     }
@@ -774,7 +778,9 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        unsafe { env::set_var("SQLPAGE_CONFIGURATION_DIRECTORY", "/path/to/config"); }
+        unsafe {
+            env::set_var("SQLPAGE_CONFIGURATION_DIRECTORY", "/path/to/config");
+        }
 
         let config = load_from_env().unwrap();
 
@@ -784,7 +790,9 @@ mod test {
             "Configuration directory should match the SQLPAGE_CONFIGURATION_DIRECTORY env var"
         );
 
-        unsafe { env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY"); }
+        unsafe {
+            env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+        }
     }
 
     #[test]
@@ -792,12 +800,16 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        unsafe { env::set_var("SQLPAGE_PORT", "tcp://10.0.0.1:8080"); }
+        unsafe {
+            env::set_var("SQLPAGE_PORT", "tcp://10.0.0.1:8080");
+        }
 
         let config = load_from_env().unwrap();
         assert_eq!(config.port, None);
 
-        unsafe { env::remove_var("SQLPAGE_PORT"); }
+        unsafe {
+            env::remove_var("SQLPAGE_PORT");
+        }
     }
 
     #[test]
@@ -805,12 +817,16 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        unsafe { env::set_var("SQLPAGE_PORT", "9000"); }
+        unsafe {
+            env::set_var("SQLPAGE_PORT", "9000");
+        }
 
         let config = load_from_env().unwrap();
         assert_eq!(config.port, Some(9000));
 
-        unsafe { env::remove_var("SQLPAGE_PORT"); }
+        unsafe {
+            env::remove_var("SQLPAGE_PORT");
+        }
     }
 
     #[test]
@@ -818,7 +834,9 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        unsafe { env::set_var("SQLPAGE_WEB_ROOT", "/"); }
+        unsafe {
+            env::set_var("SQLPAGE_WEB_ROOT", "/");
+        }
 
         let cli = Cli {
             web_root: Some(PathBuf::from(".")),
@@ -835,7 +853,9 @@ mod test {
             "CLI argument should take precedence over environment variable"
         );
 
-        unsafe { env::remove_var("SQLPAGE_WEB_ROOT"); }
+        unsafe {
+            env::remove_var("SQLPAGE_WEB_ROOT");
+        }
     }
 
     #[test]
@@ -859,7 +879,9 @@ mod test {
         .to_string();
         std::fs::write(&config_file_path, config_content).unwrap();
 
-        unsafe { env::set_var("SQLPAGE_WEB_ROOT", env_web_dir.to_str().unwrap()); }
+        unsafe {
+            env::set_var("SQLPAGE_WEB_ROOT", env_web_dir.to_str().unwrap());
+        }
 
         let cli = Cli {
             web_root: None,
@@ -898,7 +920,9 @@ mod test {
             "Configuration directory should remain unchanged"
         );
 
-        unsafe { env::remove_var("SQLPAGE_WEB_ROOT"); }
+        unsafe {
+            env::remove_var("SQLPAGE_WEB_ROOT");
+        }
         std::fs::remove_dir_all(&temp_dir).unwrap();
     }
 
@@ -907,8 +931,12 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        unsafe { env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY"); }
-        unsafe { env::remove_var("SQLPAGE_WEB_ROOT"); }
+        unsafe {
+            env::remove_var("SQLPAGE_CONFIGURATION_DIRECTORY");
+        }
+        unsafe {
+            env::remove_var("SQLPAGE_WEB_ROOT");
+        }
 
         let cli = Cli {
             web_root: None,

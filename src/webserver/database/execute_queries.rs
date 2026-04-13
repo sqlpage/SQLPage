@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Context};
-use futures_util::stream::Stream;
+use anyhow::{Context, anyhow};
 use futures_util::StreamExt;
+use futures_util::stream::Stream;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::path::Path;
@@ -14,14 +14,14 @@ use super::sql::{
 };
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
+use crate::webserver::ErrorWithStatus;
 use crate::webserver::database::sql_to_json::row_to_string;
 use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::request_variables::SetVariablesMap;
 use crate::webserver::single_or_vec::SingleOrVec;
-use crate::webserver::ErrorWithStatus;
 
-use super::syntax_tree::{extract_req_param, StmtParam};
-use super::{error_highlighting::display_db_error, Database, DbItem};
+use super::syntax_tree::{StmtParam, extract_req_param};
+use super::{Database, DbItem, error_highlighting::display_db_error};
 use sqlx::any::{AnyArguments, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo};
 use sqlx::pool::PoolConnection;
 use sqlx::{
@@ -434,7 +434,9 @@ fn vars_and_name<'a, 'b>(
     match variable {
         StmtParam::PostOrGet(name) | StmtParam::Get(name) => {
             if request.post_variables.contains_key(name) {
-                log::warn!("Deprecation warning! Setting the value of ${name}, but there is already a form field named :{name}. This will stop working soon. Please rename the variable, or use :{name} directly if you intended to overwrite the posted form field value.");
+                log::warn!(
+                    "Deprecation warning! Setting the value of ${name}, but there is already a form field named :{name}. This will stop working soon. Please rename the variable, or use :{name} directly if you intended to overwrite the posted form field value."
+                );
             }
             Ok((request.set_variables.borrow_mut(), name))
         }
@@ -467,7 +469,9 @@ async fn take_connection<'a>(
         Err(e) => {
             let db_name = db.connection.any_kind();
             let active_count = db.connection.size();
-            let err_msg = format!("Unable to connect to {db_name:?}. The connection pool currently has {active_count} active connections.");
+            let err_msg = format!(
+                "Unable to connect to {db_name:?}. The connection pool currently has {active_count} active connections."
+            );
             Err(anyhow::Error::new(e).context(err_msg))
         }
     }
@@ -563,7 +567,10 @@ fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
         return anyhow::anyhow!("{}{loc} {}", source_file.display(), func_err);
     }
 
-    let mut e = anyhow!("{} contains a syntax error preventing SQLPage from parsing and preparing its SQL statements.", source_file.display());
+    let mut e = anyhow!(
+        "{} contains a syntax error preventing SQLPage from parsing and preparing its SQL statements.",
+        source_file.display()
+    );
     for c in err.chain().rev() {
         e = e.context(c.to_string());
     }
@@ -633,7 +640,10 @@ async fn apply_single_delayed_function(
     let mut params = Vec::new();
     for arg in &f.argument_col_names {
         let Some(arg_value) = row.remove(arg) else {
-            anyhow::bail!("The column {arg} is missing in the result set, but it is required by the {} function.", f.function);
+            anyhow::bail!(
+                "The column {arg} is missing in the result set, but it is required by the {} function.",
+                f.function
+            );
         };
         params.push(json_to_fn_param(arg_value));
     }
@@ -675,7 +685,9 @@ fn apply_json_columns(item: &mut DbItem, json_columns: &[String]) {
                     }
                 }
             } else {
-                log::warn!("The column {column} is missing from the result set, so it cannot be converted to JSON.");
+                log::warn!(
+                    "The column {column} is missing from the result set, so it cannot be converted to JSON."
+                );
             }
         }
     }
@@ -717,12 +729,12 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use tracing::field::{Field, Visit};
+    use tracing_subscriber::Layer;
     use tracing_subscriber::layer::Context;
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::registry::LookupSpan;
-    use tracing_subscriber::Layer;
 
     fn create_row_item(value: Value) -> DbItem {
         DbItem::Row(value)

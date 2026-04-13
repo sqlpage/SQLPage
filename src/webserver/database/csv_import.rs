@@ -6,8 +6,8 @@ use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
 use sqlx::{
-    any::{AnyArguments, AnyConnectionKind, AnyKind},
     AnyConnection, Arguments, Executor, PgConnection,
+    any::{AnyArguments, AnyConnectionKind, AnyKind},
 };
 use tokio::io::AsyncRead;
 

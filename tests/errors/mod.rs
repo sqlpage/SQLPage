@@ -18,9 +18,11 @@ async fn test_privileged_paths_are_not_accessible() {
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
     let srv_resp = actix_web::test::TestRequest::default().to_srv_response(resp);
     let body = test::read_body(srv_resp).await;
-    assert!(String::from_utf8_lossy(&body)
-        .to_lowercase()
-        .contains("forbidden"),);
+    assert!(
+        String::from_utf8_lossy(&body)
+            .to_lowercase()
+            .contains("forbidden"),
+    );
 }
 
 #[actix_web::test]

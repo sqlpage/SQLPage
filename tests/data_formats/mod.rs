@@ -1,5 +1,5 @@
 use actix_web::{
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     test::{self, TestRequest},
 };
 use sqlpage::webserver::http::main_handler;

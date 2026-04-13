@@ -25,7 +25,7 @@ impl<'de> serde::Deserialize<'de> for SingleOrVec {
                         other => {
                             return Err(D::Error::custom(format!(
                                 "expected an array of strings, but item at index {idx} is {other}"
-                            )))
+                            )));
                         }
                     }
                 }

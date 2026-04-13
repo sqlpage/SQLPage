@@ -1,5 +1,6 @@
 use super::{ExecutionContext, RequestInfo};
 use crate::webserver::{
+    ErrorWithStatus,
     database::{
         blob_to_data_url::vec_to_data_uri_with_mime,
         execute_queries::DbConn,
@@ -8,9 +9,8 @@ use crate::webserver::{
     http_client::make_http_client,
     request_variables::SetVariablesMap,
     single_or_vec::SingleOrVec,
-    ErrorWithStatus,
 };
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use futures_util::StreamExt;
 use mime_guess::mime;
 use opentelemetry_semantic_conventions::attribute as otel;
@@ -122,9 +122,13 @@ async fn current_working_directory() -> anyhow::Result<String> {
 async fn environment_variable(name: Cow<'_, str>) -> anyhow::Result<Option<Cow<'_, str>>> {
     match std::env::var(&*name) {
         Ok(value) => Ok(Some(Cow::Owned(value))),
-        Err(std::env::VarError::NotPresent) if name.contains(['=', '\0']) => anyhow::bail!("Invalid environment variable name: {name:?}. Environment variable names cannot contain an equals sign or a null character."),
+        Err(std::env::VarError::NotPresent) if name.contains(['=', '\0']) => anyhow::bail!(
+            "Invalid environment variable name: {name:?}. Environment variable names cannot contain an equals sign or a null character."
+        ),
         Err(std::env::VarError::NotPresent) => Ok(None),
-        Err(err) => Err(err).with_context(|| format!("unable to read the environment variable {name:?}"))
+        Err(err) => {
+            Err(err).with_context(|| format!("unable to read the environment variable {name:?}"))
+        }
     }
 }
 
@@ -310,7 +314,9 @@ fn decode_response(response: Vec<u8>, encoding: Option<&str>) -> anyhow::Result<
             match body_str {
                 Ok(body_str) => Ok(body_str),
                 Err(decoding_error) => {
-                    log::warn!("fetch(...) response is not UTF-8 and no encoding was specified. Decoding the response as base64. Please explicitly set the encoding to \"base64\" if this is the expected behavior.");
+                    log::warn!(
+                        "fetch(...) response is not UTF-8 and no encoding was specified. Decoding the response as base64. Please explicitly set the encoding to \"base64\" if this is the expected behavior."
+                    );
                     Ok(base64::Engine::encode(
                         &base64::engine::general_purpose::STANDARD,
                         decoding_error.into_bytes(),
@@ -325,7 +331,7 @@ async fn fetch_with_meta(
     request: &RequestInfo,
     http_request: Option<HttpFetchRequest<'_>>,
 ) -> anyhow::Result<Option<String>> {
-    use serde::{ser::SerializeMap, Serializer};
+    use serde::{Serializer, ser::SerializeMap};
 
     let Some(http_request) = http_request else {
         return Ok(None);
@@ -571,7 +577,7 @@ pub(crate) async fn random_string(len: usize) -> anyhow::Result<String> {
 
 /// Returns a random string of the specified length.
 pub(crate) fn random_string_sync(len: usize) -> String {
-    use rand::{distr::Alphanumeric, RngExt};
+    use rand::{RngExt, distr::Alphanumeric};
     rand::rng()
         .sample_iter(&Alphanumeric)
         .take(len)
@@ -658,7 +664,7 @@ async fn regex_match<'a>(
     pattern: Cow<'a, str>,
     text: Option<Cow<'a, str>>,
 ) -> Result<Option<String>, anyhow::Error> {
-    use serde::{ser::SerializeMap, Serializer};
+    use serde::{Serializer, ser::SerializeMap};
     let regex = regex::Regex::new(&pattern)?;
     let Some(text) = text else {
         return Ok(None);
@@ -740,12 +746,14 @@ async fn run_sql<'a>(
     };
     let max_recursion_depth = app_state.config.max_recursion_depth;
     if tmp_req.clone_depth > max_recursion_depth {
-        anyhow::bail!("Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to {max_recursion_depth} levels. \n\
+        anyhow::bail!(
+            "Too many nested inclusions. run_sql can include a file that includes another file, but the depth is limited to {max_recursion_depth} levels. \n\
         Executing sqlpage.run_sql('{sql_file_path}') would exceed this limit. \n\
         This is to prevent infinite loops and stack overflows.\n\
         Make sure that your SQL file does not try to run itself, directly or through a chain of other files.\n\
         If you need to include more files, you can increase max_recursion_depth in the configuration file.\
-        ");
+        "
+        );
     }
     let mut results_stream =
         crate::webserver::database::execute_queries::stream_query_results_boxed(
@@ -765,7 +773,7 @@ async fn run_sql<'a>(
             }
             FinishedQuery => log::trace!("run_sql: Finished query"),
             Error(err) => {
-                return Err(err.context(format!("run_sql: unable to run {sql_file_path:?}")))
+                return Err(err.context(format!("run_sql: unable to run {sql_file_path:?}")));
             }
         }
     }
@@ -877,7 +885,7 @@ async fn variables<'a>(
             ));
         }
     } else {
-        use serde::{ser::SerializeMap, Serializer};
+        use serde::{Serializer, ser::SerializeMap};
         let mut res = Vec::new();
         let mut serializer = serde_json::Serializer::new(&mut res);
         let set_vars = request.set_variables.borrow();

@@ -3,8 +3,8 @@ use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
 use crate::{app_config::AppConfig, utils::static_filename};
 use anyhow::Context as _;
 use handlebars::{
-    handlebars_helper, Context, Handlebars, HelperDef, JsonTruthy, PathAndJson, RenderError,
-    RenderErrorReason, Renderable, ScopedJson,
+    Context, Handlebars, HelperDef, JsonTruthy, PathAndJson, RenderError, RenderErrorReason,
+    Renderable, ScopedJson, handlebars_helper,
 };
 use serde_json::Value as JsonValue;
 
@@ -595,7 +595,7 @@ fn replace_helper(text: &JsonValue, original: &JsonValue, replacement: &JsonValu
 
 #[cfg(test)]
 mod tests {
-    use crate::template_helpers::{rfc2822_date_helper, CanHelp, MarkdownHelper};
+    use crate::template_helpers::{CanHelp, MarkdownHelper, rfc2822_date_helper};
     use handlebars::{JsonValue, PathAndJson, ScopedJson};
     use serde_json::Value;
 

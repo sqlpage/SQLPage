@@ -1,9 +1,9 @@
 use actix_web::{
-    http::{
-        header::{self, ContentType},
-        StatusCode,
-    },
     ResponseError,
+    http::{
+        StatusCode,
+        header::{self, ContentType},
+    },
 };
 
 #[derive(Debug, PartialEq)]

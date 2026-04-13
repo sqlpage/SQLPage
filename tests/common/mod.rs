@@ -1,19 +1,19 @@
 use std::time::Duration;
 
 use actix_web::{
-    dev::{fn_service, ServiceRequest},
+    App, HttpResponse, HttpServer,
+    dev::{ServiceRequest, fn_service},
     http::header,
     http::header::ContentType,
     test::{self, TestRequest},
     web,
     web::Data,
-    App, HttpResponse, HttpServer,
 };
 use sqlpage::{
-    app_config::{test_database_url, AppConfig},
+    AppState,
+    app_config::{AppConfig, test_database_url},
     telemetry,
     webserver::http::{form_config, main_handler, payload_config},
-    AppState,
 };
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;

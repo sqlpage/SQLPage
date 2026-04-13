@@ -20,7 +20,7 @@ use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::{
-    execute_queries::DbConn, sql::function_args_to_stmt_params, sql::ParamExtractContext,
+    execute_queries::DbConn, sql::ParamExtractContext, sql::function_args_to_stmt_params,
     sqlpage_functions::functions::SqlPageFunctionName,
 };
 use anyhow::Context as _;
@@ -246,7 +246,7 @@ async fn json_object_params<'a>(
     request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
-    use serde::{ser::SerializeMap, Serializer};
+    use serde::{Serializer, ser::SerializeMap};
     let mut result = Vec::new();
     let mut ser = serde_json::Serializer::new(&mut result);
     let mut map_ser = ser.serialize_map(Some(args.len()))?;
@@ -284,7 +284,7 @@ async fn json_array_params<'a>(
     request: &'a ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Option<Cow<'a, str>>> {
-    use serde::{ser::SerializeSeq, Serializer};
+    use serde::{Serializer, ser::SerializeSeq};
     let mut result = Vec::new();
     let mut ser = serde_json::Serializer::new(&mut result);
     let mut seq_ser = ser.serialize_seq(Some(args.len()))?;

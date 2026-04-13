@@ -1,9 +1,10 @@
 use crate::utils::static_filename;
 use actix_web::{
+    HttpRequest, HttpResponse, Resource,
     http::header::{
         CacheControl, CacheDirective, ContentEncoding, ETag, EntityTag, Header, IfNoneMatch,
     },
-    web, HttpRequest, HttpResponse, Resource,
+    web,
 };
 
 macro_rules! static_file_endpoint {

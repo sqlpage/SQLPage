@@ -3,8 +3,8 @@ use crate::file_cache::AsyncFromStrWithState;
 use crate::template_helpers::register_all_helpers;
 use crate::{AppState, FileCache, TEMPLATES_DIR};
 use async_trait::async_trait;
-use handlebars::{template::TemplateElement, Handlebars, Template};
-use include_dir::{include_dir, Dir};
+use handlebars::{Handlebars, Template, template::TemplateElement};
+use include_dir::{Dir, include_dir};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -64,8 +64,8 @@ impl AsyncFromStrWithState for SplitTemplate {
 }
 
 fn is_template_list_item(element: &TemplateElement) -> bool {
-    use handlebars::template::Parameter;
     use Parameter::Name;
+    use handlebars::template::Parameter;
     matches!(element,
                     TemplateElement::HelperBlock(tpl)
                         if matches!(&tpl.name, Name(name) if name == "each_row"))

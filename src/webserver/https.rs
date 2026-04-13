@@ -1,4 +1,4 @@
-use rustls_acme::{caches::DirCache, futures_rustls::rustls::ServerConfig, AcmeConfig};
+use rustls_acme::{AcmeConfig, caches::DirCache, futures_rustls::rustls::ServerConfig};
 use tokio_stream::StreamExt;
 
 use crate::app_config::AppConfig;

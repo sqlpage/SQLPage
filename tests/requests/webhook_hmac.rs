@@ -6,7 +6,9 @@ use crate::common::get_request_to;
 #[actix_web::test]
 async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     // Set up environment variable for webhook secret
-    unsafe { std::env::set_var("WEBHOOK_SECRET", "test-secret-key"); }
+    unsafe {
+        std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
+    }
 
     let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
     let invalid_signature = "96a5f6f65c85a2d4d1f3a37813ab2c0b44041bdc17691fbb0884e3eb52b7c54b";
@@ -40,7 +42,9 @@ async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
 #[actix_web::test]
 async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
     // Set up environment variable for webhook secret
-    unsafe { std::env::set_var("WEBHOOK_SECRET", "test-secret-key"); }
+    unsafe {
+        std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
+    }
 
     let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
     let valid_signature = "260b3b5ead84843645588af82d5d2c3fe24c598a950d36c45438c3a5f5bb941c";
@@ -68,7 +72,9 @@ async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
 #[actix_web::test]
 async fn test_webhook_hmac_missing_signature() -> actix_web::Result<()> {
     // Set up environment variable for webhook secret
-    unsafe { std::env::set_var("WEBHOOK_SECRET", "test-secret-key"); }
+    unsafe {
+        std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
+    }
 
     let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
 

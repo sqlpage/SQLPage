@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## v0.44.0
 
 - New function: `sqlpage.regex_match(pattern, text)`. Useful for easy routing using `sqlpage.path()` from 404.sql files.
 - Added a `show_legend` top level property to the chart component.

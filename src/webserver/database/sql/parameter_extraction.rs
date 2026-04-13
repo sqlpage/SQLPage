@@ -218,10 +218,14 @@ impl ParamExtractContext {
 
         let reason = match &e.kind {
             ExprToParamErrorKind::UnsupportedExpr { summary } => {
-                format!("\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument.")
+                format!(
+                    "\"{summary}\" is an sql expression, which cannot be passed as a nested sqlpage function argument."
+                )
             }
             ExprToParamErrorKind::UnemulatedFunction { name } => {
-                format!("\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions.")
+                format!(
+                    "\"{name}\" is not a supported sqlpage function. Only a few basic sql functions like concat or json_object can be used inside sqlpage functions."
+                )
             }
             ExprToParamErrorKind::NamedArgs => "Named function arguments are not supported.\n\
                 Please use positional arguments only."
@@ -573,8 +577,10 @@ impl VisitorMut for ParameterExtractor {
             ]
             .contains(&self.db_info.database_type) =>
             {
-                log::warn!("Casting with '::' is not supported on your database. \
-                For backwards compatibility with older SQLPage versions, we will transform it to CAST(... AS ...).");
+                log::warn!(
+                    "Casting with '::' is not supported on your database. \
+                For backwards compatibility with older SQLPage versions, we will transform it to CAST(... AS ...)."
+                );
                 *kind = CastKind::Cast;
             }
             _ => (),

@@ -2,12 +2,12 @@
 
 use std::path::PathBuf;
 
+use crate::AppState;
 use crate::render::get_backtrace_as_strings;
 use crate::webserver::ErrorWithStatus;
-use crate::AppState;
-use actix_web::error::UrlencodedError;
-use actix_web::http::{header, StatusCode};
 use actix_web::HttpResponseBuilder;
+use actix_web::error::UrlencodedError;
+use actix_web::http::{StatusCode, header};
 use actix_web::{HttpRequest, HttpResponse};
 use handlebars::{Renderable, StringOutput};
 use serde_json::json;
@@ -122,12 +122,10 @@ pub(super) fn handle_form_error(
 ) -> actix_web::Error {
     match decode_err {
         actix_web::error::UrlencodedError::Overflow { size, limit } => {
-            actix_web::error::ErrorPayloadTooLarge(
-                format!(
-                    "The submitted form data size ({size} bytes) exceeds the maximum allowed upload size ({limit} bytes). \
+            actix_web::error::ErrorPayloadTooLarge(format!(
+                "The submitted form data size ({size} bytes) exceeds the maximum allowed upload size ({limit} bytes). \
                     You can increase this limit by setting max_uploaded_file_size in the configuration file.",
-                ),
-            )
+            ))
         }
         _ => actix_web::Error::from(decode_err),
     }
@@ -150,7 +148,9 @@ pub(super) fn bind_error(e: std::io::Error, listen_on: std::net::SocketAddr) -> 
             "You do not have permission to bind to {ip} on port {port}. \
             You can either run SQLPage as root with sudo, give it the permission to bind to low ports with `sudo setcap cap_net_bind_service=+ep {executable_path}`, \
             or change the port in the configuration file.",
-            executable_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("sqlpage.bin")).display(),
+            executable_path = std::env::current_exe()
+                .unwrap_or_else(|_| PathBuf::from("sqlpage.bin"))
+                .display(),
         ),
         std::io::ErrorKind::AddrNotAvailable => format!(
             "The IP address {ip} does not exist on this computer. \

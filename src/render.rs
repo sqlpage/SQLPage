@@ -41,22 +41,22 @@
 //! For more details on available components and their usage, see the
 //! [SQLPage documentation](https://sql-page.com/documentation.sql).
 
+use crate::AppState;
 use crate::templates::SplitTemplate;
+use crate::webserver::ErrorWithStatus;
 use crate::webserver::http::{RequestContext, ResponseFormat};
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
-use crate::webserver::ErrorWithStatus;
-use crate::AppState;
 use actix_web::body::MessageBody;
-use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::cookie::time::OffsetDateTime;
+use actix_web::cookie::time::format_description::well_known::Rfc3339;
 use actix_web::http::header::TryIntoHeaderPair;
-use actix_web::http::{header, StatusCode};
+use actix_web::http::{StatusCode, header};
 use actix_web::{HttpResponse, HttpResponseBuilder};
-use anyhow::{bail, format_err, Context as AnyhowContext};
+use anyhow::{Context as AnyhowContext, bail, format_err};
 use awc::cookie::time::Duration;
 use handlebars::{BlockContext, JsonValue, RenderError, Renderable};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt::Write as _;
@@ -411,9 +411,9 @@ impl HeaderContext {
                 let html_renderer =
                     HtmlRenderContext::new(self.app_state, self.request_context, self.writer, data)
                         .await
-                        .with_context(|| {
-                            "Failed to create a render context from the header context."
-                        })?;
+                        .with_context(
+                            || "Failed to create a render context from the header context.",
+                        )?;
                 AnyRenderBodyContext::Html(html_renderer)
             }
         };
@@ -788,7 +788,9 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         data: &JsonValue,
     ) -> anyhow::Result<()> {
         if Self::is_shell_component(component_name) {
-            bail!("There cannot be more than a single shell per page. You are trying to open the {component_name} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data.");
+            bail!(
+                "There cannot be more than a single shell per page. You are trying to open the {component_name} component, but a shell component is already opened for the current page. You can fix this by removing the extra shell component, or by moving this component to the top of the SQL file, before any other component that displays data."
+            );
         }
 
         if component_name == "log" {
@@ -802,10 +804,12 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         match self.open_component_with_data(component_name, &data).await {
             Ok(_) => Ok(()),
             Err(err) => match HeaderComponent::try_from(component_name) {
-                Ok(_) => bail!("The {component_name} component cannot be used after data has already been sent to the client's browser. \n\
+                Ok(_) => bail!(
+                    "The {component_name} component cannot be used after data has already been sent to the client's browser. \n\
                                 This component must be used before any other component. \n\
                                     To fix this, either move the call to the '{component_name}' component to the top of the SQL file, \n\
-                                or create a new SQL file where '{component_name}' is the first component."),
+                                or create a new SQL file where '{component_name}' is the first component."
+                ),
                 Err(()) => Err(err),
             },
         }
@@ -1124,7 +1128,9 @@ impl SplitTemplateRenderer {
             local_vars.put("row_index", self.row_index.into());
             local_vars.put("component_index", self.component_index.into());
             local_vars.put("csp_nonce", self.nonce.into());
-            log::trace!("Rendering the after_list template with the following local variables: {local_vars:?}");
+            log::trace!(
+                "Rendering the after_list template with the following local variables: {local_vars:?}"
+            );
             *render_context
                 .block_mut()
                 .expect("ctx created without block")

@@ -1,5 +1,5 @@
 use crate::webserver::single_or_vec::SingleOrVec;
-use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{NON_ALPHANUMERIC, percent_encode};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use std::borrow::Cow;

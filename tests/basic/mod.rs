@@ -20,7 +20,10 @@ async fn test_index_ok() {
 #[actix_web::test]
 async fn test_access_config_forbidden() {
     let resp_result = req_path("/sqlpage/sqlpage.json").await;
-    assert!(resp_result.is_err(), "Accessing the config file should be forbidden, but we received a response: {resp_result:?}");
+    assert!(
+        resp_result.is_err(),
+        "Accessing the config file should be forbidden, but we received a response: {resp_result:?}"
+    );
     let resp = resp_result.unwrap_err().error_response();
     assert_eq!(resp.status(), http::StatusCode::FORBIDDEN);
     assert!(

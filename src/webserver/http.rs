@@ -3,20 +3,20 @@
 //! request contexts and response headers.
 
 use crate::render::{AnyRenderBodyContext, HeaderContext, PageContext};
+use crate::webserver::ErrorWithStatus;
 use crate::webserver::content_security_policy::ContentSecurityPolicy;
 use crate::webserver::database::execute_queries::stop_at_first_error;
-use crate::webserver::database::{execute_queries::stream_query_results_with_conn, DbItem};
+use crate::webserver::database::{DbItem, execute_queries::stream_query_results_with_conn};
 use crate::webserver::http_request_info::extract_request_info;
 use crate::webserver::server_timing::ServerTiming;
-use crate::webserver::ErrorWithStatus;
-use crate::{AppConfig, AppState, ParsedSqlFile, DEFAULT_404_FILE};
-use actix_web::dev::{fn_service, ServiceFactory, ServiceRequest};
+use crate::{AppConfig, AppState, DEFAULT_404_FILE, ParsedSqlFile};
+use actix_web::dev::{ServiceFactory, ServiceRequest, fn_service};
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 use actix_web::http::header::Accept;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
-use actix_web::http::{header, StatusCode};
+use actix_web::http::{StatusCode, header};
 use actix_web::web::PayloadConfig;
-use actix_web::{dev::ServiceResponse, middleware, web, App, Error, HttpResponse, HttpServer};
+use actix_web::{App, Error, HttpResponse, HttpServer, dev::ServiceResponse, middleware, web};
 use opentelemetry_semantic_conventions::attribute as otel;
 use tracing::{Instrument, Span};
 use tracing_actix_web::{DefaultRootSpanBuilder, RootSpanBuilder, TracingLogger};
@@ -30,12 +30,12 @@ use super::static_content;
 use crate::webserver::routing::RoutingAction::{
     CustomNotFound, Execute, NotFound, Redirect, Serve,
 };
-use crate::webserver::routing::{calculate_route, AppFileStore};
+use crate::webserver::routing::{AppFileStore, calculate_route};
 use actix_web::body::MessageBody;
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use chrono::{DateTime, Utc};
-use futures_util::stream::Stream;
 use futures_util::StreamExt;
+use futures_util::stream::Stream;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -71,7 +71,7 @@ impl ResponseFormat {
             match (type_, subtype) {
                 ("application", "json") => return Self::Json,
                 ("application", "x-ndjson" | "jsonlines" | "x-jsonlines") => {
-                    return Self::JsonLines
+                    return Self::JsonLines;
                 }
                 ("text", "x-ndjson" | "jsonlines" | "x-jsonlines") => return Self::JsonLines,
                 ("text", "html") | ("*", "*") => return Self::Html,
@@ -163,7 +163,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
                     Some(&ErrorWithStatus { status: _ })
                 ) =>
             {
-                return Err(source_err)
+                return Err(source_err);
             }
             DbItem::Error(source_err) => head_context.handle_error(source_err).await?,
         };
@@ -185,7 +185,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
                 });
             }
             PageContext::Close(http_response) => {
-                return Ok(ResponseWithWriter::FinishedResponse { http_response })
+                return Ok(ResponseWithWriter::FinishedResponse { http_response });
             }
         }
     }
@@ -622,7 +622,9 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
                 .map_err(|e| bind_unix_socket_err(e, unix_socket))?;
         }
         #[cfg(not(target_family = "unix"))]
-        anyhow::bail!("Unix sockets are not supported on your operating system. Use listen_on instead of unix_socket.");
+        anyhow::bail!(
+            "Unix sockets are not supported on your operating system. Use listen_on instead of unix_socket."
+        );
     } else {
         if let Some(domain) = &config.https_domain {
             let mut listen_on_https = listen_on;
@@ -633,7 +635,9 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
                 .bind_rustls_0_23(listen_on_https, config)
                 .map_err(|e| bind_error(e, listen_on_https))?;
         } else if listen_on.port() == 443 {
-            bail!("Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)");
+            bail!(
+                "Please specify a value for https_domain in the configuration file. This is required when using HTTPS (port 443)"
+            );
         }
         if listen_on.port() != 443 {
             log::debug!("Will start HTTP server on {listen_on}");

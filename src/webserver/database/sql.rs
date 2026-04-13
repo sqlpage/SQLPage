@@ -1,10 +1,10 @@
-use super::csv_import::{extract_csv_copy_statement, CsvImport};
+use super::SupportedDatabase;
+use super::csv_import::{CsvImport, extract_csv_copy_statement};
 use super::sqlpage_functions::functions::SqlPageFunctionName;
 use super::syntax_tree::StmtParam;
-use super::SupportedDatabase;
 use crate::file_cache::AsyncFromStrWithState;
-use crate::webserver::database::error_highlighting::quote_source_with_highlight;
 use crate::webserver::database::DbInfo;
+use crate::webserver::database::error_highlighting::quote_source_with_highlight;
 use crate::{AppState, Database};
 use async_trait::async_trait;
 use sqlparser::ast::helpers::attached_token::AttachedToken;
@@ -18,7 +18,7 @@ use sqlparser::dialect::{
     PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
 };
 use sqlparser::parser::{Parser, ParserError};
-use sqlparser::tokenizer::Token::{self, SemiColon, EOF};
+use sqlparser::tokenizer::Token::{self, EOF, SemiColon};
 use sqlparser::tokenizer::{Location, Span, TokenWithSpan, Tokenizer};
 use sqlx::any::AnyKind;
 use std::fmt::Write;
@@ -26,12 +26,12 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 mod parameter_extraction;
-use self::parameter_extraction::{
-    extract_ident_param, validate_function_calls, ParameterExtractor, TEMP_PLACEHOLDER_PREFIX,
-};
 pub(super) use self::parameter_extraction::{
-    function_args_to_stmt_params, DbPlaceHolder, ParamExtractContext, SqlPageFunctionError,
-    DB_PLACEHOLDERS,
+    DB_PLACEHOLDERS, DbPlaceHolder, ParamExtractContext, SqlPageFunctionError,
+    function_args_to_stmt_params,
+};
+use self::parameter_extraction::{
+    ParameterExtractor, TEMP_PLACEHOLDER_PREFIX, extract_ident_param, validate_function_calls,
 };
 
 #[derive(Default)]
@@ -219,7 +219,9 @@ fn parse_single_statement(
         return Some(ParsedStatement::CsvImport(csv_import));
     }
     if let Some(static_statement) = extract_static_simple_select(&stmt, &params) {
-        log::debug!("Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}");
+        log::debug!(
+            "Optimised a static simple select to avoid a trivial database query: {stmt} optimized to {static_statement:?}"
+        );
         return Some(ParsedStatement::StaticSimpleSelect {
             values: static_statement,
             query_position: extract_query_start(&stmt),
@@ -457,8 +459,8 @@ fn expr_to_simple_select_val(
     params_iter: &mut impl Iterator<Item = StmtParam>,
     expr: &Expr,
 ) -> Option<SimpleSelectValue> {
-    use serde_json::Value::{Bool, Null, Number, String};
     use SimpleSelectValue::{Dynamic, Static};
+    use serde_json::Value::{Bool, Null, Number, String};
     Some(match expr {
         Expr::Value(ValueWithSpan {
             value: Value::Boolean(b),
@@ -556,8 +558,10 @@ fn extract_set_variable(
 const SQLPAGE_FUNCTION_NAMESPACE: &str = "sqlpage";
 
 fn is_sqlpage_func(func_name_parts: &[ObjectNamePart]) -> bool {
-    if let [ObjectNamePart::Identifier(Ident { value, .. }), ObjectNamePart::Identifier(Ident { .. })] =
-        func_name_parts
+    if let [
+        ObjectNamePart::Identifier(Ident { value, .. }),
+        ObjectNamePart::Identifier(Ident { .. }),
+    ] = func_name_parts
     {
         value == SQLPAGE_FUNCTION_NAMESPACE
     } else {
@@ -568,9 +572,12 @@ fn is_sqlpage_func(func_name_parts: &[ObjectNamePart]) -> bool {
 fn extract_sqlpage_function_name(
     func_name_parts: &[ObjectNamePart],
 ) -> Option<SqlPageFunctionName> {
-    if let [ObjectNamePart::Identifier(Ident {
-        value: namespace, ..
-    }), ObjectNamePart::Identifier(Ident { value, .. })] = func_name_parts
+    if let [
+        ObjectNamePart::Identifier(Ident {
+            value: namespace, ..
+        }),
+        ObjectNamePart::Identifier(Ident { value, .. }),
+    ] = func_name_parts
     {
         if namespace == SQLPAGE_FUNCTION_NAMESPACE {
             return SqlPageFunctionName::from_str(value).ok();
@@ -580,8 +587,10 @@ fn extract_sqlpage_function_name(
 }
 
 fn sqlpage_func_name(func_name_parts: &[ObjectNamePart]) -> &str {
-    if let [ObjectNamePart::Identifier(Ident { .. }), ObjectNamePart::Identifier(Ident { value, .. })] =
-        func_name_parts
+    if let [
+        ObjectNamePart::Identifier(Ident { .. }),
+        ObjectNamePart::Identifier(Ident { value, .. }),
+    ] = func_name_parts
     {
         value
     } else {
@@ -735,9 +744,9 @@ mod test {
         // $x -> $2
         // sqlpage.cookie(...) -> $3
         assert_eq!(
-        ast.to_string(),
-        "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($1 AS TEXT) OR CAST($2 AS TEXT) = CAST($3 AS TEXT)"
-    );
+            ast.to_string(),
+            "SELECT CAST($1 AS TEXT) FROM t WHERE CAST($2 AS TEXT) > CAST($1 AS TEXT) OR CAST($2 AS TEXT) = CAST($3 AS TEXT)"
+        );
         assert_eq!(
             parameters,
             [
@@ -953,40 +962,50 @@ mod test {
 
     #[test]
     fn is_own_placeholder() {
-        assert!(ParameterExtractor {
-            db_info: create_test_db_info(SupportedDatabase::Postgres),
-            parameters: vec![],
-            extract_error: None,
-        }
-        .is_own_placeholder("$1"));
+        assert!(
+            ParameterExtractor {
+                db_info: create_test_db_info(SupportedDatabase::Postgres),
+                parameters: vec![],
+                extract_error: None,
+            }
+            .is_own_placeholder("$1")
+        );
 
-        assert!(ParameterExtractor {
-            db_info: create_test_db_info(SupportedDatabase::Postgres),
-            parameters: vec![StmtParam::Get("x".to_string())],
-            extract_error: None,
-        }
-        .is_own_placeholder("$2"));
+        assert!(
+            ParameterExtractor {
+                db_info: create_test_db_info(SupportedDatabase::Postgres),
+                parameters: vec![StmtParam::Get("x".to_string())],
+                extract_error: None,
+            }
+            .is_own_placeholder("$2")
+        );
 
-        assert!(!ParameterExtractor {
-            db_info: create_test_db_info(SupportedDatabase::Postgres),
-            parameters: vec![],
-            extract_error: None,
-        }
-        .is_own_placeholder("$2"));
+        assert!(
+            !ParameterExtractor {
+                db_info: create_test_db_info(SupportedDatabase::Postgres),
+                parameters: vec![],
+                extract_error: None,
+            }
+            .is_own_placeholder("$2")
+        );
 
-        assert!(ParameterExtractor {
-            db_info: create_test_db_info(SupportedDatabase::Sqlite),
-            parameters: vec![],
-            extract_error: None,
-        }
-        .is_own_placeholder("?1"));
+        assert!(
+            ParameterExtractor {
+                db_info: create_test_db_info(SupportedDatabase::Sqlite),
+                parameters: vec![],
+                extract_error: None,
+            }
+            .is_own_placeholder("?1")
+        );
 
-        assert!(!ParameterExtractor {
-            db_info: create_test_db_info(SupportedDatabase::Sqlite),
-            parameters: vec![],
-            extract_error: None,
-        }
-        .is_own_placeholder("$1"));
+        assert!(
+            !ParameterExtractor {
+                db_info: create_test_db_info(SupportedDatabase::Sqlite),
+                parameters: vec![],
+                extract_error: None,
+            }
+            .is_own_placeholder("$1")
+        );
     }
 
     #[test]
@@ -1034,9 +1053,9 @@ mod test {
             &MsSqlDialect {},
         ];
         for &dialect in dialects {
-            use std::any::Any;
             use SimpleSelectValue::{Dynamic, Static};
             use StmtParam::PostOrGet;
+            use std::any::Any;
 
             let db_info = if dialect.type_id() == (PostgreSqlDialect {}).type_id() {
                 create_test_db_info(SupportedDatabase::Postgres)

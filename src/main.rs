@@ -1,8 +1,8 @@
 use sqlpage::{
+    AppState,
     app_config::AppConfig,
     cli, telemetry,
     webserver::{self, Database},
-    AppState,
 };
 
 #[actix_web::main]

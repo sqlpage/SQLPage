@@ -11,7 +11,7 @@ mod error_highlighting;
 mod sql_to_json;
 
 pub use sql::ParsedSqlFile;
-use sql::{DbPlaceHolder, DB_PLACEHOLDERS};
+use sql::{DB_PLACEHOLDERS, DbPlaceHolder};
 use sqlx::any::AnyKind;
 // SupportedDatabase is defined in this module
 

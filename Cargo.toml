@@ -1,7 +1,7 @@
 [package]
 name = "sqlpage"
-version = "0.43.0"
-edition = "2021"
+version = "0.44.0"
+edition = "2024"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
 license = "MIT"

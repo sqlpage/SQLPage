@@ -1,9 +1,10 @@
-use std::future::{ready, Ready};
+use std::future::{Ready, ready};
 use std::time::Instant;
 
 use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    web, Error,
+    Error,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
+    web,
 };
 use futures_util::future::LocalBoxFuture;
 use opentelemetry::KeyValue;

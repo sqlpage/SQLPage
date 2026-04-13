@@ -4,8 +4,8 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime};
 use serde_json::{self, Map, Value};
 use sqlx::any::{AnyColumn, AnyRow, AnyTypeInfo, AnyTypeInfoKind};
-use sqlx::postgres::types::PgRange;
 use sqlx::postgres::PgValueRef;
+use sqlx::postgres::types::PgRange;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 use sqlx::{Decode, Type};
 

@@ -1,5 +1,5 @@
-use actix_web::http::header::CONTENT_SECURITY_POLICY;
 use actix_web::HttpResponseBuilder;
+use actix_web::http::header::CONTENT_SECURITY_POLICY;
 use rand::random;
 use serde::Deserialize;
 
