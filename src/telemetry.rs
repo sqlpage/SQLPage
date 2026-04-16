@@ -370,7 +370,7 @@ fn set_global_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) -> 
 ///
 /// Outputs one line per event in logfmt format with carefully chosen fields:
 /// ```text
-/// ts=2026-03-08T20:56:15Z level=error target=sqlpage::webserver::error msg="..." method=GET path=/foo client_ip=1.2.3.4 trace_id=abc123
+/// ts=2026-03-08T20:56:15Z level=error target=sqlpage::webserver::error msg="..." http.request.method=GET url.path=/foo client.address=1.2.3.4 trace_id=abc123
 /// ```
 ///
 /// With terminal colors when stderr is a TTY.
@@ -415,11 +415,14 @@ mod logfmt {
     /// Fields we pick from spans, in display order.
     /// (`span_field_name`, `logfmt_key`)
     const SPAN_FIELDS: &[(&str, &str)] = &[
-        (otel::HTTP_REQUEST_METHOD, "method"),
-        (otel::URL_PATH, "path"),
-        (otel::HTTP_RESPONSE_STATUS_CODE, "status"),
-        ("sqlpage.file", "file"),
-        (otel::CLIENT_ADDRESS, "client_ip"),
+        (otel::HTTP_REQUEST_METHOD, otel::HTTP_REQUEST_METHOD),
+        (otel::URL_PATH, otel::URL_PATH),
+        (
+            otel::HTTP_RESPONSE_STATUS_CODE,
+            otel::HTTP_RESPONSE_STATUS_CODE,
+        ),
+        (otel::CODE_FILE_PATH, otel::CODE_FILE_PATH),
+        (otel::CLIENT_ADDRESS, otel::CLIENT_ADDRESS),
     ];
 
     /// All-zeros trace ID means no real trace context.
@@ -780,7 +783,10 @@ mod logfmt {
 
             write_span_field_maps(&mut buf, [&span_fields], true);
 
-            assert_eq!(buf, " method=GET http.route=/users/:id otel.kind=server");
+            assert_eq!(
+                buf,
+                " http.request.method=GET http.route=/users/:id otel.kind=server"
+            );
         }
 
         #[test]
@@ -794,7 +800,7 @@ mod logfmt {
 
             write_span_field_maps(&mut buf, [&span_fields], false);
 
-            assert_eq!(buf, " method=GET");
+            assert_eq!(buf, " http.request.method=GET");
         }
 
         #[test]

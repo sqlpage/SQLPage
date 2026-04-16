@@ -98,7 +98,7 @@ impl<'a> DbQueryMetricsContext<'a> {
         self.span
             .record(otel::EXCEPTION_MESSAGE, tracing::field::display(error));
         self.span
-            .record("exception.details", tracing::field::debug(error));
+            .record("sqlpage.exception.details", tracing::field::debug(error));
         let attributes = [
             opentelemetry::KeyValue::new(otel::DB_SYSTEM_NAME, self.db_system_name),
             opentelemetry::KeyValue::new(otel::DB_OPERATION_NAME, self.operation_name.clone()),
@@ -127,7 +127,7 @@ fn create_db_query_span(
         { otel::CODE_LINE_NUMBER } = source_line_number(line),
         { otel::OTEL_STATUS_CODE } = tracing::field::Empty,
         { otel::EXCEPTION_MESSAGE } = tracing::field::Empty,
-        "exception.details" = tracing::field::Empty,
+        "sqlpage.exception.details" = tracing::field::Empty,
         { otel::DB_RESPONSE_RETURNED_ROWS } = tracing::field::Empty,
     );
     (span, operation_name)
@@ -456,7 +456,12 @@ async fn take_connection<'a>(
         return Ok(c);
     }
     let pool_size = db.connection.size();
-    let acquire_span = tracing::info_span!("db.pool.acquire", db.pool.size = pool_size,);
+    let acquire_span = tracing::info_span!(
+        "db.pool.acquire",
+        { otel::DB_SYSTEM_NAME } = db.info.database_type.otel_name(),
+        { otel::DB_CLIENT_CONNECTION_POOL_NAME } = "sqlpage",
+        sqlpage.db.pool.size = pool_size,
+    );
     match db.connection.acquire().instrument(acquire_span).await {
         Ok(c) => {
             log::debug!("Acquired a database connection");
@@ -895,7 +900,7 @@ mod tests {
                 "db.query",
                 otel.status_code = tracing::field::Empty,
                 exception.message = tracing::field::Empty,
-                exception.details = tracing::field::Empty,
+                sqlpage.exception.details = tracing::field::Empty,
                 db.response.returned_rows = tracing::field::Empty,
             );
             let metrics = crate::telemetry_metrics::TelemetryMetrics::default();
@@ -908,7 +913,7 @@ mod tests {
         assert_eq!(fields[otel::OTEL_STATUS_CODE], "OK");
         assert_eq!(fields[otel::DB_RESPONSE_RETURNED_ROWS], "3");
         assert!(!fields.contains_key(otel::EXCEPTION_MESSAGE));
-        assert!(!fields.contains_key("exception.details"));
+        assert!(!fields.contains_key("sqlpage.exception.details"));
     }
 
     #[test]
@@ -918,7 +923,7 @@ mod tests {
                 "db.query",
                 otel.status_code = tracing::field::Empty,
                 exception.message = tracing::field::Empty,
-                exception.details = tracing::field::Empty,
+                sqlpage.exception.details = tracing::field::Empty,
                 db.response.returned_rows = tracing::field::Empty,
             );
             let error = anyhow!("query failed").context("while executing SELECT 1");
@@ -932,6 +937,6 @@ mod tests {
         assert_eq!(fields[otel::OTEL_STATUS_CODE], "ERROR");
         assert_eq!(fields[otel::DB_RESPONSE_RETURNED_ROWS], "2");
         assert!(fields[otel::EXCEPTION_MESSAGE].contains("while executing SELECT 1"));
-        assert!(fields["exception.details"].contains("query failed"));
+        assert!(fields["sqlpage.exception.details"].contains("query failed"));
     }
 }

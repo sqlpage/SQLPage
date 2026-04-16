@@ -241,7 +241,7 @@ async fn render_sql(
         let parse_span = tracing::info_span!(
             "http.parse_request",
             http.request.method = %srv_req.method(),
-            http.request.header.content_type = content_type,
+            "http.request.header.content-type" = content_type,
             http.request.body.size = content_length,
             url.query = url_query,
         );
@@ -359,7 +359,7 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
             { otel::OTEL_STATUS_CODE } = tracing::field::Empty,
             request_id = %request_id,
             { otel::EXCEPTION_MESSAGE } = tracing::field::Empty,
-            "exception.details" = tracing::field::Empty,
+            "sqlpage.exception.details" = tracing::field::Empty,
         );
         std::mem::drop(connection_info);
         tracing_actix_web::root_span_macro::private::set_otel_parent(request, &span);

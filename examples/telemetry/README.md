@@ -67,25 +67,25 @@ Each HTTP request produces a tree of **spans** (timed operations):
        └─ [sqlpage] SQL website/todos.sql  ← SQL file execution
             ├─ db.pool.acquire             ← time waiting for a DB connection
             └─ db.query                    ← the actual SQL query
-                 db.statement = "SELECT title, ..."
-                 db.system = "PostgreSQL"
+                 db.query.text = "SELECT title, ..."
+                 db.system.name = "postgresql"
 ```
 
 Key attributes on each span:
 
 | Span               | Key attributes                                                |
 |---------------------|--------------------------------------------------------------|
-| HTTP request        | `http.method`, `http.target`, `http.status_code`, `http.user_agent` |
-| SQL file execution  | `sqlpage.file` — which `.sql` file was executed              |
-| `db.pool.acquire`   | `db.pool.size` — current pool size when acquiring            |
-| `db.query`          | `db.statement` — the full SQL text; `db.system` — database type |
+| HTTP request        | `http.request.method`, `http.route`, `http.response.status_code`, `user_agent.original` |
+| SQL file execution  | `code.file.path` — which `.sql` file was executed            |
+| `db.pool.acquire`   | `db.client.connection.pool.name`; `sqlpage.db.pool.size` — current pool size when acquiring |
+| `db.query`          | `db.query.text` — the full SQL text; `db.system.name` — database type |
 
 ### What you will see in the logs
 
 SQLPage writes one structured log line per event, for example:
 
 ```text
-ts=2026-03-08T20:56:15.000Z level=info target=sqlpage::webserver::http msg="request completed" method=GET path=/ trace_id=4f2d...
+ts=2026-03-08T20:56:15.000Z level=info target=sqlpage::webserver::http msg="request completed" http.request.method=GET url.path=/ trace_id=4f2d...
 ```
 
 The OpenTelemetry Collector receives these SQLPage container logs through Docker's syslog
