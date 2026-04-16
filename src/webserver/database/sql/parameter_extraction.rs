@@ -120,10 +120,10 @@ impl ParameterExtractor {
 
     pub(super) fn is_own_placeholder(&self, param: &str) -> bool {
         let prefix = get_placeholder_prefix(self.db_info.kind);
-        if let Some(param) = param.strip_prefix(prefix) {
-            if let Ok(index) = param.parse::<usize>() {
-                return index <= self.parameters.len() + 1;
-            }
+        if let Some(param) = param.strip_prefix(prefix)
+            && let Ok(index) = param.parse::<usize>()
+        {
+            return index <= self.parameters.len() + 1;
         }
         false
     }

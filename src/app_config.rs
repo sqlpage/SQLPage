@@ -125,12 +125,12 @@ impl AppConfig {
                 "Database connection acquire timeout must be positive"
             ));
         }
-        if let Some(max_connections) = self.max_database_pool_connections {
-            if max_connections == 0 {
-                return Err(anyhow::anyhow!(
-                    "Maximum database pool connections must be greater than 0"
-                ));
-            }
+        if let Some(max_connections) = self.max_database_pool_connections
+            && max_connections == 0
+        {
+            return Err(anyhow::anyhow!(
+                "Maximum database pool connections must be greater than 0"
+            ));
         }
         anyhow::ensure!(self.max_pending_rows > 0, "max_pending_rows cannot be null");
 

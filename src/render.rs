@@ -642,12 +642,12 @@ impl CsvBodyRenderer {
     }
 
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
-        if self.columns.is_empty() {
-            if let Some(obj) = data.as_object() {
-                let headers: Vec<String> = obj.keys().map(String::to_owned).collect();
-                self.columns = headers;
-                self.writer.write_record(&self.columns).await?;
-            }
+        if self.columns.is_empty()
+            && let Some(obj) = data.as_object()
+        {
+            let headers: Vec<String> = obj.keys().map(String::to_owned).collect();
+            self.columns = headers;
+            self.writer.write_record(&self.columns).await?;
         }
 
         if let Some(obj) = data.as_object() {

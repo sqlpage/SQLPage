@@ -210,15 +210,15 @@ pub fn init_test_logging() {
 
 /// Shuts down the `OTel` tracer provider, flushing pending spans.
 pub fn shutdown_telemetry() {
-    if let Some(provider) = TRACER_PROVIDER.get() {
-        if let Err(e) = provider.shutdown() {
-            eprintln!("Error shutting down tracer provider: {e}");
-        }
+    if let Some(provider) = TRACER_PROVIDER.get()
+        && let Err(e) = provider.shutdown()
+    {
+        eprintln!("Error shutting down tracer provider: {e}");
     }
-    if let Some(provider) = METER_PROVIDER.get() {
-        if let Err(e) = provider.shutdown() {
-            eprintln!("Error shutting down meter provider: {e}");
-        }
+    if let Some(provider) = METER_PROVIDER.get()
+        && let Err(e) = provider.shutdown()
+    {
+        eprintln!("Error shutting down meter provider: {e}");
     }
 }
 
@@ -579,10 +579,8 @@ mod logfmt {
     }
 
     fn write_message(buf: &mut String, msg: Option<&String>, multiline_msg: bool) {
-        if !multiline_msg {
-            if let Some(msg) = msg.filter(|msg| !msg.is_empty()) {
-                write_logfmt_value(buf, "msg", msg);
-            }
+        if !multiline_msg && let Some(msg) = msg.filter(|msg| !msg.is_empty()) {
+            write_logfmt_value(buf, "msg", msg);
         }
     }
 
@@ -710,12 +708,12 @@ mod logfmt {
     {
         for span in scope? {
             let ext = span.extensions();
-            if let Some(otel_data) = ext.get::<tracing_opentelemetry::OtelData>() {
-                if let Some(trace_id) = otel_data.trace_id() {
-                    let trace_id = trace_id.to_string();
-                    if trace_id != INVALID_TRACE_ID {
-                        return Some(trace_id);
-                    }
+            if let Some(otel_data) = ext.get::<tracing_opentelemetry::OtelData>()
+                && let Some(trace_id) = otel_data.trace_id()
+            {
+                let trace_id = trace_id.to_string();
+                if trace_id != INVALID_TRACE_ID {
+                    return Some(trace_id);
                 }
             }
         }
@@ -723,11 +721,9 @@ mod logfmt {
     }
 
     fn write_multiline_message(buf: &mut String, msg: Option<&String>, multiline_msg: bool) {
-        if multiline_msg {
-            if let Some(msg) = msg {
-                buf.push_str(msg);
-                buf.push('\n');
-            }
+        if multiline_msg && let Some(msg) = msg {
+            buf.push_str(msg);
+            buf.push('\n');
         }
     }
 

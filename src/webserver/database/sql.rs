@@ -520,37 +520,35 @@ fn extract_set_variable(
         scope: None,
         hivevar: false,
     }) = stmt
-    {
-        if let ([ObjectNamePart::Identifier(ident)], [value]) =
+        && let ([ObjectNamePart::Identifier(ident)], [value]) =
             (name.as_mut_slice(), values.as_mut_slice())
-        {
-            let variable = if let Some(variable) = extract_ident_param(ident) {
-                variable
-            } else {
-                StmtParam::PostOrGet(std::mem::take(&mut ident.value))
-            };
-            let owned_expr = std::mem::replace(value, Expr::value(Value::Null));
-            let mut params_iter = params.iter().cloned();
-            if let Some(value) = expr_to_simple_select_val(&mut params_iter, &owned_expr) {
-                return Some(ParsedStatement::StaticSimpleSet { variable, value });
-            }
-
-            let mut select_stmt: Statement = expr_to_statement(owned_expr);
-            let delayed_functions = extract_toplevel_functions(&mut select_stmt);
-            if let Err(err) = validate_function_calls(&select_stmt) {
-                return Some(ParsedStatement::Error(err));
-            }
-            let json_columns = extract_json_columns(&select_stmt, db_info.database_type);
-            let mut value = StmtWithParams {
-                query: select_stmt.to_string(),
-                query_position: extract_query_start(&select_stmt),
-                params: std::mem::take(params),
-                delayed_functions,
-                json_columns,
-            };
-            transform_to_positional_placeholders(&mut value, db_info.kind);
-            return Some(ParsedStatement::SetVariable { variable, value });
+    {
+        let variable = if let Some(variable) = extract_ident_param(ident) {
+            variable
+        } else {
+            StmtParam::PostOrGet(std::mem::take(&mut ident.value))
+        };
+        let owned_expr = std::mem::replace(value, Expr::value(Value::Null));
+        let mut params_iter = params.iter().cloned();
+        if let Some(value) = expr_to_simple_select_val(&mut params_iter, &owned_expr) {
+            return Some(ParsedStatement::StaticSimpleSet { variable, value });
         }
+
+        let mut select_stmt: Statement = expr_to_statement(owned_expr);
+        let delayed_functions = extract_toplevel_functions(&mut select_stmt);
+        if let Err(err) = validate_function_calls(&select_stmt) {
+            return Some(ParsedStatement::Error(err));
+        }
+        let json_columns = extract_json_columns(&select_stmt, db_info.database_type);
+        let mut value = StmtWithParams {
+            query: select_stmt.to_string(),
+            query_position: extract_query_start(&select_stmt),
+            params: std::mem::take(params),
+            delayed_functions,
+            json_columns,
+        };
+        transform_to_positional_placeholders(&mut value, db_info.kind);
+        return Some(ParsedStatement::SetVariable { variable, value });
     }
     None
 }
@@ -578,10 +576,9 @@ fn extract_sqlpage_function_name(
         }),
         ObjectNamePart::Identifier(Ident { value, .. }),
     ] = func_name_parts
+        && namespace == SQLPAGE_FUNCTION_NAMESPACE
     {
-        if namespace == SQLPAGE_FUNCTION_NAMESPACE {
-            return SqlPageFunctionName::from_str(value).ok();
-        }
+        return SqlPageFunctionName::from_str(value).ok();
     }
     None
 }
@@ -610,15 +607,15 @@ fn extract_json_columns(stmt: &Statement, dbms: SupportedDatabase) -> Vec<String
 
     let mut json_columns = Vec::new();
 
-    if let Statement::Query(query) = stmt {
-        if let SetExpr::Select(select) = query.body.as_ref() {
-            for item in &select.projection {
-                if let SelectItem::ExprWithAlias { expr, alias } = item {
-                    if is_json_function(expr) {
-                        json_columns.push(alias.value.clone());
-                        log::trace!("Found JSON column: {alias}");
-                    }
-                }
+    if let Statement::Query(query) = stmt
+        && let SetExpr::Select(select) = query.body.as_ref()
+    {
+        for item in &select.projection {
+            if let SelectItem::ExprWithAlias { expr, alias } = item
+                && is_json_function(expr)
+            {
+                json_columns.push(alias.value.clone());
+                log::trace!("Found JSON column: {alias}");
             }
         }
     }

@@ -106,20 +106,20 @@ async fn stream_response(stream: impl Stream<Item = DbItem>, mut renderer: AnyRe
             DbItem::Row(row) => renderer.handle_row(&row).await,
             DbItem::Error(e) => renderer.handle_error(&e).await,
         };
-        if let Err(e) = render_result {
-            if let Err(nested_err) = renderer.handle_error(&e).await {
-                renderer
-                    .close()
-                    .await
-                    .close_with_error(nested_err.to_string())
-                    .await;
-                log::error!(
-                    "An error occurred while trying to display an other error. \
-                    \nRoot error: {e}\n
-                    \nNested error: {nested_err}"
-                );
-                return;
-            }
+        if let Err(e) = render_result
+            && let Err(nested_err) = renderer.handle_error(&e).await
+        {
+            renderer
+                .close()
+                .await
+                .close_with_error(nested_err.to_string())
+                .await;
+            log::error!(
+                "An error occurred while trying to display an other error. \
+                \nRoot error: {e}\n
+                \nNested error: {nested_err}"
+            );
+            return;
         }
         if let Err(e) = &renderer.flush().await {
             log::error!(

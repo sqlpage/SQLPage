@@ -681,11 +681,11 @@ fn apply_json_columns(item: &mut DbItem, json_columns: &[String]) {
                     }
                 } else if let Value::Array(array) = value {
                     for item in array {
-                        if let Value::String(json_str) = item {
-                            if let Ok(parsed_json) = serde_json::from_str(json_str) {
-                                log::trace!("Parsed JSON array item: {parsed_json}");
-                                *item = parsed_json;
-                            }
+                        if let Value::String(json_str) = item
+                            && let Ok(parsed_json) = serde_json::from_str(json_str)
+                        {
+                            log::trace!("Parsed JSON array item: {parsed_json}");
+                            *item = parsed_json;
                         }
                     }
                 }
@@ -885,12 +885,11 @@ mod tests {
         let closed_spans = layer.closed_spans.clone();
         let subscriber = tracing_subscriber::registry().with(layer);
         tracing::subscriber::with_default(subscriber, f);
-        let fields = closed_spans
+        closed_spans
             .lock()
             .unwrap()
             .pop()
-            .expect("closed span fields");
-        fields
+            .expect("closed span fields")
     }
 
     #[test]
