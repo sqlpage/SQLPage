@@ -1,0 +1,14 @@
+<h1 class="mt-2 mb-0"><a href="stories.sql?id={{id}}">{{title}}</a></h1>
+<div class="remove-bottom-margin markdown mb-4">
+    <span class="badge bg-grey-lt text-grey-lt-fg">{{publication_date}}</span>
+    
+    <div>
+    {{ ~#each (to_array tags) }}
+        <a href="stories?filter={{this}}" class="badge bg-yellow-lt">{{this}}</a>
+    {{~/each}}
+    </div>
+
+    <span remove-bottom-margin>
+        {{{~markdown truncated_contents~}}}<a href="stories?id={{id}}{{#if filter neq ''}}&filter={{filter}}{{/if}}">Read the story</a>
+    </span>
+</div>
