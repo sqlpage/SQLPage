@@ -572,6 +572,7 @@ impl VisitorMut for ParameterExtractor {
                 ..
             } if ![
                 SupportedDatabase::Postgres,
+                SupportedDatabase::Duckdb,
                 SupportedDatabase::Snowflake,
                 SupportedDatabase::Generic,
             ]
