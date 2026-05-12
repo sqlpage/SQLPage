@@ -38,7 +38,7 @@
                     <a href="{{link}}" style="text-decoration: inherit; color: inherit">
                 {{/if}}
                 {{#if top_image}}
-                    <img src="{{top_image}}" class="card-img-top" />
+                    <img src="{{top_image}}" class="card-img-top"{{#if top_image_width}} width="{{top_image_width}}"{{/if}}{{#if top_image_height}} height="{{top_image_height}}"{{/if}}{{#if top_image_lazy}} loading="lazy"{{/if}}/>
                 {{/if}}
                 {{#if color}}
                     {{#if (not embed)}}
