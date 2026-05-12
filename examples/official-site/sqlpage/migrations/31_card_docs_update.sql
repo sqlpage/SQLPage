@@ -18,6 +18,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
         This is useful if you want to display a lot of text in the card, with many options for formatting, such as
         line breaks, **bold**, *italics*, lists, #titles, [links](target.sql), ![images](photo.jpg), etc.', 'TEXT', FALSE, TRUE),
     ('top_image', 'The URL (absolute or relative) of an image to display at the top of the card.', 'URL', FALSE, TRUE),
+    ('top_image_lazy', 'Whether the top image must be lazily loaded. Defaults to false, meaning eagerly loaded.', 'BOOLEAN', FALSE, TRUE),
+    ('top_image_width', 'Specify the top image width, in pixels. Helps prevent layout shifts.', 'INTEGER', FALSE, TRUE),
+    ('top_image_height', 'Specify the top image height, in pixels. Helps prevent layout shifts.', 'INTEGER', FALSE, TRUE),
     ('footer', 'Muted text to display at the bottom of the card.', 'TEXT', FALSE, TRUE),
     ('footer_md', 'Muted text to display at the bottom of the card, with rich text formatting in Markdown format.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
