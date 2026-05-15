@@ -29,6 +29,8 @@ jobs:
       - run: npm test
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        env:
+          NODE_OPTIONS: --no-deprecation
         with:
           shared-key: rust-sqlpage-proj-test
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -36,7 +38,7 @@ jobs:
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --features odbc-static
       - name: Upload Linux binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: sqlpage-linux-debug
           path: "target/debug/sqlpage"
@@ -66,6 +68,8 @@ jobs:
       - uses: actions/checkout@v6.0.2
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        env:
+          NODE_OPTIONS: --no-deprecation
         with:
           shared-key: rust-sqlpage-proj-test
           save-if: false
@@ -101,13 +105,15 @@ jobs:
       - uses: actions/checkout@v6.0.2
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        env:
+          NODE_OPTIONS: --no-deprecation
       - name: Check port usage
         run: netstat -bano
       - run: cargo test
         env:
           RUST_BACKTRACE: 1
       - name: Upload Windows binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: sqlpage-windows-debug
           path: "target/debug/sqlpage.exe"
@@ -179,7 +185,7 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: github.event_name != 'pull_request'
         with:
           name: digests-${{ matrix.variant }}${{ steps.suffix.outputs.suffix }}
@@ -199,7 +205,7 @@ jobs:
           - duckdb
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           pattern: digests-${{ matrix.variant }}*
           merge-multiple: true

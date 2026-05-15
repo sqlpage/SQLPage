@@ -15,7 +15,9 @@ jobs:
     - uses: actions/checkout@v6.0.2
     - name: Set up cargo cache
       uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
-    - uses: actions/setup-node@v4
+      env:
+        NODE_OPTIONS: --no-deprecation
+    - uses: actions/setup-node@v6.4.0
       with:
         node-version: lts/*
         cache: 'npm'
@@ -36,7 +38,7 @@ jobs:
     - name: show server logs
       if: failure()
       run: cat /tmp/stderrlog
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7.0.1
       if: always()
       with:
         name: playwright-report
