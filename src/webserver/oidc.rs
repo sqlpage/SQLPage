@@ -48,7 +48,7 @@ const SQLPAGE_REDIRECT_URI: &str = "/sqlpage/oidc_callback";
 const SQLPAGE_LOGOUT_URI: &str = "/sqlpage/oidc_logout";
 const SQLPAGE_NONCE_COOKIE_NAME: &str = "sqlpage_oidc_nonce";
 const SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX: &str = "sqlpage_oidc_state_";
-const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_secs(60 * 60);
+const OIDC_CLIENT_MAX_REFRESH_INTERVAL: Duration = Duration::from_hours(1);
 const OIDC_CLIENT_MIN_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
 const OIDC_HTTP_BODY_TIMEOUT: Duration = OIDC_CLIENT_MIN_REFRESH_INTERVAL;
 const SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE: &str = "sqlpage_oidc_redirect_count";
@@ -998,7 +998,7 @@ fn make_oidc_client(
     if needs_http {
         log::debug!("App host seems to be local, changing redirect URL to HTTP");
         redirect_url =
-            RedirectUrl::new(format!("http://{}{}", config.app_host, config.redirect_uri,))?;
+            RedirectUrl::new(format!("http://{}{}", config.app_host, config.redirect_uri))?;
     }
     log::info!("OIDC redirect URL for {}: {redirect_url}", config.client_id);
     let client =

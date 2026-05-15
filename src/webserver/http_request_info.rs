@@ -298,11 +298,7 @@ async fn is_file_field_empty(
 ) -> anyhow::Result<bool> {
     Ok(
         uploaded_file.content_type == Some(mime_guess::mime::APPLICATION_OCTET_STREAM)
-            && uploaded_file
-                .file_name
-                .as_ref()
-                .filter(|x| !x.is_empty())
-                .is_none()
+            && uploaded_file.file_name.as_deref().is_none_or(str::is_empty)
             && tokio::fs::metadata(&uploaded_file.file.path()).await?.len() == 0,
     )
 }

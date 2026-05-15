@@ -1116,7 +1116,7 @@ mod test {
                 assert_eq!(query, "SELECT CURRENT_TIMESTAMP AS sqlpage_set_expr");
                 assert!(params.is_empty());
             } else {
-                panic!("Failed for dialect {dialect:?}: {stmt:#?}",);
+                panic!("Failed for dialect {dialect:?}: {stmt:#?}");
             }
         }
     }

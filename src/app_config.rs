@@ -94,7 +94,7 @@ impl AppConfig {
             if is_sqlite {
                 None
             } else {
-                Some(Duration::from_secs(30 * 60))
+                Some(Duration::from_mins(30))
             },
         );
         self.database_connection_max_lifetime = resolve_timeout(
@@ -102,7 +102,7 @@ impl AppConfig {
             if is_sqlite {
                 None
             } else {
-                Some(Duration::from_secs(60 * 60))
+                Some(Duration::from_hours(1))
             },
         );
     }

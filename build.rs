@@ -71,7 +71,6 @@ async fn process_input_file(client: &awc::Client, path_out: &Path, original: Fil
             if std::env::var("DOCS_RS").is_err() {
                 copy_url_to_opened_file(client, url, &mut outfile).await;
             } else {
-                println!("cargo:warning=Skipping download of {url} because we're building docs.");
                 return;
             }
             outfile.write_all(b"\n").unwrap();
@@ -93,7 +92,6 @@ async fn copy_url_to_opened_file(
     // If the file has been downloaded manually, use it
     let cached_file_path = make_url_path(url);
     if !cached_file_path.exists() {
-        println!("cargo:warning=Downloading {url} to cache file {cached_file_path:?}.");
         download_url_to_path(client, url, &cached_file_path).await;
         println!("cargo:rerun-if-changed={}", cached_file_path.display());
     }
@@ -133,7 +131,7 @@ async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
                     );
                 }
                 sleep(Duration::from_secs(1)).await;
-                println!("cargo:warning=Retrying download of {url} after {err}.");
+                eprintln!("Retrying download of {url} after {err}.");
                 attempt += 1;
             }
         }

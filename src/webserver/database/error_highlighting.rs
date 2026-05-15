@@ -148,11 +148,10 @@ pub fn highlight_line_offset<W: std::fmt::Write>(msg: &mut W, line: &str, offset
 /// line and `col_num` are 1-based
 pub fn quote_source_with_highlight(source: &str, line_num: u64, col_num: u64) -> String {
     let mut msg = String::new();
-    let mut current_line_num: u64 = 1; // 1-based line number
     let col_num_usize = usize::try_from(col_num)
         .unwrap_or_default()
         .saturating_sub(1);
-    for line in source.lines() {
+    for (current_line_num, line) in (1_u64..).zip(source.lines()) {
         if current_line_num + 1 == line_num || current_line_num == line_num + 1 {
             writeln!(msg, "{line}").unwrap();
         } else if current_line_num == line_num {
@@ -160,7 +159,6 @@ pub fn quote_source_with_highlight(source: &str, line_num: u64, col_num: u64) ->
         } else if current_line_num > line_num + 1 {
             break;
         }
-        current_line_num += 1;
     }
     msg
 }
