@@ -432,11 +432,11 @@ impl HeaderContext {
 async fn verify_password_async(
     password_hash: String,
     password: String,
-) -> Result<Result<(), password_hash::Error>, anyhow::Error> {
+) -> Result<Result<(), argon2::password_hash::Error>, anyhow::Error> {
     tokio::task::spawn_blocking(move || {
-        let hash = password_hash::PasswordHash::new(&password_hash)
+        let hash = argon2::password_hash::PasswordHash::new(&password_hash)
             .map_err(|e| anyhow::anyhow!("invalid value for the password_hash property: {e}"))?;
-        let phfs = &[&argon2::Argon2::default() as &dyn password_hash::PasswordVerifier];
+        let phfs = &[&argon2::Argon2::default() as &dyn argon2::password_hash::PasswordVerifier];
         Ok(hash.verify_password(phfs, password))
     })
     .await?

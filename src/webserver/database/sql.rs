@@ -697,7 +697,7 @@ fn expr_to_statement(expr: Expr) -> Statement {
                 window_before_qualify: false,
                 value_table_mode: None,
                 connect_by: Vec::new(),
-                optimizer_hint: None,
+                optimizer_hints: vec![],
                 select_modifiers: None,
                 flavor: SelectFlavor::Standard,
                 exclude: None,

@@ -622,7 +622,7 @@ fn process_oidc_logout(
 
 fn compute_logout_signature(redirect_uri: &str, timestamp: i64, client_secret: &str) -> String {
     use base64::Engine;
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
 
     let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())

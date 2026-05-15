@@ -441,8 +441,10 @@ pub(crate) async fn hash_password(password: Option<String>) -> anyhow::Result<Op
     actix_web::rt::task::spawn_blocking(move || {
         // Hashes a password using Argon2. This is a CPU-intensive blocking operation.
         let phf = argon2::Argon2::default();
-        let salt = password_hash::SaltString::generate(&mut password_hash::rand_core::OsRng);
-        let password_hash = &password_hash::PasswordHash::generate(phf, password, &salt)
+        let salt = argon2::password_hash::SaltString::generate(
+            &mut argon2::password_hash::rand_core::OsRng,
+        );
+        let password_hash = &argon2::password_hash::PasswordHash::generate(phf, password, &salt)
             .map_err(|e| anyhow!("Unable to hash password: {e}"))?;
         Ok(password_hash.to_string())
     })
@@ -960,7 +962,7 @@ async fn hmac<'a>(
     key: Cow<'a, str>,
     algorithm: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<String>> {
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     use sha2::{Sha256, Sha512};
 
     let algorithm = algorithm.as_deref().unwrap_or("sha256");
