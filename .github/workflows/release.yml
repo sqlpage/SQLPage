@@ -123,6 +123,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: actions/download-artifact@v8.0.1
+        env:
+          NODE_OPTIONS: --no-deprecation
       - run: |
           rm -rf sqlpage/templates/*.handlebars;
           chmod +x sqlpage*/sqlpage;
