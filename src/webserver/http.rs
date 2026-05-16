@@ -325,6 +325,30 @@ fn sql_execution_span_name(source_path: &std::path::Path) -> String {
     format!("SQL {}", source_path.display())
 }
 
+struct RequestHeaderCarrier<'a>(&'a actix_web::http::header::HeaderMap);
+
+impl opentelemetry::propagation::Extractor for RequestHeaderCarrier<'_> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|value| value.to_str().ok())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0
+            .keys()
+            .map(actix_web::http::header::HeaderName::as_str)
+            .collect()
+    }
+}
+
+fn set_otel_parent(request: &ServiceRequest, span: &Span) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+
+    let parent_context = opentelemetry::global::get_text_map_propagator(|propagator| {
+        propagator.extract(&RequestHeaderCarrier(request.headers()))
+    });
+    let _ = span.set_parent(parent_context);
+}
+
 struct SqlPageRootSpanBuilder;
 
 impl RootSpanBuilder for SqlPageRootSpanBuilder {
@@ -362,7 +386,7 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
             "sqlpage.exception.details" = tracing::field::Empty,
         );
         std::mem::drop(connection_info);
-        tracing_actix_web::root_span_macro::private::set_otel_parent(request, &span);
+        set_otel_parent(request, &span);
         span
     }
 

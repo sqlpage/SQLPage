@@ -322,8 +322,7 @@ fn init_otel_tracing(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<()> {
     let subscriber = tracing_subscriber::registry()
         .with(default_env_filter())
         .with(logfmt_layer)
-        .with(otel_layer)
-        .with(tracing_opentelemetry::MetricsLayer::new(meter_provider));
+        .with(otel_layer);
 
     set_global_subscriber(subscriber)
 }

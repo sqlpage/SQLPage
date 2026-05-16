@@ -1635,7 +1635,7 @@ dependencies = [
  "ff",
  "generic-array",
  "group",
- "hkdf",
+ "hkdf 0.12.4",
  "pem-rfc7468",
  "pkcs8",
  "rand_core 0.6.4",
@@ -2101,6 +2101,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
 dependencies = [
  "hmac 0.12.1",
+]
+
+[[package]]
+name = "hkdf"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4aaa26c720c68b866f2c96ef5c1264b3e6f473fe5d4ce61cd44bbe913e553018"
+dependencies = [
+ "hmac 0.13.0",
 ]
 
 [[package]]
@@ -2738,12 +2747,12 @@ dependencies = [
 
 [[package]]
 name = "md-5"
-version = "0.10.6"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+checksum = "69b6441f590336821bb897fb28fc622898ccceb1d6cea3fde5ea86b090c4de98"
 dependencies = [
  "cfg-if",
- "digest 0.10.7",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -3201,9 +3210,9 @@ dependencies = [
 
 [[package]]
 name = "odbc-api"
-version = "24.1.1"
+version = "25.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f04f75fb2176707bce6c9180bf722346005d26df377471672e65fcb63252bf6c"
+checksum = "b9144219b357fb103b928a1ef1b4e466a84b8f52aa9f5d5e538c409e1ffb9d26"
 dependencies = [
  "atoi",
  "log",
@@ -3291,7 +3300,6 @@ dependencies = [
  "js-sys",
  "pin-project-lite",
  "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]
@@ -4054,9 +4062,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-acme"
-version = "0.15.1"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dcdaa66cd3bf55140f4061b0bb596650d5e8f7f0183cd263fba2a57cf740b96"
+checksum = "8e44af6e70877950d8c30b7c0c86fca352d61d21d8b93174a0d4f84918e6065b"
 dependencies = [
  "async-io",
  "async-trait",
@@ -4606,9 +4614,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.53"
+version = "0.6.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "894fc2031a67e60e380b58610d67a625d8ad30aa34aaca4313a05ee3d5f89113"
+checksum = "b07404a580a1ee0f306a8e34811fd5b49c912b42f33e63cfd514598a324310c0"
 dependencies = [
  "ahash",
  "atoi",
@@ -4620,7 +4628,6 @@ dependencies = [
  "chrono",
  "crc",
  "crossbeam-queue",
- "digest 0.10.7",
  "dirs",
  "dotenvy",
  "either",
@@ -4634,8 +4641,8 @@ dependencies = [
  "futures-util",
  "hashlink",
  "hex",
- "hkdf",
- "hmac 0.12.1",
+ "hkdf 0.13.0",
+ "hmac 0.13.0",
  "indexmap 2.14.0",
  "itoa",
  "libc",
@@ -4648,7 +4655,7 @@ dependencies = [
  "once_cell",
  "paste",
  "percent-encoding",
- "rand 0.8.6",
+ "rand 0.10.1",
  "regex",
  "rsa",
  "rustls",
@@ -4656,7 +4663,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1 0.10.6",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "smallvec",
  "sqlx-rt-oldapi",
  "stringprep",
@@ -4671,9 +4678,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.53"
+version = "0.6.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80bfbcd92abf9a0bc16aabf49e544ff751befb1d1394a8afde0e5e1d85af83e9"
+checksum = "2fbe01c8e164bf063fb3ca2aca05750337ed1bf317ac844ffa8c1beaf97ec552"
 dependencies = [
  "dotenvy",
  "either",
@@ -4682,7 +4689,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "sqlx-core-oldapi",
  "sqlx-rt-oldapi",
  "syn",
@@ -4691,9 +4698,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.53"
+version = "0.6.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6a87aa7e2640c636dfb6a10116e20287e919cce0713dea24d8fac3c94c6972"
+checksum = "e278bf658e991a09945e974dbb19d8fdd369ed71f9b0d0705ca9bbbc0eed43d4"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -4701,9 +4708,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt-oldapi"
-version = "0.6.53"
+version = "0.6.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "487a41200c83f79ef48a767b698f3dd865d298d937f7446fbaead78947386936"
+checksum = "bc043bc8d1dc45bac188e265866a06d7df7be6c9f9bbe09e73f1270a6bd5fa3a"
 dependencies = [
  "once_cell",
  "tokio",
@@ -5079,10 +5086,8 @@ checksum = "1ca6b15407f9bfcb35f82d0e79e603e1629ece4e91cc6d9e58f890c184dd20af"
 dependencies = [
  "actix-web",
  "mutually_exclusive_features",
- "opentelemetry",
  "pin-project",
  "tracing",
- "tracing-opentelemetry",
  "uuid",
 ]
 
@@ -5126,10 +5131,8 @@ checksum = "1ac28f2d093c6c477eaa76b23525478f38de514fa9aeb1285738d4b97a9552fc"
 dependencies = [
  "js-sys",
  "opentelemetry",
- "smallvec",
  "tracing",
  "tracing-core",
- "tracing-log",
  "tracing-subscriber",
  "web-time",
 ]
