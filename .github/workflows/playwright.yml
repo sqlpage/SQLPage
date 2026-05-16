@@ -12,12 +12,12 @@ jobs:
         working-directory: ./tests/end-to-end
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6.0.2
+    - uses: actions/checkout@v6
     - name: Set up cargo cache
       uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
       env:
         NODE_OPTIONS: --no-deprecation
-    - uses: actions/setup-node@v6.4.0
+    - uses: actions/setup-node@v6
       with:
         node-version: lts/*
         cache: 'npm'
@@ -38,7 +38,7 @@ jobs:
     - name: show server logs
       if: failure()
       run: cat /tmp/stderrlog
-    - uses: actions/upload-artifact@v7.0.1
+    - uses: actions/upload-artifact@v7
       if: always()
       with:
         name: playwright-report

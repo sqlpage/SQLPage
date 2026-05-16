@@ -29,7 +29,7 @@ jobs:
             target: x86_64-apple-darwin
             features: "odbc-static"
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -43,7 +43,7 @@ jobs:
       - name: Upload unsigned Windows artifact
         if: matrix.os == 'windows-latest'
         id: upload_unsigned
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: unsigned-windows
           path: target/${{ matrix.target }}/superoptimized/sqlpage.exe
@@ -67,7 +67,7 @@ jobs:
 
       - name: Upload signed Windows artifact
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: sqlpage windows-latest
           path: signed-windows/sqlpage.exe
@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload artifact (non-Windows)
         if: matrix.os != 'windows-latest'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: sqlpage ${{ matrix.os }}
           path: target/${{ matrix.target }}/superoptimized/sqlpage${{ matrix.binary_extension }}
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -97,7 +97,7 @@ jobs:
           NODE_OPTIONS: --no-deprecation
       - name: Build
         run: cargo build --profile superoptimized --locked --target x86_64-unknown-linux-gnu --features "odbc-static"
-      - uses: actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@v7
         with:
           name: sqlpage ubuntu-latest
           path: target/x86_64-unknown-linux-gnu/superoptimized/sqlpage
@@ -107,10 +107,10 @@ jobs:
     name: Build AWS Lambda Serverless zip image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
       - run: docker build -t sqlpage-lambda-builder . -f lambda.Dockerfile --target builder
       - run: docker run sqlpage-lambda-builder cat deploy.zip > sqlpage-aws-lambda.zip
-      - uses: actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@v7
         with:
           name: sqlpage aws lambda serverless image
           path: sqlpage-aws-lambda.zip
@@ -121,8 +121,8 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: actions/download-artifact@v8.0.1
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
         env:
           NODE_OPTIONS: --no-deprecation
       - run: |
@@ -153,7 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
