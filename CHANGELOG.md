@@ -2,24 +2,23 @@
 
 ## v0.44.0
 
-- New function: `sqlpage.regex_match(pattern, text)`. Useful for easy routing using `sqlpage.path()` from 404.sql files.
-- Added a `show_legend` top level property to the chart component.
-- Updated apex charts from 5.3 to 5.10. See https://github.com/apexcharts/apexcharts.js/releases
-- fixed unreadable chart toolbar menu when using the dark theme
-- Made OIDC and `sqlpage.fetch` debug logs safer and simpler by removing raw token, cookie, claims, and response body dumps while keeping useful request and response metadata.
-- Fixed a bug where the single-sign-on oidc code would generate an unbounded amount of cookies when receiving many unauthenticated requests in sequence.
-- Fixed multiple incorrect or imprecise HTTP statuses returned by sqlpage on error
-  - this makes it easier for an administrator to distinguish between user errors (4xx, non actionnable) and server errors (5xx, when you see them you should do something)
-  - for instance: invalid UTF-8 in multipart text fields now returns `400 Bad Request` instead of `500 Internal Server Error`.
-- Logging: `LOG_LEVEL` is now the primary environment variable for configuring SQLPage's log filter. `RUST_LOG` remains supported as an alias.
-- You can now easily understand and debug slow page loads thanks to the added support for [OpenTelemetry](https://opentelemetry.io) tracing & metrics
-  - connect SQLPage to an OpenTelemetry tracing backend via the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable.
-  - see the [sqlpage monitoring example](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry#readme)
-  - <img width="2926" height="1664" alt="image" src="https://github.com/user-attachments/assets/11ae3644-a4f4-4218-98b2-4bf5afb345f8" />
-- Added an argument to `sqlpage.persist_uploaded_file(...)` to control the permissions of the newly created file.
-  - Notably, this makes it easier to accelerate serving of uploaded files by letting a reverse proxy like nginx serve them directly.
-- Added an [`id` row-level parameter to the datagrid component](https://github.com/sqlpage/SQLPage/issues/1243)
-- Fixed crashes when a header-only page returned an http header containing an invalid character
+This release focuses on making production SQLPage apps easier to understand, debug, and operate. Most apps should keep working without SQL changes, but maintainers should review the notes about logging and uploaded-file permissions.
+
+- **Find out why a page is slow.** SQLPage can now produce a timeline for every request: when the request arrived, which `.sql` file ran, how long it waited for a database connection, which SQL queries ran, and how long calls to `sqlpage.fetch`, `sqlpage.run_sql`, or `sqlpage.exec` took. This kind of request timeline is called a trace. SQLPage emits it using [OpenTelemetry](https://opentelemetry.io/), the standard format understood by tools such as Grafana, Jaeger, Datadog, Honeycomb, New Relic, and others.
+  - **Easy start:** run the ready-to-use [`examples/telemetry`](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry#readme) Docker Compose setup. It starts SQLPage, PostgreSQL, Grafana, Tempo, Loki, Prometheus, and an OpenTelemetry collector, so you can click through a sample app and immediately see request timelines and logs.
+  - **If you already have a monitoring backend:** set `OTEL_EXPORTER_OTLP_ENDPOINT` and, optionally, `OTEL_SERVICE_NAME=sqlpage`.
+  <img width="2926" height="1664" alt="image" src="https://github.com/user-attachments/assets/11ae3644-a4f4-4218-98b2-4bf5afb345f8" />
+- **Logging is now structured and safer.** `LOG_LEVEL` is the preferred environment variable for SQLPage log filtering. `RUST_LOG` still works as an alias, so existing deployments do not need an immediate change. Debug logs for OIDC and `sqlpage.fetch` no longer dump raw tokens, cookies, claims, or response bodies, while still keeping useful request and response metadata.
+- **New function: `sqlpage.regex_match(pattern, text)`.** It returns regex capture groups as JSON, or `NULL` when there is no match. This is especially useful in custom `404.sql` files for clean dynamic routes such as `/categories/sql/post/42` without creating one SQL file per possible URL.
+- **Uploaded files can now get explicit Unix permissions.** `sqlpage.persist_uploaded_file(field, folder, allowed_extensions, mode)` accepts a fourth `mode` argument such as `'644'`. On Unix, uploaded files default to `600`, meaning only the SQLPage process owner can read them. If you serve uploaded files directly from nginx, Caddy, or another reverse proxy, pass an appropriate mode such as `'644'`.
+- **Charts are easier to tune and more accessible.** The chart component now supports `show_legend` to hide or show the series legend. ApexCharts was updated from 5.3.6 to [5.12.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v5.12.0), the latest upstream release when this changelog was prepared. It brings fixes for datetime axes, annotations, data labels, legend state, tooltips, keyboard navigation, reduced-motion handling, and built-in palette contrast. SQLPage also fixes the chart toolbar menu in dark mode.
+- **The SQL parser was updated to [sqlparser-rs 0.62.0](https://github.com/apache/datafusion-sqlparser-rs/blob/3dd0e30d8bb1d2a6775f62d2b84839b60133effb/changelog/0.62.0.md), which is the latest published version at release time.** For SQLPage users, this mainly means fewer false parse errors when using database-specific SQL. Notable additions include more PostgreSQL, MySQL, MSSQL, Snowflake, Redshift, Databricks, Spark SQL, and Teradata syntax, plus a SQLite parser panic fix for incomplete `REGEXP`/`MATCH` expressions.
+- **Card image galleries can avoid layout shifts.** The card component now supports `top_image_lazy`, `top_image_width`, and `top_image_height`, so pages with many card images can load more smoothly.
+- **Datagrid rows can now have stable HTML anchors.** The datagrid component supports a row-level `id` parameter, useful for links, targeted CSS, and small bits of custom JavaScript.
+- **OIDC login is more robust under repeated unauthenticated requests.** SQLPage now caps temporary login-state cookies, avoiding the unbounded cookie growth that could happen when many protected pages were requested before authentication completed.
+- **HTTP error statuses are more accurate.** Malformed multipart form data and invalid UTF-8 text fields now return `400 Bad Request`; database connection-pool exhaustion now returns `429 Too Many Requests`; invalid non-Unicode static paths now return `400 Bad Request`; and paths that accidentally descend into a file now behave like normal missing resources. This should make monitoring dashboards and reverse-proxy logs easier to interpret.
+- **Invalid response headers no longer crash SQLPage.** If a header-only page tries to return an invalid header value, SQLPage now returns a normal error response instead of crashing the request handling path.
+- **DuckDB `::` casts are handled better.** SQLPage no longer warns unnecessarily when using DuckDB-style casts.
 
 ## 0.43.0
 
