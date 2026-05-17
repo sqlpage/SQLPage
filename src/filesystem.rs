@@ -6,7 +6,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use sqlx::any::{AnyStatement, AnyTypeInfo};
 use sqlx::postgres::types::PgTimeTz;
-use sqlx::{Postgres, Statement, Type};
+use sqlx::{Executor, Postgres, Statement, Type};
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -267,11 +267,21 @@ impl DbFsQueries {
 
     async fn init(db: &Database) -> anyhow::Result<Self> {
         log::debug!("Initializing database filesystem queries");
+        Self::check_table_available(db).await?;
         Ok(Self {
             was_modified: Self::make_was_modified_query(db).await?,
             read_file: Self::make_read_file_query(db).await?,
             exists: Self::make_exists_query(db).await?,
         })
+    }
+
+    async fn check_table_available(db: &Database) -> anyhow::Result<()> {
+        db.connection
+            .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
+            .await
+            .map(|_| ())
+            .context("Unable to access sqlpage_files")?;
+        Ok(())
     }
 
     async fn make_was_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
