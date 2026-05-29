@@ -83,14 +83,14 @@ regex = "1"
 # OpenTelemetry / tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
-tracing-opentelemetry = { version = "0.32", default-features = false }
+tracing-opentelemetry = { version = "0.33", default-features = false }
 tracing-actix-web = { version = "0.7", default-features = false }
 tracing-log = "0.2"
-opentelemetry = { version = "0.31", default-features = false, features = ["trace", "metrics"] }
-opentelemetry_sdk = { version = "0.31", default-features = false, features = ["metrics", "rt-tokio", "spec_unstable_metrics_views", "experimental_trace_batch_span_processor_with_async_runtime", "experimental_metrics_periodicreader_with_async_runtime"] }
-opentelemetry-otlp = { version = "0.31", default-features = false, features = ["http-proto", "metrics"] }
-opentelemetry-http = { version = "0.31", default-features = false }
-opentelemetry-semantic-conventions = { version = "0.31", features = ["semconv_experimental"] }
+opentelemetry = { version = "0.32", default-features = false, features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.32", default-features = false, features = ["metrics", "rt-tokio", "spec_unstable_metrics_views", "experimental_trace_batch_span_processor_with_async_runtime", "experimental_metrics_periodicreader_with_async_runtime"] }
+opentelemetry-otlp = { version = "0.32", default-features = false, features = ["http-proto", "metrics"] }
+opentelemetry-http = { version = "0.32", default-features = false }
+opentelemetry-semantic-conventions = { version = "0.32", features = ["semconv_experimental"] }
 
 
 [features]
