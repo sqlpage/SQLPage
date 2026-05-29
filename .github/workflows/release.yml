@@ -160,4 +160,15 @@ jobs:
           NODE_OPTIONS: --no-deprecation
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - name: Publish to crates.io
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          set +e
+          cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} 2>&1 | tee cargo-publish.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Eiq 'already (uploaded|exists)|version .* is already' cargo-publish.log; then
+              echo "sqlpage ${GITHUB_REF_NAME#v} is already published on crates.io"
+            else
+              exit "$status"
+            fi
+          fi
