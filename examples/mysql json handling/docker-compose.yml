@@ -13,7 +13,7 @@ services:
   db: # The DB environment variable can be set to "mariadb" or "postgres" to test the code with different databases
     ports:
       - "3306:3306"
-    image: mariadb:10.6 # support for json_table was added in mariadb 10.6
+    image: mariadb:12 # support for json_table was added in mariadb 10.6
     environment:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: sqlpage

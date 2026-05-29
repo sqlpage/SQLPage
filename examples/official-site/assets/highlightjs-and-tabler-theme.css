@@ -24,7 +24,9 @@
     204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */
 
   /* Code colors */
-  --tblr-code-color: hsl(225deg 45.4% 76.93%); /* Light code text for dark theme */
+  --tblr-code-color: hsl(
+    225deg 45.4% 76.93%
+  ); /* Light code text for dark theme */
   --tblr-code-bg: hsla(225, 47%, 15%, 0.5); /* Subtle dark background */
   --tblr-active-bg: var(--tblr-code-bg);
 

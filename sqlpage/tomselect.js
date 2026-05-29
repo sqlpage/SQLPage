@@ -1,4 +1,4 @@
-/* !include https://cdn.jsdelivr.net/npm/tom-select@2.4.1/dist/js/tom-select.popular.min.js */
+/* !include https://cdn.jsdelivr.net/npm/tom-select@2.6.1/dist/js/tom-select.popular.min.js */
 
 function sqlpage_select_dropdown() {
   for (const s of document.querySelectorAll(
