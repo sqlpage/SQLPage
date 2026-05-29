@@ -24,7 +24,7 @@ async fn main() {
         spawn(download_deps(c.clone(), "sqlpage.css")),
         spawn(download_tabler_icons(
             c.clone(),
-            "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.35.0/dist/tabler-sprite.svg",
+            "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.44.0/dist/tabler-sprite.svg",
         )),
         spawn(download_deps(c.clone(), "apexcharts.js")),
         spawn(download_deps(c.clone(), "tomselect.js")),

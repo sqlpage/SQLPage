@@ -2,7 +2,7 @@
 set -eux
 
 TARGETARCH="${1:-amd64}"
-DUCKDB_VERSION="${2:-v1.4.3.0}"
+DUCKDB_VERSION="${2:-v1.5.3.0}"
 
 # Determine the correct DuckDB ODBC package for the architecture
 case "$TARGETARCH" in

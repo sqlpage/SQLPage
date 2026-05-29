@@ -1,4 +1,4 @@
-FROM postgres:17-alpine
+FROM postgres:18-alpine
 
 # Copy the SSL certificates
 

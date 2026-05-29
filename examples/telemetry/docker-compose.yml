@@ -41,7 +41,7 @@ services:
         tag: "sqlpage"
 
   postgres:
-    image: postgres:16
+    image: postgres:18
     command:
       - postgres
       - -c
@@ -131,13 +131,13 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   tempo:
-    image: grafana/tempo:2.6.1
+    image: grafana/tempo:3.0.0
     volumes:
       - ./tempo.yaml:/etc/tempo/config.yaml:ro
     command: ["-config.file=/etc/tempo/config.yaml"]
 
   loki:
-    image: grafana/loki:3.4.1
+    image: grafana/loki:3.7.2
     command: ["-config.file=/etc/loki/local-config.yaml"]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3100/ready >/dev/null 2>&1"]

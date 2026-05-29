@@ -7,7 +7,7 @@ services:
     environment:
       - DATABASE_URL=postgres://root:root@postgres/sqlpage
   postgres:
-    image: postgres:16
+    image: postgres:18
     ports: ["5432:5432"]
     environment:
       - POSTGRES_USER=root
