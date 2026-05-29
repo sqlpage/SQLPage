@@ -119,7 +119,7 @@ services:
       postgres:
         condition: service_started
       loki:
-        condition: service_healthy
+        condition: service_started
 
   prometheus:
     image: prom/prometheus:v3.2.1
@@ -139,11 +139,6 @@ services:
   loki:
     image: grafana/loki:3.7.2
     command: ["-config.file=/etc/loki/local-config.yaml"]
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3100/ready >/dev/null 2>&1"]
-      interval: 2s
-      timeout: 5s
-      retries: 20
 
   grafana:
     image: grafana/grafana:latest
