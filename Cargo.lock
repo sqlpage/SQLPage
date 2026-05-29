@@ -3187,9 +3187,9 @@ dependencies = [
 
 [[package]]
 name = "odbc-api"
-version = "25.0.0"
+version = "28.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9144219b357fb103b928a1ef1b4e466a84b8f52aa9f5d5e538c409e1ffb9d26"
+checksum = "24d536fcaf240c7d6c47bd5be3701bc2effd779e25ae23ce95b2193137d90313"
 dependencies = [
  "atoi",
  "log",
@@ -4581,9 +4581,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core-oldapi"
-version = "0.6.55"
+version = "0.6.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8317f7216db7e3774e9bf20d8df1d65d4a730b3cc6cd2db50b1c9aec59a837e4"
+checksum = "8e33eb18d1e750df8aef99361ee02e170562dff119108680bc9035e796cd2a84"
 dependencies = [
  "ahash",
  "atoi",
@@ -4628,6 +4628,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1 0.10.6",
+ "sha1 0.11.0",
  "sha2 0.11.0",
  "smallvec",
  "sqlx-rt-oldapi",
@@ -4643,9 +4644,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-oldapi"
-version = "0.6.55"
+version = "0.6.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70af245f286be10fe5fc82bd2e26c233269333d7ced4bb4ba4015423737d2b42"
+checksum = "adbf4ebc08c19991fa51993f471e572930c4dec146d3dc915a8e54db91d624c6"
 dependencies = [
  "dotenvy",
  "either",
@@ -4663,9 +4664,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-oldapi"
-version = "0.6.55"
+version = "0.6.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d42910a44c53254120a86897c5175d80535261130994b0d0b3f92ad1798fac7"
+checksum = "0c9ba4d352504ee1a0a76eb052879d68ba63536c738da5062026ac0d3dc724c7"
 dependencies = [
  "sqlx-core-oldapi",
  "sqlx-macros-oldapi",
@@ -4673,9 +4674,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt-oldapi"
-version = "0.6.55"
+version = "0.6.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d759af8b6854cd920da72c06716e6b2f6c085ef6af8ca58743b6f3b1a198ebc7"
+checksum = "1b8d629fed8792460ff39bb58cb154bfe181893ab9a51d0a3634950b35672a57"
 dependencies = [
  "once_cell",
  "tokio",
