@@ -705,18 +705,22 @@ mod logfmt {
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        for span in scope? {
-            let ext = span.extensions();
-            if let Some(otel_data) = ext.get::<tracing_opentelemetry::OtelData>()
-                && let Some(trace_id) = otel_data.trace_id()
-            {
-                let trace_id = trace_id.to_string();
-                if trace_id != INVALID_TRACE_ID {
-                    return Some(trace_id);
+        use opentelemetry::trace::TraceContextExt as _;
+
+        let span_ids: Vec<_> = scope?.map(|span| span.id()).collect();
+        tracing::dispatcher::get_default(|dispatch| {
+            for span_id in &span_ids {
+                if let Some(otel_context) =
+                    tracing_opentelemetry::get_otel_context(span_id, dispatch)
+                {
+                    let trace_id = otel_context.span().span_context().trace_id().to_string();
+                    if trace_id != INVALID_TRACE_ID {
+                        return Some(trace_id);
+                    }
                 }
             }
-        }
-        None
+            None
+        })
     }
 
     fn write_multiline_message(buf: &mut String, msg: Option<&String>, multiline_msg: bool) {
