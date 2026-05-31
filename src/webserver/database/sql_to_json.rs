@@ -14,11 +14,7 @@ pub fn row_to_json(row: &DbRow) -> Value {
 }
 
 fn canonical_col_name(col: &DbColumn, kind: DbKind) -> String {
-    if matches!(kind, DbKind::Odbc)
-        && col
-            .name
-            .chars()
-            .all(|c| c.is_ascii_uppercase() || c == '_')
+    if matches!(kind, DbKind::Odbc) && col.name.chars().all(|c| c.is_ascii_uppercase() || c == '_')
     {
         col.name.to_ascii_lowercase()
     } else {
@@ -29,6 +25,7 @@ fn canonical_col_name(col: &DbColumn, kind: DbKind) -> String {
 pub fn sql_value_to_json(value: &DbValue) -> Value {
     match value {
         DbValue::Null => Value::Null,
+        DbValue::Bool(b) => (*b).into(),
         DbValue::Integer(i) => (*i).into(),
         DbValue::Real(f) => (*f).into(),
         DbValue::Text(s) => Value::String(s.clone()),
@@ -78,6 +75,9 @@ mod tests {
             values: vec![DbValue::Text("hello".into())],
             kind: DbKind::Odbc,
         };
-        assert_eq!(row_to_json(&row), serde_json::json!({"title_text": "hello"}));
+        assert_eq!(
+            row_to_json(&row),
+            serde_json::json!({"title_text": "hello"})
+        );
     }
 }

@@ -324,7 +324,9 @@ async fn test_end_to_end() {
             uploaded_file: "my_file.csv".into(),
         }
     );
-    let db = crate::webserver::Database::init(&test_config()).await.unwrap();
+    let db = crate::webserver::Database::init(&test_config())
+        .await
+        .unwrap();
     let mut conn = db.connection.acquire().await.unwrap();
     conn.execute_command("CREATE TABLE my_table (col1 TEXT, col2 TEXT)", &[])
         .await
@@ -339,8 +341,14 @@ async fn test_end_to_end() {
         .into_iter()
         .filter_map(|item| match item {
             super::driver::DbStatementResult::Row(row) => Some((
-                match &row.values[0] { super::driver::DbValue::Text(s) => s.clone(), other => format!("{other:?}") },
-                match &row.values[1] { super::driver::DbValue::Text(s) => s.clone(), other => format!("{other:?}") },
+                match &row.values[0] {
+                    super::driver::DbValue::Text(s) => s.clone(),
+                    other => format!("{other:?}"),
+                },
+                match &row.values[1] {
+                    super::driver::DbValue::Text(s) => s.clone(),
+                    other => format!("{other:?}"),
+                },
             )),
             super::driver::DbStatementResult::Finished => None,
         })

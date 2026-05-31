@@ -275,11 +275,11 @@ async fn render_sql(
             let database_entries_stream =
                 stream_query_results_with_conn(&sql_file, &exec_ctx, &mut conn);
             let database_entries_stream = stop_at_first_error(database_entries_stream);
-            let response_with_writer = build_response_header_and_stream(
+            let response_with_writer = Box::pin(build_response_header_and_stream(
                 Arc::clone(&app_state),
                 database_entries_stream,
                 request_context,
-            )
+            ))
             .await;
             match response_with_writer {
                 Ok(ResponseWithWriter::RenderStream {
@@ -678,7 +678,7 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         .with_context(|| "Unable to start the application")?;
 
     // We are done, we can close the database connection
-    final_state.db.close().await?;
+    final_state.db.close()?;
     Ok(())
 }
 

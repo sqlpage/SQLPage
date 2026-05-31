@@ -3,8 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::sql::{SourceSpan, StmtWithParams};
 use super::DbError;
+use super::sql::{SourceSpan, StmtWithParams};
 
 #[derive(Debug)]
 struct NiceDatabaseError {
@@ -44,7 +44,11 @@ impl std::fmt::Display for NiceDatabaseError {
             self.source_file.display(),
             self.db_err
         )?;
-        if let DbError::Database { offset: Some(offset), .. } = &self.db_err {
+        if let DbError::Database {
+            offset: Some(offset),
+            ..
+        } = &self.db_err
+        {
             let mut offset = *offset;
             for line in self.query.lines() {
                 if offset > line.len() {
@@ -94,11 +98,7 @@ impl std::error::Error for NicePositionedError {
 
 /// Display a database error without any position information
 #[must_use]
-pub fn display_db_error(
-    source_file: &Path,
-    query: &str,
-    db_err: DbError,
-) -> anyhow::Error {
+pub fn display_db_error(source_file: &Path, query: &str, db_err: DbError) -> anyhow::Error {
     anyhow::Error::new(NiceDatabaseError {
         source_file: source_file.to_path_buf(),
         db_err,

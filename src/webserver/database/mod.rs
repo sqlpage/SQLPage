@@ -1,22 +1,22 @@
 pub mod blob_to_data_url;
 mod connect;
 mod csv_import;
+pub mod driver;
 pub mod execute_queries;
 pub mod migrations;
 mod sql;
 mod sqlpage_functions;
 mod syntax_tree;
-pub mod driver;
 
 mod error_highlighting;
 mod sql_to_json;
 
+pub use driver::{DbConnection, DbError, DbKind, DbParam, DbPool};
 pub use sql::ParsedSqlFile;
 use sql::{DB_PLACEHOLDERS, DbPlaceHolder};
-pub use driver::{DbConnection, DbError, DbKind, DbParam, DbPool};
 // SupportedDatabase is defined in this module
 
-/// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
+/// Supported database types in `SQLPage`. Represents an actual DBMS, not a driver kind like ODBC.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SupportedDatabase {
     Sqlite,
@@ -109,9 +109,9 @@ pub struct DbInfo {
 }
 
 impl Database {
-    pub async fn close(&self) -> anyhow::Result<()> {
+    pub fn close(&self) -> anyhow::Result<()> {
         log::info!("Closing all database connections...");
-        self.connection.close().await;
+        self.connection.close();
         Ok(())
     }
 }

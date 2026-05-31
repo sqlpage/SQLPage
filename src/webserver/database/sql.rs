@@ -783,11 +783,11 @@ mod test {
 
     fn create_test_db_info(database_type: SupportedDatabase) -> DbInfo {
         let kind = match database_type {
-            SupportedDatabase::Postgres => super::DbKind::Postgres,
-            SupportedDatabase::Mssql => super::DbKind::Mssql,
-            SupportedDatabase::MySql => super::DbKind::MySql,
-            SupportedDatabase::Sqlite => super::DbKind::Sqlite,
-            _ => super::DbKind::Odbc,
+            SupportedDatabase::Postgres => crate::webserver::database::DbKind::Postgres,
+            SupportedDatabase::Mssql => crate::webserver::database::DbKind::Mssql,
+            SupportedDatabase::MySql => crate::webserver::database::DbKind::MySql,
+            SupportedDatabase::Sqlite => crate::webserver::database::DbKind::Sqlite,
+            _ => crate::webserver::database::DbKind::Odbc,
         };
         DbInfo {
             dbms_name: database_type.display_name().to_string(),
@@ -1015,6 +1015,18 @@ mod test {
         assert_eq!(
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
+        );
+        assert_eq!(parameters, [StmtParam::PostOrGet("1".to_string()),]);
+    }
+
+    #[test]
+    fn test_mysql_statement_rewrite() {
+        let mut ast = parse_stmt("select '' || $1 || 'x'", &MySqlDialect {});
+        let db_info = create_test_db_info(SupportedDatabase::MySql);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();
+        assert_eq!(
+            ast.to_string(),
+            "SELECT CONCAT(CONCAT('', CAST(@SQLPAGE_TEMP1 AS CHAR)), 'x')"
         );
         assert_eq!(parameters, [StmtParam::PostOrGet("1".to_string()),]);
     }
@@ -1316,7 +1328,7 @@ mod test {
             delayed_functions: vec![],
             json_columns: vec![],
         };
-        transform_to_positional_placeholders(&mut stmt, super::DbKind::MySql);
+        transform_to_positional_placeholders(&mut stmt, crate::webserver::database::DbKind::MySql);
         assert_eq!(
             stmt.query,
             "select \

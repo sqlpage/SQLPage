@@ -58,16 +58,17 @@ actix-web-httpauth = "0.8.0"
 rand = "0.10.0"
 actix-multipart = "0.7.2"
 base64 = "0.22"
+bytes = "1"
 hmac = "0.13"
 sha2 = "0.11"
-rustls-acme = "0.15"
+rustls-acme = { version = "0.15", default-features = false, features = ["ring", "tls12", "webpki-roots"] }
 dotenvy = "0.15.7"
 csv-async = { version = "1.2.6", features = ["tokio"] }
-rustls = { version = "0.23" } # keep in sync with actix-web, awc, and rustls-acme
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] } # keep in sync with actix-web, awc, and rustls-acme
 rustls-native-certs = "0.8.1"
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
 clap = { version = "4.5.17", features = ["derive"] }
-tokio-util = "0.7.12"
+tokio-util = { version = "0.7.12", features = ["compat"] }
 openidconnect = { version = "4.0.0", default-features = false, features = ["accept-rfc3339-timestamps"] }
 encoding_rs = "0.8.35"
 regex = "1"
@@ -96,7 +97,7 @@ tokio = { version = "1", features = ["rt", "time", "test-util"] }
 
 [build-dependencies]
 awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
-rustls = "0.23"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 actix-rt = "2.8"
 libflate = "2"
 futures-util = "0.3.21"

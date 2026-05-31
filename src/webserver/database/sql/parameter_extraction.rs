@@ -1,8 +1,8 @@
 use super::super::{DbInfo, SupportedDatabase};
 use super::{is_sqlpage_func, sqlpage_func_name};
+use crate::webserver::database::DbKind;
 use crate::webserver::database::sqlpage_functions::func_call_to_param;
 use crate::webserver::database::syntax_tree::StmtParam;
-use crate::webserver::database::DbKind;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr, Function, FunctionArg,
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, ObjectNamePart,
@@ -39,10 +39,7 @@ pub(crate) const DB_PLACEHOLDERS: [(DbKind, DbPlaceHolder); 5] = [
         DbKind::Mssql,
         DbPlaceHolder::PrefixedNumber { prefix: "@p" },
     ),
-    (
-        DbKind::Odbc,
-        DbPlaceHolder::Positional { placeholder: "?" },
-    ),
+    (DbKind::Odbc, DbPlaceHolder::Positional { placeholder: "?" }),
 ];
 
 /// For positional parameters, we use a temporary placeholder during parameter extraction,
@@ -541,12 +538,16 @@ impl VisitorMut for ParameterExtractor {
                 }
                 self.replace_with_placeholder(value, param);
             }
-            // Replace 'str1' || 'str2' with CONCAT('str1', 'str2') for MSSQL
+            // Replace 'str1' || 'str2' with CONCAT('str1', 'str2') where pipes are not string concatenation.
             Expr::BinaryOp {
                 left,
                 op: BinaryOperator::StringConcat,
                 right,
-            } if self.db_info.database_type == SupportedDatabase::Mssql => {
+            } if matches!(
+                self.db_info.database_type,
+                SupportedDatabase::Mssql | SupportedDatabase::MySql
+            ) =>
+            {
                 let left = std::mem::replace(left.as_mut(), Expr::value(Value::Null));
                 let right = std::mem::replace(right.as_mut(), Expr::value(Value::Null));
                 *value = Expr::Function(Function {

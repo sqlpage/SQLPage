@@ -37,7 +37,7 @@
 //! When processing a request, `SQLPage`:
 //!
 //! 1. Parses the SQL using sqlparser-rs. Once a SQL file is parsed, it is cached for later reuse.
-//! 2. Executes queries through sqlx.
+//! 2. Executes queries through native database drivers.
 //! 3. Finds the requested component's handlebars template in the database or in the filesystem.
 //! 4. Maps results to the component template, using handlebars-rs.
 //! 5. Streams rendered HTML to the client.

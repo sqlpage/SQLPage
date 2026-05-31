@@ -5,7 +5,7 @@ use anyhow::Context;
 use sha2::{Digest, Sha384};
 
 use super::error_highlighting::display_db_error;
-use super::{Database, DbParam, make_placeholder};
+use super::{Database, DbKind, DbParam, make_placeholder};
 use crate::MIGRATIONS_DIR;
 
 #[derive(Debug)]
@@ -45,7 +45,7 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
     }
 
     let mut conn = db.connection.acquire().await?;
-    ensure_migrations_table(&mut conn).await?;
+    ensure_migrations_table(&mut conn, db.info.kind).await?;
     for migration in migrations {
         let applied = migration_row(&mut conn, db, migration.version).await?;
         if let Some(applied_checksum) = applied {
@@ -58,12 +58,14 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
         }
 
         let start = Instant::now();
-        if let Err(err) = conn.execute_command(&migration.sql, &[]).await {
-            return Err(display_db_error(&migration.path, &migration.sql, err).context(format!(
-                "Failed to apply {} migration {}",
-                db,
-                DisplayMigration(&migration)
-            )));
+        if let Err(err) = conn.execute_batch(&migration.sql).await {
+            return Err(
+                display_db_error(&migration.path, &migration.sql, err).context(format!(
+                    "Failed to apply {} migration {}",
+                    db,
+                    DisplayMigration(&migration)
+                )),
+            );
         }
         let execution_time = i64::try_from(start.elapsed().as_millis()).unwrap_or(i64::MAX);
         record_migration(&mut conn, db, &migration, execution_time).await?;
@@ -104,19 +106,54 @@ fn load_migrations(migrations_dir: &Path) -> anyhow::Result<Vec<Migration>> {
     Ok(migrations)
 }
 
-async fn ensure_migrations_table(conn: &mut super::DbConnection) -> anyhow::Result<()> {
-    conn.execute_command(
-        "CREATE TABLE IF NOT EXISTS _sqlx_migrations (
+async fn ensure_migrations_table(
+    conn: &mut super::DbConnection,
+    kind: DbKind,
+) -> anyhow::Result<()> {
+    let sql = match kind {
+        DbKind::Sqlite => {
+            "CREATE TABLE IF NOT EXISTS _sqlx_migrations (
             version BIGINT PRIMARY KEY,
             description TEXT NOT NULL,
             installed_on TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             success BOOLEAN NOT NULL,
             checksum BLOB NOT NULL,
             execution_time BIGINT NOT NULL
-        )",
-        &[],
-    )
-    .await?;
+        )"
+        }
+        DbKind::Postgres => {
+            "CREATE TABLE IF NOT EXISTS _sqlx_migrations (
+            version BIGINT PRIMARY KEY,
+            description TEXT NOT NULL,
+            installed_on TIMESTAMPTZ NOT NULL DEFAULT now(),
+            success BOOLEAN NOT NULL,
+            checksum BYTEA NOT NULL,
+            execution_time BIGINT NOT NULL
+        )"
+        }
+        DbKind::MySql | DbKind::Odbc => {
+            "CREATE TABLE IF NOT EXISTS _sqlx_migrations (
+            version BIGINT PRIMARY KEY,
+            description VARCHAR(255) NOT NULL,
+            installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            success BOOLEAN NOT NULL,
+            checksum BLOB NOT NULL,
+            execution_time BIGINT NOT NULL
+        )"
+        }
+        DbKind::Mssql => {
+            "IF OBJECT_ID(N'_sqlx_migrations', N'U') IS NULL
+            CREATE TABLE _sqlx_migrations (
+            version BIGINT PRIMARY KEY,
+            description NVARCHAR(255) NOT NULL,
+            installed_on DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            success BIT NOT NULL,
+            checksum VARBINARY(MAX) NOT NULL,
+            execution_time BIGINT NOT NULL
+        )"
+        }
+    };
+    conn.execute_command(sql, &[]).await?;
     Ok(())
 }
 
@@ -130,7 +167,7 @@ async fn migration_row(
         make_placeholder(db.info.kind, 1)
     );
     let row = conn
-        .fetch_optional(&sql, &[DbParam::Text(version.to_string())])
+        .fetch_optional(&sql, &[DbParam::Integer(version)])
         .await?;
     Ok(row.and_then(|row| match row.values.first() {
         Some(super::driver::DbValue::Bytes(bytes)) => Some(bytes.clone()),
@@ -156,11 +193,11 @@ async fn record_migration(
     conn.execute_command(
         &sql,
         &[
-            DbParam::Text(migration.version.to_string()),
+            DbParam::Integer(migration.version),
             DbParam::Text(migration.description.clone()),
-            DbParam::Text("true".to_string()),
+            DbParam::Bool(true),
             DbParam::Bytes(migration.checksum.clone()),
-            DbParam::Text(execution_time.to_string()),
+            DbParam::Integer(execution_time),
         ],
     )
     .await?;

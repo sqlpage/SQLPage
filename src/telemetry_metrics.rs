@@ -1,8 +1,8 @@
+use crate::webserver::database::DbPool;
 use opentelemetry::global;
 use opentelemetry::metrics::{Histogram, ObservableGauge};
 use opentelemetry_semantic_conventions::attribute as otel;
 use opentelemetry_semantic_conventions::metric as otel_metric;
-use crate::webserver::database::DbPool;
 
 pub struct TelemetryMetrics {
     pub http_request_duration: Histogram<f64>,

@@ -20,8 +20,8 @@ use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::request_variables::SetVariablesMap;
 use crate::webserver::single_or_vec::SingleOrVec;
 
+use super::driver::{DbParam, DbStatementResult};
 use super::syntax_tree::{StmtParam, extract_req_param};
-use super::driver::{DbStatementResult, DbParam};
 use super::{Database, DbConnection, DbItem};
 
 pub type DbConn = Option<DbConnection>;
@@ -129,6 +129,7 @@ fn create_db_query_span(
     (span, operation_name)
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn stream_query_results_with_conn<'a>(
     sql_file: &'a ParsedSqlFile,
     request: &'a ExecutionContext,
@@ -164,17 +165,24 @@ pub fn stream_query_results_with_conn<'a>(
                         &request.app_state.telemetry_metrics,
                     );
                     record_query_params(&query_metrics.span, &query.param_values);
-                    let results = connection
-                        .execute(query.sql, &query.arguments)
-                        .instrument(query_span.clone())
-                        .await;
                     let mut error = None;
                     let mut returned_rows: i64 = 0;
-                    let start_next = std::time::Instant::now();
-                    match results {
-                        Ok(results) => {
+                    {
+                        let mut results = connection.execute_stream(query.sql, &query.arguments);
+                        loop {
+                            let start_next = std::time::Instant::now();
+                            let elem = results.next().instrument(query_span.clone()).await;
                             query_metrics.add_duration(start_next.elapsed());
-                            for elem in results {
+                            let Some(elem) = elem else {
+                                break;
+                            };
+                            let elem = match elem {
+                                Ok(elem) => elem,
+                                Err(e) => {
+                                    error = Some(display_stmt_db_error(source_file, stmt, e));
+                                    break;
+                                }
+                            };
                         let mut query_result = parse_single_sql_result(source_file, stmt, elem);
                         if let DbItem::Error(e) = query_result {
                             error = Some(e);
@@ -196,11 +204,6 @@ pub fn stream_query_results_with_conn<'a>(
                         }
                             }
                         }
-                        Err(e) => {
-                            query_metrics.add_duration(start_next.elapsed());
-                            error = Some(display_stmt_db_error(source_file, stmt, e));
-                        }
-                    }
                     if let Some(error) = error {
                         query_metrics.record_error(returned_rows, &error);
                         try_rollback_transaction(connection).await;
@@ -293,7 +296,7 @@ async fn exec_static_simple_select(
 async fn try_rollback_transaction(db_connection: &mut DbConnection) {
     log::debug!("Attempting to rollback transaction");
     match db_connection.execute_command("ROLLBACK", &[]).await {
-        Ok(_) => log::debug!("Rolled back transaction"),
+        Ok(()) => log::debug!("Rolled back transaction"),
         Err(e) => {
             log::debug!("There was probably no transaction in progress when this happened: {e:?}");
         }
@@ -531,15 +534,19 @@ fn debug_row(r: &super::driver::DbRow) {
     use std::fmt::Write;
     let mut row_str = String::new();
     for (col, value) in r.columns.iter().zip(r.values.iter()) {
-            write!(
-                &mut row_str,
-                "[{:?} ({}): {:?}: {:?}]",
-                col.name,
-                if matches!(value, super::driver::DbValue::Null) { "NULL" } else { "NOT NULL" },
-                col,
-                value
-            )
-            .unwrap();
+        write!(
+            &mut row_str,
+            "[{:?} ({}): {:?}: {:?}]",
+            col.name,
+            if matches!(value, super::driver::DbValue::Null) {
+                "NULL"
+            } else {
+                "NOT NULL"
+            },
+            col,
+            value
+        )
+        .unwrap();
     }
     log::trace!("Received db row: {row_str}");
 }

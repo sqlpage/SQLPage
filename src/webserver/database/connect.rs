@@ -23,8 +23,8 @@ impl Database {
         }
         log::debug!("Connecting to a {db_kind:?} database on {database_url}");
         let on_connect_sql = read_connection_handler(config, ON_CONNECT_FILE);
-        let _on_reset_sql = read_connection_handler(config, ON_RESET_FILE);
-        if _on_reset_sql.is_some() {
+        let on_reset_sql = read_connection_handler(config, ON_RESET_FILE);
+        if on_reset_sql.is_some() {
             log::warn!(
                 "{ON_RESET_FILE} is currently ignored by the native driver pool because connections are not reused yet"
             );
@@ -111,7 +111,10 @@ fn read_connection_handler(config: &AppConfig, file_name: &str) -> Option<String
         );
         return None;
     }
-    log::info!("Creating a custom SQL connection handler from {}", file.display());
+    log::info!(
+        "Creating a custom SQL connection handler from {}",
+        file.display()
+    );
     match std::fs::read_to_string(&file) {
         Ok(sql) => {
             log::trace!("The custom SQL connection handler is:\n{sql}");
