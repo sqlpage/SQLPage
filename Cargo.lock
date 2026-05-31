@@ -4789,20 +4789,24 @@ dependencies = [
 
 [[package]]
 name = "sqlx-sqlserver"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "205de428fb54061bc058154abbff60e42876335e6d727e8aef77a70028e6386b"
+checksum = "d07a49eceb2cfa3ab6ae42765cd54063201b4120667d6da9ff58ec5e2cbf3301"
 dependencies = [
+ "bigdecimal",
+ "chrono",
  "futures-core",
  "futures-util",
  "log",
  "native-tls",
+ "num-bigint",
  "percent-encoding",
  "sqlx-core",
  "thiserror 2.0.18",
  "tokio",
  "tokio-native-tls",
  "url",
+ "uuid",
 ]
 
 [[package]]

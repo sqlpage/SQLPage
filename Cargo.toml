@@ -31,7 +31,12 @@ sqlx = { version = "0.9.0", default-features = false, features = [
     "json",
     "uuid",
 ] }
-sqlx-sqlserver = { version = "0.0.2", features = ["migrate"] }
+sqlx-sqlserver = { version = "0.0.3", features = [
+    "bigdecimal",
+    "chrono",
+    "migrate",
+    "uuid",
+] }
 sqlx-odbc = { version = "0.0.1", features = ["runtime-tokio"] }
 libsqlite3-sys = "0.37"
 chrono = "0.4.23"
