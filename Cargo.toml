@@ -18,20 +18,20 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-oldapi", version = "0.6.56", default-features = false, features = [
-    "any",
-    "runtime-tokio-rustls",
+sqlx = { version = "0.9.0", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls",
     "migrate",
     "sqlite",
     "postgres",
     "mysql",
-    "mssql",
-    "odbc",
     "chrono",
     "bigdecimal",
     "json",
     "uuid",
 ] }
+sqlx-sqlserver = { version = "0.0.2", features = ["migrate"] }
+sqlx-odbc = { version = "0.0.1", features = ["runtime-tokio"] }
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls-0_23", "cookies"] }
 percent-encoding = "2.2.0"
@@ -77,7 +77,6 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false, features = ["accept-rfc3339-timestamps"] }
 encoding_rs = "0.8.35"
-odbc-sys = { version = "0", optional = true }
 regex = "1"
 
 # OpenTelemetry / tracing
@@ -95,7 +94,7 @@ opentelemetry-semantic-conventions = { version = "0.32", features = ["semconv_ex
 
 [features]
 default = []
-odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]
+odbc-static = ["sqlx-odbc/vendored-unix-odbc"]
 lambda-web = ["dep:lambda-web", "odbc-static"]
 
 [dev-dependencies]
