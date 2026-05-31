@@ -38,10 +38,7 @@ pub(crate) const DB_PLACEHOLDERS: [(DbKind, DbPlaceHolder); 5] = [
         DbKind::Mssql,
         DbPlaceHolder::PrefixedNumber { prefix: "@p" },
     ),
-    (
-        DbKind::Odbc,
-        DbPlaceHolder::Positional { placeholder: "?" },
-    ),
+    (DbKind::Odbc, DbPlaceHolder::Positional { placeholder: "?" }),
 ];
 
 /// For positional parameters, we use a temporary placeholder during parameter extraction,

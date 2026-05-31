@@ -339,9 +339,10 @@ where
             returned_rows += 1;
         }
         apply_json_columns(&mut query_result, &stmt.json_columns);
-        if let Err(err) = apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result)
-            .instrument(query_span.clone())
-            .await
+        if let Err(err) =
+            apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result)
+                .instrument(query_span.clone())
+                .await
         {
             error = Some(err);
             break;

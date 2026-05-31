@@ -1,6 +1,9 @@
 use crate::utils::add_value_to_map;
 use crate::webserver::database::blob_to_data_url;
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use serde_json::{Map, Value};
+use sqlx::postgres::types::PgRange;
 use sqlx::{Column, ColumnIndex, Row, TypeInfo, ValueRef};
 
 pub trait SqlPageRow {
@@ -41,11 +44,31 @@ macro_rules! impl_sqlpage_row {
     };
 }
 
-impl_sqlpage_row!(sqlx::postgres::PgRow, sqlx::Postgres, false);
 impl_sqlpage_row!(sqlx::mysql::MySqlRow, sqlx::MySql, false);
 impl_sqlpage_row!(sqlx::sqlite::SqliteRow, sqlx::Sqlite, false);
 impl_sqlpage_row!(sqlx_sqlserver::MssqlRow, sqlx_sqlserver::Mssql, false);
 impl_sqlpage_row!(sqlx_odbc::OdbcRow, sqlx_odbc::Odbc, true);
+
+impl SqlPageRow for sqlx::postgres::PgRow {
+    fn to_json(&self) -> Value {
+        let mut map = Map::new();
+        for col in self.columns() {
+            let key = canonical_col_name(col.name(), false);
+            let value = pg_to_json(self, col.ordinal());
+            map = add_value_to_map(map, (key, value));
+        }
+        Value::Object(map)
+    }
+
+    fn first_value_to_string(&self) -> Option<String> {
+        let col = self.columns().first()?;
+        match pg_to_json(self, col.ordinal()) {
+            Value::String(s) => Some(s),
+            Value::Null => None,
+            other => Some(other.to_string()),
+        }
+    }
+}
 
 fn canonical_col_name(name: &str, canonicalize_uppercase: bool) -> String {
     if canonicalize_uppercase
@@ -101,6 +124,83 @@ where
             blob_to_data_url::vec_to_data_uri_value(&decode::<DB, R, Vec<u8>>(row, ordinal))
         }
         _ => decode::<DB, R, String>(row, ordinal).into(),
+    }
+}
+
+fn pg_to_json(row: &sqlx::postgres::PgRow, ordinal: usize) -> Value {
+    let raw_value = match row.try_get_raw(ordinal) {
+        Ok(raw_value) if raw_value.is_null() => return Value::Null,
+        Ok(raw_value) => raw_value,
+        Err(e) => {
+            log::warn!("Unable to extract value from row: {e:?}");
+            return Value::Null;
+        }
+    };
+    let type_info = raw_value.type_info();
+    let type_name = type_info.name().to_ascii_uppercase();
+    log::trace!("Decoding a PostgreSQL value of type {type_name:?} (type info: {type_info:?})");
+
+    match type_name.as_str() {
+        "BOOL" | "BOOLEAN" => decode::<sqlx::Postgres, _, bool>(row, ordinal).into(),
+        "INT2" | "SMALLINT" => decode::<sqlx::Postgres, _, i16>(row, ordinal).into(),
+        "INT" | "INT4" | "INTEGER" => decode::<sqlx::Postgres, _, i32>(row, ordinal).into(),
+        "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" => {
+            decode::<sqlx::Postgres, _, i64>(row, ordinal).into()
+        }
+        "REAL" | "FLOAT4" => decode::<sqlx::Postgres, _, f32>(row, ordinal).into(),
+        "FLOAT" | "FLOAT8" | "DOUBLE" => decode::<sqlx::Postgres, _, f64>(row, ordinal).into(),
+        "NUMERIC" | "DECIMAL" => {
+            decimal_to_json(&decode::<sqlx::Postgres, _, BigDecimal>(row, ordinal))
+        }
+        "DATE" => decode::<sqlx::Postgres, _, NaiveDate>(row, ordinal)
+            .to_string()
+            .into(),
+        "TIME" | "TIMETZ" => decode::<sqlx::Postgres, _, chrono::NaiveTime>(row, ordinal)
+            .to_string()
+            .into(),
+        "TIMESTAMP" => decode::<sqlx::Postgres, _, NaiveDateTime>(row, ordinal)
+            .format("%FT%T%.f")
+            .to_string()
+            .into(),
+        "TIMESTAMPTZ" => decode::<sqlx::Postgres, _, DateTime<Utc>>(row, ordinal)
+            .to_rfc3339()
+            .into(),
+        "JSON" | "JSON[]" | "JSONB" | "JSONB[]" => decode::<sqlx::Postgres, _, Value>(row, ordinal),
+        "BYTEA" => blob_to_data_url::vec_to_data_uri_value(&decode::<sqlx::Postgres, _, Vec<u8>>(
+            row, ordinal,
+        )),
+        "UUID" => decode::<sqlx::Postgres, _, sqlx::types::uuid::Uuid>(row, ordinal)
+            .to_string()
+            .into(),
+        "INT4RANGE" => decode_pg_range::<i32>(row, ordinal),
+        "INT8RANGE" => decode_pg_range::<i64>(row, ordinal),
+        "NUMRANGE" => decode_pg_range::<BigDecimal>(row, ordinal),
+        "DATERANGE" => decode_pg_range::<NaiveDate>(row, ordinal),
+        "TSRANGE" => decode_pg_range::<NaiveDateTime>(row, ordinal),
+        "TSTZRANGE" => decode_pg_range::<DateTime<Utc>>(row, ordinal),
+        _ => decode::<sqlx::Postgres, _, String>(row, ordinal).into(),
+    }
+}
+
+fn decimal_to_json(decimal: &BigDecimal) -> Value {
+    Value::Number(serde_json::Number::from_string_unchecked(
+        decimal.normalized().to_plain_string(),
+    ))
+}
+
+fn decode_pg_range<T>(row: &sqlx::postgres::PgRow, ordinal: usize) -> Value
+where
+    T: std::fmt::Display + sqlx::Type<sqlx::Postgres>,
+    for<'r> T: sqlx::Decode<'r, sqlx::Postgres>,
+    PgRange<T>: sqlx::Type<sqlx::Postgres>,
+    for<'r> PgRange<T>: sqlx::Decode<'r, sqlx::Postgres>,
+{
+    match row.try_get::<PgRange<T>, _>(ordinal) {
+        Ok(pg_range) => pg_range.to_string().into(),
+        Err(e) => {
+            log::error!("Failed to decode postgres range value: {e}");
+            Value::Null
+        }
     }
 }
 

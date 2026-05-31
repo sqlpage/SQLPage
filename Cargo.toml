@@ -33,6 +33,7 @@ sqlx = { version = "0.9.0", default-features = false, features = [
 ] }
 sqlx-sqlserver = { version = "0.0.2", features = ["migrate"] }
 sqlx-odbc = { version = "0.0.1", features = ["runtime-tokio"] }
+libsqlite3-sys = "0.37"
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls-0_23", "cookies"] }
 percent-encoding = "2.2.0"

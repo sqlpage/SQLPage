@@ -119,6 +119,7 @@ impl AppState {
         Self::init_with_db(config, db).await
     }
     pub async fn init_with_db(config: &AppConfig, db: Database) -> anyhow::Result<Self> {
+        install_default_rustls_provider();
         let all_templates = AllTemplates::init(config)?;
         let mut sql_file_cache = FileCache::new();
         let file_system = FileSystem::init(&config.web_root, &db).await;
@@ -149,6 +150,10 @@ impl AppState {
             telemetry_metrics,
         })
     }
+}
+
+fn install_default_rustls_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
 }
 
 impl std::fmt::Debug for AppState {

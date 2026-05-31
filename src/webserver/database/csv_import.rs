@@ -366,8 +366,6 @@ fn test_make_statement() {
 
 #[actix_web::test]
 async fn test_end_to_end() {
-    use sqlx::Connection;
-
     let mut copy_stmt = sqlparser::parser::Parser::parse_sql(
         &sqlparser::dialect::GenericDialect {},
         "COPY my_table (col1, col2) FROM 'my_file.csv' (DELIMITER ';', HEADER)",

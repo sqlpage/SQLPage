@@ -715,6 +715,8 @@ fn expr_to_statement(expr: Expr) -> Statement {
 
 #[cfg(test)]
 mod test {
+    use crate::webserver::database::DbKind;
+
     use super::super::sqlpage_functions::functions::SqlPageFunctionName;
     use super::super::syntax_tree::SqlPageFunctionCall;
 

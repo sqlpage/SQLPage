@@ -4533,6 +4533,7 @@ dependencies = [
  "include_dir",
  "lambda-web",
  "libflate",
+ "libsqlite3-sys",
  "log",
  "markdown",
  "mime_guess",

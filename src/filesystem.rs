@@ -266,9 +266,9 @@ impl DbFsQueries {
         log::debug!("Initializing database filesystem queries");
         Self::check_table_available(db).await?;
         Ok(Self {
-            was_modified: Self::make_was_modified_query(db).await?,
-            read_file: Self::make_read_file_query(db).await?,
-            exists: Self::make_exists_query(db).await?,
+            was_modified: Self::make_was_modified_query(db),
+            read_file: Self::make_read_file_query(db),
+            exists: Self::make_exists_query(db),
         })
     }
 
@@ -279,31 +279,31 @@ impl DbFsQueries {
         Ok(())
     }
 
-    async fn make_was_modified_query(db: &Database) -> anyhow::Result<String> {
+    fn make_was_modified_query(db: &Database) -> String {
         let was_modified_query = format!(
             "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
             make_placeholder(db.info.kind, 1),
             make_placeholder(db.info.kind, 2)
         );
         log::debug!("Preparing the database filesystem was_modified_query: {was_modified_query}");
-        Ok(was_modified_query)
+        was_modified_query
     }
 
-    async fn make_read_file_query(db: &Database) -> anyhow::Result<String> {
+    fn make_read_file_query(db: &Database) -> String {
         let read_file_query = format!(
             "SELECT contents from sqlpage_files WHERE path = {}",
             make_placeholder(db.info.kind, 1),
         );
         log::debug!("Preparing the database filesystem read_file_query: {read_file_query}");
-        Ok(read_file_query)
+        read_file_query
     }
 
-    async fn make_exists_query(db: &Database) -> anyhow::Result<String> {
+    fn make_exists_query(db: &Database) -> String {
         let exists_query = format!(
             "SELECT 1 from sqlpage_files WHERE path = {}",
             make_placeholder(db.info.kind, 1),
         );
-        Ok(exists_query)
+        exists_query
     }
 
     async fn file_modified_since_in_db(
@@ -329,11 +329,10 @@ impl DbFsQueries {
             &path,
         )
         .await
-        .with_context(|| format!("Unable to check when {path} was last modified in the database"))?;
-        log::trace!(
-            "DB File {} was modified result: {was_modified_i32:?}",
-            path
-        );
+        .with_context(|| {
+            format!("Unable to check when {path} was last modified in the database")
+        })?;
+        log::trace!("DB File {path} was modified result: {was_modified_i32:?}");
         Ok(was_modified_i32 == Some(1))
     }
 
@@ -368,12 +367,9 @@ impl DbFsQueries {
         );
         let result = fetch_optional_i32_path(&app_state.db.connection, &self.exists, &path).await;
         log::debug!("DB File exists result: {result:?}");
-        result.map(|result| result.is_some()).with_context(|| {
-            format!(
-                "Unable to check if {} exists in the database",
-                path
-            )
-        })
+        result
+            .map(|result| result.is_some())
+            .with_context(|| format!("Unable to check if {path} exists in the database"))
     }
 }
 
@@ -408,48 +404,49 @@ async fn fetch_optional_i32_since_path(
     since: DateTime<Utc>,
     path: &str,
 ) -> sqlx::Result<Option<i32>> {
-    let since = since.to_rfc3339();
+    let since_text = since.to_rfc3339();
+    let sqlite_since_text = since.format("%Y-%m-%d %H:%M:%S%.f").to_string();
     match pool {
         DatabasePool::Sqlite(pool) => {
-            sqlx::query_as::<sqlx::Sqlite, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::Sqlite, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(&sqlite_since_text)
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(&since)
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Postgres(pool) => {
-            sqlx::query_as::<sqlx::Postgres, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::Postgres, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(since)
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(&since)
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::MySql(pool) => {
-            sqlx::query_as::<sqlx::MySql, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::MySql, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(since)
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(&since)
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Mssql(pool) => {
-            sqlx::query_as::<sqlx_sqlserver::Mssql, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx_sqlserver::Mssql, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(&since_text)
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(&since)
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Odbc(pool) => {
-            sqlx::query_as::<sqlx_odbc::Odbc, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx_odbc::Odbc, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(&since_text)
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(&since)
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
     }
 }
 
@@ -460,40 +457,40 @@ async fn fetch_optional_i32_path(
 ) -> sqlx::Result<Option<i32>> {
     match pool {
         DatabasePool::Sqlite(pool) => {
-            sqlx::query_as::<sqlx::Sqlite, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::Sqlite, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Postgres(pool) => {
-            sqlx::query_as::<sqlx::Postgres, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::Postgres, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::MySql(pool) => {
-            sqlx::query_as::<sqlx::MySql, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::MySql, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Mssql(pool) => {
-            sqlx::query_as::<sqlx_sqlserver::Mssql, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx_sqlserver::Mssql, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Odbc(pool) => {
-            sqlx::query_as::<sqlx_odbc::Odbc, (i32,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx_odbc::Odbc, (i32,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
     }
 }
 
@@ -504,47 +501,46 @@ async fn fetch_optional_bytes_path(
 ) -> sqlx::Result<Option<Vec<u8>>> {
     match pool {
         DatabasePool::Sqlite(pool) => {
-            sqlx::query_as::<sqlx::Sqlite, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::Sqlite, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Postgres(pool) => {
-            sqlx::query_as::<sqlx::Postgres, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::Postgres, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::MySql(pool) => {
-            sqlx::query_as::<sqlx::MySql, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx::MySql, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Mssql(pool) => {
-            sqlx::query_as::<sqlx_sqlserver::Mssql, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx_sqlserver::Mssql, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
         DatabasePool::Odbc(pool) => {
-            sqlx::query_as::<sqlx_odbc::Odbc, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+            { sqlx::query_as::<sqlx_odbc::Odbc, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql)) }
+                .bind(path)
+                .fetch_optional(pool)
+                .await
+                .map(|row| row.map(|(value,)| value))
         }
-            .bind(path)
-            .fetch_optional(pool)
-            .await
-            .map(|row| row.map(|(value,)| value)),
     }
 }
 
 #[actix_web::test]
 async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use crate::app_config;
-    use sqlx::Executor;
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
 
@@ -570,8 +566,13 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         make_placeholder(dbms, 1),
         make_placeholder(dbms, 2)
     );
-    insert_test_file(conn, &insert_sql, "unit test file.txt", "Héllö world! 😀".as_bytes())
-        .await?;
+    insert_test_file(
+        conn,
+        &insert_sql,
+        "unit test file.txt",
+        "Héllö world! 😀".as_bytes(),
+    )
+    .await?;
 
     let fs = FileSystem::init("/", db).await;
     let actual = fs
@@ -612,31 +613,31 @@ async fn insert_test_file(
     contents: &[u8],
 ) -> sqlx::Result<()> {
     match pool {
-        DatabasePool::Sqlite(pool) => sqlx::query::<sqlx::Sqlite>(sql)
+        DatabasePool::Sqlite(pool) => sqlx::query::<sqlx::Sqlite>(sqlx::AssertSqlSafe(sql))
             .bind(path)
             .bind(contents)
             .execute(pool)
             .await
             .map(|_| ()),
-        DatabasePool::Postgres(pool) => sqlx::query::<sqlx::Postgres>(sql)
+        DatabasePool::Postgres(pool) => sqlx::query::<sqlx::Postgres>(sqlx::AssertSqlSafe(sql))
             .bind(path)
             .bind(contents)
             .execute(pool)
             .await
             .map(|_| ()),
-        DatabasePool::MySql(pool) => sqlx::query::<sqlx::MySql>(sql)
+        DatabasePool::MySql(pool) => sqlx::query::<sqlx::MySql>(sqlx::AssertSqlSafe(sql))
             .bind(path)
             .bind(contents)
             .execute(pool)
             .await
             .map(|_| ()),
-        DatabasePool::Mssql(pool) => sqlx::query::<sqlx_sqlserver::Mssql>(sql)
+        DatabasePool::Mssql(pool) => sqlx::query::<sqlx_sqlserver::Mssql>(sqlx::AssertSqlSafe(sql))
             .bind(path)
             .bind(contents)
             .execute(pool)
             .await
             .map(|_| ()),
-        DatabasePool::Odbc(pool) => sqlx::query::<sqlx_odbc::Odbc>(sql)
+        DatabasePool::Odbc(pool) => sqlx::query::<sqlx_odbc::Odbc>(sqlx::AssertSqlSafe(sql))
             .bind(path)
             .bind(contents)
             .execute(pool)

@@ -39,15 +39,17 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
             "ODBC migrations are not supported by sqlx-odbc. Apply the migrations manually or use a native SQLPage backend for managed migrations."
         );
     }
-    run_migrator(&migrator, &db.connection).await.map_err(|err| {
-        match err {
-            MigrateError::Execute(source) => anyhow::Error::new(source),
-            source => anyhow::Error::new(source),
-        }
-        .context(format!(
-            "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
-        ))
-    })?;
+    run_migrator(&migrator, &db.connection)
+        .await
+        .map_err(|err| {
+            match err {
+                MigrateError::Execute(source) => anyhow::Error::new(source),
+                source => anyhow::Error::new(source),
+            }
+            .context(format!(
+                "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
+            ))
+        })?;
     Ok(())
 }
 

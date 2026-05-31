@@ -1,6 +1,7 @@
 use actix_web::{http::StatusCode, test};
 use sqlpage::{
     AppState,
+    webserver::database::{DatabasePool, execute_queries::DbConnection},
     webserver::{self, make_placeholder},
 };
 use sqlx::Executor as _;
@@ -66,11 +67,13 @@ async fn test_routing_with_db_fs() {
         "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', {})",
         make_placeholder(state.db.info.kind, 1)
     );
-    sqlx::query(&insert_sql)
-        .bind("select ''text'' as component, ''Hi from db !'' AS contents;".as_bytes())
-        .execute(&state.db.connection)
-        .await
-        .unwrap();
+    insert_db_file_contents(
+        &state.db.connection,
+        &insert_sql,
+        "select ''text'' as component, ''Hi from db !'' AS contents;".as_bytes(),
+    )
+    .await
+    .unwrap();
 
     let state = AppState::init(&config).await.unwrap();
     let app_data = actix_web::web::Data::new(state);
@@ -101,23 +104,29 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let expected_db_path = "\u{FFFD}.txt";
     let mut conn = state.db.connection.acquire().await.unwrap();
 
-    (&mut *conn)
-        .execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
-            sqlpage::webserver::database::SupportedDatabase::Sqlite,
-        ))
-        .await
-        .unwrap();
+    if let DbConnection::Sqlite(conn) = &mut conn {
+        (&mut **conn)
+            .execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
+                sqlpage::webserver::database::SupportedDatabase::Sqlite,
+            ))
+            .await
+            .unwrap();
+    } else {
+        unreachable!("test uses sqlite");
+    }
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
         make_placeholder(state.db.info.kind, 1),
         make_placeholder(state.db.info.kind, 2)
     );
-    sqlx::query(&insert_sql)
-        .bind(expected_db_path)
-        .bind("file from db fs".as_bytes())
-        .execute(&mut *conn)
-        .await
-        .unwrap();
+    insert_db_file_path_contents(
+        &mut conn,
+        &insert_sql,
+        expected_db_path,
+        "file from db fs".as_bytes(),
+    )
+    .await
+    .unwrap();
     drop(conn);
 
     let state = AppState::init(&config).await.unwrap();
@@ -134,6 +143,57 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
         err.as_response_error().status_code(),
         StatusCode::BAD_REQUEST
     );
+}
+
+async fn insert_db_file_contents(
+    pool: &DatabasePool,
+    sql: &str,
+    contents: &[u8],
+) -> sqlx::Result<()> {
+    match pool {
+        DatabasePool::Sqlite(pool) => sqlx::query::<sqlx::Sqlite>(sqlx::AssertSqlSafe(sql))
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Postgres(pool) => sqlx::query::<sqlx::Postgres>(sqlx::AssertSqlSafe(sql))
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::MySql(pool) => sqlx::query::<sqlx::MySql>(sqlx::AssertSqlSafe(sql))
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Mssql(pool) => sqlx::query::<sqlx_sqlserver::Mssql>(sqlx::AssertSqlSafe(sql))
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Odbc(pool) => sqlx::query::<sqlx_odbc::Odbc>(sqlx::AssertSqlSafe(sql))
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+    }
+}
+
+async fn insert_db_file_path_contents(
+    conn: &mut DbConnection,
+    sql: &str,
+    path: &str,
+    contents: &[u8],
+) -> sqlx::Result<()> {
+    match conn {
+        DbConnection::Sqlite(conn) => sqlx::query::<sqlx::Sqlite>(sqlx::AssertSqlSafe(sql))
+            .bind(path)
+            .bind(contents)
+            .execute(&mut **conn)
+            .await
+            .map(|_| ()),
+        _ => unreachable!("test uses sqlite"),
+    }
 }
 
 #[actix_web::test]

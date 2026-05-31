@@ -116,6 +116,44 @@ impl DatabasePool {
             Self::Odbc(pool) => pool.close().await,
         }
     }
+
+    pub async fn execute(&self, sql: &str) -> sqlx::Result<()> {
+        match self {
+            Self::Sqlite(pool) => sqlx::query::<sqlx::Sqlite>(sqlx::AssertSqlSafe(sql))
+                .execute(pool)
+                .await
+                .map(|_| ()),
+            Self::Postgres(pool) => sqlx::query::<sqlx::Postgres>(sqlx::AssertSqlSafe(sql))
+                .execute(pool)
+                .await
+                .map(|_| ()),
+            Self::MySql(pool) => sqlx::query::<sqlx::MySql>(sqlx::AssertSqlSafe(sql))
+                .execute(pool)
+                .await
+                .map(|_| ()),
+            Self::Mssql(pool) => sqlx::query::<sqlx_sqlserver::Mssql>(sqlx::AssertSqlSafe(sql))
+                .execute(pool)
+                .await
+                .map(|_| ()),
+            Self::Odbc(pool) => sqlx::query::<sqlx_odbc::Odbc>(sqlx::AssertSqlSafe(sql))
+                .execute(pool)
+                .await
+                .map(|_| ()),
+        }
+    }
+
+    pub async fn acquire(
+        &self,
+    ) -> sqlx::Result<crate::webserver::database::execute_queries::DbConnection> {
+        use crate::webserver::database::execute_queries::DbConnection;
+        match self {
+            Self::Sqlite(pool) => pool.acquire().await.map(DbConnection::Sqlite),
+            Self::Postgres(pool) => pool.acquire().await.map(DbConnection::Postgres),
+            Self::MySql(pool) => pool.acquire().await.map(DbConnection::MySql),
+            Self::Mssql(pool) => pool.acquire().await.map(DbConnection::Mssql),
+            Self::Odbc(pool) => pool.acquire().await.map(DbConnection::Odbc),
+        }
+    }
 }
 
 /// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
@@ -194,7 +232,7 @@ pub struct DbInfo {
     pub dbms_name: String,
     /// The actual database we are connected to. Can be "Generic" when using an unknown ODBC driver
     pub database_type: SupportedDatabase,
-    /// The SQLPage backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
+    /// The `SQLPage` backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
     pub kind: DbKind,
 }
 
