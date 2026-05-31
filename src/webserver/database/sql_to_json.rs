@@ -45,7 +45,27 @@ macro_rules! impl_sqlpage_row {
 }
 
 impl_sqlpage_row!(sqlx::sqlite::SqliteRow, sqlx::Sqlite, false);
-impl_sqlpage_row!(sqlx_odbc::OdbcRow, sqlx_odbc::Odbc, true);
+
+impl SqlPageRow for sqlx_odbc::OdbcRow {
+    fn to_json(&self) -> Value {
+        let mut map = Map::new();
+        for col in self.columns() {
+            let key = canonical_col_name(col.name(), true);
+            let value = odbc_to_json(self, col.ordinal());
+            map = add_value_to_map(map, (key, value));
+        }
+        Value::Object(map)
+    }
+
+    fn first_value_to_string(&self) -> Option<String> {
+        let col = self.columns().first()?;
+        match odbc_to_json(self, col.ordinal()) {
+            Value::String(s) => Some(s),
+            Value::Null => None,
+            other => Some(other.to_string()),
+        }
+    }
+}
 
 impl SqlPageRow for sqlx::mysql::MySqlRow {
     fn to_json(&self) -> Value {
@@ -254,6 +274,27 @@ fn mysql_to_json(row: &sqlx::mysql::MySqlRow, ordinal: usize) -> Value {
     }
 }
 
+fn odbc_to_json(row: &sqlx_odbc::OdbcRow, ordinal: usize) -> Value {
+    let raw_value = match row.try_get_raw(ordinal) {
+        Ok(raw_value) if raw_value.is_null() => return Value::Null,
+        Ok(raw_value) => raw_value,
+        Err(e) => {
+            log::warn!("Unable to extract value from row: {e:?}");
+            return Value::Null;
+        }
+    };
+    let type_info = raw_value.type_info();
+    let type_name = type_info.name().to_ascii_uppercase();
+    log::trace!("Decoding an ODBC value of type {type_name:?} (type info: {type_info:?})");
+
+    match type_name.as_str() {
+        "DECIMAL" | "NUMERIC" => {
+            string_decimal_to_json(&decode::<sqlx_odbc::Odbc, _, String>(row, ordinal))
+        }
+        _ => sql_to_json::<sqlx_odbc::Odbc, _>(row, ordinal),
+    }
+}
+
 fn mssql_to_json(row: &sqlx_sqlserver::MssqlRow, ordinal: usize) -> Value {
     let raw_value = match row.try_get_raw(ordinal) {
         Ok(raw_value) if raw_value.is_null() => return Value::Null,
@@ -319,6 +360,16 @@ fn decimal_to_json(decimal: &BigDecimal) -> Value {
     ))
 }
 
+fn string_decimal_to_json(decimal: &str) -> Value {
+    match decimal.trim().parse::<serde_json::Number>() {
+        Ok(number) => Value::Number(number),
+        Err(e) => {
+            log::warn!("Failed to parse decimal value {decimal:?}: {e}");
+            Value::String(decimal.to_owned())
+        }
+    }
+}
+
 fn decode_pg_range<T>(row: &sqlx::postgres::PgRow, ordinal: usize) -> Value
 where
     T: std::fmt::Display + sqlx::Type<sqlx::Postgres>,
@@ -380,5 +431,15 @@ mod tests {
             }),
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_string_decimal_to_json() {
+        assert_eq!(string_decimal_to_json("2"), serde_json::json!(2));
+        assert_eq!(string_decimal_to_json(" 42.5 "), serde_json::json!(42.5));
+        assert_eq!(
+            string_decimal_to_json("not a decimal"),
+            serde_json::json!("not a decimal")
+        );
     }
 }
