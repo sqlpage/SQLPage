@@ -8,6 +8,7 @@ use sqlpage::{
     },
 };
 use std::collections::BTreeSet;
+use std::env;
 use std::path::Path;
 use std::time::Duration;
 
@@ -15,6 +16,13 @@ struct ExampleSmoke {
     name: &'static str,
     web_root: Option<&'static str>,
     request_path: &'static str,
+}
+
+struct DatabaseExampleSmoke {
+    name: &'static str,
+    web_root: Option<&'static str>,
+    request_path: &'static str,
+    db_name: &'static str,
 }
 
 const SQLITE_SMOKE_EXAMPLES: &[ExampleSmoke] = &[
@@ -150,6 +158,66 @@ const EXTERNAL_SERVICE_EXAMPLES: &[&str] = &[
     "web servers - apache",
 ];
 
+const POSTGRES_SMOKE_EXAMPLES: &[DatabaseExampleSmoke] = &[
+    DatabaseExampleSmoke {
+        name: "SQLPage developer user interface",
+        web_root: Some("website"),
+        request_path: "/",
+        db_name: "sqlpage_example_developer_ui",
+    },
+    DatabaseExampleSmoke {
+        name: "telemetry",
+        web_root: Some("website"),
+        request_path: "/",
+        db_name: "sqlpage_example_telemetry",
+    },
+    DatabaseExampleSmoke {
+        name: "tiny_twitter",
+        web_root: None,
+        request_path: "/",
+        db_name: "sqlpage_example_tiny_twitter",
+    },
+    DatabaseExampleSmoke {
+        name: "todo application (PostgreSQL)",
+        web_root: None,
+        request_path: "/",
+        db_name: "sqlpage_example_todo_postgres",
+    },
+    DatabaseExampleSmoke {
+        name: "user-authentication",
+        web_root: None,
+        request_path: "/",
+        db_name: "sqlpage_example_user_authentication",
+    },
+];
+
+const MYSQL_SMOKE_EXAMPLES: &[DatabaseExampleSmoke] = &[
+    DatabaseExampleSmoke {
+        name: "custom form component",
+        web_root: None,
+        request_path: "/",
+        db_name: "sqlpage_example_custom_form",
+    },
+    DatabaseExampleSmoke {
+        name: "mysql json handling",
+        web_root: None,
+        request_path: "/",
+        db_name: "sqlpage_example_mysql_json",
+    },
+    DatabaseExampleSmoke {
+        name: "nginx",
+        web_root: Some("website"),
+        request_path: "/",
+        db_name: "sqlpage_example_nginx",
+    },
+    DatabaseExampleSmoke {
+        name: "web servers - apache",
+        web_root: Some("website"),
+        request_path: "/my_website/",
+        db_name: "sqlpage_example_apache",
+    },
+];
+
 #[actix_web::test]
 async fn examples_folder_is_fully_accounted_for() {
     let actual = top_level_example_directories();
@@ -163,6 +231,34 @@ async fn examples_folder_is_fully_accounted_for() {
         )
         .collect::<BTreeSet<_>>();
     assert_eq!(actual, accounted_for);
+}
+
+#[actix_web::test]
+async fn postgres_examples_render_their_entry_page_when_database_url_is_provided() {
+    let Ok(admin_url) = env::var("SQLPAGE_TEST_EXAMPLES_POSTGRES_ADMIN_URL") else {
+        return;
+    };
+
+    for example in POSTGRES_SMOKE_EXAMPLES {
+        let database_url = recreate_postgres_database(&admin_url, example.db_name)
+            .await
+            .unwrap_or_else(|err| panic!("failed to prepare {:?}: {err:#}", example.name));
+        assert_database_example_renders(example, &database_url).await;
+    }
+}
+
+#[actix_web::test]
+async fn mysql_examples_render_their_entry_page_when_database_url_is_provided() {
+    let Ok(admin_url) = env::var("SQLPAGE_TEST_EXAMPLES_MYSQL_ADMIN_URL") else {
+        return;
+    };
+
+    for example in MYSQL_SMOKE_EXAMPLES {
+        let database_url = recreate_mysql_database(&admin_url, example.db_name)
+            .await
+            .unwrap_or_else(|err| panic!("failed to prepare {:?}: {err:#}", example.name));
+        assert_database_example_renders(example, &database_url).await;
+    }
 }
 
 #[actix_web::test]
@@ -193,10 +289,60 @@ async fn sqlite_compatible_examples_render_their_entry_page() {
     }
 }
 
+async fn assert_database_example_renders(example: &DatabaseExampleSmoke, database_url: &str) {
+    let response = request_database_example(example, database_url)
+        .await
+        .unwrap_or_else(|err| {
+            panic!(
+                "failed to render entry page for example {:?}: {err:#}",
+                example.name
+            )
+        });
+
+    assert_successful_example_response(example.name, response).await;
+}
+
+async fn assert_successful_example_response(
+    example_name: &str,
+    response: actix_web::dev::ServiceResponse,
+) {
+    let status = response.status();
+    let body = test::read_body(response).await;
+    let body = String::from_utf8_lossy(&body);
+    assert!(
+        status.is_success()
+            || status.is_redirection()
+            || status == actix_web::http::StatusCode::UNAUTHORIZED,
+        "example {example_name:?} returned status {status}; body:\n{body}",
+    );
+    assert!(
+        !body.contains("SQLPage Error"),
+        "example {example_name:?} rendered an SQLPage error with status {status}; body:\n{body}",
+    );
+}
+
 async fn request_example(
     example: &ExampleSmoke,
 ) -> anyhow::Result<actix_web::dev::ServiceResponse> {
     let app_data = make_example_app_data(example).await?;
+    let request = test::TestRequest::get()
+        .uri(example.request_path)
+        .insert_header(header::Accept::html())
+        .app_data(payload_config(&app_data))
+        .app_data(form_config(&app_data))
+        .app_data(app_data)
+        .to_srv_request();
+    tokio::time::timeout(Duration::from_secs(8), main_handler(request))
+        .await
+        .map_err(|err| anyhow::anyhow!("request timed out: {err}"))?
+        .map_err(|err| anyhow::anyhow!("request failed: {err:#}"))
+}
+
+async fn request_database_example(
+    example: &DatabaseExampleSmoke,
+    database_url: &str,
+) -> anyhow::Result<actix_web::dev::ServiceResponse> {
+    let app_data = make_database_example_app_data(example, database_url).await?;
     let request = test::TestRequest::get()
         .uri(example.request_path)
         .insert_header(header::Accept::html())
@@ -216,6 +362,27 @@ async fn make_example_app_data(example: &ExampleSmoke) -> anyhow::Result<Data<Ap
     let root = Path::new("examples").join(example.name);
     let mut config = load_example_config(&root)?;
     config.database_url = "sqlite://:memory:?cache=shared".to_owned();
+    config.max_database_pool_connections = Some(1);
+    config.database_connection_retries = 0;
+    config.database_connection_acquire_timeout_seconds = 8.0;
+    config.web_root = example
+        .web_root
+        .map_or_else(|| root.clone(), |web_root| root.join(web_root));
+
+    let state = Data::new(AppState::init(&config).await?);
+    migrations::apply(&config, &state.db).await?;
+    Ok(state)
+}
+
+async fn make_database_example_app_data(
+    example: &DatabaseExampleSmoke,
+    database_url: &str,
+) -> anyhow::Result<Data<AppState>> {
+    sqlpage::telemetry::init_test_logging();
+
+    let root = Path::new("examples").join(example.name);
+    let mut config = load_example_config(&root)?;
+    config.database_url = database_url.to_owned();
     config.max_database_pool_connections = Some(1);
     config.database_connection_retries = 0;
     config.database_connection_acquire_timeout_seconds = 8.0;
@@ -253,6 +420,57 @@ fn load_example_config(root: &Path) -> anyhow::Result<AppConfig> {
         config.configuration_directory = config_dir;
         Ok(config)
     }
+}
+
+async fn recreate_postgres_database(admin_url: &str, db_name: &str) -> anyhow::Result<String> {
+    use sqlx::Connection;
+
+    validate_database_name(db_name)?;
+    let mut conn = sqlx::PgConnection::connect(admin_url).await?;
+    let drop_database = format!(r#"DROP DATABASE IF EXISTS "{db_name}" WITH (FORCE)"#);
+    let create_database = format!(r#"CREATE DATABASE "{db_name}""#);
+    sqlx::query(sqlx::AssertSqlSafe(drop_database.as_str()))
+        .execute(&mut conn)
+        .await?;
+    sqlx::query(sqlx::AssertSqlSafe(create_database.as_str()))
+        .execute(&mut conn)
+        .await?;
+
+    database_url_with_path(admin_url, db_name)
+}
+
+async fn recreate_mysql_database(admin_url: &str, db_name: &str) -> anyhow::Result<String> {
+    use sqlx::Connection;
+
+    validate_database_name(db_name)?;
+    let mut conn = sqlx::MySqlConnection::connect(admin_url).await?;
+    let drop_database = format!("DROP DATABASE IF EXISTS `{db_name}`");
+    let create_database = format!("CREATE DATABASE `{db_name}`");
+    sqlx::query(sqlx::AssertSqlSafe(drop_database.as_str()))
+        .execute(&mut conn)
+        .await?;
+    sqlx::query(sqlx::AssertSqlSafe(create_database.as_str()))
+        .execute(&mut conn)
+        .await?;
+
+    database_url_with_path(admin_url, db_name)
+}
+
+fn validate_database_name(db_name: &str) -> anyhow::Result<()> {
+    if db_name
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit())
+    {
+        Ok(())
+    } else {
+        anyhow::bail!("invalid test database name: {db_name}");
+    }
+}
+
+fn database_url_with_path(admin_url: &str, db_name: &str) -> anyhow::Result<String> {
+    let mut url = url::Url::parse(admin_url)?;
+    url.set_path(db_name);
+    Ok(url.to_string())
 }
 
 fn top_level_example_directories() -> BTreeSet<String> {

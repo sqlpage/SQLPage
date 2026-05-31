@@ -176,7 +176,7 @@ pub fn stream_query_results_with_conn<'a>(
                         &request.app_state.telemetry_metrics,
                     );
                     record_query_params(&query_metrics.span, &query.param_values);
-                    let items = execute_statement_collect(
+                    let mut items = stream_statement_for_connection(
                         connection,
                         &query,
                         source_file,
@@ -184,9 +184,8 @@ pub fn stream_query_results_with_conn<'a>(
                         request,
                         query_span,
                         &mut query_metrics,
-                    )
-                    .await;
-                    for db_item in items {
+                    );
+                    while let Some(db_item) = items.next().await {
                         yield db_item;
                     }
                 },
@@ -229,90 +228,89 @@ fn with_stmt_position(
     }
 }
 
-async fn execute_statement_collect(
-    connection: &mut DbConnection,
-    query: &StatementWithParams<'_>,
-    source_file: &Path,
-    stmt: &StmtWithParams,
-    request: &ExecutionContext,
+fn stream_statement_for_connection<'a>(
+    connection: &'a mut DbConnection,
+    query: &'a StatementWithParams<'_>,
+    source_file: &'a Path,
+    stmt: &'a StmtWithParams,
+    request: &'a ExecutionContext,
     query_span: tracing::Span,
-    query_metrics: &mut DbQueryMetricsContext<'_>,
-) -> Vec<DbItem> {
+    query_metrics: &'a mut DbQueryMetricsContext<'_>,
+) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>> {
     match connection {
-        DbConnection::Sqlite(conn) => {
-            collect_query_results::<sqlx::Sqlite>(
-                conn,
-                query,
-                source_file,
-                stmt,
-                request,
-                query_span,
-                query_metrics,
-            )
-            .await
-        }
-        DbConnection::Postgres(conn) => {
-            collect_query_results::<sqlx::Postgres>(
-                conn,
-                query,
-                source_file,
-                stmt,
-                request,
-                query_span,
-                query_metrics,
-            )
-            .await
-        }
+        DbConnection::Sqlite(conn) => stream_prepared_statement_results::<sqlx::Sqlite>(
+            conn,
+            query,
+            source_file,
+            stmt,
+            request,
+            query_span,
+            query_metrics,
+        ),
+        DbConnection::Postgres(conn) => stream_prepared_statement_results::<sqlx::Postgres>(
+            conn,
+            query,
+            source_file,
+            stmt,
+            request,
+            query_span,
+            query_metrics,
+        ),
         DbConnection::MySql(conn) => {
-            collect_query_results::<sqlx::MySql>(
-                conn,
-                query,
-                source_file,
-                stmt,
-                request,
-                query_span,
-                query_metrics,
-            )
-            .await
+            if should_run_mysql_transaction_control_as_raw_sql(query) {
+                stream_raw_statement_results::<sqlx::MySql>(
+                    conn,
+                    query,
+                    source_file,
+                    stmt,
+                    request,
+                    query_span,
+                    query_metrics,
+                )
+            } else {
+                stream_prepared_statement_results::<sqlx::MySql>(
+                    conn,
+                    query,
+                    source_file,
+                    stmt,
+                    request,
+                    query_span,
+                    query_metrics,
+                )
+            }
         }
-        DbConnection::Mssql(conn) => {
-            collect_query_results::<sqlx_sqlserver::Mssql>(
-                conn,
-                query,
-                source_file,
-                stmt,
-                request,
-                query_span,
-                query_metrics,
-            )
-            .await
-        }
-        DbConnection::Odbc(conn) => {
-            collect_query_results::<sqlx_odbc::Odbc>(
-                conn,
-                query,
-                source_file,
-                stmt,
-                request,
-                query_span,
-                query_metrics,
-            )
-            .await
-        }
+        DbConnection::Mssql(conn) => stream_prepared_statement_results::<sqlx_sqlserver::Mssql>(
+            conn,
+            query,
+            source_file,
+            stmt,
+            request,
+            query_span,
+            query_metrics,
+        ),
+        DbConnection::Odbc(conn) => stream_prepared_statement_results::<sqlx_odbc::Odbc>(
+            conn,
+            query,
+            source_file,
+            stmt,
+            request,
+            query_span,
+            query_metrics,
+        ),
     }
 }
 
-async fn collect_query_results<DB>(
-    connection: &mut PoolConnection<DB>,
-    query: &StatementWithParams<'_>,
-    source_file: &Path,
-    stmt: &StmtWithParams,
-    request: &ExecutionContext,
+fn stream_prepared_statement_results<'a, DB>(
+    connection: &'a mut PoolConnection<DB>,
+    query: &'a StatementWithParams<'_>,
+    source_file: &'a Path,
+    stmt: &'a StmtWithParams,
+    request: &'a ExecutionContext,
     query_span: tracing::Span,
-    query_metrics: &mut DbQueryMetricsContext<'_>,
-) -> Vec<DbItem>
+    query_metrics: &'a mut DbQueryMetricsContext<'_>,
+) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>>
 where
-    DB: SqlxDatabase,
+    DB: SqlxDatabase + 'a,
     DB::QueryResult: std::fmt::Debug,
     DB::Row: super::sql_to_json::SqlPageRow,
     usize: ColumnIndex<DB::Row>,
@@ -320,44 +318,105 @@ where
     for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
     for<'q> Option<String>: Encode<'q, DB> + Type<DB>,
 {
-    let mut stream = (&mut **connection).fetch_many(bind_query::<DB>(query));
-    let mut error = None;
-    let mut returned_rows: i64 = 0;
-    let mut items = Vec::new();
-    loop {
-        let start_next = std::time::Instant::now();
-        let next_elem = stream.next().instrument(query_span.clone()).await;
-        query_metrics.add_duration(start_next.elapsed());
-        let Some(elem) = next_elem else { break };
+    Box::pin(async_stream::stream! {
+        let mut stream = (&mut **connection).fetch_many(bind_query::<DB>(query));
+        let mut error = None;
+        let mut returned_rows: i64 = 0;
+        loop {
+            let start_next = std::time::Instant::now();
+            let next_elem = stream.next().instrument(query_span.clone()).await;
+            query_metrics.add_duration(start_next.elapsed());
+            let Some(elem) = next_elem else { break };
 
-        let mut query_result = parse_single_sql_result::<DB>(source_file, stmt, elem);
-        if let DbItem::Error(e) = query_result {
-            error = Some(e);
-            break;
+            let mut query_result = parse_single_sql_result::<DB>(source_file, stmt, elem);
+            if let DbItem::Error(e) = query_result {
+                error = Some(e);
+                break;
+            }
+            if matches!(query_result, DbItem::Row(_)) {
+                returned_rows += 1;
+            }
+            apply_json_columns(&mut query_result, &stmt.json_columns);
+            if let Err(err) =
+                apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result)
+                    .instrument(query_span.clone())
+                    .await
+            {
+                error = Some(err);
+                break;
+            }
+            for db_item in parse_dynamic_rows(query_result) {
+                yield db_item;
+            }
         }
-        if matches!(query_result, DbItem::Row(_)) {
-            returned_rows += 1;
+        drop(stream);
+        if let Some(error) = error {
+            query_metrics.record_error(returned_rows, &error);
+            try_rollback_transaction(connection).await;
+            yield DbItem::Error(error);
+        } else {
+            query_metrics.record_success(returned_rows);
         }
-        apply_json_columns(&mut query_result, &stmt.json_columns);
-        if let Err(err) =
-            apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result)
-                .instrument(query_span.clone())
-                .await
-        {
-            error = Some(err);
-            break;
+    })
+}
+
+fn stream_raw_statement_results<'a, DB>(
+    connection: &'a mut PoolConnection<DB>,
+    query: &'a StatementWithParams<'_>,
+    source_file: &'a Path,
+    stmt: &'a StmtWithParams,
+    request: &'a ExecutionContext,
+    query_span: tracing::Span,
+    query_metrics: &'a mut DbQueryMetricsContext<'_>,
+) -> Pin<Box<dyn Stream<Item = DbItem> + 'a>>
+where
+    DB: SqlxDatabase + 'a,
+    DB::QueryResult: std::fmt::Debug,
+    DB::Row: super::sql_to_json::SqlPageRow,
+    usize: ColumnIndex<DB::Row>,
+    for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
+{
+    Box::pin(async_stream::stream! {
+        let mut stream =
+            sqlx::raw_sql(sqlx::AssertSqlSafe(query.sql)).fetch_many(&mut **connection);
+        let mut error = None;
+        let mut returned_rows: i64 = 0;
+        loop {
+            let start_next = std::time::Instant::now();
+            let next_elem = stream.next().instrument(query_span.clone()).await;
+            query_metrics.add_duration(start_next.elapsed());
+            let Some(elem) = next_elem else { break };
+
+            let mut query_result = parse_single_sql_result::<DB>(source_file, stmt, elem);
+            if let DbItem::Error(e) = query_result {
+                error = Some(e);
+                break;
+            }
+            if matches!(query_result, DbItem::Row(_)) {
+                returned_rows += 1;
+            }
+            apply_json_columns(&mut query_result, &stmt.json_columns);
+            if let Err(err) =
+                apply_delayed_functions(request, &stmt.delayed_functions, &mut query_result)
+                    .instrument(query_span.clone())
+                    .await
+            {
+                error = Some(err);
+                break;
+            }
+            for db_item in parse_dynamic_rows(query_result) {
+                yield db_item;
+            }
         }
-        items.extend(parse_dynamic_rows(query_result));
-    }
-    drop(stream);
-    if let Some(error) = error {
-        query_metrics.record_error(returned_rows, &error);
-        try_rollback_transaction(connection).await;
-        items.push(DbItem::Error(error));
-    } else {
-        query_metrics.record_success(returned_rows);
-    }
-    items
+        drop(stream);
+        if let Some(error) = error {
+            query_metrics.record_error(returned_rows, &error);
+            try_rollback_transaction(connection).await;
+            yield DbItem::Error(error);
+        } else {
+            query_metrics.record_success(returned_rows);
+        }
+    })
 }
 
 /// Transforms a stream of database items to stop processing after encountering the first error.
@@ -414,6 +473,22 @@ where
             log::debug!("There was probably no transaction in progress when this happened: {e:?}");
         }
     }
+}
+
+fn should_run_mysql_transaction_control_as_raw_sql(query: &StatementWithParams<'_>) -> bool {
+    if !query.param_values.is_empty() {
+        return false;
+    }
+    let sql = query.sql.trim().trim_end_matches(';').trim();
+    let normalized = sql
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_uppercase();
+    matches!(
+        normalized.as_str(),
+        "START TRANSACTION" | "BEGIN" | "COMMIT" | "ROLLBACK"
+    )
 }
 
 async fn rollback_connection(connection: &mut DbConnection) {

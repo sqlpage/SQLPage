@@ -38,6 +38,9 @@ sqlx-sqlserver = { version = "0.0.3", features = [
     "uuid",
 ] }
 sqlx-odbc = { version = "0.0.1", features = ["runtime-tokio"] }
+# sqlx-sqlserver currently uses native-tls. Enable vendored OpenSSL so Docker cross-builds
+# do not depend on target-architecture OpenSSL development packages.
+openssl = { version = "0.10", features = ["vendored"] }
 libsqlite3-sys = "0.37"
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls-0_23", "cookies"] }

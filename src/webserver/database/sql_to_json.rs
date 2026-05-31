@@ -44,9 +44,29 @@ macro_rules! impl_sqlpage_row {
     };
 }
 
-impl_sqlpage_row!(sqlx::mysql::MySqlRow, sqlx::MySql, false);
 impl_sqlpage_row!(sqlx::sqlite::SqliteRow, sqlx::Sqlite, false);
 impl_sqlpage_row!(sqlx_odbc::OdbcRow, sqlx_odbc::Odbc, true);
+
+impl SqlPageRow for sqlx::mysql::MySqlRow {
+    fn to_json(&self) -> Value {
+        let mut map = Map::new();
+        for col in self.columns() {
+            let key = canonical_col_name(col.name(), false);
+            let value = mysql_to_json(self, col.ordinal());
+            map = add_value_to_map(map, (key, value));
+        }
+        Value::Object(map)
+    }
+
+    fn first_value_to_string(&self) -> Option<String> {
+        let col = self.columns().first()?;
+        match mysql_to_json(self, col.ordinal()) {
+            Value::String(s) => Some(s),
+            Value::Null => None,
+            other => Some(other.to_string()),
+        }
+    }
+}
 
 impl SqlPageRow for sqlx_sqlserver::MssqlRow {
     fn to_json(&self) -> Value {
@@ -199,6 +219,38 @@ fn pg_to_json(row: &sqlx::postgres::PgRow, ordinal: usize) -> Value {
         "TSRANGE" => decode_pg_range::<NaiveDateTime>(row, ordinal),
         "TSTZRANGE" => decode_pg_range::<DateTime<Utc>>(row, ordinal),
         _ => decode::<sqlx::Postgres, _, String>(row, ordinal).into(),
+    }
+}
+
+fn mysql_to_json(row: &sqlx::mysql::MySqlRow, ordinal: usize) -> Value {
+    let raw_value = match row.try_get_raw(ordinal) {
+        Ok(raw_value) if raw_value.is_null() => return Value::Null,
+        Ok(raw_value) => raw_value,
+        Err(e) => {
+            log::warn!("Unable to extract value from row: {e:?}");
+            return Value::Null;
+        }
+    };
+    let type_info = raw_value.type_info();
+    let type_name = type_info.name().to_ascii_uppercase();
+    log::trace!("Decoding a MySQL value of type {type_name:?} (type info: {type_info:?})");
+
+    match type_name.as_str() {
+        "DECIMAL" | "NEWDECIMAL" => {
+            decimal_to_json(&decode::<sqlx::MySql, _, BigDecimal>(row, ordinal))
+        }
+        "DATE" => decode::<sqlx::MySql, _, NaiveDate>(row, ordinal)
+            .to_string()
+            .into(),
+        "TIME" => decode::<sqlx::MySql, _, chrono::NaiveTime>(row, ordinal)
+            .to_string()
+            .into(),
+        "DATETIME" | "TIMESTAMP" => decode::<sqlx::MySql, _, NaiveDateTime>(row, ordinal)
+            .format("%FT%T%.f")
+            .to_string()
+            .into(),
+        "JSON" => decode::<sqlx::MySql, _, sqlx::types::Json<Value>>(row, ordinal).0,
+        _ => sql_to_json::<sqlx::MySql, _>(row, ordinal),
     }
 }
 
