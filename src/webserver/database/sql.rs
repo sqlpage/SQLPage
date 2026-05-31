@@ -20,7 +20,6 @@ use sqlparser::dialect::{
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, EOF, SemiColon};
 use sqlparser::tokenizer::{Location, Span, TokenWithSpan, Tokenizer};
-use sqlx::any::AnyKind;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -169,7 +168,7 @@ fn parse_sql<'a>(
     }))
 }
 
-fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, kind: AnyKind) {
+fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, kind: super::DbKind) {
     if let Some((_, DbPlaceHolder::Positional { placeholder })) = DB_PLACEHOLDERS
         .iter()
         .find(|(placeholder_kind, _)| *placeholder_kind == kind)
@@ -784,11 +783,11 @@ mod test {
 
     fn create_test_db_info(database_type: SupportedDatabase) -> DbInfo {
         let kind = match database_type {
-            SupportedDatabase::Postgres => AnyKind::Postgres,
-            SupportedDatabase::Mssql => AnyKind::Mssql,
-            SupportedDatabase::MySql => AnyKind::MySql,
-            SupportedDatabase::Sqlite => AnyKind::Sqlite,
-            _ => AnyKind::Odbc,
+            SupportedDatabase::Postgres => DbKind::Postgres,
+            SupportedDatabase::Mssql => DbKind::Mssql,
+            SupportedDatabase::MySql => DbKind::MySql,
+            SupportedDatabase::Sqlite => DbKind::Sqlite,
+            _ => DbKind::Odbc,
         };
         DbInfo {
             dbms_name: database_type.display_name().to_string(),
@@ -1317,7 +1316,7 @@ mod test {
             delayed_functions: vec![],
             json_columns: vec![],
         };
-        transform_to_positional_placeholders(&mut stmt, AnyKind::MySql);
+        transform_to_positional_placeholders(&mut stmt, DbKind::MySql);
         assert_eq!(
             stmt.query,
             "select \

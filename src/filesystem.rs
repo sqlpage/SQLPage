@@ -1,12 +1,9 @@
 use crate::webserver::ErrorWithStatus;
-use crate::webserver::database::SupportedDatabase;
+use crate::webserver::database::{DatabasePool, SupportedDatabase};
 use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use sqlx::any::{AnyStatement, AnyTypeInfo};
-use sqlx::postgres::types::PgTimeTz;
-use sqlx::{Executor, Postgres, Statement, Type};
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -241,9 +238,9 @@ async fn file_modified_since_local(path: &Path, since: DateTime<Utc>) -> tokio::
 }
 
 pub struct DbFsQueries {
-    was_modified: AnyStatement<'static>,
-    read_file: AnyStatement<'static>,
-    exists: AnyStatement<'static>,
+    was_modified: String,
+    read_file: String,
+    exists: String,
 }
 
 impl DbFsQueries {
@@ -276,45 +273,37 @@ impl DbFsQueries {
     }
 
     async fn check_table_available(db: &Database) -> anyhow::Result<()> {
-        db.connection
-            .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
+        execute_pool(&db.connection, "SELECT 1 FROM sqlpage_files WHERE 1 = 0")
             .await
-            .map(|_| ())
             .context("Unable to access sqlpage_files")?;
         Ok(())
     }
 
-    async fn make_was_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_was_modified_query(db: &Database) -> anyhow::Result<String> {
         let was_modified_query = format!(
             "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
             make_placeholder(db.info.kind, 1),
             make_placeholder(db.info.kind, 2)
         );
-        let param_types: &[AnyTypeInfo; 2] = &[
-            PgTimeTz::type_info().into(),
-            <str as Type<Postgres>>::type_info().into(),
-        ];
         log::debug!("Preparing the database filesystem was_modified_query: {was_modified_query}");
-        db.prepare_with(&was_modified_query, param_types).await
+        Ok(was_modified_query)
     }
 
-    async fn make_read_file_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_read_file_query(db: &Database) -> anyhow::Result<String> {
         let read_file_query = format!(
             "SELECT contents from sqlpage_files WHERE path = {}",
             make_placeholder(db.info.kind, 1),
         );
-        let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         log::debug!("Preparing the database filesystem read_file_query: {read_file_query}");
-        db.prepare_with(&read_file_query, param_types).await
+        Ok(read_file_query)
     }
 
-    async fn make_exists_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_exists_query(db: &Database) -> anyhow::Result<String> {
         let exists_query = format!(
             "SELECT 1 from sqlpage_files WHERE path = {}",
             make_placeholder(db.info.kind, 1),
         );
-        let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
-        db.prepare_with(&exists_query, param_types).await
+        Ok(exists_query)
     }
 
     async fn file_modified_since_in_db(
@@ -323,47 +312,40 @@ impl DbFsQueries {
         path: &Path,
         since: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
-        let query = self
-            .was_modified
-            .query_as::<(i32,)>()
-            .bind(since)
-            .bind(path.display().to_string());
+        let path = path.display().to_string();
         log::trace!(
             "Checking if file {} was modified since {} by executing query: \n\
             {}\n\
             with parameters: {:?}",
-            path.display(),
+            path,
             since,
-            self.was_modified.sql(),
-            (since, path)
+            self.was_modified,
+            (since, &path)
         );
-        let was_modified_i32 = query
-            .fetch_optional(&app_state.db.connection)
-            .await
-            .with_context(|| {
-                format!(
-                    "Unable to check when {} was last modified in the database",
-                    path.display()
-                )
-            })?;
+        let was_modified_i32 = fetch_optional_i32_since_path(
+            &app_state.db.connection,
+            &self.was_modified,
+            since,
+            &path,
+        )
+        .await
+        .with_context(|| format!("Unable to check when {path} was last modified in the database"))?;
         log::trace!(
             "DB File {} was modified result: {was_modified_i32:?}",
-            path.display()
+            path
         );
-        Ok(was_modified_i32 == Some((1,)))
+        Ok(was_modified_i32 == Some(1))
     }
 
     async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
         log::debug!("Reading file {} from the database", path.display());
-        self.read_file
-            .query_as::<(Vec<u8>,)>()
-            .bind(path.display().to_string())
-            .fetch_optional(&app_state.db.connection)
+        let path = path.display().to_string();
+        fetch_optional_bytes_path(&app_state.db.connection, &self.read_file, &path)
             .await
             .map_err(anyhow::Error::from)
-            .and_then(|modified| {
-                if let Some((modified,)) = modified {
-                    Ok(modified)
+            .and_then(|contents| {
+                if let Some(contents) = contents {
+                    Ok(contents)
                 } else {
                     Err(ErrorWithStatus {
                         status: actix_web::http::StatusCode::NOT_FOUND,
@@ -371,30 +353,191 @@ impl DbFsQueries {
                     .into())
                 }
             })
-            .with_context(|| format!("Unable to read {} from the database", path.display()))
+            .with_context(|| format!("Unable to read {path} from the database"))
     }
 
     async fn file_exists(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
-        let query = self
-            .exists
-            .query_as::<(i32,)>()
-            .bind(path.display().to_string());
+        let path = path.display().to_string();
         log::trace!(
             "Checking if file {} exists by executing query: \n\
             {}\n\
             with parameters: {:?}",
-            path.display(),
-            self.exists.sql(),
-            (path,)
+            path,
+            self.exists,
+            (&path,)
         );
-        let result = query.fetch_optional(&app_state.db.connection).await;
+        let result = fetch_optional_i32_path(&app_state.db.connection, &self.exists, &path).await;
         log::debug!("DB File exists result: {result:?}");
         result.map(|result| result.is_some()).with_context(|| {
             format!(
                 "Unable to check if {} exists in the database",
-                path.display()
+                path
             )
         })
+    }
+}
+
+async fn execute_pool(pool: &DatabasePool, sql: &str) -> sqlx::Result<()> {
+    match pool {
+        DatabasePool::Sqlite(pool) => sqlx::query::<sqlx::Sqlite>(sqlx::AssertSqlSafe(sql))
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Postgres(pool) => sqlx::query::<sqlx::Postgres>(sqlx::AssertSqlSafe(sql))
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::MySql(pool) => sqlx::query::<sqlx::MySql>(sqlx::AssertSqlSafe(sql))
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Mssql(pool) => sqlx::query::<sqlx_sqlserver::Mssql>(sqlx::AssertSqlSafe(sql))
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Odbc(pool) => sqlx::query::<sqlx_odbc::Odbc>(sqlx::AssertSqlSafe(sql))
+            .execute(pool)
+            .await
+            .map(|_| ()),
+    }
+}
+
+async fn fetch_optional_i32_since_path(
+    pool: &DatabasePool,
+    sql: &str,
+    since: DateTime<Utc>,
+    path: &str,
+) -> sqlx::Result<Option<i32>> {
+    let since = since.to_rfc3339();
+    match pool {
+        DatabasePool::Sqlite(pool) => {
+            sqlx::query_as::<sqlx::Sqlite, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(&since)
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Postgres(pool) => {
+            sqlx::query_as::<sqlx::Postgres, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(&since)
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::MySql(pool) => {
+            sqlx::query_as::<sqlx::MySql, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(&since)
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Mssql(pool) => {
+            sqlx::query_as::<sqlx_sqlserver::Mssql, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(&since)
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Odbc(pool) => {
+            sqlx::query_as::<sqlx_odbc::Odbc, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(&since)
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+    }
+}
+
+async fn fetch_optional_i32_path(
+    pool: &DatabasePool,
+    sql: &str,
+    path: &str,
+) -> sqlx::Result<Option<i32>> {
+    match pool {
+        DatabasePool::Sqlite(pool) => {
+            sqlx::query_as::<sqlx::Sqlite, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Postgres(pool) => {
+            sqlx::query_as::<sqlx::Postgres, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::MySql(pool) => {
+            sqlx::query_as::<sqlx::MySql, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Mssql(pool) => {
+            sqlx::query_as::<sqlx_sqlserver::Mssql, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Odbc(pool) => {
+            sqlx::query_as::<sqlx_odbc::Odbc, (i32,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+    }
+}
+
+async fn fetch_optional_bytes_path(
+    pool: &DatabasePool,
+    sql: &str,
+    path: &str,
+) -> sqlx::Result<Option<Vec<u8>>> {
+    match pool {
+        DatabasePool::Sqlite(pool) => {
+            sqlx::query_as::<sqlx::Sqlite, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Postgres(pool) => {
+            sqlx::query_as::<sqlx::Postgres, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::MySql(pool) => {
+            sqlx::query_as::<sqlx::MySql, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Mssql(pool) => {
+            sqlx::query_as::<sqlx_sqlserver::Mssql, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
+        DatabasePool::Odbc(pool) => {
+            sqlx::query_as::<sqlx_odbc::Odbc, (Vec<u8>,)>(sqlx::AssertSqlSafe(sql))
+        }
+            .bind(path)
+            .fetch_optional(pool)
+            .await
+            .map(|row| row.map(|(value,)| value)),
     }
 }
 
@@ -417,9 +560,9 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type);
     let db = &state.db;
     let conn = &db.connection;
-    conn.execute("DROP TABLE IF EXISTS sqlpage_files").await?;
+    execute_pool(conn, "DROP TABLE IF EXISTS sqlpage_files").await?;
     log::debug!("Creating table sqlpage_files: {create_table_sql}");
-    conn.execute(create_table_sql).await?;
+    execute_pool(conn, create_table_sql).await?;
 
     let dbms = db.info.kind;
     let insert_sql = format!(
@@ -427,10 +570,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         make_placeholder(dbms, 1),
         make_placeholder(dbms, 2)
     );
-    sqlx::query(&insert_sql)
-        .bind("unit test file.txt")
-        .bind("Héllö world! 😀".as_bytes())
-        .execute(conn)
+    insert_test_file(conn, &insert_sql, "unit test file.txt", "Héllö world! 😀".as_bytes())
         .await?;
 
     let fs = FileSystem::init("/", db).await;
@@ -462,4 +602,45 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+async fn insert_test_file(
+    pool: &DatabasePool,
+    sql: &str,
+    path: &str,
+    contents: &[u8],
+) -> sqlx::Result<()> {
+    match pool {
+        DatabasePool::Sqlite(pool) => sqlx::query::<sqlx::Sqlite>(sql)
+            .bind(path)
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Postgres(pool) => sqlx::query::<sqlx::Postgres>(sql)
+            .bind(path)
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::MySql(pool) => sqlx::query::<sqlx::MySql>(sql)
+            .bind(path)
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Mssql(pool) => sqlx::query::<sqlx_sqlserver::Mssql>(sql)
+            .bind(path)
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+        DatabasePool::Odbc(pool) => sqlx::query::<sqlx_odbc::Odbc>(sql)
+            .bind(path)
+            .bind(contents)
+            .execute(pool)
+            .await
+            .map(|_| ()),
+    }
 }

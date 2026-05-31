@@ -43,27 +43,9 @@ impl std::fmt::Display for NiceDatabaseError {
             self.source_file.display(),
             self.db_err
         )?;
-        if let sqlx::error::Error::Database(db_err) = &self.db_err {
-            let Some(mut offset) = db_err.offset() else {
-                write!(f, "{}", self.query)?;
-                self.show_position_info(f)?;
-                return Ok(());
-            };
-            for line in self.query.lines() {
-                if offset > line.len() {
-                    offset -= line.len() + 1;
-                } else {
-                    highlight_line_offset(f, line, offset);
-                    self.show_position_info(f)?;
-                    break;
-                }
-            }
-            Ok(())
-        } else {
-            write!(f, "{}", self.query)?;
-            self.show_position_info(f)?;
-            Ok(())
-        }
+        write!(f, "{}", self.query)?;
+        self.show_position_info(f)?;
+        Ok(())
     }
 }
 
@@ -93,21 +75,6 @@ impl std::error::Error for NicePositionedError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(self.error.as_ref())
     }
-}
-
-/// Display a database error without any position information
-#[must_use]
-pub fn display_db_error(
-    source_file: &Path,
-    query: &str,
-    db_err: sqlx::error::Error,
-) -> anyhow::Error {
-    anyhow::Error::new(NiceDatabaseError {
-        source_file: source_file.to_path_buf(),
-        db_err,
-        query: query.to_string(),
-        query_position: None,
-    })
 }
 
 /// Display a database error with a highlighted line and character offset.

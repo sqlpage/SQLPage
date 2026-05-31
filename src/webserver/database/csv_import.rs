@@ -5,15 +5,12 @@ use futures_util::StreamExt;
 use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
-use sqlx::{
-    AnyConnection, Arguments, Executor, PgConnection,
-    any::{AnyArguments, AnyConnectionKind, AnyKind},
-};
+use sqlx::{Database as SqlxDatabase, Encode, Executor, IntoArguments, PgConnection, Type};
 use tokio::io::AsyncRead;
 
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::make_placeholder;
+use super::{DbKind, execute_queries::DbConnection, make_placeholder};
 
 #[derive(Debug, PartialEq)]
 pub(super) struct CsvImport {
@@ -142,7 +139,7 @@ pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImpo
 }
 
 pub(super) async fn run_csv_import(
-    db: &mut AnyConnection,
+    db: &mut DbConnection,
     csv_import: &CsvImport,
     request: &RequestInfo,
 ) -> anyhow::Result<()> {
@@ -167,13 +164,28 @@ pub(super) async fn run_csv_import(
         )
     })?;
     let buffered = tokio::io::BufReader::new(file);
-    // private_get_mut is not supposed to be used outside of sqlx, but it is the only way to
-    // access the underlying connection
-    match db.private_get_mut() {
-        AnyConnectionKind::Postgres(pg_connection) => {
+    match db {
+        DbConnection::Postgres(pg_connection) => {
             run_csv_import_postgres(pg_connection, csv_import, buffered).await
         }
-        _ => run_csv_import_insert(db, csv_import, buffered).await,
+        DbConnection::Sqlite(conn) => {
+            run_csv_import_insert::<sqlx::Sqlite>(conn, DbKind::Sqlite, csv_import, buffered).await
+        }
+        DbConnection::MySql(conn) => {
+            run_csv_import_insert::<sqlx::MySql>(conn, DbKind::MySql, csv_import, buffered).await
+        }
+        DbConnection::Mssql(conn) => {
+            run_csv_import_insert::<sqlx_sqlserver::Mssql>(
+                conn,
+                DbKind::Mssql,
+                csv_import,
+                buffered,
+            )
+            .await
+        }
+        DbConnection::Odbc(conn) => {
+            run_csv_import_insert::<sqlx_odbc::Odbc>(conn, DbKind::Odbc, csv_import, buffered).await
+        }
     }
     .with_context(|| {
         let table_name = &csv_import.table_name;
@@ -214,12 +226,19 @@ async fn run_csv_import_postgres(
     }
 }
 
-async fn run_csv_import_insert(
-    db: &mut AnyConnection,
+async fn run_csv_import_insert<DB>(
+    db: &mut sqlx::pool::PoolConnection<DB>,
+    db_kind: DbKind,
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
-) -> anyhow::Result<()> {
-    let insert_stmt = create_insert_stmt(db.kind(), csv_import);
+) -> anyhow::Result<()>
+where
+    DB: SqlxDatabase,
+    DB::Arguments: IntoArguments<DB>,
+    for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
+    for<'q> Option<String>: Encode<'q, DB> + Type<DB>,
+{
+    let insert_stmt = create_insert_stmt(db_kind, csv_import);
     log::debug!("CSV data insert statement: {insert_stmt}");
     let mut reader = make_csv_reader(csv_import, file);
     let col_idxs = compute_column_indices(&mut reader, csv_import).await?;
@@ -256,7 +275,7 @@ async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
     Ok(col_idxs)
 }
 
-fn create_insert_stmt(db_kind: AnyKind, csv_import: &CsvImport) -> String {
+fn create_insert_stmt(db_kind: DbKind, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
     let placeholders = csv_import
         .columns
@@ -274,22 +293,32 @@ fn create_insert_stmt(db_kind: AnyKind, csv_import: &CsvImport) -> String {
     format!("INSERT INTO {table_name} ({columns}) VALUES ({placeholders})")
 }
 
-async fn process_csv_record(
+async fn process_csv_record<DB>(
     record: csv_async::StringRecord,
-    db: &mut AnyConnection,
+    db: &mut sqlx::pool::PoolConnection<DB>,
     insert_stmt: &str,
     csv_import: &CsvImport,
     column_indices: &[usize],
-) -> anyhow::Result<()> {
-    let mut arguments = AnyArguments::default();
+) -> anyhow::Result<()>
+where
+    DB: SqlxDatabase,
+    DB::Arguments: IntoArguments<DB>,
+    for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
+    for<'q> Option<String>: Encode<'q, DB> + Type<DB>,
+{
+    let mut query = sqlx::query::<DB>(sqlx::AssertSqlSafe(insert_stmt));
     let null_str = csv_import.null_str.as_deref().unwrap_or_default();
     for (&i, column) in column_indices.iter().zip(csv_import.columns.iter()) {
         let value = record.get(i).unwrap_or_default();
-        let value = if value == null_str { None } else { Some(value) };
+        let value = if value == null_str {
+            None
+        } else {
+            Some(value.to_owned())
+        };
         log::trace!("CSV value: {column}={value:?}");
-        arguments.add(value);
+        query = query.bind(value);
     }
-    db.execute((insert_stmt, Some(arguments))).await?;
+    query.execute(&mut **db).await?;
     Ok(())
 }
 
@@ -328,7 +357,7 @@ fn test_make_statement() {
         escape: None,
         uploaded_file: "my_file.csv".into(),
     };
-    let insert_stmt = create_insert_stmt(AnyKind::Postgres, &csv_import);
+    let insert_stmt = create_insert_stmt(DbKind::Postgres, &csv_import);
     assert_eq!(
         insert_stmt,
         "INSERT INTO my_table (col1, col2) VALUES ($1, $2)"
@@ -337,7 +366,7 @@ fn test_make_statement() {
 
 #[actix_web::test]
 async fn test_end_to_end() {
-    use sqlx::ConnectOptions;
+    use sqlx::Connection;
 
     let mut copy_stmt = sqlparser::parser::Parser::parse_sql(
         &sqlparser::dialect::GenericDialect {},
@@ -362,22 +391,18 @@ async fn test_end_to_end() {
             uploaded_file: "my_file.csv".into(),
         }
     );
-    let mut conn = "sqlite::memory:"
-        .parse::<sqlx::any::AnyConnectOptions>()
-        .unwrap()
-        .connect()
-        .await
-        .unwrap();
-    conn.execute("CREATE TABLE my_table (col1 TEXT, col2 TEXT)")
-        .await
-        .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
     let file = csv.as_bytes();
-    run_csv_import_insert(&mut conn, &csv_import, file)
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    pool.execute("CREATE TABLE my_table (col1 TEXT, col2 TEXT)")
+        .await
+        .unwrap();
+    let mut pooled = pool.acquire().await.unwrap();
+    run_csv_import_insert::<sqlx::Sqlite>(&mut pooled, DbKind::Sqlite, &csv_import, file)
         .await
         .unwrap();
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")
-        .fetch_all(&mut conn)
+        .fetch_all(&pool)
         .await
         .unwrap();
     assert_eq!(

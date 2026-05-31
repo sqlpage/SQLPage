@@ -1,4 +1,4 @@
-use super::super::{DbInfo, SupportedDatabase};
+use super::super::{DbInfo, DbKind, SupportedDatabase};
 use super::{is_sqlpage_func, sqlpage_func_name};
 use crate::webserver::database::sqlpage_functions::func_call_to_param;
 use crate::webserver::database::syntax_tree::StmtParam;
@@ -7,7 +7,6 @@ use sqlparser::ast::{
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, ObjectNamePart,
     Spanned, Statement, Value, ValueWithSpan, Visit, VisitMut, Visitor, VisitorMut,
 };
-use sqlx::any::AnyKind;
 use std::ops::ControlFlow;
 
 pub(super) struct ParameterExtractor {
@@ -22,25 +21,25 @@ pub(crate) enum DbPlaceHolder {
     Positional { placeholder: &'static str },
 }
 
-pub(crate) const DB_PLACEHOLDERS: [(AnyKind, DbPlaceHolder); 5] = [
+pub(crate) const DB_PLACEHOLDERS: [(DbKind, DbPlaceHolder); 5] = [
     (
-        AnyKind::Sqlite,
+        DbKind::Sqlite,
         DbPlaceHolder::PrefixedNumber { prefix: "?" },
     ),
     (
-        AnyKind::Postgres,
+        DbKind::Postgres,
         DbPlaceHolder::PrefixedNumber { prefix: "$" },
     ),
     (
-        AnyKind::MySql,
+        DbKind::MySql,
         DbPlaceHolder::Positional { placeholder: "?" },
     ),
     (
-        AnyKind::Mssql,
+        DbKind::Mssql,
         DbPlaceHolder::PrefixedNumber { prefix: "@p" },
     ),
     (
-        AnyKind::Odbc,
+        DbKind::Odbc,
         DbPlaceHolder::Positional { placeholder: "?" },
     ),
 ];
@@ -49,7 +48,7 @@ pub(crate) const DB_PLACEHOLDERS: [(AnyKind, DbPlaceHolder); 5] = [
 /// And then replace it with the actual placeholder during statement rewriting.
 pub(crate) const TEMP_PLACEHOLDER_PREFIX: &str = "@SQLPAGE_TEMP";
 
-fn get_placeholder_prefix(kind: AnyKind) -> &'static str {
+fn get_placeholder_prefix(kind: DbKind) -> &'static str {
     if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) = DB_PLACEHOLDERS
         .iter()
         .find(|(placeholder_kind, _prefix)| *placeholder_kind == kind)
@@ -97,7 +96,9 @@ impl ParameterExtractor {
         let data_type = match self.db_info.database_type {
             SupportedDatabase::MySql => DataType::Char(None),
             SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
-            SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
+            SupportedDatabase::Postgres | SupportedDatabase::Sqlite | SupportedDatabase::Duckdb => {
+                DataType::Text
+            }
             SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
                 length: 4000,
                 unit: None,
@@ -463,7 +464,7 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 
 #[inline]
 #[must_use]
-pub(super) fn make_tmp_placeholder(kind: AnyKind, arg_number: usize) -> String {
+pub(super) fn make_tmp_placeholder(kind: DbKind, arg_number: usize) -> String {
     let prefix = if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) =
         DB_PLACEHOLDERS.iter().find(|(db_typ, _)| *db_typ == kind)
     {
