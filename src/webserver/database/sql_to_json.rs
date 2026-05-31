@@ -283,7 +283,10 @@ fn odbc_to_json(row: &sqlx_odbc::OdbcRow, ordinal: usize) -> Value {
             return Value::Null;
         }
     };
-    let type_info = raw_value.type_info();
+    let type_info = row.columns().get(ordinal).map_or_else(
+        || raw_value.type_info(),
+        |col| std::borrow::Cow::Owned(col.type_info().clone()),
+    );
     let type_name = type_info.name().to_ascii_uppercase();
     log::trace!("Decoding an ODBC value of type {type_name:?} (type info: {type_info:?})");
 
@@ -441,5 +444,21 @@ mod tests {
             string_decimal_to_json("not a decimal"),
             serde_json::json!("not a decimal")
         );
+    }
+
+    #[test]
+    fn test_odbc_decimal_column_to_json() {
+        let row = sqlx_odbc::OdbcRow::new(
+            vec![sqlx_odbc::OdbcColumn::new(
+                0,
+                "actual",
+                sqlx_odbc::OdbcTypeInfo::numeric(10, 2),
+            )],
+            vec![sqlx_odbc::OdbcValue::new(sqlx_odbc::OdbcValueKind::Text(
+                "2".to_owned(),
+            ))],
+        );
+
+        assert_eq!(row_to_json(&row), serde_json::json!({ "actual": 2 }));
     }
 }
