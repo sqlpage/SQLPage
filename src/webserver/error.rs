@@ -64,7 +64,10 @@ pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> H
                 "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
             ));
         }
-    } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
+    } else if e
+        .downcast_ref::<crate::webserver::database::DbError>()
+        .is_some_and(|err| matches!(err, crate::webserver::database::DbError::PoolTimedOut))
+    {
         use rand::RngExt;
         resp.status(StatusCode::TOO_MANY_REQUESTS).insert_header((
             header::RETRY_AFTER,
@@ -92,7 +95,10 @@ pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> H
 fn anyhow_error_status(e: &anyhow::Error) -> Option<StatusCode> {
     if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
         Some(status)
-    } else if let Some(sqlx::Error::PoolTimedOut) = e.downcast_ref() {
+    } else if e
+        .downcast_ref::<crate::webserver::database::DbError>()
+        .is_some_and(|err| matches!(err, crate::webserver::database::DbError::PoolTimedOut))
+    {
         Some(StatusCode::TOO_MANY_REQUESTS)
     } else {
         None

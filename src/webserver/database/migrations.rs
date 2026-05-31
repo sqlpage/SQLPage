@@ -1,11 +1,21 @@
-use super::Database;
-use super::error_highlighting::display_db_error;
-use crate::MIGRATIONS_DIR;
-use anyhow;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+
 use anyhow::Context;
-use sqlx::migrate::MigrateError;
-use sqlx::migrate::Migration;
-use sqlx::migrate::Migrator;
+use sha2::{Digest, Sha384};
+
+use super::error_highlighting::display_db_error;
+use super::{Database, DbParam, make_placeholder};
+use crate::MIGRATIONS_DIR;
+
+#[derive(Debug)]
+struct Migration {
+    version: i64,
+    description: String,
+    path: PathBuf,
+    sql: String,
+    checksum: Vec<u8>,
+}
 
 pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyhow::Result<()> {
     let migrations_dir = config.configuration_directory.join(MIGRATIONS_DIR);
@@ -17,10 +27,9 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
         return Ok(());
     }
     log::debug!("Applying migrations from '{}'", migrations_dir.display());
-    let migrator = Migrator::new(migrations_dir.clone())
-        .await
+    let migrations = load_migrations(&migrations_dir)
         .with_context(|| migration_err("preparing the database migration"))?;
-    if migrator.migrations.is_empty() {
+    if migrations.is_empty() {
         log::debug!(
             "No migration found in {}. \
         You can specify database operations to apply when the server first starts by creating files \
@@ -30,28 +39,131 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
         );
         return Ok(());
     }
-    log::info!("Found {} migrations:", migrator.migrations.len());
-    for m in migrator.iter() {
-        log::info!("\t{}", DisplayMigration(m));
+    log::info!("Found {} migrations:", migrations.len());
+    for migration in &migrations {
+        log::info!("\t{}", DisplayMigration(migration));
     }
-    migrator.run(&db.connection).await.map_err(|err| {
-        match err {
-            MigrateError::Execute(n, source) => {
-                let migration = migrator.iter().find(|&m| m.version == n).unwrap();
-                let source_file =
-                    migrations_dir.join(format!("{:04}_{}.sql", n, migration.description));
-                display_db_error(&source_file, &migration.sql, source).context(format!(
-                    "Failed to apply {} migration {}",
-                    db,
-                    DisplayMigration(migration)
-                ))
-            }
-            source => anyhow::Error::new(source),
+
+    let mut conn = db.connection.acquire().await?;
+    ensure_migrations_table(&mut conn).await?;
+    for migration in migrations {
+        let applied = migration_row(&mut conn, db, migration.version).await?;
+        if let Some(applied_checksum) = applied {
+            anyhow::ensure!(
+                applied_checksum == migration.checksum,
+                "Migration {} has already been applied, but its checksum changed",
+                DisplayMigration(&migration)
+            );
+            continue;
         }
-        .context(format!(
-            "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
-        ))
-    })?;
+
+        let start = Instant::now();
+        if let Err(err) = conn.execute_command(&migration.sql, &[]).await {
+            return Err(display_db_error(&migration.path, &migration.sql, err).context(format!(
+                "Failed to apply {} migration {}",
+                db,
+                DisplayMigration(&migration)
+            )));
+        }
+        let execution_time = i64::try_from(start.elapsed().as_millis()).unwrap_or(i64::MAX);
+        record_migration(&mut conn, db, &migration, execution_time).await?;
+    }
+    Ok(())
+}
+
+fn load_migrations(migrations_dir: &Path) -> anyhow::Result<Vec<Migration>> {
+    let mut migrations = Vec::new();
+    for entry in std::fs::read_dir(migrations_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("sql") {
+            continue;
+        }
+        let file_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| anyhow::anyhow!("Invalid migration file name: {}", path.display()))?;
+        let Some((version, description)) = file_name.split_once('_') else {
+            anyhow::bail!("Invalid migration file name: {}", path.display());
+        };
+        let version = version.parse::<i64>().with_context(|| {
+            format!("Invalid migration version in file name: {}", path.display())
+        })?;
+        let sql = std::fs::read_to_string(&path)
+            .with_context(|| format!("Unable to read migration {}", path.display()))?;
+        let checksum = Sha384::digest(sql.as_bytes()).to_vec();
+        migrations.push(Migration {
+            version,
+            description: description.to_string(),
+            path,
+            sql,
+            checksum,
+        });
+    }
+    migrations.sort_by_key(|migration| migration.version);
+    Ok(migrations)
+}
+
+async fn ensure_migrations_table(conn: &mut super::DbConnection) -> anyhow::Result<()> {
+    conn.execute_command(
+        "CREATE TABLE IF NOT EXISTS _sqlx_migrations (
+            version BIGINT PRIMARY KEY,
+            description TEXT NOT NULL,
+            installed_on TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            success BOOLEAN NOT NULL,
+            checksum BLOB NOT NULL,
+            execution_time BIGINT NOT NULL
+        )",
+        &[],
+    )
+    .await?;
+    Ok(())
+}
+
+async fn migration_row(
+    conn: &mut super::DbConnection,
+    db: &Database,
+    version: i64,
+) -> anyhow::Result<Option<Vec<u8>>> {
+    let sql = format!(
+        "SELECT checksum FROM _sqlx_migrations WHERE version = {}",
+        make_placeholder(db.info.kind, 1)
+    );
+    let row = conn
+        .fetch_optional(&sql, &[DbParam::Text(version.to_string())])
+        .await?;
+    Ok(row.and_then(|row| match row.values.first() {
+        Some(super::driver::DbValue::Bytes(bytes)) => Some(bytes.clone()),
+        Some(super::driver::DbValue::Text(text)) => Some(text.as_bytes().to_vec()),
+        _ => None,
+    }))
+}
+
+async fn record_migration(
+    conn: &mut super::DbConnection,
+    db: &Database,
+    migration: &Migration,
+    execution_time: i64,
+) -> anyhow::Result<()> {
+    let sql = format!(
+        "INSERT INTO _sqlx_migrations(version, description, success, checksum, execution_time) VALUES ({}, {}, {}, {}, {})",
+        make_placeholder(db.info.kind, 1),
+        make_placeholder(db.info.kind, 2),
+        make_placeholder(db.info.kind, 3),
+        make_placeholder(db.info.kind, 4),
+        make_placeholder(db.info.kind, 5),
+    );
+    conn.execute_command(
+        &sql,
+        &[
+            DbParam::Text(migration.version.to_string()),
+            DbParam::Text(migration.description.clone()),
+            DbParam::Text("true".to_string()),
+            DbParam::Bytes(migration.checksum.clone()),
+            DbParam::Text(execution_time.to_string()),
+        ],
+    )
+    .await?;
     Ok(())
 }
 
@@ -59,18 +171,7 @@ struct DisplayMigration<'a>(&'a Migration);
 
 impl std::fmt::Display for DisplayMigration<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Migration {
-            version,
-            migration_type,
-            description,
-            ..
-        } = &self.0;
-        write!(f, "[{version:04}]")?;
-        if migration_type != &sqlx::migrate::MigrationType::Simple {
-            write!(f, " ({migration_type:?})")?;
-        }
-        write!(f, " {description}")?;
-        Ok(())
+        write!(f, "[{:04}] {}", self.0.version, self.0.description)
     }
 }
 

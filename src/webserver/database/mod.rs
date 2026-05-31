@@ -6,13 +6,14 @@ pub mod migrations;
 mod sql;
 mod sqlpage_functions;
 mod syntax_tree;
+pub mod driver;
 
 mod error_highlighting;
 mod sql_to_json;
 
 pub use sql::ParsedSqlFile;
 use sql::{DB_PLACEHOLDERS, DbPlaceHolder};
-use sqlx::any::AnyKind;
+pub use driver::{DbConnection, DbError, DbKind, DbParam, DbPool};
 // SupportedDatabase is defined in this module
 
 /// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
@@ -81,20 +82,20 @@ impl SupportedDatabase {
     }
 }
 
-impl From<AnyKind> for SupportedDatabase {
-    fn from(kind: AnyKind) -> Self {
+impl From<DbKind> for SupportedDatabase {
+    fn from(kind: DbKind) -> Self {
         match kind {
-            AnyKind::Postgres => Self::Postgres,
-            AnyKind::MySql => Self::MySql,
-            AnyKind::Sqlite => Self::Sqlite,
-            AnyKind::Mssql => Self::Mssql,
-            AnyKind::Odbc => Self::Generic,
+            DbKind::Postgres => Self::Postgres,
+            DbKind::MySql => Self::MySql,
+            DbKind::Sqlite => Self::Sqlite,
+            DbKind::Mssql => Self::Mssql,
+            DbKind::Odbc => Self::Generic,
         }
     }
 }
 
 pub struct Database {
-    pub connection: sqlx::AnyPool,
+    pub connection: DbPool,
     pub info: DbInfo,
 }
 
@@ -103,8 +104,8 @@ pub struct DbInfo {
     pub dbms_name: String,
     /// The actual database we are connected to. Can be "Generic" when using an unknown ODBC driver
     pub database_type: SupportedDatabase,
-    /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
-    pub kind: AnyKind,
+    /// The native driver backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
+    pub kind: DbKind,
 }
 
 impl Database {
@@ -124,13 +125,13 @@ pub enum DbItem {
 
 impl std::fmt::Display for Database {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.connection.any_kind())
+        write!(f, "{:?}", self.connection.kind())
     }
 }
 
 #[inline]
 #[must_use]
-pub fn make_placeholder(dbms: AnyKind, arg_number: usize) -> String {
+pub fn make_placeholder(dbms: DbKind, arg_number: usize) -> String {
     if let Some((_, placeholder)) = DB_PLACEHOLDERS.iter().find(|(kind, _)| *kind == dbms) {
         match *placeholder {
             DbPlaceHolder::PrefixedNumber { prefix } => format!("{prefix}{arg_number}"),

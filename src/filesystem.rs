@@ -1,12 +1,10 @@
 use crate::webserver::ErrorWithStatus;
 use crate::webserver::database::SupportedDatabase;
 use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
+use crate::webserver::database::{DbParam, driver::DbValue};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use sqlx::any::{AnyStatement, AnyTypeInfo};
-use sqlx::postgres::types::PgTimeTz;
-use sqlx::{Executor, Postgres, Statement, Type};
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -241,9 +239,9 @@ async fn file_modified_since_local(path: &Path, since: DateTime<Utc>) -> tokio::
 }
 
 pub struct DbFsQueries {
-    was_modified: AnyStatement<'static>,
-    read_file: AnyStatement<'static>,
-    exists: AnyStatement<'static>,
+    was_modified: String,
+    read_file: String,
+    exists: String,
 }
 
 impl DbFsQueries {
@@ -277,44 +275,40 @@ impl DbFsQueries {
 
     async fn check_table_available(db: &Database) -> anyhow::Result<()> {
         db.connection
-            .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
+            .acquire()
             .await
-            .map(|_| ())
+            .context("Unable to acquire database connection")?
+            .execute_command("SELECT 1 FROM sqlpage_files WHERE 1 = 0", &[])
+            .await
             .context("Unable to access sqlpage_files")?;
         Ok(())
     }
 
-    async fn make_was_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_was_modified_query(db: &Database) -> anyhow::Result<String> {
         let was_modified_query = format!(
             "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
             make_placeholder(db.info.kind, 1),
             make_placeholder(db.info.kind, 2)
         );
-        let param_types: &[AnyTypeInfo; 2] = &[
-            PgTimeTz::type_info().into(),
-            <str as Type<Postgres>>::type_info().into(),
-        ];
         log::debug!("Preparing the database filesystem was_modified_query: {was_modified_query}");
-        db.prepare_with(&was_modified_query, param_types).await
+        Ok(was_modified_query)
     }
 
-    async fn make_read_file_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_read_file_query(db: &Database) -> anyhow::Result<String> {
         let read_file_query = format!(
             "SELECT contents from sqlpage_files WHERE path = {}",
             make_placeholder(db.info.kind, 1),
         );
-        let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         log::debug!("Preparing the database filesystem read_file_query: {read_file_query}");
-        db.prepare_with(&read_file_query, param_types).await
+        Ok(read_file_query)
     }
 
-    async fn make_exists_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+    async fn make_exists_query(db: &Database) -> anyhow::Result<String> {
         let exists_query = format!(
             "SELECT 1 from sqlpage_files WHERE path = {}",
             make_placeholder(db.info.kind, 1),
         );
-        let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
-        db.prepare_with(&exists_query, param_types).await
+        Ok(exists_query)
     }
 
     async fn file_modified_since_in_db(
@@ -323,22 +317,22 @@ impl DbFsQueries {
         path: &Path,
         since: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
-        let query = self
-            .was_modified
-            .query_as::<(i32,)>()
-            .bind(since)
-            .bind(path.display().to_string());
+        let params = [
+            DbParam::Timestamp(since),
+            DbParam::Text(path.display().to_string()),
+        ];
         log::trace!(
             "Checking if file {} was modified since {} by executing query: \n\
             {}\n\
             with parameters: {:?}",
             path.display(),
             since,
-            self.was_modified.sql(),
+            self.was_modified,
             (since, path)
         );
-        let was_modified_i32 = query
-            .fetch_optional(&app_state.db.connection)
+        let mut conn = app_state.db.connection.acquire().await?;
+        let was_modified_i32 = conn
+            .fetch_optional(&self.was_modified, &params)
             .await
             .with_context(|| {
                 format!(
@@ -350,20 +344,25 @@ impl DbFsQueries {
             "DB File {} was modified result: {was_modified_i32:?}",
             path.display()
         );
-        Ok(was_modified_i32 == Some((1,)))
+        Ok(was_modified_i32.is_some())
     }
 
     async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
         log::debug!("Reading file {} from the database", path.display());
-        self.read_file
-            .query_as::<(Vec<u8>,)>()
-            .bind(path.display().to_string())
-            .fetch_optional(&app_state.db.connection)
+        let mut conn = app_state.db.connection.acquire().await?;
+        conn.fetch_optional(
+                &self.read_file,
+                &[DbParam::Text(path.display().to_string())],
+            )
             .await
             .map_err(anyhow::Error::from)
-            .and_then(|modified| {
-                if let Some((modified,)) = modified {
-                    Ok(modified)
+            .and_then(|row| {
+                if let Some(row) = row {
+                    match row.values.first() {
+                        Some(DbValue::Bytes(bytes)) => Ok(bytes.clone()),
+                        Some(DbValue::Text(text)) => Ok(text.as_bytes().to_vec()),
+                        _ => Ok(Vec::new()),
+                    }
                 } else {
                     Err(ErrorWithStatus {
                         status: actix_web::http::StatusCode::NOT_FOUND,
@@ -375,19 +374,17 @@ impl DbFsQueries {
     }
 
     async fn file_exists(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
-        let query = self
-            .exists
-            .query_as::<(i32,)>()
-            .bind(path.display().to_string());
+        let params = [DbParam::Text(path.display().to_string())];
         log::trace!(
             "Checking if file {} exists by executing query: \n\
             {}\n\
             with parameters: {:?}",
             path.display(),
-            self.exists.sql(),
+            self.exists,
             (path,)
         );
-        let result = query.fetch_optional(&app_state.db.connection).await;
+        let mut conn = app_state.db.connection.acquire().await?;
+        let result = conn.fetch_optional(&self.exists, &params).await;
         log::debug!("DB File exists result: {result:?}");
         result.map(|result| result.is_some()).with_context(|| {
             format!(
@@ -401,7 +398,6 @@ impl DbFsQueries {
 #[actix_web::test]
 async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use crate::app_config;
-    use sqlx::Executor;
     let config = app_config::tests::test_config();
     let state = AppState::init(&config).await?;
 
@@ -417,9 +413,10 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type);
     let db = &state.db;
     let conn = &db.connection;
-    conn.execute("DROP TABLE IF EXISTS sqlpage_files").await?;
+    let mut conn = db.connection.acquire().await?;
+    conn.execute_command("DROP TABLE IF EXISTS sqlpage_files", &[]).await?;
     log::debug!("Creating table sqlpage_files: {create_table_sql}");
-    conn.execute(create_table_sql).await?;
+    conn.execute_command(create_table_sql, &[]).await?;
 
     let dbms = db.info.kind;
     let insert_sql = format!(
@@ -427,10 +424,13 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         make_placeholder(dbms, 1),
         make_placeholder(dbms, 2)
     );
-    sqlx::query(&insert_sql)
-        .bind("unit test file.txt")
-        .bind("Héllö world! 😀".as_bytes())
-        .execute(conn)
+    conn.execute_command(
+            &insert_sql,
+            &[
+                DbParam::Text("unit test file.txt".into()),
+                DbParam::Bytes("Héllö world! 😀".as_bytes().to_vec()),
+            ],
+        )
         .await?;
 
     let fs = FileSystem::init("/", db).await;
