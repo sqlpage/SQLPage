@@ -177,6 +177,17 @@ async fn smoke_example(example: &ExampleApp, database_url: &str) {
 }
 
 async fn prepare_postgres_base_url() -> Option<String> {
+    if let Some(database_url) = database_url_from_env(&["postgres", "postgresql"]) {
+        let admin_url = replace_database_name(&database_url, "postgres");
+        let mut conn = sqlx::PgConnection::connect(&admin_url)
+            .await
+            .unwrap_or_else(|err| panic!("DATABASE_URL points to PostgreSQL but connecting to {admin_url} failed: {err:#}"));
+        conn.execute("SELECT 1").await.unwrap_or_else(|err| {
+            panic!("DATABASE_URL points to PostgreSQL but validation failed: {err:#}")
+        });
+        return Some(replace_database_name(&database_url, "sqlpage_examples"));
+    }
+
     let admin_url = "postgres://root:Password123!@localhost/postgres";
     let mut conn = sqlx::PgConnection::connect(admin_url).await.ok()?;
     conn.execute("SELECT 1").await.ok()?;
@@ -184,6 +195,19 @@ async fn prepare_postgres_base_url() -> Option<String> {
 }
 
 async fn prepare_mysql_base_url() -> Option<String> {
+    if let Some(database_url) = database_url_from_env(&["mysql"]) {
+        let admin_url = replace_database_name(&database_url, "mysql");
+        let mut conn = sqlx::MySqlConnection::connect(&admin_url)
+            .await
+            .unwrap_or_else(|err| {
+                panic!("DATABASE_URL points to MySQL but connecting to {admin_url} failed: {err:#}")
+            });
+        conn.execute("SELECT 1").await.unwrap_or_else(|err| {
+            panic!("DATABASE_URL points to MySQL but validation failed: {err:#}")
+        });
+        return Some(replace_database_name(&database_url, "sqlpage_examples"));
+    }
+
     let mut conn = sqlx::MySqlConnection::connect("mysql://root:Password123!@localhost/mysql")
         .await
         .ok()?;
@@ -195,11 +219,9 @@ async fn prepare_database(database_url: &str, backend: Backend) {
     match backend {
         Backend::Sqlite => {}
         Backend::Postgres => {
-            let db_name = database_url.rsplit('/').next().unwrap();
-            let mut conn =
-                sqlx::PgConnection::connect("postgres://root:Password123!@localhost/postgres")
-                    .await
-                    .unwrap();
+            let db_name = database_name(database_url);
+            let admin_url = replace_database_name(database_url, "postgres");
+            let mut conn = sqlx::PgConnection::connect(&admin_url).await.unwrap();
             let _ = conn
                 .execute(format!("DROP DATABASE IF EXISTS {db_name} WITH (FORCE)").as_str())
                 .await;
@@ -209,11 +231,9 @@ async fn prepare_database(database_url: &str, backend: Backend) {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
         Backend::MySql => {
-            let db_name = database_url.rsplit('/').next().unwrap();
-            let mut conn =
-                sqlx::MySqlConnection::connect("mysql://root:Password123!@localhost/mysql")
-                    .await
-                    .unwrap();
+            let db_name = database_name(database_url);
+            let admin_url = replace_database_name(database_url, "mysql");
+            let mut conn = sqlx::MySqlConnection::connect(&admin_url).await.unwrap();
             conn.execute(format!("DROP DATABASE IF EXISTS {db_name}").as_str())
                 .await
                 .unwrap();
@@ -223,6 +243,40 @@ async fn prepare_database(database_url: &str, backend: Backend) {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
+}
+
+fn database_url_from_env(schemes: &[&str]) -> Option<String> {
+    let database_url = std::env::var("DATABASE_URL").ok()?;
+    let scheme = database_url.split_once(':')?.0;
+    schemes.contains(&scheme).then_some(database_url)
+}
+
+fn database_name(database_url: &str) -> &str {
+    let url_without_query = database_url
+        .split_once('?')
+        .map_or(database_url, |(url, _query)| url);
+    let database_start = url_without_query
+        .rfind('/')
+        .unwrap_or_else(|| panic!("database URL has no path: {database_url}"));
+    &url_without_query[database_start + 1..]
+}
+
+fn replace_database_name(database_url: &str, database_name: &str) -> String {
+    let (url_without_query, query) = database_url
+        .split_once('?')
+        .map_or((database_url, ""), |(url, query)| (url, query));
+    let database_start = url_without_query
+        .rfind('/')
+        .unwrap_or_else(|| panic!("database URL has no path: {database_url}"));
+    let query = if query.is_empty() {
+        String::new()
+    } else {
+        format!("?{query}")
+    };
+    format!(
+        "{}{database_name}{query}",
+        &url_without_query[..=database_start]
+    )
 }
 
 fn slug(name: &str) -> String {
