@@ -1,0 +1,5 @@
+{
+  "backend": "mysql",
+  "config_dir": "sqlpage_config",
+  "web_root": "website"
+}

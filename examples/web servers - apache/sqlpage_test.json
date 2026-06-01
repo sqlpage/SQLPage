@@ -1,0 +1,7 @@
+{
+  "backend": "mysql",
+  "config_dir": "sqlpage_config",
+  "route": "/my_website/",
+  "site_prefix": "/my_website/",
+  "web_root": "website"
+}

@@ -1,0 +1,4 @@
+{
+  "backend": "postgres",
+  "web_root": "website"
+}

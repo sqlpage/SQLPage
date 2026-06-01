@@ -1,0 +1,3 @@
+{
+  "skip": "requires a PostGIS-enabled PostgreSQL database"
+}

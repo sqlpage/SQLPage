@@ -1,0 +1,3 @@
+{
+  "skip": "requires the SpatiaLite SQLite extension"
+}
