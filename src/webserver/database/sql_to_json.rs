@@ -364,7 +364,18 @@ fn decimal_to_json(decimal: &BigDecimal) -> Value {
 }
 
 fn string_decimal_to_json(decimal: &str) -> Value {
-    match decimal.trim().parse::<serde_json::Number>() {
+    let trimmed = decimal.trim();
+    let normalized;
+    let json_number = if trimmed.starts_with('.') {
+        normalized = format!("0{trimmed}");
+        normalized.as_str()
+    } else if trimmed.starts_with("-.") {
+        normalized = format!("-0{}", &trimmed[1..]);
+        normalized.as_str()
+    } else {
+        trimmed
+    };
+    match json_number.parse::<serde_json::Number>() {
         Ok(number) => Value::Number(number),
         Err(e) => {
             log::warn!("Failed to parse decimal value {decimal:?}: {e}");
@@ -440,6 +451,8 @@ mod tests {
     fn test_string_decimal_to_json() {
         assert_eq!(string_decimal_to_json("2"), serde_json::json!(2));
         assert_eq!(string_decimal_to_json(" 42.5 "), serde_json::json!(42.5));
+        assert_eq!(string_decimal_to_json(".47"), serde_json::json!(0.47));
+        assert_eq!(string_decimal_to_json("-.47"), serde_json::json!(-0.47));
         assert_eq!(
             string_decimal_to_json("not a decimal"),
             serde_json::json!("not a decimal")
