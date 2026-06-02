@@ -1,4 +1,10 @@
 services:
+  init-db:
+    image: alpine
+    command: ["sh", "-c", "mkdir -p /etc/sqlpage && touch /etc/sqlpage/sqlpage.db && chmod 777 /etc/sqlpage && chmod 666 /etc/sqlpage/sqlpage.db"]
+    volumes:
+      - ./sqlpage:/etc/sqlpage
+
   web:
     image: lovasoa/sqlpage:main
     ports:
@@ -6,3 +12,6 @@ services:
     volumes:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
