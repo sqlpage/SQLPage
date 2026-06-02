@@ -12,8 +12,6 @@ services:
       RUST_LOG: sqlpage=debug
       DATABASE_URL: mssql://sa:YourStrong!Passw0rd@db:1433/
   db:
-    ports:
-      - "1433:1433"
     image: mcr.microsoft.com/mssql/server:2022-latest
     volumes:
       - ./sqlpage/mssql-migrations:/migrations
