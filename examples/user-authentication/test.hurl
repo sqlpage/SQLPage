@@ -17,6 +17,12 @@ HTTP 302
 [Asserts]
 header "Location" contains "signin.sql?error"
 
+GET http://localhost:8080/signin.sql?error
+HTTP 200
+[Asserts]
+body contains "We could not authenticate you"
+body htmlUnescape contains "href=\"signup.sql\""
+
 POST http://localhost:8080/create_user.sql
 [FormParams]
 username: hurl_user
