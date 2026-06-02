@@ -39,7 +39,17 @@ while IFS= read -r -d "" test_file; do
   current_compose="$dir/docker-compose.yml"
 
   echo "::group::Testing $rel_dir"
-  docker compose -p "$current_project" -f "$current_compose" up -d --quiet-pull --build
+  if ! docker compose -p "$current_project" -f "$current_compose" up -d --quiet-pull --build; then
+    echo "::error file=$rel_dir/docker-compose.yml,title=Example compose startup failed::$rel_dir failed to start"
+    echo "::group::docker compose ps for $rel_dir"
+    docker compose -p "$current_project" -f "$current_compose" ps -a
+    echo "::endgroup::"
+    echo "::group::docker compose logs for $rel_dir"
+    docker compose -p "$current_project" -f "$current_compose" logs
+    echo "::endgroup::"
+    echo "::endgroup::"
+    exit 1
+  fi
   if ! hurl --test \
     --retry 60 \
     --retry-interval 1s \
