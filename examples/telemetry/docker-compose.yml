@@ -94,11 +94,21 @@ services:
     volumes:
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
       - ./postgres-logs:/var/log/postgresql:z
+    depends_on:
+      postgres-logs:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sqlpage"]
       interval: 2s
       timeout: 5s
       retries: 5
+
+  postgres-logs:
+    image: alpine
+    command: ["sh", "-c", "touch /var/log/postgresql/postgresql /var/log/postgresql/postgresql.json && chmod 777 /var/log/postgresql && chmod 666 /var/log/postgresql/postgresql*"]
+    volumes:
+      - ./postgres-logs:/var/log/postgresql:z
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     user: "0:0"
