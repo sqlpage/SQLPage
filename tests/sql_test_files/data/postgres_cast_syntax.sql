@@ -1,1 +1,1 @@
-select 2 as expected, $x::decimal + 1 as actual;
+select '2' as expected_contains, $x::decimal + 1 as actual;
