@@ -4,7 +4,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - .:/var/www
+      - ./www:/var/www
       - ./sqlpage:/etc/sqlpage
     environment:
       DATABASE_URL: sqlite:///tmp/components.db?mode=rwc
