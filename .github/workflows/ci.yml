@@ -135,6 +135,9 @@ jobs:
           # DuckDB ODBC is not available for armv7
           - platform: linux/arm/v7
             variant: duckdb
+          # This build is shared with the Hurl example jobs.
+          - platform: linux/amd64
+            variant: minimal
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -194,10 +197,123 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  docker_build_amd64_minimal:
+    name: docker_build (linux/amd64, minimal)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          flavor: suffix=-linux-amd64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image for Hurl examples
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          target: minimal
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ env.REGISTRY_IMAGE }}:main
+          outputs: type=docker,dest=${{ runner.temp }}/sqlpage.tar
+          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
+      - name: Upload SQLPage image
+        uses: actions/upload-artifact@v7
+        with:
+          name: sqlpage-linux-amd64-minimal-image
+          path: ${{ runner.temp }}/sqlpage.tar
+          if-no-files-found: error
+          retention-days: 1
+      - name: Build and push by digest
+        id: build
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          target: minimal
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
+          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64,compression=zstd,mode=max
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        if: github.event_name != 'pull_request'
+        with:
+          name: digests-minimal-linux-amd64
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  hurl_examples:
+    runs-on: ubuntu-latest
+    outputs:
+      examples: ${{ steps.examples.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: examples
+        run: |
+          examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print | sed 's#/test.hurl$##' | sort | jq -R -s -c 'split("\n")[:-1]')"
+          echo "examples=$examples" >> "$GITHUB_OUTPUT"
+
+  hurl:
+    name: hurl (${{ matrix.example }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - docker_build_amd64_minimal
+      - hurl_examples
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJSON(needs.hurl_examples.outputs.examples) }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Hurl
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=8.0.0
+          archive="hurl-${version}-x86_64-unknown-linux-gnu.tar.gz"
+          gh release download "$version" --repo Orange-OpenSource/hurl --pattern "$archive" --dir /tmp
+          tar xzf "/tmp/$archive" -C /tmp
+          echo "/tmp/hurl-${version}-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
+      - name: Download SQLPage image
+        uses: actions/download-artifact@v8
+        with:
+          name: sqlpage-linux-amd64-minimal-image
+          path: ${{ runner.temp }}/sqlpage-image
+      - name: Load SQLPage image
+        run: |
+          docker load --input "${{ runner.temp }}/sqlpage-image/sqlpage.tar"
+          docker tag "${{ env.REGISTRY_IMAGE }}:main" "${{ env.REGISTRY_IMAGE }}:latest"
+      - name: Run example Hurl test
+        run: scripts/test-examples-hurl.sh "${{ matrix.example }}"
+
   docker_push:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     needs:
+      - docker_build_amd64_minimal
       - docker_build
     strategy:
       matrix:
