@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM --platform=$BUILDPLATFORM rust:1.95-slim AS builder
 
 WORKDIR /usr/src/sqlpage
@@ -13,17 +11,12 @@ RUN cargo init .
 
 RUN /usr/local/bin/setup-cross-compilation.sh "$TARGETARCH" "$BUILDARCH"
 
-COPY Cargo.toml Cargo.lock ./
-RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,target=/usr/src/sqlpage/target \
-    /usr/local/bin/build-dependencies.sh
+COPY Cargo.toml Cargo.lock build.rs ./
+COPY sqlpage/ sqlpage/
+RUN /usr/local/bin/build-dependencies.sh
 
 COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,target=/usr/src/sqlpage/target \
-    /usr/local/bin/build-project.sh
+RUN /usr/local/bin/build-project.sh
 
 # Default minimal image (busybox-based)
 FROM busybox:glibc AS minimal
