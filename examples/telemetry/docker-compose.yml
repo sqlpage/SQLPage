@@ -2,7 +2,7 @@ services:
   nginx:
     image: nginx:otel
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -16,10 +16,7 @@ services:
         tag: "nginx"
 
   sqlpage:
-    build:
-      context: ../..
-      args:
-        CARGO_PROFILE: release
+    image: lovasoa/sqlpage:main
     environment:
       - DATABASE_URL=postgres://sqlpage:sqlpage@postgres:5432/sqlpage
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
@@ -108,11 +105,6 @@ services:
     volumes:
       - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
       - ./postgres-logs:/var/log/postgresql:ro,z
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "1514:1514/udp"
-      - "1516:1516/udp"
     depends_on:
       tempo:
         condition: service_started
@@ -142,8 +134,6 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin

@@ -12,7 +12,7 @@ services:
   apache:
     image: httpd:2.4
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
       - ./static:/var/www:ro
@@ -30,4 +30,4 @@ services:
       - mysql_data:/var/lib/mysql
 
 volumes:
-  mysql_data: 
+  mysql_data:

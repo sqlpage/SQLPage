@@ -1,0 +1,42 @@
+# This file lets you run the example with a single command: docker compose up
+# Download docker here: https://www.docker.com/products/docker-desktop
+#
+# This docker compose starts two services:
+# 1. a SQLPage service that serves a simple page with a login button
+# 2. a Keycloak service that acts as an OpenID Connect provider (manages users and authentication)
+#
+
+services:
+  sqlpage:
+    image: lovasoa/sqlpage:main
+    volumes:
+      - .:/var/www
+      - ./sqlpage:/etc/sqlpage
+    environment:
+      - CAS_ROOT_URL=http://localhost:8181/realms/sqlpage_demo/protocol/cas
+      - RUST_LOG=sqlpage=debug
+    network_mode: host
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: restart
+          path: ./sqlpage/
+
+  keycloak:
+    build:
+      context: .
+      dockerfile: keycloak.Dockerfile
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    volumes:
+      - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
+    network_mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/keycloak/bin/kcadm.sh get realms/sqlpage_demo --server http://localhost:8181 --realm master --user admin --password admin || exit 1"]
+      interval: 10s
+      timeout: 2s
+      retries: 5
+      start_period: 5s

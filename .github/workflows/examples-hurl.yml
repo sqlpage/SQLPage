@@ -1,0 +1,39 @@
+name: Example Hurl Tests
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/examples-hurl.yml"
+      - "examples/**"
+      - "scripts/test-examples-hurl.sh"
+      - "test.hurl"
+      - "Dockerfile"
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/examples-hurl.yml"
+      - "examples/**"
+      - "scripts/test-examples-hurl.sh"
+      - "test.hurl"
+      - "Dockerfile"
+
+jobs:
+  hurl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Hurl
+        run: |
+          version=8.0.0
+          curl --silent --location "https://github.com/Orange-OpenSource/hurl/releases/download/${version}/hurl-${version}-x86_64-unknown-linux-gnu.tar.gz" | tar xz -C /tmp
+          echo "/tmp/hurl-${version}-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Pull common SQLPage image
+        run: docker pull lovasoa/sqlpage:main
+      - name: Run example Hurl tests
+        run: scripts/test-examples-hurl.sh

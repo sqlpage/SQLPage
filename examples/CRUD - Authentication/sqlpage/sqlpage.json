@@ -1,5 +1,5 @@
 {
-  "listen_on": "localhost:8080",
+  "listen_on": "0.0.0.0:8080",
   "database_url": "sqlite://./db/Components.sqlite?mode=rwc",
   "allow_exec": false,
   "web_root": "./www"

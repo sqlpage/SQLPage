@@ -1,0 +1,17 @@
+services:
+  web:
+    image: lovasoa/sqlpage:main
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www
+      - ./sqlpage:/etc/sqlpage
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db/postgres
+  db:
+    image: postgis/postgis:latest
+    platform: linux/amd64
+    environment:
+      POSTGRES_PASSWORD: postgres

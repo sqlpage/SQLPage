@@ -14,7 +14,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - sqlpage_socket:/tmp/sqlpage:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
