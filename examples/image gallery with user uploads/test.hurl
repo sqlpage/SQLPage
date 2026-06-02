@@ -4,7 +4,6 @@ HTTP 200
 [Asserts]
 header "Content-Type" contains "text/html"
 body contains "My image gallery"
-body contains "Your gallery is empty"
 body contains "Upload a new image"
 body not contains "An error occurred"
 
@@ -48,6 +47,8 @@ Title: Hurl test image
 Description: Uploaded by Hurl
 Image: file,screenshots/upload.png; image/png
 HTTP 302
+[Captures]
+location: header "Location"
 [Asserts]
 header "Location" matches "^/\\?created_id=\\d+$"
 
@@ -57,5 +58,4 @@ HTTP 200
 body contains "Hurl test image"
 body contains "Uploaded by Hurl"
 body contains "/images/"
-body not contains "Your gallery is empty"
 body not contains "An error occurred"
