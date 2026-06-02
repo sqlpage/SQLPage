@@ -1,4 +1,10 @@
 services:
+  init-uploads:
+    image: alpine
+    command: ["sh", "-c", "mkdir -p /var/www/images && chmod 777 /var/www/images"]
+    volumes:
+      - .:/var/www
+
   web:
     image: lovasoa/sqlpage:main
     ports:
@@ -6,3 +12,6 @@ services:
     volumes:
       - .:/var/www
       - ./sqlpage:/etc/sqlpage
+    depends_on:
+      init-uploads:
+        condition: service_completed_successfully
