@@ -1,4 +1,5 @@
 /target
+.git/
 sqlpage.db
 docs/
 README.md
