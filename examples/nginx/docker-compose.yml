@@ -1,4 +1,10 @@
 services:
+  init-sqlpage-socket:
+    image: alpine
+    volumes:
+      - sqlpage_socket:/tmp/sqlpage
+    command: ["chown", "1000:1000", "/tmp/sqlpage"]
+
   sqlpage:
     image: lovasoa/sqlpage:main
     volumes:
@@ -9,7 +15,10 @@ services:
       - DATABASE_URL=mysql://sqlpage:sqlpage_password@mysql:3306/sqlpage_db
       - SQLPAGE_UNIX_SOCKET=/tmp/sqlpage/sqlpage.sock
     depends_on:
-      - mysql
+      init-sqlpage-socket:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_started
 
   nginx:
     image: nginx:alpine
