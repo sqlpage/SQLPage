@@ -32,3 +32,12 @@ HTTP 200
 [Asserts]
 body contains "nginx"
 body contains "\"traceID\":\"3\""
+
+GET http://localhost:3200/api/traces/3
+HTTP 200
+[Asserts]
+body contains "\"service.name\""
+body contains "\"sqlpage\""
+body contains "\"nginx\""
+body contains "\"name\":\"GET /\""
+body contains "\"db.query\""
