@@ -40,5 +40,5 @@ HTTP 200
 body contains "Train tickets"
 body contains "90 €"
 body contains "Debts by Person"
-body contains "&quot;Alice&quot;,45"
-body contains "&quot;Bob&quot;,-45"
+body htmlUnescape contains "\"Alice\",45"
+body htmlUnescape contains "\"Bob\",-45"
