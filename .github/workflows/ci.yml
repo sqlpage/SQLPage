@@ -14,6 +14,15 @@ on:
   pull_request:
     branches:
       - "main"
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/official-site.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -175,13 +184,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
-          # don't save cache on prs
-          cache-to: >
-            ${{ github.event_name != 'pull_request'
-              && format('type=registry,ref={0}:main{1},compression=zstd,mode=max', env.REGISTRY_IMAGE, steps.suffix.outputs.suffix)
-              || ''
-            }}
+          cache-from: |
+            type=gha,scope=sqlpage${{ steps.suffix.outputs.suffix }}
+            type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
+          cache-to: type=gha,scope=sqlpage${{ steps.suffix.outputs.suffix }},mode=max
       - name: Export digest
         if: github.event_name != 'pull_request'
         run: |
@@ -228,7 +234,10 @@ jobs:
             ${{ steps.meta.outputs.tags }}
             ${{ env.REGISTRY_IMAGE }}:main
           outputs: type=docker,dest=${{ runner.temp }}/sqlpage.tar
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
+          cache-from: |
+            type=gha,scope=sqlpage-linux-amd64
+            type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
+          cache-to: type=gha,scope=sqlpage-linux-amd64,mode=max
       - name: Upload SQLPage image
         uses: actions/upload-artifact@v7
         with:
@@ -247,8 +256,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
-          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64,compression=zstd,mode=max
+          cache-from: |
+            type=gha,scope=sqlpage-linux-amd64
+            type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
+          cache-to: type=gha,scope=sqlpage-linux-amd64,mode=max
       - name: Export digest
         if: github.event_name != 'pull_request'
         run: |
