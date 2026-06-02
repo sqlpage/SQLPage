@@ -39,7 +39,7 @@ while IFS= read -r -d "" test_file; do
   current_compose="$dir/docker-compose.yml"
 
   echo "::group::Testing $rel_dir"
-  docker compose -p "$current_project" -f "$current_compose" up -d --quiet-pull
+  docker compose -p "$current_project" -f "$current_compose" up -d --quiet-pull --build
   if ! hurl --test \
     --retry 60 \
     --retry-interval 1s \
