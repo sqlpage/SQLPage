@@ -23,9 +23,14 @@ run_index=0
 tested=0
 while IFS= read -r -d "" test_file; do
   dir="$(dirname "$test_file")"
+  rel_dir="${dir#"$ROOT_DIR/"}"
 
-  if [[ -n "$FILTER" && "$dir" != *"$FILTER"* ]]; then
-    continue
+  if [[ -n "$FILTER" ]]; then
+    if [[ "$FILTER" == */* ]]; then
+      [[ "$rel_dir" == "$FILTER" ]] || continue
+    else
+      [[ "$rel_dir" == *"$FILTER"* ]] || continue
+    fi
   fi
 
   run_index=$((run_index + 1))
@@ -33,7 +38,7 @@ while IFS= read -r -d "" test_file; do
   current_project="sqlpage_example_${run_index}"
   current_compose="$dir/docker-compose.yml"
 
-  echo "==> Testing ${dir#"$ROOT_DIR/"}"
+  echo "::group::Testing $rel_dir"
   docker compose -p "$current_project" -f "$current_compose" up -d --quiet-pull
   if ! hurl --test \
     --retry 60 \
@@ -41,11 +46,18 @@ while IFS= read -r -d "" test_file; do
     --connect-timeout 2s \
     --error-format long \
     "$test_file"; then
+    echo "::error file=$rel_dir/test.hurl,title=Hurl example test failed::$rel_dir failed"
+    echo "::group::docker compose ps for $rel_dir"
     docker compose -p "$current_project" -f "$current_compose" ps
+    echo "::endgroup::"
+    echo "::group::docker compose logs for $rel_dir"
     docker compose -p "$current_project" -f "$current_compose" logs
+    echo "::endgroup::"
+    echo "::endgroup::"
     exit 1
   fi
   docker compose -p "$current_project" -f "$current_compose" down --volumes --remove-orphans
+  echo "::endgroup::"
 
   current_project=""
   current_compose=""
