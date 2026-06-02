@@ -28,9 +28,6 @@ services:
     build:
       context: .
       dockerfile: keycloak.Dockerfile
-    environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
     volumes:
       - ./keycloak-configuration.json:/opt/keycloak/data/import/realm.json
     network_mode: host
