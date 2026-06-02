@@ -27,9 +27,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install Hurl
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           version=8.0.0
-          curl --silent --location "https://github.com/Orange-OpenSource/hurl/releases/download/${version}/hurl-${version}-x86_64-unknown-linux-gnu.tar.gz" | tar xz -C /tmp
+          archive="hurl-${version}-x86_64-unknown-linux-gnu.tar.gz"
+          gh release download "$version" --repo Orange-OpenSource/hurl --pattern "$archive" --dir /tmp
+          tar xzf "/tmp/$archive" -C /tmp
           echo "/tmp/hurl-${version}-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
