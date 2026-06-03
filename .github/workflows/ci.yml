@@ -130,8 +130,6 @@ jobs:
           key: windows-incremental-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
           restore-keys: |
             windows-incremental-${{ github.event.pull_request.number || github.ref_name }}-
-      - name: Check port usage
-        run: netstat -bano
       - run: cargo test
         env:
           CARGO_INCREMENTAL: 1
