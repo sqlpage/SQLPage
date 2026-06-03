@@ -274,6 +274,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           flavor: suffix=${{ steps.suffix.outputs.suffix }}
+          labels: |
+            org.opencontainers.image.created=1970-01-01T00:00:00Z
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
       - name: Set up Docker Buildx
@@ -326,6 +328,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           flavor: suffix=-linux-amd64
+          labels: |
+            org.opencontainers.image.created=1970-01-01T00:00:00Z
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - id: cache-scope
