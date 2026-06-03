@@ -255,6 +255,19 @@ jobs:
             suffix="${suffix}-${{ matrix.variant }}"
           fi
           echo "suffix=${suffix}" >> "$GITHUB_OUTPUT"
+      - id: cache-scope
+        name: Docker cache scope
+        run: |
+          ref_scope="main"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            ref_scope="pr-${{ github.event.pull_request.number }}"
+          fi
+
+          recipe_hash="${{ hashFiles('Dockerfile', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**') }}"
+          {
+            echo "current=sqlpage-${ref_scope}${{ steps.suffix.outputs.suffix }}-${recipe_hash}"
+            echo "main=sqlpage-main${{ steps.suffix.outputs.suffix }}-${recipe_hash}"
+          } >> "$GITHUB_OUTPUT"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
@@ -282,9 +295,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: |
-            type=gha,scope=sqlpage${{ steps.suffix.outputs.suffix }}
+            type=gha,scope=${{ steps.cache-scope.outputs.current }}
+            type=gha,scope=${{ steps.cache-scope.outputs.main }}
             type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
-          cache-to: type=gha,scope=sqlpage${{ steps.suffix.outputs.suffix }},mode=max
+          cache-to: type=gha,scope=${{ steps.cache-scope.outputs.current }},mode=max
       - name: Export digest
         if: github.event_name != 'pull_request'
         run: |
@@ -314,6 +328,20 @@ jobs:
           flavor: suffix=-linux-amd64
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+      - id: cache-scope
+        name: Docker cache scope
+        run: |
+          ref_scope="main"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            ref_scope="pr-${{ github.event.pull_request.number }}"
+          fi
+
+          recipe_hash="${{ hashFiles('Dockerfile', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**') }}"
+          {
+            echo "artifact=sqlpage-${ref_scope}-linux-amd64-hurl-${recipe_hash}"
+            echo "current=sqlpage-${ref_scope}-linux-amd64-${recipe_hash}"
+            echo "main=sqlpage-main-linux-amd64-${recipe_hash}"
+          } >> "$GITHUB_OUTPUT"
       - name: Login to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
@@ -332,9 +360,11 @@ jobs:
             ${{ env.REGISTRY_IMAGE }}:main
           outputs: type=docker,dest=${{ runner.temp }}/sqlpage.tar
           cache-from: |
-            type=gha,scope=sqlpage-linux-amd64
+            type=gha,scope=${{ steps.cache-scope.outputs.artifact }}
+            type=gha,scope=${{ steps.cache-scope.outputs.current }}
+            type=gha,scope=${{ steps.cache-scope.outputs.main }}
             type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
-          cache-to: type=gha,scope=sqlpage-linux-amd64,mode=max
+          cache-to: type=gha,scope=${{ steps.cache-scope.outputs.artifact }},mode=max
       - name: Upload SQLPage image
         uses: actions/upload-artifact@v7
         with:
@@ -354,9 +384,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: |
-            type=gha,scope=sqlpage-linux-amd64
+            type=gha,scope=${{ steps.cache-scope.outputs.current }}
+            type=gha,scope=${{ steps.cache-scope.outputs.main }}
             type=registry,ref=${{ env.REGISTRY_IMAGE }}:main-linux-amd64
-          cache-to: type=gha,scope=sqlpage-linux-amd64,mode=max
+          cache-to: type=gha,scope=${{ steps.cache-scope.outputs.current }},mode=max
       - name: Export digest
         if: github.event_name != 'pull_request'
         run: |
