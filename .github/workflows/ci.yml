@@ -290,7 +290,10 @@ jobs:
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: .
+          # Use BuildKit's Git context instead of the mutable runner workspace.
+          # The dependency cache should be keyed by committed source, not by a
+          # per-job local context stream.
+          context: "{{defaultContext}}"
           platforms: ${{ matrix.platform }}
           target: ${{ matrix.variant }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -355,7 +358,10 @@ jobs:
       - name: Build image for Hurl examples
         uses: docker/build-push-action@v7
         with:
-          context: .
+          # Use BuildKit's Git context instead of the mutable runner workspace.
+          # The dependency cache should be keyed by committed source, not by a
+          # per-job local context stream.
+          context: "{{defaultContext}}"
           platforms: linux/amd64
           target: minimal
           labels: ${{ steps.meta.outputs.labels }}
@@ -381,7 +387,10 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v7
         with:
-          context: .
+          # Use BuildKit's Git context instead of the mutable runner workspace.
+          # The dependency cache should be keyed by committed source, not by a
+          # per-job local context stream.
+          context: "{{defaultContext}}"
           platforms: linux/amd64
           target: minimal
           labels: ${{ steps.meta.outputs.labels }}
