@@ -11,7 +11,9 @@ RUN cargo init .
 
 RUN /usr/local/bin/setup-cross-compilation.sh "$TARGETARCH" "$BUILDARCH"
 
-COPY Cargo.toml Cargo.lock ./
+COPY .cargo/ .cargo/
+COPY Cargo.toml Cargo.lock build.rs ./
+COPY sqlpage/ sqlpage/
 RUN /usr/local/bin/build-dependencies.sh
 
 COPY . .
