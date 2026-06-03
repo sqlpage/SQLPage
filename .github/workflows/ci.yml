@@ -45,7 +45,6 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test --features odbc-static
       # The database matrix below runs the same Rust test harnesses against
       # different DATABASE_URL values. Package the Linux test executables once
       # here so those jobs do not recompile SQLPage or its dependencies.
@@ -61,6 +60,8 @@ jobs:
               done
           test -n "$(find target/sqlpage-test-binaries -maxdepth 1 -type f -print -quit)"
           tar -C target/sqlpage-test-binaries -czf target/sqlpage-linux-test-binaries.tar.gz .
+      - name: Build Linux binary
+        run: cargo build --features odbc-static
       - name: Upload Linux Rust test binaries
         uses: actions/upload-artifact@v7
         with:
@@ -78,6 +79,9 @@ jobs:
     strategy:
       matrix:
         include:
+          - database: sqlite
+            container: ""
+            db_url: "sqlite::memory:"
           - database: postgres
             container: postgres
             db_url: "postgres://root:Password123!@127.0.0.1/sqlpage"
@@ -123,9 +127,10 @@ jobs:
           sudo /usr/lib/oracle/21/client64/bin/odbc_update_ini.sh / /usr/lib/oracle/21/client64/lib
           echo "LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Start database container
+        if: matrix.container != ''
         run: docker compose up --wait ${{ matrix.container }}
       - name: Show container logs
-        if: failure()
+        if: failure() && matrix.container != ''
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
