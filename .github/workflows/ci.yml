@@ -46,6 +46,26 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --features odbc-static
+      # The database matrix below runs the same Rust test harnesses against
+      # different DATABASE_URL values. Package the Linux test executables once
+      # here so those jobs do not recompile SQLPage or its dependencies.
+      - name: Package Linux Rust test binaries
+        run: |
+          set -euo pipefail
+          rm -rf target/sqlpage-test-binaries
+          mkdir -p target/sqlpage-test-binaries
+          cargo test --features odbc-static --no-run --message-format=json \
+            | jq -r 'select(.profile.test == true and .executable != null) | .executable' \
+            | while IFS= read -r test_binary; do
+                cp -- "$test_binary" target/sqlpage-test-binaries/
+              done
+          test -n "$(find target/sqlpage-test-binaries -maxdepth 1 -type f -print -quit)"
+          tar -C target/sqlpage-test-binaries -czf target/sqlpage-linux-test-binaries.tar.gz .
+      - name: Upload Linux Rust test binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: sqlpage-linux-test-binaries
+          path: "target/sqlpage-linux-test-binaries.tar.gz"
       - name: Upload Linux binary
         uses: actions/upload-artifact@v7
         with:
@@ -54,6 +74,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    needs: compile_and_lint
     strategy:
       matrix:
         include:
@@ -75,13 +96,18 @@ jobs:
             db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
     steps:
       - uses: actions/checkout@v6
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
-        env:
-          NODE_OPTIONS: --no-deprecation
+      # Reuse the exact Linux test harnesses produced by compile_and_lint.
+      # This keeps the DB matrix focused on database behavior instead of
+      # compiling the same Rust crate five more times.
+      - name: Download Linux Rust test binaries
+        uses: actions/download-artifact@v8
         with:
-          shared-key: rust-sqlpage-proj-test
-          save-if: false
+          name: sqlpage-linux-test-binaries
+          path: target
+      - name: Extract Linux Rust test binaries
+        run: |
+          mkdir -p target/sqlpage-test-binaries
+          tar -xzf target/sqlpage-linux-test-binaries.tar.gz -C target/sqlpage-test-binaries
       - name: Install PostgreSQL ODBC driver
         if: matrix.setup_odbc
         run: sudo apt-get install -y odbc-postgresql
@@ -95,7 +121,7 @@ jobs:
           sudo alien -i oracle-instantclient-odbc-21.21.0.0.0-1.el8.x86_64.rpm
           sudo ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/libaio.so.1
           sudo /usr/lib/oracle/21/client64/bin/odbc_update_ini.sh / /usr/lib/oracle/21/client64/lib
-          echo "LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Start database container
         run: docker compose up --wait ${{ matrix.container }}
       - name: Show container logs
@@ -103,7 +129,19 @@ jobs:
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: cargo test --features odbc-static
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          test_binaries=(target/sqlpage-test-binaries/*)
+          if ((${#test_binaries[@]} == 0)); then
+            echo "No test binaries were found in target/sqlpage-test-binaries" >&2
+            exit 1
+          fi
+          for test_binary in "${test_binaries[@]}"; do
+            echo "::group::$(basename "$test_binary")"
+            "$test_binary"
+            echo "::endgroup::"
+          done
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           MALLOC_CHECK_: 3
@@ -139,6 +177,48 @@ jobs:
         with:
           name: sqlpage-windows-debug
           path: "target/debug/sqlpage.exe"
+
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: compile_and_lint
+    defaults:
+      run:
+        working-directory: ./tests/end-to-end
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: 'npm'
+          cache-dependency-path: ./tests/end-to-end/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
+      - run: npm ci && npx playwright install --with-deps chromium
+      # The browser tests exercise the official site, but they do not need a
+      # separate Rust build. Reuse the binary compiled and tested above.
+      - name: Download Linux binary
+        uses: actions/download-artifact@v8
+        with:
+          name: sqlpage-linux-debug
+          path: ${{ runner.temp }}/sqlpage-bin
+      - name: Start official site and wait for it to be ready
+        timeout-minutes: 1
+        run: |
+          chmod +x "${{ runner.temp }}/sqlpage-bin/sqlpage"
+          "${{ runner.temp }}/sqlpage-bin/sqlpage" 2>/tmp/stderrlog &
+          tail -f /tmp/stderrlog | grep -q "started successfully"
+        working-directory: ./examples/official-site
+      - name: Run Playwright tests
+        run: npx playwright test
+      - name: show server logs
+        if: failure()
+        run: cat /tmp/stderrlog
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-report
+          path: ./tests/end-to-end/playwright-report/
+          retention-days: 30
 
   docker_build:
     runs-on: ubuntu-latest
