@@ -77,11 +77,16 @@ fn kind_from_database_url(url: &str) -> anyhow::Result<DbKind> {
         Ok(DbKind::MySql)
     } else if url.starts_with("mssql:") || url.starts_with("sqlserver:") {
         Ok(DbKind::Mssql)
-    } else if url.starts_with("odbc:") {
+    } else if url.starts_with("odbc:") || is_raw_odbc_connection_string(url) {
         Ok(DbKind::Odbc)
     } else {
         anyhow::bail!("unsupported database URL scheme")
     }
+}
+
+fn is_raw_odbc_connection_string(url: &str) -> bool {
+    let trimmed = url.trim_start();
+    trimmed.starts_with("Driver=") || trimmed.starts_with("DSN=")
 }
 
 fn default_max_connections(config: &AppConfig, kind: DbKind) -> u32 {
@@ -124,5 +129,34 @@ fn read_connection_handler(config: &AppConfig, file_name: &str) -> Option<String
             log::error!("Unable to read the file {}: {}", file.display(), e);
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_prefixed_odbc_urls() {
+        assert_eq!(
+            kind_from_database_url("odbc:Driver=Oracle 21 ODBC driver;Dbq=//localhost/FREEPDB1")
+                .unwrap(),
+            DbKind::Odbc
+        );
+    }
+
+    #[test]
+    fn detects_raw_odbc_connection_strings() {
+        assert_eq!(
+            kind_from_database_url(
+                "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
+            )
+            .unwrap(),
+            DbKind::Odbc
+        );
+        assert_eq!(
+            kind_from_database_url("DSN=warehouse;Uid=user;Pwd=secret").unwrap(),
+            DbKind::Odbc
+        );
     }
 }
