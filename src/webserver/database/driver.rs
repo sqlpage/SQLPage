@@ -119,6 +119,12 @@ impl From<tokio_rusqlite::Error> for DbError {
 
 impl From<tokio_postgres::Error> for DbError {
     fn from(error: tokio_postgres::Error) -> Self {
+        if let Some(db_error) = error.as_db_error() {
+            return DbError::Database {
+                message: db_error.message().to_string(),
+                offset: db_error.position().and_then(postgres_error_position),
+            };
+        }
         db_error(error)
     }
 }
@@ -139,6 +145,13 @@ fn db_error(error: impl std::error::Error) -> DbError {
     DbError::Database {
         message: error.to_string(),
         offset: None,
+    }
+}
+
+fn postgres_error_position(position: &tokio_postgres::error::ErrorPosition) -> Option<usize> {
+    match position {
+        tokio_postgres::error::ErrorPosition::Original(position) => usize::try_from(*position).ok(),
+        tokio_postgres::error::ErrorPosition::Internal { .. } => None,
     }
 }
 
@@ -887,8 +900,8 @@ fn postgres_value(
             .try_get::<_, f64>(idx)
             .map_or(DbValue::Null, DbValue::Real),
         Type::NUMERIC => row
-            .try_get::<_, String>(idx)
-            .map_or(DbValue::Null, |value| numeric_text_value(&value)),
+            .try_get::<_, PgNumericValue>(idx)
+            .map_or(DbValue::Null, |value| value.0),
         Type::BYTEA => row
             .try_get::<_, Vec<u8>>(idx)
             .map_or(DbValue::Null, DbValue::Bytes),
@@ -911,6 +924,101 @@ fn postgres_value(
             .try_get::<_, String>(idx)
             .map_or(DbValue::Null, DbValue::Text),
     }
+}
+
+struct PgNumericValue(DbValue);
+
+impl<'a> tokio_postgres::types::FromSql<'a> for PgNumericValue {
+    fn from_sql(
+        ty: &tokio_postgres::types::Type,
+        raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        if *ty != tokio_postgres::types::Type::NUMERIC {
+            return Err("PgNumericValue only supports NUMERIC".into());
+        }
+        Ok(Self(numeric_text_value(&postgres_numeric_to_string(raw)?)))
+    }
+
+    fn accepts(ty: &tokio_postgres::types::Type) -> bool {
+        *ty == tokio_postgres::types::Type::NUMERIC
+    }
+}
+
+fn postgres_numeric_to_string(
+    raw: &[u8],
+) -> Result<String, Box<dyn std::error::Error + Sync + Send>> {
+    use std::fmt::Write as _;
+
+    const SIGN_POSITIVE: u16 = 0x0000;
+    const SIGN_NEGATIVE: u16 = 0x4000;
+    const SIGN_NAN: u16 = 0xC000;
+    const SIGN_POSITIVE_INFINITY: u16 = 0xD000;
+    const SIGN_NEGATIVE_INFINITY: u16 = 0xF000;
+
+    if raw.len() < 8 {
+        return Err("invalid PostgreSQL NUMERIC payload".into());
+    }
+    let digit_count = usize::from(read_u16_be(raw, 0));
+    let weight = read_i16_be(raw, 2);
+    let sign = read_u16_be(raw, 4);
+    let decimal_scale = usize::from(read_u16_be(raw, 6));
+    if raw.len() < 8 + digit_count * 2 {
+        return Err("truncated PostgreSQL NUMERIC payload".into());
+    }
+    match sign {
+        SIGN_NAN => return Ok("NaN".to_string()),
+        SIGN_POSITIVE_INFINITY => return Ok("Infinity".to_string()),
+        SIGN_NEGATIVE_INFINITY => return Ok("-Infinity".to_string()),
+        SIGN_POSITIVE | SIGN_NEGATIVE => {}
+        _ => return Err("invalid PostgreSQL NUMERIC sign".into()),
+    }
+
+    let digits = (0..digit_count)
+        .map(|idx| read_u16_be(raw, 8 + idx * 2))
+        .collect::<Vec<_>>();
+    let integer_group_count = i32::from(weight) + 1;
+
+    let mut integer_part = String::new();
+    if integer_group_count <= 0 {
+        integer_part.push('0');
+    } else {
+        for group_idx in 0..usize::try_from(integer_group_count)? {
+            let digit = digits.get(group_idx).copied().unwrap_or_default();
+            if group_idx == 0 {
+                integer_part.push_str(&digit.to_string());
+            } else {
+                write!(integer_part, "{digit:04}")?;
+            }
+        }
+    }
+
+    let mut fraction_part = String::new();
+    for _ in 0..(-integer_group_count).max(0) {
+        fraction_part.push_str("0000");
+    }
+    let first_fraction_group = usize::try_from(integer_group_count.max(0))?;
+    for digit in digits.iter().skip(first_fraction_group) {
+        write!(fraction_part, "{digit:04}")?;
+    }
+    fraction_part.truncate(decimal_scale);
+    while fraction_part.len() < decimal_scale {
+        fraction_part.push('0');
+    }
+
+    let prefix = if sign == SIGN_NEGATIVE { "-" } else { "" };
+    if decimal_scale == 0 {
+        Ok(format!("{prefix}{integer_part}"))
+    } else {
+        Ok(format!("{prefix}{integer_part}.{fraction_part}"))
+    }
+}
+
+fn read_i16_be(bytes: &[u8], offset: usize) -> i16 {
+    i16::from_be_bytes([bytes[offset], bytes[offset + 1]])
+}
+
+fn read_u16_be(bytes: &[u8], offset: usize) -> u16 {
+    u16::from_be_bytes([bytes[offset], bytes[offset + 1]])
 }
 
 async fn execute_mysql(

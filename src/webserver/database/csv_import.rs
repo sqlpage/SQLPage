@@ -163,14 +163,18 @@ pub(super) async fn run_csv_import(
         )
     })?;
     let buffered = tokio::io::BufReader::new(file);
-    run_csv_import_insert(db, csv_import, buffered).await
-    .with_context(|| {
+    run_csv_import_insert(db, csv_import, buffered).await.with_context(|| {
         let table_name = &csv_import.table_name;
-        format!(
+        let import_error = format!(
             "{} was uploaded correctly, but its records could not be imported into the table {}",
             file_path.display(),
             table_name
-        )
+        );
+        if db.kind() == DbKind::Postgres {
+            format!("The postgres COPY FROM STDIN command failed. {import_error}")
+        } else {
+            import_error
+        }
     })
 }
 
