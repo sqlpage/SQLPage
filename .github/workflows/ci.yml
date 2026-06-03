@@ -117,10 +117,24 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
           NODE_OPTIONS: --no-deprecation
+      - name: Set up Windows incremental cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            target/debug/.fingerprint/sqlpage-*
+            target/debug/build/sqlpage-*
+            target/debug/deps/sqlpage*
+            target/debug/incremental
+            target/debug/sqlpage.exe
+            target/debug/sqlpage.pdb
+          key: windows-incremental-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            windows-incremental-${{ github.event.pull_request.number || github.ref_name }}-
       - name: Check port usage
         run: netstat -bano
       - run: cargo test
         env:
+          CARGO_INCREMENTAL: 1
           RUST_BACKTRACE: 1
       - name: Upload Windows binary
         uses: actions/upload-artifact@v7
