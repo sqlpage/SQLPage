@@ -123,10 +123,10 @@ jobs:
           path: |
             target/debug/.fingerprint/sqlpage-*
             target/debug/build/sqlpage-*
-            target/debug/deps/sqlpage*
-            target/debug/incremental
-            target/debug/sqlpage.exe
-            target/debug/sqlpage.pdb
+            target/debug/deps/libsqlpage-*.rlib
+            target/debug/deps/libsqlpage-*.rmeta
+            target/debug/deps/sqlpage-*.d
+            target/debug/incremental/sqlpage-*
           key: windows-incremental-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
           restore-keys: |
             windows-incremental-${{ github.event.pull_request.number || github.ref_name }}-
