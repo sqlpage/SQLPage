@@ -886,6 +886,9 @@ fn postgres_value(
         Type::FLOAT8 => row
             .try_get::<_, f64>(idx)
             .map_or(DbValue::Null, DbValue::Real),
+        Type::NUMERIC => row
+            .try_get::<_, String>(idx)
+            .map_or(DbValue::Null, |value| numeric_text_value(&value)),
         Type::BYTEA => row
             .try_get::<_, Vec<u8>>(idx)
             .map_or(DbValue::Null, DbValue::Bytes),
@@ -950,7 +953,8 @@ where
             let values = row
                 .unwrap_raw()
                 .into_iter()
-                .map(mysql_value)
+                .zip(columns.iter())
+                .map(|(value, column)| mysql_value(value, column.type_name.as_deref()))
                 .collect::<Vec<_>>();
             result.push(DbStatementResult::Row(DbRow {
                 columns: columns.clone(),
@@ -991,7 +995,7 @@ fn mysql_value_from_param(param: &DbParam) -> mysql_async::Value {
     }
 }
 
-fn mysql_value(value: Option<mysql_async::Value>) -> DbValue {
+fn mysql_value(value: Option<mysql_async::Value>, type_name: Option<&str>) -> DbValue {
     use mysql_async::Value;
     match value {
         None | Some(Value::NULL) => DbValue::Null,
@@ -1001,8 +1005,10 @@ fn mysql_value(value: Option<mysql_async::Value>) -> DbValue {
         }
         Some(Value::Float(value)) => DbValue::Real(f64::from(value)),
         Some(Value::Double(value)) => DbValue::Real(value),
-        Some(Value::Bytes(bytes)) => String::from_utf8(bytes)
-            .map_or_else(|err| DbValue::Bytes(err.into_bytes()), DbValue::Text),
+        Some(Value::Bytes(bytes)) => String::from_utf8(bytes).map_or_else(
+            |err| DbValue::Bytes(err.into_bytes()),
+            |value| typed_text_value(value, type_name),
+        ),
         Some(Value::Date(year, month, day, hour, minute, second, micros)) => DbValue::Text(
             format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}.{micros:06}"),
         ),
@@ -1116,9 +1122,9 @@ fn mssql_value(value: tiberius::ColumnData<'static>) -> DbValue {
         ColumnData::Guid(value) => {
             value.map_or(DbValue::Null, |value| DbValue::Text(value.to_string()))
         }
-        ColumnData::Numeric(value) => {
-            value.map_or(DbValue::Null, |value| DbValue::Text(value.to_string()))
-        }
+        ColumnData::Numeric(value) => value.map_or(DbValue::Null, |value| {
+            numeric_text_value(&value.to_string())
+        }),
         other => DbValue::Text(format!("{other:?}")),
     }
 }
@@ -1212,17 +1218,17 @@ where
     let mut result = Vec::new();
     while let Some(mut row) = cursor.next_row().map_err(db_error)? {
         let mut values = Vec::with_capacity(column_count);
-        for idx in 0..column_count {
+        for (idx, column) in columns.iter().enumerate() {
             let column_number = u16::try_from(idx + 1).map_err(db_error)?;
             let mut value = Vec::new();
             if row
                 .get_binary(column_number, &mut value)
                 .map_err(db_error)?
             {
-                values.push(
-                    String::from_utf8(value)
-                        .map_or_else(|err| DbValue::Bytes(err.into_bytes()), DbValue::Text),
-                );
+                values.push(String::from_utf8(value).map_or_else(
+                    |err| DbValue::Bytes(err.into_bytes()),
+                    |value| typed_text_value(value, column.type_name.as_deref()),
+                ));
             } else {
                 values.push(DbValue::Null);
             }
@@ -1264,6 +1270,77 @@ fn sqlite_value(value: rusqlite::types::ValueRef<'_>) -> DbValue {
     }
 }
 
+fn typed_text_value(value: String, type_name: Option<&str>) -> DbValue {
+    let Some(type_name) = type_name else {
+        return DbValue::Text(value);
+    };
+    if is_numeric_type_name(type_name) {
+        numeric_text_value(&value)
+    } else if is_bool_type_name(type_name) {
+        bool_text_value(&value).unwrap_or(DbValue::Text(value))
+    } else {
+        DbValue::Text(value)
+    }
+}
+
+fn is_numeric_type_name(type_name: &str) -> bool {
+    type_name.contains("DECIMAL")
+        || type_name.contains("NEWDECIMAL")
+        || type_name.starts_with("Decimal")
+        || type_name.starts_with("Numeric")
+        || type_name.starts_with("Integer")
+        || type_name.starts_with("SmallInt")
+        || type_name.starts_with("TinyInt")
+        || type_name.starts_with("BigInt")
+        || type_name.starts_with("Float")
+        || type_name.starts_with("Real")
+        || type_name.starts_with("Double")
+}
+
+fn is_bool_type_name(type_name: &str) -> bool {
+    type_name.starts_with("Bit")
+}
+
+fn numeric_text_value(value: &str) -> DbValue {
+    let trimmed = value.trim();
+    if let Some(integer) = zero_fraction_integer_text(trimmed)
+        && let Ok(value) = integer.parse::<i64>()
+    {
+        return DbValue::Integer(value);
+    }
+    if let Ok(value) = trimmed.parse::<i64>() {
+        return DbValue::Integer(value);
+    }
+    if let Ok(value) = trimmed.parse::<f64>()
+        && value.is_finite()
+    {
+        return DbValue::Real(value);
+    }
+    DbValue::Text(value.to_string())
+}
+
+fn zero_fraction_integer_text(value: &str) -> Option<String> {
+    let (integer, fraction) = value.split_once('.')?;
+    if !fraction.chars().all(|c| c == '0') {
+        return None;
+    }
+    let (sign, digits) = integer
+        .strip_prefix('-')
+        .map_or(("", integer), |digits| ("-", digits));
+    if digits.is_empty() || !digits.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    Some(format!("{sign}{digits}"))
+}
+
+fn bool_text_value(value: &str) -> Option<DbValue> {
+    match value.trim() {
+        "0" | "false" | "FALSE" => Some(DbValue::Bool(false)),
+        "1" | "true" | "TRUE" => Some(DbValue::Bool(true)),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1299,5 +1376,35 @@ mod tests {
             panic!("expected first SQLite stream item to be a row");
         };
         assert!(matches!(row.values.first(), Some(DbValue::Integer(1))));
+    }
+
+    #[test]
+    fn decimal_text_without_fraction_becomes_integer() {
+        assert!(matches!(numeric_text_value("2"), DbValue::Integer(2)));
+        assert!(matches!(numeric_text_value("2.000"), DbValue::Integer(2)));
+    }
+
+    #[test]
+    fn decimal_text_with_fraction_becomes_real() {
+        match numeric_text_value("123.45") {
+            DbValue::Real(value) => assert!((value - 123.45).abs() < f64::EPSILON),
+            value => panic!("expected real value, got {value:?}"),
+        }
+    }
+
+    #[test]
+    fn typed_text_keeps_text_columns_as_text() {
+        assert!(matches!(
+            typed_text_value("2".to_string(), Some("VarChar { length: Some(255) }")),
+            DbValue::Text(value) if value == "2"
+        ));
+    }
+
+    #[test]
+    fn typed_text_parses_decimal_columns() {
+        assert!(matches!(
+            typed_text_value("2.00".to_string(), Some("MYSQL_TYPE_NEWDECIMAL")),
+            DbValue::Integer(2)
+        ));
     }
 }
