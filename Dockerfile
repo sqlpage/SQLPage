@@ -7,7 +7,9 @@ ARG CARGO_PROFILE=superoptimized
 ENV CARGO_PROFILE=$CARGO_PROFILE
 
 COPY scripts/ /usr/local/bin/
-RUN cargo init .
+RUN cargo init --lib . && \
+    printf 'pub fn dependency_warmup() {}\n' > src/lib.rs && \
+    printf 'fn main() { sqlpage::dependency_warmup(); }\n' > src/main.rs
 
 RUN /usr/local/bin/setup-cross-compilation.sh "$TARGETARCH" "$BUILDARCH"
 
