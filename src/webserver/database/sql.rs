@@ -599,8 +599,8 @@ fn sqlpage_func_name(func_name_parts: &[ObjectNamePart]) -> &str {
 }
 
 fn extract_json_columns(stmt: &Statement, dbms: SupportedDatabase) -> Vec<String> {
-    // Only extract JSON columns for databases without native JSON support
-    if matches!(dbms, SupportedDatabase::Postgres | SupportedDatabase::Mssql) {
+    // Skip databases whose driver already returns native JSON values.
+    if matches!(dbms, SupportedDatabase::Mssql) {
         return Vec::new();
     }
 
@@ -1287,6 +1287,12 @@ mod test {
 
         let stmt = parse_stmt(sql, &SQLiteDialect {});
         let json_columns = extract_json_columns(&stmt, SupportedDatabase::Sqlite);
+
+        assert!(json_columns.contains(&"item".to_string()));
+        assert!(!json_columns.contains(&"title".to_string()));
+
+        let stmt = parse_postgres_stmt(sql);
+        let json_columns = extract_json_columns(&stmt, SupportedDatabase::Postgres);
 
         assert!(json_columns.contains(&"item".to_string()));
         assert!(!json_columns.contains(&"title".to_string()));
