@@ -1135,12 +1135,20 @@ async fn execute_mssql(
     sql: &str,
     params: &[DbParam],
 ) -> Result<Vec<DbStatementResult>, DbError> {
+    if params.is_empty() {
+        let rows = client.simple_query(sql).await?.into_results().await?;
+        return Ok(mssql_results(rows));
+    }
     let params = params.iter().map(MssqlParam::from).collect::<Vec<_>>();
     let param_refs = params
         .iter()
         .map(|param| param as &dyn tiberius::ToSql)
         .collect::<Vec<_>>();
     let rows = client.query(sql, &param_refs).await?.into_results().await?;
+    Ok(mssql_results(rows))
+}
+
+fn mssql_results(rows: Vec<Vec<tiberius::Row>>) -> Vec<DbStatementResult> {
     let mut result = Vec::new();
     for set in rows {
         for row in set {
@@ -1150,7 +1158,7 @@ async fn execute_mssql(
     if result.is_empty() {
         result.push(DbStatementResult::Finished);
     }
-    Ok(result)
+    result
 }
 
 enum MssqlParam {
