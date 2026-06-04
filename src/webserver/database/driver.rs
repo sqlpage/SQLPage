@@ -1337,13 +1337,19 @@ where
         for (idx, column) in columns.iter().enumerate() {
             let column_number = u16::try_from(idx + 1).map_err(db_error)?;
             let mut value = Vec::new();
-            if row
-                .get_binary(column_number, &mut value)
-                .map_err(db_error)?
-            {
+            if is_binary_type_name(column.type_name.as_deref()) {
+                if row
+                    .get_binary(column_number, &mut value)
+                    .map_err(db_error)?
+                {
+                    values.push(DbValue::Bytes(value));
+                } else {
+                    values.push(DbValue::Null);
+                }
+            } else if row.get_text(column_number, &mut value).map_err(db_error)? {
                 values.push(String::from_utf8(value).map_or_else(
                     |err| DbValue::Bytes(err.into_bytes()),
-                    |value| typed_text_value(value, column.type_name.as_deref()),
+                    |value| typed_text_value(trim_odbc_text(value), column.type_name.as_deref()),
                 ));
             } else {
                 values.push(DbValue::Null);
@@ -1397,6 +1403,21 @@ fn typed_text_value(value: String, type_name: Option<&str>) -> DbValue {
     } else {
         DbValue::Text(value)
     }
+}
+
+fn trim_odbc_text(mut value: String) -> String {
+    if value.ends_with('\0') {
+        value.pop();
+    }
+    value
+}
+
+fn is_binary_type_name(type_name: Option<&str>) -> bool {
+    type_name.is_some_and(|type_name| {
+        type_name.starts_with("Binary")
+            || type_name.starts_with("Varbinary")
+            || type_name.starts_with("LongVarbinary")
+    })
 }
 
 fn is_numeric_type_name(type_name: &str) -> bool {
@@ -1522,5 +1543,19 @@ mod tests {
             typed_text_value("2.00".to_string(), Some("MYSQL_TYPE_NEWDECIMAL")),
             DbValue::Integer(2)
         ));
+    }
+
+    #[test]
+    fn odbc_text_trims_trailing_nul() {
+        assert_eq!(trim_odbc_text("hello\0".to_string()), "hello");
+        assert_eq!(trim_odbc_text("hello".to_string()), "hello");
+    }
+
+    #[test]
+    fn odbc_binary_type_detection() {
+        assert!(is_binary_type_name(Some("Binary { length: Some(4) }")));
+        assert!(is_binary_type_name(Some("Varbinary { length: None }")));
+        assert!(is_binary_type_name(Some("LongVarbinary { length: None }")));
+        assert!(!is_binary_type_name(Some("Integer")));
     }
 }
