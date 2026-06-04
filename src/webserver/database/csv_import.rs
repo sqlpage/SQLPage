@@ -332,9 +332,12 @@ async fn test_end_to_end() {
         .await
         .unwrap();
     let mut conn = db.connection.acquire().await.unwrap();
-    conn.execute_command("CREATE TABLE my_table (col1 TEXT, col2 TEXT)", &[])
-        .await
-        .unwrap();
+    conn.execute_command(
+        "CREATE TABLE my_table (col1 VARCHAR(4000), col2 VARCHAR(4000))",
+        &[],
+    )
+    .await
+    .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
     let file = csv.as_bytes();
     run_csv_import_insert(&mut conn, &csv_import, file)
