@@ -37,7 +37,7 @@ SELECT 'divider' as component;
 SELECT 'form' as component,
        'Add a comment' as title,
        'Post comment' as validate,
-       '/add_comment.sql?id=' || $id as action;
+       CONCAT('/add_comment.sql?id=', $id) as action;
 
 SELECT 'textarea' as type,
        'content' as name,

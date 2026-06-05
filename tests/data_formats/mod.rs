@@ -49,7 +49,15 @@ async fn test_csv_body() -> actix_web::Result<()> {
         return Ok(());
     }
 
-    let req = crate::common::get_request_to_with_data("/tests/data_formats/csv_data.sql", app_data)
+    let csv_test_file = if matches!(
+        app_data.db.info.database_type,
+        sqlpage::webserver::database::SupportedDatabase::Mssql
+    ) {
+        "/tests/data_formats/csv_data_mssql.sql"
+    } else {
+        "/tests/data_formats/csv_data.sql"
+    };
+    let req = crate::common::get_request_to_with_data(csv_test_file, app_data)
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;
