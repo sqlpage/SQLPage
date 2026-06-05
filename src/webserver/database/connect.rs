@@ -28,12 +28,12 @@ impl Database {
                 let mut options = database_url.parse::<SqliteConnectOptions>()?;
                 options = set_common_connect_options(options);
                 options = set_custom_connect_options_sqlite(options, config);
-                let pool = Self::create_sqlite_pool_options(config, db_kind)
-                    .connect_with(options)
-                    .await
-                    .with_context(|| {
-                        format!("Unable to open connection pool to {}", config.database_url)
-                    })?;
+                let pool = connect_pool_with_retries(
+                    Self::create_sqlite_pool_options(config, db_kind),
+                    options,
+                    config,
+                )
+                .await?;
                 DatabasePool::Sqlite(pool)
             }
             DbKind::Postgres => {
@@ -42,12 +42,12 @@ impl Database {
                     options = options.password(password);
                 }
                 options = set_common_connect_options(options);
-                let pool = Self::create_pool_options::<sqlx::Postgres>(config, db_kind)
-                    .connect_with(options)
-                    .await
-                    .with_context(|| {
-                        format!("Unable to open connection pool to {}", config.database_url)
-                    })?;
+                let pool = connect_pool_with_retries(
+                    Self::create_pool_options::<sqlx::Postgres>(config, db_kind),
+                    options,
+                    config,
+                )
+                .await?;
                 DatabasePool::Postgres(pool)
             }
             DbKind::MySql => {
@@ -56,12 +56,12 @@ impl Database {
                     options = options.password(password);
                 }
                 options = set_common_connect_options(options);
-                let pool = Self::create_pool_options::<sqlx::MySql>(config, db_kind)
-                    .connect_with(options)
-                    .await
-                    .with_context(|| {
-                        format!("Unable to open connection pool to {}", config.database_url)
-                    })?;
+                let pool = connect_pool_with_retries(
+                    Self::create_pool_options::<sqlx::MySql>(config, db_kind),
+                    options,
+                    config,
+                )
+                .await?;
                 DatabasePool::MySql(pool)
             }
             DbKind::Mssql => {
@@ -70,12 +70,12 @@ impl Database {
                         .parse::<MssqlConnectOptions>()
                         .with_context(|| format!("Unable to parse {}", config.database_url))?,
                 );
-                let pool = Self::create_pool_options::<sqlx_sqlserver::Mssql>(config, db_kind)
-                    .connect_with(options)
-                    .await
-                    .with_context(|| {
-                        format!("Unable to open connection pool to {}", config.database_url)
-                    })?;
+                let pool = connect_pool_with_retries(
+                    Self::create_pool_options::<sqlx_sqlserver::Mssql>(config, db_kind),
+                    options,
+                    config,
+                )
+                .await?;
                 DatabasePool::Mssql(pool)
             }
             DbKind::Odbc => {
@@ -89,12 +89,12 @@ impl Database {
                 let dbms_name = detect_odbc_dbms_name(&options, config).await?;
                 let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
                 let options = set_common_connect_options(options);
-                let pool = Self::create_pool_options::<sqlx_odbc::Odbc>(config, db_kind)
-                    .connect_with(options)
-                    .await
-                    .with_context(|| {
-                        format!("Unable to open connection pool to {}", config.database_url)
-                    })?;
+                let pool = connect_pool_with_retries(
+                    Self::create_pool_options::<sqlx_odbc::Odbc>(config, db_kind),
+                    options,
+                    config,
+                )
+                .await?;
                 log::debug!("Initialized {dbms_name:?} database pool: {pool:#?}");
                 return Ok(Database {
                     connection: DatabasePool::Odbc(pool),
@@ -154,6 +154,33 @@ impl Database {
             ));
         let pool_options = add_on_return_to_pool(config, pool_options);
         add_sqlite_on_connection_handler(config, pool_options)
+    }
+}
+
+async fn connect_pool_with_retries<DB>(
+    pool_options: PoolOptions<DB>,
+    options: <DB::Connection as Connection>::Options,
+    config: &AppConfig,
+) -> anyhow::Result<sqlx::Pool<DB>>
+where
+    DB: SqlxDatabase,
+{
+    let mut retries = config.database_connection_retries;
+    loop {
+        match pool_options.clone().connect_with(options.clone()).await {
+            Ok(pool) => return Ok(pool),
+            Err(e) => {
+                if retries == 0 {
+                    return Err(anyhow::Error::new(e).context(format!(
+                        "Unable to open connection pool to {}",
+                        config.database_url
+                    )));
+                }
+                log::warn!("Failed to connect to the database: {e:#}. Retrying in 5 seconds.");
+                retries -= 1;
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
     }
 }
 
