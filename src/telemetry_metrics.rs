@@ -2,7 +2,8 @@ use opentelemetry::global;
 use opentelemetry::metrics::{Histogram, ObservableGauge};
 use opentelemetry_semantic_conventions::attribute as otel;
 use opentelemetry_semantic_conventions::metric as otel_metric;
-use sqlx::AnyPool;
+
+use crate::webserver::database::DatabasePool;
 
 pub struct TelemetryMetrics {
     pub http_request_duration: Histogram<f64>,
@@ -41,7 +42,7 @@ impl Default for TelemetryMetrics {
 
 impl TelemetryMetrics {
     #[must_use]
-    pub fn new(pool: &AnyPool, db_system_name: &'static str) -> Self {
+    pub fn new(pool: &DatabasePool, db_system_name: &'static str) -> Self {
         let meter = global::meter("sqlpage");
         let http_request_duration = meter
             .f64_histogram(otel_metric::HTTP_SERVER_REQUEST_DURATION)

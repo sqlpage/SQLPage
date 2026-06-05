@@ -1,5 +1,5 @@
 use super::Database;
-use super::error_highlighting::display_db_error;
+use super::{DatabasePool, DbKind};
 use crate::MIGRATIONS_DIR;
 use anyhow;
 use anyhow::Context;
@@ -34,25 +34,33 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
     for m in migrator.iter() {
         log::info!("\t{}", DisplayMigration(m));
     }
-    migrator.run(&db.connection).await.map_err(|err| {
-        match err {
-            MigrateError::Execute(n, source) => {
-                let migration = migrator.iter().find(|&m| m.version == n).unwrap();
-                let source_file =
-                    migrations_dir.join(format!("{:04}_{}.sql", n, migration.description));
-                display_db_error(&source_file, &migration.sql, source).context(format!(
-                    "Failed to apply {} migration {}",
-                    db,
-                    DisplayMigration(migration)
-                ))
+    if db.info.kind == DbKind::Odbc {
+        anyhow::bail!(
+            "ODBC migrations are not supported by sqlx-odbc. Apply the migrations manually or use a native SQLPage backend for managed migrations."
+        );
+    }
+    run_migrator(&migrator, &db.connection)
+        .await
+        .map_err(|err| {
+            match err {
+                MigrateError::Execute(source) => anyhow::Error::new(source),
+                source => anyhow::Error::new(source),
             }
-            source => anyhow::Error::new(source),
-        }
-        .context(format!(
-            "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
-        ))
-    })?;
+            .context(format!(
+                "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
+            ))
+        })?;
     Ok(())
+}
+
+async fn run_migrator(migrator: &Migrator, pool: &DatabasePool) -> Result<(), MigrateError> {
+    match pool {
+        DatabasePool::Sqlite(pool) => migrator.run(pool).await,
+        DatabasePool::Postgres(pool) => migrator.run(pool).await,
+        DatabasePool::MySql(pool) => migrator.run(pool).await,
+        DatabasePool::Mssql(pool) => migrator.run(pool).await,
+        DatabasePool::Odbc(_) => unreachable!("ODBC migrations are checked before run_migrator"),
+    }
 }
 
 struct DisplayMigration<'a>(&'a Migration);

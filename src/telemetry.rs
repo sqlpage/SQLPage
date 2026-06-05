@@ -182,6 +182,7 @@ impl opentelemetry_http::HttpClient for AwcOtlpHttpClient {
 
 /// Initializes logging / tracing. Returns whether `OTel` was activated.
 pub fn init_telemetry() -> anyhow::Result<bool> {
+    crate::install_default_rustls_provider();
     init_telemetry_with_log_layer(logfmt::LogfmtLayer::new())
 }
 

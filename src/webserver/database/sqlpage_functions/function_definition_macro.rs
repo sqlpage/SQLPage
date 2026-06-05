@@ -56,7 +56,7 @@ macro_rules! sqlpage_functions {
                 &self,
                 #[allow(unused_variables)]
                 request: &'a $crate::webserver::http_request_info::ExecutionContext,
-                db_connection: &mut Option<sqlx::pool::PoolConnection<sqlx::Any>>,
+                db_connection: &mut $crate::webserver::database::execute_queries::DbConn,
                 params: Vec<Option<Cow<'a, str>>>
             ) -> anyhow::Result<Option<Cow<'a, str>>> {
                 use $crate::webserver::database::sqlpage_functions::function_traits::*;

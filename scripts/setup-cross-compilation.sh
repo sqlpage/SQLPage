@@ -6,6 +6,7 @@ BUILDARCH="$2"
 BINDGEN_EXTRA_CLANG_ARGS=""
 
 apt-get update
+apt-get install -y perl
 
 if [ "$TARGETARCH" = "$BUILDARCH" ]; then
     TARGET="$(rustup target list --installed | head -n1)"
