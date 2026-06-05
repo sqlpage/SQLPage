@@ -53,6 +53,7 @@ pub struct ExecutionContext {
     pub request: Rc<RequestInfo>,
     pub set_variables: RefCell<SetVariablesMap>,
     pub clone_depth: u8,
+    pub included_sql_files: Rc<Vec<String>>,
 }
 
 impl ExecutionContext {
@@ -62,6 +63,7 @@ impl ExecutionContext {
             request: Rc::new(request),
             set_variables: RefCell::new(SetVariablesMap::new()),
             clone_depth: 0,
+            included_sql_files: Rc::new(Vec::new()),
         }
     }
 
@@ -71,6 +73,7 @@ impl ExecutionContext {
             request: Rc::clone(&self.request),
             set_variables: RefCell::new(self.set_variables.borrow().clone()),
             clone_depth: self.clone_depth + 1,
+            included_sql_files: Rc::clone(&self.included_sql_files),
         }
     }
 
@@ -80,6 +83,19 @@ impl ExecutionContext {
             request: Rc::clone(&self.request),
             set_variables: RefCell::new(variables),
             clone_depth: self.clone_depth + 1,
+            included_sql_files: Rc::clone(&self.included_sql_files),
+        }
+    }
+
+    #[must_use]
+    pub fn fork_for_run_sql(&self, sql_file_path: &str, variables: SetVariablesMap) -> Self {
+        let mut included_sql_files = self.included_sql_files.as_ref().clone();
+        included_sql_files.push(sql_file_path.to_string());
+        Self {
+            request: Rc::clone(&self.request),
+            set_variables: RefCell::new(variables),
+            clone_depth: self.clone_depth + 1,
+            included_sql_files: Rc::new(included_sql_files),
         }
     }
 

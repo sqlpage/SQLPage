@@ -1,9 +1,9 @@
 use actix_web::{http::StatusCode, test};
 use sqlpage::{
     AppState,
+    webserver::database::DbParam,
     webserver::{self, make_placeholder},
 };
-use sqlx::Executor as _;
 
 use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
 
@@ -58,19 +58,25 @@ async fn test_routing_with_db_fs() {
     }
 
     let drop_sql = "DROP TABLE IF EXISTS sqlpage_files";
-    state.db.connection.execute(drop_sql).await.unwrap();
+    let mut conn = state.db.connection.acquire().await.unwrap();
+    conn.execute_command(drop_sql, &[]).await.unwrap();
     let create_table_sql =
         sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    state.db.connection.execute(create_table_sql).await.unwrap();
+    conn.execute_command(create_table_sql, &[]).await.unwrap();
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', {})",
         make_placeholder(state.db.info.kind, 1)
     );
-    sqlx::query(&insert_sql)
-        .bind("select ''text'' as component, ''Hi from db !'' AS contents;".as_bytes())
-        .execute(&state.db.connection)
-        .await
-        .unwrap();
+    conn.execute_command(
+        &insert_sql,
+        &[DbParam::Bytes(
+            "select ''text'' as component, ''Hi from db !'' AS contents;"
+                .as_bytes()
+                .to_vec(),
+        )],
+    )
+    .await
+    .unwrap();
 
     let state = AppState::init(&config).await.unwrap();
     let app_data = actix_web::web::Data::new(state);
@@ -101,23 +107,28 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let expected_db_path = "\u{FFFD}.txt";
     let mut conn = state.db.connection.acquire().await.unwrap();
 
-    (&mut *conn)
-        .execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
+    conn.execute_command(
+        sqlpage::filesystem::DbFsQueries::get_create_table_sql(
             sqlpage::webserver::database::SupportedDatabase::Sqlite,
-        ))
-        .await
-        .unwrap();
+        ),
+        &[],
+    )
+    .await
+    .unwrap();
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
         make_placeholder(state.db.info.kind, 1),
         make_placeholder(state.db.info.kind, 2)
     );
-    sqlx::query(&insert_sql)
-        .bind(expected_db_path)
-        .bind("file from db fs".as_bytes())
-        .execute(&mut *conn)
-        .await
-        .unwrap();
+    conn.execute_command(
+        &insert_sql,
+        &[
+            DbParam::Text(expected_db_path.into()),
+            DbParam::Bytes("file from db fs".as_bytes().to_vec()),
+        ],
+    )
+    .await
+    .unwrap();
     drop(conn);
 
     let state = AppState::init(&config).await.unwrap();

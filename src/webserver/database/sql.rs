@@ -20,7 +20,6 @@ use sqlparser::dialect::{
 use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, EOF, SemiColon};
 use sqlparser::tokenizer::{Location, Span, TokenWithSpan, Tokenizer};
-use sqlx::any::AnyKind;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -169,7 +168,7 @@ fn parse_sql<'a>(
     }))
 }
 
-fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, kind: AnyKind) {
+fn transform_to_positional_placeholders(stmt: &mut StmtWithParams, kind: super::DbKind) {
     if let Some((_, DbPlaceHolder::Positional { placeholder })) = DB_PLACEHOLDERS
         .iter()
         .find(|(placeholder_kind, _)| *placeholder_kind == kind)
@@ -600,8 +599,8 @@ fn sqlpage_func_name(func_name_parts: &[ObjectNamePart]) -> &str {
 }
 
 fn extract_json_columns(stmt: &Statement, dbms: SupportedDatabase) -> Vec<String> {
-    // Only extract JSON columns for databases without native JSON support
-    if matches!(dbms, SupportedDatabase::Postgres | SupportedDatabase::Mssql) {
+    // Skip databases whose driver already returns native JSON values.
+    if matches!(dbms, SupportedDatabase::Mssql) {
         return Vec::new();
     }
 
@@ -784,11 +783,11 @@ mod test {
 
     fn create_test_db_info(database_type: SupportedDatabase) -> DbInfo {
         let kind = match database_type {
-            SupportedDatabase::Postgres => AnyKind::Postgres,
-            SupportedDatabase::Mssql => AnyKind::Mssql,
-            SupportedDatabase::MySql => AnyKind::MySql,
-            SupportedDatabase::Sqlite => AnyKind::Sqlite,
-            _ => AnyKind::Odbc,
+            SupportedDatabase::Postgres => crate::webserver::database::DbKind::Postgres,
+            SupportedDatabase::Mssql => crate::webserver::database::DbKind::Mssql,
+            SupportedDatabase::MySql => crate::webserver::database::DbKind::MySql,
+            SupportedDatabase::Sqlite => crate::webserver::database::DbKind::Sqlite,
+            _ => crate::webserver::database::DbKind::Odbc,
         };
         DbInfo {
             dbms_name: database_type.display_name().to_string(),
@@ -1016,6 +1015,18 @@ mod test {
         assert_eq!(
             ast.to_string(),
             "SELECT CONCAT('', CAST(@p1 AS VARCHAR(MAX))) FROM [a schema].[a table]"
+        );
+        assert_eq!(parameters, [StmtParam::PostOrGet("1".to_string()),]);
+    }
+
+    #[test]
+    fn test_mysql_statement_rewrite() {
+        let mut ast = parse_stmt("select '' || $1 || 'x'", &MySqlDialect {});
+        let db_info = create_test_db_info(SupportedDatabase::MySql);
+        let parameters = ParameterExtractor::extract_parameters(&mut ast, db_info).unwrap();
+        assert_eq!(
+            ast.to_string(),
+            "SELECT CONCAT(CONCAT('', CAST(@SQLPAGE_TEMP1 AS CHAR)), 'x')"
         );
         assert_eq!(parameters, [StmtParam::PostOrGet("1".to_string()),]);
     }
@@ -1279,6 +1290,12 @@ mod test {
 
         assert!(json_columns.contains(&"item".to_string()));
         assert!(!json_columns.contains(&"title".to_string()));
+
+        let stmt = parse_postgres_stmt(sql);
+        let json_columns = extract_json_columns(&stmt, SupportedDatabase::Postgres);
+
+        assert!(json_columns.contains(&"item".to_string()));
+        assert!(!json_columns.contains(&"title".to_string()));
     }
 
     #[test]
@@ -1317,7 +1334,7 @@ mod test {
             delayed_functions: vec![],
             json_columns: vec![],
         };
-        transform_to_positional_placeholders(&mut stmt, AnyKind::MySql);
+        transform_to_positional_placeholders(&mut stmt, crate::webserver::database::DbKind::MySql);
         assert_eq!(
             stmt.query,
             "select \

@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use super::DbError;
 use super::sql::{SourceSpan, StmtWithParams};
 
 #[derive(Debug)]
@@ -10,7 +11,7 @@ struct NiceDatabaseError {
     /// The source file that contains the query.
     source_file: PathBuf,
     /// The error that occurred.
-    db_err: sqlx::error::Error,
+    db_err: DbError,
     /// The query that was executed.
     query: String,
     /// The start location of the query in the source file, if the query was extracted from a larger file.
@@ -43,12 +44,12 @@ impl std::fmt::Display for NiceDatabaseError {
             self.source_file.display(),
             self.db_err
         )?;
-        if let sqlx::error::Error::Database(db_err) = &self.db_err {
-            let Some(mut offset) = db_err.offset() else {
-                write!(f, "{}", self.query)?;
-                self.show_position_info(f)?;
-                return Ok(());
-            };
+        if let DbError::Database {
+            offset: Some(offset),
+            ..
+        } = &self.db_err
+        {
+            let mut offset = *offset;
             for line in self.query.lines() {
                 if offset > line.len() {
                     offset -= line.len() + 1;
@@ -97,11 +98,7 @@ impl std::error::Error for NicePositionedError {
 
 /// Display a database error without any position information
 #[must_use]
-pub fn display_db_error(
-    source_file: &Path,
-    query: &str,
-    db_err: sqlx::error::Error,
-) -> anyhow::Error {
+pub fn display_db_error(source_file: &Path, query: &str, db_err: DbError) -> anyhow::Error {
     anyhow::Error::new(NiceDatabaseError {
         source_file: source_file.to_path_buf(),
         db_err,
@@ -115,7 +112,7 @@ pub fn display_db_error(
 pub fn display_stmt_db_error(
     source_file: &Path,
     stmt: &StmtWithParams,
-    db_err: sqlx::error::Error,
+    db_err: DbError,
 ) -> anyhow::Error {
     anyhow::Error::new(NiceDatabaseError {
         source_file: source_file.to_path_buf(),

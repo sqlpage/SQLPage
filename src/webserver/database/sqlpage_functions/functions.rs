@@ -7,7 +7,6 @@ use crate::webserver::{
         sqlpage_functions::{http_fetch_request::HttpFetchRequest, url_parameters::URLParameters},
     },
     http_client::make_http_client,
-    request_variables::SetVariablesMap,
     single_or_vec::SingleOrVec,
 };
 use anyhow::{Context, anyhow};
@@ -722,6 +721,17 @@ async fn run_sql<'a>(
         log::debug!("run_sql: first argument is NULL, returning NULL");
         return Ok(None);
     };
+    if request
+        .included_sql_files
+        .iter()
+        .any(|path| path == sql_file_path.as_ref())
+    {
+        anyhow::bail!(
+            "Too many nested inclusions. run_sql cannot include a file that is already being executed in the same inclusion chain. \
+        Executing sqlpage.run_sql('{sql_file_path}') would create a loop. \
+        This is to prevent infinite loops and stack overflows."
+        );
+    }
     let run_sql_span = tracing::info_span!(
         "sqlpage.file",
         otel.name = format!("SQL {sql_file_path}"),
@@ -738,14 +748,14 @@ async fn run_sql<'a>(
         .instrument(run_sql_span.clone())
         .await
         .with_context(|| format!("run_sql: invalid path {sql_file_path:?}"))?;
-    let tmp_req = if let Some(variables) = variables {
-        let variables: SetVariablesMap = serde_json::from_str(&variables).with_context(|| {
+    let variables = if let Some(variables) = variables {
+        serde_json::from_str(&variables).with_context(|| {
             format!("run_sql(\'{sql_file_path}\', \'{variables}\'): the second argument should be a JSON object with string keys and values")
-        })?;
-        request.fork_with_variables(variables)
+        })?
     } else {
-        request.fork()
+        request.set_variables.borrow().clone()
     };
+    let tmp_req = request.fork_for_run_sql(sql_file_path.as_ref(), variables);
     let max_recursion_depth = app_state.config.max_recursion_depth;
     if tmp_req.clone_depth > max_recursion_depth {
         anyhow::bail!(

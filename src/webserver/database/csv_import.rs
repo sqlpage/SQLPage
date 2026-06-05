@@ -5,15 +5,11 @@ use futures_util::StreamExt;
 use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
-use sqlx::{
-    AnyConnection, Arguments, Executor, PgConnection,
-    any::{AnyArguments, AnyConnectionKind, AnyKind},
-};
 use tokio::io::AsyncRead;
 
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::make_placeholder;
+use super::{DbConnection, DbKind, DbParam, make_placeholder};
 
 #[derive(Debug, PartialEq)]
 pub(super) struct CsvImport {
@@ -142,7 +138,7 @@ pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImpo
 }
 
 pub(super) async fn run_csv_import(
-    db: &mut AnyConnection,
+    db: &mut DbConnection,
     csv_import: &CsvImport,
     request: &RequestInfo,
 ) -> anyhow::Result<()> {
@@ -167,55 +163,25 @@ pub(super) async fn run_csv_import(
         )
     })?;
     let buffered = tokio::io::BufReader::new(file);
-    // private_get_mut is not supposed to be used outside of sqlx, but it is the only way to
-    // access the underlying connection
-    match db.private_get_mut() {
-        AnyConnectionKind::Postgres(pg_connection) => {
-            run_csv_import_postgres(pg_connection, csv_import, buffered).await
-        }
-        _ => run_csv_import_insert(db, csv_import, buffered).await,
-    }
-    .with_context(|| {
+    run_csv_import_insert(db, csv_import, buffered).await.with_context(|| {
         let table_name = &csv_import.table_name;
-        format!(
+        let import_error = format!(
             "{} was uploaded correctly, but its records could not be imported into the table {}",
             file_path.display(),
             table_name
-        )
+        );
+        if db.kind() == DbKind::Postgres {
+            format!("The postgres COPY FROM STDIN command failed. {import_error}")
+        } else {
+            import_error
+        }
     })
 }
 
 /// This function does not parse the CSV file, it only sends it to postgres.
 /// This is the fastest way to import a CSV file into postgres
-async fn run_csv_import_postgres(
-    db: &mut PgConnection,
-    csv_import: &CsvImport,
-    file: impl AsyncRead + Unpin + Send,
-) -> anyhow::Result<()> {
-    log::debug!("Running CSV import with postgres");
-    let mut copy_transact = db
-        .copy_in_raw(csv_import.query.as_str())
-        .await
-        .with_context(|| "The postgres COPY FROM STDIN command failed.")?;
-    log::debug!("Copy transaction created");
-    match copy_transact.read_from(file).await {
-        Ok(_) => {
-            log::debug!("Copy transaction finished successfully");
-            copy_transact.finish().await?;
-            Ok(())
-        }
-        Err(e) => {
-            log::debug!("Copy transaction failed with error: {e}");
-            copy_transact
-                .abort("The COPY FROM STDIN command failed.")
-                .await?;
-            Err(e.into())
-        }
-    }
-}
-
 async fn run_csv_import_insert(
-    db: &mut AnyConnection,
+    db: &mut DbConnection,
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
 ) -> anyhow::Result<()> {
@@ -256,7 +222,7 @@ async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
     Ok(col_idxs)
 }
 
-fn create_insert_stmt(db_kind: AnyKind, csv_import: &CsvImport) -> String {
+fn create_insert_stmt(db_kind: DbKind, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
     let placeholders = csv_import
         .columns
@@ -276,20 +242,20 @@ fn create_insert_stmt(db_kind: AnyKind, csv_import: &CsvImport) -> String {
 
 async fn process_csv_record(
     record: csv_async::StringRecord,
-    db: &mut AnyConnection,
+    db: &mut DbConnection,
     insert_stmt: &str,
     csv_import: &CsvImport,
     column_indices: &[usize],
 ) -> anyhow::Result<()> {
-    let mut arguments = AnyArguments::default();
+    let mut arguments = Vec::with_capacity(column_indices.len());
     let null_str = csv_import.null_str.as_deref().unwrap_or_default();
     for (&i, column) in column_indices.iter().zip(csv_import.columns.iter()) {
         let value = record.get(i).unwrap_or_default();
         let value = if value == null_str { None } else { Some(value) };
         log::trace!("CSV value: {column}={value:?}");
-        arguments.add(value);
+        arguments.push(value.map_or(DbParam::Null, |v| DbParam::Text(v.to_string())));
     }
-    db.execute((insert_stmt, Some(arguments))).await?;
+    db.execute_command(insert_stmt, &arguments).await?;
     Ok(())
 }
 
@@ -328,7 +294,7 @@ fn test_make_statement() {
         escape: None,
         uploaded_file: "my_file.csv".into(),
     };
-    let insert_stmt = create_insert_stmt(AnyKind::Postgres, &csv_import);
+    let insert_stmt = create_insert_stmt(DbKind::Postgres, &csv_import);
     assert_eq!(
         insert_stmt,
         "INSERT INTO my_table (col1, col2) VALUES ($1, $2)"
@@ -337,7 +303,7 @@ fn test_make_statement() {
 
 #[actix_web::test]
 async fn test_end_to_end() {
-    use sqlx::ConnectOptions;
+    use crate::app_config::tests::test_config;
 
     let mut copy_stmt = sqlparser::parser::Parser::parse_sql(
         &sqlparser::dialect::GenericDialect {},
@@ -362,24 +328,38 @@ async fn test_end_to_end() {
             uploaded_file: "my_file.csv".into(),
         }
     );
-    let mut conn = "sqlite::memory:"
-        .parse::<sqlx::any::AnyConnectOptions>()
-        .unwrap()
-        .connect()
+    let db = crate::webserver::Database::init(&test_config())
         .await
         .unwrap();
-    conn.execute("CREATE TABLE my_table (col1 TEXT, col2 TEXT)")
-        .await
-        .unwrap();
+    let mut conn = db.connection.acquire().await.unwrap();
+    conn.execute_command(
+        "CREATE TABLE my_table (col1 VARCHAR(4000), col2 VARCHAR(4000))",
+        &[],
+    )
+    .await
+    .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
     let file = csv.as_bytes();
     run_csv_import_insert(&mut conn, &csv_import, file)
         .await
         .unwrap();
-    let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")
-        .fetch_all(&mut conn)
-        .await
-        .unwrap();
+    let rows = conn.execute("SELECT * FROM my_table", &[]).await.unwrap();
+    let rows: Vec<(String, String)> = rows
+        .into_iter()
+        .filter_map(|item| match item {
+            super::driver::DbStatementResult::Row(row) => Some((
+                match &row.values[0] {
+                    super::driver::DbValue::Text(s) => s.clone(),
+                    other => format!("{other:?}"),
+                },
+                match &row.values[1] {
+                    super::driver::DbValue::Text(s) => s.clone(),
+                    other => format!("{other:?}"),
+                },
+            )),
+            super::driver::DbStatementResult::Finished => None,
+        })
+        .collect();
     assert_eq!(
         rows,
         vec![("b".into(), "a".into()), ("d".into(), "c".into())]

@@ -1,5 +1,6 @@
 use super::super::{DbInfo, SupportedDatabase};
 use super::{is_sqlpage_func, sqlpage_func_name};
+use crate::webserver::database::DbKind;
 use crate::webserver::database::sqlpage_functions::func_call_to_param;
 use crate::webserver::database::syntax_tree::StmtParam;
 use sqlparser::ast::{
@@ -7,7 +8,6 @@ use sqlparser::ast::{
     FunctionArgExpr, FunctionArgumentList, FunctionArguments, Ident, ObjectName, ObjectNamePart,
     Spanned, Statement, Value, ValueWithSpan, Visit, VisitMut, Visitor, VisitorMut,
 };
-use sqlx::any::AnyKind;
 use std::ops::ControlFlow;
 
 pub(super) struct ParameterExtractor {
@@ -22,34 +22,31 @@ pub(crate) enum DbPlaceHolder {
     Positional { placeholder: &'static str },
 }
 
-pub(crate) const DB_PLACEHOLDERS: [(AnyKind, DbPlaceHolder); 5] = [
+pub(crate) const DB_PLACEHOLDERS: [(DbKind, DbPlaceHolder); 5] = [
     (
-        AnyKind::Sqlite,
+        DbKind::Sqlite,
         DbPlaceHolder::PrefixedNumber { prefix: "?" },
     ),
     (
-        AnyKind::Postgres,
+        DbKind::Postgres,
         DbPlaceHolder::PrefixedNumber { prefix: "$" },
     ),
     (
-        AnyKind::MySql,
+        DbKind::MySql,
         DbPlaceHolder::Positional { placeholder: "?" },
     ),
     (
-        AnyKind::Mssql,
+        DbKind::Mssql,
         DbPlaceHolder::PrefixedNumber { prefix: "@p" },
     ),
-    (
-        AnyKind::Odbc,
-        DbPlaceHolder::Positional { placeholder: "?" },
-    ),
+    (DbKind::Odbc, DbPlaceHolder::Positional { placeholder: "?" }),
 ];
 
 /// For positional parameters, we use a temporary placeholder during parameter extraction,
 /// And then replace it with the actual placeholder during statement rewriting.
 pub(crate) const TEMP_PLACEHOLDER_PREFIX: &str = "@SQLPAGE_TEMP";
 
-fn get_placeholder_prefix(kind: AnyKind) -> &'static str {
+fn get_placeholder_prefix(kind: DbKind) -> &'static str {
     if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) = DB_PLACEHOLDERS
         .iter()
         .find(|(placeholder_kind, _prefix)| *placeholder_kind == kind)
@@ -463,7 +460,7 @@ fn function_arg_expr(arg: &mut FunctionArg) -> Option<&mut Expr> {
 
 #[inline]
 #[must_use]
-pub(super) fn make_tmp_placeholder(kind: AnyKind, arg_number: usize) -> String {
+pub(super) fn make_tmp_placeholder(kind: DbKind, arg_number: usize) -> String {
     let prefix = if let Some((_, DbPlaceHolder::PrefixedNumber { prefix })) =
         DB_PLACEHOLDERS.iter().find(|(db_typ, _)| *db_typ == kind)
     {
@@ -541,12 +538,16 @@ impl VisitorMut for ParameterExtractor {
                 }
                 self.replace_with_placeholder(value, param);
             }
-            // Replace 'str1' || 'str2' with CONCAT('str1', 'str2') for MSSQL
+            // Replace 'str1' || 'str2' with CONCAT('str1', 'str2') where pipes are not string concatenation.
             Expr::BinaryOp {
                 left,
                 op: BinaryOperator::StringConcat,
                 right,
-            } if self.db_info.database_type == SupportedDatabase::Mssql => {
+            } if matches!(
+                self.db_info.database_type,
+                SupportedDatabase::Mssql | SupportedDatabase::MySql
+            ) =>
+            {
                 let left = std::mem::replace(left.as_mut(), Expr::value(Value::Null));
                 let right = std::mem::replace(right.as_mut(), Expr::value(Value::Null));
                 *value = Expr::Function(Function {

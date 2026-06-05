@@ -1,8 +1,8 @@
+use crate::webserver::database::DbPool;
 use opentelemetry::global;
 use opentelemetry::metrics::{Histogram, ObservableGauge};
 use opentelemetry_semantic_conventions::attribute as otel;
 use opentelemetry_semantic_conventions::metric as otel_metric;
-use sqlx::AnyPool;
 
 pub struct TelemetryMetrics {
     pub http_request_duration: Histogram<f64>,
@@ -41,7 +41,7 @@ impl Default for TelemetryMetrics {
 
 impl TelemetryMetrics {
     #[must_use]
-    pub fn new(pool: &AnyPool, db_system_name: &'static str) -> Self {
+    pub fn new(pool: &DbPool, db_system_name: &'static str) -> Self {
         let meter = global::meter("sqlpage");
         let http_request_duration = meter
             .f64_histogram(otel_metric::HTTP_SERVER_REQUEST_DURATION)
@@ -60,9 +60,8 @@ impl TelemetryMetrics {
             .with_description("Number of connections in the database pool.")
             .with_callback(move |observer| {
                 let size = pool_ref.size();
-                let idle_u32 = u32::try_from(pool_ref.num_idle()).unwrap_or(u32::MAX);
-                let used = i64::from(size.saturating_sub(idle_u32));
-                let idle = i64::from(idle_u32);
+                let idle = i64::from(pool_ref.num_idle());
+                let used = i64::from(size);
                 observer.observe(
                     used,
                     &[
