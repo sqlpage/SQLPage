@@ -167,6 +167,7 @@ struct DbPoolInner {
     acquire_timeout: Duration,
     semaphore: Arc<Semaphore>,
     active: AtomicU32,
+    database_password: Option<Arc<String>>,
     on_connect_sql: Option<Arc<String>>,
     sqlite_extensions: Vec<String>,
     idle_sqlite: Mutex<Option<tokio_rusqlite::Connection>>,
@@ -224,6 +225,7 @@ impl DbPool {
                     usize::try_from(max_size).unwrap_or(usize::MAX),
                 )),
                 active: AtomicU32::new(0),
+                database_password: config.database_password.clone().map(Arc::new),
                 on_connect_sql: on_connect_sql.map(Arc::new),
                 sqlite_extensions: config.sqlite_extensions.clone(),
                 idle_sqlite: Mutex::new(None),
@@ -290,9 +292,27 @@ impl DbPoolInner {
     async fn connect(&self) -> Result<NativeConnection, DbError> {
         let mut conn = match self.kind {
             DbKind::Sqlite => NativeConnection::Sqlite(open_sqlite(&self.url).await?),
-            DbKind::Postgres => NativeConnection::Postgres(open_postgres(&self.url).await?),
-            DbKind::MySql => NativeConnection::MySql(open_mysql(&self.url).await?),
-            DbKind::Mssql => NativeConnection::Mssql(Box::new(open_mssql(&self.url).await?)),
+            DbKind::Postgres => NativeConnection::Postgres(
+                open_postgres(
+                    &self.url,
+                    self.database_password.as_deref().map(String::as_str),
+                )
+                .await?,
+            ),
+            DbKind::MySql => NativeConnection::MySql(
+                open_mysql(
+                    &self.url,
+                    self.database_password.as_deref().map(String::as_str),
+                )
+                .await?,
+            ),
+            DbKind::Mssql => NativeConnection::Mssql(Box::new(
+                open_mssql(
+                    &self.url,
+                    self.database_password.as_deref().map(String::as_str),
+                )
+                .await?,
+            )),
             DbKind::Odbc => NativeConnection::Odbc(open_odbc(&self.url)?),
         };
         conn.configure(self).await?;
@@ -457,8 +477,12 @@ async fn open_sqlite(url: &str) -> Result<tokio_rusqlite::Connection, DbError> {
     }
 }
 
-async fn open_postgres(url: &str) -> Result<tokio_postgres::Client, DbError> {
-    let (client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls).await?;
+async fn open_postgres(
+    url: &str,
+    database_password: Option<&str>,
+) -> Result<tokio_postgres::Client, DbError> {
+    let config = postgres_config_from_url(url, database_password)?;
+    let (client, connection) = config.connect(tokio_postgres::NoTls).await?;
     tokio::spawn(async move {
         if let Err(error) = connection.await {
             log::debug!("PostgreSQL connection task finished with error: {error}");
@@ -467,12 +491,42 @@ async fn open_postgres(url: &str) -> Result<tokio_postgres::Client, DbError> {
     Ok(client)
 }
 
-async fn open_mysql(url: &str) -> Result<mysql_async::Conn, DbError> {
-    mysql_async::Conn::from_url(url).await.map_err(Into::into)
+fn postgres_config_from_url(
+    url: &str,
+    database_password: Option<&str>,
+) -> Result<tokio_postgres::Config, DbError> {
+    let mut config = url.parse::<tokio_postgres::Config>().map_err(db_error)?;
+    if let Some(password) = database_password {
+        config.password(password);
+    }
+    Ok(config)
 }
 
-async fn open_mssql(url: &str) -> Result<tiberius::Client<Compat<tokio::net::TcpStream>>, DbError> {
-    let mut config = mssql_config_from_url(url)?;
+async fn open_mysql(
+    url: &str,
+    database_password: Option<&str>,
+) -> Result<mysql_async::Conn, DbError> {
+    let opts = mysql_opts_from_url(url, database_password)?;
+    mysql_async::Conn::new(opts).await.map_err(Into::into)
+}
+
+fn mysql_opts_from_url(
+    url: &str,
+    database_password: Option<&str>,
+) -> Result<mysql_async::OptsBuilder, DbError> {
+    let opts = mysql_async::Opts::from_url(url).map_err(db_error)?;
+    Ok(if let Some(password) = database_password {
+        mysql_async::OptsBuilder::from_opts(opts).pass(Some(password.to_string()))
+    } else {
+        mysql_async::OptsBuilder::from_opts(opts)
+    })
+}
+
+async fn open_mssql(
+    url: &str,
+    database_password: Option<&str>,
+) -> Result<tiberius::Client<Compat<tokio::net::TcpStream>>, DbError> {
+    let mut config = mssql_config_from_url(url, database_password)?;
     config.trust_cert();
     let tcp = tokio::net::TcpStream::connect(config.get_addr())
         .await
@@ -500,12 +554,25 @@ fn odbc_connection_string(url: &str) -> String {
     }
 }
 
-fn mssql_config_from_url(url: &str) -> Result<tiberius::Config, DbError> {
+fn mssql_config_from_url(
+    url: &str,
+    database_password: Option<&str>,
+) -> Result<tiberius::Config, DbError> {
     if url.starts_with("jdbc:") {
-        return tiberius::Config::from_jdbc_string(url).map_err(Into::into);
+        let mut config = tiberius::Config::from_jdbc_string(url)?;
+        if let Some(password) = database_password {
+            let user = mssql_user_from_jdbc_string(url)?;
+            config.authentication(tiberius::AuthMethod::sql_server(user, password));
+        }
+        return Ok(config);
     }
     if url.contains('=') {
-        return tiberius::Config::from_ado_string(url).map_err(Into::into);
+        let mut config = tiberius::Config::from_ado_string(url)?;
+        if let Some(password) = database_password {
+            let user = mssql_user_from_ado_string(url)?;
+            config.authentication(tiberius::AuthMethod::sql_server(user, password));
+        }
+        return Ok(config);
     }
 
     let without_scheme = url
@@ -526,6 +593,7 @@ fn mssql_config_from_url(url: &str) -> Result<tiberius::Config, DbError> {
             (credentials, host_port)
         });
     let (user, password) = credentials.split_once(':').unwrap_or((credentials, ""));
+    let password = database_password.unwrap_or(password);
     let (host, port) = parse_host_port(host_port);
 
     let mut config = tiberius::Config::new();
@@ -543,6 +611,40 @@ fn mssql_config_from_url(url: &str) -> Result<tiberius::Config, DbError> {
         ));
     }
     Ok(config)
+}
+
+fn mssql_user_from_jdbc_string(url: &str) -> Result<String, DbError> {
+    let properties = url
+        .strip_prefix("jdbc:sqlserver://")
+        .and_then(|rest| rest.split_once(';').map(|(_, properties)| properties))
+        .ok_or_else(|| DbError::Database {
+            message: format!("not a SQL Server JDBC URL: {url}"),
+            offset: None,
+        })?;
+    mssql_property(properties, "user").ok_or_else(|| DbError::Database {
+        message: "database_password requires a user in the SQL Server JDBC URL".to_string(),
+        offset: None,
+    })
+}
+
+fn mssql_user_from_ado_string(url: &str) -> Result<String, DbError> {
+    mssql_property(url, "User ID")
+        .or_else(|| mssql_property(url, "UID"))
+        .or_else(|| mssql_property(url, "User"))
+        .ok_or_else(|| DbError::Database {
+            message: "database_password requires a user in the SQL Server connection string"
+                .to_string(),
+            offset: None,
+        })
+}
+
+fn mssql_property(properties: &str, key: &str) -> Option<String> {
+    properties
+        .split(';')
+        .filter_map(|property| property.split_once('='))
+        .find(|(property_key, _)| property_key.trim().eq_ignore_ascii_case(key))
+        .map(|(_, value)| value.trim().trim_matches('}').to_string())
+        .filter(|value| !value.is_empty())
 }
 
 fn parse_host_port(host_port: &str) -> (&str, Option<u16>) {
@@ -1543,6 +1645,47 @@ mod tests {
             typed_text_value("2.00".to_string(), Some("MYSQL_TYPE_NEWDECIMAL")),
             DbValue::Integer(2)
         ));
+    }
+
+    #[test]
+    fn postgres_config_overrides_url_password() {
+        let config =
+            postgres_config_from_url("postgres://user:old@localhost/db", Some("new")).unwrap();
+        assert_eq!(config.get_password(), Some("new".as_bytes()));
+    }
+
+    #[test]
+    fn mysql_options_override_url_password() {
+        let opts = mysql_opts_from_url("mysql://user:old@localhost/db", Some("new")).unwrap();
+        let opts = mysql_async::Opts::from(opts);
+        assert_eq!(opts.pass(), Some("new"));
+    }
+
+    #[test]
+    fn sql_server_user_can_be_read_from_jdbc_url() {
+        assert_eq!(
+            mssql_user_from_jdbc_string(
+                "jdbc:sqlserver://localhost:1433;databaseName=sqlpage;user=root;password=old"
+            )
+            .unwrap(),
+            "root"
+        );
+    }
+
+    #[test]
+    fn sql_server_user_can_be_read_from_ado_string() {
+        assert_eq!(
+            mssql_user_from_ado_string(
+                "Server=localhost,1433;Database=sqlpage;User ID=root;Password=old"
+            )
+            .unwrap(),
+            "root"
+        );
+        assert_eq!(
+            mssql_user_from_ado_string("Server=localhost,1433;Database=sqlpage;UID=sa;PWD=old")
+                .unwrap(),
+            "sa"
+        );
     }
 
     #[test]
