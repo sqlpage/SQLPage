@@ -276,7 +276,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('label', 'A friendly name for the text field to show to the user.', 'TEXT', FALSE, TRUE),
     ('placeholder', 'A placeholder text that will be shown in the field when is is empty.', 'TEXT', FALSE, TRUE),
     ('value', 'A default value that will already be present in the field when the user loads the page.', 'TEXT', FALSE, TRUE),
-    ('options', 'A json array of objects containing the label and value of all possible options of a select field. Used only when type=select. JSON objects in the array can contain the properties "label", "value" and "selected".', 'JSON', FALSE, TRUE),
+    ('options', 'A json array of objects containing the label and value of initial options of a select field. Used only when type=select. JSON objects in the array can contain the properties "label", "value" and "selected".', 'JSON', FALSE, TRUE),
+    ('options_source', 'Only for inputs of type `select`. URL of a SQL file that returns JSON search results for the dropdown. The SQL file receives the search text as `$search` and must return an array of objects with exactly `label` and `value`. Use `options` for options that should be available before the user searches.', 'URL', FALSE, TRUE),
     ('required', 'Set this to true to prevent the form contents from being sent if this field is left empty by the user.', 'BOOLEAN', FALSE, TRUE),
     ('min', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
     ('max', 'The maximum value to accept for an input of type number', 'REAL', FALSE, TRUE),
@@ -439,6 +440,8 @@ If the `my_options` table has a large number of rows, you can use the `options_s
 We''ll write a second SQL file, `options_source.sql`, that will receive the user''s search string as a parameter named `$search`,
  and return a json array of objects, each containing the label and value of each option.
 
+When both `options` and `options_source` are set, the local `options` are loaded first. Search results from `options_source` are loaded into the same option list; a result with the same `value` updates the existing option. This is useful to set a default preselected value with `options_source`.
+
 ##### `options_source.sql`
 
 ```sql
@@ -453,6 +456,8 @@ where label like $search || ''%'';
 
 ', json('[{"component":"form", "action":"examples/show_variables.sql", "reset": "Reset"}, 
     {"name": "component", "type": "select",
+    "value": "form",
+    "options": [{"label": "Form", "value": "form"}],
     "options_source": "examples/from_component_options_source.sql",
     "description": "Start typing the name of a component like ''map'' or ''form''..."
     }]')),
