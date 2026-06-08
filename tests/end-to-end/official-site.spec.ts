@@ -206,6 +206,82 @@ test("form component documentation", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("form select combines initial options with remote search results", async ({
+  page,
+}) => {
+  await page.goto(`${BASE}/component.sql?component=form`);
+
+  const select = page
+    .locator(
+      'select[data-options_source="examples/from_component_options_source.sql"]',
+    )
+    .first();
+  await expect(select).toBeAttached();
+  await page.waitForFunction(
+    () =>
+      !!document.querySelector<HTMLSelectElement>(
+        'select[data-options_source="examples/from_component_options_source.sql"]',
+      )?.tomselect,
+  );
+
+  const initialState = await select.evaluate((element) => {
+    const tomselect = element.tomselect;
+    return {
+      value: tomselect.getValue(),
+      labels: Object.fromEntries(
+        Object.entries(tomselect.options).map(([value, option]) => [
+          value,
+          option.label,
+        ]),
+      ),
+    };
+  });
+  expect(initialState).toEqual({
+    value: "form",
+    labels: { form: "Form" },
+  });
+
+  await select.evaluate((element) => element.tomselect.focus());
+  await page.keyboard.type("form");
+  await page.waitForResponse((response) =>
+    response
+      .url()
+      .includes("examples/from_component_options_source.sql?search=form"),
+  );
+  await expect
+    .poll(async () =>
+      select.evaluate((element) => ({
+        value: element.tomselect.getValue(),
+        formLabel: element.tomselect.options.form?.label,
+      })),
+    )
+    .toEqual({
+      value: "form",
+      formLabel: "form",
+    });
+
+  await select.evaluate((element) => element.tomselect.setTextboxValue(""));
+  await page.keyboard.type("map");
+  await page.waitForResponse((response) =>
+    response
+      .url()
+      .includes("examples/from_component_options_source.sql?search=map"),
+  );
+  await expect
+    .poll(async () =>
+      select.evaluate((element) => ({
+        value: element.tomselect.getValue(),
+        formLabel: element.tomselect.options.form?.label,
+        mapLabel: element.tomselect.options.map?.label,
+      })),
+    )
+    .toEqual({
+      value: "form",
+      formLabel: "form",
+      mapLabel: "map",
+    });
+});
+
 test("modal", async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=modal#component`);
   // get the button that opens the modal
