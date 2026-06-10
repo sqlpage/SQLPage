@@ -512,7 +512,12 @@ async fn persist_uploaded_file<'a>(
         let exts = allowed_extensions.collect::<Vec<_>>().join(", ");
         anyhow::bail!("file extension {extension} is not allowed. Allowed extensions: {exts}");
     }
-    // resolve the folder path relative to the web root
+    // Resolve the folder path relative to the web root.
+    // `folder` is trusted application input: it is expected to be a constant chosen by the
+    // app author in their SQL code, never attacker-controlled request data. It is joined
+    // directly to the web root, so a `folder` containing `..` or an absolute path would let
+    // the caller write the uploaded file outside the web root. Callers must not pass
+    // untrusted input (form fields, query parameters, headers, ...) as the folder.
     let web_root = &request.app_state.config.web_root;
     let target_folder = web_root.join(&*folder);
     // create the folder if it doesn't exist
