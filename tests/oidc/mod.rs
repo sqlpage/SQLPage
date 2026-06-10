@@ -547,7 +547,7 @@ async fn test_oidc_logout_uses_correct_scheme() {
         .as_ref()
         .unwrap()
         .config
-        .create_logout_url("/logged_out");
+        .create_logout_url("/logged_out", None);
     let app = test::init_service(create_app(Data::new(app_state))).await;
     // make sure the logout path includes the configured domain
     assert!(logout_path.starts_with("/sqlpage/oidc_logout"));
@@ -652,4 +652,106 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
         .expect("OIDC callback hung on a slow token endpoint")
         .unwrap();
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+}
+
+/// A logout URL is bound to the session it was issued for. A logout URL
+/// generated for one session must NOT clear a different browser's auth cookie
+/// (forced-logout CSRF), while the legitimate logout of the issuing session
+/// must keep working.
+#[actix_web::test]
+async fn test_oidc_logout_is_session_bound() {
+    use sqlpage::{
+        AppState,
+        app_config::{AppConfig, test_database_url},
+    };
+
+    crate::common::init_log();
+    let provider = FakeOidcProvider::new().await;
+
+    let db_url = test_database_url();
+    let config_json = format!(
+        r#"{{
+        "database_url": "{db_url}",
+        "oidc_issuer_url": "{}",
+        "oidc_client_id": "{}",
+        "oidc_client_secret": "{}",
+        "oidc_protected_paths": ["/"],
+        "host": "localhost:1"
+    }}"#,
+        provider.issuer_url, provider.client_id, provider.client_secret
+    );
+
+    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
+    let app_state = AppState::init(&config).await.unwrap();
+    let oidc_state = app_state.oidc_state.clone().unwrap();
+    let app = test::init_service(create_app(Data::new(app_state))).await;
+
+    // Complete a full login as the victim.
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+    let state = get_query_param(&auth_url, "state");
+    let nonce = get_query_param(&auth_url, "nonce");
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    provider.store_auth_code("test_auth_code".to_string(), nonce);
+    let callback_uri = format!(
+        "{}?code=test_auth_code&state={}",
+        Url::parse(&redirect_uri).unwrap().path(),
+        state
+    );
+    let callback_resp =
+        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+    assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
+
+    let victim_auth = cookies
+        .iter()
+        .find(|c| c.name() == "sqlpage_auth")
+        .expect("victim should be authenticated")
+        .value()
+        .to_string();
+    assert!(!victim_auth.is_empty());
+
+    // A logout URL bound to a DIFFERENT session must not clear the victim's
+    // cookie when the victim's browser follows it.
+    let foreign_logout_url = oidc_state
+        .config
+        .create_logout_url("/", Some("some-other-sessions-token"));
+    let mut req = test::TestRequest::get().uri(&foreign_logout_url);
+    for cookie in &cookies {
+        req = req.cookie(cookie.clone());
+    }
+    let resp = test::call_service(&app, req.to_request()).await;
+    assert_eq!(
+        resp.status(),
+        StatusCode::BAD_REQUEST,
+        "a logout URL bound to another session must be rejected"
+    );
+    let cleared = extract_set_cookies(resp.headers())
+        .iter()
+        .any(|c| c.name() == "sqlpage_auth" && c.value().is_empty());
+    assert!(
+        !cleared,
+        "the victim's auth cookie must not be cleared by a foreign logout URL"
+    );
+
+    // The victim's own logout URL (bound to the victim's session) must work.
+    let own_logout_url = oidc_state.config.create_logout_url("/", Some(&victim_auth));
+    let mut req = test::TestRequest::get().uri(&own_logout_url);
+    for cookie in &cookies {
+        req = req.cookie(cookie.clone());
+    }
+    let resp = test::call_service(&app, req.to_request()).await;
+    assert_eq!(
+        resp.status(),
+        StatusCode::SEE_OTHER,
+        "the user's own logout must keep working"
+    );
+    let cleared = extract_set_cookies(resp.headers())
+        .iter()
+        .any(|c| c.name() == "sqlpage_auth" && c.value().is_empty());
+    assert!(
+        cleared,
+        "the user's own logout must clear their auth cookie"
+    );
 }
