@@ -659,7 +659,7 @@ fn verify_logout_params(params: &LogoutParams, client_secret: &str) -> anyhow::R
         anyhow::bail!("Logout token timestamp is in the future");
     }
 
-    if !params.redirect_uri.starts_with('/') || params.redirect_uri.starts_with("//") {
+    if !is_safe_relative_redirect(&params.redirect_uri) {
         anyhow::bail!("Invalid redirect URI");
     }
 
@@ -1180,9 +1180,39 @@ impl AudienceVerifier {
     }
 }
 
+/// Returns true if the given value is a safe relative redirect target.
+///
+/// Only paths starting with a single `/` (not `//`), with no backslash and no
+/// ASCII control characters, are accepted. The WHATWG URL Standard treats `\` as
+/// equivalent to `/` for special schemes (http/https) and strips tab/newline/CR
+/// before parsing, so `/\evil.test` and `/\t/evil.test` both parse to the
+/// authority `evil.test`, i.e. `http://evil.test/`. The `url` crate that builds
+/// the absolute `post_logout_redirect_uri` is itself a WHATWG parser, so without
+/// this check a value classified as "relative" becomes an external open-redirect
+/// target on the server side, independent of the client. Browsers implementing
+/// the same standard (Chromium, Firefox, Safari) resolve a `Location: /\evil.test`
+/// the same way.
+pub(crate) fn is_safe_relative_redirect(uri: &str) -> bool {
+    // Reject backslashes and ASCII control characters. The WHATWG URL parser
+    // used by SQLPage's `url` crate (and by browsers) treats `\` as `/`, and it
+    // removes ASCII tab/newline/CR from anywhere in the input before parsing.
+    // Either can smuggle in an authority component: `/\evil.test` and
+    // `/\t/evil.test` both resolve to `https://evil.test/`.
+    if uri.contains('\\') || uri.contains(|c: char| c.is_ascii_control()) {
+        return false;
+    }
+    let mut chars = uri.chars();
+    // Must start with `/`...
+    if chars.next() != Some('/') {
+        return false;
+    }
+    // ...but the second character must not be `/` (protocol-relative authority).
+    !matches!(chars.next(), Some('/'))
+}
+
 /// Validate that a redirect URL is safe to use (prevents open redirect attacks)
 fn validate_redirect_url(url: String, redirect_uri: &str) -> String {
-    if url.starts_with('/') && !url.starts_with("//") && !url.starts_with(redirect_uri) {
+    if is_safe_relative_redirect(&url) && !url.starts_with(redirect_uri) {
         return url;
     }
     log::warn!("Refusing to redirect to {url}");
@@ -1195,6 +1225,42 @@ mod tests {
     use actix_web::http::StatusCode;
     use actix_web::{cookie::Cookie, test::TestRequest};
     use openidconnect::url::Url;
+
+    #[test]
+    fn relative_redirect_rejects_authority_and_backslash_forms() {
+        // Legitimate relative paths must be accepted.
+        for ok in ["/", "/foo", "/foo/bar?x=1", "/a/b/c#frag"] {
+            assert!(
+                is_safe_relative_redirect(ok),
+                "expected {ok:?} to be accepted"
+            );
+        }
+        // Authority and backslash forms must all be rejected: SQLPage's `url`
+        // crate (a WHATWG URL parser) normalizes these into an external
+        // `http://evil.test/` target.
+        for bad in [
+            "//evil.test",
+            "/\\evil.test",
+            "/\\/evil.test",
+            "\\evil.test",
+            "\\\\evil.test",
+            "/foo\\bar",
+            // ASCII tab/newline/CR are stripped by the WHATWG URL parser, so
+            // these resolve to an authority (`//evil.test`) after stripping.
+            "/\t/evil.test",
+            "/\n/evil.test",
+            "/\r/evil.test",
+            "/\u{0000}/evil.test",
+            "https://evil.test",
+            "evil.test",
+            "",
+        ] {
+            assert!(
+                !is_safe_relative_redirect(bad),
+                "expected {bad:?} to be rejected"
+            );
+        }
+    }
 
     #[test]
     fn login_redirects_use_see_other() {
