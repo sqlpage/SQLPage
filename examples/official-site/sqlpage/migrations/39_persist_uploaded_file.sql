@@ -52,7 +52,9 @@ VALUES (
         'persist_uploaded_file',
         2,
         'destination_folder',
-        'Optional. Path to the folder where the file will be saved, relative to the web root (the root folder of your website files). By default, the file will be saved in the `uploads` folder.',
+        'Optional. Path to the folder where the file will be saved, relative to the web root (the root folder of your website files). By default, the file will be saved in the `uploads` folder.
+
+**Security note**: this value must be a folder name you choose yourself in your SQL code (a trusted constant). Never build it from untrusted input such as a form field, a query parameter, a request header, or anything else the visitor controls. The folder is joined directly to the web root, so a value containing `..` or an absolute path would cause the uploaded file to be written *outside* the web root, anywhere the SQLPage process can write. Keeping `destination_folder` a fixed value chosen by the application author avoids this.',
         'TEXT'
     ),
     (
