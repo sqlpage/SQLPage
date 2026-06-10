@@ -135,6 +135,13 @@ SQLPage vulnerabilities:
   needs.
 - A SQLPage application is publicly reachable because no authentication was
   configured.
+- An attacker can plant or overwrite cookies for the SQLPage origin (for
+  example through a compromised subdomain, a sibling application on a shared
+  parent domain, or a man-in-the-middle on plain HTTP). Attacks that depend on
+  injecting attacker-chosen cookies into the victim's browser, such as OIDC
+  login CSRF or session fixation via a forged login-flow-state cookie, are out
+  of scope. SQLPage assumes its origin's cookie jar is writable only by the
+  user agent, not by attackers.
 - Trusted SQL asks SQLPage or the database to perform expensive work.
 
 These may still be serious and should be fixed in the affected application,
