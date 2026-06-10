@@ -85,8 +85,13 @@ Key attributes on each span:
 SQLPage writes one structured log line per event, for example:
 
 ```text
-ts=2026-03-08T20:56:15.000Z level=info target=sqlpage::webserver::http msg="request completed" http.request.method=GET url.path=/ trace_id=4f2d...
+ts=2026-03-08T20:56:15.000Z level=info target=sqlpage::access msg="200 OK" http.request.method=GET url.path=/ trace_id=4f2d...
 ```
+
+Request-completion access logs use the target `sqlpage::access` and are written to stdout.
+Diagnostic logs, warnings, and internal errors are written to stderr. Docker and most
+container log drivers collect both streams by default, but custom log pipelines that read
+only stderr need to collect stdout as well to keep access logs.
 
 The OpenTelemetry Collector receives these SQLPage container logs through Docker's syslog
 logging driver and forwards them to Loki.
@@ -367,7 +372,7 @@ not specific to SQLPage.
 | `OTEL_SERVICE_NAME`              | No        | Service name shown in traces (default: `unknown_service`) | `sqlpage`                 |
 | `OTEL_EXPORTER_OTLP_HEADERS`    | No        | Comma-separated `key=value` pairs for auth headers | `api-key=abc123`                |
 | `OTEL_EXPORTER_OTLP_PROTOCOL`   | No        | Protocol (default: `http/protobuf`)            | `http/protobuf`                      |
-| `RUST_LOG`                        | No        | Filter which spans/logs are emitted            | `sqlpage=debug,tracing_actix_web=info` |
+| `RUST_LOG` or `LOG_LEVEL`         | No        | Filter which spans/logs are emitted            | `sqlpage=debug,tracing_actix_web=info` |
 
 When `OTEL_EXPORTER_OTLP_ENDPOINT` is **not set**, SQLPage uses plain text
 logging only (same behavior as versions before tracing support was added).
@@ -410,4 +415,11 @@ includes `sqlpage=info`:
 
 ```bash
 RUST_LOG="sqlpage=info,actix_web=info,tracing_actix_web=info"
+```
+
+If you filter individual targets instead of the broader `sqlpage` target, include
+the access-log target too:
+
+```bash
+RUST_LOG="sqlpage::access=info,sqlpage::webserver::http=info,actix_web=info,tracing_actix_web=info"
 ```

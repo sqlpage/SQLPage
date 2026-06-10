@@ -8,7 +8,7 @@ Use it to track what happens and troubleshoot issues.
 - Running from a terminal (Linux, macOS, or Windows PowerShell/Command Prompt): they show up in the window.
 - Docker: run `docker logs <container_name>`.
 - Linux service (systemd): run `journalctl -u sqlpage`.
-- Output is written to [standard error (stderr)](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
+- This component''s output is written to [standard error (stderr)](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)). SQLPage request access logs are separate and are written to standard output (stdout).
 ');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'log', * FROM (VALUES

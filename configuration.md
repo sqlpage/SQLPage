@@ -61,6 +61,9 @@ The environment variable name can optionally be prefixed with `SQLPAGE_`.
 Additionnally, when troubleshooting, you can set the
 [`LOG_LEVEL`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html)
 environment variable to `sqlpage=debug` to get more detailed logs and see exactly what SQLPage is doing.
+Request-completion access logs use the target `sqlpage::access`. Broad filters such as
+`sqlpage=info` include them, but target-specific filters such as `sqlpage::webserver::http=info`
+must also include `sqlpage::access=info` if you want to keep request logs.
 
 SQLPage also supports [OpenTelemetry](https://opentelemetry.io/) tracing via the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable. See the [SQLPage monitoring example](https://github.com/sqlpage/sqlpage/tree/main/examples/telemetry).
 

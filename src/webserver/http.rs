@@ -405,7 +405,7 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
             } else {
                 log::Level::Info
             };
-            log::log!(level, "{status}");
+            log::log!(target: crate::telemetry::ACCESS_LOG_TARGET, level, "{status}");
         }
     }
 }

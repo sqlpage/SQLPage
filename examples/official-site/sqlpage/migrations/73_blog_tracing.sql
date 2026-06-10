@@ -106,7 +106,7 @@ This is much more actionable than a single request duration number.
 
 Tracing is even more useful when logs and traces are connected.
 
-In the example stack, SQLPage writes structured logs to stdout, Promtail forwards them to Loki, and Grafana lets you move from a log line to the matching trace using the trace id. This makes it possible to start from an error log and immediately inspect the full request timeline.
+In the example stack, SQLPage writes request access logs to stdout and diagnostic logs to stderr. The OpenTelemetry Collector forwards both streams to Loki, and Grafana lets you move from a log line to the matching trace using the trace id. This makes it possible to start from an error log and immediately inspect the full request timeline.
 
 That workflow is often the difference between guessing and knowing.
 
