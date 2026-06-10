@@ -129,6 +129,11 @@ SQLPage vulnerabilities:
 - An operator intentionally changes configuration to expose files, trust a
   different database, make an OIDC path public, weaken CSP, enable dangerous
   Markdown options, load SQLite extensions, or enable `allow_exec`.
+- A symlink placed under `web_root` exposes its target. SQLPage follows
+  symlinks during static file serving, so operators must not create symlinks
+  under `web_root` that point to reserved or private files, such as the
+  `sqlpage/` configuration directory or dotfiles, or to files outside
+  `web_root`, since those targets would then be publicly reachable over HTTP.
 - An attacker can modify SQL files, templates, configuration, environment
   variables, migrations, database code, or `sqlpage_files`.
 - The configured database role has broader permissions than the application
