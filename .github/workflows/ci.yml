@@ -26,6 +26,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  HURL_VERSION: 8.0.0
   REGISTRY_USERNAME: lovasoa
   REGISTRY_IMAGE: lovasoa/sqlpage
 
@@ -426,6 +427,32 @@ jobs:
         run: |
           examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print | sed 's#/test.hurl$##' | sort | jq -R -s -c 'split("\n")[:-1]')"
           echo "examples=$examples" >> "$GITHUB_OUTPUT"
+      - name: Restore Hurl archive
+        id: hurl-cache
+        uses: actions/cache@v5
+        with:
+          path: .cache/hurl
+          key: hurl-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ env.HURL_VERSION }}
+      - name: Download Hurl archive
+        if: steps.hurl-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          archive="hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          base_url="https://github.com/Orange-OpenSource/hurl/releases/download/${HURL_VERSION}"
+          mkdir -p .cache/hurl
+          curl --fail --location --retry 5 --retry-delay 2 --output ".cache/hurl/${archive}" "${base_url}/${archive}"
+          curl --fail --location --retry 5 --retry-delay 2 --output ".cache/hurl/${archive}.sha256" "${base_url}/${archive}.sha256"
+          (
+            cd .cache/hurl
+            sha256sum --check "${archive}.sha256"
+          )
+      - name: Upload Hurl archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: hurl-${{ env.HURL_VERSION }}-x86_64-unknown-linux-gnu
+          path: .cache/hurl/*
+          if-no-files-found: error
+          retention-days: 1
 
   hurl:
     name: hurl (${{ matrix.example }})
@@ -440,15 +467,21 @@ jobs:
         example: ${{ fromJSON(needs.hurl_examples.outputs.examples) }}
     steps:
       - uses: actions/checkout@v6
+      - name: Download Hurl archive
+        uses: actions/download-artifact@v8
+        with:
+          name: hurl-${{ env.HURL_VERSION }}-x86_64-unknown-linux-gnu
+          path: ${{ runner.temp }}/hurl
       - name: Install Hurl
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          version=8.0.0
-          archive="hurl-${version}-x86_64-unknown-linux-gnu.tar.gz"
-          gh release download "$version" --repo Orange-OpenSource/hurl --pattern "$archive" --dir /tmp
-          tar xzf "/tmp/$archive" -C /tmp
-          echo "/tmp/hurl-${version}-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
+          set -euo pipefail
+          archive="hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          (
+            cd "$RUNNER_TEMP/hurl"
+            sha256sum --check "${archive}.sha256"
+            tar xzf "$archive" -C "$RUNNER_TEMP/hurl"
+          )
+          echo "$RUNNER_TEMP/hurl/hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
       - name: Download SQLPage image
         uses: actions/download-artifact@v8
         with:
