@@ -132,8 +132,11 @@ SQLPage vulnerabilities:
 - A symlink placed under `web_root` exposes its target. SQLPage follows
   symlinks during static file serving, so operators must not create symlinks
   under `web_root` that point to reserved or private files, such as the
-  `sqlpage/` configuration directory or dotfiles, or to files outside
-  `web_root`, since those targets would then be publicly reachable over HTTP.
+  `sqlpage/` configuration directory or dotfiles, nor to files or directories
+  outside `web_root`. The path guard only checks the requested path components,
+  not the symlink target, so a request for any ordinary file beneath a symlinked
+  directory is served from the target directory too. Those targets would then be
+  publicly reachable over HTTP.
 - An attacker can modify SQL files, templates, configuration, environment
   variables, migrations, database code, or `sqlpage_files`.
 - The configured database role has broader permissions than the application
