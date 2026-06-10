@@ -49,7 +49,9 @@ use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
 use actix_web::body::MessageBody;
 use actix_web::cookie::time::OffsetDateTime;
 use actix_web::cookie::time::format_description::well_known::Rfc3339;
-use actix_web::http::header::TryIntoHeaderPair;
+use actix_web::http::header::{
+    ContentDisposition, DispositionParam, DispositionType, TryIntoHeaderPair,
+};
 use actix_web::http::{StatusCode, header};
 use actix_web::{HttpResponse, HttpResponseBuilder};
 use anyhow::{Context as AnyhowContext, bail, format_err};
@@ -301,10 +303,7 @@ impl HeaderContext {
             get_object_str(options, "filename").or_else(|| get_object_str(options, "title"))
         {
             let extension = if filename.contains('.') { "" } else { ".csv" };
-            self.insert_header((
-                header::CONTENT_DISPOSITION,
-                format!("attachment; filename={filename}{extension}"),
-            ))?;
+            self.insert_header(attachment_with_filename(&format!("{filename}{extension}")))?;
         }
         let csv_renderer = CsvBodyRenderer::new(self.writer, options).await?;
         let renderer = AnyRenderBodyContext::Csv(csv_renderer);
@@ -345,10 +344,7 @@ impl HeaderContext {
 
     fn download(mut self, options: &JsonValue) -> anyhow::Result<PageContext> {
         if let Some(filename) = get_object_str(options, "filename") {
-            self.insert_header((
-                header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{filename}\""),
-            ))?;
+            self.insert_header(attachment_with_filename(filename))?;
         }
         let data_url = get_object_str(options, "data_url")
             .with_context(|| "The download component requires a 'data_url' property")?;
@@ -440,6 +436,18 @@ async fn verify_password_async(
         Ok(hash.verify_password(phfs, password))
     })
     .await?
+}
+
+/// Builds an `attachment` `Content-Disposition` header with the given filename,
+/// using actix-web's structured [`ContentDisposition`] type so the filename is
+/// properly quoted and escaped. This prevents a user-supplied filename
+/// containing `;`, `"`, or `=` from injecting additional header parameters
+/// (e.g. a second, agent-preferred `filename*`).
+fn attachment_with_filename(filename: &str) -> ContentDisposition {
+    ContentDisposition {
+        disposition: DispositionType::Attachment,
+        parameters: vec![DispositionParam::Filename(filename.to_owned())],
+    }
 }
 
 fn get_object_str<'a>(json: &'a JsonValue, key: &str) -> Option<&'a str> {

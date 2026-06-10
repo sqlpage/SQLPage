@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## Unreleased
+
+- **Download filenames can no longer inject extra `Content-Disposition` parameters.** The `csv` and `download` components now build the `Content-Disposition` header with a properly quoted and escaped filename instead of plain string concatenation. Before this fix, a filename containing characters such as `;`, `"`, or `=` could add a second header parameter (for example a `filename*=...` value), and some browsers prefer that injected value over the intended one. You are affected if your app puts untrusted data (such as a user-provided name or a value from the database) into the `filename` of a `csv` or `download` component. No SQL change is required: the supplied filename now always appears as a single, safely quoted `filename` value.
+
 ## v0.44.0
 
 This release focuses on making production SQLPage apps easier to understand, debug, and operate. Most apps should keep working without SQL changes, but maintainers should review the notes about logging and uploaded-file permissions.
