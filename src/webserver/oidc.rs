@@ -708,7 +708,10 @@ async fn process_oidc_callback(
     let LoginFlowState {
         nonce,
         redirect_target,
-    } = parse_login_flow_state(&tmp_login_flow_state_cookie)?;
+    } = parse_login_flow_state(
+        &tmp_login_flow_state_cookie,
+        &oidc_state.config.client_secret,
+    )?;
     let redirect_target =
         validate_redirect_url(redirect_target.to_string(), &oidc_state.config.redirect_uri);
 
@@ -786,7 +789,8 @@ fn build_auth_provider_redirect_response(
     redirect_count: u8,
 ) -> HttpResponse {
     let AuthUrl { url, params } = build_auth_url(oidc_state);
-    let tmp_login_flow_state_cookie = create_tmp_login_flow_state_cookie(&params, initial_url);
+    let tmp_login_flow_state_cookie =
+        create_tmp_login_flow_state_cookie(&params, initial_url, &oidc_state.config.client_secret);
     let redirect_count_cookie = Cookie::build(
         SQLPAGE_OIDC_REDIRECT_COUNT_COOKIE,
         (redirect_count + 1).to_string(),
@@ -1101,14 +1105,20 @@ fn create_final_nonce_cookie(nonce: &Nonce) -> Cookie<'_> {
 fn create_tmp_login_flow_state_cookie<'a>(
     params: &'a AuthUrlParams,
     initial_url: &'a str,
+    client_secret: &str,
 ) -> Cookie<'a> {
     let csrf_token = &params.csrf_token;
     let cookie_name = SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX.to_owned() + csrf_token.secret();
-    let cookie_value = serde_json::to_string(&LoginFlowState {
+    let payload = serde_json::to_string(&LoginFlowState {
         nonce: params.nonce.clone(),
         redirect_target: initial_url,
     })
     .expect("login flow state is always serializable");
+    // Integrity-protect the flow state with server-held key material so a
+    // cookie the server never issued (e.g. attacker-planted) is rejected on
+    // the callback, preventing login CSRF / session fixation.
+    let signature = compute_login_flow_state_signature(&payload, client_secret);
+    let cookie_value = format!("{payload}.{signature}");
     Cookie::build(cookie_name, cookie_value)
         .secure(true)
         .http_only(true)
@@ -1116,6 +1126,20 @@ fn create_tmp_login_flow_state_cookie<'a>(
         .path("/")
         .max_age(LOGIN_FLOW_STATE_COOKIE_EXPIRATION)
         .finish()
+}
+
+/// HMAC-SHA256 of the flow-state payload, signed with the OIDC client secret,
+/// encoded as URL-safe base64 (no padding). Mirrors `compute_logout_signature`.
+fn compute_login_flow_state_signature(payload: &str, client_secret: &str) -> String {
+    use base64::Engine;
+    use hmac::{Hmac, KeyInit, Mac};
+    use sha2::Sha256;
+
+    let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
+        .expect("HMAC accepts any key size");
+    mac.update(payload.as_bytes());
+    let signature = mac.finalize().into_bytes();
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature)
 }
 
 fn get_final_nonce_from_cookie(request: &ServiceRequest) -> anyhow::Result<Nonce> {
@@ -1152,9 +1176,45 @@ struct LoginFlowState<'a> {
     redirect_target: &'a str,
 }
 
-fn parse_login_flow_state<'a>(cookie: &'a Cookie<'_>) -> anyhow::Result<LoginFlowState<'a>> {
-    serde_json::from_str(cookie.value())
-        .with_context(|| format!("Invalid login flow state cookie: {}", cookie.value()))
+fn parse_login_flow_state<'a>(
+    cookie: &'a Cookie<'_>,
+    client_secret: &str,
+) -> anyhow::Result<LoginFlowState<'a>> {
+    let value = cookie.value();
+    // The cookie value is `<json payload>.<base64url HMAC signature>`. Reject
+    // any value not signed with our server secret: this is what prevents an
+    // attacker-planted state cookie from binding their authorization code to a
+    // victim's browser (login CSRF / session fixation).
+    let (payload, signature) = value.rsplit_once('.').context(
+        "Login flow state cookie is missing its signature. \
+         It was not produced by this server and is rejected.",
+    )?;
+    verify_login_flow_state_signature(payload, signature, client_secret)?;
+    serde_json::from_str(payload)
+        .with_context(|| format!("Invalid login flow state cookie payload: {payload}"))
+}
+
+fn verify_login_flow_state_signature(
+    payload: &str,
+    provided_signature: &str,
+    client_secret: &str,
+) -> anyhow::Result<()> {
+    use base64::Engine;
+
+    let expected = compute_login_flow_state_signature(payload, client_secret);
+    let expected_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(&expected)
+        .expect("our own signature is valid base64");
+    let provided_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(provided_signature)
+        .context("Invalid login flow state signature encoding")?;
+    if expected_bytes[..] != provided_bytes[..] {
+        anyhow::bail!(
+            "Invalid login flow state signature. \
+             The state cookie was not produced by this server and is rejected."
+        );
+    }
+    Ok(())
 }
 
 /// Given an audience, verify if it is trusted. The `client_id` is always trusted, independently of this function.
@@ -1248,6 +1308,38 @@ mod tests {
         let params = parse_logout_params(parsed.query().expect("query string is present"))
             .expect("generated URL should parse");
         verify_logout_params(&params, secret).expect("generated URL should validate");
+    }
+
+    #[test]
+    fn login_flow_state_cookie_round_trips_and_rejects_forgery() {
+        let secret = "super_secret_key";
+        let params = AuthUrlParams {
+            csrf_token: CsrfToken::new("the_state".to_string()),
+            nonce: Nonce::new("the_nonce".to_string()),
+        };
+        let cookie = create_tmp_login_flow_state_cookie(&params, "/dashboard", secret);
+
+        // A cookie we issued and signed verifies and yields the original state.
+        let parsed =
+            parse_login_flow_state(&cookie, secret).expect("server-issued cookie must verify");
+        assert_eq!(parsed.nonce.secret(), "the_nonce");
+        assert_eq!(parsed.redirect_target, "/dashboard");
+
+        // An attacker-planted cookie with valid JSON but no/forged signature is
+        // rejected, even though it carries an attacker-chosen nonce.
+        let forged = Cookie::new(cookie.name(), r#"{"n":"attacker_nonce","r":"/"}"#);
+        assert!(
+            parse_login_flow_state(&forged, secret).is_err(),
+            "un-signed flow state must be rejected"
+        );
+
+        // A cookie signed with a different secret must not verify.
+        let other_secret_cookie =
+            create_tmp_login_flow_state_cookie(&params, "/dashboard", "different_secret");
+        assert!(
+            parse_login_flow_state(&other_secret_cookie, secret).is_err(),
+            "flow state signed with another secret must be rejected"
+        );
     }
 
     #[test]

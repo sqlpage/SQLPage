@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## Unreleased
+
+- **Security fix: OIDC login CSRF / session fixation.** The temporary login-state cookie used during the built-in OIDC login flow was stored as unsigned JSON. An attacker who could plant a cookie for the SQLPage origin (or a parent domain) was able to pre-seed flow state the server never issued and, together with an authorization code for an identity they control, log a victim's browser into that attacker-controlled identity. SQLPage now signs this cookie with server-held key material (HMAC, keyed by the OIDC client secret) and rejects any login-state cookie it did not produce. You are affected if you use SQLPage's built-in OIDC login (`oidc_issuer_url` is set). No configuration change is needed; just upgrade. Existing logins keep working, and any in-flight login that started before the upgrade simply restarts the OIDC flow.
+
 ## v0.44.0
 
 This release focuses on making production SQLPage apps easier to understand, debug, and operate. Most apps should keep working without SQL changes, but maintainers should review the notes about logging and uploaded-file permissions.

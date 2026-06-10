@@ -417,6 +417,59 @@ async fn test_oidc_csrf_state_mismatch_is_rejected() {
     assert_oidc_login_fails(|_| {}, Some("wrong_state".to_string())).await;
 }
 
+/// Reproduces the way SQLPage stores the nonce inside the flow-state cookie:
+/// an argon2 hash of the plaintext nonce. An attacker that picks their own nonce
+/// can compute this hash themselves, so it offers no protection on its own.
+fn hash_nonce_like_server(nonce: &str) -> String {
+    use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
+    let salt = SaltString::generate(&mut OsRng);
+    let params = argon2::Params::new(8, 1, 1, Some(16)).unwrap();
+    let argon2 = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
+    argon2
+        .hash_password(nonce.as_bytes(), &salt)
+        .unwrap()
+        .to_string()
+}
+
+/// Login CSRF / session fixation: an attacker who can plant a cookie for the
+/// SQLPage origin primes a `sqlpage_oidc_state_<state>` flow-state cookie that
+/// the server never issued, together with a matching `state` query parameter and
+/// an authorization code for their own identity. The victim's browser then hits
+/// the callback carrying only the attacker-planted cookie. The callback must
+/// reject flow state it never signed, so no `sqlpage_auth` cookie is set.
+#[actix_web::test]
+async fn test_oidc_forged_state_cookie_is_rejected() {
+    let (app, provider) = setup_oidc_test(|_| {}).await;
+
+    // The attacker chooses the state and the plaintext nonce. To match how a
+    // real flow works, they request the argon2-hashed nonce from the IdP (which
+    // ends up in the ID token) and keep the plaintext for the flow-state cookie.
+    let attacker_state = "attacker_state";
+    let attacker_nonce = "attacker_nonce";
+    let hashed_nonce = hash_nonce_like_server(attacker_nonce);
+    // The (real) provider issues an auth code for the attacker's own account,
+    // with the hashed nonce echoed back in the ID token.
+    provider.store_auth_code("attacker_code".to_string(), hashed_nonce);
+
+    // Attacker-planted flow-state cookie: well-formed JSON the attacker built
+    // themselves, but which the SQLPage server never issued (and never signed).
+    let forged_cookie = Cookie::new(
+        format!("sqlpage_oidc_state_{attacker_state}"),
+        json!({ "n": attacker_nonce, "r": "/" }).to_string(),
+    );
+
+    let callback_uri = format!("/sqlpage/oidc_callback?code=attacker_code&state={attacker_state}");
+    let mut cookies = vec![forged_cookie];
+    let _ = request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+
+    let auth_cookie_present = cookies.iter().any(|c| c.name() == "sqlpage_auth");
+    assert!(
+        !auth_cookie_present,
+        "Forged (un-signed) flow-state cookie must not result in a login. \
+         Got cookies: {cookies:?}"
+    );
+}
+
 #[actix_web::test]
 async fn test_oidc_nonce_mismatch_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
