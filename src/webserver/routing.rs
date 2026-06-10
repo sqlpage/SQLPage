@@ -130,6 +130,10 @@ impl<'a> AppFileStore<'a> {
 
 impl FileStore for AppFileStore<'_> {
     async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
+        // HTTP routing is always an untrusted, unprivileged operation. Enforce the path
+        // guard before consulting the cache: a fresh cache entry populated by a
+        // privileged `run_sql` include must not make a reserved/private path routable.
+        crate::filesystem::validate_unprivileged_path(path)?;
         if self.cache.contains(path).await? {
             Ok(true)
         } else {

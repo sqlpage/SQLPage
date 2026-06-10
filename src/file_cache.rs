@@ -120,6 +120,12 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         privileged: bool,
     ) -> anyhow::Result<Arc<T>> {
         log::trace!("Attempting to get from cache {}", path.display());
+        // Enforce the untrusted path guard before consulting the cache. A fresh cache
+        // entry (possibly populated by a privileged `run_sql` include) must never let an
+        // unprivileged request reach a reserved/private/traversal/absolute path.
+        if !privileged {
+            crate::filesystem::validate_unprivileged_path(path)?;
+        }
         if let Some(cached) = self.cache.read().await.get(path) {
             if !cached.needs_check(app_state.config.cache_stale_duration_ms()) {
                 log::trace!(

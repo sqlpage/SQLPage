@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## Unreleased
+
+- **Security fix: reserved and private files could be served directly over HTTP after a trusted page loaded them.** Files that SQLPage normally refuses to serve to direct HTTP requests (anything under the reserved `sqlpage/` prefix such as migrations, configuration, and database connection details, as well as dotfiles, parent-directory traversal paths like `../secret.sql`, and absolute paths) could briefly become reachable. This happened only after a trusted page loaded that same file with `sqlpage.run_sql(...)`, which loads files with elevated privileges and caches the parsed result. While that cache entry was fresh, a direct request such as `GET /sqlpage/secret.sql` (or the extensionless alias `GET /sqlpage/secret`) returned `200 OK` and executed the private SQL instead of returning `403 Forbidden`. Worst case, an attacker who can reach your site could read or execute internal SQL that was meant to stay private, including migration and configuration logic. You are affected if your app calls `sqlpage.run_sql()` on files inside `sqlpage/` (or on dotfiles or paths outside the web root) and is reachable by untrusted users. The fix enforces the unprivileged path guard on every direct HTTP request regardless of the cache, so these paths now always return `403 Forbidden`. Upgrade to get the fix; no configuration change is required. Legitimate `sqlpage.run_sql()` includes of such files from your own pages keep working as before.
+
 ## v0.44.0
 
 This release focuses on making production SQLPage apps easier to understand, debug, and operate. Most apps should keep working without SQL changes, but maintainers should review the notes about logging and uploaded-file permissions.
