@@ -444,7 +444,9 @@ jobs:
           curl --fail --location --retry 5 --retry-delay 2 --output ".cache/hurl/${archive}.sha256" "${base_url}/${archive}.sha256"
           (
             cd .cache/hurl
-            sha256sum --check "${archive}.sha256"
+            expected_sha="$(tr -d '[:space:]' < "${archive}.sha256")"
+            actual_sha="$(sha256sum "$archive" | cut -d ' ' -f 1)"
+            test "$expected_sha" = "$actual_sha"
           )
       - name: Upload Hurl archive
         uses: actions/upload-artifact@v7
@@ -478,7 +480,9 @@ jobs:
           archive="hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
           (
             cd "$RUNNER_TEMP/hurl"
-            sha256sum --check "${archive}.sha256"
+            expected_sha="$(tr -d '[:space:]' < "${archive}.sha256")"
+            actual_sha="$(sha256sum "$archive" | cut -d ' ' -f 1)"
+            test "$expected_sha" = "$actual_sha"
             tar xzf "$archive" -C "$RUNNER_TEMP/hurl"
           )
           echo "$RUNNER_TEMP/hurl/hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
