@@ -153,34 +153,7 @@ impl FileSystem {
                 return Ok(normalized);
             }
         } else {
-            for (i, component) in path.components().enumerate() {
-                if let Component::Normal(c) = component {
-                    if i == 0 && c.eq_ignore_ascii_case("sqlpage") {
-                        return Err(ErrorWithStatus {
-                            status: actix_web::http::StatusCode::FORBIDDEN,
-                        })
-                        .with_context(|| {
-                            "The /sqlpage/ path prefix is reserved for internal use. It is not public."
-                        });
-                    }
-                    if c.as_encoded_bytes().starts_with(b".") {
-                        return Err(ErrorWithStatus {
-                            status: actix_web::http::StatusCode::FORBIDDEN,
-                        })
-                        .with_context(|| "Directory traversal is not allowed");
-                    }
-                } else {
-                    return Err(ErrorWithStatus {
-                        status: actix_web::http::StatusCode::FORBIDDEN,
-                    })
-                    .with_context(|| {
-                        format!(
-                            "Unsupported path: {}. Path component '{component:?}' is not allowed.",
-                            path.display()
-                        )
-                    });
-                }
-            }
+            validate_unprivileged_path(path)?;
         }
         Ok(self.local_root.join(path))
     }
@@ -217,6 +190,47 @@ impl FileSystem {
         }
         Ok(local_exists)
     }
+}
+
+/// Rejects paths that an untrusted (unprivileged) HTTP request must never reach:
+/// the reserved `sqlpage/` prefix, dotfiles, parent-directory traversal and
+/// absolute/root paths.
+///
+/// This guard must be enforced on every unprivileged resolution path, including
+/// before trusting a fresh cache hit. A trusted page may legitimately load such a
+/// file with privilege via `sqlpage.run_sql(...)`, which populates the shared file
+/// cache; without this check a later direct HTTP request could be served the cached
+/// private file instead of being forbidden.
+pub fn validate_unprivileged_path(path: &Path) -> anyhow::Result<()> {
+    for (i, component) in path.components().enumerate() {
+        if let Component::Normal(c) = component {
+            if i == 0 && c.eq_ignore_ascii_case("sqlpage") {
+                return Err(ErrorWithStatus {
+                    status: actix_web::http::StatusCode::FORBIDDEN,
+                })
+                .with_context(
+                    || "The /sqlpage/ path prefix is reserved for internal use. It is not public.",
+                );
+            }
+            if c.as_encoded_bytes().starts_with(b".") {
+                return Err(ErrorWithStatus {
+                    status: actix_web::http::StatusCode::FORBIDDEN,
+                })
+                .with_context(|| "Directory traversal is not allowed");
+            }
+        } else {
+            return Err(ErrorWithStatus {
+                status: actix_web::http::StatusCode::FORBIDDEN,
+            })
+            .with_context(|| {
+                format!(
+                    "Unsupported path: {}. Path component '{component:?}' is not allowed.",
+                    path.display()
+                )
+            });
+        }
+    }
+    Ok(())
 }
 
 fn is_path_missing_error(error: &std::io::Error) -> bool {
