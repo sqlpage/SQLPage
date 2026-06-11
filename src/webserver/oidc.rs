@@ -140,8 +140,28 @@ impl TryFrom<&AppConfig> for OidcConfig {
 impl OidcConfig {
     #[must_use]
     pub fn is_public_path(&self, path: &str) -> bool {
-        !self.protected_paths.iter().any(|p| path.starts_with(p))
-            || self.public_paths.iter().any(|p| path.starts_with(p))
+        // Percent-decode both the request path and the configured prefixes
+        // before comparing. Otherwise an unauthenticated request could encode a
+        // byte of a protected prefix (e.g. `/%70rotected/`, which the router
+        // decodes to `/protected/` and serves) to dodge the rule. The prefixes
+        // are decoded too because a `site_prefix` such as `/my app/` is stored
+        // percent-encoded (`/my%20app/...`); decoding only one side would never
+        // match and would wrongly make protected pages public. Matching stays a
+        // plain string prefix, preserving the documented `/public` vs `/public/`
+        // distinction (those resolve to different files).
+        fn decode(s: &str) -> std::borrow::Cow<'_, str> {
+            percent_encoding::percent_decode_str(s).decode_utf8_lossy()
+        }
+        let decoded = decode(path);
+        let path = decoded.as_ref();
+        !self
+            .protected_paths
+            .iter()
+            .any(|p| path.starts_with(decode(p).as_ref()))
+            || self
+                .public_paths
+                .iter()
+                .any(|p| path.starts_with(decode(p).as_ref()))
     }
 
     /// Creates a custom ID token verifier that supports multiple issuers
@@ -1367,6 +1387,83 @@ mod tests {
                 .map(Cookie::value),
             Some("second"),
             "logout binding must use the last duplicate, matching RequestInfo and the signed URL"
+        );
+    }
+
+    fn test_oidc_config_with_paths(
+        protected_paths: Vec<String>,
+        public_paths: Vec<String>,
+    ) -> OidcConfig {
+        OidcConfig {
+            issuer_url: IssuerUrl::new("https://example.com".to_string()).unwrap(),
+            client_id: "test_client".to_string(),
+            client_secret: "secret".to_string(),
+            protected_paths,
+            public_paths,
+            app_host: "example.com".to_string(),
+            scopes: vec![],
+            additional_audience_verifier: AudienceVerifier::new(None),
+            site_prefix: "/".to_string(),
+            redirect_uri: SQLPAGE_REDIRECT_URI.to_string(),
+            logout_uri: SQLPAGE_LOGOUT_URI.to_string(),
+        }
+    }
+
+    #[test]
+    fn percent_encoded_protected_path_is_not_public() {
+        let config = test_oidc_config_with_paths(vec!["/protected".to_string()], vec![]);
+        assert!(
+            !config.is_public_path("/protected/"),
+            "/protected/ must be protected"
+        );
+        // Encoding a byte of the prefix (%70 == 'p') must not bypass protection:
+        // the router percent-decodes the path and serves the protected file.
+        assert!(
+            !config.is_public_path("/%70rotected/"),
+            "/%70rotected/ decodes to /protected/ and must stay protected"
+        );
+    }
+
+    #[test]
+    fn percent_encoded_public_path_stays_public() {
+        let config = test_oidc_config_with_paths(
+            vec!["/protected".to_string()],
+            vec!["/protected/public".to_string()],
+        );
+        assert!(
+            config.is_public_path("/protected/%70ublic/page.sql"),
+            "/protected/%70ublic/... decodes to a public path"
+        );
+    }
+
+    #[test]
+    fn encoded_site_prefix_keeps_protected_paths_protected() {
+        // With a site_prefix like `/my app/`, the configured prefixes are stored
+        // encoded (`/my%20app/...`). Decoding only the request path would never
+        // match, so protected pages must not become public.
+        let config = test_oidc_config_with_paths(vec!["/my%20app/protected".to_string()], vec![]);
+        assert!(!config.is_public_path("/my%20app/protected/page.sql"));
+        assert!(!config.is_public_path("/my%20app/%70rotected/"));
+        assert!(
+            config.is_public_path("/my%20app/login.sql"),
+            "a non-protected page under the site prefix stays public"
+        );
+    }
+
+    #[test]
+    fn trailing_slash_public_prefix_does_not_expose_sibling_file() {
+        // A public exception for the `/public/` directory must not also make the
+        // extensionless `/public` (which the router resolves to public.sql)
+        // public. Plain string-prefix matching keeps them distinct.
+        let config =
+            test_oidc_config_with_paths(vec!["/".to_string()], vec!["/public/".to_string()]);
+        assert!(
+            config.is_public_path("/public/page.sql"),
+            "files under /public/ are public"
+        );
+        assert!(
+            !config.is_public_path("/public"),
+            "/public (the file public.sql) stays protected"
         );
     }
 
