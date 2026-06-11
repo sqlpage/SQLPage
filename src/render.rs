@@ -44,6 +44,7 @@
 use crate::AppState;
 use crate::templates::SplitTemplate;
 use crate::webserver::ErrorWithStatus;
+use crate::webserver::error::ClientError;
 use crate::webserver::http::{RequestContext, ResponseFormat};
 use crate::webserver::response_writer::{AsyncResponseWriter, ResponseWriter};
 use actix_web::body::MessageBody;
@@ -134,15 +135,20 @@ impl HeaderContext {
     }
 
     pub async fn handle_error(self, err: anyhow::Error) -> anyhow::Result<PageContext> {
-        if self.app_state.config.environment.is_prod() {
+        // Reduce the error to its client-safe form. The single environment
+        // check lives in `ClientError::new`; here we only branch on the result.
+        let client_error = ClientError::new(&err, self.app_state.config.environment, None);
+        if client_error.is_generic() {
+            // Production: no body byte has been sent yet, so bubble the error
+            // up. The top-level handler then produces a proper error *response*
+            // (correct status code and the production-safe HTML error page)
+            // instead of a 200 body. The detailed error never reaches the client.
             return Err(err);
         }
         log::debug!("Handling header error: {err}");
-        let data = json!({
-            "component": "error",
-            "description": err.to_string(),
-            "backtrace": get_backtrace_as_strings(&err),
-        });
+        // Development: show the full detail inline as an error component.
+        let mut data = client_error.to_html_data();
+        data["component"] = json!("error");
         self.start_body(data).await
     }
 
@@ -288,7 +294,10 @@ impl HeaderContext {
                     "Invalid value for the 'type' property of the json component: {body_type:?}"
                 ),
             };
-            let renderer = AnyRenderBodyContext::Json(json_renderer);
+            let renderer = AnyRenderBodyContext::new(
+                BodyRenderer::Json(json_renderer),
+                self.app_state.config.environment,
+            );
             let http_response = self.response;
             Ok(PageContext::Body {
                 http_response,
@@ -305,8 +314,9 @@ impl HeaderContext {
             let extension = if filename.contains('.') { "" } else { ".csv" };
             self.insert_header(attachment_with_filename(&format!("{filename}{extension}")))?;
         }
+        let environment = self.app_state.config.environment;
         let csv_renderer = CsvBodyRenderer::new(self.writer, options).await?;
-        let renderer = AnyRenderBodyContext::Csv(csv_renderer);
+        let renderer = AnyRenderBodyContext::new(BodyRenderer::Csv(csv_renderer), environment);
         let http_response = self.response.take();
         Ok(PageContext::Body {
             renderer,
@@ -396,11 +406,13 @@ impl HeaderContext {
 
     async fn start_body(mut self, data: JsonValue) -> anyhow::Result<PageContext> {
         self.add_server_timing_header()?;
-        let renderer = match self.request_context.response_format {
-            ResponseFormat::Json => AnyRenderBodyContext::Json(
-                JsonBodyRenderer::new_array_with_first_row(self.writer, &data),
-            ),
-            ResponseFormat::JsonLines => AnyRenderBodyContext::Json(
+        let environment = self.app_state.config.environment;
+        let body_renderer = match self.request_context.response_format {
+            ResponseFormat::Json => BodyRenderer::Json(JsonBodyRenderer::new_array_with_first_row(
+                self.writer,
+                &data,
+            )),
+            ResponseFormat::JsonLines => BodyRenderer::Json(
                 JsonBodyRenderer::new_jsonlines_with_first_row(self.writer, &data),
             ),
             ResponseFormat::Html => {
@@ -410,9 +422,10 @@ impl HeaderContext {
                         .with_context(
                             || "Failed to create a render context from the header context.",
                         )?;
-                AnyRenderBodyContext::Html(html_renderer)
+                BodyRenderer::Html(html_renderer)
             }
         };
+        let renderer = AnyRenderBodyContext::new(body_renderer, environment);
         let http_response = self.response;
         Ok(PageContext::Body {
             renderer,
@@ -463,64 +476,93 @@ fn take_object_str(json: &mut JsonValue, key: &str) -> Option<String> {
     }
 }
 
-/**
- * Can receive rows, and write them in a given format to an `io::Write`
- */
-pub enum AnyRenderBodyContext {
+/// A body renderer for one of the supported output formats. It can receive
+/// rows and write them, in its format, to an `io::Write`.
+pub enum BodyRenderer {
     Html(HtmlRenderContext<ResponseWriter>),
     Json(JsonBodyRenderer<ResponseWriter>),
     Csv(CsvBodyRenderer),
 }
 
-/**
- * Dummy impl to dispatch method calls to the underlying renderer
- */
+/// Wraps a [`BodyRenderer`] together with the environment, so errors can be
+/// reduced to their client-safe form ([`ClientError`]) at this single boundary
+/// before they ever reach a format-specific renderer.
+///
+/// Renderers never see the raw [`anyhow::Error`]; they only receive a
+/// [`ClientError`], which already hides every sensitive detail in production.
+/// This makes leaking impossible by construction: a renderer cannot emit what
+/// it never receives.
+pub struct AnyRenderBodyContext {
+    renderer: BodyRenderer,
+    environment: crate::app_config::DevOrProd,
+}
+
 impl AnyRenderBodyContext {
+    #[must_use]
+    pub fn new(renderer: BodyRenderer, environment: crate::app_config::DevOrProd) -> Self {
+        Self {
+            renderer,
+            environment,
+        }
+    }
+
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         log::debug!(
             "<- Rendering properties: {}",
             serde_json::to_string(&data).unwrap_or_else(|e| e.to_string())
         );
-        match self {
-            AnyRenderBodyContext::Html(render_context) => render_context.handle_row(data).await,
-            AnyRenderBodyContext::Json(json_body_renderer) => json_body_renderer.handle_row(data),
-            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.handle_row(data).await,
+        match &mut self.renderer {
+            BodyRenderer::Html(render_context) => render_context.handle_row(data).await,
+            BodyRenderer::Json(json_body_renderer) => json_body_renderer.handle_row(data),
+            BodyRenderer::Csv(csv_renderer) => csv_renderer.handle_row(data).await,
         }
     }
+
     pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+        // The full error is always logged server-side, regardless of the
+        // environment and of which format the client requested.
         log::error!("SQL error: {error:?}");
-        match self {
-            AnyRenderBodyContext::Html(render_context) => render_context.handle_error(error).await,
-            AnyRenderBodyContext::Json(json_body_renderer) => {
-                json_body_renderer.handle_error(error)
+        // Reduce the raw error to its client-safe form ONCE, here, before it
+        // reaches any format renderer. In production this strips the source
+        // path, the SQL statement, the raw database error, and the backtrace.
+        let query_number = match &self.renderer {
+            BodyRenderer::Html(html) => Some(html.current_statement),
+            BodyRenderer::Json(_) | BodyRenderer::Csv(_) => None,
+        };
+        let client_error = ClientError::new(error, self.environment, query_number);
+        match &mut self.renderer {
+            BodyRenderer::Html(render_context) => render_context.handle_error(&client_error).await,
+            BodyRenderer::Json(json_body_renderer) => {
+                json_body_renderer.handle_error(&client_error)
             }
-            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.handle_error(error).await,
+            BodyRenderer::Csv(csv_renderer) => csv_renderer.handle_error(&client_error).await,
         }
     }
+
     pub async fn finish_query(&mut self) -> anyhow::Result<()> {
-        match self {
-            AnyRenderBodyContext::Html(render_context) => render_context.finish_query().await,
-            AnyRenderBodyContext::Json(_json_body_renderer) => Ok(()),
-            AnyRenderBodyContext::Csv(_csv_renderer) => Ok(()),
+        match &mut self.renderer {
+            BodyRenderer::Html(render_context) => render_context.finish_query().await,
+            BodyRenderer::Json(_json_body_renderer) => Ok(()),
+            BodyRenderer::Csv(_csv_renderer) => Ok(()),
         }
     }
 
     pub async fn flush(&mut self) -> anyhow::Result<()> {
-        match self {
-            AnyRenderBodyContext::Html(HtmlRenderContext { writer, .. })
-            | AnyRenderBodyContext::Json(JsonBodyRenderer { writer, .. }) => {
+        match &mut self.renderer {
+            BodyRenderer::Html(HtmlRenderContext { writer, .. })
+            | BodyRenderer::Json(JsonBodyRenderer { writer, .. }) => {
                 writer.async_flush().await?;
             }
-            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.flush().await?,
+            BodyRenderer::Csv(csv_renderer) => csv_renderer.flush().await?,
         }
         Ok(())
     }
 
     pub async fn close(self) -> ResponseWriter {
-        match self {
-            AnyRenderBodyContext::Html(render_context) => render_context.close().await,
-            AnyRenderBodyContext::Json(json_body_renderer) => json_body_renderer.close(),
-            AnyRenderBodyContext::Csv(csv_renderer) => csv_renderer.close().await,
+        match self.renderer {
+            BodyRenderer::Html(render_context) => render_context.close().await,
+            BodyRenderer::Json(json_body_renderer) => json_body_renderer.close(),
+            BodyRenderer::Csv(csv_renderer) => csv_renderer.close().await,
         }
     }
 }
@@ -590,10 +632,8 @@ impl<W: std::io::Write> JsonBodyRenderer<W> {
         serde_json::to_writer(&mut self.writer, data)?;
         Ok(())
     }
-    pub fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
-        self.handle_row(&json!({
-            "error": error.to_string()
-        }))
+    pub fn handle_error(&mut self, error: &ClientError) -> anyhow::Result<()> {
+        self.handle_row(&json!({ "error": error.message() }))
     }
 
     pub fn close(mut self) -> W {
@@ -677,17 +717,24 @@ impl CsvBodyRenderer {
         Ok(())
     }
 
-    pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
-        let err_str = error.to_string();
-        self.writer
-            .write_record(
-                self.columns
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| if i == 0 { &err_str } else { "" })
-                    .collect::<Vec<_>>(),
-            )
-            .await?;
+    pub async fn handle_error(&mut self, error: &ClientError) -> anyhow::Result<()> {
+        let err_str = error.message();
+        if self.columns.is_empty() {
+            // The error happened before any header row was written, so there are
+            // no columns to align with. Emit a single-field record so the error
+            // is still reported instead of an empty record.
+            self.writer.write_record([err_str]).await?;
+        } else {
+            self.writer
+                .write_record(
+                    self.columns
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| if i == 0 { err_str } else { "" })
+                        .collect::<Vec<_>>(),
+                )
+                .await?;
+        }
         Ok(())
     }
 
@@ -848,31 +895,27 @@ impl<W: std::io::Write> HtmlRenderContext<W> {
         Ok(())
     }
 
-    /// Handles the rendering of an error.
-    /// Returns whether the error is irrecoverable and the rendering must stop
-    pub async fn handle_error(&mut self, error: &anyhow::Error) -> anyhow::Result<()> {
+    /// Renders an already-reduced, client-safe error into the page.
+    pub async fn handle_error(&mut self, error: &ClientError) -> anyhow::Result<()> {
         self.close_component()?;
-        let data = if self.app_state.config.environment.is_prod() {
-            json!({
-                "description": format!("Please contact the administrator for more information. The error has been logged."),
-            })
-        } else {
-            json!({
-                "query_number": self.current_statement,
-                "description": error.to_string(),
-                "backtrace": get_backtrace_as_strings(error),
-                "note": "You can hide error messages like this one from your users by setting the 'environment' configuration option to 'production'."
-            })
-        };
+        let data = error.to_html_data();
         let saved_component = self.open_component_with_data("error", &data).await?;
         self.close_component()?;
         self.current_component = saved_component;
         Ok(())
     }
 
+    /// Reduces a raw error to its client-safe form and renders it. Used for
+    /// errors that arise during HTML rendering itself (e.g. while closing a
+    /// component), where the page is already committed to HTML.
     pub async fn handle_result<R>(&mut self, result: &anyhow::Result<R>) -> anyhow::Result<()> {
         if let Err(error) = result {
-            self.handle_error(error).await
+            let client_error = ClientError::new(
+                error,
+                self.app_state.config.environment,
+                Some(self.current_statement),
+            );
+            self.handle_error(&client_error).await
         } else {
             Ok(())
         }
@@ -990,16 +1033,6 @@ fn handle_log_component(
     let message = get_object_str(data, "message").context("log: missing property 'message'")?;
     log::log!(target: &target, log_level, "{message}");
     Ok(())
-}
-
-pub(super) fn get_backtrace_as_strings(error: &anyhow::Error) -> Vec<String> {
-    let mut backtrace = vec![];
-    let mut source = error.source();
-    while let Some(s) = source {
-        backtrace.push(format!("{s}"));
-        source = s.source();
-    }
-    backtrace
 }
 
 struct HandlebarWriterOutput<W: std::io::Write>(W);
