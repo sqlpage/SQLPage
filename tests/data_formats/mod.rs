@@ -231,3 +231,123 @@ async fn test_accept_json_redirect_still_works() -> actix_web::Result<()> {
     );
     Ok(())
 }
+
+/// Builds an `AppState` running in production mode.
+async fn make_prod_app_data() -> actix_web::web::Data<sqlpage::AppState> {
+    crate::common::init_log();
+    let mut config = crate::common::test_config();
+    config.environment = sqlpage::app_config::DevOrProd::Production;
+    crate::common::make_app_data_from_config(config).await
+}
+
+async fn req_prod_with_accept(path: &str, accept: &str) -> String {
+    let app_data = make_prod_app_data().await;
+    let req = TestRequest::get()
+        .uri(path)
+        .insert_header((header::ACCEPT, accept))
+        .app_data(app_data)
+        .to_srv_request();
+    let resp = main_handler(req)
+        .await
+        .expect("request should not fail at the handler level");
+    let body = test::read_body(resp).await;
+    String::from_utf8(body.to_vec()).unwrap()
+}
+
+/// In production, a SQL error that happens mid-stream must not leak the SQL
+/// statement, the source file path, or the raw database error text.
+fn assert_no_sql_leak(body: &str, context: &str) {
+    for needle in [
+        "definitely_missing_table_xyz",
+        "The SQL statement sent by SQLPage",
+        "error_leak.sql",
+        ".sql\"",
+    ] {
+        assert!(
+            !body.contains(needle),
+            "production error response leaked {needle:?} in {context}: {body}"
+        );
+    }
+    assert!(
+        body.to_lowercase().contains("administrator"),
+        "production error response should contain a generic message in {context}: {body}"
+    );
+}
+
+#[actix_web::test]
+async fn test_prod_json_error_does_not_leak_sql() {
+    let body = req_prod_with_accept(
+        "/tests/data_formats/json_error_leak.sql",
+        "application/json",
+    )
+    .await;
+    assert!(
+        body.contains("before the error"),
+        "the good row should still be streamed: {body}"
+    );
+    assert_no_sql_leak(&body, "json error");
+}
+
+#[actix_web::test]
+async fn test_prod_csv_error_does_not_leak_sql() {
+    let app_data = make_prod_app_data().await;
+    if matches!(
+        app_data.db.info.database_type,
+        sqlpage::webserver::database::SupportedDatabase::Oracle
+    ) {
+        return;
+    }
+    let req = TestRequest::get()
+        .uri("/tests/data_formats/csv_error_leak.sql")
+        .insert_header((header::ACCEPT, "text/csv"))
+        .app_data(app_data)
+        .to_srv_request();
+    let resp = main_handler(req).await.expect("handler should not fail");
+    let body = test::read_body(resp).await;
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body.contains("before the error"),
+        "the good row should still be streamed: {body}"
+    );
+    assert_no_sql_leak(&body, "csv error");
+}
+
+/// A CSV page can hit an error before its first data row (so no header has been
+/// written and `columns` is empty). The generic error message must still be
+/// emitted instead of an empty record.
+#[actix_web::test]
+async fn test_prod_csv_error_before_any_row_still_reports() {
+    let app_data = make_prod_app_data().await;
+    if matches!(
+        app_data.db.info.database_type,
+        sqlpage::webserver::database::SupportedDatabase::Oracle
+    ) {
+        return;
+    }
+    let req = TestRequest::get()
+        .uri("/tests/data_formats/csv_error_no_rows.sql")
+        .insert_header((header::ACCEPT, "text/csv"))
+        .app_data(app_data)
+        .to_srv_request();
+    let resp = main_handler(req).await.expect("handler should not fail");
+    let body = test::read_body(resp).await;
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body.to_lowercase().contains("administrator"),
+        "csv error before the first row must still emit the generic error message: {body:?}"
+    );
+    assert_no_sql_leak(&body, "csv error before any row");
+}
+
+/// An author may only intend a page to be served as HTML, but a client can
+/// request it with `Accept: application/json` and pick the JSON renderer.
+/// In production that path must not leak SQL text either.
+#[actix_web::test]
+async fn test_prod_html_page_requested_as_json_does_not_leak_sql() {
+    let body = req_prod_with_accept(
+        "/tests/data_formats/text_error_leak.sql",
+        "application/json",
+    )
+    .await;
+    assert_no_sql_leak(&body, "text page requested as json");
+}
