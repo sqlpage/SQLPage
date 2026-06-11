@@ -1382,9 +1382,7 @@ mod tests {
             "actix selects the first duplicate cookie"
         );
         assert_eq!(
-            logout_session_cookie(&request)
-                .as_ref()
-                .map(Cookie::value),
+            logout_session_cookie(&request).as_ref().map(Cookie::value),
             Some("second"),
             "logout binding must use the last duplicate, matching RequestInfo and the signed URL"
         );
