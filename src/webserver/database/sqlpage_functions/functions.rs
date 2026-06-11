@@ -1055,9 +1055,9 @@ async fn oidc_logout_url<'a>(
 
     let redirect_uri = redirect_uri.as_deref().unwrap_or("/");
 
-    if !redirect_uri.starts_with('/') || redirect_uri.starts_with("//") {
+    if !crate::webserver::oidc::is_safe_relative_redirect(redirect_uri) {
         anyhow::bail!(
-            "oidc_logout_url: redirect_uri must be a relative path starting with '/'. Got: {redirect_uri}"
+            "oidc_logout_url: redirect_uri must be a relative path starting with a single '/'. Got: {redirect_uri}"
         );
     }
 
