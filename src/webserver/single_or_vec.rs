@@ -83,6 +83,18 @@ impl SingleOrVec {
             SingleOrVec::Vec(v) => Cow::Owned(serde_json::to_string(v).unwrap()),
         }
     }
+
+    /// Returns the first value. This mirrors how `actix_web::HttpRequest::cookie`
+    /// selects the first cookie of a given name, so callers that need to agree
+    /// with that selection (such as OIDC logout session binding) stay consistent
+    /// instead of accidentally using a JSON array of merged duplicate values.
+    #[must_use]
+    pub fn first_str(&self) -> &str {
+        match self {
+            SingleOrVec::Single(x) => x,
+            SingleOrVec::Vec(v) => v.first().map_or("", String::as_str),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -108,6 +120,18 @@ mod single_or_vec_tests {
                 .contains("expected an array of strings, but item at index 1 is 1"),
             "{err}"
         );
+    }
+
+    #[test]
+    fn first_str_returns_first_value() {
+        assert_eq!(SingleOrVec::Single("a".to_string()).first_str(), "a");
+        // Duplicate values (e.g. two cookies of the same name) yield the first,
+        // matching HttpRequest::cookie, not a JSON array.
+        assert_eq!(
+            SingleOrVec::Vec(vec!["a".to_string(), "b".to_string()]).first_str(),
+            "a"
+        );
+        assert_eq!(SingleOrVec::Vec(vec![]).first_str(), "");
     }
 
     #[test]
