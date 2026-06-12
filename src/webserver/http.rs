@@ -33,14 +33,12 @@ use crate::webserver::routing::RoutingAction::{
 use crate::webserver::routing::{AppFileStore, calculate_route};
 use actix_web::body::MessageBody;
 use anyhow::{Context, bail};
-use chrono::{DateTime, Utc};
 use futures_util::StreamExt;
 use futures_util::stream::Stream;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::SystemTime;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -441,17 +439,19 @@ async fn serve_file(
     if_modified_since: Option<IfModifiedSince>,
 ) -> actix_web::Result<HttpResponse> {
     let path = strip_site_prefix(path, state);
-    if let Some(IfModifiedSince(date)) = if_modified_since {
-        let since = DateTime::<Utc>::from(SystemTime::from(date));
-        let modified = state
-            .file_system
-            .modified_since(state, path.as_ref(), since, false)
-            .await
-            .with_context(|| format!("Unable to get modification time of file {path:?}"))
-            .map_err(|e| anyhow_err_to_actix(e, state))?;
-        if !modified {
-            return Ok(HttpResponse::NotModified().finish());
-        }
+    let last_modified = state
+        .file_system
+        .last_modified(state, path.as_ref(), false)
+        .await
+        .with_context(|| format!("Unable to get modification time of file {path:?}"))
+        .map_err(|e| anyhow_err_to_actix(e, state))?;
+    let last_modified = HttpDate::from(last_modified.into());
+    if let Some(IfModifiedSince(date)) = if_modified_since
+        && last_modified <= date
+    {
+        return Ok(HttpResponse::NotModified()
+            .insert_header(LastModified(last_modified))
+            .finish());
     }
     state
         .file_system
@@ -466,7 +466,7 @@ async fn serve_file(
                         .first()
                         .map_or_else(ContentType::octet_stream, ContentType),
                 )
-                .insert_header(LastModified(HttpDate::from(SystemTime::now())))
+                .insert_header(LastModified(last_modified))
                 .body(b)
         })
 }

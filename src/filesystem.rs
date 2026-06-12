@@ -36,6 +36,32 @@ impl FileSystem {
         }
     }
 
+    pub async fn last_modified(
+        &self,
+        app_state: &AppState,
+        path: &Path,
+        priviledged: bool,
+    ) -> anyhow::Result<DateTime<Utc>> {
+        let local_path = self.safe_local_path(app_state, path, priviledged)?;
+        let local_result = tokio::fs::metadata(&local_path)
+            .await
+            .and_then(|metadata| metadata.modified())
+            .map(DateTime::<Utc>::from);
+        match (local_result, &self.db_fs_queries) {
+            (Ok(last_modified), _) => Ok(last_modified),
+            (Err(e), Some(db_fs)) if is_path_missing_error(&e) => {
+                db_fs.last_modified_in_db(app_state, path).await
+            }
+            (Err(e), _) => {
+                let status = io_error_status(&e)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Err(e).with_status(status).with_context(|| {
+                    format!("Unable to read local file metadata for {}", path.display())
+                })
+            }
+        }
+    }
+
     pub async fn modified_since(
         &self,
         app_state: &AppState,
@@ -258,6 +284,7 @@ pub struct DbFsQueries {
     was_modified: AnyStatement<'static>,
     read_file: AnyStatement<'static>,
     exists: AnyStatement<'static>,
+    last_modified: AnyStatement<'static>,
 }
 
 impl DbFsQueries {
@@ -286,6 +313,7 @@ impl DbFsQueries {
             was_modified: Self::make_was_modified_query(db).await?,
             read_file: Self::make_read_file_query(db).await?,
             exists: Self::make_exists_query(db).await?,
+            last_modified: Self::make_last_modified_query(db).await?,
         })
     }
 
@@ -300,7 +328,7 @@ impl DbFsQueries {
 
     async fn make_was_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
         let was_modified_query = format!(
-            "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
+            "SELECT 1 from sqlpage_files WHERE last_modified > {} AND path = {}",
             make_placeholder(db.info.kind, 1),
             make_placeholder(db.info.kind, 2)
         );
@@ -329,6 +357,39 @@ impl DbFsQueries {
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         db.prepare_with(&exists_query, param_types).await
+    }
+
+    async fn make_last_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+        let last_modified_query = format!(
+            "SELECT last_modified from sqlpage_files WHERE path = {}",
+            make_placeholder(db.info.kind, 1),
+        );
+        let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
+        db.prepare_with(&last_modified_query, param_types).await
+    }
+
+    async fn last_modified_in_db(
+        &self,
+        app_state: &AppState,
+        path: &Path,
+    ) -> anyhow::Result<DateTime<Utc>> {
+        self.last_modified
+            .query_as::<(DateTime<Utc>,)>()
+            .bind(path.display().to_string())
+            .fetch_optional(&app_state.db.connection)
+            .await
+            .map_err(anyhow::Error::from)
+            .and_then(|last_modified| {
+                last_modified
+                    .map(|(last_modified,)| last_modified)
+                    .ok_or_else(|| {
+                        ErrorWithStatus {
+                            status: actix_web::http::StatusCode::NOT_FOUND,
+                        }
+                        .into()
+                    })
+            })
+            .with_context(|| format!("Unable to get the modification time of {}", path.display()))
     }
 
     async fn file_modified_since_in_db(
@@ -473,6 +534,17 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     assert!(
         !was_modified,
         "File should not be modified since one hour in the future"
+    );
+
+    let last_modified = fs
+        .last_modified(&state, "unit test file.txt".as_ref(), false)
+        .await?;
+    let was_modified = fs
+        .modified_since(&state, "unit test file.txt".as_ref(), last_modified, false)
+        .await?;
+    assert!(
+        !was_modified,
+        "A file should not be considered modified since its exact modification time"
     );
 
     Ok(())
