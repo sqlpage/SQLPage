@@ -1317,7 +1317,7 @@ and to include custom visual styles (with CSS) or interactive behavior (with Jav
 ');
 
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'shell', * FROM (VALUES
-    ('favicon', 'The URL of the icon the web browser should display in bookmarks and tabs. This property is particularly useful if multiple sites are hosted on the same domain with different [``site_prefix``](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage).', 'URL', TRUE, TRUE),
+    ('favicon', 'The URL of the icon the web browser should display in bookmarks and tabs. This property is particularly useful if multiple sites are hosted on the same domain with different [``site_prefix``](/configuration.sql).', 'URL', TRUE, TRUE),
     ('manifest', 'The location of the [manifest.json](https://developer.mozilla.org/en-US/docs/Web/Manifest) if the site is a [PWA](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps). Among other features, serving a manifest enables your site to be "installed" as an app on most mobile devices.', 'URL', TRUE, TRUE)
 ) x;
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'shell', * FROM (VALUES
@@ -1399,7 +1399,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
                     {"link": "/functions.sql", "title": "SQLPage Functions", "icon": "math-function"},
                     {"link": "/extensions-to-sql", "title": "Extensions to SQL", "icon": "cube-plus"},
                     {"link": "/custom_components.sql", "title": "Custom Components", "icon": "puzzle"},
-                    {"link": "//github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage", "title": "Configuration", "icon": "settings"}
+                    {"link": "/configuration.sql", "title": "Configuration", "icon": "settings"}
                 ]},
                 {"title": "Search", "link": "/search"}
             ],

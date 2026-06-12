@@ -1,2 +1,0 @@
-database_url: "sqlite://:memory:"
-port: 5005

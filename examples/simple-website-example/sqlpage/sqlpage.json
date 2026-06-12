@@ -1,3 +1,4 @@
 {
+  "$schema": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
   "database_url": "sqlite://:memory:"
 }

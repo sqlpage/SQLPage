@@ -1,3 +1,4 @@
 {
+  "$schema": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
   "database_url": "postgres://my_username:my_password@localhost:5432/my_geographic_database"
 }

@@ -147,7 +147,7 @@ For more information, see the [this discussion](https://github.com/sqlpage/SQLPa
 ## Database connections
 
 SQLPage uses a fixed pool of database connections, and will never open more connections than the ones you
-[configured](https://github.com/sqlpage/SQLPage/blob/main/configuration.md). So even under heavy load, your database
+[configured](/configuration.sql). So even under heavy load, your database
 connection limit will never be saturated by SQLPage.
 
 And SQLPage will accept any restriction you put on the database user you use to connect to your database, so you can

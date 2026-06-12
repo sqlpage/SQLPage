@@ -17,6 +17,7 @@ async fn main() {
         .unwrap();
 
     println!("cargo:rerun-if-changed=build.rs");
+    generate_app_config();
     let c = Rc::new(make_client());
 
     for h in [
@@ -33,6 +34,53 @@ async fn main() {
         h.await.unwrap();
     }
     set_odbc_rpath();
+}
+
+fn generate_app_config() {
+    const SCHEMA_PATH: &str = "sqlpage/sqlpage.schema.json";
+    println!("cargo:rerun-if-changed={SCHEMA_PATH}");
+    let schema: serde_json::Value = serde_json::from_reader(
+        File::open(SCHEMA_PATH).expect("Unable to open the SQLPage configuration JSON Schema"),
+    )
+    .expect("Invalid SQLPage configuration JSON Schema");
+    let properties = schema["properties"]
+        .as_object()
+        .expect("Configuration schema must have an object of properties");
+
+    let mut generated = String::from(
+        "// Generated from sqlpage/sqlpage.schema.json by build.rs. Do not edit.\n\
+         #[derive(Debug, Deserialize, PartialEq, Clone)]\n\
+         #[allow(clippy::doc_markdown, clippy::struct_excessive_bools)]\n\
+         pub struct AppConfig {\n",
+    );
+    for (schema_name, property) in properties {
+        if property["x-rust-exclude"].as_bool() == Some(true) {
+            continue;
+        }
+        let description = property["description"]
+            .as_str()
+            .unwrap_or_else(|| panic!("Configuration property {schema_name} needs a description"));
+        for line in description.lines() {
+            generated.push_str("    /// ");
+            generated.push_str(line);
+            generated.push('\n');
+        }
+        if let Some(serde) = property["x-rust-serde"].as_str() {
+            generated.push_str("    #[serde(");
+            generated.push_str(serde);
+            generated.push_str(")]\n");
+        }
+        let field_name = property["x-rust-field-name"]
+            .as_str()
+            .unwrap_or(schema_name);
+        let rust_type = property["x-rust-type"]
+            .as_str()
+            .unwrap_or_else(|| panic!("Configuration property {schema_name} needs x-rust-type"));
+        generated.push_str(&format!("    pub {field_name}: {rust_type},\n"));
+    }
+    generated.push_str("}\n");
+    let output = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("app_config.rs");
+    std::fs::write(output, generated).expect("Unable to write generated AppConfig");
 }
 
 fn make_client() -> awc::Client {

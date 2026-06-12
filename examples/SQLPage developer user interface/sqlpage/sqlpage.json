@@ -1,3 +1,4 @@
 {
+  "$schema": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
   "content_security_policy": "script-src blob: 'self' https://cdn.jsdelivr.net;"
 }

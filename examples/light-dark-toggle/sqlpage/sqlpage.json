@@ -1,6 +1,5 @@
 {
   "$schema": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
-  "sqlite_extensions": [
-    "mod_spatialite"
-  ]
+  "database_url": "sqlite://:memory:",
+  "port": 5005
 }

@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## Unreleased
+
+- SQLPage configuration now has a checked-in JSON Schema that powers the runtime configuration structure and the generated official-site reference. Example JSON configurations link to the live schema for editor validation and completion.
+
 ## v0.44.1
 
 An AI-assisted security audit found three vulnerabilities: one authentication bypass that is high severity for affected OIDC deployments, and two lower-severity issues. It also led to three hardening changes. Upgrade now if you use custom OIDC protected paths.

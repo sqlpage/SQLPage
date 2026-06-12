@@ -48,7 +48,7 @@ insert into files (url) values (sqlpage.read_file_as_data_url(sqlpage.uploaded_f
 returning ''text'' as component, ''Uploaded new file with id: '' || id as contents;
 ```
 
-The maximum size of uploaded files is configurable with the [`max_uploaded_file_size`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md)
+The maximum size of uploaded files is configurable with the [`max_uploaded_file_size`](/configuration.sql)
 configuration parameter. By default, it is set to 5 MiB.
 
 ### Parsing CSV files
@@ -120,7 +120,7 @@ And while we''re at it, SQLPage also supports HTTP/2, for even faster page loads
 
 To enable HTTPS, you need to buy a [domain name](https://en.wikipedia.org/wiki/Domain_name)
 and make it point to the server where SQLPage is running.
-Then set the `https_domain` configuration parameter to `yourdomain.com` in your [`sqlpage.json` configuration file](./configuration.md).
+Then set the `https_domain` configuration parameter to `yourdomain.com` in your [`sqlpage.json` configuration file](/configuration.sql).
 
 ```json
 {
@@ -163,7 +163,7 @@ and to create JSON APIs.
  - The `cookie` component now supports setting an explicit expiration date for cookies.
  - The `cookie` component now supports setting the `SameSite` attribute of cookies, and defaults to `SameSite=Strict` for all cookies. What this means in practice is that cookies set by SQLPage will not be sent to your website if the user is coming from another website. This prevents someone from tricking your users into executing SQLPage queries on your website by sending them a malicious link.
  - Bugfix: setting `min` or `max` to `0` in a number field in the `form` component now works as expected.
- - Added support for `.env` files to set SQLPage''s [environment variables](./configuration.md#environment-variables).
+ - Added support for `.env` files to set SQLPage''s [environment variables](/configuration.sql).
  - Better responsive design in the card component. Up to 5 cards per line on large screens. The number of cards per line is still customizable with the `columns` attribute.
  - [New icons](https://tabler-icons.io/changelog): 
    - ![new icons in tabler 42](https://github.com/tabler/tabler-icons/assets/1282324/00856af9-841d-4aa9-995d-121c7ddcc005)

@@ -259,7 +259,7 @@ Currently running from `/home/user/my_sqlpage_website`
 
 The current working directory is the directory from which the SQLPage server process was started.
 By default, this is also the directory from which `.sql` files are loaded and served.
-However, this can be changed by setting the `web_root` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md).
+However, this can be changed by setting the `web_root` [configuration option](/configuration.sql).
 '
     );
 INSERT INTO sqlpage_functions (
@@ -291,7 +291,7 @@ SQL files are served from `/home/user/my_sqlpage_website`
 The web root is the directory from which `.sql` files are loaded and served.
 By default, it is the current working directory, but it can be changed using:
  - the `--web-root` command line argument
- - the `web_root` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md) in `sqlpage.json`
+ - the `web_root` [configuration option](/configuration.sql) in `sqlpage.json`
  - the `WEB_ROOT` environment variable
 
 This is more reliable than `sqlpage.current_working_directory()` when you need to reference the location of your SQL files.
