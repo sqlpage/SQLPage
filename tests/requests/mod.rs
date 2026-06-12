@@ -248,3 +248,43 @@ async fn test_missing_multipart_content_disposition_returns_bad_request() -> act
 }
 
 mod webhook_hmac;
+
+#[actix_web::test]
+async fn static_file_uses_source_last_modified_for_revalidation() -> anyhow::Result<()> {
+    use actix_web::http::header;
+    use actix_web::http::header::HttpDate;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let unique = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+    let web_root = std::env::temp_dir().join(format!("sqlpage-last-modified-{unique}"));
+    std::fs::create_dir_all(&web_root)?;
+    let asset_path = web_root.join("asset.txt");
+    std::fs::write(&asset_path, "hello static world\n")?;
+
+    let expected = HttpDate::from(std::fs::metadata(&asset_path)?.modified()?);
+    let mut config = crate::common::test_config();
+    config.web_root = web_root.clone();
+    let app_data = crate::common::make_app_data_from_config(config).await;
+
+    let req = crate::common::get_request_to_with_data("/asset.txt", app_data.clone())
+        .await?
+        .to_srv_request();
+    let response = main_handler(req).await?;
+    assert_eq!(response.status(), StatusCode::OK);
+    let last_modified = response
+        .headers()
+        .get(header::LAST_MODIFIED)
+        .expect("static files should have a Last-Modified header")
+        .to_str()?;
+    assert_eq!(last_modified, expected.to_string());
+
+    let req = crate::common::get_request_to_with_data("/asset.txt", app_data)
+        .await?
+        .insert_header((header::IF_MODIFIED_SINCE, last_modified))
+        .to_srv_request();
+    let response = main_handler(req).await?;
+    assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+
+    std::fs::remove_dir_all(web_root)?;
+    Ok(())
+}
