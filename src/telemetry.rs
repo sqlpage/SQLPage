@@ -20,6 +20,7 @@ static OTLP_HTTP_WORKER_SENDER: OnceLock<
     Result<tokio::sync::mpsc::UnboundedSender<OtlpHttpJob>, String>,
 > = OnceLock::new();
 const DEFAULT_ENV_FILTER_DIRECTIVES: &str = "sqlpage=info,actix_web=info,tracing_actix_web=info,opentelemetry=warn,opentelemetry_sdk=warn,opentelemetry_otlp=warn";
+pub(crate) const ACCESS_LOG_TARGET: &str = "sqlpage::access";
 
 type OtlpHttpResponse = Result<opentelemetry_http::Response<opentelemetry_http::Bytes>, String>;
 
@@ -438,26 +439,29 @@ mod logfmt {
 
     #[derive(Copy, Clone)]
     enum OutputMode {
-        Stderr,
+        StdoutAndStderr,
         TestWriter,
     }
 
     pub(super) struct LogfmtLayer {
-        use_colors: bool,
+        stdout_colors: bool,
+        stderr_colors: bool,
         output_mode: OutputMode,
     }
 
     impl LogfmtLayer {
         pub fn new() -> Self {
             Self {
-                use_colors: io::stderr().is_terminal(),
-                output_mode: OutputMode::Stderr,
+                stdout_colors: io::stdout().is_terminal(),
+                stderr_colors: io::stderr().is_terminal(),
+                output_mode: OutputMode::StdoutAndStderr,
             }
         }
 
         pub fn test_writer() -> Self {
             Self {
-                use_colors: false,
+                stdout_colors: false,
+                stderr_colors: false,
                 output_mode: OutputMode::TestWriter,
             }
         }
@@ -496,12 +500,13 @@ mod logfmt {
 
         fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<'_, S>) {
             let mut buf = String::with_capacity(256);
-            let colors = self.use_colors;
             let level = *event.metadata().level();
             let include_all_span_fields = includes_all_span_fields();
             let mut event_fields = HashMap::new();
             event.record(&mut FieldCollector(&mut event_fields));
             let target = event_target(event, &event_fields);
+            let output_stream = output_stream_for_target(target);
+            let colors = self.use_colors(output_stream);
             let msg = event_fields.get("message");
             let multiline_msg = is_multiline_terminal_message(colors, msg);
             let include_all_event_fields =
@@ -518,12 +523,46 @@ mod logfmt {
             buf.push('\n');
             write_multiline_message(&mut buf, msg, multiline_msg);
             match self.output_mode {
-                OutputMode::Stderr => {
-                    let _ = io::Write::write_all(&mut io::stderr().lock(), buf.as_bytes());
-                }
+                OutputMode::StdoutAndStderr => write_to_output(output_stream, &buf),
                 OutputMode::TestWriter => {
                     eprint!("{buf}");
                 }
+            }
+        }
+    }
+
+    impl LogfmtLayer {
+        fn use_colors(&self, output_stream: OutputStream) -> bool {
+            match output_stream {
+                OutputStream::Stdout => self.stdout_colors,
+                OutputStream::Stderr => self.stderr_colors,
+            }
+        }
+    }
+
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    enum OutputStream {
+        Stdout,
+        Stderr,
+    }
+
+    fn output_stream_for_target(target: &str) -> OutputStream {
+        if target == super::ACCESS_LOG_TARGET {
+            OutputStream::Stdout
+        } else {
+            OutputStream::Stderr
+        }
+    }
+
+    fn write_to_output(output_stream: OutputStream, buf: &str) {
+        use std::io::Write as _;
+
+        match output_stream {
+            OutputStream::Stdout => {
+                let _ = io::stdout().write_all(buf.as_bytes());
+            }
+            OutputStream::Stderr => {
+                let _ = io::stderr().write_all(buf.as_bytes());
             }
         }
     }
@@ -817,6 +856,18 @@ mod logfmt {
             assert_eq!(
                 buf,
                 " name=BatchSpanProcessor.ExportFailed reason=\"connection error\""
+            );
+        }
+
+        #[test]
+        fn access_logs_use_stdout_and_other_logs_use_stderr() {
+            assert_eq!(
+                output_stream_for_target(super::super::ACCESS_LOG_TARGET),
+                OutputStream::Stdout
+            );
+            assert_eq!(
+                output_stream_for_target("sqlpage::webserver::http"),
+                OutputStream::Stderr
             );
         }
     }

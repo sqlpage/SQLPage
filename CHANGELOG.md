@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## unreleased
+
+- **Access logs now go to stdout.** SQLPage now writes the single per-request completion log line to stdout with the target `sqlpage::access`, matching common application-server and container logging conventions. Diagnostic logs, warnings, and internal errors still go to stderr. If your `LOG_LEVEL` or `RUST_LOG` filter is scoped to a specific old target such as `sqlpage::webserver::http=info`, add `sqlpage::access=info` so request-completion logs are still emitted. If your log pipeline only collects stderr, update it to collect stdout too.
+
 ## v0.44.1
 
 An AI-assisted security audit found three vulnerabilities: one authentication bypass that is high severity for affected OIDC deployments, and two lower-severity issues. It also led to three hardening changes. Upgrade now if you use custom OIDC protected paths.
