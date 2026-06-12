@@ -1,4 +1,5 @@
 use super::{ExecutionContext, RequestInfo};
+use crate::filesystem::FileAccess;
 use crate::webserver::{
     ErrorWithStatus,
     database::{
@@ -606,7 +607,7 @@ async fn read_file_bytes(request: &RequestInfo, path_str: &str) -> Result<Vec<u8
         request
             .app_state
             .file_system
-            .read_file(&request.app_state, path, true)
+            .read_file(&request.app_state, FileAccess::privileged(path))
             .await
     } else {
         tokio::fs::read(path)
@@ -735,10 +736,9 @@ async fn run_sql<'a>(
     let app_state = &request.app_state;
     let sql_file = app_state
         .sql_file_cache
-        .get_with_privilege(
+        .get(
             app_state,
-            std::path::Path::new(sql_file_path.as_ref()),
-            true,
+            FileAccess::privileged(std::path::Path::new(sql_file_path.as_ref())),
         )
         .instrument(run_sql_span.clone())
         .await
