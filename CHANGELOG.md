@@ -1,10 +1,24 @@
 # CHANGELOG.md
 
-## Unreleased
+## unreleased
 
 - **Access logs now go to stdout.** SQLPage now writes the single per-request completion log line to stdout with the target `sqlpage::access`, matching common application-server and container logging conventions. Diagnostic logs, warnings, and internal errors still go to stderr. If your `LOG_LEVEL` or `RUST_LOG` filter is scoped to a specific old target such as `sqlpage::webserver::http=info`, add `sqlpage::access=info` so request-completion logs are still emitted. If your log pipeline only collects stderr, update it to collect stdout too.
-- **Download filenames can no longer inject extra `Content-Disposition` parameters.** The `csv` and `download` components now build the `Content-Disposition` header with a properly quoted and escaped filename instead of plain string concatenation. Before this fix, a filename containing characters such as `;`, `"`, or `=` could add a second header parameter (for example a `filename*=...` value), and some browsers prefer that injected value over the intended one. You are affected if your app puts untrusted data (such as a user-provided name or a value from the database) into the `filename` of a `csv` or `download` component. No SQL change is required: the supplied filename now always appears as a single, safely quoted `filename` value.
-- **Security fix: reserved and private files could be served directly over HTTP after a trusted page loaded them.** Files that SQLPage normally refuses to serve to direct HTTP requests (anything under the reserved `sqlpage/` prefix such as migrations, configuration, and database connection details, as well as dotfiles, parent-directory traversal paths like `../secret.sql`, and absolute paths) could briefly become reachable. This happened only after a trusted page loaded that same file with `sqlpage.run_sql(...)`, which loads files with elevated privileges and caches the parsed result. While that cache entry was fresh, a direct request such as `GET /sqlpage/secret.sql` (or the extensionless alias `GET /sqlpage/secret`) returned `200 OK` and executed the private SQL instead of returning `403 Forbidden`. Worst case, an attacker who can reach your site could read or execute internal SQL that was meant to stay private, including migration and configuration logic. You are affected if your app calls `sqlpage.run_sql()` on files inside `sqlpage/` (or on dotfiles or paths outside the web root) and is reachable by untrusted users. The fix enforces the unprivileged path guard on every direct HTTP request regardless of the cache, so these paths now always return `403 Forbidden`. Upgrade to get the fix; no configuration change is required. Legitimate `sqlpage.run_sql()` includes of such files from your own pages keep working as before.
+
+## v0.44.1
+
+An AI-assisted security audit found three vulnerabilities: one authentication bypass that is high severity for affected OIDC deployments, and two lower-severity issues. It also led to three hardening changes. Upgrade now if you use custom OIDC protected paths.
+
+Security fixes:
+
+- **High severity for affected OIDC deployments: protected path bypass.** Affected: sites using OIDC with custom `oidc_protected_paths`, such as `["/admin"]`, to protect only part of the site. Not affected: sites not using OIDC, or using the default `oidc_protected_paths = ["/"]` to protect the whole site. Impact: an unauthenticated attacker could use percent-encoded URLs to access pages that should require login. The fix checks decoded request paths against decoded `oidc_protected_paths` and `oidc_public_paths`.
+- **Medium severity: private SQL files could be served after privileged `run_sql` includes.** Affected: apps that call `sqlpage.run_sql(...)` on private paths such as `sqlpage/`, dotfiles, absolute paths, or `../` paths. Impact: an attacker who knew the path could request the cached file directly and run it as a public page for a few milliseconds.
+- **Low severity: debug error messages displayed in production** Affected: `environment = "production"` and pages that can error while serving JSON, NDJSON, SSE, or CSV contents. Impact: an attacker could gather private information about your database schema through error messages.
+
+Additional hardening:
+
+- Safely quote `csv` and `download` `filename` values in `Content-Disposition`, preventing download filename corruption.
+- Reject unsafe OIDC redirect targets containing backslashes or control characters, affecting user-controlled login return targets and `sqlpage.oidc_logout_url`.
+- Bind `sqlpage.oidc_logout_url` links to the current session, preventing forced logout of another browser.
 
 ## v0.44.0
 

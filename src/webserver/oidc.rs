@@ -140,8 +140,28 @@ impl TryFrom<&AppConfig> for OidcConfig {
 impl OidcConfig {
     #[must_use]
     pub fn is_public_path(&self, path: &str) -> bool {
-        !self.protected_paths.iter().any(|p| path.starts_with(p))
-            || self.public_paths.iter().any(|p| path.starts_with(p))
+        // Percent-decode both the request path and the configured prefixes
+        // before comparing. Otherwise an unauthenticated request could encode a
+        // byte of a protected prefix (e.g. `/%70rotected/`, which the router
+        // decodes to `/protected/` and serves) to dodge the rule. The prefixes
+        // are decoded too because a `site_prefix` such as `/my app/` is stored
+        // percent-encoded (`/my%20app/...`); decoding only one side would never
+        // match and would wrongly make protected pages public. Matching stays a
+        // plain string prefix, preserving the documented `/public` vs `/public/`
+        // distinction (those resolve to different files).
+        fn decode(s: &str) -> std::borrow::Cow<'_, str> {
+            percent_encoding::percent_decode_str(s).decode_utf8_lossy()
+        }
+        let decoded = decode(path);
+        let path = decoded.as_ref();
+        !self
+            .protected_paths
+            .iter()
+            .any(|p| path.starts_with(decode(p).as_ref()))
+            || self
+                .public_paths
+                .iter()
+                .any(|p| path.starts_with(decode(p).as_ref()))
     }
 
     /// Creates a custom ID token verifier that supports multiple issuers
@@ -154,11 +174,22 @@ impl OidcConfig {
             .set_other_audience_verifier_fn(self.additional_audience_verifier.as_fn())
     }
 
-    /// Creates a logout URL with the given redirect URI
+    /// Creates a logout URL with the given redirect URI.
+    ///
+    /// The signature is bound to the current session (the value of the
+    /// [`SQLPAGE_AUTH_COOKIE_NAME`] cookie, if any) so that a logout URL
+    /// issued for one browser cannot be used to forcibly log out a different
+    /// browser. `session_token` is the current value of the auth cookie, or
+    /// `None`/empty if the caller is not authenticated.
     #[must_use]
-    pub fn create_logout_url(&self, redirect_uri: &str) -> String {
+    pub fn create_logout_url(&self, redirect_uri: &str, session_token: Option<&str>) -> String {
         let timestamp = chrono::Utc::now().timestamp();
-        let signature = compute_logout_signature(redirect_uri, timestamp, &self.client_secret);
+        let signature = compute_logout_signature(
+            redirect_uri,
+            timestamp,
+            session_token.unwrap_or_default(),
+            &self.client_secret,
+        );
         let query = form_urlencoded::Serializer::new(String::new())
             .append_pair("redirect_uri", redirect_uri)
             .append_pair("timestamp", &timestamp.to_string())
@@ -564,15 +595,38 @@ fn parse_logout_params(query: &str) -> anyhow::Result<LogoutParams> {
         .map(Query::into_inner)
 }
 
+/// Selects the `sqlpage_auth` cookie that a logout URL is bound to. When a
+/// request carries duplicate `sqlpage_auth` cookies, this returns the last one,
+/// matching how `RequestInfo` merges duplicate cookies (last value wins) and
+/// therefore what `sqlpage.oidc_logout_url` signs. `ServiceRequest::cookie`
+/// would return the first instead, which made legitimate logout URLs fail with
+/// a 400 whenever duplicate cookies were present.
+fn logout_session_cookie(request: &ServiceRequest) -> Option<Cookie<'static>> {
+    request.cookies().ok().and_then(|cookies| {
+        cookies
+            .iter()
+            .rev()
+            .find(|c| c.name() == SQLPAGE_AUTH_COOKIE_NAME)
+            .cloned()
+    })
+}
+
 fn process_oidc_logout(
     oidc_state: &OidcState,
     request: &ServiceRequest,
 ) -> anyhow::Result<HttpResponse> {
     let params = parse_logout_params(request.query_string())?;
 
-    verify_logout_params(&params, &oidc_state.config.client_secret)?;
+    let id_token_cookie = logout_session_cookie(request);
+    let session_token = id_token_cookie
+        .as_ref()
+        .map(Cookie::value)
+        .unwrap_or_default();
 
-    let id_token_cookie = request.cookie(SQLPAGE_AUTH_COOKIE_NAME);
+    // The signature is bound to the session it was issued for, so a logout URL
+    // cannot be used to forcibly log out a different browser (CSRF).
+    verify_logout_params(&params, session_token, &oidc_state.config.client_secret)?;
+
     let id_token = id_token_cookie
         .as_ref()
         .map(|c| OidcToken::from_str(c.value()))
@@ -620,7 +674,12 @@ fn process_oidc_logout(
     Ok(response)
 }
 
-fn compute_logout_signature(redirect_uri: &str, timestamp: i64, client_secret: &str) -> String {
+fn compute_logout_signature(
+    redirect_uri: &str,
+    timestamp: i64,
+    session_token: &str,
+    client_secret: &str,
+) -> String {
     use base64::Engine;
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
@@ -629,15 +688,28 @@ fn compute_logout_signature(redirect_uri: &str, timestamp: i64, client_secret: &
         .expect("HMAC accepts any key size");
     mac.update(redirect_uri.as_bytes());
     mac.update(&timestamp.to_be_bytes());
+    // Bind the signature to the session so a logout URL can only log out the
+    // session it was issued for. The length prefix prevents ambiguity between
+    // the redirect_uri and session_token fields.
+    mac.update(&(session_token.len() as u64).to_be_bytes());
+    mac.update(session_token.as_bytes());
     let signature = mac.finalize().into_bytes();
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature)
 }
 
-fn verify_logout_params(params: &LogoutParams, client_secret: &str) -> anyhow::Result<()> {
+fn verify_logout_params(
+    params: &LogoutParams,
+    session_token: &str,
+    client_secret: &str,
+) -> anyhow::Result<()> {
     use base64::Engine;
 
-    let expected_signature =
-        compute_logout_signature(&params.redirect_uri, params.timestamp, client_secret);
+    let expected_signature = compute_logout_signature(
+        &params.redirect_uri,
+        params.timestamp,
+        session_token,
+        client_secret,
+    );
 
     let provided_signature = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(&params.signature)
@@ -659,7 +731,7 @@ fn verify_logout_params(params: &LogoutParams, client_secret: &str) -> anyhow::R
         anyhow::bail!("Logout token timestamp is in the future");
     }
 
-    if !params.redirect_uri.starts_with('/') || params.redirect_uri.starts_with("//") {
+    if !is_safe_relative_redirect(&params.redirect_uri) {
         anyhow::bail!("Invalid redirect URI");
     }
 
@@ -1180,9 +1252,39 @@ impl AudienceVerifier {
     }
 }
 
+/// Returns true if the given value is a safe relative redirect target.
+///
+/// Only paths starting with a single `/` (not `//`), with no backslash and no
+/// ASCII control characters, are accepted. The WHATWG URL Standard treats `\` as
+/// equivalent to `/` for special schemes (http/https) and strips tab/newline/CR
+/// before parsing, so `/\evil.test` and `/\t/evil.test` both parse to the
+/// authority `evil.test`, i.e. `http://evil.test/`. The `url` crate that builds
+/// the absolute `post_logout_redirect_uri` is itself a WHATWG parser, so without
+/// this check a value classified as "relative" becomes an external open-redirect
+/// target on the server side, independent of the client. Browsers implementing
+/// the same standard (Chromium, Firefox, Safari) resolve a `Location: /\evil.test`
+/// the same way.
+pub(crate) fn is_safe_relative_redirect(uri: &str) -> bool {
+    // Reject backslashes and ASCII control characters. The WHATWG URL parser
+    // used by SQLPage's `url` crate (and by browsers) treats `\` as `/`, and it
+    // removes ASCII tab/newline/CR from anywhere in the input before parsing.
+    // Either can smuggle in an authority component: `/\evil.test` and
+    // `/\t/evil.test` both resolve to `https://evil.test/`.
+    if uri.contains('\\') || uri.contains(|c: char| c.is_ascii_control()) {
+        return false;
+    }
+    let mut chars = uri.chars();
+    // Must start with `/`...
+    if chars.next() != Some('/') {
+        return false;
+    }
+    // ...but the second character must not be `/` (protocol-relative authority).
+    !matches!(chars.next(), Some('/'))
+}
+
 /// Validate that a redirect URL is safe to use (prevents open redirect attacks)
 fn validate_redirect_url(url: String, redirect_uri: &str) -> String {
-    if url.starts_with('/') && !url.starts_with("//") && !url.starts_with(redirect_uri) {
+    if is_safe_relative_redirect(&url) && !url.starts_with(redirect_uri) {
         return url;
     }
     log::warn!("Refusing to redirect to {url}");
@@ -1195,6 +1297,42 @@ mod tests {
     use actix_web::http::StatusCode;
     use actix_web::{cookie::Cookie, test::TestRequest};
     use openidconnect::url::Url;
+
+    #[test]
+    fn relative_redirect_rejects_authority_and_backslash_forms() {
+        // Legitimate relative paths must be accepted.
+        for ok in ["/", "/foo", "/foo/bar?x=1", "/a/b/c#frag"] {
+            assert!(
+                is_safe_relative_redirect(ok),
+                "expected {ok:?} to be accepted"
+            );
+        }
+        // Authority and backslash forms must all be rejected: SQLPage's `url`
+        // crate (a WHATWG URL parser) normalizes these into an external
+        // `http://evil.test/` target.
+        for bad in [
+            "//evil.test",
+            "/\\evil.test",
+            "/\\/evil.test",
+            "\\evil.test",
+            "\\\\evil.test",
+            "/foo\\bar",
+            // ASCII tab/newline/CR are stripped by the WHATWG URL parser, so
+            // these resolve to an authority (`//evil.test`) after stripping.
+            "/\t/evil.test",
+            "/\n/evil.test",
+            "/\r/evil.test",
+            "/\u{0000}/evil.test",
+            "https://evil.test",
+            "evil.test",
+            "",
+        ] {
+            assert!(
+                !is_safe_relative_redirect(bad),
+                "expected {bad:?} to be rejected"
+            );
+        }
+    }
 
     #[test]
     fn login_redirects_use_see_other() {
@@ -1240,14 +1378,157 @@ mod tests {
             redirect_uri: format!("https://example.com{SQLPAGE_REDIRECT_URI}"),
             logout_uri: format!("https://example.com{SQLPAGE_LOGOUT_URI}"),
         };
-        let generated = config.create_logout_url("/after");
+        let generated = config.create_logout_url("/after", Some("session-token"));
 
         let parsed = Url::parse(&generated).expect("generated URL should be valid");
         assert_eq!(parsed.path(), SQLPAGE_LOGOUT_URI);
 
         let params = parse_logout_params(parsed.query().expect("query string is present"))
             .expect("generated URL should parse");
-        verify_logout_params(&params, secret).expect("generated URL should validate");
+        verify_logout_params(&params, "session-token", secret)
+            .expect("generated URL should validate for the session it was issued for");
+    }
+
+    /// A logout URL is bound to the session it was issued for: presenting it
+    /// from a different browser (a different `sqlpage_auth` cookie), or with
+    /// no session at all, must NOT validate. This is what prevents a forced
+    /// logout CSRF where a logout URL generated for one user logs out another.
+    #[test]
+    fn logout_url_is_bound_to_the_issuing_session() {
+        let secret = "super_secret_key";
+        let config = OidcConfig {
+            issuer_url: IssuerUrl::new("https://example.com".to_string()).unwrap(),
+            client_id: "test_client".to_string(),
+            client_secret: secret.to_string(),
+            protected_paths: vec![],
+            public_paths: vec![],
+            app_host: "example.com".to_string(),
+            scopes: vec![],
+            additional_audience_verifier: AudienceVerifier::new(None),
+            site_prefix: "https://example.com".to_string(),
+            redirect_uri: format!("https://example.com{SQLPAGE_REDIRECT_URI}"),
+            logout_uri: format!("https://example.com{SQLPAGE_LOGOUT_URI}"),
+        };
+
+        // A logout URL issued for victim's session.
+        let victim_session = "victim-auth-token";
+        let generated = config.create_logout_url("/after", Some(victim_session));
+        let parsed = Url::parse(&generated).expect("generated URL should be valid");
+        let params = parse_logout_params(parsed.query().expect("query string is present"))
+            .expect("generated URL should parse");
+
+        // It validates for the session it was issued for.
+        verify_logout_params(&params, victim_session, secret)
+            .expect("must validate for the issuing session");
+
+        // It must NOT validate when presented by a different session...
+        verify_logout_params(&params, "attacker-auth-token", secret)
+            .expect_err("must reject a different session's auth cookie");
+        // ...nor when presented with no session at all (replay/CSRF).
+        verify_logout_params(&params, "", secret)
+            .expect_err("must reject a request with no auth cookie");
+    }
+
+    #[test]
+    fn logout_session_cookie_uses_last_duplicate_like_request_info() {
+        // Two sqlpage_auth cookies (e.g. set with different Path attributes).
+        // actix's ServiceRequest::cookie returns the first, but RequestInfo (and
+        // thus sqlpage.oidc_logout_url, which signs the logout URL) keeps the
+        // last after merging duplicates. Verification must use the same value
+        // the URL was signed with, otherwise a legitimate logout URL is 400ed.
+        let request = TestRequest::default()
+            .insert_header(("cookie", "sqlpage_auth=first; sqlpage_auth=second"))
+            .to_srv_request();
+        assert_eq!(
+            request
+                .cookie(SQLPAGE_AUTH_COOKIE_NAME)
+                .as_ref()
+                .map(Cookie::value),
+            Some("first"),
+            "actix selects the first duplicate cookie"
+        );
+        assert_eq!(
+            logout_session_cookie(&request).as_ref().map(Cookie::value),
+            Some("second"),
+            "logout binding must use the last duplicate, matching RequestInfo and the signed URL"
+        );
+    }
+
+    fn test_oidc_config_with_paths(
+        protected_paths: Vec<String>,
+        public_paths: Vec<String>,
+    ) -> OidcConfig {
+        OidcConfig {
+            issuer_url: IssuerUrl::new("https://example.com".to_string()).unwrap(),
+            client_id: "test_client".to_string(),
+            client_secret: "secret".to_string(),
+            protected_paths,
+            public_paths,
+            app_host: "example.com".to_string(),
+            scopes: vec![],
+            additional_audience_verifier: AudienceVerifier::new(None),
+            site_prefix: "/".to_string(),
+            redirect_uri: SQLPAGE_REDIRECT_URI.to_string(),
+            logout_uri: SQLPAGE_LOGOUT_URI.to_string(),
+        }
+    }
+
+    #[test]
+    fn percent_encoded_protected_path_is_not_public() {
+        let config = test_oidc_config_with_paths(vec!["/protected".to_string()], vec![]);
+        assert!(
+            !config.is_public_path("/protected/"),
+            "/protected/ must be protected"
+        );
+        // Encoding a byte of the prefix (%70 == 'p') must not bypass protection:
+        // the router percent-decodes the path and serves the protected file.
+        assert!(
+            !config.is_public_path("/%70rotected/"),
+            "/%70rotected/ decodes to /protected/ and must stay protected"
+        );
+    }
+
+    #[test]
+    fn percent_encoded_public_path_stays_public() {
+        let config = test_oidc_config_with_paths(
+            vec!["/protected".to_string()],
+            vec!["/protected/public".to_string()],
+        );
+        assert!(
+            config.is_public_path("/protected/%70ublic/page.sql"),
+            "/protected/%70ublic/... decodes to a public path"
+        );
+    }
+
+    #[test]
+    fn encoded_site_prefix_keeps_protected_paths_protected() {
+        // With a site_prefix like `/my app/`, the configured prefixes are stored
+        // encoded (`/my%20app/...`). Decoding only the request path would never
+        // match, so protected pages must not become public.
+        let config = test_oidc_config_with_paths(vec!["/my%20app/protected".to_string()], vec![]);
+        assert!(!config.is_public_path("/my%20app/protected/page.sql"));
+        assert!(!config.is_public_path("/my%20app/%70rotected/"));
+        assert!(
+            config.is_public_path("/my%20app/login.sql"),
+            "a non-protected page under the site prefix stays public"
+        );
+    }
+
+    #[test]
+    fn trailing_slash_public_prefix_does_not_expose_sibling_file() {
+        // A public exception for the `/public/` directory must not also make the
+        // extensionless `/public` (which the router resolves to public.sql)
+        // public. Plain string-prefix matching keeps them distinct.
+        let config =
+            test_oidc_config_with_paths(vec!["/".to_string()], vec!["/public/".to_string()]);
+        assert!(
+            config.is_public_path("/public/page.sql"),
+            "files under /public/ are public"
+        );
+        assert!(
+            !config.is_public_path("/public"),
+            "/public (the file public.sql) stays protected"
+        );
     }
 
     #[test]
