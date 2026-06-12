@@ -1,5 +1,6 @@
 use crate::app_config::AppConfig;
 use crate::file_cache::AsyncFromStrWithState;
+use crate::filesystem::FileAccess;
 use crate::template_helpers::register_all_helpers;
 use crate::{AppState, FileCache, TEMPLATES_DIR};
 use async_trait::async_trait;
@@ -127,7 +128,7 @@ impl AllTemplates {
         use anyhow::Context;
         let path = Self::template_path(name);
         self.split_templates
-            .get(app_state, &path)
+            .get(app_state, FileAccess::privileged(&path))
             .await
             .with_context(|| format!("Unable to get the component '{name}'"))
     }

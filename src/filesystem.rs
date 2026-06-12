@@ -11,6 +11,37 @@ use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
+#[derive(Clone, Copy)]
+#[must_use]
+pub struct FileAccess<'a> {
+    path: &'a Path,
+    privileged: bool,
+}
+
+impl<'a> FileAccess<'a> {
+    /// Creates access for an untrusted, HTTP-facing path after validating it.
+    pub fn unprivileged(path: &'a Path) -> anyhow::Result<Self> {
+        validate_unprivileged_path(path)?;
+        Ok(Self {
+            path,
+            privileged: false,
+        })
+    }
+
+    /// Creates access for a trusted internal path.
+    pub const fn privileged(path: &'a Path) -> Self {
+        Self {
+            path,
+            privileged: true,
+        }
+    }
+
+    #[must_use]
+    pub const fn path(&self) -> &'a Path {
+        self.path
+    }
+}
+
 pub(crate) struct FileSystem {
     local_root: PathBuf,
     db_fs_queries: Option<DbFsQueries>,
@@ -39,11 +70,11 @@ impl FileSystem {
     pub async fn modified_since(
         &self,
         app_state: &AppState,
-        path: &Path,
+        access: FileAccess<'_>,
         since: DateTime<Utc>,
-        priviledged: bool,
     ) -> anyhow::Result<bool> {
-        let local_path = self.safe_local_path(app_state, path, priviledged)?;
+        let path = access.path();
+        let local_path = self.safe_local_path(app_state, access);
         let local_result = file_modified_since_local(&local_path, since).await;
         log::trace!(
             "Local file {} modified since {since:?} ? {local_result:?}",
@@ -70,10 +101,10 @@ impl FileSystem {
     pub async fn read_to_string(
         &self,
         app_state: &AppState,
-        path: &Path,
-        priviledged: bool,
+        access: FileAccess<'_>,
     ) -> anyhow::Result<String> {
-        let bytes = self.read_file(app_state, path, priviledged).await?;
+        let path = access.path();
+        let bytes = self.read_file(app_state, access).await?;
         String::from_utf8(bytes).map_err(|utf8_err| {
             let invalid_idx = utf8_err.utf8_error().valid_up_to();
             let bytes = utf8_err.into_bytes();
@@ -95,16 +126,13 @@ impl FileSystem {
         })
     }
 
-    /**
-     * Priviledged files are the ones that are in sqlpage's config directory.
-     */
     pub async fn read_file(
         &self,
         app_state: &AppState,
-        path: &Path,
-        priviledged: bool,
+        access: FileAccess<'_>,
     ) -> anyhow::Result<Vec<u8>> {
-        let local_path = self.safe_local_path(app_state, path, priviledged)?;
+        let path = access.path();
+        let local_path = self.safe_local_path(app_state, access);
         log::debug!(
             "Reading file {} from {}",
             path.display(),
@@ -130,13 +158,9 @@ impl FileSystem {
         }
     }
 
-    fn safe_local_path(
-        &self,
-        app_state: &AppState,
-        path: &Path,
-        priviledged: bool,
-    ) -> anyhow::Result<PathBuf> {
-        if priviledged {
+    fn safe_local_path(&self, app_state: &AppState, access: FileAccess<'_>) -> PathBuf {
+        let path = access.path();
+        if access.privileged {
             // Templates requests are always made to the static TEMPLATES_DIR, because this is where they are stored in the database
             // but when serving them from the filesystem, we need to serve them from the `SQLPAGE_CONFIGURATION_DIRECTORY/templates` directory
             if let Ok(template_path) = path.strip_prefix(TEMPLATES_DIR) {
@@ -150,32 +174,29 @@ impl FileSystem {
                     path.display(),
                     normalized.display()
                 );
-                return Ok(normalized);
+                return normalized;
             }
-        } else {
-            validate_unprivileged_path(path)?;
         }
-        Ok(self.local_root.join(path))
+        self.local_root.join(path)
     }
 
     pub(crate) async fn file_exists(
         &self,
         app_state: &AppState,
-        path: &Path,
+        access: FileAccess<'_>,
     ) -> anyhow::Result<bool> {
-        let local_exists = match self.safe_local_path(app_state, path, false) {
-            Ok(safe_path) => match tokio::fs::try_exists(safe_path).await {
-                Ok(exists) => exists,
-                Err(e) if is_path_missing_error(&e) => false,
-                Err(e) => {
-                    let status = io_error_status(&e)
-                        .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
-                    return Err(e).with_status(status).with_context(|| {
-                        format!("Unable to check if {} exists locally", path.display())
-                    });
-                }
-            },
-            Err(e) => return Err(e),
+        let path = access.path();
+        let safe_path = self.safe_local_path(app_state, access);
+        let local_exists = match tokio::fs::try_exists(safe_path).await {
+            Ok(exists) => exists,
+            Err(e) if is_path_missing_error(&e) => false,
+            Err(e) => {
+                let status = io_error_status(&e)
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                return Err(e).with_status(status).with_context(|| {
+                    format!("Unable to check if {} exists locally", path.display())
+                });
+            }
         };
 
         // If not in local fs and we have db_fs, check database
@@ -192,16 +213,9 @@ impl FileSystem {
     }
 }
 
-/// Rejects paths that an untrusted (unprivileged) HTTP request must never reach:
-/// the reserved `sqlpage/` prefix, dotfiles, parent-directory traversal and
-/// absolute/root paths.
-///
-/// This guard must be enforced on every unprivileged resolution path, including
-/// before trusting a fresh cache hit. A trusted page may legitimately load such a
-/// file with privilege via `sqlpage.run_sql(...)`, which populates the shared file
-/// cache; without this check a later direct HTTP request could be served the cached
-/// private file instead of being forbidden.
-pub fn validate_unprivileged_path(path: &Path) -> anyhow::Result<()> {
+/// Rejects paths that an untrusted HTTP request must never reach: the reserved
+/// `sqlpage/` prefix, dotfiles, parent-directory traversal and absolute/root paths.
+fn validate_unprivileged_path(path: &Path) -> anyhow::Result<()> {
     for (i, component) in path.components().enumerate() {
         if let Component::Normal(c) = component {
             if i == 0 && c.eq_ignore_ascii_case("sqlpage") {
@@ -449,7 +463,10 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
 
     let fs = FileSystem::init("/", db).await;
     let actual = fs
-        .read_to_string(&state, "unit test file.txt".as_ref(), false)
+        .read_to_string(
+            &state,
+            FileAccess::unprivileged("unit test file.txt".as_ref())?,
+        )
         .await?;
     assert_eq!(actual, "Héllö world! 😀");
 
@@ -457,7 +474,11 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let one_hour_future = Utc::now() + chrono::Duration::hours(1);
 
     let was_modified = fs
-        .modified_since(&state, "unit test file.txt".as_ref(), one_hour_ago, false)
+        .modified_since(
+            &state,
+            FileAccess::unprivileged("unit test file.txt".as_ref())?,
+            one_hour_ago,
+        )
         .await?;
 
     assert!(was_modified, "File should be modified since one hour ago");
@@ -465,9 +486,8 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     let was_modified = fs
         .modified_since(
             &state,
-            "unit test file.txt".as_ref(),
+            FileAccess::unprivileged("unit test file.txt".as_ref())?,
             one_hour_future,
-            false,
         )
         .await?;
     assert!(

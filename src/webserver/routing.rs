@@ -76,7 +76,7 @@
 //! - Else: Default 404
 //! ```
 
-use crate::filesystem::FileSystem;
+use crate::filesystem::{FileAccess, FileSystem};
 use crate::webserver::database::ParsedSqlFile;
 use crate::{AppState, file_cache::FileCache};
 use RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
@@ -101,7 +101,7 @@ pub enum RoutingAction {
 
 #[expect(async_fn_in_trait)]
 pub trait FileStore {
-    async fn contains(&self, path: &Path) -> anyhow::Result<bool>;
+    async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool>;
 }
 
 pub trait RoutingConfig {
@@ -129,15 +129,11 @@ impl<'a> AppFileStore<'a> {
 }
 
 impl FileStore for AppFileStore<'_> {
-    async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
-        // HTTP routing is always an untrusted, unprivileged operation. Enforce the path
-        // guard before consulting the cache: a fresh cache entry populated by a
-        // privileged `run_sql` include must not make a reserved/private path routable.
-        crate::filesystem::validate_unprivileged_path(path)?;
-        if self.cache.contains(path).await? {
+    async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool> {
+        if self.cache.contains(access).await? {
             Ok(true)
         } else {
-            self.filesystem.file_exists(self.app_state, path).await
+            self.filesystem.file_exists(self.app_state, access).await
         }
     }
 }
@@ -206,7 +202,11 @@ where
         match find_file_or_not_found(&path_with_ext, SQL_EXTENSION, store).await? {
             Execute(x) => Ok(Execute(x)),
             other_action => {
-                if store.contains(&path.join(INDEX)).await? {
+                let index_path = path.join(INDEX);
+                if store
+                    .contains(FileAccess::unprivileged(&index_path)?)
+                    .await?
+                {
                     Ok(Redirect(append_to_path(path_and_query, FORWARD_SLASH)))
                 } else {
                     Ok(other_action)
@@ -238,7 +238,7 @@ async fn find_file<T>(
 where
     T: FileStore,
 {
-    if store.contains(path).await? {
+    if store.contains(FileAccess::unprivileged(path)?).await? {
         Ok(Some(if extension == SQL_EXTENSION {
             Execute(path.to_path_buf())
         } else {
@@ -256,7 +256,7 @@ where
     let mut parent = path.parent();
     while let Some(p) = parent {
         let target = p.join(NOT_FOUND);
-        if store.contains(&target).await? {
+        if store.contains(FileAccess::unprivileged(&target)?).await? {
             return Ok(CustomNotFound(target));
         }
         parent = p.parent();
@@ -274,11 +274,11 @@ fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
-    use super::{FileStore, RoutingAction, RoutingConfig, calculate_route};
+    use super::{FileAccess, FileStore, RoutingAction, RoutingConfig, calculate_route};
     use StoreConfig::{Custom, Default, Empty, File};
     use awc::http::uri::PathAndQuery;
     use std::default::Default as StdDefault;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use std::str::FromStr;
 
     mod execute {
@@ -649,8 +649,8 @@ mod tests {
     }
 
     impl FileStore for Store {
-        async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
-            Ok(self.contains(path.to_string_lossy().to_string().as_str()))
+        async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool> {
+            Ok(self.contains(access.path().to_string_lossy().to_string().as_str()))
         }
     }
 
