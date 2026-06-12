@@ -654,6 +654,131 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 }
 
+/// Reproduction for https://github.com/sqlpage/SQLPage/issues/1236
+///
+/// An unauthenticated request carrying a body to an OIDC-protected path is
+/// answered with a 303 redirect WITHOUT the middleware consuming the body.
+/// This test drives a REAL TCP connection (not the in-process test harness, which
+/// has no socket) and observes what happens to the connection while a client is
+/// still "uploading", the way a buffering reverse proxy would be.
+#[actix_web::test]
+async fn test_oidc_unauthenticated_upload_connection_handling() {
+    use sqlpage::{
+        AppState,
+        app_config::{AppConfig, test_database_url},
+    };
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+
+    crate::common::init_log();
+    let provider = FakeOidcProvider::new().await;
+
+    let db_url = test_database_url();
+    let config_json = format!(
+        r#"{{
+        "database_url": "{db_url}",
+        "max_database_pool_connections": 1,
+        "oidc_issuer_url": "{}",
+        "oidc_client_id": "{}",
+        "oidc_client_secret": "{}",
+        "oidc_protected_paths": ["/"]
+    }}"#,
+        provider.issuer_url, provider.client_id, provider.client_secret
+    );
+    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
+    let app_state = AppState::init(&config).await.unwrap();
+    let state = web::Data::new(app_state);
+
+    // Boot SQLPage on a real TCP port (not the in-process test::call_service harness).
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = HttpServer::new(move || create_app(web::Data::clone(&state)))
+        .workers(1)
+        .listen(listener)
+        .unwrap()
+        .shutdown_timeout(1)
+        .run();
+    let server_handle = server.handle();
+    tokio::spawn(server);
+
+    // Open a raw connection and announce a large upload to the protected path,
+    // while unauthenticated (no sqlpage_auth cookie). Send only the headers
+    // first, so the response is read cleanly before any body is in flight.
+    let mut stream = TcpStream::connect(addr).await.unwrap();
+    let body_len: usize = 20 * 1024 * 1024; // larger than any socket buffer
+    let head = format!(
+        "POST / HTTP/1.1\r\n\
+         Host: localhost\r\n\
+         Content-Type: application/octet-stream\r\n\
+         Content-Length: {body_len}\r\n\
+         \r\n"
+    );
+    stream.write_all(head.as_bytes()).await.unwrap();
+    stream.flush().await.unwrap();
+
+    // The middleware answers immediately with a redirect, without reading the body.
+    let mut buf = Vec::new();
+    let mut tmp = [0u8; 4096];
+    let headers = loop {
+        let n = tokio::time::timeout(Duration::from_secs(5), stream.read(&mut tmp))
+            .await
+            .expect("timed out waiting for response headers")
+            .expect("read error while waiting for response headers");
+        assert_ne!(n, 0, "server closed before sending any response");
+        buf.extend_from_slice(&tmp[..n]);
+        if let Some(pos) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+            break String::from_utf8_lossy(&buf[..pos]).into_owned();
+        }
+    };
+    eprintln!("--- response headers ---\n{headers}\n------------------------");
+    assert!(
+        headers.starts_with("HTTP/1.1 303"),
+        "expected a 303 redirect, got:\n{headers}"
+    );
+    let keeps_alive = !headers.to_lowercase().contains("connection: close");
+
+    // Now play the buffering proxy: stream the body the client promised. If the
+    // server drained the body it stays readable (write succeeds); if it tore the
+    // connection down, our writes fail with broken pipe / connection reset --
+    // the EPIPE/ECONNRESET nginx reports as a 5xx.
+    let chunk = vec![b'x'; 64 * 1024];
+    let mut written = 0usize;
+    let upload_result = loop {
+        if written >= body_len {
+            break Ok(());
+        }
+        match tokio::time::timeout(Duration::from_secs(10), stream.write_all(&chunk)).await {
+            Ok(Ok(())) => written += chunk.len(),
+            Ok(Err(e)) => break Err(e),
+            Err(_) => panic!("upload neither completed nor failed within 10s (blocked at {written} bytes)"),
+        }
+    };
+
+    match upload_result {
+        Ok(()) => {
+            eprintln!("upload of {written} bytes succeeded; connection kept alive: {keeps_alive}");
+            panic!("issue #1236 appears FIXED: the server accepted the whole body");
+        }
+        Err(e) => {
+            eprintln!(
+                "upload failed after {written} bytes: kind={:?} err={e}; Connection: close present = {}",
+                e.kind(),
+                !keeps_alive
+            );
+            assert!(
+                matches!(
+                    e.kind(),
+                    std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::ConnectionReset
+                ),
+                "expected broken pipe / connection reset, got {:?}",
+                e.kind()
+            );
+        }
+    }
+
+    server_handle.stop(false).await;
+}
+
 /// A logout URL is bound to the session it was issued for. A logout URL
 /// generated for one session must NOT clear a different browser's auth cookie
 /// (forced-logout CSRF), while the legitimate logout of the issuing session
