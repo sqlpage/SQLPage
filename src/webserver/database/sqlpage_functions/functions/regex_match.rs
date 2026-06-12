@@ -1,4 +1,4 @@
-use super::*;
+use std::borrow::Cow;
 
 /// Returns a string containing a JSON-encoded match object, or `null` if no match was found.
 /// The match object contains one key per capture group, with the value being the matched text.

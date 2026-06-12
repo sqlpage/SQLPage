@@ -1,4 +1,8 @@
-use super::*;
+use std::borrow::Cow;
+
+use anyhow::anyhow;
+
+use crate::webserver::http_request_info::ExecutionContext;
 
 /// Returns all variables in the request as a JSON object.
 pub(super) async fn variables<'a>(

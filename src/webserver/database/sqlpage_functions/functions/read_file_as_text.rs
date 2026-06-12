@@ -1,4 +1,10 @@
-use super::*;
+use std::borrow::Cow;
+
+use anyhow::Context;
+
+use crate::webserver::http_request_info::RequestInfo;
+
+use super::read_file_as_data_url::read_file_bytes;
 
 /// Returns the contents of a file as a string
 pub(super) async fn read_file_as_text<'a>(

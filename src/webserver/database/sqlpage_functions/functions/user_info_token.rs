@@ -1,4 +1,4 @@
-use super::*;
+use crate::webserver::http_request_info::RequestInfo;
 
 /// Returns the ID token claims as a JSON object.
 pub(super) async fn user_info_token(request: &RequestInfo) -> anyhow::Result<Option<String>> {

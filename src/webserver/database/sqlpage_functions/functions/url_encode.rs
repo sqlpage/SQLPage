@@ -1,4 +1,4 @@
-use super::*;
+use std::borrow::Cow;
 
 /// escapes a string for use in a URL using percent encoding
 /// for example, spaces are replaced with %20, '/' with %2F, etc.

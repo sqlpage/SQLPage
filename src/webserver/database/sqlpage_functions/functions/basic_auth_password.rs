@@ -1,4 +1,6 @@
-use super::*;
+use anyhow::Context;
+
+use crate::webserver::{ErrorWithStatus, http_request_info::RequestInfo};
 
 /// Returns the password from the HTTP basic auth header, if present.
 pub(super) async fn basic_auth_password(request: &RequestInfo) -> anyhow::Result<&str> {

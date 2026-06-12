@@ -5,8 +5,6 @@ mod url_parameters;
 
 use sqlparser::ast::FunctionArg;
 
-use crate::webserver::http_request_info::{ExecutionContext, RequestInfo};
-
 use super::sql::ParamExtractContext;
 use super::syntax_tree::SqlPageFunctionCall;
 use super::syntax_tree::StmtParam;

@@ -1,4 +1,4 @@
-use super::*;
+use crate::webserver::http_request_info::RequestInfo;
 
 /// Returns the raw request body encoded in base64.
 /// Returns NULL if there is no request body or if the request content type is

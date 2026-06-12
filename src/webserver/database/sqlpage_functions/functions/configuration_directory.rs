@@ -1,4 +1,4 @@
-use super::*;
+use crate::webserver::http_request_info::RequestInfo;
 
 /// Returns the directory where the sqlpage.json configuration file, templates, and migrations are located.
 pub(super) async fn configuration_directory(request: &RequestInfo) -> String {

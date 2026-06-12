@@ -1,4 +1,12 @@
-use super::*;
+use opentelemetry_semantic_conventions::attribute as otel;
+use tracing::Instrument;
+
+use crate::webserver::{
+    database::sqlpage_functions::http_fetch_request::HttpFetchRequest,
+    http_request_info::RequestInfo,
+};
+
+use super::fetch::{decode_response, fetch_span, send_request};
 
 pub(super) async fn fetch_with_meta(
     request: &RequestInfo,

@@ -1,4 +1,14 @@
-use super::*;
+use std::{fmt::Write, str::FromStr};
+
+use anyhow::{Context, anyhow};
+use opentelemetry_semantic_conventions::attribute as otel;
+use tracing::Instrument;
+
+use crate::webserver::{
+    database::sqlpage_functions::http_fetch_request::HttpFetchRequest,
+    http_client::make_http_client,
+    http_request_info::RequestInfo,
+};
 
 pub(super) fn build_request<'a>(
     client: &'a awc::Client,

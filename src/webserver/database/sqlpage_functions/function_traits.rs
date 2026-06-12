@@ -1,9 +1,9 @@
 //! Dispatch machinery for the built-in `sqlpage.*` SQL functions.
 //!
 //! Each function is a plain `async fn` in its own module under [`functions/`](super::functions).
-//! `build.rs` lists those modules and the [`sqlpage_functions!`] macro turns the list into the
-//! [`SqlPageFunctionName`](super::functions::SqlPageFunctionName) enum the engine dispatches on, so
-//! functions register themselves just by existing. Adapting each signature to the uniform
+//! [`sqlpage_functions!`] turns the module list in [`functions`](super::functions) into the
+//! [`SqlPageFunctionName`](super::functions::SqlPageFunctionName) enum the engine dispatches on.
+//! Adapting each signature to the uniform
 //! `(request, db, args) -> Option<string>` convention is done generically by [`Extract`] (per
 //! argument type), [`Handler`] (per argument count, the trick `axum` uses) and [`IntoCowResult`]
 //! (per return type); the macro itself carries no type-level glue.
@@ -217,17 +217,11 @@ impl<'a, T: IntoCow<'a>> IntoCow<'a> for Option<T> {
 }
 
 /// Declares the listed function modules and builds the [`SqlPageFunctionName`] dispatch enum from
-/// them. The list is produced by `build.rs`, so there is no hand-maintained registry.
+/// them.
 macro_rules! sqlpage_functions {
-    ($($func:ident = $path:literal),* $(,)?) => {
+    ($($func:ident),* $(,)?) => {
         $(
-            // `build.rs` passes the absolute path because the `mod` is expanded from a file
-            // `include!`d out of `OUT_DIR`, where the default relative lookup would not find it.
-            #[path = $path]
             mod $func;
-            // Re-export so sibling modules can use each other's helpers via `use super::*`.
-            #[allow(unused_imports)]
-            use $func::*;
         )*
 
         /// One variant per built-in `sqlpage.*` function.
@@ -238,12 +232,20 @@ macro_rules! sqlpage_functions {
         }
 
         impl SqlPageFunctionName {
+            const ALL: &'static [Self] = &[$(Self::$func),*];
+
+            fn name(self) -> &'static str {
+                match self {
+                    $(Self::$func => stringify!($func)),*
+                }
+            }
+
             pub(crate) async fn evaluate<'a, 'c>(
                 self,
-                request: &'a ExecutionContext,
-                db_connection: &'c mut DbConn,
-                arguments: Vec<Option<Cow<'a, str>>>,
-            ) -> anyhow::Result<Option<Cow<'a, str>>>
+                request: &'a $crate::webserver::http_request_info::ExecutionContext,
+                db_connection: &'c mut $crate::webserver::database::execute_queries::DbConn,
+                arguments: Vec<Option<::std::borrow::Cow<'a, str>>>,
+            ) -> anyhow::Result<Option<::std::borrow::Cow<'a, str>>>
             where
                 'a: 'c,
             {
@@ -254,32 +256,6 @@ macro_rules! sqlpage_functions {
                 match self {
                     $(SqlPageFunctionName::$func => Handler::call($func::$func, ctx).await),*
                 }
-            }
-        }
-
-        impl ::std::str::FromStr for SqlPageFunctionName {
-            type Err = anyhow::Error;
-
-            fn from_str(name: &str) -> anyhow::Result<Self> {
-                match name {
-                    $(stringify!($func) => Ok(SqlPageFunctionName::$func),)*
-                    unknown => anyhow::bail!(
-                        "Unknown function {unknown:?}. Supported functions:\n{}",
-                        [$(SqlPageFunctionName::$func),*]
-                            .iter()
-                            .map(|f| format!("  - {f}\n"))
-                            .collect::<String>()
-                    ),
-                }
-            }
-        }
-
-        impl ::std::fmt::Display for SqlPageFunctionName {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                f.write_str("sqlpage.")?;
-                f.write_str(match self {
-                    $(SqlPageFunctionName::$func => stringify!($func)),*
-                })
             }
         }
     };

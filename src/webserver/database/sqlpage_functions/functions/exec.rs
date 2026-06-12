@@ -1,4 +1,9 @@
-use super::*;
+use std::borrow::Cow;
+
+use anyhow::Context;
+use tracing::Instrument;
+
+use crate::webserver::http_request_info::RequestInfo;
 
 /// Executes an external command and returns its output.
 pub(super) async fn exec<'a>(

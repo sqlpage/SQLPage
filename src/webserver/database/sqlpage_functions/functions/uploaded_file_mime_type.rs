@@ -1,4 +1,8 @@
-use super::*;
+use std::{borrow::Cow, ffi::OsStr};
+
+use mime_guess::mime;
+
+use crate::webserver::http_request_info::RequestInfo;
 
 pub(super) fn mime_from_upload_path<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a mime_guess::Mime> {
     request.uploaded_files.values().find_map(|uploaded_file| {

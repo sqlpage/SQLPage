@@ -1,4 +1,4 @@
-use super::*;
+use crate::webserver::http_request_info::RequestInfo;
 
 /// Returns the directory where the .sql files are located (the web root).
 pub(super) async fn web_root(request: &RequestInfo) -> String {
