@@ -17,6 +17,7 @@ async fn main() {
         .unwrap();
 
     println!("cargo:rerun-if-changed=build.rs");
+    generate_sqlpage_functions();
     let c = Rc::new(make_client());
 
     for h in [
@@ -33,6 +34,35 @@ async fn main() {
         h.await.unwrap();
     }
     set_odbc_rpath();
+}
+
+/// Lists the modules in `sqlpage_functions/functions/` into a `sqlpage_functions! { ... }` call, so
+/// built-in SQL functions register themselves just by having a file, with no hand-maintained list.
+fn generate_sqlpage_functions() {
+    const DIR: &str = "src/webserver/database/sqlpage_functions/functions";
+    println!("cargo:rerun-if-changed={DIR}");
+    let out = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("sqlpage_functions.rs");
+    let Ok(dir) = std::fs::read_dir(DIR) else {
+        // The source tree isn't present yet (e.g. the dependency-only Docker build stage, which
+        // compiles before `src/` is copied in). Emit an empty registry; once the directory exists
+        // the `rerun-if-changed` above makes the real build run this again.
+        std::fs::write(&out, "sqlpage_functions! {}\n").unwrap();
+        return;
+    };
+    let mut files: Vec<PathBuf> = dir
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "rs"))
+        .collect();
+    files.sort();
+    let entries: String = files
+        .iter()
+        .map(|path| {
+            let name = path.file_stem().unwrap().to_str().unwrap();
+            let abs = path.canonicalize().unwrap();
+            format!("    {name} = {abs:?},\n")
+        })
+        .collect();
+    std::fs::write(out, format!("sqlpage_functions! {{\n{entries}}}\n")).unwrap();
 }
 
 fn make_client() -> awc::Client {
