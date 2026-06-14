@@ -231,31 +231,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm/v7
-          - linux/arm64
-        variant:
-          - minimal
-          - duckdb
-        exclude:
-          # DuckDB ODBC is not available for armv7
+        include:
           - platform: linux/arm/v7
-            variant: duckdb
-          # This build is shared with the Hurl example jobs.
-          - platform: linux/amd64
             variant: minimal
+            tag_suffix: -linux-arm-v7
+          - platform: linux/arm64
+            variant: minimal
+            tag_suffix: -linux-arm64
+          - platform: linux/amd64
+            variant: duckdb
+            tag_suffix: -linux-amd64-duckdb
+          - platform: linux/arm64
+            variant: duckdb
+            tag_suffix: -linux-arm64-duckdb
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - id: suffix
-        name: Cache name suffix
-        run: |
-          suffix="-$(tr '/' '-' <<< "${{ matrix.platform }}")"
-          if [[ "${{ matrix.variant }}" != "minimal" ]]; then
-            suffix="${suffix}-${{ matrix.variant }}"
-          fi
-          echo "suffix=${suffix}" >> "$GITHUB_OUTPUT"
       - id: cache-scope
         name: Docker cache scope
         run: |
@@ -266,15 +257,15 @@ jobs:
 
           recipe_hash="${{ hashFiles('Dockerfile', '.cargo/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**') }}"
           {
-            echo "current=sqlpage-${ref_scope}${{ steps.suffix.outputs.suffix }}-${recipe_hash}"
-            echo "main=sqlpage-main${{ steps.suffix.outputs.suffix }}-${recipe_hash}"
+            echo "current=sqlpage-${ref_scope}${{ matrix.tag_suffix }}-${recipe_hash}"
+            echo "main=sqlpage-main${{ matrix.tag_suffix }}-${recipe_hash}"
           } >> "$GITHUB_OUTPUT"
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY_IMAGE }}
-          flavor: suffix=${{ steps.suffix.outputs.suffix }}
+          flavor: suffix=${{ matrix.tag_suffix }}
           labels: |
             org.opencontainers.image.created=1970-01-01T00:00:00Z
       - name: Set up QEMU
@@ -303,7 +294,7 @@ jobs:
           cache-from: |
             type=gha,scope=${{ steps.cache-scope.outputs.current }}
             type=gha,scope=${{ steps.cache-scope.outputs.main }}
-            type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ steps.suffix.outputs.suffix }}
+            type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ matrix.tag_suffix }}
           cache-to: type=gha,scope=${{ steps.cache-scope.outputs.current }},mode=max
       - name: Export digest
         if: github.event_name != 'pull_request'
@@ -315,7 +306,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request'
         with:
-          name: digests-${{ matrix.variant }}${{ steps.suffix.outputs.suffix }}
+          name: digests-${{ matrix.variant }}${{ matrix.tag_suffix }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -520,12 +511,6 @@ jobs:
           path: /tmp/digests
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY_IMAGE }}
-          flavor: suffix=${{ matrix.variant != 'minimal' && format('-{0}', matrix.variant) || '' }},onlatest=true
       - name: Login to Docker Hub
         uses: docker/login-action@v4
         with:
@@ -533,9 +518,22 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Create manifest list and push
         working-directory: /tmp/digests
+        env:
+          TAG_SUFFIX: ${{ matrix.variant != 'minimal' && format('-{0}', matrix.variant) || '' }}
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          tags=(-t "${REGISTRY_IMAGE}:${GITHUB_REF_NAME}${TAG_SUFFIX}")
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            tags+=(-t "${REGISTRY_IMAGE}:latest${TAG_SUFFIX}")
+          fi
+          shopt -s nullglob
+          sources=()
+          for digest in *; do
+            sources+=("${REGISTRY_IMAGE}@sha256:${digest}")
+          done
+          ((${#sources[@]} > 0))
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
       - name: Inspect image
+        env:
+          TAG_SUFFIX: ${{ matrix.variant != 'minimal' && format('-{0}', matrix.variant) || '' }}
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${GITHUB_REF_NAME}${TAG_SUFFIX}"
