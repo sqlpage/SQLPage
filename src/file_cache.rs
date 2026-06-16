@@ -1,4 +1,5 @@
 use crate::AppState;
+use crate::filesystem::FileAccess;
 use crate::webserver::ErrorWithStatus;
 use crate::webserver::routing::FileStore;
 use actix_web::http::StatusCode;
@@ -71,7 +72,8 @@ pub struct FileCache<T: AsyncFromStrWithState> {
 }
 
 impl<T: AsyncFromStrWithState> FileStore for FileCache<T> {
-    async fn contains(&self, path: &Path) -> anyhow::Result<bool> {
+    async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool> {
+        let path = access.path();
         Ok(self.cache.read().await.contains_key(path) || self.static_files.contains_key(path))
     }
 }
@@ -97,12 +99,6 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         self.static_files.insert(path, Cached::new(contents));
     }
 
-    /// Gets a file from the cache, or loads it from the file system if it's not there
-    /// This is a privileged operation; it should not be used for user-provided paths
-    pub async fn get(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Arc<T>> {
-        self.get_with_privilege(app_state, path, true).await
-    }
-
     pub fn get_static(&self, path: &Path) -> anyhow::Result<Arc<T>> {
         self.static_files
             .get(path)
@@ -110,22 +106,15 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
             .ok_or_else(|| anyhow::anyhow!("File {} not found in static files", path.display()))
     }
 
-    /// Gets a file from the cache, or loads it from the file system if it's not there
-    /// The privileged parameter is used to determine whether the access should be denied
-    /// if the file is in the sqlpage/ config directory
-    pub async fn get_with_privilege(
+    /// Gets a file from the cache, or loads it from the file system if it's not there.
+    pub async fn get(
         &self,
         app_state: &AppState,
-        path: &Path,
-        privileged: bool,
+        access: FileAccess<'_>,
     ) -> anyhow::Result<Arc<T>> {
+        let path = access.path();
+
         log::trace!("Attempting to get from cache {}", path.display());
-        // Enforce the untrusted path guard before consulting the cache. A fresh cache
-        // entry (possibly populated by a privileged `run_sql` include) must never let an
-        // unprivileged request reach a reserved/private/traversal/absolute path.
-        if !privileged {
-            crate::filesystem::validate_unprivileged_path(path)?;
-        }
         if let Some(cached) = self.cache.read().await.get(path) {
             if !cached.needs_check(app_state.config.cache_stale_duration_ms()) {
                 log::trace!(
@@ -136,7 +125,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
             }
             match app_state
                 .file_system
-                .modified_since(app_state, path, cached.last_check_time(), privileged)
+                .modified_since(app_state, access, cached.last_check_time())
                 .await
             {
                 Ok(false) => {
@@ -159,7 +148,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         log::trace!("Loading and parsing {}", path.display());
         let file_contents = app_state
             .file_system
-            .read_to_string(app_state, path, privileged)
+            .read_to_string(app_state, access)
             .await;
 
         let parsed = match file_contents {

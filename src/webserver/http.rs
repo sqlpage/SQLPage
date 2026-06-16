@@ -27,6 +27,7 @@ use super::https::make_auto_rustls_config;
 use super::oidc::OidcMiddleware;
 use super::response_writer::ResponseWriter;
 use super::static_content;
+use crate::filesystem::FileAccess;
 use crate::webserver::routing::RoutingAction::{
     CustomNotFound, Execute, NotFound, Redirect, Serve,
 };
@@ -405,7 +406,7 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
             } else {
                 log::Level::Info
             };
-            log::log!(level, "{status}");
+            log::log!(target: crate::telemetry::ACCESS_LOG_TARGET, level, "{status}");
         }
     }
 }
@@ -417,6 +418,8 @@ async fn process_sql_request(
     let app_state: &web::Data<AppState> = req.app_data().expect("app_state");
     let server_timing = ServerTiming::for_env(app_state.config.environment);
 
+    let access =
+        FileAccess::unprivileged(&sql_path).map_err(|e| anyhow_err_to_actix(e, app_state))?;
     let sql_file = {
         let span = tracing::info_span!(
             "sqlpage.file.load",
@@ -424,7 +427,7 @@ async fn process_sql_request(
         );
         app_state
             .sql_file_cache
-            .get_with_privilege(app_state, &sql_path, false)
+            .get(app_state, access)
             .instrument(span)
             .await
             .with_context(|| format!("Unable to read SQL file \"{}\"", sql_path.display()))
@@ -441,11 +444,13 @@ async fn serve_file(
     if_modified_since: Option<IfModifiedSince>,
 ) -> actix_web::Result<HttpResponse> {
     let path = strip_site_prefix(path, state);
+    let access =
+        FileAccess::unprivileged(path.as_ref()).map_err(|e| anyhow_err_to_actix(e, state))?;
     if let Some(IfModifiedSince(date)) = if_modified_since {
         let since = DateTime::<Utc>::from(SystemTime::from(date));
         let modified = state
             .file_system
-            .modified_since(state, path.as_ref(), since, false)
+            .modified_since(state, access, since)
             .await
             .with_context(|| format!("Unable to get modification time of file {path:?}"))
             .map_err(|e| anyhow_err_to_actix(e, state))?;
@@ -455,7 +460,7 @@ async fn serve_file(
     }
     state
         .file_system
-        .read_file(state, path.as_ref(), false)
+        .read_file(state, access)
         .await
         .with_context(|| format!("Unable to read file {path:?}"))
         .map_err(|e| anyhow_err_to_actix(e, state))

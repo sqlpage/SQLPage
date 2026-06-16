@@ -3,6 +3,7 @@
 ## Unreleased
 
 - SQLPage configuration now has a checked-in JSON Schema that powers the runtime configuration structure and the generated official-site reference. Example JSON configurations link to the live schema for editor validation and completion.
+- **Access logs now go to stdout.** SQLPage now writes the single per-request completion log line to stdout with the target `sqlpage::access`, matching common application-server and container logging conventions. Diagnostic logs, warnings, and internal errors still go to stderr. If your `LOG_LEVEL` or `RUST_LOG` filter is scoped to a specific old target such as `sqlpage::webserver::http=info`, add `sqlpage::access=info` so request-completion logs are still emitted. If your log pipeline only collects stderr, update it to collect stdout too.
 
 ## v0.44.1
 
