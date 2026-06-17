@@ -41,10 +41,11 @@ Tracing is especially helpful in SQLPage because one request often maps cleanly 
 
 ## The easiest way to try it
 
-The simplest way to explore tracing is to run the example shipped with SQLPage:
+The simplest way to explore tracing is to run 
+[the example shipped with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry).
+After downloading or cloning the example, run this from the example''s folder:
 
 ```bash
-cd examples/telemetry
 docker compose up --build
 ```
 
