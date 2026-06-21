@@ -120,6 +120,8 @@ fn create_db_query_span(
     let operation_name = sql.split_whitespace().next().unwrap_or("").to_uppercase();
     let span = tracing::info_span!(
         "db.query",
+        "otel.kind" = "client",
+        "otel.name" = %operation_name,
         { otel::DB_QUERY_TEXT } = sql,
         { otel::DB_SYSTEM_NAME } = db_system_name,
         { otel::DB_OPERATION_NAME } = operation_name,
@@ -890,6 +892,24 @@ mod tests {
             .unwrap()
             .pop()
             .expect("closed span fields")
+    }
+
+    #[test]
+    fn db_query_span_uses_otel_database_client_semantics() {
+        let fields = with_recorded_span_fields(|| {
+            let (span, operation_name) =
+                create_db_query_span("select * from users", Path::new("index.sql"), 7, "sqlite");
+            assert_eq!(operation_name, "SELECT");
+            drop(span);
+        });
+
+        assert_eq!(fields["otel.kind"], "client");
+        assert_eq!(fields["otel.name"], "SELECT");
+        assert_eq!(fields[otel::DB_QUERY_TEXT], "select * from users");
+        assert_eq!(fields[otel::DB_SYSTEM_NAME], "sqlite");
+        assert_eq!(fields[otel::DB_OPERATION_NAME], "SELECT");
+        assert_eq!(fields[otel::CODE_FILE_PATH], "index.sql");
+        assert_eq!(fields[otel::CODE_LINE_NUMBER], "7");
     }
 
     #[test]
