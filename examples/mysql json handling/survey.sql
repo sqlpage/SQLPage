@@ -22,6 +22,6 @@ select 'card' as component, 'Survey results' as title;
 select
     questions.question_text as title,
     survey_answers.answer as description,
-    'On ' || survey_answers.timestamp as footer
+    CONCAT('On ', survey_answers.timestamp) as footer
 from survey_answers
 inner join questions on questions.id = survey_answers.question_id;
