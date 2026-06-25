@@ -1346,7 +1346,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('rtl', 'Whether the page should be displayed in right-to-left mode. Used to display Arabic, Hebrew, Persian, etc.', 'BOOLEAN', TRUE, TRUE),
     ('refresh', 'Number of seconds after which the page should refresh. This can be useful to display dynamic content that updates automatically.', 'INTEGER', TRUE, TRUE),
     ('sidebar', 'Whether the menu defined by menu_item should be displayed on the left side of the page instead of the top. Introduced in v0.27.', 'BOOLEAN', TRUE, TRUE),
-    ('sidebar_theme', 'Used with sidebar property, It can be set to "dark" to exclusively set the sidebar into dark theme.', 'BOOLEAN', TRUE, TRUE),
+    ('sidebar_theme', 'Used with sidebar property, It can be set to "dark" to exclusively set the sidebar into dark theme.', 'TEXT', TRUE, TRUE),
     ('theme', 'Set to "dark" to use a dark theme.', 'TEXT', TRUE, TRUE),
     ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE),
     ('preview_image', 'The URL of an image to display as a link preview when the page is shared on social media', 'URL', TRUE, TRUE),
