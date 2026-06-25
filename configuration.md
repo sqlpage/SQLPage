@@ -1,56 +1,15 @@
 # Configuring SQLPage
 
-SQLPage can be configured through either [environment variables](https://en.wikipedia.org/wiki/Environment_variable)
-or a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.json`.
+SQLPage can be configured through either environment variables or a JSON file placed at `sqlpage/sqlpage.json`.
 
-You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
-Here are the available configuration options and their default values:
+The complete, generated reference for every configuration option, its type, default value, and description is available on the [official SQLPage configuration reference](https://sql-page.com/configuration.sql).
+The checked-in [JSON Schema](./sqlpage/sqlpage.schema.json) is the source of truth for that reference and for SQLPage's in-memory configuration structure.
 
-| variable                                      | default                                                     | description                                                                                                                                                                                                                                            |
-| --------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `listen_on`                                   | 0.0.0.0:8080                                                | Interface and port on which the web server should listen                                                                                                                                                                                               |
-| `database_url` | `sqlite://sqlpage.db?mode=rwc` or `DSN=DuckDB` | Database connection URL, either `dbengine://user:password@host:port/dbname` or an ODBC connection string. Special characters should be [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding). See [Database connection strings](#database-connection-strings) for details and examples.|
-| `database_password`                            |         | Database password. If set, this will override any password specified in the `database_url`. This allows you to keep the password separate from the connection string for better security. |
-| `port`                                        | 8080                                                        | Like listen_on, but specifies only the port.                                                                                                                                                                                                           |
-| `unix_socket`                                 |                                                             | Path to a UNIX socket to listen on instead of the TCP port. If specified, SQLPage will accept HTTP connections only on this socket and not on any TCP port. This option is mutually exclusive with `listen_on` and `port`.
-| `host`                                        |                                                             | The web address where your application is accessible (e.g., "myapp.example.com"). Used for login redirects with OIDC. |
-| `max_database_pool_connections`               | PostgreSQL: 50<BR>  MySql: 75<BR> SQLite: 16<BR> MSSQL: 100 | How many simultaneous database connections to open at most                                                                                                                                                                                             |
-| `database_connection_idle_timeout_seconds`    | SQLite: None<BR> All other: 30 minutes                      | Automatically close database connections after this period of inactivity. Set to 0 to disable.                                                                                                                                                                                         |
-| `database_connection_max_lifetime_seconds`    | SQLite: None<BR> All other: 60 minutes                      | Always close database connections after this amount of time. Set to 0 to disable.                                                                                                                                                                      |
-| `database_connection_retries`                 | 6                                                           | Database connection attempts before giving up. Retries will happen every 5 seconds.                                                                                                                                                                    |
-| `database_connection_acquire_timeout_seconds` | 10                                                          | How long to wait when acquiring a database connection from the pool before giving up and returning an error.                                                                                                                                           |
-| `sqlite_extensions`                           |                                                             | An array of SQLite extensions to load, such as `mod_spatialite`                                                                                                                                                                                        |
-| `web_root`                                    | `.`                                                         | The root directory of the web server, where the `index.sql` file is located. Static file serving follows symlinks, so do not place symlinks under `web_root` that point to private paths (such as the `sqlpage/` config directory) or to files outside `web_root`, as their targets would become publicly reachable (see [`SECURITY.md`](./SECURITY.md)).                                                                                                                                                                          |
-| `site_prefix`                                 | `/`                                                         | Base path of the site. If you want to host SQLPage at `https://example.com/sqlpage/`, set this to `/sqlpage/`. When using a reverse proxy, this allows hosting SQLPage together with other applications on the same subdomain. |
-| `configuration_directory`                     | `./sqlpage/`                                                | The directory where the `sqlpage.json` file is located. This is used to find the path to [`templates/`](https://sql-page.com/custom_components.sql), [`migrations/`](https://sql-page.com/your-first-sql-website/migrations.sql), and `on_connect.sql`. Obviously, this configuration parameter can be set only through environment variables, not through the `sqlpage.json` file itself in order to find the `sqlpage.json` file. Be careful not to use a path that is accessible from the public WEB_ROOT |
-| `allow_exec`                                  | false                                                       | Allow usage of the `sqlpage.exec` function. Do this only if all users with write access to sqlpage query files and to the optional `sqlpage_files` table on the database are trusted.                                                                  |
-| `max_uploaded_file_size`                      | 5242880                                                     | Maximum size of forms and uploaded files in bytes. Defaults to 5 MiB.                                                                                                                                                                                            |
-| `oidc_protected_paths`                        | `["/"]`                                                      | A list of URL prefixes that should be protected by OIDC authentication. By default, all paths are protected (`["/"]`). If you want to make some pages public, you can restrict authentication to a sub-path, for instance `["/admin", "/users/settings"]`. All paths must start with a "/" and will be prepended by `site_prefix` if defined.|
-| `oidc_public_paths`                           | `[]`                                                        | A list of URL prefixes that should be publicly available. By default, no paths are publicly accessible (`[]`). If you want to make some pages public, you can bypass authentication for a sub-path, for instance `["/public/", "/assets/"]`. Keep in mind that without the closing backslashes, that any directory or file starting with `public` or `assets` will be publicly available. This will also overwrite any protected path restriction. If you have a private path `/private` and you define the public path `/private/public/` everything in `/private/public/` will be publicly accessible, while everything else in private will still need authentication. All paths must start with a "/" and will be prepended by `site_prefix` if defined.
-| `oidc_issuer_url`                            |                                                           | The base URL of the [OpenID Connect provider](#openid-connect-oidc-authentication). Required for enabling Single Sign-On. |
-| `oidc_client_id`                             | sqlpage                                                   | The ID that identifies your SQLPage application to the OIDC provider. You get this when registering your app with the provider. |
-| `oidc_client_secret`                         |                                                           | The secret key for your SQLPage application. Keep this confidential as it allows your app to authenticate with the OIDC provider. |
-| `oidc_scopes`                                | openid email profile                                      | Space-separated list of [scopes](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) your app requests from the OIDC provider. |
-| `oidc_additional_trusted_audiences`          | unset                                                        | A list of additional audiences that are allowed in JWT tokens, beyond the client ID. When empty or unset, any additional audience is accepted. For increased security, set to an empty list `[]` to only allow the client ID as audience. |
-| `max_pending_rows`                            | 256                                                         | Maximum number of rendered rows that can be queued up in memory when a client is slow to receive them. |
-| `compress_responses`                          | false                                                        | When the client supports it, compress the http response body. This can save bandwidth and speed up page loading on slow connections, but can also increase CPU usage and cause rendering delays on pages that take time to render (because streaming responses are buffered for longer than necessary). |
-| `https_domain`                                |                                                             | Domain name to request a certificate for. Setting this parameter will automatically make SQLPage listen on port 443 and request an SSL certificate. The server will take a little bit longer to start the first time it has to request a certificate.  |
-| `https_certificate_email`                     | contact@<https_domain>                                      | The email address to use when requesting a certificate.                                                                                                                                                                                                |
-| `https_certificate_cache_dir`                 | ./sqlpage/https                                             | A writeable directory where to cache the certificates, so that SQLPage can serve https traffic immediately when it restarts.                                                                                                                           |
-| `https_acme_directory_url`                    | https://acme-v02.api.letsencrypt.org/directory              | The URL of the ACME directory to use when requesting a certificate.                                                                                                                                                                                    |
-| `environment`                                 | development                                                 | The environment in which SQLPage is running. Can be either `development` or `production`. In `production` mode, SQLPage will hide error messages and stack traces from the user, and will cache sql files in memory to avoid reloading them from disk. |
-| `cache_stale_duration_ms`                     | 1000 (prod), 0 (dev)                                        | The duration in milliseconds that a file can be cached before its freshness is checked against the filesystem. Defaults to 1000ms (1 second) in production and 0ms in development. |
-| `content_security_policy`                     | `script-src 'self' 'nonce-{NONCE}'`                          | The [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) to set in the HTTP headers. If you get CSP errors in the browser console, you can set this to the empty string to disable CSP. If you want a custom CSP that contains a nonce, include the `'nonce-{NONCE}'` directive in your configuration string and it will be populated with a random value per request.                                                                                                           |
-| `system_root_ca_certificates`                 | false                                                      | Whether to use the system root CA certificates to validate SSL certificates when making http requests with `sqlpage.fetch`. If set to false, SQLPage will use its own set of root CA certificates. If the `SSL_CERT_FILE` or `SSL_CERT_DIR` environment variables are set, they will be used instead of the system root CA certificates. |
-| `max_recursion_depth`                         | 10                                                           | Maximum depth of recursion allowed in the `run_sql` function. Maximum value is 255. |
-| `markdown_allow_dangerous_html`               | false                                                        | Whether to allow raw HTML in markdown content. Only enable this if the markdown content is fully trusted (not user generated). |
-| `markdown_allow_dangerous_protocol`           | false                                                        | Whether to allow dangerous protocols (like javascript:) in markdown links. Only enable this if the markdown content is fully trusted (not user generated). |
-
-Multiple configuration file formats are supported:
-you can use a [`.json5`](https://json5.org/) file, a [`.toml`](https://toml.io/) file, or a [`.yaml`](https://en.wikipedia.org/wiki/YAML#Syntax) file.
+Start from the repository's [example configuration](./sqlpage/sqlpage.json). Keep its `$schema` property to get validation and completion in compatible editors.
 
 ## Environment variables
 
+Every configuration option can also be supplied as an uppercase environment variable. For example, `database_url` becomes `DATABASE_URL`. Variables prefixed with `SQLPAGE_`, such as `SQLPAGE_DATABASE_URL`, are also accepted.
 All the parameters above can be set through environment variables.
 
 The name of the environment variable is the same as the name of the configuration variable,
@@ -291,21 +250,24 @@ By creating a `sqlpage/on_reset.sql` file containing a [`DISCARD ALL`](https://w
 DISCARD ALL;
 ```
 
-##### SQL Server
+Values are applied in this order, from lowest to highest priority:
 
-By creating a `sqlpage/on_reset.sql` file containing a call to the [`sp_reset_connection`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/system-stored-procedures-transact-sql?view=sql-server-ver16#api-system-stored-procedures) stored procedure.
+1. built-in defaults;
+2. `sqlpage/sqlpage.json`;
+3. unprefixed environment variables;
+4. `SQLPAGE_`-prefixed environment variables;
+5. command-line arguments, where available.
 
-```sql
-EXEC sp_reset_connection;
-```
+A local `.env` file can be used to define environment variables during development. Do not commit secrets such as database passwords or OIDC client secrets.
 
-## Migrations
+## Database connection strings
 
-SQLPage allows you to run SQL scripts when the database schema changes, by creating a `sqlpage/migrations` directory.
-We have a guide on [how to create migrations](https://sql-page.com/your-first-sql-website/migrations.sql).
+Set `database_url` (or `DATABASE_URL`) to a URL supported by your database driver, for example:
 
-## Custom URL routes
+- SQLite: `sqlite://sqlpage.db?mode=rwc`
+- PostgreSQL: `postgres://user:password@localhost/database`
+- MySQL: `mysql://user:password@localhost/database`
+- Microsoft SQL Server: `mssql://user:password@localhost/database`
+- ODBC: an ODBC connection string such as `DSN=DuckDB`
 
-By default, SQLPage encourages a simple mapping between the URL and the SQL file that is executed.
-You can also create custom URL routes by creating [`404.sql` files](https://sql-page.com/your-first-sql-website/custom_urls.sql).
-If you need advanced routing, you can also [add a reverse proxy in front of SQLPage](https://sql-page.com/your-first-sql-website/nginx.sql).
+Percent-encode special characters in URL usernames and passwords. You can keep the password separate from the URL with `database_password` or `DATABASE_PASSWORD`.

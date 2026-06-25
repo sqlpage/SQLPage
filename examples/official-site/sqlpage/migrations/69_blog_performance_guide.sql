@@ -269,13 +269,13 @@ SQLPage uses connection pooling: it keeps multiple database connections opened,
 and reuses them for consecutive requests. When it does not receive requests for a long time,
 it closes idle connection. When it receives many requests, it opens new connection,
 but never more than the value specified by `max_database_pool_connections` in its
-[configuration](https://github.com/sqlpage/SQLPage/blob/main/configuration.md).
+[configuration](/configuration.sql).
 You can increase the value of that parameter if your website has many concurrent users and your
 database is configured to allow opening many simultaneous connections.
 
 ### SQLPage performance debugging
 
-When `environment` is set to `development` in its [configuration](https://github.com/sqlpage/SQLPage/blob/main/configuration.md),
+When `environment` is set to `development` in its [configuration](/configuration.sql),
 SQLPage will include precise measurement of the time it spends in each of the steps it has to go through before starting to send data
 back to the user''s browser. You can visualize that performance data in your browser''s network inspector.
 

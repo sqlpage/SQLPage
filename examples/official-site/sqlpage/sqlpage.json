@@ -1,0 +1,6 @@
+{
+  "$schema": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
+  "database_url": "sqlite::memory:?cache=shared",
+  "max_uploaded_file_size": 256000,
+  "database_connection_acquire_timeout_seconds": 30
+}

@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
+  "title": "SQLPage configuration",
+  "description": "Configuration options accepted by SQLPage in sqlpage.json. Every option can also be supplied as an uppercase environment variable.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "description": "JSON Schema used to validate this configuration file.",
+      "default": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
+      "x-rust-exclude": true,
+      "const": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json"
+    },
+    "database_url": {
+      "description": "Database connection URL or ODBC connection string.",
+      "x-rust-type": "String",
+      "type": "string",
+      "x-rust-serde": "default = \"default_database_url\""
+    },
+    "database_password": {
+      "description": "Database password. When set, overrides a password embedded in database_url.",
+      "x-rust-type": "Option<String>",
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-rust-serde": "default"
+    },
+    "max_database_pool_connections": {
+      "description": "Maximum number of simultaneous database connections.",
+      "x-rust-type": "Option<u32>",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "database_connection_idle_timeout_seconds": {
+      "description": "Close idle database connections after this many seconds. Use 0 to disable.",
+      "x-rust-type": "Option<Duration>",
+      "type": [
+        "number",
+        "null"
+      ],
+      "x-rust-serde": "default, deserialize_with = \"deserialize_duration_seconds\", rename = \"database_connection_idle_timeout_seconds\"",
+      "x-rust-field-name": "database_connection_idle_timeout",
+      "minimum": 0
+    },
+    "database_connection_max_lifetime_seconds": {
+      "description": "Close database connections after this many seconds regardless of activity. Use 0 to disable.",
+      "x-rust-type": "Option<Duration>",
+      "type": [
+        "number",
+        "null"
+      ],
+      "x-rust-serde": "default, deserialize_with = \"deserialize_duration_seconds\", rename = \"database_connection_max_lifetime_seconds\"",
+      "x-rust-field-name": "database_connection_max_lifetime",
+      "minimum": 0
+    },
+    "sqlite_extensions": {
+      "description": "SQLite extensions to load when connecting.",
+      "x-rust-type": "Vec<String>",
+      "type": "array",
+      "default": [],
+      "x-rust-serde": "default",
+      "items": {
+        "type": "string"
+      }
+    },
+    "listen_on": {
+      "description": "Socket address on which the HTTP server listens. Defaults to 0.0.0.0:8080, or port 443 with https_domain.",
+      "x-rust-type": "Option<SocketAddr>",
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-rust-serde": "default, deserialize_with = \"deserialize_socket_addr\""
+    },
+    "port": {
+      "description": "TCP port on which to listen. A Kubernetes service URI is ignored for compatibility.",
+      "x-rust-type": "Option<u16>",
+      "type": [
+        "integer",
+        "string",
+        "null"
+      ],
+      "x-rust-serde": "default, deserialize_with = \"deserialize_port\"",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "unix_socket": {
+      "description": "UNIX socket path to listen on instead of TCP.",
+      "x-rust-type": "Option<PathBuf>",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "database_connection_retries": {
+      "description": "Number of database connection retries at startup, five seconds apart.",
+      "x-rust-type": "u32",
+      "type": "integer",
+      "default": 6,
+      "x-rust-serde": "default = \"default_database_connection_retries\"",
+      "minimum": 0
+    },
+    "database_connection_acquire_timeout_seconds": {
+      "description": "Maximum seconds to wait for a connection from the database pool.",
+      "x-rust-type": "f64",
+      "type": "number",
+      "default": 10,
+      "x-rust-serde": "default = \"default_database_connection_acquire_timeout_seconds\"",
+      "exclusiveMinimum": 0
+    },
+    "web_root": {
+      "description": "Directory containing the SQL files served by SQLPage.",
+      "x-rust-type": "PathBuf",
+      "type": "string",
+      "default": ".",
+      "x-rust-serde": "default = \"default_web_root\""
+    },
+    "configuration_directory": {
+      "description": "Directory containing SQLPage configuration, templates, and migrations.",
+      "x-rust-type": "PathBuf",
+      "type": "string",
+      "default": "./sqlpage",
+      "x-rust-serde": "default = \"configuration_directory\""
+    },
+    "allow_exec": {
+      "description": "Allow SQL queries to call sqlpage.exec. Enable only when all SQL authors are trusted.",
+      "x-rust-type": "bool",
+      "type": "boolean",
+      "default": false,
+      "x-rust-serde": "default"
+    },
+    "max_uploaded_file_size": {
+      "description": "Maximum uploaded file size in bytes.",
+      "x-rust-type": "usize",
+      "type": "integer",
+      "default": 5242880,
+      "x-rust-serde": "default = \"default_max_file_size\"",
+      "minimum": 0
+    },
+    "oidc_issuer_url": {
+      "description": "Base URL of the OpenID Connect provider.",
+      "x-rust-type": "Option<IssuerUrl>",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri"
+    },
+    "oidc_client_id": {
+      "description": "OIDC client ID assigned to SQLPage.",
+      "x-rust-type": "String",
+      "type": "string",
+      "default": "sqlpage",
+      "x-rust-serde": "default = \"default_oidc_client_id\""
+    },
+    "oidc_client_secret": {
+      "description": "OIDC client secret assigned to SQLPage.",
+      "x-rust-type": "Option<String>",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "oidc_scopes": {
+      "description": "Space-separated OIDC scopes requested during authentication.",
+      "x-rust-type": "String",
+      "type": "string",
+      "default": "openid email profile",
+      "x-rust-serde": "default = \"default_oidc_scopes\""
+    },
+    "oidc_protected_paths": {
+      "description": "Path prefixes that require OIDC authentication. Public paths take precedence.",
+      "x-rust-type": "Vec<String>",
+      "type": "array",
+      "default": [
+        "/"
+      ],
+      "x-rust-serde": "default = \"default_oidc_protected_paths\"",
+      "items": {
+        "type": "string",
+        "pattern": "^/"
+      }
+    },
+    "oidc_public_paths": {
+      "description": "Path prefixes excluded from OIDC authentication.",
+      "x-rust-type": "Vec<String>",
+      "type": "array",
+      "default": [],
+      "x-rust-serde": "default",
+      "items": {
+        "type": "string",
+        "pattern": "^/"
+      }
+    },
+    "oidc_additional_trusted_audiences": {
+      "description": "Additional trusted OIDC JWT audiences. Null trusts all additional audiences; an empty array trusts only the client ID.",
+      "x-rust-type": "Option<Vec<String>>",
+      "type": [
+        "array",
+        "null"
+      ],
+      "x-rust-serde": "default",
+      "items": {
+        "type": "string"
+      }
+    },
+    "https_domain": {
+      "description": "Domain name for automatic HTTPS with a Let’s Encrypt certificate.",
+      "x-rust-type": "Option<String>",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "host": {
+      "description": "Public hostname used for OIDC redirect URLs. Defaults to https_domain.",
+      "x-rust-type": "Option<String>",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "https_certificate_email": {
+      "description": "Email address used when requesting the automatic HTTPS certificate.",
+      "x-rust-type": "Option<String>",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "email"
+    },
+    "https_certificate_cache_dir": {
+      "description": "Directory used to store automatic HTTPS certificates.",
+      "x-rust-type": "PathBuf",
+      "type": "string",
+      "default": "./sqlpage/https",
+      "x-rust-serde": "default = \"default_https_certificate_cache_dir\""
+    },
+    "https_acme_directory_url": {
+      "description": "ACME directory URL used for automatic HTTPS certificates.",
+      "x-rust-type": "String",
+      "type": "string",
+      "default": "https://acme-v02.api.letsencrypt.org/directory",
+      "x-rust-serde": "default = \"default_https_acme_directory_url\"",
+      "format": "uri"
+    },
+    "environment": {
+      "description": "Runtime environment, controlling whether detailed errors are shown.",
+      "x-rust-type": "DevOrProd",
+      "type": "string",
+      "default": "development",
+      "x-rust-serde": "default",
+      "enum": [
+        "development",
+        "production"
+      ]
+    },
+    "site_prefix": {
+      "description": "URL path prefix from which the site is served. SQLPage normalizes leading and trailing slashes.",
+      "x-rust-type": "String",
+      "type": "string",
+      "default": "/",
+      "x-rust-serde": "deserialize_with = \"deserialize_site_prefix\", default = \"default_site_prefix\""
+    },
+    "max_pending_rows": {
+      "description": "Maximum number of result rows buffered before sending them to the client.",
+      "x-rust-type": "usize",
+      "type": "integer",
+      "default": 256,
+      "x-rust-serde": "default = \"default_max_pending_rows\"",
+      "minimum": 1
+    },
+    "compress_responses": {
+      "description": "Compress HTTP response bodies when supported by the client.",
+      "x-rust-type": "bool",
+      "type": "boolean",
+      "default": false,
+      "x-rust-serde": "default = \"default_compress_responses\""
+    },
+    "content_security_policy": {
+      "description": "Content-Security-Policy header template. Use {{@csp_nonce}} for SQLPage’s generated nonce.",
+      "x-rust-type": "ContentSecurityPolicyTemplate",
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-rust-serde": "default"
+    },
+    "system_root_ca_certificates": {
+      "description": "Load trusted certificates from the operating system certificate store for sqlpage.fetch.",
+      "x-rust-type": "bool",
+      "type": "boolean",
+      "default": false,
+      "x-rust-serde": "default = \"default_system_root_ca_certificates\""
+    },
+    "max_recursion_depth": {
+      "description": "Maximum recursion depth for run_sql.",
+      "x-rust-type": "u8",
+      "type": "integer",
+      "default": 10,
+      "x-rust-serde": "default = \"default_max_recursion_depth\"",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "markdown_allow_dangerous_html": {
+      "description": "Allow raw HTML in Markdown.",
+      "x-rust-type": "bool",
+      "type": "boolean",
+      "default": false,
+      "x-rust-serde": "default = \"default_markdown_allow_dangerous_html\""
+    },
+    "markdown_allow_dangerous_protocol": {
+      "description": "Allow dangerous URL protocols in Markdown links.",
+      "x-rust-type": "bool",
+      "type": "boolean",
+      "default": false,
+      "x-rust-serde": "default = \"default_markdown_allow_dangerous_protocol\""
+    },
+    "cache_stale_duration_ms": {
+      "description": "Milliseconds for which cached SQL files remain fresh. Defaults to 0 in development and 1000 in production.",
+      "x-rust-type": "Option<u64>",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    }
+  }
+}

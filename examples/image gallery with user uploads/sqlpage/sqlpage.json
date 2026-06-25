@@ -1,3 +1,4 @@
 {
+  "$schema": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
   "max_uploaded_file_size": 5000000
 }

@@ -14,7 +14,7 @@ containing the contents of the given file.
 
 The file path is relative to the `web root` directory, which is the directory from which your website is served.
 By default, this is the directory SQLPage is launched from, but you can change it
-with the `web_root` [configuration option](https://github.com/sqlpage/SQLPage/blob/main/configuration.md).
+with the `web_root` [configuration option](/configuration.sql).
 
 If the given argument is null, the function will return null.
 

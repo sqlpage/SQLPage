@@ -1,0 +1,13 @@
+{
+  "$schema": "https://github.com/sqlpage/SQLPage/raw/refs/heads/main/sqlpage/sqlpage.schema.json",
+  "oidc_issuer_url": "http://localhost:8181/realms/sqlpage_demo",
+  "oidc_client_id": "sqlpage",
+  "oidc_client_secret": "qiawfnYrYzsmoaOZT28rRjPPRamfvrYr",
+  "oidc_protected_paths": [
+    "/protected"
+  ],
+  "oidc_public_paths": [
+    "/protected/public"
+  ],
+  "oidc_additional_trusted_audiences": []
+}

@@ -37,6 +37,8 @@ jobs:
       - uses: actions/checkout@v6
       - run: npm ci
       - run: npm test
+      - run: scripts/generate_configuration_reference.py --check
+      - run: scripts/check_configuration_examples.py
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:

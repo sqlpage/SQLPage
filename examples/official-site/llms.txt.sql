@@ -31,7 +31,7 @@ Key features:
             component
     ) || ' built-in UI components with parameters and examples
 - [Functions reference](/functions.sql): SQLPage built-in functions for handling requests, encoding data, and more
-- [Configuration guide](https://github.com/sqlpage/SQLPage/blob/main/configuration.md): Complete list of configuration options in sqlpage.json
+- [Configuration guide](/configuration.sql): Complete list of configuration options in sqlpage.json
 
 ## Components
 

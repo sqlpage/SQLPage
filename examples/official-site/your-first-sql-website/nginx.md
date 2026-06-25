@@ -80,7 +80,7 @@ but will increase the load on your SQLPage server, and reduce the amount of user
 
 Refer to the official documentation for [proxy buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering), [gzip](https://nginx.org/en/docs/http/ngx_http_gzip_module.html), and [chunked transfer](https://nginx.org/en/docs/http/ngx_http_core_module.html#chunked_transfer_encoding) when tuning these values.
 
-When SQLPage sits behind a reverse proxy, set `compress_responses` to `false` [in `sqlpage.json`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md) so that NGINX compresses once at the edge.
+When SQLPage sits behind a reverse proxy, set `compress_responses` to `false` [in `sqlpage.json`](/configuration.sql) so that NGINX compresses once at the edge.
 
 ### URL Rewriting
 

@@ -98,7 +98,7 @@ Later, when you want to deploy your website online, you can switch back to a per
 > For instance, a SQL Server database named `db` running on `localhost` port `1433` with the username `funny:user` and the password `p@ssw0rd` would be represented as 
 > `mssql://funny%3Auser:p%40ssw0rd@localhost:1433/db`.
 
-For more information about the properties that can be set in sqlpage.json, see [SQLPage's configuration documentation](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage)
+For more information about the properties that can be set in sqlpage.json, see [SQLPage's configuration documentation](/configuration.sql)
 
 ![screenshot for the full sql website folder organisation](full-website.png)
 
@@ -188,7 +188,7 @@ If you prefer to host your website yourself, you can use a cloud provider or a V
 - [Setup docker](https://github.com/sqlpage/SQLPage?tab=readme-ov-file#with-docker) or another process manager such as [systemd](https://github.com/sqlpage/SQLPage/blob/main/sqlpage.service) to start SQLPage automatically when your server boots and to keep it running
 - Optionally, [setup a reverse proxy](nginx.sql) to avoid exposing SQLPage directly to the internet
 - Optionally, setup a TLS certificate to enable HTTPS
-- Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage)
+- Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](/configuration.sql)
 
 # Go further
 
