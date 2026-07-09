@@ -3,7 +3,7 @@
 ## unreleased
 
 - **Access logs now go to stdout.** SQLPage now writes the single per-request completion log line to stdout with the target `sqlpage::access`, matching common application-server and container logging conventions. Diagnostic logs, warnings, and internal errors still go to stderr. If your `LOG_LEVEL` or `RUST_LOG` filter is scoped to a specific old target such as `sqlpage::webserver::http=info`, add `sqlpage::access=info` so request-completion logs are still emitted. If your log pipeline only collects stderr, update it to collect stdout too.
-- **OIDC login no longer restarts when a browser replays an already-consumed callback.** This fixes a short redirect loop that could appear on cold browser start when parallel protected-page loads raced through the OIDC flow: one callback completed login and removed its temporary `sqlpage_oidc_state_*` cookie, while a replay of the same callback arrived afterward with the new authenticated session but without that temporary state cookie.
+- **OIDC login no longer restarts on a stale callback after login has already completed.** If an OIDC callback URL is received again after its temporary `sqlpage_oidc_state_*` cookie has been consumed, but the request already has a valid SQLPage session, SQLPage now treats it as a stale callback and redirects home instead of starting a new login flow.
 
 ## v0.44.1
 

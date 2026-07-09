@@ -375,6 +375,11 @@ async fn test_oidc_replayed_callback_after_login_does_not_restart_login() {
         request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
     assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
 
+    // This is the smallest deterministic reproduction of the log pattern from
+    // the bug report: the first callback completed the login and removed the
+    // temporary sqlpage_oidc_state_* cookie; the same callback URL is then
+    // received again while the browser already carries the final authenticated
+    // session cookies. That stale callback must not start another OIDC flow.
     let replay_resp =
         request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
     assert_eq!(replay_resp.status(), StatusCode::SEE_OTHER);
