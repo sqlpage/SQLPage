@@ -539,6 +539,18 @@ fn handle_oidc_callback_error(
     request: ServiceRequest,
     e: &anyhow::Error,
 ) -> ServiceResponse {
+    if is_missing_tmp_login_flow_state_cookie_error(e)
+        && matches!(
+            get_authenticated_user_info(oidc_state, &request),
+            Ok(Some(_))
+        )
+    {
+        log::warn!("Ignoring replayed OIDC callback for an already authenticated session: {e:#}");
+        let mut resp = build_redirect_response("/".to_string());
+        clear_redirect_count_cookie(&mut resp);
+        return request.into_response(resp);
+    }
+
     let redirect_count = get_redirect_count(&request);
     if redirect_count >= MAX_OIDC_REDIRECTS {
         return handle_max_redirect_count_reached(request, e, redirect_count);
@@ -907,6 +919,15 @@ fn build_oidc_error_response(request: &ServiceRequest, e: &anyhow::Error) -> Htt
         || HttpResponse::InternalServerError().body(format!("Authentication error: {e}")),
         |state| anyhow_err_to_actix_resp(e, state),
     )
+}
+
+fn is_missing_tmp_login_flow_state_cookie_error(e: &anyhow::Error) -> bool {
+    e.chain().any(|cause| {
+        let msg = cause.to_string();
+        msg.starts_with("No ")
+            && msg.contains(SQLPAGE_TMP_LOGIN_STATE_COOKIE_PREFIX)
+            && msg.ends_with(" cookie found")
+    })
 }
 
 /// Returns the claims from the ID token in the `SQLPage` auth cookie.

@@ -352,6 +352,43 @@ async fn test_oidc_happy_path() {
     assert_eq!(final_resp.status(), StatusCode::OK);
 }
 
+#[actix_web::test]
+async fn test_oidc_replayed_callback_after_login_does_not_restart_login() {
+    let (app, provider) = setup_oidc_test(|_| {}).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+
+    let state = get_query_param(&auth_url, "state");
+    let nonce = get_query_param(&auth_url, "nonce");
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    provider.store_auth_code("test_auth_code".to_string(), nonce);
+
+    let callback_uri = format!(
+        "{}?code=test_auth_code&state={}",
+        Url::parse(&redirect_uri).unwrap().path(),
+        state
+    );
+    let callback_resp =
+        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+    assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
+
+    let replay_resp =
+        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+    assert_eq!(replay_resp.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        replay_resp
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "/"
+    );
+}
+
 async fn assert_oidc_login_fails(
     provider_mutator: impl FnOnce(&mut ProviderState),
     state_override: Option<String>,
