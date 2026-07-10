@@ -265,9 +265,9 @@ fn get_query_param(url: &Url, name: &str) -> String {
 }
 
 fn permits_storage_after_proxy_adds_freshness(headers: &header::HeaderMap) -> bool {
-    // The supplied HAR has `Cache-Control: max-age=86400` on the OIDC 303s,
-    // despite SQLPage not setting it. This models a proxy adding that directive:
-    // `no-store` still wins when both directives are present.
+    // Reproduces https://github.com/sqlpage/SQLPage/issues/1341, where an
+    // intermediary added `Cache-Control: max-age=86400` to OIDC 303 responses.
+    // `no-store` must still prevent browser storage when both directives exist.
     !headers
         .get_all(header::CACHE_CONTROL)
         .filter_map(|value| value.to_str().ok())
@@ -341,8 +341,9 @@ async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() 
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
-    // Chrome's private cache can replay a cached 303 without reapplying its
-    // Set-Cookie headers. This is the sequence captured in #1341's HAR.
+    // Reproduces https://github.com/sqlpage/SQLPage/issues/1341: Chrome's
+    // private cache can replay a cached 303 without reapplying Set-Cookie
+    // headers, causing the browser to retry an already-consumed OIDC state.
     let initial_response = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
     let initial_auth_url = Url::parse(
         initial_response
