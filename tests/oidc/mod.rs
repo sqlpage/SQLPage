@@ -264,6 +264,17 @@ fn get_query_param(url: &Url, name: &str) -> String {
         .to_string()
 }
 
+fn permits_storage_after_proxy_adds_freshness(headers: &header::HeaderMap) -> bool {
+    // The supplied HAR has `Cache-Control: max-age=86400` on the OIDC 303s,
+    // despite SQLPage not setting it. This models a proxy adding that directive:
+    // `no-store` still wins when both directives are present.
+    !headers
+        .get_all(header::CACHE_CONTROL)
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(','))
+        .any(|directive| directive.trim().eq_ignore_ascii_case("no-store"))
+}
+
 macro_rules! request_with_cookies {
     ($app:expr, $req:expr, $cookies:expr) => {{
         let mut req = $req;
@@ -326,12 +337,78 @@ async fn setup_oidc_test(
 }
 
 #[actix_web::test]
+async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() {
+    let (app, provider) = setup_oidc_test(|_| {}).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    // Chrome's private cache can replay a cached 303 without reapplying its
+    // Set-Cookie headers. This is the sequence captured in #1341's HAR.
+    let initial_response = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    let initial_auth_url = Url::parse(
+        initial_response
+            .headers()
+            .get(header::LOCATION)
+            .unwrap()
+            .to_str()
+            .unwrap(),
+    )
+    .unwrap();
+    let cached_authorization_url =
+        permits_storage_after_proxy_adds_freshness(initial_response.headers())
+            .then_some(initial_auth_url.clone());
+
+    let state = get_query_param(&initial_auth_url, "state");
+    let nonce = get_query_param(&initial_auth_url, "nonce");
+    let redirect_uri = get_query_param(&initial_auth_url, "redirect_uri");
+    let callback_path = Url::parse(&redirect_uri).unwrap().path().to_owned();
+    provider.store_auth_code("first-code".to_string(), nonce.clone());
+    let callback_uri = format!("{callback_path}?code=first-code&state={state}");
+    let callback_response =
+        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+    assert_eq!(callback_response.status(), StatusCode::SEE_OTHER);
+
+    if let Some(stale_authorization_url) = cached_authorization_url {
+        // A fresh Entra code is returned for the authorization URL cached by
+        // Chrome, but its state is the state that the successful callback just
+        // consumed. Before this fix, SQLPage restarted OIDC here, creating the
+        // observed redirect loop.
+        let stale_state = get_query_param(&stale_authorization_url, "state");
+        provider.store_auth_code("stale-code".to_string(), nonce);
+        let stale_callback_uri = format!("{callback_path}?code=stale-code&state={stale_state}");
+        let stale_callback_response = request_with_cookies!(
+            app,
+            test::TestRequest::get().uri(&stale_callback_uri),
+            cookies
+        );
+        panic!(
+            "a cacheable authorization redirect replays a consumed state; stale callback redirected to {}",
+            stale_callback_response
+                .headers()
+                .get(header::LOCATION)
+                .unwrap()
+                .to_str()
+                .unwrap()
+        );
+    }
+
+    // With `no-store`, Chrome re-requests `/` after login and sends its new
+    // auth cookie instead of following the original authorization redirect.
+    let final_response = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(final_response.status(), StatusCode::OK);
+}
+
+#[actix_web::test]
 async fn test_oidc_happy_path() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
     let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
     assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        resp.headers().get(header::CACHE_CONTROL).unwrap(),
+        "no-store",
+        "the authorization redirect contains a one-time state and must not be cached"
+    );
     let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
 
     let state = get_query_param(&auth_url, "state");
@@ -347,6 +424,11 @@ async fn test_oidc_happy_path() {
     let callback_resp =
         request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
     assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        callback_resp.headers().get(header::CACHE_CONTROL).unwrap(),
+        "no-store",
+        "the post-login redirect must not re-enter a cached authorization redirect"
+    );
 
     let final_resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
     assert_eq!(final_resp.status(), StatusCode::OK);

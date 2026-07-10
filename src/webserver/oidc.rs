@@ -870,6 +870,9 @@ fn build_auth_provider_redirect_response(
     .finish();
     let mut response = HttpResponse::SeeOther();
     response.append_header((header::LOCATION, url.to_string()));
+    // The location contains a one-time CSRF state. A cached redirect would
+    // replay it after its state cookie has been consumed.
+    response.append_header((header::CACHE_CONTROL, "no-store"));
     if let Ok(cookies) = request.cookies() {
         for mut cookie in get_tmp_login_flow_state_cookies_to_evict(&cookies).cloned() {
             cookie.make_removal();
@@ -884,6 +887,7 @@ fn build_auth_provider_redirect_response(
 fn build_redirect_response(target_url: String) -> HttpResponse {
     HttpResponse::SeeOther()
         .append_header(("Location", target_url))
+        .append_header((header::CACHE_CONTROL, "no-store"))
         .body("Redirecting...")
 }
 

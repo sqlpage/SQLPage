@@ -3,6 +3,7 @@
 ## unreleased
 
 - **Access logs now go to stdout.** SQLPage now writes the single per-request completion log line to stdout with the target `sqlpage::access`, matching common application-server and container logging conventions. Diagnostic logs, warnings, and internal errors still go to stderr. If your `LOG_LEVEL` or `RUST_LOG` filter is scoped to a specific old target such as `sqlpage::webserver::http=info`, add `sqlpage::access=info` so request-completion logs are still emitted. If your log pipeline only collects stderr, update it to collect stdout too.
+- **OIDC redirects are no longer cacheable.** Authorization redirects contain one-time state and post-login redirects set session cookies. SQLPage now sends `Cache-Control: no-store` for these responses, preventing a browser or intermediary from replaying an expired authorization redirect.
 
 ## v0.44.1
 
