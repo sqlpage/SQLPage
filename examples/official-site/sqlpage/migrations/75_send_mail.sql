@@ -114,6 +114,7 @@ It also accepts:
 - `from`: overrides `smtp_from` for this message;
 - `reply_to`: the address that receives replies;
 - `cc`: a recipient who receives a visible copy;
+- `body_html`: an HTML version of the body;
 - `attachments`: files to include with the message.
 
 `to` and `cc` can each be either one address or an array of addresses. Addresses can include a display name, for example `"Jane Doe <jane@example.com>"`.
@@ -140,6 +141,21 @@ set result = sqlpage.send_mail(json_object(
 [`sqlpage.read_file_as_data_url`](/functions.sql?function=read_file_as_data_url) is one way to create attachment data. Data URLs can also come from an uploaded file, a database value, an HTTP response, or SQL.
 
 The combined decoded size of all attachments is limited by `max_email_attachment_size`, which defaults to 10 MiB. This is separate from `max_uploaded_file_size` because attachments do not have to come from form uploads.
+
+### HTML email
+
+Set `body_html` to send an HTML version of the message alongside the plain-text `body`. The message is sent as a `multipart/alternative`: mail clients that prefer HTML show the HTML body, and clients that prefer text show the plain-text body.
+
+```sql
+set result = sqlpage.send_mail(json_object(
+    ''to'', ''alice@example.com'',
+    ''subject'', ''Welcome'',
+    ''body'', ''Welcome to our service.'',
+    ''body_html'', ''<p>Welcome to <strong>our service</strong>.</p>''
+));
+```
+
+`body` is always required. Include a meaningful plain-text alternative for deliverability and accessibility. SQLPage does not sanitize `body_html`: the SQL author is responsible for the HTML content. Email clients ignore scripts, and styles are often stripped or sandboxed.
 
 ### Contact form
 
@@ -201,7 +217,7 @@ SQLPage does not currently support:
 - OAuth or XOAUTH2 authentication. If a provider only allows OAuth, it is not compatible with this function;
 - CRAM-MD5, DIGEST-MD5, client-certificate authentication, or a per-server custom CA file;
 - opportunistic STARTTLS, direct delivery to recipient mail servers, or receiving email;
-- HTML email, a text/HTML alternative body, BCC, multiple reply-to addresses, or custom email headers;
+- BCC, multiple reply-to addresses, or custom email headers;
 - provider-specific headers for templates, tags, tracking, scheduling, idempotency, or metadata;
 - DKIM signing inside SQLPage, S/MIME, or end-to-end encryption. The SMTP provider may add DKIM signatures;
 - connection pooling, automatic retries, a persistent queue, scheduled sending, or a bulk-send API;
@@ -213,7 +229,7 @@ SQLPage does not currently support:
 - SQL `NULL` is passed through: `sqlpage.send_mail(NULL)` returns SQL `NULL`, sends nothing, and does not log a warning.
 - A JSON value other than an object and unknown or invalid message fields produce a JSON result with `status`, `error_code`, and `error` fields.
 - `to`, `subject`, and `body` are required and cannot be JSON `null`.
-- `from`, `reply_to`, and `cc` treat JSON `null` like an omitted field. If `from` is omitted, `smtp_from` must be configured.
+- `from`, `reply_to`, `cc`, and `body_html` treat JSON `null` like an omitted field. If `from` is omitted, `smtp_from` must be configured. When `body_html` is omitted, the message is plain text only.
 - `attachments` can be omitted or an empty array. JSON `null` is not accepted for `attachments`.
 - Empty recipient arrays, JSON `null` inside recipient arrays, invalid addresses, an empty attachment file name, invalid data URLs, and unknown attachment fields produce an error result with `status`, `error_code`, and `error`.
 - Empty strings are allowed for `subject` and `body`, although an SMTP server may reject them.
@@ -250,6 +266,6 @@ VALUES (
         'send_mail',
         1,
         'message',
-        'A JSON object containing the email to send. Required properties are `to` (an address or non-empty address array), `subject`, and `body`. Optional properties are `from` (required unless `smtp_from` or `SMTP_FROM` is configured), `reply_to`, `cc` (an address or non-empty address array), and `attachments` (an array of `{ "filename": "...", "data_url": "data:..." }` objects). Invalid JSON and invalid or unknown properties return `{ "status": "error", "error_code": "...", "error": "..." }`. SQL `NULL` returns SQL `NULL` without sending.',
+        'A JSON object containing the email to send. Required properties are `to` (an address or non-empty address array), `subject`, and `body`. Optional properties are `from` (required unless `smtp_from` or `SMTP_FROM` is configured), `reply_to`, `cc` (an address or non-empty address array), `body_html` (an HTML alternative body sent as `multipart/alternative` alongside `body`), and `attachments` (an array of `{ "filename": "...", "data_url": "data:..." }` objects). Invalid JSON and invalid or unknown properties return `{ "status": "error", "error_code": "...", "error": "..." }`. SQL `NULL` returns SQL `NULL` without sending.'
         'JSON'
     );

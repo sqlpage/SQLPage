@@ -13,7 +13,7 @@ This builds SQLPage from the current repository checkout before starting the exa
 Open http://localhost:8080 and choose one of two flows, then inspect the message in the Mailpit inbox at http://localhost:8025:
 
 - **Simple email** sends to one recipient with the `SMTP_FROM` sender configured in Docker Compose.
-- **Advanced email** demonstrates multiple recipients, Cc, Reply-To, a per-message sender override, and an uploaded attachment.
+- **Advanced email** demonstrates multiple recipients, Cc, Reply-To, a per-message sender override, an HTML alternative body, and an uploaded attachment.
 
 The SMTP server is configured in [`docker-compose.yml`](./docker-compose.yml) with `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_TLS_MODE=none`, and a default `SMTP_FROM`. Plaintext mode is intended only for trusted local SMTP servers such as Mailpit.
 

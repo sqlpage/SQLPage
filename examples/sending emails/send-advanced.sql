@@ -9,6 +9,7 @@ set message = json_object(
     'reply_to', :reply_to,
     'subject', :subject,
     'body', :body,
+    'body_html', NULLIF(:body_html, ''),
     'attachments', json_array(json_object(
         'filename', $attachment_name,
         'data_url', $attachment_data_url

@@ -65,6 +65,8 @@ struct MailRequest<'a> {
     subject: Cow<'a, str>,
     #[serde(borrow)]
     body: Cow<'a, str>,
+    #[serde(borrow, default)]
+    body_html: Option<Cow<'a, str>>,
     #[serde(borrow, default, rename = "from")]
     from: Option<Cow<'a, str>>,
     #[serde(borrow, default)]
@@ -277,6 +279,7 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         cc,
         subject,
         body,
+        body_html,
         from,
         reply_to,
         attachments,
@@ -311,6 +314,16 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         email = email.reply_to(parsed_reply_to);
     }
     if attachments.is_empty() {
+        if let Some(html) = body_html {
+            return email
+                .multipart(
+                    MultiPart::alternative()
+                        .singlepart(SinglePart::plain(body.into_owned()))
+                        .singlepart(SinglePart::html(html.into_owned())),
+                )
+                .context("Unable to build email message")
+                .map_err(SendMailError::InvalidMessage);
+        }
         return email
             .header(ContentType::TEXT_PLAIN)
             .body(body.into_owned())
@@ -319,7 +332,15 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
     }
 
     let mut remaining_attachment_size = config.max_email_attachment_size;
-    let mut multipart = MultiPart::mixed().singlepart(SinglePart::plain(body.into_owned()));
+    let mut multipart = if let Some(html) = body_html {
+        MultiPart::mixed().multipart(
+            MultiPart::alternative()
+                .singlepart(SinglePart::plain(body.into_owned()))
+                .singlepart(SinglePart::html(html.into_owned())),
+        )
+    } else {
+        MultiPart::mixed().singlepart(SinglePart::plain(body.into_owned()))
+    };
     for (index, attachment) in attachments.into_iter().enumerate() {
         if attachment.filename.is_empty() {
             return Err(SendMailError::InvalidAttachmentFilename { index });
@@ -417,6 +438,96 @@ mod tests {
         let data = received.recv().unwrap();
         assert!(data.contains("Subject: SMTP test"));
         assert!(data.contains("hello smtp"));
+    }
+
+    #[tokio::test]
+    async fn sends_html_alternative_to_configured_relay() {
+        let (host, port, received) = start_smtp_server();
+        let mut config = test_config();
+        config.smtp_host = Some(host);
+        config.smtp_port = Some(port);
+        config.smtp_tls_mode = SmtpTlsMode::None;
+
+        send_mail_with_config(
+            &config,
+            r#"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "HTML test",
+                "body": "hello plain",
+                "body_html": "<p>hello <strong>html</strong></p>"
+            }"#,
+        )
+        .await
+        .unwrap();
+
+        let data = received.recv().unwrap();
+        assert!(data.contains("Subject: HTML test"));
+        assert!(data.contains("Content-Type: multipart/alternative"));
+        assert!(data.contains("Content-Type: text/plain"));
+        assert!(data.contains("hello plain"));
+        assert!(data.contains("Content-Type: text/html"));
+        assert!(data.contains("<p>hello <strong>html</strong></p>"));
+    }
+
+    #[tokio::test]
+    async fn sends_html_alternative_with_attachments() {
+        let (host, port, received) = start_smtp_server();
+        let mut config = test_config();
+        config.smtp_host = Some(host);
+        config.smtp_port = Some(port);
+        config.smtp_tls_mode = SmtpTlsMode::None;
+
+        send_mail_with_config(
+            &config,
+            r#"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "HTML and attachment test",
+                "body": "hello plain",
+                "body_html": "<p>hello <strong>html</strong></p>",
+                "attachments": [
+                    {"filename": "note.txt", "data_url": "data:text/plain;base64,aGk="}
+                ]
+            }"#,
+        )
+        .await
+        .unwrap();
+
+        let data = received.recv().unwrap();
+        assert!(data.contains("Content-Type: multipart/mixed"));
+        assert!(data.contains("Content-Type: multipart/alternative"));
+        assert!(data.contains("Content-Type: text/plain"));
+        assert!(data.contains("hello plain"));
+        assert!(data.contains("Content-Type: text/html"));
+        assert!(data.contains("<p>hello <strong>html</strong></p>"));
+        assert!(data.contains("note.txt"));
+    }
+
+    #[tokio::test]
+    async fn treats_null_body_html_as_omitted() {
+        let (host, port, received) = start_smtp_server();
+        let mut config = test_config();
+        config.smtp_host = Some(host);
+        config.smtp_port = Some(port);
+        config.smtp_tls_mode = SmtpTlsMode::None;
+
+        send_mail_with_config(
+            &config,
+            r#"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "null html test",
+                "body": "hello plain",
+                "body_html": null
+            }"#,
+        )
+        .await
+        .unwrap();
+
+        let data = received.recv().unwrap();
+        assert!(data.contains("Content-Type: text/plain"));
+        assert!(!data.contains("text/html"));
     }
 
     #[tokio::test]

@@ -63,6 +63,7 @@ sender: advanced@example.com
 reply_to: replies@example.com
 subject: Advanced SMTP demo
 body: Sent to a team with an attachment
+body_html: <p>Sent to a team with an <strong>attachment</strong></p>
 attachment: file,test-attachment.txt; text/plain
 HTTP 200
 [Asserts]
@@ -89,6 +90,7 @@ jsonpath "$.To[1].Address" == "second@example.com"
 jsonpath "$.Cc[0].Address" == "team@example.com"
 jsonpath "$.ReplyTo[0].Address" == "replies@example.com"
 jsonpath "$.Text" contains "Sent to a team with an attachment"
+jsonpath "$.HTML" contains "Sent to a team with an"
 jsonpath "$.Attachments[0].FileName" == "test-attachment.txt"
 jsonpath "$.Attachments[0].ContentType" == "text/plain"
 

@@ -11,5 +11,5 @@ select
     'simple.sql' as link;
 select
     'Advanced email' as title,
-    'Add multiple recipients, Cc, Reply-To, a sender override, and an uploaded attachment.' as description,
+    'Multiple recipients, Cc, Reply-To, a sender override, an HTML body, and an uploaded attachment.' as description,
     'advanced.sql' as link;
