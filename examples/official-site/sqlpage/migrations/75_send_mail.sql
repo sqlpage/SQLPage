@@ -266,6 +266,6 @@ VALUES (
         'send_mail',
         1,
         'message',
-        'A JSON object containing the email to send. Required properties are `to` (an address or non-empty address array), `subject`, and `body`. Optional properties are `from` (required unless `smtp_from` or `SMTP_FROM` is configured), `reply_to`, `cc` (an address or non-empty address array), `body_html` (an HTML alternative body sent as `multipart/alternative` alongside `body`), and `attachments` (an array of `{ "filename": "...", "data_url": "data:..." }` objects). Invalid JSON and invalid or unknown properties return `{ "status": "error", "error_code": "...", "error": "..." }`. SQL `NULL` returns SQL `NULL` without sending.'
+        'A JSON object containing the email to send. Required properties are `to` (an address or non-empty address array), `subject`, and `body`. Optional properties are `from` (required unless `smtp_from` or `SMTP_FROM` is configured), `reply_to`, `cc` (an address or non-empty address array), `body_html` (an HTML alternative body sent as `multipart/alternative` alongside `body`), and `attachments` (an array of `{ "filename": "...", "data_url": "data:..." }` objects). Invalid JSON and invalid or unknown properties return `{ "status": "error", "error_code": "...", "error": "..." }`. SQL `NULL` returns SQL `NULL` without sending.',
         'JSON'
     );
