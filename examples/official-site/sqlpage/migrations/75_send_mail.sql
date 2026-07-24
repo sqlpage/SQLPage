@@ -103,11 +103,11 @@ All SMTP options can also be set with uppercase environment variables such as `S
 
 ### Message fields
 
-The function takes one JSON object with three required fields:
+The function takes one JSON object with two required fields:
 
 - `to`: the recipient email address;
 - `subject`: the email subject;
-- `body`: the plain-text email body.
+- `body`: the plain-text email body. Required unless `body_md` is provided.
 
 It also accepts:
 
@@ -115,6 +115,7 @@ It also accepts:
 - `reply_to`: the address that receives replies;
 - `cc`: a recipient who receives a visible copy;
 - `body_html`: an HTML version of the body;
+- `body_md`: a [Markdown](https://daringfireball.net/projects/markdown/) version of the body, rendered to HTML automatically;
 - `attachments`: files to include with the message.
 
 `to` and `cc` can each be either one address or an array of addresses. Addresses can include a display name, for example `"Jane Doe <jane@example.com>"`.
@@ -155,7 +156,23 @@ set result = sqlpage.send_mail(json_object(
 ));
 ```
 
-`body` is always required. Include a meaningful plain-text alternative for deliverability and accessibility. SQLPage does not sanitize `body_html`: the SQL author is responsible for the HTML content. Email clients ignore scripts, and styles are often stripped or sandboxed.
+At least one of `body` or `body_md` is required. Include a meaningful plain-text alternative for deliverability and accessibility. SQLPage does not sanitize `body_html`: the SQL author is responsible for the HTML content. Email clients ignore scripts, and styles are often stripped or sandboxed.
+
+### Markdown email
+
+Set `body_md` to send a [Markdown](https://daringfireball.net/projects/markdown/) version of the body. SQLPage renders the Markdown to HTML and sends the message as a `multipart/alternative` with two parts: the raw Markdown as the plain-text body, and the rendered HTML as the HTML body. When `body_md` is provided, `body` becomes optional.
+
+```sql
+set result = sqlpage.send_mail(json_object(
+    ''to'', ''alice@example.com'',
+    ''subject'', ''Welcome'',
+    ''body_md'', ''# Welcome\n\nWelcome to **our service**.''
+));
+```
+
+When both `body` and `body_md` are provided, `body` is used as the plain-text alternative and the rendered `body_md` is used as the HTML alternative. `body_md` cannot be combined with `body_html`; use one or the other.
+
+SQLPage renders Markdown using the same [GFM](https://github.github.com/gfm/) options as the `markdown` template helper, honoring the `markdown_allow_dangerous_html` and `markdown_allow_dangerous_protocol` configuration options.
 
 ### Contact form
 
@@ -228,8 +245,9 @@ SQLPage does not currently support:
 
 - SQL `NULL` is passed through: `sqlpage.send_mail(NULL)` returns SQL `NULL`, sends nothing, and does not log a warning.
 - A JSON value other than an object and unknown or invalid message fields produce a JSON result with `status`, `error_code`, and `error` fields.
-- `to`, `subject`, and `body` are required and cannot be JSON `null`.
-- `from`, `reply_to`, `cc`, and `body_html` treat JSON `null` like an omitted field. If `from` is omitted, `smtp_from` must be configured. When `body_html` is omitted, the message is plain text only.
+- `to` and `subject` are required and cannot be JSON `null`. At least one of `body` or `body_md` must be provided.
+- `from`, `reply_to`, `cc`, `body_html`, and `body_md` treat JSON `null` like an omitted field. If `from` is omitted, `smtp_from` must be configured. When `body_html` and `body_md` are both omitted, the message is plain text only.
+- `body_md` cannot be combined with `body_html`.
 - `attachments` can be omitted or an empty array. JSON `null` is not accepted for `attachments`.
 - Empty recipient arrays, JSON `null` inside recipient arrays, invalid addresses, an empty attachment file name, invalid data URLs, and unknown attachment fields produce an error result with `status`, `error_code`, and `error`.
 - Empty strings are allowed for `subject` and `body`, although an SMTP server may reject them.
@@ -266,6 +284,6 @@ VALUES (
         'send_mail',
         1,
         'message',
-        'A JSON object containing the email to send. Required properties are `to` (an address or non-empty address array), `subject`, and `body`. Optional properties are `from` (required unless `smtp_from` or `SMTP_FROM` is configured), `reply_to`, `cc` (an address or non-empty address array), `body_html` (an HTML alternative body sent as `multipart/alternative` alongside `body`), and `attachments` (an array of `{ "filename": "...", "data_url": "data:..." }` objects). Invalid JSON and invalid or unknown properties return `{ "status": "error", "error_code": "...", "error": "..." }`. SQL `NULL` returns SQL `NULL` without sending.',
+        'A JSON object containing the email to send. Required properties are `to` (an address or non-empty address array), `subject`, and either `body` or `body_md`. Optional properties are `from` (required unless `smtp_from` or `SMTP_FROM` is configured), `reply_to`, `cc` (an address or non-empty address array), `body` (the plain-text body; required unless `body_md` is provided), `body_html` (an HTML alternative body sent as `multipart/alternative` alongside `body`), `body_md` (a Markdown body rendered to HTML and sent as `multipart/alternative` with the raw Markdown as the plain-text alternative; cannot be combined with `body_html`), and `attachments` (an array of `{ "filename": "...", "data_url": "data:..." }` objects). Invalid JSON and invalid or unknown properties return `{ "status": "error", "error_code": "...", "error": "..." }`. SQL `NULL` returns SQL `NULL` without sending.',
         'JSON'
     );

@@ -3,6 +3,7 @@
 ## unreleased
 
  - `sqlpage.send_mail` : add the ability to send HTML-formatted emails
+ - `sqlpage.send_mail` : add an optional `body_md` argument that renders Markdown to HTML and sends the message as a `multipart/alternative` with the raw Markdown as the plain-text body and the rendered HTML as the HTML body. When `body_md` is provided, `body` becomes optional.
 
 ## v0.45
 

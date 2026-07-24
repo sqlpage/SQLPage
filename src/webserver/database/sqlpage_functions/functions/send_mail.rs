@@ -63,10 +63,12 @@ struct MailRequest<'a> {
     cc: Option<Recipients>,
     #[serde(borrow)]
     subject: Cow<'a, str>,
-    #[serde(borrow)]
-    body: Cow<'a, str>,
+    #[serde(borrow, default)]
+    body: Option<Cow<'a, str>>,
     #[serde(borrow, default)]
     body_html: Option<Cow<'a, str>>,
+    #[serde(borrow, default)]
+    body_md: Option<Cow<'a, str>>,
     #[serde(borrow, default, rename = "from")]
     from: Option<Cow<'a, str>>,
     #[serde(borrow, default)]
@@ -273,6 +275,52 @@ async fn send_mail_with_config(config: &AppConfig, mail_request: &str) -> SendMa
     Ok(())
 }
 
+/// Resolves the plain-text and optional HTML body alternatives from the request fields.
+///
+/// - At least one of `body` or `body_md` must be provided.
+/// - `body_md` cannot be combined with `body_html`.
+/// - When `body_md` is provided, it is rendered to HTML. The plain-text alternative is
+///   `body` if present, otherwise the raw markdown source.
+fn resolve_bodies(
+    config: &AppConfig,
+    body: Option<Cow<'_, str>>,
+    body_html: Option<&Cow<'_, str>>,
+    body_md: Option<&Cow<'_, str>>,
+) -> SendMailResult<(String, Option<String>)> {
+    if body.is_none() && body_md.is_none() {
+        return Err(SendMailError::InvalidMessage(anyhow::anyhow!(
+            "sqlpage.send_mail() requires either 'body' or 'body_md'"
+        )));
+    }
+    if body_md.is_some() && body_html.is_some() {
+        return Err(SendMailError::InvalidMessage(anyhow::anyhow!(
+            "sqlpage.send_mail() cannot combine 'body_md' with 'body_html'"
+        )));
+    }
+
+    let html_body = if let Some(markdown_src) = body_md {
+        Some(
+            crate::template_helpers::render_markdown_to_html(config, markdown_src)
+                .map_err(|reason| {
+                    SendMailError::InvalidMessage(anyhow::anyhow!(
+                        "Failed to render body_md as HTML: {reason}"
+                    ))
+                })?,
+        )
+    } else {
+        body_html.map(std::string::ToString::to_string)
+    };
+
+    // If body is provided it takes precedence; otherwise the raw markdown is used.
+    let text_body = match body {
+        Some(body) => body.into_owned(),
+        None => body_md
+            .map(std::string::ToString::to_string)
+            .expect("body_md is present when body is None"),
+    };
+    Ok((text_body, html_body))
+}
+
 fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<Message> {
     let MailRequest {
         to,
@@ -280,10 +328,13 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         subject,
         body,
         body_html,
+        body_md,
         from,
         reply_to,
         attachments,
     } = request;
+
+    let (text_body, html_body) = resolve_bodies(config, body, body_html.as_ref(), body_md.as_ref())?;
 
     let sender = from
         .as_deref()
@@ -314,32 +365,32 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         email = email.reply_to(parsed_reply_to);
     }
     if attachments.is_empty() {
-        if let Some(html) = body_html {
+        if let Some(html) = html_body {
             return email
                 .multipart(
                     MultiPart::alternative()
-                        .singlepart(SinglePart::plain(body.into_owned()))
-                        .singlepart(SinglePart::html(html.into_owned())),
+                        .singlepart(SinglePart::plain(text_body))
+                        .singlepart(SinglePart::html(html)),
                 )
                 .context("Unable to build email message")
                 .map_err(SendMailError::InvalidMessage);
         }
         return email
             .header(ContentType::TEXT_PLAIN)
-            .body(body.into_owned())
+            .body(text_body)
             .context("Unable to build email message")
             .map_err(SendMailError::InvalidMessage);
     }
 
     let mut remaining_attachment_size = config.max_email_attachment_size;
-    let mut multipart = if let Some(html) = body_html {
+    let mut multipart = if let Some(html) = html_body {
         MultiPart::mixed().multipart(
             MultiPart::alternative()
-                .singlepart(SinglePart::plain(body.into_owned()))
-                .singlepart(SinglePart::html(html.into_owned())),
+                .singlepart(SinglePart::plain(text_body))
+                .singlepart(SinglePart::html(html)),
         )
     } else {
-        MultiPart::mixed().singlepart(SinglePart::plain(body.into_owned()))
+        MultiPart::mixed().singlepart(SinglePart::plain(text_body))
     };
     for (index, attachment) in attachments.into_iter().enumerate() {
         if attachment.filename.is_empty() {
@@ -528,6 +579,139 @@ mod tests {
         let data = received.recv().unwrap();
         assert!(data.contains("Content-Type: text/plain"));
         assert!(!data.contains("text/html"));
+    }
+
+    #[tokio::test]
+    async fn sends_markdown_alternative_to_configured_relay() {
+        let (host, port, received) = start_smtp_server();
+        let mut config = test_config();
+        config.smtp_host = Some(host);
+        config.smtp_port = Some(port);
+        config.smtp_tls_mode = SmtpTlsMode::None;
+
+        send_mail_with_config(
+            &config,
+            r##"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "Markdown test",
+                "body_md": "# Hello\n\nThis is **bold**."
+            }"##,
+        )
+        .await
+        .unwrap();
+
+        let data = received.recv().unwrap();
+        assert!(data.contains("Subject: Markdown test"));
+        assert!(data.contains("Content-Type: multipart/alternative"));
+        assert!(data.contains("Content-Type: text/plain"));
+        // The raw markdown is used as the plain-text alternative.
+        assert!(data.contains("# Hello"));
+        assert!(data.contains("This is **bold**."));
+        assert!(data.contains("Content-Type: text/html"));
+        assert!(data.contains("<h1>Hello</h1>"));
+        assert!(data.contains("<strong>bold</strong>"));
+    }
+
+    #[tokio::test]
+    async fn sends_markdown_alternative_with_attachments() {
+        let (host, port, received) = start_smtp_server();
+        let mut config = test_config();
+        config.smtp_host = Some(host);
+        config.smtp_port = Some(port);
+        config.smtp_tls_mode = SmtpTlsMode::None;
+
+        send_mail_with_config(
+            &config,
+            r##"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "Markdown and attachment test",
+                "body_md": "# Hello",
+                "attachments": [
+                    {"filename": "note.txt", "data_url": "data:text/plain;base64,aGk="}
+                ]
+            }"##,
+        )
+        .await
+        .unwrap();
+
+        let data = received.recv().unwrap();
+        assert!(data.contains("Content-Type: multipart/mixed"));
+        assert!(data.contains("Content-Type: multipart/alternative"));
+        assert!(data.contains("Content-Type: text/plain"));
+        assert!(data.contains("# Hello"));
+        assert!(data.contains("Content-Type: text/html"));
+        assert!(data.contains("<h1>Hello</h1>"));
+        assert!(data.contains("note.txt"));
+    }
+
+    #[tokio::test]
+    async fn sends_markdown_with_explicit_body_as_text() {
+        let (host, port, received) = start_smtp_server();
+        let mut config = test_config();
+        config.smtp_host = Some(host);
+        config.smtp_port = Some(port);
+        config.smtp_tls_mode = SmtpTlsMode::None;
+
+        send_mail_with_config(
+            &config,
+            r##"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "Markdown with body test",
+                "body": "plain text override",
+                "body_md": "# Hello"
+            }"##,
+        )
+        .await
+        .unwrap();
+
+        let data = received.recv().unwrap();
+        assert!(data.contains("Content-Type: multipart/alternative"));
+        assert!(data.contains("Content-Type: text/plain"));
+        assert!(data.contains("plain text override"));
+        assert!(!data.contains("# Hello"));
+        assert!(data.contains("Content-Type: text/html"));
+        assert!(data.contains("<h1>Hello</h1>"));
+    }
+
+    #[tokio::test]
+    async fn rejects_body_md_combined_with_body_html() {
+        let mut config = test_config();
+        config.smtp_host = Some("localhost".to_string());
+        let error = send_mail_with_config(
+            &config,
+            r##"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "conflict test",
+                "body_md": "# Hello",
+                "body_html": "<h1>Hello</h1>"
+            }"##,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(&error, SendMailError::InvalidMessage(_)));
+        assert!(error.to_string().contains("cannot combine 'body_md' with 'body_html'"));
+    }
+
+    #[tokio::test]
+    async fn rejects_missing_body_and_body_md() {
+        let mut config = test_config();
+        config.smtp_host = Some("localhost".to_string());
+        let error = send_mail_with_config(
+            &config,
+            r#"{
+                "to": "admin@example.com",
+                "from": "contact@example.com",
+                "subject": "missing body test"
+            }"#,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(&error, SendMailError::InvalidMessage(_)));
+        assert!(error.to_string().contains("requires either 'body' or 'body_md'"));
     }
 
     #[tokio::test]

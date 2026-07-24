@@ -267,6 +267,19 @@ impl MarkdownConfig for AppConfig {
     }
 }
 
+/// Renders a markdown source string to HTML using the application's markdown configuration.
+/// Uses the same GFM options as the `markdown` Handlebars helper with the "default" preset.
+pub fn render_markdown_to_html(
+    config: &impl MarkdownConfig,
+    markdown_src: &str,
+) -> Result<String, String> {
+    let mut options = markdown::Options::gfm();
+    options.compile.allow_dangerous_html = config.allow_dangerous_html();
+    options.compile.allow_dangerous_protocol = config.allow_dangerous_protocol();
+    options.compile.allow_any_img_src = true;
+    markdown::to_html_with_options(markdown_src, &options).map_err(|e| e.to_string())
+}
+
 /// Helper to render markdown with configurable options
 #[derive(Default)]
 struct MarkdownHelper {
