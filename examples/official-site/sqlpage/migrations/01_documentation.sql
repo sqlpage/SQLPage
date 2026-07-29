@@ -442,6 +442,8 @@ We''ll write a second SQL file, `options_source.sql`, that will receive the user
 
 When both `options` and `options_source` are set, the local `options` are loaded first. Search results from `options_source` are loaded into the same option list; a result with the same `value` updates the existing option. This is useful to set a default preselected value with `options_source`.
 
+`options_source` may already contain query parameters. SQLPage preserves them and adds or replaces the `search` parameter when loading options.
+
 ##### `options_source.sql`
 
 ```sql
@@ -458,7 +460,7 @@ where label like $search || ''%'';
     {"name": "component", "type": "select",
     "value": "form",
     "options": [{"label": "Form", "value": "form"}],
-    "options_source": "examples/from_component_options_source.sql",
+    "options_source": "examples/from_component_options_source.sql?category=component",
     "description": "Start typing the name of a component like ''map'' or ''form''..."
     }]')),
     ('form', 'This example illustrates the use of the `radio` type.
