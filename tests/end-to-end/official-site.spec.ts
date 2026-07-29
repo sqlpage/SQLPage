@@ -213,14 +213,14 @@ test("form select combines initial options with remote search results", async ({
 
   const select = page
     .locator(
-      'select[data-options_source="examples/from_component_options_source.sql"]',
+      'select[data-options_source="examples/from_component_options_source.sql?category=component"]',
     )
     .first();
   await expect(select).toBeAttached();
   await page.waitForFunction(
     () =>
       !!document.querySelector<HTMLSelectElement>(
-        'select[data-options_source="examples/from_component_options_source.sql"]',
+        'select[data-options_source="examples/from_component_options_source.sql?category=component"]',
       )?.tomselect,
   );
 
@@ -246,7 +246,9 @@ test("form select combines initial options with remote search results", async ({
   await page.waitForResponse((response) =>
     response
       .url()
-      .includes("examples/from_component_options_source.sql?search=form"),
+      .includes(
+        "examples/from_component_options_source.sql?category=component&search=form",
+      ),
   );
   await expect
     .poll(async () =>
@@ -265,7 +267,9 @@ test("form select combines initial options with remote search results", async ({
   await page.waitForResponse((response) =>
     response
       .url()
-      .includes("examples/from_component_options_source.sql?search=map"),
+      .includes(
+        "examples/from_component_options_source.sql?category=component&search=map",
+      ),
   );
   await expect
     .poll(async () =>

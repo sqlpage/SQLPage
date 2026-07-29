@@ -3,6 +3,7 @@
 ## unreleased
 
  - `sqlpage.send_mail` now supports rich email bodies. Use `body_html` for a caller-provided HTML alternative, or `body_md` to render Markdown as HTML. Messages retain a plain-text alternative; `body` may be omitted when `body_md` is used, and `body_md` and `body_html` cannot be combined.
+ - Form `options_source` URLs now preserve existing query parameters when adding the dynamic `search` parameter.
 
 ## v0.45
 

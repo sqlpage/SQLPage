@@ -53,9 +53,9 @@ function sqlpage_load_options_source(options_source) {
   if (!options_source) return;
   return async (query, callback) => {
     const err = (label) => callback([{ label, value: "" }]);
-    const resp = await fetch(
-      `${options_source}?search=${encodeURIComponent(query)}`,
-    );
+    const options_url = new URL(options_source, document.baseURI);
+    options_url.searchParams.set("search", query);
+    const resp = await fetch(options_url);
     if (!resp.ok) {
       return err(
         `Error loading options from "${options_source}": ${resp.status} ${resp.statusText}`,
