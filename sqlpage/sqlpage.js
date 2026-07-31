@@ -336,7 +336,12 @@ const toast_positions = {
 const toast_instances = new WeakMap();
 
 function normalize_hash(hash) {
-  return hash?.replace(/^#/, "");
+  const normalized = hash?.replace(/^#/, "");
+  try {
+    return decodeURIComponent(normalized);
+  } catch {
+    return normalized;
+  }
 }
 
 function open_toasts_for_hash() {
@@ -395,10 +400,12 @@ function sqlpage_toast() {
           normalize_hash(window.location.hash) ===
           normalize_hash(toast.dataset.toastTrigger)
         ) {
-          window.history.replaceState(null, "", "#");
+          window.history.replaceState(window.history.state, "", "#");
         }
         return;
       }
+      instance.dispose();
+      toast_instances.delete(toast);
       toast.remove();
       if (
         container.dataset.sqlpageGenerated === "toast-container" &&
@@ -407,12 +414,11 @@ function sqlpage_toast() {
         container.remove();
       }
     });
-    if (toast.dataset.toastTrigger) {
-      open_toasts_for_hash();
-    } else {
+    if (!toast.dataset.toastTrigger) {
       instance.show();
     }
   }
+  open_toasts_for_hash();
 }
 
 add_init_fn(sqlpage_table);
@@ -421,7 +427,6 @@ add_init_fn(sqlpage_card);
 add_init_fn(sqlpage_form);
 add_init_fn(load_scripts);
 add_init_fn(sqlpage_toast);
-add_init_fn(open_toasts_for_hash);
 window.addEventListener("hashchange", open_toasts_for_hash);
 
 function init_bootstrap_components(event) {

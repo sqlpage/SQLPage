@@ -191,3 +191,8 @@ See https://github.com/tabler/tabler/issues/2404
 .text-black-fg {
   color: var(--tblr-dark-fg) !important;
 }
+
+.toast-colored .toast-description a {
+  color: inherit;
+  text-decoration: underline;
+}

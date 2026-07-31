@@ -1,4 +1,4 @@
-<div{{#if id}} id="{{id}}"{{/if}} class="toast{{#if color}} bg-{{color}} text-{{color}}-fg{{/if}}{{#if class}} {{class}}{{/if}}" role="status" aria-live="polite" aria-atomic="true" data-pre-init="toast" data-duration="{{default duration 5000}}" data-position="{{default position 'top-end'}}"{{#if trigger}} data-toast-trigger="{{trigger}}"{{/if}}>
+<div{{#if id}} id="{{id}}"{{/if}} class="toast{{#if color}} toast-colored bg-{{color}} text-{{color}}-fg{{/if}}{{#if class}} {{class}}{{/if}}" role="status" aria-live="polite" aria-atomic="true" data-pre-init="toast" data-duration="{{default duration 5000}}" data-position="{{default position 'top-end'}}"{{#if trigger}} data-toast-trigger="{{trigger}}"{{/if}}>
   <div class="toast-body d-flex align-items-start gap-2">
     {{~#if icon~}}
     <span class="flex-shrink-0" aria-hidden="true">{{~icon_img icon~}}</span>
@@ -11,8 +11,8 @@
       {{~#if description~}}<div class="toast-description">{{description}}</div>{{~/if~}}
       {{~/if~}}
     </div>
-    {{~#if dismissible~}}
-    <button type="button" class="btn-close{{#if color}} btn-close-white{{/if}} flex-shrink-0" data-bs-dismiss="toast" aria-label="Close notification"></button>
+    {{~#if (default dismissible true)~}}
+    <button type="button" class="btn-close flex-shrink-0" data-bs-dismiss="toast" aria-label="Close notification"></button>
     {{~/if~}}
   </div>
 </div>
