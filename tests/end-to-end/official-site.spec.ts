@@ -181,6 +181,29 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
   await expect(page.locator("#toast-plain")).toContainText(
     "<strong>Plain text stays escaped</strong>",
   );
+  const whiteToast = page.locator("#toast-plain");
+  const whiteToastStyle = await whiteToast.evaluate((toast) => {
+    const style = getComputedStyle(toast);
+    const closeStyle = getComputedStyle(
+      toast.querySelector(".btn-close") as HTMLElement,
+    );
+    const rgba = (color: string) => {
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas 2D context is unavailable");
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data);
+    };
+    return {
+      backgroundColor: rgba(style.backgroundColor),
+      closeColor: rgba(closeStyle.backgroundColor),
+      color: rgba(style.color),
+    };
+  });
+  expect(whiteToastStyle.backgroundColor).toEqual([255, 255, 255, 255]);
+  expect(whiteToastStyle.color).toEqual([31, 41, 55, 255]);
+  expect(whiteToastStyle.closeColor).toEqual(whiteToastStyle.color);
 
   const bottomContainer = page.locator(
     '[data-sqlpage-toast-position="bottom-center"]',

@@ -192,6 +192,10 @@ See https://github.com/tabler/tabler/issues/2404
   color: var(--tblr-dark-fg) !important;
 }
 
+.text-white-fg {
+  color: var(--tblr-light-fg) !important;
+}
+
 .toast-colored .toast-description a {
   color: inherit;
   text-decoration: underline;
