@@ -74,6 +74,14 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
     "data-shown-count",
     "1",
   );
+  await page.evaluate(() =>
+    document.dispatchEvent(new CustomEvent("fragment-loaded")),
+  );
+  await page.waitForTimeout(250);
+  await expect(page.locator("#toast-short")).toHaveAttribute(
+    "data-shown-count",
+    "1",
+  );
   expect(decodeURIComponent(new URL(page.url()).hash)).toBe(
     "#queued notifications",
   );

@@ -336,10 +336,10 @@ function normalize_hash(hash) {
   }
 }
 
-function open_toasts_for_hash() {
+function open_toasts_for_hash(toasts) {
   const hash = normalize_hash(window.location.hash);
   if (!hash) return;
-  for (const toast of document.querySelectorAll("[data-toast-trigger]")) {
+  for (const toast of toasts) {
     if (normalize_hash(toast.dataset.toastTrigger) === hash) {
       toast_instances.get(toast)?.show();
     }
@@ -350,6 +350,7 @@ function sqlpage_toast() {
   const bootstrap = window.bootstrap || window.tabler?.bootstrap;
   if (!bootstrap?.Toast) return;
 
+  const initialized_toasts = [];
   for (const toast of document.querySelectorAll('[data-pre-init="toast"]')) {
     const source_container = toast.parentElement;
     const position = source_container.dataset.sqlpageToastPosition;
@@ -376,6 +377,7 @@ function sqlpage_toast() {
       delay: duration > 0 ? duration : 5000,
     });
     toast_instances.set(toast, instance);
+    initialized_toasts.push(toast);
     toast.addEventListener("hidden.bs.toast", () => {
       if (toast.dataset.toastTrigger) {
         if (
@@ -397,7 +399,7 @@ function sqlpage_toast() {
       instance.show();
     }
   }
-  open_toasts_for_hash();
+  open_toasts_for_hash(initialized_toasts);
 }
 
 add_init_fn(sqlpage_table);
@@ -406,7 +408,9 @@ add_init_fn(sqlpage_card);
 add_init_fn(sqlpage_form);
 add_init_fn(load_scripts);
 add_init_fn(sqlpage_toast);
-window.addEventListener("hashchange", open_toasts_for_hash);
+window.addEventListener("hashchange", () =>
+  open_toasts_for_hash(document.querySelectorAll("[data-toast-trigger]")),
+);
 
 function init_bootstrap_components(event) {
   const bootstrap = window.bootstrap || window.tabler.bootstrap;
