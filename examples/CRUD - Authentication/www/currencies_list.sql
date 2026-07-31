@@ -24,12 +24,11 @@ set _item_form = 'currencies_item_form.sql';
 -- =============================================================================
 
 SELECT
-    'alert'         AS component,
+    'toast'         AS component,
     'green'         AS color,
     'check'         AS icon,
     'Success'       AS title,
-    $info           AS description,
-    TRUE            AS dismissible
+    $info           AS description
 WHERE $info IS NOT NULL;
 
 -- =============================================================================

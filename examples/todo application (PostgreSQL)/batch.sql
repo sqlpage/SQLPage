@@ -45,14 +45,16 @@ with updated as (
     -- Return all updated rows for counting and potential further use
     returning *
 )
--- Generate an alert component to inform the user about the update result
+-- Generate a toast component to inform the user about the update result
 -- This provides immediate feedback on the operation's outcome
-select 'alert' as component,
+select 'toast' as component,
+    'green' as color,
+    'check' as icon,
     'Batch update' as title,    
     -- Create a dynamic message with the count of updated todos
     format('%s todos updated', (select count(*) from updated)) as description
--- Only display the alert if at least one todo was updated
--- This prevents showing unnecessary alerts for no-op updates
+-- Only display the toast if at least one todo was updated
+-- This prevents showing unnecessary toasts for no-op updates
 where exists (select * from updated);
 
 -- Create a form component for the batch update interface

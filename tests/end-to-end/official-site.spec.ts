@@ -41,6 +41,80 @@ test("map", async ({ page }) => {
   await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible();
 });
 
+test("toast notifications initialize, stack, dismiss, and render safely", async ({
+  page,
+}) => {
+  await page.goto(`${BASE}/documentation.sql?component=toast#component`);
+
+  const automatic = page.locator("#toast-auto");
+  await expect(automatic).toBeVisible();
+  await expect(page.locator(".toast.show")).toHaveCount(1);
+
+  const stackOne = page.locator("#toast-stack-one");
+  const stackTwo = page.locator("#toast-stack-two");
+  await expect(stackOne).toBeHidden();
+  await page.getByRole("link", { name: "Show queued notifications" }).click();
+  await expect(stackOne).toBeVisible();
+  await expect(stackTwo).toBeVisible();
+  const stackContainer = stackOne.locator("xpath=..");
+  await expect(stackContainer).toHaveAttribute(
+    "data-sqlpage-toast-position",
+    "top-end",
+  );
+  expect(
+    await stackTwo
+      .locator("xpath=..")
+      .getAttribute("data-sqlpage-toast-position"),
+  ).toBe("top-end");
+  const firstBox = await stackOne.boundingBox();
+  const secondBox = await stackTwo.boundingBox();
+  expect(firstBox).not.toBeNull();
+  expect(secondBox).not.toBeNull();
+  expect(secondBox?.y).toBeGreaterThanOrEqual(
+    (firstBox?.y ?? 0) + (firstBox?.height ?? 0),
+  );
+
+  const temporary = page.locator("#toast-short");
+  await expect(temporary).toBeVisible();
+  await expect(temporary).toBeHidden({ timeout: 5000 });
+  await expect(stackOne).toBeVisible();
+
+  const dismissible = page.locator("#toast-dismissible");
+  await page.getByRole("link", { name: "Show dismissible error" }).click();
+  await expect(
+    dismissible.getByRole("button", { name: "Close notification" }),
+  ).toBeVisible();
+  await dismissible.getByRole("button", { name: "Close notification" }).click();
+  await expect(dismissible).toBeHidden();
+  await page.getByRole("link", { name: "Show dismissible error" }).click();
+  await expect(dismissible).toBeVisible();
+  await dismissible.getByRole("button", { name: "Close notification" }).click();
+  await page.getByRole("link", { name: "Show non-dismissible status" }).click();
+  await expect(
+    page.locator("#toast-nondismissible").getByRole("button"),
+  ).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Show rich notifications" }).click();
+  await expect(page.locator("#toast-markdown strong")).toHaveText("2.0");
+  await expect(page.locator("#toast-markdown a")).toHaveAttribute(
+    "href",
+    "https://example.com/releases",
+  );
+  await expect(page.locator("#toast-plain strong")).toHaveCount(0);
+  await expect(page.locator("#toast-plain")).toContainText(
+    "<strong>Plain text stays escaped</strong>",
+  );
+
+  const bottomContainer = page.locator(
+    '[data-sqlpage-toast-position="bottom-center"]',
+  );
+  await page.getByRole("link", { name: "Show bottom notification" }).click();
+  await expect(page.locator("#toast-bottom-center")).toBeVisible();
+  await expect(bottomContainer).toHaveClass(/\bbottom-0\b/);
+  await expect(bottomContainer).toHaveClass(/\bstart-50\b/);
+  await expect(bottomContainer).toHaveClass(/\btranslate-middle-x\b/);
+});
+
 test("form example", async ({ page }) => {
   await page.goto(`${BASE}/examples/multistep-form`);
   // Single selection matching the value or label
