@@ -325,14 +325,6 @@ function add_init_fn(f) {
   if (document.readyState !== "loading") setTimeout(f, 0);
 }
 
-const toast_positions = {
-  "top-start": ["top-0", "start-0"],
-  "top-center": ["top-0", "start-50", "translate-middle-x"],
-  "top-end": ["top-0", "end-0"],
-  "bottom-start": ["bottom-0", "start-0"],
-  "bottom-center": ["bottom-0", "start-50", "translate-middle-x"],
-  "bottom-end": ["bottom-0", "end-0"],
-};
 const toast_instances = new WeakMap();
 
 function normalize_hash(hash) {
@@ -359,30 +351,20 @@ function sqlpage_toast() {
   if (!bootstrap?.Toast) return;
 
   for (const toast of document.querySelectorAll('[data-pre-init="toast"]')) {
-    const requested_position = toast.dataset.position;
-    const position = toast_positions[requested_position]
-      ? requested_position
-      : "top-end";
-    toast.dataset.position = position;
-
+    const source_container = toast.parentElement;
+    const position = source_container.dataset.sqlpageToastPosition;
     let container = document.querySelector(
-      `.toast-container[data-sqlpage-toast-position="${position}"]`,
+      `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
     );
     if (!container) {
-      container = document.createElement("div");
-      container.classList.add(
-        "toast-container",
-        "position-fixed",
-        "p-3",
-        ...toast_positions[position],
-      );
-      container.dataset.sqlpageToastPosition = position;
-      container.dataset.sqlpageGenerated = "toast-container";
-      document.body.appendChild(container);
+      container = source_container;
+      container.removeAttribute("data-pre-init");
+    } else {
+      container.appendChild(toast);
+      source_container.remove();
     }
 
     toast.removeAttribute("data-pre-init");
-    container.appendChild(toast);
     const requested_duration = Number.parseInt(toast.dataset.duration, 10);
     const duration =
       Number.isFinite(requested_duration) && requested_duration >= 0
@@ -407,10 +389,7 @@ function sqlpage_toast() {
       instance.dispose();
       toast_instances.delete(toast);
       toast.remove();
-      if (
-        container.dataset.sqlpageGenerated === "toast-container" &&
-        !container.querySelector(".toast")
-      ) {
+      if (!container.querySelector(".toast")) {
         container.remove();
       }
     });
