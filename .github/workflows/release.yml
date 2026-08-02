@@ -108,6 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - run: docker build -t sqlpage-lambda . -f lambda.Dockerfile --target runner
       - run: docker build -t sqlpage-lambda-builder . -f lambda.Dockerfile --target builder
       - run: docker run sqlpage-lambda-builder cat deploy.zip > sqlpage-aws-lambda.zip
       - uses: actions/upload-artifact@v7

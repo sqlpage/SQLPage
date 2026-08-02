@@ -215,6 +215,9 @@ The configuration directory is the `./sqlpage/` folder by default.
 In the [official docker image](https://hub.docker.com/r/lovasoa/sqlpage), it is located in `/etc/sqlpage/`.
 It can be configured using the `--config-dir` command-line argument, or the `SQLPAGE_CONFIGURATION_DIRECTORY` environment variable.
 
+At startup, SQLPage creates the configuration directory when it is absent and rejects the path when it is not a directory.
+AWS Lambda release artifacts include an empty `./sqlpage` directory because deployed function packages are read-only.
+
 It can contain
 
  - the [`sqlpage.json`](#configuring-sqlpage) configuration file,

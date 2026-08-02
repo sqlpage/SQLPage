@@ -10,9 +10,11 @@ RUN cargo build --release --features lambda-web
 RUN   mv target/release/sqlpage bootstrap && \
       strip --strip-all bootstrap && \
       size bootstrap && \
-      zip -9 -r deploy.zip bootstrap index.sql
+      zip -9 -j deploy.zip bootstrap src/index.sql && \
+      zip -9 deploy.zip sqlpage/
 
-FROM public.ecr.aws/lambda/provided:al2 AS runner
+FROM public.ecr.aws/lambda/provided:al2023 AS runner
 COPY --from=builder /usr/src/sqlpage/bootstrap /main
-COPY --from=builder /usr/src/sqlpage/index.sql ./index.sql
+COPY --from=builder /usr/src/sqlpage/src/index.sql ./index.sql
+RUN mkdir -p ./sqlpage
 ENTRYPOINT ["/main"]
