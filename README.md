@@ -280,7 +280,7 @@ An easy way to do so is using the provided docker image:
 
 You can then just add your own SQL files to `sqlpage-aws-lambda.zip`,
 and [upload it to AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-package.html#gettingstarted-package-zip),
-selecting *Custom runtime on Amazon Linux 2* as a runtime.
+selecting *Custom runtime on Amazon Linux 2023* (`provided.al2023`) as the runtime.
 
 ### Hosting sql files directly inside the database
 
