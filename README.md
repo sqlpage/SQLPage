@@ -282,6 +282,10 @@ You can then just add your own SQL files to `sqlpage-aws-lambda.zip`,
 and [upload it to AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-package.html#gettingstarted-package-zip),
 selecting *Custom runtime on Amazon Linux 2023* (`provided.al2023`) as the runtime.
 
+The provided archive includes the empty `sqlpage` configuration directory required at startup.
+You can add a `sqlpage.json` file, custom templates, or migrations to it. Keep the directory in the
+archive because Lambda function packages are read-only and SQLPage cannot create it there.
+
 ### Hosting sql files directly inside the database
 
 When running serverless, you can include the SQL files directly in the image that you are deploying.
