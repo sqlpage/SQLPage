@@ -15,7 +15,10 @@ from json_table(
     '$[*]' columns (id int path '$')
 ) as submitted_items;
 
-select 'alert' as component, 'Group members successfully updated !' as title, 'success' as color;
+select 'toast' as component,
+    'Group members successfully updated !' as title,
+    'green' as color,
+    'check' as icon;
 
 select 'list' as component, 'Users in this group' as title;
 

@@ -279,12 +279,11 @@ SELECT                                                  -- DELETE button
 -- =============================================================================
 
 SELECT
-    'alert'          AS component,
+    'toast'          AS component,
     'green'          AS color,
     'check'          AS icon,
     'Success'        AS title,
-    $info            AS description,
-    True             AS dismissible
+    $info            AS description
 WHERE $info IS NOT NULL;
 
 -- =============================================================================

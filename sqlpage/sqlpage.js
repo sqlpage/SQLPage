@@ -325,11 +325,98 @@ function add_init_fn(f) {
   if (document.readyState !== "loading") setTimeout(f, 0);
 }
 
+function normalize_hash(hash) {
+  const normalized = hash?.replace(/^#/, "");
+  try {
+    return decodeURIComponent(normalized);
+  } catch {
+    return normalized;
+  }
+}
+
+function open_toasts_for_hash(toasts) {
+  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
+  if (!Toast) return;
+  const hash = normalize_hash(window.location.hash);
+  if (!hash) return;
+  for (const toast of toasts) {
+    if (normalize_hash(toast.dataset.toastTrigger) === hash) {
+      Toast.getOrCreateInstance(toast).show();
+    }
+  }
+}
+
+function restore_focus_after_toast(toast, container) {
+  if (!toast.contains(document.activeElement)) return;
+  const next_close = container.querySelector(
+    '.toast.show [data-bs-dismiss="toast"]',
+  );
+  if (next_close) {
+    next_close.focus();
+    return;
+  }
+  const main = document.querySelector("main");
+  if (!main) return;
+  if (!main.hasAttribute("tabindex")) main.tabIndex = -1;
+  main.focus({ preventScroll: true });
+}
+
+function sqlpage_toast() {
+  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
+  if (!Toast) return;
+
+  const initialized_toasts = [];
+  for (const toast of document.querySelectorAll('[data-pre-init="toast"]')) {
+    const source_container = toast.parentElement;
+    const position = source_container.dataset.sqlpageToastPosition;
+    let container = document.querySelector(
+      `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
+    );
+    if (!container) {
+      container = source_container;
+      container.removeAttribute("data-pre-init");
+      document.body.appendChild(container);
+    } else {
+      container.appendChild(toast);
+      source_container.remove();
+    }
+
+    toast.removeAttribute("data-pre-init");
+    const instance = Toast.getOrCreateInstance(toast);
+    initialized_toasts.push(toast);
+    toast.addEventListener("hidden.bs.toast", () => {
+      restore_focus_after_toast(toast, container);
+      if (toast.dataset.toastTrigger) {
+        if (
+          normalize_hash(window.location.hash) ===
+          normalize_hash(toast.dataset.toastTrigger)
+        ) {
+          window.history.replaceState(window.history.state, "", "#");
+        }
+        return;
+      }
+      instance.dispose();
+      toast.remove();
+      if (!container.querySelector(".toast")) {
+        container.remove();
+      }
+    });
+    if (!toast.dataset.toastTrigger) {
+      instance.show();
+    }
+  }
+  open_toasts_for_hash(initialized_toasts);
+}
+
 add_init_fn(sqlpage_table);
 add_init_fn(sqlpage_map);
 add_init_fn(sqlpage_card);
 add_init_fn(sqlpage_form);
 add_init_fn(load_scripts);
+add_init_fn(sqlpage_toast);
+window.addEventListener("hashchange", () =>
+  open_toasts_for_hash(document.querySelectorAll("[data-toast-trigger]")),
+);
 
 function init_bootstrap_components(event) {
   const bootstrap = window.bootstrap || window.tabler.bootstrap;
