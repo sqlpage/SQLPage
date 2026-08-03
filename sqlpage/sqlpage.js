@@ -325,8 +325,6 @@ function add_init_fn(f) {
   if (document.readyState !== "loading") setTimeout(f, 0);
 }
 
-const toast_instances = new WeakMap();
-
 function normalize_hash(hash) {
   const normalized = hash?.replace(/^#/, "");
   try {
@@ -337,18 +335,20 @@ function normalize_hash(hash) {
 }
 
 function open_toasts_for_hash(toasts) {
+  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
+  if (!Toast) return;
   const hash = normalize_hash(window.location.hash);
   if (!hash) return;
   for (const toast of toasts) {
     if (normalize_hash(toast.dataset.toastTrigger) === hash) {
-      toast_instances.get(toast)?.show();
+      Toast.getOrCreateInstance(toast).show();
     }
   }
 }
 
 function sqlpage_toast() {
-  const bootstrap = window.bootstrap || window.tabler?.bootstrap;
-  if (!bootstrap?.Toast) return;
+  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
+  if (!Toast) return;
 
   const initialized_toasts = [];
   for (const toast of document.querySelectorAll('[data-pre-init="toast"]')) {
@@ -366,17 +366,7 @@ function sqlpage_toast() {
     }
 
     toast.removeAttribute("data-pre-init");
-    const requested_duration = Number.parseInt(toast.dataset.duration, 10);
-    const duration =
-      Number.isFinite(requested_duration) && requested_duration >= 0
-        ? requested_duration
-        : 5000;
-    toast.dataset.duration = String(duration);
-    const instance = new bootstrap.Toast(toast, {
-      autohide: duration !== 0,
-      delay: duration > 0 ? duration : 5000,
-    });
-    toast_instances.set(toast, instance);
+    const instance = Toast.getOrCreateInstance(toast);
     initialized_toasts.push(toast);
     toast.addEventListener("hidden.bs.toast", () => {
       if (toast.dataset.toastTrigger) {
@@ -389,7 +379,6 @@ function sqlpage_toast() {
         return;
       }
       instance.dispose();
-      toast_instances.delete(toast);
       toast.remove();
       if (!container.querySelector(".toast")) {
         container.remove();

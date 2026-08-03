@@ -48,6 +48,8 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
 
   const automatic = page.locator("#toast-auto");
   await expect(automatic).toBeVisible();
+  await expect(automatic).toHaveAttribute("data-bs-delay", "5000");
+  await expect(automatic).toHaveAttribute("data-bs-autohide", "true");
   await expect(
     automatic.getByRole("button", { name: "Close notification" }),
   ).toBeVisible();
@@ -104,6 +106,7 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
   );
 
   const temporary = page.locator("#toast-short");
+  await expect(temporary).toHaveAttribute("data-bs-delay", "2000");
   await expect(temporary).toBeVisible();
   await expect(temporary).toBeHidden({ timeout: 5000 });
   await expect(stackOne).toBeVisible();
@@ -122,6 +125,8 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
   ).toBe(true);
 
   const dismissible = page.locator("#toast-dismissible");
+  await expect(dismissible).toHaveAttribute("data-bs-delay", "0");
+  await expect(dismissible).toHaveAttribute("data-bs-autohide", "false");
   await page.getByRole("button", { name: "Show dismissible error" }).click();
   const closeButton = dismissible.getByRole("button", {
     name: "Close notification",

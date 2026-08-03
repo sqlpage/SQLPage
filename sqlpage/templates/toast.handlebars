@@ -5,7 +5,12 @@
   {{~else}}{{#if (eq position 'bottom-center')}} class="toast-container position-fixed p-3 bottom-0 start-50 translate-middle-x" data-sqlpage-toast-position="bottom-center"
   {{~else}}{{#if (eq position 'bottom-end')}} class="toast-container position-fixed p-3 bottom-0 end-0" data-sqlpage-toast-position="bottom-end"
   {{~else}} class="toast-container position-fixed p-3 top-0 end-0" data-sqlpage-toast-position="top-end"{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}>
-<div{{#if id}} id="{{id}}"{{/if}} class="toast{{#if color}} toast-colored bg-{{color}} text-{{color}}-fg{{/if}}{{#if class}} {{class}}{{/if}}" role="status" aria-live="polite" aria-atomic="true" data-pre-init="toast" data-duration="{{default duration 5000}}"{{#if trigger}} data-toast-trigger="{{trigger}}"{{/if}}>
+<div
+  {{~#if id}} id="{{id}}"{{/if}}
+  {{~#if trigger}} data-toast-trigger="{{trigger}}"{{/if}} class="toast
+    {{~#if color}} toast-colored bg-{{color}} text-{{color}}-fg{{/if}}
+    {{~#if class}} {{class}}{{/if~}}
+  " role="status" aria-live="polite" aria-atomic="true" data-pre-init="toast" data-bs-delay="{{default duration 5000}}" data-bs-autohide="{{#if (eq duration 0)}}false{{else}}true{{/if}}">
   <div class="toast-body d-flex align-items-start gap-2">
     {{~#if icon~}}
     <span class="flex-shrink-0" aria-hidden="true">{{~icon_img icon~}}</span>
