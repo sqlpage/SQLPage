@@ -346,6 +346,21 @@ function open_toasts_for_hash(toasts) {
   }
 }
 
+function restore_focus_after_toast(toast, container) {
+  if (!toast.contains(document.activeElement)) return;
+  const next_close = container.querySelector(
+    '.toast.show [data-bs-dismiss="toast"]',
+  );
+  if (next_close) {
+    next_close.focus();
+    return;
+  }
+  const main = document.querySelector("main");
+  if (!main) return;
+  if (!main.hasAttribute("tabindex")) main.tabIndex = -1;
+  main.focus({ preventScroll: true });
+}
+
 function sqlpage_toast() {
   const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
   if (!Toast) return;
@@ -360,6 +375,7 @@ function sqlpage_toast() {
     if (!container) {
       container = source_container;
       container.removeAttribute("data-pre-init");
+      document.body.appendChild(container);
     } else {
       container.appendChild(toast);
       source_container.remove();
@@ -369,6 +385,7 @@ function sqlpage_toast() {
     const instance = Toast.getOrCreateInstance(toast);
     initialized_toasts.push(toast);
     toast.addEventListener("hidden.bs.toast", () => {
+      restore_focus_after_toast(toast, container);
       if (toast.dataset.toastTrigger) {
         if (
           normalize_hash(window.location.hash) ===

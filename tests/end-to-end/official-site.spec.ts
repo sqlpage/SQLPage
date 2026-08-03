@@ -55,6 +55,9 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
   ).toBeVisible();
   await expect(page.locator(".toast.show")).toHaveCount(1);
   const automaticHandle = await automatic.elementHandle();
+  await automatic.getByRole("button", { name: "Close notification" }).click();
+  await expect(automatic).toBeHidden();
+  await expect(page.locator("main")).toBeFocused();
 
   const stackOne = page.locator("#toast-stack-one");
   const stackTwo = page.locator("#toast-stack-two");
@@ -92,6 +95,13 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
     "data-sqlpage-toast-position",
     "top-end",
   );
+  await expect(stackContainer).toHaveClass(/\bmh-100\b/);
+  await expect(stackContainer).toHaveClass(/\boverflow-auto\b/);
+  expect(
+    await stackContainer.evaluate(
+      (container) => container.parentElement === document.body,
+    ),
+  ).toBe(true);
   expect(
     await stackTwo
       .locator("xpath=..")
