@@ -39,7 +39,8 @@ FROM (VALUES
     ('text', TRUE),
     ('carousel', TRUE),
     ('login', TRUE),
-    ('pagination', TRUE)
+    ('pagination', TRUE),
+    ('partition', TRUE)
 );
 
 INSERT INTO parameter(component, top_level, name, description, type, optional) 
@@ -78,6 +79,7 @@ FROM (VALUES
     ('tracking', TRUE),
     ('carousel', TRUE),
     ('login', TRUE),
-    ('pagination', TRUE)
+    ('pagination', TRUE),
+    ('partition', TRUE)
 );
 
