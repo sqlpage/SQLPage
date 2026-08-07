@@ -6,7 +6,8 @@
       "!**/*.svg",
       "!examples/official-site/pgconf",
       "!tests/end-to-end/test-results",
-      "!.zed/*.json"
+      "!.zed/*.json",
+      "!.claude/*.json"
     ],
     "ignoreUnknown": true
   },

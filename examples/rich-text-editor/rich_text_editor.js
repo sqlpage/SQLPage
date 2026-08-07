@@ -141,7 +141,7 @@ function markdownToDelta(markdown) {
  */
 function mdastToDelta(tree) {
   const delta = { ops: [] };
-  if (!tree || !tree.children) return delta;
+  if (!tree?.children) return delta;
 
   for (const node of tree.children) {
     traverseMdastNode(node, delta);
@@ -230,7 +230,6 @@ function traverseMdastNode(node, delta, attributes = {}) {
       break;
 
     case "listItem": {
-      // biome-ignore lint/correctness/noUnusedVariables: object destructuring with a spread
       const { list, ...listItemChildrenAttributes } = attributes;
 
       for (const child of node.children || []) {

@@ -1,9 +1,9 @@
 .menu_options_slim {
-  min-width: inherit !important;
+  min-width: inherit;
 }
 
 .menu_language_slim {
-  min-width: inherit !important;
+  min-width: inherit;
 }
 
 .menu_language {
@@ -11,13 +11,13 @@
 }
 
 div.dropdown-menu- {
-  min-width: inherit !important;
+  min-width: inherit;
 }
 
 a.dropdown-item- {
-  min-width: inherit !important;
+  min-width: inherit;
 }
 
 .slim_item {
-  min-width: inherit !important;
+  min-width: inherit;
 }

@@ -249,7 +249,6 @@ test("File upload", async ({ page }) => {
   await page.getByRole("button", { name: "Examples", exact: true }).click();
   await page.getByText("File uploads").click();
   const my_svg = '<svg><text y="20">Hello World</text></svg>';
-  // @ts-ignore
   const buffer = Buffer.from(my_svg);
   await page.getByLabel("Picture").setInputFiles({
     name: "small.svg",
@@ -307,14 +306,14 @@ test("table sorting", async ({ page }) => {
   // Test numeric sorting on id column
   await tableSection.getByRole("button", { name: "id" }).click();
   let ids = await tableSection.locator("td.id").allInnerTexts();
-  let numericIds = ids.map((id) => Number.parseInt(id));
+  let numericIds = ids.map((id) => Number.parseInt(id, 10));
   const sortedIds = [...numericIds].sort((a, b) => a - b);
   expect(numericIds).toEqual(sortedIds);
 
   // Test reverse sorting
   await tableSection.getByRole("button", { name: "id" }).click();
   ids = await tableSection.locator("td.id").allInnerTexts();
-  numericIds = ids.map((id) => Number.parseInt(id));
+  numericIds = ids.map((id) => Number.parseInt(id, 10));
   const reverseSortedIds = [...numericIds].sort((a, b) => b - a);
   expect(numericIds).toEqual(reverseSortedIds);
 
@@ -322,7 +321,7 @@ test("table sorting", async ({ page }) => {
   await tableSection.getByRole("button", { name: "Amount in stock" }).click();
   const amounts = await tableSection.locator("td.Amount").allInnerTexts();
   const numericAmounts = amounts.map((amount) =>
-    Number.parseInt(amount.replace(/[^0-9]/g, "")),
+    Number.parseInt(amount.replace(/[^0-9]/g, ""), 10),
   );
   const sortedAmounts = [...numericAmounts].sort((a, b) => a - b);
   expect(numericAmounts).toEqual(sortedAmounts);
