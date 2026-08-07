@@ -480,7 +480,7 @@ test("modal", async ({ page }) => {
   const openButton = page.getByRole("button", { name: "Open a simple modal" });
   await openButton.click();
 
-  const modal = page.getByRole("dialog", { label: "A modal box" });
+  const modal = page.getByRole("dialog", { name: "A modal box" });
   await expect(modal).toBeVisible();
 
   // close the modal
@@ -489,7 +489,7 @@ test("modal", async ({ page }) => {
 
   await openButton.click();
   await expect(modal).toBeVisible();
-  await modal.getByRole("button", { label: "Close" }).first().click();
+  await modal.getByRole("button", { name: "Close" }).first().click();
   await expect(modal).not.toBeVisible();
 });
 
