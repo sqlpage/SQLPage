@@ -36,6 +36,9 @@ sqlpage_chart = (() => {
   );
   const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
+  const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
+  const APEXCHARTS_TYPE_ALIASES = { column: "bar" };
+
   /** @typedef { { [name:string]: {data:{x:number|string|Date,y:number}[], name:string} } } Series */
 
   /**
@@ -98,6 +101,10 @@ sqlpage_chart = (() => {
     const chartContainer = c.querySelector(".chart");
     chartContainer.innerHTML = "";
     const is_timeseries = !!data.time;
+    const chart_type =
+      APEXCHARTS_TYPE_ALIASES[data.type] || data.type || "line";
+    const is_stacked =
+      !!data.stacked && STACKABLE_CHART_TYPES.includes(chart_type);
     /** @type { Series } */
     const series_map = {};
     for (const [name, old_x, old_y, z] of data.points) {
@@ -106,7 +113,7 @@ sqlpage_chart = (() => {
       let y = old_y;
       if (is_timeseries) {
         if (typeof x === "number") x = new Date(x * 1000);
-        else if (data.type === "rangeBar" && Array.isArray(y))
+        else if (chart_type === "rangeBar" && Array.isArray(y))
           y = y.map((y) => new Date(y).getTime());
         else x = new Date(x);
       }
@@ -128,13 +135,12 @@ sqlpage_chart = (() => {
     let labels;
     const categories =
       series.length > 0 && typeof series[0].data[0].x === "string";
-    if (data.type === "pie") {
+    if (chart_type === "pie") {
       labels = data.points.map(([name, x, _y]) => x || name);
       series = data.points.map(([_name, _x, y]) => Number.parseFloat(y));
-    } else if (categories && data.type === "bar" && series.length > 1)
+    } else if (categories && chart_type === "bar" && series.length > 1)
       series = align_categories(series);
 
-    const chart_type = data.type || "line";
     const options = {
       chart: {
         type: chart_type,
@@ -142,7 +148,7 @@ sqlpage_chart = (() => {
         background: "transparent",
         parentHeightOffset: 0,
         height: chartContainer.style.height,
-        stacked: !!data.stacked,
+        stacked: is_stacked,
         toolbar: {
           show: !!data.toolbar,
         },
@@ -167,15 +173,15 @@ sqlpage_chart = (() => {
           color: "var(--tblr-primary-bg-subtle)",
         },
         formatter:
-          data.type === "rangeBar"
+          chart_type === "rangeBar"
             ? (_val, { seriesIndex, w }) => w.config.series[seriesIndex].name
-            : data.type === "pie"
+            : chart_type === "pie"
               ? (value, { seriesIndex, w }) =>
                   `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
               : (value) => value?.toLocaleString?.() || value,
       },
       fill: {
-        type: data.type === "area" ? "gradient" : "solid",
+        type: chart_type === "area" ? "gradient" : "solid",
       },
       stroke: {
         width:
@@ -225,13 +231,13 @@ sqlpage_chart = (() => {
       tooltip: {
         fillSeriesColor: false,
         custom:
-          data.type === "bubble" || data.type === "scatter"
+          chart_type === "bubble" || chart_type === "scatter"
             ? bubbleTooltip
             : undefined,
         y: {
           formatter: (value) => {
             if (value == null) return "";
-            if (is_timeseries && data.type === "rangeBar") {
+            if (is_timeseries && chart_type === "rangeBar") {
               const d = new Date(value);
               if (d.getHours() === 0 && d.getMinutes() === 0)
                 return d.toLocaleDateString();
@@ -246,7 +252,7 @@ sqlpage_chart = (() => {
       },
       plotOptions: {
         bar: {
-          horizontal: !!data.horizontal || data.type === "rangeBar",
+          horizontal: !!data.horizontal || chart_type === "rangeBar",
           borderRadius: 5,
         },
         bubble: { minBubbleRadius: 5 },
@@ -257,7 +263,6 @@ sqlpage_chart = (() => {
     if (labels) options.labels = labels;
     // tickamount is the number of intervals, not the number of ticks
     if (data.xticks) options.xaxis.tickAmount = data.xticks;
-    console.log("Rendering chart", options);
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
     if (window.charts) window.charts.push(chart);
