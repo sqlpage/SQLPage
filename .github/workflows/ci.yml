@@ -201,9 +201,11 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
-          cache-dependency-path: ./tests/end-to-end/package-lock.json
+          cache-dependency-path: ./package-lock.json
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
-      - run: npm ci && npx playwright install --with-deps --only-shell chromium
+      - run: npm ci
+        working-directory: .
+      - run: npx playwright install --with-deps --only-shell chromium
       # The browser tests exercise the official site, but they do not need a
       # separate Rust build. Reuse the binary compiled and tested above.
       - name: Download Linux binary
