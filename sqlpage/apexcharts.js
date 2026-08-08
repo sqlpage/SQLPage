@@ -2,7 +2,9 @@
 
 sqlpage_chart = (() => {
   function sqlpage_chart() {
-    for (const c of document.querySelectorAll("[data-pre-init=chart]")) {
+    /** @type {NodeListOf<HTMLElement>} */
+    const charts = document.querySelectorAll("[data-pre-init=chart]");
+    for (const c of charts) {
       try {
         build_sqlpage_chart(c);
       } catch (e) {
@@ -69,7 +71,7 @@ sqlpage_chart = (() => {
       const with_lowest_x = unread
         .filter((xs) => xs.length > 0)
         .reduce((a, b) => (b[0] < a[0] ? b : a));
-      const x = with_lowest_x.shift();
+      const x = /** @type {XValue} */ (with_lowest_x.shift());
       merged.set(x_key(x), x);
     }
     return [...merged.values()];
@@ -120,7 +122,9 @@ sqlpage_chart = (() => {
   function build_sqlpage_chart(c) {
     const [data_element] = c.getElementsByTagName("data");
     const data = JSON.parse(data_element.textContent);
-    const chartContainer = c.querySelector(".chart");
+    const chartContainer = /** @type {HTMLElement} */ (
+      c.querySelector(".chart")
+    );
     chartContainer.innerHTML = "";
     const is_timeseries = !!data.time;
     const chart_type =

@@ -1,20 +1,21 @@
 /* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js */
-const nonce = document.currentScript.nonce;
+const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
 
 function sqlpage_card() {
-  for (const c of document.querySelectorAll("[data-pre-init=card]")) {
+  /** @type {NodeListOf<HTMLElement>} */
+  const cards = document.querySelectorAll("[data-pre-init=card]");
+  for (const c of cards) {
     c.removeAttribute("data-pre-init");
+    if (!c.dataset.embed) continue;
     const url = new URL(c.dataset.embed, window.location.href);
     url.searchParams.set("_sqlpage_embed", "1");
     fetch(url)
       .then((res) => res.text())
       .then((html) => {
         const body = c.querySelector(".card-content");
-        body.innerHTML = html;
+        if (body) body.innerHTML = html;
         const spinner = c.querySelector(".card-loading-placeholder");
-        if (spinner) {
-          spinner.parentNode.removeChild(spinner);
-        }
+        spinner?.remove();
         const fragLoadedEvt = new CustomEvent("fragment-loaded", {
           bubbles: true,
         });
@@ -28,14 +29,18 @@ function setup_table(root_el) {
   /** @type {HTMLInputElement | null} */
   const search_input = root_el.querySelector("input.search");
   const table_el = root_el.querySelector("table");
-  const sort_buttons = [...table_el.querySelectorAll("button.sort[data-sort]")];
+  if (!table_el) return;
+  /** @type {NodeListOf<HTMLElement>} */
+  const sort_button_els = table_el.querySelectorAll("button.sort[data-sort]");
+  const sort_buttons = [...sort_button_els];
   const item_parent = table_el.querySelector("tbody");
   const has_sort = sort_buttons.length > 0;
 
   if (search_input || has_sort) {
     const items = table_parse_data(table_el, sort_buttons);
     if (search_input) setup_table_search_behavior(search_input, items);
-    if (has_sort) setup_sort_behavior(sort_buttons, items, item_parent);
+    if (has_sort && item_parent)
+      setup_sort_behavior(sort_buttons, items, item_parent);
   }
 
   // Change number format AFTER parsing and storing the sort keys
@@ -44,7 +49,7 @@ function setup_table(root_el) {
 
 /**
  * @param {HTMLInputElement} search_input
- * @param {Array<{el: HTMLElement, sort_keys: Array<{num: number, str: string}>}>} items
+ * @param {TableRow[]} items
  */
 function setup_table_search_behavior(search_input, items) {
   function onSearch() {
@@ -66,12 +71,15 @@ function setup_table_search_behavior(search_input, items) {
 
 /**@param {HTMLElement} table_el */
 function apply_number_formatting(table_el) {
+  /** @type {NodeListOf<HTMLElement>} */
   const header_els = table_el.querySelectorAll("thead > tr > th");
   const col_types = [...header_els].map((el) => el.dataset.column_type);
   const col_rawnums = [...header_els].map((el) => !!el.dataset.raw_number);
   const col_money = [...header_els].map((el) => !!el.dataset.money);
   const number_format_locale = table_el.dataset.number_format_locale;
-  const number_format_digits = table_el.dataset.number_format_digits;
+  const number_format_digits = table_el.dataset.number_format_digits
+    ? Number(table_el.dataset.number_format_digits)
+    : undefined;
   const currency = table_el.dataset.currency;
 
   for (const tr_el of table_el.querySelectorAll("tbody tr, tfoot tr")) {
@@ -95,20 +103,25 @@ function apply_number_formatting(table_el) {
   }
 }
 
+/** @typedef { {el: HTMLElement, sort_keys: {num: number, str: string}[]} } TableRow */
+
 /** Prepare the table rows for sorting.
  * @param {HTMLElement} table_el
  * @param {HTMLElement[]} sort_buttons
+ * @returns {TableRow[]}
  */
 function table_parse_data(table_el, sort_buttons) {
   const is_num = [...sort_buttons].map(
-    (btn_el) => btn_el.parentElement.dataset.column_type === "number",
+    (btn_el) => btn_el.parentElement?.dataset.column_type === "number",
   );
-  return [...table_el.querySelectorAll("tbody tr")].map((tr_el) => {
+  /** @type {NodeListOf<HTMLElement>} */
+  const row_els = table_el.querySelectorAll("tbody tr");
+  return [...row_els].map((tr_el) => {
     const cells = tr_el.getElementsByTagName("td");
     return {
       el: tr_el,
       sort_keys: sort_buttons.map((_btn_el, idx) => {
-        const str = cells[idx]?.textContent;
+        const str = cells[idx]?.textContent ?? "";
         const num = is_num[idx] ? Number.parseFloat(str) : Number.NaN;
         return { num, str };
       }),
@@ -119,7 +132,7 @@ function table_parse_data(table_el, sort_buttons) {
 /**
  * Adds event listeners to the sort buttons to sort the table rows.
  * @param {HTMLElement[]} sort_buttons
- * @param {HTMLElement[]} items
+ * @param {TableRow[]} items
  * @param {HTMLElement} item_parent
  */
 function setup_sort_behavior(sort_buttons, items, item_parent) {
@@ -147,7 +160,9 @@ function setup_sort_behavior(sort_buttons, items, item_parent) {
 }
 
 function sqlpage_table() {
-  for (const r of document.querySelectorAll("[data-pre-init=table]")) {
+  /** @type {NodeListOf<HTMLElement>} */
+  const tables = document.querySelectorAll("[data-pre-init=table]");
+  for (const r of tables) {
     r.removeAttribute("data-pre-init");
     setup_table(r);
   }
@@ -198,13 +213,14 @@ function sqlpage_map() {
   }
   function onLeafletLoad() {
     is_leaflet_loaded = true;
+    /** @type {NodeListOf<HTMLElement>} */
     const maps = document.querySelectorAll("[data-pre-init=map]");
     for (const m of maps) {
       const tile_source = m.dataset.tile_source;
-      const maxZoom = +m.dataset.max_zoom;
+      const maxZoom = Number(m.dataset.max_zoom);
       const attribution = m.dataset.attribution;
       const map = L.map(m, { attributionControl: !!attribution });
-      const zoom = m.dataset.zoom;
+      const zoom = Number(m.dataset.zoom);
       const center = parseCoords(m.dataset.center);
       if (tile_source)
         L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
@@ -213,14 +229,14 @@ function sqlpage_map() {
         setTimeout(addMarker, 0, marker_elem, map);
       }
       setTimeout(() => {
-        if (center) map.setView(center, +zoom);
+        if (center) map.setView(center, zoom);
         else {
           const markerBounds = (m) =>
             m.getLatLng ? m.getLatLng() : m.getBounds();
           const bounds = map._sqlpage_markers.map(markerBounds);
           if (bounds.length > 0) map.fitBounds(bounds);
-          else map.setView([51.505, 10], +zoom);
-          if (zoom != null) map.setZoom(+zoom);
+          else map.setView([51.505, 10], zoom);
+          if (!Number.isNaN(zoom)) map.setZoom(zoom);
         }
       }, 100);
       m.removeAttribute("data-pre-init");
@@ -282,15 +298,16 @@ function sqlpage_map() {
 }
 
 function sqlpage_form() {
+  /** @type {NodeListOf<HTMLInputElement>} */
   const file_inputs = document.querySelectorAll(
     "input[type=file][data-max-size]",
   );
   for (const input of file_inputs) {
-    const max_size = +input.dataset.maxSize;
-    input.addEventListener("change", function () {
+    const max_size = Number(input.dataset.maxSize);
+    input.addEventListener("change", () => {
       input.classList.remove("is-invalid");
       input.setCustomValidity("");
-      for (const { size } of this.files) {
+      for (const { size } of input.files ?? []) {
         if (size > max_size) {
           input.classList.add("is-invalid");
           return input.setCustomValidity(
@@ -301,6 +318,7 @@ function sqlpage_form() {
     });
   }
 
+  /** @type {NodeListOf<HTMLFormElement>} */
   const auto_submit_forms = document.querySelectorAll("form[data-auto-submit]");
   for (const form of auto_submit_forms) {
     form.addEventListener("change", () => form.submit());
@@ -314,11 +332,13 @@ function get_tabler_color(name) {
 }
 
 function load_scripts() {
+  /** @type {NodeListOf<HTMLElement>} */
   const addjs = document.querySelectorAll("[data-sqlpage-js]");
   const existing_scripts = new Set(
     [...document.querySelectorAll("script")].map((s) => s.src),
   );
   for (const el of addjs) {
+    if (!el.dataset.sqlpageJs) continue;
     const js = new URL(el.dataset.sqlpageJs, window.location.href).href;
     if (existing_scripts.has(js)) continue;
     existing_scripts.add(js);
@@ -375,11 +395,16 @@ function sqlpage_toast() {
   if (!Toast) return;
 
   const initialized_toasts = [];
-  for (const toast of document.querySelectorAll('[data-pre-init="toast"]')) {
+  /** @type {NodeListOf<HTMLElement>} */
+  const toasts = document.querySelectorAll('[data-pre-init="toast"]');
+  for (const toast of toasts) {
     const source_container = toast.parentElement;
+    if (!source_container) continue;
     const position = source_container.dataset.sqlpageToastPosition;
-    let container = document.querySelector(
-      `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
+    let container = /** @type {HTMLElement | null} */ (
+      document.querySelector(
+        `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
+      )
     );
     if (!container) {
       container = source_container;

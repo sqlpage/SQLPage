@@ -1,9 +1,9 @@
 /* !include https://cdn.jsdelivr.net/npm/tom-select@2.6.1/dist/js/tom-select.popular.min.js */
 
 function sqlpage_select_dropdown() {
-  for (const s of document.querySelectorAll(
-    "[data-pre-init=select-dropdown]",
-  )) {
+  /** @type {NodeListOf<HTMLSelectElement>} */
+  const selects = document.querySelectorAll("[data-pre-init=select-dropdown]");
+  for (const s of selects) {
     try {
       sqlpage_select_dropdown_individual(s);
     } catch (e) {

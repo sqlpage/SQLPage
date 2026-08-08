@@ -5,10 +5,8 @@ const BASE = process.env.SQLPAGE_TEST_BASE ?? "http://localhost:8080/";
 test("Open documentation", async ({ page }) => {
   await page.goto(BASE);
 
-  // Expect a title "to contain" a substring.
   await expect(page).toHaveTitle(/SQLPage.*/);
 
-  // open the submenu
   await page.getByText("Documentation", { exact: true }).first().click();
   const components = ["form", "map", "chart", "button"];
   for (const component of components) {
@@ -340,34 +338,46 @@ test("table filtering", async ({ page }) => {
   ).not.toBeVisible();
 });
 
-test("table sorting", async ({ page }) => {
+const sortableTable = async (page: Page) => {
   await page.goto(`${BASE}/documentation.sql?component=table`);
-  const tableSection = page.locator(".table-responsive", {
+  return page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "31456" }),
   });
+};
 
-  // Test numeric sorting on id column
-  await tableSection.getByRole("button", { name: "id" }).click();
-  let ids = await tableSection.locator("td.id").allInnerTexts();
-  let numericIds = ids.map((id) => Number.parseInt(id, 10));
-  const sortedIds = [...numericIds].sort((a, b) => a - b);
-  expect(numericIds).toEqual(sortedIds);
+const numbersInColumn = async (table: Locator, cells: string) => {
+  const texts = await table.locator(cells).allInnerTexts();
+  expect(texts.length).toBeGreaterThan(1);
+  return texts.map((text) => Number.parseInt(text.replace(/[^0-9]/g, ""), 10));
+};
 
-  // Test reverse sorting
-  await tableSection.getByRole("button", { name: "id" }).click();
-  ids = await tableSection.locator("td.id").allInnerTexts();
-  numericIds = ids.map((id) => Number.parseInt(id, 10));
-  const reverseSortedIds = [...numericIds].sort((a, b) => b - a);
-  expect(numericIds).toEqual(reverseSortedIds);
+const ascending = (values: number[]) => [...values].sort((a, b) => a - b);
 
-  // Test amount in stock column sorting
-  await tableSection.getByRole("button", { name: "Amount in stock" }).click();
-  const amounts = await tableSection.locator("td.Amount").allInnerTexts();
-  const numericAmounts = amounts.map((amount) =>
-    Number.parseInt(amount.replace(/[^0-9]/g, ""), 10),
-  );
-  const sortedAmounts = [...numericAmounts].sort((a, b) => a - b);
-  expect(numericAmounts).toEqual(sortedAmounts);
+test("table sorts a column when its header is clicked", async ({ page }) => {
+  const table = await sortableTable(page);
+  await table.getByRole("button", { name: "id" }).click();
+
+  const ids = await numbersInColumn(table, "td._col_id");
+  expect(ids).toEqual(ascending(ids));
+});
+
+test("table reverses the sort when the header is clicked again", async ({
+  page,
+}) => {
+  const table = await sortableTable(page);
+  await table.getByRole("button", { name: "id" }).click();
+  await table.getByRole("button", { name: "id" }).click();
+
+  const ids = await numbersInColumn(table, "td._col_id");
+  expect(ids).toEqual(ascending(ids).reverse());
+});
+
+test("table sorts a column of formatted numbers by value", async ({ page }) => {
+  const table = await sortableTable(page);
+  await table.getByRole("button", { name: "Amount in stock" }).click();
+
+  const amounts = await numbersInColumn(table, "td._col_Amount_in_stock");
+  expect(amounts).toEqual(ascending(amounts));
 });
 
 async function checkNoConsoleErrors(page: Page, component: string) {
@@ -401,10 +411,10 @@ test("no console errors on card page", async ({ page }) => {
 });
 
 test("CSP issues unique nonces per request", async ({ page }) => {
-  const csp1 = await (await page.goto(BASE)).headerValue(
+  const csp1 = await (await page.goto(BASE))?.headerValue(
     "content-security-policy",
   );
-  const csp2 = await (await page.reload()).headerValue(
+  const csp2 = await (await page.reload())?.headerValue(
     "content-security-policy",
   );
 
@@ -414,24 +424,19 @@ test("CSP issues unique nonces per request", async ({ page }) => {
 test("form component documentation", async ({ page }) => {
   await page.goto(`${BASE}/component.sql?component=form`);
 
-  // Find the form that contains radio buttons for component selection
   const componentForm = page.locator("form", {
     has: page.getByRole("radio", { name: "Chart" }),
   });
 
-  // the form should be visible
   await expect(componentForm).toBeVisible();
 
-  // Check that "form" is the first and default selected option
   const mapRadio = componentForm.getByRole("radio", { name: "Map" });
   await expect(mapRadio).toHaveValue("map");
   await expect(mapRadio).toBeChecked();
 
-  // Select "Chart" option and submit
   await componentForm.getByLabel("Chart").click({ force: true });
   await componentForm.getByRole("button", { name: "Submit" }).click();
 
-  // Verify we're on the chart documentation page
   await expect(
     page.getByRole("heading", { name: /chart/i, level: 1 }),
   ).toBeVisible();
@@ -455,14 +460,14 @@ test("form select combines initial options with remote search results", async ({
       )?.tomselect,
   );
 
-  const initialState = await select.evaluate((element) => {
+  const initialState = await select.evaluate((element: HTMLSelectElement) => {
     const tomselect = element.tomselect;
     return {
-      value: tomselect.getValue(),
+      value: tomselect?.getValue(),
       labels: Object.fromEntries(
-        Object.entries(tomselect.options).map(([value, option]) => [
+        Object.entries(tomselect?.options ?? {}).map(([value, option]) => [
           value,
-          option.label,
+          option?.label,
         ]),
       ),
     };
@@ -472,7 +477,9 @@ test("form select combines initial options with remote search results", async ({
     labels: { form: "Form" },
   });
 
-  await select.evaluate((element) => element.tomselect.focus());
+  await select.evaluate((element: HTMLSelectElement) =>
+    element.tomselect?.focus(),
+  );
   await page.keyboard.type("form");
   await page.waitForResponse((response) =>
     response
@@ -483,9 +490,9 @@ test("form select combines initial options with remote search results", async ({
   );
   await expect
     .poll(async () =>
-      select.evaluate((element) => ({
-        value: element.tomselect.getValue(),
-        formLabel: element.tomselect.options.form?.label,
+      select.evaluate((element: HTMLSelectElement) => ({
+        value: element.tomselect?.getValue(),
+        formLabel: element.tomselect?.options.form?.label,
       })),
     )
     .toEqual({
@@ -493,7 +500,9 @@ test("form select combines initial options with remote search results", async ({
       formLabel: "form",
     });
 
-  await select.evaluate((element) => element.tomselect.setTextboxValue(""));
+  await select.evaluate((element: HTMLSelectElement) =>
+    element.tomselect?.setTextboxValue(""),
+  );
   await page.keyboard.type("map");
   await page.waitForResponse((response) =>
     response
@@ -504,10 +513,10 @@ test("form select combines initial options with remote search results", async ({
   );
   await expect
     .poll(async () =>
-      select.evaluate((element) => ({
-        value: element.tomselect.getValue(),
-        formLabel: element.tomselect.options.form?.label,
-        mapLabel: element.tomselect.options.map?.label,
+      select.evaluate((element: HTMLSelectElement) => ({
+        value: element.tomselect?.getValue(),
+        formLabel: element.tomselect?.options.form?.label,
+        mapLabel: element.tomselect?.options.map?.label,
       })),
     )
     .toEqual({
@@ -519,14 +528,12 @@ test("form select combines initial options with remote search results", async ({
 
 test("modal", async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=modal#component`);
-  // get the button that opens the modal
   const openButton = page.getByRole("button", { name: "Open a simple modal" });
   await openButton.click();
 
   const modal = page.getByRole("dialog", { name: "A modal box" });
   await expect(modal).toBeVisible();
 
-  // close the modal
   await page.keyboard.press("Escape");
   await expect(modal).not.toBeVisible();
 
