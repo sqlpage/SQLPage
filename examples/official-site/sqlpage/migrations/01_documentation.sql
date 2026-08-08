@@ -664,7 +664,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('marker', 'Marker size', 'REAL', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'COLOR', TRUE, TRUE),
-    ('stacked', 'Whether to cumulate values from different series. Supported by the "line", "area" and "bar" chart types, and ignored by the others.', 'BOOLEAN', TRUE, TRUE),
+    ('stacked', 'Whether to cumulate values from different series. Supported by the "line", "area" and "bar" chart types, and ignored by the others. Series are aligned on their x values, and a series that has no value for a given x counts as zero there.', 'BOOLEAN', TRUE, TRUE),
     ('toolbar', 'Whether to display a toolbar at the top right of the chart, that offers downloading the data as CSV.', 'BOOLEAN', TRUE, TRUE),
     ('show_legend', 'Whether to display the legend listing all chart series. Defaults to true.', 'BOOLEAN', TRUE, TRUE),
     ('logarithmic', 'Display the y-axis in logarithmic scale.', 'BOOLEAN', TRUE, TRUE),
@@ -717,6 +717,20 @@ INSERT INTO example(component, description, properties) VALUES
     '{"series": "Marketing", "x": 2022, "value": 15}, '||
     '{"series": "Human resources", "x": 2021, "value": 30}, '||
     '{"series": "Human resources", "x": 2022, "value": 55}]')),
+    ('chart', 'A stacked area chart, showing how each series contributes to a total.
+The `stacked` property also works with the `line` and `bar` chart types.
+
+Series are aligned on their `x` values, and a series that has no value for a given `x` counts as zero there:
+below, the graphics card draws no power outside of the render.
+If a missing value does not mean zero in your data, make all the series share the same `x` values,
+for instance by rounding timestamps to a common interval.',
+    json('[{"component":"chart", "title": "Power draw", "type": "area", "stacked": true, "time": true, "ytitle": "watts", "color": ["blue", "teal"], "marker": 4}, '||
+    '{"series": "CPU", "x": "2024-03-01T10:00:00Z", "value": 45}, '||
+    '{"series": "CPU", "x": "2024-03-01T10:15:00Z", "value": 52}, '||
+    '{"series": "CPU", "x": "2024-03-01T10:30:00Z", "value": 48}, '||
+    '{"series": "CPU", "x": "2024-03-01T10:45:00Z", "value": 44}, '||
+    '{"series": "GPU", "x": "2024-03-01T10:15:00Z", "value": 120}, '||
+    '{"series": "GPU", "x": "2024-03-01T10:30:00Z", "value": 140}]')),
     ('chart', 'A line chart with multiple series. One of the most common types of charts, often used to show trends over time.
 Also demonstrates the use of the `toolbar` attribute to allow the user to download the graph as an image or the data as a CSV file.', 
     json('[{"component":"chart", "title": "Revenue", "ymin": 0, "toolbar": true},

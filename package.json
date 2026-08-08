@@ -2,7 +2,7 @@
   "name": "sqlpage",
   "version": "1.0.0",
   "scripts": {
-    "test": "biome check .",
+    "test": "biome check . && node --test \"tests/js/**/*.spec.ts\"",
     "format": "biome format --write .",
     "fix": "biome check --fix --unsafe ."
   },

@@ -39,60 +39,56 @@ sqlpage_chart = (() => {
   const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
   const APEXCHARTS_TYPE_ALIASES = { column: "bar" };
 
-  /** @typedef { { [name:string]: {data:{x:number|string|Date,y:number}[], name:string} } } Series */
+  /** @typedef {number|string|Date} XValue */
+  /** @typedef { {name:string, data:{x:XValue,y:number|null,z?:number}[]} } ChartSeries */
+  /** @typedef { { [name:string]: ChartSeries } } Series */
+
+  /** @param {XValue} x @returns {number|string} equal x values share a key */
+  const x_key = (x) => (x instanceof Date ? x.getTime() : x);
 
   /**
-   * Aligns series data points by their x-axis categories, ensuring all series have data points
-   * for each unique category. Missing values are filled with zeros.
-   * Categories are ordered by their name.
-   *
-   * @example
-   * // Input series:
-   * const series = [
-   *   { name: "A", data: [{x: "X2", y: 10}, {x: "X3", y: 30}] },
-   *   { name: "B", data: [{x: "X1", y: 25}, {x: "X2", y: 20}] }
-   * ];
-   *
-   * // Output after align_categories (orderedCategories will be ["X1","X2", "X3"]):
-   * // [
-   * //   { name: "A", data: [{x: "X1", y: 0}, {x: "X2", y: 10}, {x: "X3", y: 30}] },
-   * //   { name: "B", data: [{x: "X1", y: 25}, {x: "X2", y: 20}, {x: "X3", y: 0}] }
-   * // ]
-   *
-   * @param {(Series[string])[]} series - Array of series objects, each containing name and data points
-   * @returns {Series[string][]} Aligned series with consistent categories across all series
+   * @param {ChartSeries[]} series
+   * @returns {XValue[]} every x the series hold, in their own order where they
+   * agree and in ascending order where they diverge
    */
-  function align_categories(series) {
-    const categoriesSet = new Set();
-    const pointers = series.map((_) => 0); // Index of current data point in each series
-    const x_at = (series_idx) =>
-      series[series_idx].data[pointers[series_idx]].x;
-    const series_idxs = series.flatMap((s, i) => (s.data.length ? i : []));
-    while (series_idxs.length > 0) {
-      let idx_of_xmin = series_idxs[0];
-      for (const series_idx of series_idxs) {
-        if (x_at(series_idx) < x_at(idx_of_xmin)) idx_of_xmin = series_idx;
-      }
-
-      const new_category = x_at(idx_of_xmin);
-      if (!categoriesSet.has(new_category)) categoriesSet.add(new_category);
-      pointers[idx_of_xmin]++;
-      if (pointers[idx_of_xmin] >= series[idx_of_xmin].data.length) {
-        series_idxs.splice(series_idxs.indexOf(idx_of_xmin), 1);
-      }
+  function merged_x_values(series) {
+    const unread = series.map(({ data }) => data.map(({ x }) => x));
+    const merged = new Map();
+    while (unread.some((xs) => xs.length > 0)) {
+      const with_lowest_x = unread
+        .filter((xs) => xs.length > 0)
+        .reduce((a, b) => (b[0] < a[0] ? b : a));
+      const x = with_lowest_x.shift();
+      merged.set(x_key(x), x);
     }
-    // Create a map of category -> value for each series and rebuild
-    return series.map((s) => {
-      const valueMap = new Map(s.data.map((point) => [point.x, point.y]));
+    return [...merged.values()];
+  }
+
+  /**
+   * ApexCharts pairs points across series by index rather than by x, so a
+   * series that skips an x stacks onto the wrong one. Give every series the
+   * same x values, counting an x it never measured as zero.
+   *
+   * @param {ChartSeries[]} series
+   * @returns {ChartSeries[]}
+   */
+  function align_series(series) {
+    const all_x = merged_x_values(series);
+    return series.map(({ name, data }) => {
+      const by_x = new Map(data.map((point) => [x_key(point.x), point]));
       return {
-        name: s.name,
-        data: Array.from(categoriesSet, (category) => ({
-          x: category,
-          y: valueMap.get(category) || 0,
-        })),
+        name,
+        data: all_x.map((x) => {
+          const point = by_x.get(x_key(x));
+          return { ...point, x, y: point?.y || 0 };
+        }),
       };
     });
   }
+
+  // The unit tests load this file as a CommonJS module; browsers have no `module`.
+  if (typeof module !== "undefined")
+    module.exports = { align_series, merged_x_values };
 
   /** @param {HTMLElement} c */
   function build_sqlpage_chart(c) {
@@ -138,8 +134,11 @@ sqlpage_chart = (() => {
     if (chart_type === "pie") {
       labels = data.points.map(([name, x, _y]) => x || name);
       series = data.points.map(([_name, _x, y]) => Number.parseFloat(y));
-    } else if (categories && chart_type === "bar" && series.length > 1)
-      series = align_categories(series);
+    } else if (
+      series.length > 1 &&
+      (is_stacked || (categories && chart_type === "bar"))
+    )
+      series = align_series(series);
 
     const options = {
       chart: {

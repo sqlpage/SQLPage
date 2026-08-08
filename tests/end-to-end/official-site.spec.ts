@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 const BASE = process.env.SQLPAGE_TEST_BASE ?? "http://localhost:8080/";
 
@@ -33,6 +33,49 @@ test("chart supports hiding legend", async ({ page }) => {
 
   await expect(expensesChart.locator(".apexcharts-canvas")).toBeVisible();
   await expect(expensesChart.locator(".apexcharts-legend")).toBeHidden();
+});
+
+const DATA_POINT_MARKERS = ".apexcharts-series-markers > .apexcharts-marker";
+
+const chartCard = (page: Page, title: string) =>
+  page.locator(".card", { has: page.getByRole("heading", { name: title }) });
+
+const drawnPoints = (card: Locator, series: string) =>
+  card
+    .locator(`.apexcharts-series[seriesName='${series}'] ${DATA_POINT_MARKERS}`)
+    .evaluateAll((markers) =>
+      markers.map((m) => ({
+        x: m.getAttribute("cx"),
+        y: m.getAttribute("cy"),
+      })),
+    );
+
+test("stacked chart draws every series at every x of the chart", async ({
+  page,
+}) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  const powerChart = chartCard(page, "Power draw");
+  await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
+
+  const cpu = await drawnPoints(powerChart, "CPU");
+  const gpu = await drawnPoints(powerChart, "GPU");
+
+  expect(cpu).toHaveLength(4);
+  expect(gpu.map((p) => p.x)).toEqual(cpu.map((p) => p.x));
+});
+
+test("stacked chart raises a series only where it has a value", async ({
+  page,
+}) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  const powerChart = chartCard(page, "Power draw");
+  await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
+
+  const cpu = await drawnPoints(powerChart, "CPU");
+  const gpu = await drawnPoints(powerChart, "GPU");
+
+  expect([gpu[0], gpu[3]]).toEqual([cpu[0], cpu[3]]);
+  expect(Number(gpu[1].y)).toBeLessThan(Number(cpu[1].y));
 });
 
 test("map", async ({ page }) => {
