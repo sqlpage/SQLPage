@@ -76,7 +76,9 @@ test("stacked chart raises a series only where it has a value", async ({
   expect(Number(gpu[1].y)).toBeLessThan(Number(cpu[1].y));
 });
 
-test("chart draws a reference line for every yline", async ({ page }) => {
+test("chart draws a yline as a line and a yline_end as a band", async ({
+  page,
+}) => {
   await page.goto(`${BASE}/documentation.sql?component=chart#component`);
 
   const temperature = page.locator(".card", {
@@ -85,13 +87,18 @@ test("chart draws a reference line for every yline", async ({ page }) => {
   await expect(temperature.locator(".apexcharts-canvas")).toBeVisible();
 
   const annotations = temperature.locator(".apexcharts-yaxis-annotations");
+  const lines = annotations.locator("line");
+  const bands = annotations.locator(".apexcharts-annotation-rect");
 
-  await expect(annotations.locator("line")).toHaveCount(2);
+  await expect(lines).toHaveCount(1);
+  await expect(bands).toHaveCount(1);
   await expect(annotations.getByText("target")).toBeVisible();
   await expect(annotations.getByText("throttling")).toBeVisible();
 });
 
-test("chart draws a reference line for every xline", async ({ page }) => {
+test("chart draws an xline as a line and an xline_end as a band", async ({
+  page,
+}) => {
   await page.goto(`${BASE}/documentation.sql?component=chart#component`);
 
   const latency = page.locator(".card", {
@@ -100,8 +107,11 @@ test("chart draws a reference line for every xline", async ({ page }) => {
   await expect(latency.locator(".apexcharts-canvas")).toBeVisible();
 
   const annotations = latency.locator(".apexcharts-xaxis-annotations");
+  const lines = annotations.locator("line");
+  const bands = annotations.locator(".apexcharts-annotation-rect");
 
-  await expect(annotations.locator("line")).toHaveCount(2);
+  await expect(lines).toHaveCount(1);
+  await expect(bands).toHaveCount(1);
   await expect(annotations.getByText("deploy")).toBeVisible();
   await expect(annotations.getByText("incident")).toBeVisible();
 });
