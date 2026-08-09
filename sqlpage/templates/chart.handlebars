@@ -40,12 +40,19 @@
     "points": [
     {{~#each_row~}}
         {{~#if (gt @row_index 0)}},{{/if~}}
+        {{~#if yline~}}
+        {
+            "yline": {{~stringify yline}},
+            "yline_label": {{~stringify yline_label}}, "yline_color": {{~stringify yline_color}}
+        }
+        {{~else~}}
         [
             {{~ stringify (default series (default ../title "")) ~}},
             {{~ stringify (default x label) ~}},
             {{~ stringify (default y value) ~}}
             {{~#if z}}, {{~ stringify z ~}} {{~/if~}}
         ]
+        {{~/if~}}
     {{~/each_row~}}
     ]
 }
