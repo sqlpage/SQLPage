@@ -42,9 +42,9 @@
         {{~#if (gt @row_index 0)}},{{/if~}}
         {{~#if (or xline yline)~}}
         {
-            "xline": {{~stringify xline}},
+            "xline": {{~stringify xline}}, "xline_end": {{~stringify xline_end}},
             "xline_label": {{~stringify xline_label}}, "xline_color": {{~stringify xline_color}},
-            "yline": {{~stringify yline}},
+            "yline": {{~stringify yline}}, "yline_end": {{~stringify yline_end}},
             "yline_label": {{~stringify yline_label}}, "yline_color": {{~stringify yline_color}}
         }
         {{~else~}}

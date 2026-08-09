@@ -132,15 +132,19 @@ sqlpage_chart = (() => {
    * @returns {object[]} apexcharts axis annotations
    */
   function reference_lines(rows, column, axis, to_axis_value) {
+    const on_axis = (value) => {
+      if (value == null) return null;
+      const placed = to_axis_value(value);
+      return Number.isNaN(placed) ? null : placed;
+    };
     return rows.flatMap((row) => {
-      const value = row[`${column}line`];
-      if (value == null) return [];
-      const from = to_axis_value(value);
-      if (Number.isNaN(from)) return [];
+      const from = on_axis(row[`${column}line`]);
+      if (from == null) return [];
       const color = reference_color(row[`${column}line_color`]);
       const text = row[`${column}line_label`];
       const annotation = {
         [axis]: from,
+        [`${axis}2`]: on_axis(row[`${column}line_end`]),
         borderColor: color,
         fillColor: color,
         strokeDashArray: 4,
