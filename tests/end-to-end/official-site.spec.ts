@@ -91,7 +91,24 @@ test("chart draws a reference line for every yline", async ({ page }) => {
   await expect(annotations.getByText("throttling")).toBeVisible();
 });
 
-test("chart draws a yline down a horizontal chart", async ({ page }) => {
+test("chart draws a reference line for every xline", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+
+  const latency = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Request latency" }),
+  });
+  await expect(latency.locator(".apexcharts-canvas")).toBeVisible();
+
+  const annotations = latency.locator(".apexcharts-xaxis-annotations");
+
+  await expect(annotations.locator("line")).toHaveCount(2);
+  await expect(annotations.getByText("deploy")).toBeVisible();
+  await expect(annotations.getByText("incident")).toBeVisible();
+});
+
+test("horizontal chart draws a yline down it and an xline across it", async ({
+  page,
+}) => {
   await page.goto(`${BASE}/documentation.sql?component=chart#component`);
 
   const disks = page.locator(".card", {
@@ -99,13 +116,13 @@ test("chart draws a yline down a horizontal chart", async ({ page }) => {
   });
   await expect(disks.locator(".apexcharts-canvas")).toBeVisible();
 
-  await expect(disks.locator(".apexcharts-xaxis-annotations line")).toHaveCount(
-    1,
-  );
-  await expect(disks.locator(".apexcharts-yaxis-annotations line")).toHaveCount(
-    0,
-  );
-  await expect(disks.getByText("full")).toBeVisible();
+  const down = disks.locator(".apexcharts-xaxis-annotations");
+  const across = disks.locator(".apexcharts-yaxis-annotations");
+
+  await expect(down.locator("line")).toHaveCount(1);
+  await expect(down.getByText("full")).toBeVisible();
+  await expect(across.locator("line")).toHaveCount(1);
+  await expect(across.getByText("watched")).toBeVisible();
 });
 
 test("map", async ({ page }) => {

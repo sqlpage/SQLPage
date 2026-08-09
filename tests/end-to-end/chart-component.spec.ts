@@ -20,6 +20,13 @@ declare global {
 
 type Row = [series: string, x: unknown, y: unknown, z?: unknown];
 
+type ReferenceRow = {
+  xline?: string | number;
+  yline?: number;
+  label?: string;
+  color?: string;
+};
+
 const A_DAY_OF_WORK: Row[] = [
   ["Coding", "Mon", 6],
   ["Coding", "Tue", 4],
@@ -74,7 +81,7 @@ const B_UNTIL_THE_SECOND_CATEGORY: Row[] = [
 async function renderChart(
   page: Page,
   chart: Record<string, unknown>,
-  rows: Row[],
+  rows: (Row | ReferenceRow)[],
 ) {
   return page.evaluate(
     ({ chart, rows }) => {
@@ -127,6 +134,21 @@ async function renderChart(
         return { x, y, width, height };
       });
 
+      const annotated = [
+        ...container.querySelectorAll(
+          ".apexcharts-xaxis-annotations, .apexcharts-yaxis-annotations",
+        ),
+      ];
+      const count = (selector: string) =>
+        annotated.reduce((n, g) => n + g.querySelectorAll(selector).length, 0);
+      const referenceLines = {
+        lines: count("line"),
+        labelBoxes: count("rect"),
+        labelTexts: annotated.flatMap((g) =>
+          [...g.querySelectorAll("text")].map((t) => t.textContent),
+        ),
+      };
+
       return {
         failures,
         type: rendered?.w.config.chart.type ?? null,
@@ -134,6 +156,7 @@ async function renderChart(
         series,
         drawnPerSeries,
         shapes,
+        referenceLines,
       };
     },
     { chart, rows },
@@ -362,4 +385,31 @@ test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(2);
   expect(chart.stacked).toBe(false);
+});
+
+test("draws a reference line that carries no label", async ({ page }) => {
+  const chart = await renderChart(page, { type: "line" }, [
+    ...A_IN_EVERY_QUARTER,
+    { yline: 2 },
+    { xline: "Q2" },
+  ]);
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.referenceLines.lines).toBe(2);
+  expect(chart.referenceLines.labelBoxes).toBe(0);
+  expect(chart.referenceLines.labelTexts).toEqual(["", ""]);
+});
+
+test("draws a box behind the label of a reference line that carries one", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, { type: "line" }, [
+    ...A_IN_EVERY_QUARTER,
+    { yline: 2, label: "limit" },
+  ]);
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.referenceLines.lines).toBe(1);
+  expect(chart.referenceLines.labelBoxes).toBe(1);
+  expect(chart.referenceLines.labelTexts).toEqual(["limit"]);
 });

@@ -40,8 +40,9 @@
     "points": [
     {{~#each_row~}}
         {{~#if (gt @row_index 0)}},{{/if~}}
-        {{~#if yline~}}
+        {{~#if (or xline yline)~}}
         {
+            "xline": {{~stringify xline}},
             "yline": {{~stringify yline}},
             "label": {{~stringify label}}, "color": {{~stringify color}}
         }
