@@ -118,6 +118,45 @@ sqlpage_chart = (() => {
   if (typeof module !== "undefined")
     module.exports = { align_series, align_series_for, merged_x_values };
 
+  const referenceColor = colorNames[isDarkTheme ? "gray-lt" : "gray"];
+
+  /** @typedef { {[property:string]: string|number|null} } ReferenceLine */
+
+  /** @param {string|number|null} name */
+  const reference_color = (name) =>
+    (typeof name === "string" && colorNames[name]) || referenceColor;
+
+  /**
+   * @param {ReferenceLine[]} rows - the rows that carry a yline
+   * @param {"x"|"y"} axis - the apexcharts axis the y column is drawn on
+   * @param {(value: any) => any} to_axis_value - puts a SQL value on the axis
+   * @returns {object[]} apexcharts axis annotations
+   */
+  function y_reference_lines(rows, axis, to_axis_value) {
+    return rows.flatMap((row) => {
+      if (row.yline == null) return [];
+      const from = to_axis_value(row.yline);
+      if (Number.isNaN(from)) return [];
+      const color = reference_color(row.yline_color);
+      const annotation = {
+        [axis]: from,
+        borderColor: color,
+        fillColor: color,
+        strokeDashArray: 4,
+      };
+      // apexcharts reads label.text unconditionally, so an annotation without
+      // a label must not have the key at all.
+      if (row.yline_label)
+        annotation.label = {
+          text: row.yline_label,
+          orientation: "horizontal",
+          borderColor: color,
+          style: { background: color, color: isDarkTheme ? "#000" : "#fff" },
+        };
+      return [annotation];
+    });
+  }
+
   /** @param {HTMLElement} c */
   function build_sqlpage_chart(c) {
     const [data_element] = c.getElementsByTagName("data");
@@ -131,9 +170,11 @@ sqlpage_chart = (() => {
       APEXCHARTS_TYPE_ALIASES[data.type] || data.type || "line";
     const is_stacked =
       !!data.stacked && STACKABLE_CHART_TYPES.includes(chart_type);
+    const points = data.points.filter(Array.isArray);
+    const reference_rows = data.points.filter((row) => !Array.isArray(row));
     /** @type { Series } */
     const series_map = {};
-    for (const [name, old_x, old_y, z] of data.points) {
+    for (const [name, old_x, old_y, z] of points) {
       series_map[name] = series_map[name] || { name, data: [] };
       let x = old_x;
       let y = old_y;
@@ -161,12 +202,27 @@ sqlpage_chart = (() => {
     let labels;
     const categories = x_is_text(series);
     if (chart_type === "pie") {
-      labels = data.points.map(([name, x, _y]) => x || name);
-      series = data.points.map(([_name, _x, y]) => Number.parseFloat(y));
+      labels = points.map(([name, x, _y]) => x || name);
+      series = points.map(([_name, _x, y]) => Number.parseFloat(y));
     } else if (series.length > 1)
       series = align_series_for(series, chart_type, is_stacked);
 
+    const to_value =
+      is_timeseries && chart_type === "rangeBar"
+        ? (v) =>
+            (typeof v === "number" ? new Date(v * 1000) : new Date(v)).getTime()
+        : Number;
+    const inverted =
+      chart_type === "rangeBar" || (chart_type === "bar" && !!data.horizontal);
+    const value_axis = inverted ? "x" : "y";
     const options = {
+      annotations: {
+        [`${value_axis}axis`]: y_reference_lines(
+          reference_rows,
+          value_axis,
+          to_value,
+        ),
+      },
       chart: {
         type: chart_type,
         fontFamily: "inherit",

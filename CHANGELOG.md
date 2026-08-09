@@ -14,6 +14,7 @@
  - `stacked` is now ignored on chart types that cannot stack, instead of displaying an empty chart.
  - Screen readers now announce the title of the modal component instead of an unnamed dialog.
  - `sqlpage.request_body` and `sqlpage.request_body_base64` now return NULL when the request has no body. A body that cannot be read, such as one exceeding the payload limit, is now reported as an error instead of being silently replaced with an empty body.
+ - Charts can display reference lines. A row with a `yline` is drawn as a line across the chart at that value of the y axis, with `yline_label` and `yline_color` for its text and its color. Reference lines are rows, so a chart can have as many of them as the query returns. A line follows its axis, so on a `horizontal` bar chart a `yline` is drawn down the chart rather than across it. They are not added to the total of a `stacked` chart, and are not filled in an `area` chart.
 
 ## v0.45
 
