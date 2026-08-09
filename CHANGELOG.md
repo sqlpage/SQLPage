@@ -12,7 +12,7 @@
  - `column` charts now display vertical bars instead of nothing at all.
  - `stacked` is now ignored on chart types that cannot stack, instead of displaying an empty chart.
  - Screen readers now announce the title of the modal component instead of an unnamed dialog.
- - Charts can display reference lines. A row with a `yline` is drawn as a line across the chart at that value of the y axis, with `yline_label` and `yline_color` for its text and its color. Reference lines are rows, so a chart can have as many of them as the query returns. A line follows its axis, so on a `horizontal` bar chart a `yline` is drawn down the chart rather than across it. They are not added to the total of a `stacked` chart, and are not filled in an `area` chart.
+ - Charts can display reference lines. A row with a `yline` is drawn as a line across the chart at that value of the y axis, and a row with an `xline` marks a position on the x axis. `yline_label`, `xline_label`, `yline_color` and `xline_color` set its text and its color. Reference lines are rows, so a chart can have as many of them as the query returns. Each one follows its own axis, so on a `horizontal` bar chart a `yline` is drawn down the chart rather than across it. They are not added to the total of a `stacked` chart, and are not filled in an `area` chart.
 
 ## v0.45
 

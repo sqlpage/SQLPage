@@ -678,7 +678,10 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
     ('yline', 'Draws a reference line across the chart at this value of the y axis instead of plotting a point, to show a limit such as a quota or an alarm threshold. Not drawn if it falls outside of the axis, so set ymax when the limit is above the data.', 'REAL', FALSE, TRUE),
     ('yline_label', 'A text to display next to the yline.', 'TEXT', FALSE, TRUE),
-    ('yline_color', 'The name of a color for the yline. Grey by default.', 'COLOR', FALSE, TRUE)
+    ('yline_color', 'The name of a color for the yline. Grey by default.', 'COLOR', FALSE, TRUE),
+    ('xline', 'Draws a reference line across the chart at this position of the x axis instead of plotting a point, to mark an event such as a deployment. A date or a timestamp when time is set, otherwise one of the x values.', 'TEXT', FALSE, TRUE),
+    ('xline_label', 'A text to display next to the xline.', 'TEXT', FALSE, TRUE),
+    ('xline_color', 'The name of a color for the xline. Grey by default.', 'COLOR', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     ('chart', 'An area chart representing a time series, using the top-level property `time`.
@@ -818,12 +821,42 @@ so set `ymax` when the limit is above the data.
         {"x": "2024-05-01T14:00:00Z", "y": 63}
     ]')),
     ('chart', '
+## Marking events
+
+`xline` is the counterpart of `yline`: it marks a position on the x axis instead
+of a value on the y axis, for a moment rather than a limit. A single query can
+draw a whole log of them:
+
+```sql
+select started_at as xline, summary as xline_label,
+    case severity when ''outage'' then ''red'' else ''orange'' end as xline_color
+from deployments where started_at > $since;
+```
+
+When `time` is set, an `xline` is a date or a timestamp, written like the `x` of
+a data point. On a chart with text labels on the x axis, it is one of those labels.
+', json('[
+        {"component":"chart", "title": "Request latency", "type": "area", "time": true,
+         "ytitle": "ms", "color": "blue-lt", "marker": 3},
+        {"xline": "2024-05-01T10:00:00Z", "xline_label": "deploy", "xline_color": "green"},
+        {"xline": "2024-05-01T11:30:00Z", "xline_label": "incident", "xline_color": "red"},
+        {"x": "2024-05-01T08:00:00Z", "y": 120},
+        {"x": "2024-05-01T09:00:00Z", "y": 134},
+        {"x": "2024-05-01T10:00:00Z", "y": 128},
+        {"x": "2024-05-01T11:00:00Z", "y": 141},
+        {"x": "2024-05-01T12:00:00Z", "y": 512},
+        {"x": "2024-05-01T13:00:00Z", "y": 470},
+        {"x": "2024-05-01T14:00:00Z", "y": 156},
+        {"x": "2024-05-01T15:00:00Z", "y": 133}
+    ]')),
+    ('chart', '
 ## Reference lines follow their axis
 
 A reference belongs to the column it is written in, not to a direction on the
-screen: `yline` always marks a value of `y`, whichever way round the chart is
-drawn. A `horizontal` bar chart runs its y axis from left to right, so a `yline`
-is drawn down the chart rather than across it.
+screen. `yline` always marks a value of `y`, and `xline` a position on `x`,
+whichever way round the chart is drawn. A `horizontal` bar chart runs its y axis
+from left to right, so a `yline` is drawn down the chart and an `xline` picks out
+one of the bars.
 
 ```sql
 select ''chart'' as component, ''bar'' as type, true as horizontal, 100 as ymax;
@@ -831,7 +864,8 @@ select 90 as yline, ''full'' as yline_label, ''red'' as yline_color;
 select host as x, percent_used as y from disks order by percent_used;
 ```
 
-A `pie` has no axes, and ignores reference lines.
+A `pie` has no axes and ignores reference lines, and on a `heatmap`, whose y axis
+holds the names of the series, only `xline` has a meaning.
 ', json('[
         {"component":"chart", "title": "Disk usage", "type": "bar", "horizontal": true,
          "ymax": 100, "color": "azure", "labels": true},

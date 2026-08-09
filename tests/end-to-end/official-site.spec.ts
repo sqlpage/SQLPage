@@ -93,6 +93,21 @@ test("chart draws a reference line for every yline", async ({ page }) => {
   await expect(annotations.getByText("throttling")).toBeVisible();
 });
 
+test("chart draws a reference line for every xline", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+
+  const latency = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Request latency" }),
+  });
+  await expect(latency.locator(".apexcharts-canvas")).toBeVisible();
+
+  const annotations = latency.locator(".apexcharts-xaxis-annotations");
+
+  await expect(annotations.locator("line")).toHaveCount(2);
+  await expect(annotations.getByText("deploy")).toBeVisible();
+  await expect(annotations.getByText("incident")).toBeVisible();
+});
+
 test("chart draws a yline down a horizontal chart", async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=chart#component`);
 
