@@ -182,12 +182,19 @@ function sqlpage_map() {
     onLeafletLoad();
   }
   /**
-   *
    * @param {string|undefined} coords
    * @returns {[number, number] | undefined}
    */
   function parseCoords(coords) {
-    return coords?.split(",", 2).map((c) => Number.parseFloat(c));
+    if (!coords) return undefined;
+    const parsed = coords.split(",", 2).map((c) => Number.parseFloat(c));
+    if (parsed.length !== 2 || !parsed.every(Number.isFinite)) {
+      console.error(
+        `Invalid map coordinates: ${JSON.stringify(coords)}. Expected a "latitude,longitude" pair of numbers.`,
+      );
+      return undefined;
+    }
+    return [parsed[0], parsed[1]];
   }
   function onLeafletLoad() {
     is_leaflet_loaded = true;
@@ -230,6 +237,7 @@ function sqlpage_map() {
     const marker = dataset.coords
       ? createMarker(marker_elem, options)
       : createGeoJSONMarker(marker_elem, options);
+    if (!marker) return;
     marker.addTo(map);
     map._sqlpage_markers.push(marker);
     if (marker_elem.textContent.trim()) marker.bindPopup(marker_elem);
@@ -241,6 +249,7 @@ function sqlpage_map() {
   }
   function createMarker(marker_elem, options) {
     const coords = parseCoords(marker_elem.dataset.coords);
+    if (!coords) return undefined;
     const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
     if (icon_obj) {
       const size =
