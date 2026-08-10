@@ -19,6 +19,7 @@ td > p {
 
 /** Removes the margin-bottom from the last element */
 .remove-bottom-margin > :last-child {
+  /* biome-ignore lint/complexity/noImportantStyles: the last child is often a tabler spacing utility such as .my-2, which is itself !important */
   margin-bottom: 0 !important;
 }
 
@@ -29,7 +30,7 @@ td > p {
 
 /* orchidjs/tom-select#712 */
 .ts-wrapper.multi .ts-control > div.active {
-  border: 1px solid transparent !important;
+  border: 1px solid transparent;
 }
 
 /* remove the ugly text highlight in the default tom-select */
@@ -55,7 +56,7 @@ code {
 
 .apexcharts-text,
 .apexcharts-datalabel {
-  fill: var(--tblr-body-color) !important;
+  fill: var(--tblr-body-color);
   font-weight: var(--tblr-body-font-weight);
 }
 
@@ -117,6 +118,7 @@ li p {
 }
 
 .leaflet-container {
+  /* biome-ignore lint/complexity/noImportantStyles: leaflet's stylesheet is injected after this one, at the same specificity */
   background: var(--tblr-active-bg) !important;
 }
 
@@ -189,7 +191,7 @@ See https://github.com/tabler/tabler/issues/2404
 }
 
 .text-black-fg {
-  color: var(--tblr-dark-fg) !important;
+  color: var(--tblr-dark-fg);
 }
 
 .toast-colored .toast-description a {

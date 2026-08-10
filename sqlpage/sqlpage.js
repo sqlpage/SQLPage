@@ -441,7 +441,7 @@ function open_modal_for_hash() {
   const hash = window.location.hash.substring(1);
   if (!hash) return;
   const modal = document.getElementById(hash);
-  if (!modal || !modal.classList.contains("modal")) return;
+  if (!modal?.classList.contains("modal")) return;
   const bootstrap_modal =
     window.tabler.bootstrap.Modal.getOrCreateInstance(modal);
   bootstrap_modal.show();
