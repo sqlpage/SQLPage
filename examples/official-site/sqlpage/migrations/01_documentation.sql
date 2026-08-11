@@ -650,7 +650,7 @@ INSERT INTO component(name, icon, description) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'chart', * FROM (VALUES
     -- top level
     ('title', 'The name of the chart.', 'TEXT', TRUE, TRUE),
-    ('type', 'The type of chart. One of: "line", "area", "bar", "column", "pie", "scatter", "bubble", "heatmap", "rangeBar"', 'TEXT', TRUE, FALSE),
+    ('type', 'The type of chart. One of: "line", "area", "bar", "column", "pie", "scatter", "bubble", "heatmap", "rangeBar". "column" is a synonym of "bar".', 'TEXT', TRUE, FALSE),
     ('time', 'Whether the x-axis represents time. If set to true, the x values will be parsed and formatted as dates for the user.', 'BOOLEAN', TRUE, TRUE),
     ('xmin', 'The minimal value for the x-axis. When time is true, this can be a date or timestamp.', 'TEXT', TRUE, TRUE),
     ('xmax', 'The maximum value for the x-axis. When time is true, this can be a date or timestamp.', 'TEXT', TRUE, TRUE),
@@ -664,7 +664,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('marker', 'Marker size', 'REAL', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
     ('color', 'The name of a color in which to display the chart. If there are multiple series in the chart, this parameter can be repeated multiple times.', 'COLOR', TRUE, TRUE),
-    ('stacked', 'Whether to cumulate values from different series.', 'BOOLEAN', TRUE, TRUE),
+    ('stacked', 'Whether to cumulate values from different series. Supported by the "line", "area" and "bar" chart types, and ignored by the others.', 'BOOLEAN', TRUE, TRUE),
     ('toolbar', 'Whether to display a toolbar at the top right of the chart, that offers downloading the data as CSV.', 'BOOLEAN', TRUE, TRUE),
     ('show_legend', 'Whether to display the legend listing all chart series. Defaults to true.', 'BOOLEAN', TRUE, TRUE),
     ('logarithmic', 'Display the y-axis in logarithmic scale.', 'BOOLEAN', TRUE, TRUE),
