@@ -7,6 +7,7 @@
  - `sqlpage.send_mail` now supports rich email bodies. Use `body_html` for a caller-provided HTML alternative, or `body_md` to render Markdown as HTML. Messages retain a plain-text alternative; `body` may be omitted when `body_md` is used, and `body_md` and `body_html` cannot be combined.
  - Form `options_source` URLs now preserve existing query parameters when adding the dynamic `search` parameter.
  - Map coordinates that are not a pair of numbers, like a latitude with no longitude, are now reported in the browser console and skipped, instead of breaking the whole map.
+ - Stacked charts now stack their series by `x` value instead of by point order, which used to give wrong totals when a series was missing a point.
  - `column` charts now display vertical bars instead of nothing at all.
  - `stacked` is now ignored on chart types that cannot stack, instead of displaying an empty chart.
  - Screen readers now announce the title of the modal component instead of an unnamed dialog.
