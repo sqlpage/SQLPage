@@ -4,7 +4,10 @@ use mime_guess::mime;
 
 use crate::webserver::http_request_info::RequestInfo;
 
-pub(super) fn mime_from_upload_path<'a>(request: &'a RequestInfo, path: &str) -> Option<&'a mime_guess::Mime> {
+pub(super) fn mime_from_upload_path<'a>(
+    request: &'a RequestInfo,
+    path: &str,
+) -> Option<&'a mime_guess::Mime> {
     request.uploaded_files.values().find_map(|uploaded_file| {
         if uploaded_file.file.path() == OsStr::new(path) {
             uploaded_file.content_type.as_ref()
