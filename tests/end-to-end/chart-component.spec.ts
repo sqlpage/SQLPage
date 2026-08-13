@@ -106,17 +106,21 @@ async function renderChart(
           p.y,
         ]),
       }));
-      const drawnPerSeries = series.map(({ name }) => ({
-        name,
-        heights: [
+      const drawnPerSeries = series.map(({ name }) => {
+        const markers = [
           ...container.querySelectorAll<SVGGraphicsElement>(
-            `.apexcharts-series[seriesName='${name}'] .apexcharts-marker`,
+            `.apexcharts-series[seriesName='${name}'] .apexcharts-series-markers > .apexcharts-marker`,
           ),
-        ].map((m) => Math.round(m.getBBox().y)),
-      }));
+        ].map((m) => m.getBBox());
+        return {
+          name,
+          lefts: markers.map((b) => Math.round(b.x)),
+          heights: markers.map((b) => Math.round(b.y)),
+        };
+      });
       const shapes = [
         ...container.querySelectorAll<SVGGraphicsElement>(
-          ".apexcharts-bar-area, .apexcharts-rangebar-area",
+          ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect",
         ),
       ].map((shape) => {
         const { x, y, width, height } = shape.getBBox();
@@ -250,6 +254,102 @@ test("stacks a bar series on the categories it skipped", async ({ page }) => {
     ["Q2", 20],
     ["Q3", 30],
   ]);
+});
+
+test("lines an unstacked series up with the categories it skipped", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, { type: "line" }, [
+    ...A_IN_EVERY_QUARTER,
+    ...B_MISSING_THE_FIRST_QUARTER,
+  ]);
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.series[1].points).toEqual([
+    ["Q1", null],
+    ["Q2", 20],
+    ["Q3", 30],
+  ]);
+});
+
+test("draws nothing where an unstacked series has no value", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, { type: "line" }, [
+    ...A_IN_EVERY_QUARTER,
+    ...B_MISSING_THE_FIRST_QUARTER,
+  ]);
+  const [a, b] = chart.drawnPerSeries;
+
+  expect(a.lefts).toHaveLength(3);
+  expect(b.lefts).toEqual(a.lefts.slice(1));
+});
+
+test("keeps a measured zero apart from a missing value", async ({ page }) => {
+  const chart = await renderChart(page, { type: "line" }, [
+    ...A_IN_EVERY_QUARTER,
+    ["B", "Q2", 0],
+    ["B", "Q3", 30],
+  ]);
+  const [a, b] = chart.drawnPerSeries;
+
+  expect(chart.series[1].points).toEqual([
+    ["Q1", null],
+    ["Q2", 0],
+    ["Q3", 30],
+  ]);
+  expect(b.lefts).toEqual(a.lefts.slice(1));
+});
+
+for (const type of ["area", "scatter", "heatmap"]) {
+  test(`lines up the series of a ${type} chart on a category axis`, async ({
+    page,
+  }) => {
+    const chart = await renderChart(page, { type }, [
+      ...A_IN_EVERY_QUARTER,
+      ...B_MISSING_THE_FIRST_QUARTER,
+    ]);
+
+    expect(chart.failures).toEqual([]);
+    expect(chart.series[1].points.map((p) => p[0])).toEqual(["Q1", "Q2", "Q3"]);
+  });
+}
+
+test("keeps the bubble size of the points it lined up", async ({ page }) => {
+  const chart = await renderChart(page, { type: "bubble" }, [
+    ["A", "Q1", 1, 30],
+    ["A", "Q2", 2, 30],
+    ["B", "Q2", 5, 70],
+  ]);
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.series[1].points).toEqual([
+    ["Q1", null],
+    ["Q2", 5],
+  ]);
+});
+
+test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
+  const chart = await renderChart(
+    page,
+    { type: "rangeBar", time: true },
+    TASKS_OVER_TIME,
+  );
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.shapes).toHaveLength(2);
+});
+
+test("leaves a treemap chart alone", async ({ page }) => {
+  const chart = await renderChart(page, { type: "treemap" }, [
+    ["North America", "United States", 35],
+    ["North America", "Canada", 15],
+    ["Europe", "France", 30],
+    ["Europe", "Germany", 55],
+  ]);
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.shapes).toHaveLength(4);
 });
 
 test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {

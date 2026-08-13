@@ -38,6 +38,14 @@ sqlpage_chart = (() => {
 
   const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
   const APEXCHARTS_TYPE_ALIASES = { column: "bar" };
+  const Y_WHEN_A_SERIES_SKIPS_A_LABEL = {
+    bar: 0,
+    line: null,
+    area: null,
+    scatter: null,
+    bubble: null,
+    heatmap: null,
+  };
 
   /** @typedef {number|string|Date} XValue */
   /** @typedef { {name:string, data:{x:XValue,y:number|null,z?:number}[]} } ChartSeries */
@@ -45,6 +53,9 @@ sqlpage_chart = (() => {
 
   /** @param {XValue} x @returns {number|string} equal x values share a key */
   const x_key = (x) => (x instanceof Date ? x.getTime() : x);
+
+  /** @param {ChartSeries[]} series */
+  const x_is_text = (series) => typeof series[0]?.data[0]?.x === "string";
 
   /**
    * @param {ChartSeries[]} series
@@ -66,13 +77,15 @@ sqlpage_chart = (() => {
 
   /**
    * ApexCharts pairs points across series by index rather than by x, so a
-   * series that skips an x stacks onto the wrong one. Give every series the
-   * same x values, counting an x it never measured as zero.
+   * series that skips an x lands on the wrong one. Give every series the same
+   * amount of x values.
    *
    * @param {ChartSeries[]} series
+   * @param {number|null} y_when_missing what a series with no value at an x is
+   *   worth there: zero to add nothing to a stack, null to leave a gap.
    * @returns {ChartSeries[]}
    */
-  function align_series(series) {
+  function align_series(series, y_when_missing) {
     const all_x = merged_x_values(series);
     return series.map(({ name, data }) => {
       const by_x = new Map(data.map((point) => [x_key(point.x), point]));
@@ -80,15 +93,70 @@ sqlpage_chart = (() => {
         name,
         data: all_x.map((x) => {
           const point = by_x.get(x_key(x));
-          return { ...point, x, y: point?.y || 0 };
+          return { ...point, x, y: point?.y ?? y_when_missing };
         }),
       };
     });
   }
 
+  /**
+   * @param {ChartSeries[]} series
+   * @param {string} chart_type
+   * @param {boolean} is_stacked
+   * @returns {ChartSeries[]}
+   */
+  function align_series_for(series, chart_type, is_stacked) {
+    if (is_stacked) return align_series(series, 0);
+    if (x_is_text(series) && chart_type in Y_WHEN_A_SERIES_SKIPS_A_LABEL)
+      return align_series(series, Y_WHEN_A_SERIES_SKIPS_A_LABEL[chart_type]);
+    return series;
+  }
+
   // The unit tests load this file as a CommonJS module; browsers have no `module`.
   if (typeof module !== "undefined")
-    module.exports = { align_series, merged_x_values };
+    module.exports = { align_series, align_series_for, merged_x_values };
+
+  const referenceColor = colorNames[isDarkTheme ? "gray-lt" : "gray"];
+
+  /** @typedef { {[property:string]: string|number|null} } ReferenceLine */
+
+  /** @param {string|number|null} name */
+  const reference_color = (name) =>
+    (typeof name === "string" && colorNames[name]) || referenceColor;
+
+  /**
+   * @param {ReferenceLine[]} rows - the rows that carry an xline or a yline
+   * @param {"x"|"y"} column - the column the reference is written in
+   * @param {"x"|"y"} axis - the apexcharts axis that column is drawn on
+   * @param {(value: any) => any} to_axis_value - puts a SQL value on the axis
+   * @returns {object[]} apexcharts axis annotations
+   */
+  function reference_lines(rows, column, axis, to_axis_value) {
+    return rows.flatMap((row) => {
+      const value = row[`${column}line`];
+      if (value == null) return [];
+      const from = to_axis_value(value);
+      if (Number.isNaN(from)) return [];
+      const color = reference_color(row[`${column}line_color`]);
+      const text = row[`${column}line_label`];
+      const annotation = {
+        [axis]: from,
+        borderColor: color,
+        fillColor: color,
+        strokeDashArray: 4,
+      };
+      // apexcharts reads label.text unconditionally, so an annotation without
+      // a label must not have the key at all.
+      if (text)
+        annotation.label = {
+          text,
+          orientation: column === "y" ? "horizontal" : "vertical",
+          borderColor: color,
+          style: { background: color, color: isDarkTheme ? "#000" : "#fff" },
+        };
+      return [annotation];
+    });
+  }
 
   /** @param {HTMLElement} c */
   function build_sqlpage_chart(c) {
@@ -101,9 +169,11 @@ sqlpage_chart = (() => {
       APEXCHARTS_TYPE_ALIASES[data.type] || data.type || "line";
     const is_stacked =
       !!data.stacked && STACKABLE_CHART_TYPES.includes(chart_type);
+    const points = data.points.filter(Array.isArray);
+    const reference_rows = data.points.filter((row) => !Array.isArray(row));
     /** @type { Series } */
     const series_map = {};
-    for (const [name, old_x, old_y, z] of data.points) {
+    for (const [name, old_x, old_y, z] of points) {
       series_map[name] = series_map[name] || { name, data: [] };
       let x = old_x;
       let y = old_y;
@@ -129,18 +199,38 @@ sqlpage_chart = (() => {
     let series = Object.values(series_map);
 
     let labels;
-    const categories =
-      series.length > 0 && typeof series[0].data[0].x === "string";
+    const categories = x_is_text(series);
     if (chart_type === "pie") {
-      labels = data.points.map(([name, x, _y]) => x || name);
-      series = data.points.map(([_name, _x, y]) => Number.parseFloat(y));
-    } else if (
-      series.length > 1 &&
-      (is_stacked || (categories && chart_type === "bar"))
-    )
-      series = align_series(series);
+      labels = points.map(([name, x, _y]) => x || name);
+      series = points.map(([_name, _x, y]) => Number.parseFloat(y));
+    } else if (series.length > 1)
+      series = align_series_for(series, chart_type, is_stacked);
 
+    const to_timestamp = (v) =>
+      (typeof v === "number" ? new Date(v * 1000) : new Date(v)).getTime();
+    const dates_are_values = is_timeseries && chart_type === "rangeBar";
+    const to_value = dates_are_values ? to_timestamp : Number;
+    const to_category =
+      is_timeseries && !dates_are_values ? to_timestamp : (v) => v;
+    const inverted =
+      chart_type === "rangeBar" || (chart_type === "bar" && !!data.horizontal);
+    const value_axis = inverted ? "x" : "y";
+    const category_axis = inverted ? "y" : "x";
     const options = {
+      annotations: {
+        [`${value_axis}axis`]: reference_lines(
+          reference_rows,
+          "y",
+          value_axis,
+          to_value,
+        ),
+        [`${category_axis}axis`]: reference_lines(
+          reference_rows,
+          "x",
+          category_axis,
+          to_category,
+        ),
+      },
       chart: {
         type: chart_type,
         fontFamily: "inherit",

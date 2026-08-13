@@ -78,6 +78,53 @@ test("stacked chart raises a series only where it has a value", async ({
   expect(Number(gpu[1].y)).toBeLessThan(Number(cpu[1].y));
 });
 
+test("chart draws a reference line for every yline", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+
+  const temperature = page.locator(".card", {
+    has: page.getByRole("heading", { name: "CPU temperature" }),
+  });
+  await expect(temperature.locator(".apexcharts-canvas")).toBeVisible();
+
+  const annotations = temperature.locator(".apexcharts-yaxis-annotations");
+
+  await expect(annotations.locator("line")).toHaveCount(2);
+  await expect(annotations.getByText("target")).toBeVisible();
+  await expect(annotations.getByText("throttling")).toBeVisible();
+});
+
+test("chart draws a reference line for every xline", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+
+  const latency = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Request latency" }),
+  });
+  await expect(latency.locator(".apexcharts-canvas")).toBeVisible();
+
+  const annotations = latency.locator(".apexcharts-xaxis-annotations");
+
+  await expect(annotations.locator("line")).toHaveCount(2);
+  await expect(annotations.getByText("deploy")).toBeVisible();
+  await expect(annotations.getByText("incident")).toBeVisible();
+});
+
+test("chart draws a yline down a horizontal chart", async ({ page }) => {
+  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+
+  const disks = page.locator(".card", {
+    has: page.getByRole("heading", { name: "Disk usage" }),
+  });
+  await expect(disks.locator(".apexcharts-canvas")).toBeVisible();
+
+  await expect(disks.locator(".apexcharts-xaxis-annotations line")).toHaveCount(
+    1,
+  );
+  await expect(disks.locator(".apexcharts-yaxis-annotations line")).toHaveCount(
+    0,
+  );
+  await expect(disks.getByText("full")).toBeVisible();
+});
+
 test("map", async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=map#component`);
   await expect(page.getByText("Loading...")).not.toBeVisible();
