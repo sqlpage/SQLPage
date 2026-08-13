@@ -38,6 +38,14 @@ sqlpage_chart = (() => {
 
   const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
   const APEXCHARTS_TYPE_ALIASES = { column: "bar" };
+  const Y_WHEN_A_SERIES_SKIPS_A_LABEL = {
+    bar: 0,
+    line: null,
+    area: null,
+    scatter: null,
+    bubble: null,
+    heatmap: null,
+  };
 
   /** @typedef {number|string|Date} XValue */
   /** @typedef { {name:string, data:{x:XValue,y:number|null,z?:number}[]} } ChartSeries */
@@ -45,6 +53,9 @@ sqlpage_chart = (() => {
 
   /** @param {XValue} x @returns {number|string} equal x values share a key */
   const x_key = (x) => (x instanceof Date ? x.getTime() : x);
+
+  /** @param {ChartSeries[]} series */
+  const x_is_text = (series) => typeof series[0]?.data[0]?.x === "string";
 
   /**
    * @param {ChartSeries[]} series
@@ -66,13 +77,15 @@ sqlpage_chart = (() => {
 
   /**
    * ApexCharts pairs points across series by index rather than by x, so a
-   * series that skips an x stacks onto the wrong one. Give every series the
-   * same x values, counting an x it never measured as zero.
+   * series that skips an x lands on the wrong one. Give every series the same
+   * amount of x values.
    *
    * @param {ChartSeries[]} series
+   * @param {number|null} y_when_missing what a series with no value at an x is
+   *   worth there: zero to add nothing to a stack, null to leave a gap.
    * @returns {ChartSeries[]}
    */
-  function align_series(series) {
+  function align_series(series, y_when_missing) {
     const all_x = merged_x_values(series);
     return series.map(({ name, data }) => {
       const by_x = new Map(data.map((point) => [x_key(point.x), point]));
@@ -80,15 +93,28 @@ sqlpage_chart = (() => {
         name,
         data: all_x.map((x) => {
           const point = by_x.get(x_key(x));
-          return { ...point, x, y: point?.y || 0 };
+          return { ...point, x, y: point?.y ?? y_when_missing };
         }),
       };
     });
   }
 
+  /**
+   * @param {ChartSeries[]} series
+   * @param {string} chart_type
+   * @param {boolean} is_stacked
+   * @returns {ChartSeries[]}
+   */
+  function align_series_for(series, chart_type, is_stacked) {
+    if (is_stacked) return align_series(series, 0);
+    if (x_is_text(series) && chart_type in Y_WHEN_A_SERIES_SKIPS_A_LABEL)
+      return align_series(series, Y_WHEN_A_SERIES_SKIPS_A_LABEL[chart_type]);
+    return series;
+  }
+
   // The unit tests load this file as a CommonJS module; browsers have no `module`.
   if (typeof module !== "undefined")
-    module.exports = { align_series, merged_x_values };
+    module.exports = { align_series, align_series_for, merged_x_values };
 
   /** @param {HTMLElement} c */
   function build_sqlpage_chart(c) {
@@ -129,16 +155,12 @@ sqlpage_chart = (() => {
     let series = Object.values(series_map);
 
     let labels;
-    const categories =
-      series.length > 0 && typeof series[0].data[0].x === "string";
+    const categories = x_is_text(series);
     if (chart_type === "pie") {
       labels = data.points.map(([name, x, _y]) => x || name);
       series = data.points.map(([_name, _x, y]) => Number.parseFloat(y));
-    } else if (
-      series.length > 1 &&
-      (is_stacked || (categories && chart_type === "bar"))
-    )
-      series = align_series(series);
+    } else if (series.length > 1)
+      series = align_series_for(series, chart_type, is_stacked);
 
     const options = {
       chart: {
