@@ -12,3 +12,5 @@ xbed.sql
 node_modules/
 sqlpage/sqlpage.db
 tests_uploads/
+/test-results/
+/playwright-report/

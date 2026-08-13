@@ -13,5 +13,8 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^2.5.4"
-  }
+  },
+  "workspaces": [
+    "tests/end-to-end"
+  ]
 }

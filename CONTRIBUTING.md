@@ -109,8 +109,8 @@ cargo run
 In a separate terminal, run the tests:
 
 ```bash
-cd tests/end-to-end
 npm install
+cd tests/end-to-end
 npx playwright install chromium
 npm run test
 ```
