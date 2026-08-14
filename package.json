@@ -2,7 +2,8 @@
   "name": "sqlpage",
   "version": "1.0.0",
   "scripts": {
-    "test": "biome check . && node --test \"tests/js/**/*.spec.ts\"",
+    "test": "biome check . && npm run typecheck && node --test \"tests/js/**/*.spec.ts\"",
+    "typecheck": "tsc && tsc -p tests/js && tsc -p tests/end-to-end",
     "format": "biome format --write .",
     "fix": "biome check --fix --unsafe ."
   },
@@ -12,7 +13,9 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@biomejs/biome": "^2.5.4"
+    "@biomejs/biome": "^2.5.4",
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
   },
   "workspaces": [
     "tests/end-to-end"
