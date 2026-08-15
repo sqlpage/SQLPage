@@ -30,6 +30,7 @@ function sqlpage_select_dropdown_individual(s) {
     searchField: "label",
     create: s.dataset.create_new,
     maxOptions: null,
+    closeAfterSelect: !s.multiple,
     onItemAdd: function () {
       this.setTextboxValue("");
       this.refreshOptions();

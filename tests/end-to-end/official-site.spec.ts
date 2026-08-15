@@ -524,6 +524,14 @@ test("form select combines initial options with remote search results", async ({
       formLabel: "form",
       mapLabel: "map",
     });
+
+  await select.evaluate((element: HTMLSelectElement) =>
+    element.tomselect?.open(),
+  );
+  const mapOption = page.locator(".ts-dropdown .option", { hasText: "map" });
+  await expect(mapOption).toBeVisible();
+  await mapOption.click();
+  await expect(page.locator(".ts-dropdown")).not.toBeVisible();
 });
 
 test("modal", async ({ page }) => {

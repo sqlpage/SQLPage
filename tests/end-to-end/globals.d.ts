@@ -5,6 +5,7 @@ interface TomSelectInstance {
   getValue(): string | string[];
   setTextboxValue(value: string): void;
   focus(): void;
+  open(): void;
   options: Record<string, { label?: string } | undefined>;
 }
 
