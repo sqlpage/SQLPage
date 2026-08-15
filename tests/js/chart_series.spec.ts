@@ -1,31 +1,23 @@
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import test from "node:test";
-
-const browser_globals_apexcharts_reads_when_it_loads = {
-  document: { body: null },
-  add_init_fn: () => {},
-};
-Object.assign(globalThis, browser_globals_apexcharts_reads_when_it_loads);
-
-const require = createRequire(import.meta.url);
-const {
+import {
   align_series,
   align_series_for,
+  type ChartPoint,
+  type ChartSeries,
   merged_x_values,
-} = require("../../sqlpage/apexcharts.js");
+} from "../../frontend/src/chart_series.ts";
 
 const ADDS_NOTHING_TO_THE_STACK = 0;
 const LEAVES_A_GAP = null;
 const STACKED = true;
 const UNSTACKED = false;
 
-type XValue = number | string | Date;
-type Point = { x: XValue; y: number | string | null | number[]; z?: number };
-type Series = { name: string; data: Point[] };
-
-const series = (name: string, ...data: Point[]): Series => ({ name, data });
-const xs = (s: Series) => s.data.map((p) => p.x);
+const series = (name: string, ...data: ChartPoint[]): ChartSeries => ({
+  name,
+  data,
+});
+const xs = (s: ChartSeries) => s.data.map((p) => p.x);
 
 test("merged_x_values keeps the order the series agree on", () => {
   const merged = merged_x_values([

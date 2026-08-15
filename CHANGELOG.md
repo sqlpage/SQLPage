@@ -12,6 +12,7 @@
  - `column` charts now display vertical bars instead of nothing at all.
  - `stacked` is now ignored on chart types that cannot stack, instead of displaying an empty chart.
  - Screen readers now announce the title of the modal component instead of an unnamed dialog.
+ - The frontend is now TypeScript, bundled with esbuild from npm packages instead of being assembled from CDN downloads at build time. Building SQLPage now requires Node.js: run `npm ci && npm run build` before `cargo build`.
 
 ## v0.45
 

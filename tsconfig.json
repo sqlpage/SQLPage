@@ -4,12 +4,11 @@
     "lib": ["es2022", "dom", "dom.iterable"],
     "module": "preserve",
     "moduleResolution": "bundler",
-    "allowJs": true,
-    "checkJs": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "strict": true,
     "noImplicitAny": false,
     "types": []
   },
-  "include": ["sqlpage/*.js", "sqlpage/globals.d.ts"]
+  "include": ["frontend/src", "frontend/types"]
 }

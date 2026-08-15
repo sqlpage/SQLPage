@@ -1,9 +1,19 @@
-/* !include https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js */
-const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
+import {
+  Carousel,
+  Dropdown,
+  Modal,
+  Popover,
+  Toast,
+  Tooltip,
+} from "@tabler/core";
+import { add_init_fn } from "./init.ts";
+
+const nonce = (document.currentScript as HTMLScriptElement).nonce;
+
+type TableRow = { el: HTMLElement; sort_keys: { num: number; str: string }[] };
 
 function sqlpage_card() {
-  /** @type {NodeListOf<HTMLElement>} */
-  const cards = document.querySelectorAll("[data-pre-init=card]");
+  const cards = document.querySelectorAll<HTMLElement>("[data-pre-init=card]");
   for (const c of cards) {
     c.removeAttribute("data-pre-init");
     if (!c.dataset.embed) continue;
@@ -24,15 +34,13 @@ function sqlpage_card() {
   }
 }
 
-/** @param {HTMLElement} root_el */
-function setup_table(root_el) {
-  /** @type {HTMLInputElement | null} */
-  const search_input = root_el.querySelector("input.search");
+function setup_table(root_el: HTMLElement) {
+  const search_input = root_el.querySelector<HTMLInputElement>("input.search");
   const table_el = root_el.querySelector("table");
   if (!table_el) return;
-  /** @type {NodeListOf<HTMLElement>} */
-  const sort_button_els = table_el.querySelectorAll("button.sort[data-sort]");
-  const sort_buttons = [...sort_button_els];
+  const sort_buttons = [
+    ...table_el.querySelectorAll<HTMLElement>("button.sort[data-sort]"),
+  ];
   const item_parent = table_el.querySelector("tbody");
   const has_sort = sort_buttons.length > 0;
 
@@ -47,20 +55,18 @@ function setup_table(root_el) {
   apply_number_formatting(table_el);
 }
 
-/**
- * @param {HTMLInputElement} search_input
- * @param {TableRow[]} items
- */
-function setup_table_search_behavior(search_input, items) {
+function setup_table_search_behavior(
+  search_input: HTMLInputElement,
+  items: TableRow[],
+) {
   function onSearch() {
     const lower_search = search_input.value
       .toLowerCase()
       .split(/\s+/)
       .filter((s) => s);
     for (const item of items) {
-      const show = lower_search.every((s) =>
-        item.el.textContent.toLowerCase().includes(s),
-      );
+      const text = item.el.textContent?.toLowerCase() ?? "";
+      const show = lower_search.every((s) => text.includes(s));
       item.el.style.display = show ? "" : "none";
     }
   }
@@ -69,13 +75,13 @@ function setup_table_search_behavior(search_input, items) {
   onSearch();
 }
 
-/**@param {HTMLElement} table_el */
-function apply_number_formatting(table_el) {
-  /** @type {NodeListOf<HTMLElement>} */
-  const header_els = table_el.querySelectorAll("thead > tr > th");
-  const col_types = [...header_els].map((el) => el.dataset.column_type);
-  const col_rawnums = [...header_els].map((el) => !!el.dataset.raw_number);
-  const col_money = [...header_els].map((el) => !!el.dataset.money);
+function apply_number_formatting(table_el: HTMLElement) {
+  const header_els = [
+    ...table_el.querySelectorAll<HTMLElement>("thead > tr > th"),
+  ];
+  const col_types = header_els.map((el) => el.dataset.column_type);
+  const col_rawnums = header_els.map((el) => !!el.dataset.raw_number);
+  const col_money = header_els.map((el) => !!el.dataset.money);
   const number_format_locale = table_el.dataset.number_format_locale;
   const number_format_digits = table_el.dataset.number_format_digits
     ? Number(table_el.dataset.number_format_digits)
@@ -103,19 +109,15 @@ function apply_number_formatting(table_el) {
   }
 }
 
-/** @typedef { {el: HTMLElement, sort_keys: {num: number, str: string}[]} } TableRow */
-
-/** Prepare the table rows for sorting.
- * @param {HTMLElement} table_el
- * @param {HTMLElement[]} sort_buttons
- * @returns {TableRow[]}
- */
-function table_parse_data(table_el, sort_buttons) {
-  const is_num = [...sort_buttons].map(
+/** Prepare the table rows for sorting. */
+function table_parse_data(
+  table_el: HTMLElement,
+  sort_buttons: HTMLElement[],
+): TableRow[] {
+  const is_num = sort_buttons.map(
     (btn_el) => btn_el.parentElement?.dataset.column_type === "number",
   );
-  /** @type {NodeListOf<HTMLElement>} */
-  const row_els = table_el.querySelectorAll("tbody tr");
+  const row_els = table_el.querySelectorAll<HTMLElement>("tbody tr");
   return [...row_els].map((tr_el) => {
     const cells = tr_el.getElementsByTagName("td");
     return {
@@ -129,13 +131,11 @@ function table_parse_data(table_el, sort_buttons) {
   });
 }
 
-/**
- * Adds event listeners to the sort buttons to sort the table rows.
- * @param {HTMLElement[]} sort_buttons
- * @param {TableRow[]} items
- * @param {HTMLElement} item_parent
- */
-function setup_sort_behavior(sort_buttons, items, item_parent) {
+function setup_sort_behavior(
+  sort_buttons: HTMLElement[],
+  items: TableRow[],
+  item_parent: HTMLElement,
+) {
   sort_buttons.forEach((button, button_index) => {
     button.addEventListener("click", function sort_items() {
       const sort_desc = button.classList.contains("asc");
@@ -160,8 +160,9 @@ function setup_sort_behavior(sort_buttons, items, item_parent) {
 }
 
 function sqlpage_table() {
-  /** @type {NodeListOf<HTMLElement>} */
-  const tables = document.querySelectorAll("[data-pre-init=table]");
+  const tables = document.querySelectorAll<HTMLElement>(
+    "[data-pre-init=table]",
+  );
   for (const r of tables) {
     r.removeAttribute("data-pre-init");
     setup_table(r);
@@ -196,11 +197,9 @@ function sqlpage_map() {
   if (first_map && is_leaflet_loaded) {
     onLeafletLoad();
   }
-  /**
-   * @param {string|undefined} coords
-   * @returns {[number, number] | undefined}
-   */
-  function parseCoords(coords) {
+  function parseCoords(
+    coords: string | undefined,
+  ): [number, number] | undefined {
     if (!coords) return undefined;
     const parsed = coords.split(",", 2).map((c) => Number.parseFloat(c));
     if (parsed.length !== 2 || !parsed.every(Number.isFinite)) {
@@ -213,8 +212,7 @@ function sqlpage_map() {
   }
   function onLeafletLoad() {
     is_leaflet_loaded = true;
-    /** @type {NodeListOf<HTMLElement>} */
-    const maps = document.querySelectorAll("[data-pre-init=map]");
+    const maps = document.querySelectorAll<HTMLElement>("[data-pre-init=map]");
     for (const m of maps) {
       const tile_source = m.dataset.tile_source;
       const maxZoom = Number(m.dataset.max_zoom);
@@ -231,8 +229,8 @@ function sqlpage_map() {
       setTimeout(() => {
         if (center) map.setView(center, zoom);
         else {
-          const markerBounds = (m) =>
-            m.getLatLng ? m.getLatLng() : m.getBounds();
+          const markerBounds = (marker: Untyped) =>
+            marker.getLatLng ? marker.getLatLng() : marker.getBounds();
           const bounds = map._sqlpage_markers.map(markerBounds);
           if (bounds.length > 0) map.fitBounds(bounds);
           else map.setView([51.505, 10], zoom);
@@ -244,11 +242,11 @@ function sqlpage_map() {
     }
   }
 
-  function addMarker(marker_elem, map) {
+  function addMarker(marker_elem: HTMLElement, map: Untyped) {
     const { dataset } = marker_elem;
-    const options = {
-      color: marker_elem.dataset.color,
-      title: marker_elem.getElementsByTagName("h3")[0].textContent.trim(),
+    const options: Untyped = {
+      color: dataset.color,
+      title: marker_elem.getElementsByTagName("h3")[0]?.textContent?.trim(),
     };
     const marker = dataset.coords
       ? createMarker(marker_elem, options)
@@ -256,21 +254,26 @@ function sqlpage_map() {
     if (!marker) return;
     marker.addTo(map);
     map._sqlpage_markers.push(marker);
-    if (marker_elem.textContent.trim()) marker.bindPopup(marker_elem);
-    else if (marker_elem.dataset.link) {
+    const link = dataset.link;
+    if (marker_elem.textContent?.trim()) marker.bindPopup(marker_elem);
+    else if (link) {
       marker.on("click", () => {
-        window.location.href = marker_elem.dataset.link;
+        window.location.href = link;
       });
     }
   }
-  function createMarker(marker_elem, options) {
+  function createMarker(marker_elem: HTMLElement, options: Untyped) {
     const coords = parseCoords(marker_elem.dataset.coords);
     if (!coords) return undefined;
     const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
     if (icon_obj) {
       const size =
         1.5 *
-        +(options.size || icon_obj.firstChild?.getAttribute("width") || 24);
+        +(
+          options.size ||
+          icon_obj.firstElementChild?.getAttribute("width") ||
+          24
+        );
       options.icon = L.divIcon({
         html: icon_obj,
         className: `border-0 bg-${options.color || "primary"} bg-gradient text-white rounded-circle shadow d-flex justify-content-center align-items-center`,
@@ -280,16 +283,16 @@ function sqlpage_map() {
     }
     return L.marker(coords, options);
   }
-  function createGeoJSONMarker(marker_elem, options) {
-    const geojson = JSON.parse(marker_elem.dataset.geojson);
+  function createGeoJSONMarker(marker_elem: HTMLElement, options: Untyped) {
+    const geojson = JSON.parse(marker_elem.dataset.geojson ?? "");
     if (options.color) {
       options.color = get_tabler_color(options.color) || options.color;
     }
-    function style({ properties }) {
+    function style({ properties }: Untyped) {
       if (typeof properties !== "object") return options;
       return { ...options, ...properties };
     }
-    function pointToLayer(feature, latlng) {
+    function pointToLayer(feature: Untyped, latlng: Untyped) {
       marker_elem.dataset.coords = `${latlng.lat},${latlng.lng}`;
       return createMarker(marker_elem, { ...options, ...feature.properties });
     }
@@ -298,8 +301,7 @@ function sqlpage_map() {
 }
 
 function sqlpage_form() {
-  /** @type {NodeListOf<HTMLInputElement>} */
-  const file_inputs = document.querySelectorAll(
+  const file_inputs = document.querySelectorAll<HTMLInputElement>(
     "input[type=file][data-max-size]",
   );
   for (const input of file_inputs) {
@@ -318,22 +320,22 @@ function sqlpage_form() {
     });
   }
 
-  /** @type {NodeListOf<HTMLFormElement>} */
-  const auto_submit_forms = document.querySelectorAll("form[data-auto-submit]");
+  const auto_submit_forms = document.querySelectorAll<HTMLFormElement>(
+    "form[data-auto-submit]",
+  );
   for (const form of auto_submit_forms) {
     form.addEventListener("change", () => form.submit());
   }
 }
 
-function get_tabler_color(name) {
+function get_tabler_color(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(
     `--tblr-${name}`,
   );
 }
 
 function load_scripts() {
-  /** @type {NodeListOf<HTMLElement>} */
-  const addjs = document.querySelectorAll("[data-sqlpage-js]");
+  const addjs = document.querySelectorAll<HTMLElement>("[data-sqlpage-js]");
   const existing_scripts = new Set(
     [...document.querySelectorAll("script")].map((s) => s.src),
   );
@@ -348,14 +350,9 @@ function load_scripts() {
   }
 }
 
-function add_init_fn(f) {
-  document.addEventListener("DOMContentLoaded", f);
-  document.addEventListener("fragment-loaded", f);
-  if (document.readyState !== "loading") setTimeout(f, 0);
-}
-
-function normalize_hash(hash) {
+function normalize_hash(hash: string | undefined) {
   const normalized = hash?.replace(/^#/, "");
+  if (!normalized) return undefined;
   try {
     return decodeURIComponent(normalized);
   } catch {
@@ -363,9 +360,7 @@ function normalize_hash(hash) {
   }
 }
 
-function open_toasts_for_hash(toasts) {
-  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
-  if (!Toast) return;
+function open_toasts_for_hash(toasts: Iterable<HTMLElement>) {
   const hash = normalize_hash(window.location.hash);
   if (!hash) return;
   for (const toast of toasts) {
@@ -375,9 +370,9 @@ function open_toasts_for_hash(toasts) {
   }
 }
 
-function restore_focus_after_toast(toast, container) {
+function restore_focus_after_toast(toast: HTMLElement, container: HTMLElement) {
   if (!toast.contains(document.activeElement)) return;
-  const next_close = container.querySelector(
+  const next_close = container.querySelector<HTMLElement>(
     '.toast.show [data-bs-dismiss="toast"]',
   );
   if (next_close) {
@@ -391,28 +386,24 @@ function restore_focus_after_toast(toast, container) {
 }
 
 function sqlpage_toast() {
-  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
-  if (!Toast) return;
-
-  const initialized_toasts = [];
-  /** @type {NodeListOf<HTMLElement>} */
-  const toasts = document.querySelectorAll('[data-pre-init="toast"]');
+  const initialized_toasts: HTMLElement[] = [];
+  const toasts = document.querySelectorAll<HTMLElement>(
+    '[data-pre-init="toast"]',
+  );
   for (const toast of toasts) {
     const source_container = toast.parentElement;
     if (!source_container) continue;
     const position = source_container.dataset.sqlpageToastPosition;
-    let container = /** @type {HTMLElement | null} */ (
-      document.querySelector(
-        `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
-      )
+    const shared_container = document.querySelector<HTMLElement>(
+      `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
     );
-    if (!container) {
-      container = source_container;
-      container.removeAttribute("data-pre-init");
-      document.body.appendChild(container);
-    } else {
+    const container = shared_container ?? source_container;
+    if (shared_container) {
       container.appendChild(toast);
       source_container.remove();
+    } else {
+      container.removeAttribute("data-pre-init");
+      document.body.appendChild(container);
     }
 
     toast.removeAttribute("data-pre-init");
@@ -449,23 +440,24 @@ add_init_fn(sqlpage_form);
 add_init_fn(load_scripts);
 add_init_fn(sqlpage_toast);
 window.addEventListener("hashchange", () =>
-  open_toasts_for_hash(document.querySelectorAll("[data-toast-trigger]")),
+  open_toasts_for_hash(
+    document.querySelectorAll<HTMLElement>("[data-toast-trigger]"),
+  ),
 );
 
-function init_bootstrap_components(event) {
-  const bootstrap = window.bootstrap || window.tabler.bootstrap;
-  const fragment = event.target;
+function init_bootstrap_components(event: Event) {
+  const fragment = event.target as HTMLElement;
   for (const el of fragment.querySelectorAll('[data-bs-toggle="tooltip"]')) {
-    new bootstrap.Tooltip(el);
+    new Tooltip(el);
   }
   for (const el of fragment.querySelectorAll('[data-bs-toggle="popover"]')) {
-    new bootstrap.Popover(el);
+    new Popover(el);
   }
   for (const el of fragment.querySelectorAll('[data-bs-toggle="dropdown"]')) {
-    new bootstrap.Dropdown(el);
+    new Dropdown(el);
   }
   for (const el of fragment.querySelectorAll('[data-bs-ride="carousel"]')) {
-    new bootstrap.Carousel(el);
+    new Carousel(el);
   }
 }
 
@@ -476,9 +468,7 @@ function open_modal_for_hash() {
   if (!hash) return;
   const modal = document.getElementById(hash);
   if (!modal?.classList.contains("modal")) return;
-  const bootstrap_modal =
-    window.tabler.bootstrap.Modal.getOrCreateInstance(modal);
-  bootstrap_modal.show();
+  Modal.getOrCreateInstance(modal).show();
   modal.addEventListener("hidden.bs.modal", () => {
     window.history.replaceState(null, "", "#");
   });

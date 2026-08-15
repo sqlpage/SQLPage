@@ -34,7 +34,7 @@ JavaScript where needed.
   retries, and optional `on_connect.sql`/`on_reset.sql` hooks. Database-specific SQL should be isolated or
   covered by the relevant database tests.
 - **Rendering and components** (`src/render.rs`, `src/templates.rs`, `src/dynamic_component.rs`,
-  `src/template_helpers.rs`, `sqlpage/templates/`, `sqlpage/sqlpage.css`, `sqlpage/sqlpage.js`). Built-in components live in `sqlpage/templates/*.handlebars` and cover shells, text,
+  `src/template_helpers.rs`, `sqlpage/templates/`, `frontend/src/`). Built-in components live in `sqlpage/templates/*.handlebars` and cover shells, text,
   tables, lists, cards, charts, forms, navigation, modals, downloads, maps, and more. Query columns map to
   component properties; nested/dynamic components and `sqlpage.run_sql` support composition and lazy loading.
   Custom Handlebars components can be placed in the configured `sqlpage/templates` directory. Raw HTML and
@@ -97,9 +97,10 @@ pattern for the relevant area.
 Mandatory formatting (rust): `cargo fmt --all`
 Mandatory linting: `cargo clippy --all-targets --all-features -- -D warnings`
 
-### When working on css or js
+### When working on css or typescript
 Frontend formatting: `npm run format`
 Mandatory frontend validation: `npm test`
+Rebuild the bundles before any cargo command that has to serve the change: `npm run build`
 
 More about testing: see [github actions](./.github/workflows/ci.yml).
 Contributor setup and validation: see [CONTRIBUTING.md](./CONTRIBUTING.md). Module overview: see [src/lib.rs](./src/lib.rs); architecture diagram: [docs/architecture-detailed.png](./docs/architecture-detailed.png).
@@ -142,4 +143,4 @@ official documentation website sql tables:
 - [Configuration](./configuration.md): see [AppConfig](./src/app_config.rs)
 - Routing: file-based in `src/webserver/routing.rs`. Missing paths use the nearest ancestor `404.sql`; without one, HTML uses `src/default_404.sql` and other formats receive a plain-text 404.
 - Follow patterns from similar modules before introducing new abstractions.
-- frontend: see [css](./sqlpage/sqlpage.css) and [js](./sqlpage/sqlpage.js)
+- frontend: TypeScript and CSS in [frontend/src](./frontend/src), bundled by [frontend/build.mjs](./frontend/build.mjs) into `frontend/dist`, which `build.rs` embeds. Third-party libraries come from npm.

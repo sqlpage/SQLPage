@@ -15,7 +15,6 @@ declare global {
       };
     }[];
   }
-  function sqlpage_chart(): void;
 }
 
 type Row = [series: string, x: unknown, y: unknown, z?: unknown];
@@ -95,7 +94,9 @@ async function renderChart(
       const reportError = console.error;
       console.error = (...args) => failures.push(args.map(String).join(" "));
       const before = window.charts?.length ?? 0;
-      sqlpage_chart();
+      container.dispatchEvent(
+        new CustomEvent("fragment-loaded", { bubbles: true }),
+      );
       console.error = reportError;
 
       const rendered = window.charts?.[before];

@@ -2,10 +2,6 @@ import { expect, type Page, test } from "@playwright/test";
 
 const BASE = process.env.SQLPAGE_TEST_BASE ?? "http://localhost:8080/";
 
-declare global {
-  function sqlpage_map(): void;
-}
-
 type Marker = { coords?: string; title: string };
 
 const PARIS = "48.85,2.35";
@@ -44,7 +40,9 @@ async function renderMap(
       const console_error = console.error;
       console.error = (...args) => logged.push(args.join(" "));
 
-      sqlpage_map();
+      container.dispatchEvent(
+        new CustomEvent("fragment-loaded", { bubbles: true }),
+      );
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       console.error = console_error;

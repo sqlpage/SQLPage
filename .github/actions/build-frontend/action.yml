@@ -1,0 +1,15 @@
+name: Build frontend assets
+description: >
+  Installs the npm toolchain and builds the browser bundles that the Rust build
+  embeds. Every job that compiles SQLPage needs this first.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+        cache: npm
+    - run: npm ci
+      shell: bash
+    - run: npm run build
+      shell: bash
