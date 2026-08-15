@@ -1,9 +1,17 @@
+FROM node:24-alpine AS frontend
+WORKDIR /usr/src/sqlpage
+COPY package.json package-lock.json tsconfig.json ./
+RUN npm ci --workspaces=false
+COPY frontend/ frontend/
+RUN npm run build
+
 FROM rust:1.95-alpine AS builder
 RUN rustup component add clippy rustfmt
 RUN apk add --no-cache musl-dev zip
 WORKDIR /usr/src/sqlpage
 RUN cargo init .
 COPY Cargo.toml Cargo.lock ./
+COPY --from=frontend /usr/src/sqlpage/frontend/dist frontend/dist
 RUN cargo build --release
 COPY . .
 RUN cargo build --release --features lambda-web

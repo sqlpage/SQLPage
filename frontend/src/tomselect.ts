@@ -1,8 +1,12 @@
-/* !include https://cdn.jsdelivr.net/npm/tom-select@2.6.1/dist/js/tom-select.popular.min.js */
+import TomSelect from "tom-select/popular";
+import { add_init_fn } from "./init.ts";
+
+type TomLoadCallback = TomSelect["loadCallback"];
 
 function sqlpage_select_dropdown() {
-  /** @type {NodeListOf<HTMLSelectElement>} */
-  const selects = document.querySelectorAll("[data-pre-init=select-dropdown]");
+  const selects = document.querySelectorAll<HTMLSelectElement>(
+    "[data-pre-init=select-dropdown]",
+  );
   for (const s of selects) {
     try {
       sqlpage_select_dropdown_individual(s);
@@ -12,11 +16,7 @@ function sqlpage_select_dropdown() {
   }
 }
 
-/**
- * Initialize a select dropdown for a single element
- * @param {HTMLSelectElement} s - The select element to initialize
- */
-function sqlpage_select_dropdown_individual(s) {
+function sqlpage_select_dropdown_individual(s: HTMLSelectElement) {
   s.removeAttribute("data-pre-init");
   // See: https://github.com/orchidjs/tom-select/issues/716
   // By default, TomSelect will not retain the focus if s is already focused
@@ -27,10 +27,10 @@ function sqlpage_select_dropdown_individual(s) {
     load: sqlpage_load_options_source(s.dataset.options_source),
     valueField: "value",
     labelField: "label",
-    searchField: "label",
-    create: s.dataset.create_new,
+    searchField: ["label"],
+    create: !!s.dataset.create_new,
     maxOptions: null,
-    onItemAdd: function () {
+    onItemAdd: function (this: TomSelect) {
       this.setTextboxValue("");
       this.refreshOptions();
     },
@@ -49,10 +49,10 @@ function sqlpage_select_dropdown_individual(s) {
   });
 }
 
-function sqlpage_load_options_source(options_source) {
+function sqlpage_load_options_source(options_source: string | undefined) {
   if (!options_source) return;
-  return async (query, callback) => {
-    const err = (label) => callback([{ label, value: "" }]);
+  return async (query: string, callback: TomLoadCallback) => {
+    const err = (label: string) => callback([{ label, value: "" }], []);
     const options_url = new URL(options_source, document.baseURI);
     options_url.searchParams.set("search", query);
     const resp = await fetch(options_url);
@@ -88,7 +88,8 @@ function sqlpage_load_options_source(options_source) {
         );
       }
     }
-    callback(results);
+    callback(results, []);
   };
 }
+
 add_init_fn(sqlpage_select_dropdown);

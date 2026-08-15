@@ -8,7 +8,7 @@ license = "MIT"
 homepage = "https://sql-page.com/"
 repository = "https://github.com/sqlpage/SQLPage"
 documentation = "https://docs.rs/sqlpage"
-include = ["/src", "/README.md", "/build.rs", "/sqlpage"]
+include = ["/src", "/README.md", "/build.rs", "/sqlpage", "/frontend/dist"]
 
 [profile.superoptimized]
 inherits = "release"
@@ -130,7 +130,4 @@ actix-http = "3"
 tokio = { version = "1", features = ["rt", "time", "test-util"] }
 
 [build-dependencies]
-awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
-rustls = "0.23"
-actix-rt = "2.8"
 libflate = "2"

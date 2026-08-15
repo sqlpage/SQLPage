@@ -2,6 +2,7 @@
   "name": "sqlpage",
   "version": "1.0.0",
   "scripts": {
+    "build": "node frontend/build.mjs",
     "test": "biome check . && npm run typecheck && node --test \"tests/js/**/*.spec.ts\"",
     "typecheck": "tsc && tsc -p tests/js && tsc -p tests/end-to-end",
     "format": "biome format --write .",
@@ -12,9 +13,16 @@
     "url": "git+https://github.com/sqlpage/SQLPage.git"
   },
   "license": "MIT",
+  "dependencies": {
+    "@tabler/core": "1.4.0",
+    "@tabler/icons-sprite": "3.44.0",
+    "apexcharts": "5.13.0",
+    "tom-select": "2.6.1"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",
     "@types/node": "^26.2.0",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   },
   "workspaces": [

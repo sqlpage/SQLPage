@@ -5,7 +5,7 @@ Thank you for your interest in contributing to SQLPage! This document will guide
 ## Development Setup
 
 1. Install Rust and Cargo (latest stable version): https://www.rust-lang.org/tools/install
-2. If you contribute to the frontend, install Node.js too for frontend tooling: https://nodejs.org/en/download/
+2. Install Node.js: https://nodejs.org/en/download/ . It builds the browser assets that the server embeds.
 3. Clone the repository
 
 ```bash
@@ -19,9 +19,10 @@ The first time you build the project,
 dependencies will be downloaded, so you will need internet access,
 and the build may take a while.
 
-Run the following command from the root of the repository to build the project in development mode:
+Run the following commands from the root of the repository to build the project in development mode:
 
 ```bash
+npm ci && npm run build
 cargo build
 ```
 

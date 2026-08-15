@@ -13,3 +13,4 @@ examples/
 mssql/
 tests/
 .idea/
+frontend/dist

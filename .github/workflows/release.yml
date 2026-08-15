@@ -30,6 +30,7 @@ jobs:
             features: "odbc-static"
     steps:
       - uses: actions/checkout@v6
+      - uses: ./.github/actions/build-frontend
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -87,6 +88,7 @@ jobs:
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
       - uses: actions/checkout@v6
+      - uses: ./.github/actions/build-frontend
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -155,15 +157,18 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v6
+      - uses: ./.github/actions/build-frontend
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
           NODE_OPTIONS: --no-deprecation
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
+      # The crate has to carry the frontend built above, and those files are
+      # deliberately untracked: that is all --allow-dirty stands for here.
       - name: Publish to crates.io
         run: |
           set +e
-          cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} 2>&1 | tee cargo-publish.log
+          cargo publish --allow-dirty --token ${{ secrets.CRATES_IO_TOKEN }} 2>&1 | tee cargo-publish.log
           status=${PIPESTATUS[0]}
           set -e
           if [ "$status" -ne 0 ]; then

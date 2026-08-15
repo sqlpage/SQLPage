@@ -163,17 +163,8 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
   await expect(stackOne).toBeVisible();
   await expect(automatic).toBeHidden({ timeout: 7000 });
   expect(
-    await automaticHandle?.evaluate((element) => {
-      const testWindow = window as Window & {
-        tabler: {
-          bootstrap: {
-            Toast: { getInstance(element: Element): unknown };
-          };
-        };
-      };
-      return testWindow.tabler.bootstrap.Toast.getInstance(element) === null;
-    }),
-  ).toBe(true);
+    await automaticHandle?.evaluate((element) => element.isConnected),
+  ).toBe(false);
 
   const dismissible = page.locator("#toast-dismissible");
   await expect(dismissible).toHaveAttribute("data-bs-delay", "0");
