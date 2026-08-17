@@ -6,6 +6,7 @@
  - Added a `toast` component with plain-text or Markdown content, icons, colors, six screen placements, configurable auto-dismiss timing, optional manual dismissal, URL-fragment triggers, and automatic stacking of queued notifications.
  - `sqlpage.send_mail` now supports rich email bodies. Use `body_html` for a caller-provided HTML alternative, or `body_md` to render Markdown as HTML. Messages retain a plain-text alternative; `body` may be omitted when `body_md` is used, and `body_md` and `body_html` cannot be combined.
  - Form `options_source` URLs now preserve existing query parameters when adding the dynamic `search` parameter.
+ - Searchable single-select form fields now close their dropdown after an option is selected.
  - Map coordinates that are not a pair of numbers, like a latitude with no longitude, are now reported in the browser console and skipped, instead of breaking the whole map.
  - Stacked charts now stack their series by `x` value instead of by point order, which used to give wrong totals when a series was missing a point.
  - `line`, `area`, `scatter`, `bubble` and `heatmap` charts with text labels on the x axis now line their series up by label, leaving a gap where a series skips one.

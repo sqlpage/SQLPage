@@ -30,10 +30,8 @@ function sqlpage_select_dropdown_individual(s) {
     searchField: "label",
     create: s.dataset.create_new,
     maxOptions: null,
-    onItemAdd: function () {
-      this.setTextboxValue("");
-      this.refreshOptions();
-    },
+    closeAfterSelect: !s.multiple,
+    clearAfterSelect: true,
   });
   if (is_focused) tom.focus();
   s.form?.addEventListener("reset", async () => {
