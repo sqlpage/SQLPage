@@ -524,14 +524,60 @@ test("form select combines initial options with remote search results", async ({
       formLabel: "form",
       mapLabel: "map",
     });
+});
 
-  await select.evaluate((element: HTMLSelectElement) =>
-    element.tomselect?.open(),
+test("form type=select searchable=true", async ({ page }) => {
+  await page.goto(`${BASE}/examples/form`);
+
+  const form = page.locator("form").filter({
+    has: page.locator('select[name="region"]'),
+  });
+  const regionSelect = form.locator('select[name="region"]');
+  const regionField = form.locator("label").filter({
+    has: page.locator('select[name="region"]'),
+  });
+  const regionCombobox = regionField.locator('input[role="combobox"]');
+  const dropdown = regionField.getByRole("listbox");
+  const selectedRegion = (name: string) =>
+    regionField.getByText(name, { exact: true }).filter({ visible: true });
+
+  await expect(selectedRegion("North America")).toBeVisible();
+  await expect(regionSelect).toHaveValue("NA");
+
+  await selectedRegion("North America").click();
+  await expect(dropdown).toBeVisible();
+  await expect(dropdown.getByRole("option")).toHaveCount(3);
+
+  await regionCombobox.fill("south");
+  await expect(dropdown.getByRole("option")).toHaveCount(1);
+  const southAmerica = dropdown.getByRole("option", {
+    name: "South America",
+    exact: true,
+  });
+  await expect(southAmerica).toBeVisible();
+
+  await southAmerica.click();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
   );
-  const mapOption = page.locator(".ts-dropdown .option", { hasText: "map" });
-  await expect(mapOption).toBeVisible();
-  await mapOption.click();
-  await expect(page.locator(".ts-dropdown")).not.toBeVisible();
+  await expect(dropdown).not.toBeVisible();
+  await expect(regionCombobox).toHaveAttribute("aria-expanded", "false");
+  await expect(regionSelect).toHaveValue("SA");
+  await expect(selectedRegion("South America")).toBeVisible();
+
+  const terms = form.getByLabel("I accept the terms and conditions");
+  await form
+    .locator("label")
+    .filter({ has: page.locator('input[name="terms"]') })
+    .click();
+  await expect(terms).toBeChecked();
+  await form.getByRole("button", { name: /submit/i }).click();
+
+  await expect(page).toHaveURL(/\/examples\/show_variables\.sql$/);
+  await expect(page.getByText(":region = SA", { exact: true })).toBeVisible();
 });
 
 test("modal", async ({ page }) => {

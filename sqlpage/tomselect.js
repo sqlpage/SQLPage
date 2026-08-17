@@ -31,10 +31,7 @@ function sqlpage_select_dropdown_individual(s) {
     create: s.dataset.create_new,
     maxOptions: null,
     closeAfterSelect: !s.multiple,
-    onItemAdd: function () {
-      this.setTextboxValue("");
-      this.refreshOptions();
-    },
+    clearAfterSelect: true,
   });
   if (is_focused) tom.focus();
   s.form?.addEventListener("reset", async () => {

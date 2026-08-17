@@ -57,9 +57,17 @@ SELECT 'website' AS name, 'url' AS type, 'https://example.com' AS placeholder,
 
 SELECT 'header' AS type, 'Selection Types' AS label;
 
-SELECT 'country' AS name, 'select' AS type, 
+SELECT 'country' AS name, 'select' AS type,
     '[{"label": "United States", "value": "US"}, {"label": "Canada", "value": "CA"}, {"label": "United Kingdom", "value": "GB"}]' AS options,
-    '**Select** (SQLPage custom) - Dropdown menu. Use for single choice from many options. Add `multiple` for multi-select. Use `searchable` for long lists. Set `dropdown` for enhanced UI.' AS description_md;
+    '**select**: basic dropdown menu. Use for single choice from many options' AS description_md;
+
+SELECT 'region' AS name, 'select' AS type, true as searchable,
+    '[{"label": "North America", "value": "NA"}, {"label": "South America", "value": "SA"}, {"label": "Europe", "value": "EU"}]' AS options,
+    '**select** with searchable: dropdown menu with searchable options' AS description_md;
+
+SELECT 'title' AS name, 'select' AS type, true as multiple, true as searchable,
+    '[{"label": "professor", "value": "professor"}, {"label": "doctor", "value": "doctor"}, {"label": "lord", "value": "lord"}]' AS options,
+    '**select** with multiple: dropdown menu with multiple selections' AS description_md;
 
 SELECT 'gender' AS name, 'radio' AS type, 'Male' AS value, 'Male' AS label,
     '**Radio** - Radio button for mutually exclusive choices. Create multiple rows with same `name` for a radio group. One option can be selected. Use for 2-5 options.' AS description_md;
