@@ -68,6 +68,14 @@ VALUES (
         'BOOLEAN',
         TRUE,
         TRUE
+    ),
+    (
+        'tab',
+        'center',
+        'Whether this individual tab''s label should be centered inside the tab. Defaults to false.',
+        'BOOLEAN',
+        FALSE,
+        TRUE
     )
     ;
 

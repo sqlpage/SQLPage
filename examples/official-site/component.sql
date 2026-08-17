@@ -30,17 +30,17 @@ where name = $component and introduced_in_version IS NOT NULL;
 
 select 'title' as component, 3 as level, 'Top-level parameters' as contents where $component IS NOT NULL;
 select 'table' as component, true as striped, true as hoverable, true as freeze_columns,
-    'type' as markdown
+    'type' as markdown, 'description' as markdown
     where $component IS NOT NULL;
 select
     name,
     CASE WHEN optional THEN '' ELSE 'REQUIRED' END as required,
-    CASE type 
+    CASE type
         WHEN 'COLOR' THEN printf('[%s](/colors.sql)', type)
         WHEN 'ICON' THEN printf('[%s](https://tabler-icons.io/?ref=sqlpage)', type)
         ELSE type
     END AS type,
-    description
+    coalesce(description_md, description) as description
 from parameter where component = $component AND top_level
 ORDER BY optional, name;
 
@@ -48,17 +48,17 @@ ORDER BY optional, name;
 select 'title' as component, 3 as level, 'Row-level parameters' as contents
 WHERE $component IS NOT NULL AND EXISTS (SELECT 1 from parameter where component = $component AND NOT top_level);
 select 'table' as component, true as striped, true as hoverable, true as freeze_columns,
-    'type' as markdown
+    'type' as markdown, 'description' as markdown
     where $component IS NOT NULL;
 select
     name,
     CASE WHEN optional THEN '' ELSE 'REQUIRED' END as required,
-    CASE type 
+    CASE type
         WHEN 'COLOR' THEN printf('[%s](/colors.sql)', type)
         WHEN 'ICON' THEN printf('[%s](https://tabler-icons.io/?ref=sqlpage)', type)
         ELSE type
     END AS type,
-    description
+    coalesce(description_md, description) as description
 from parameter where component = $component AND NOT top_level
 ORDER BY optional, name;
 

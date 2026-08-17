@@ -39,6 +39,14 @@ INSERT INTO
 VALUES
     (
         'map',
+        'title',
+        'A text header displayed above the map.',
+        'TEXT',
+        TRUE,
+        TRUE
+    ),
+    (
+        'map',
         'latitude',
         'Latitude of the center of the map. If omitted, the map will be centered on its markers.',
         'REAL',

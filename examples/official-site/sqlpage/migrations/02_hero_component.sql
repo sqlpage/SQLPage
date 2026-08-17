@@ -127,6 +127,13 @@ FROM
                 TRUE
             ),
             (
+                'color',
+                'Color of the badge behind the feature section''s icon. Defaults to "success".',
+                'COLOR',
+                FALSE,
+                TRUE
+            ),
+            (
                 'link',
                 'An URL to which the user should be taken when they click on the section title.',
                 'TEXT',

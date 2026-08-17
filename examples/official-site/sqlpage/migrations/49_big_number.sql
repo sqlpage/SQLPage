@@ -8,8 +8,7 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'big_number', * FROM (VALUES
     -- Top-level parameters (for the whole big_number list)
     ('columns', 'The number of columns to display the big numbers in (default is one column per item).', 'INTEGER', TRUE, TRUE),
-    ('id', 'An optional ID to be used as an anchor for links.', 'TEXT', TRUE, TRUE),
-    ('class', 'An optional CSS class to be added to the component for custom styling', 'TEXT', TRUE, TRUE),
+    -- id and class, at both levels, come from 99_shared_id_class_attributes.sql
     -- Item-level parameters (for each big number)
     ('title', 'The title or label for the big number.', 'TEXT', FALSE, TRUE),
     ('title_link', 'A link for the Big Number title. If set, the entire title becomes clickable.', 'TEXT', FALSE, TRUE),
