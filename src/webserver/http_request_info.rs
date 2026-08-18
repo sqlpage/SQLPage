@@ -183,9 +183,13 @@ async fn extract_post_data(
     } else {
         let body = actix_web::web::Bytes::from_request(http_req, payload)
             .await
-            .map(|bytes| bytes.to_vec())
-            .unwrap_or_default();
-        Ok((Vec::new(), Vec::new(), Some(body)))
+            .with_actix_error_status()
+            .context("could not read the request body")?;
+        Ok((
+            Vec::new(),
+            Vec::new(),
+            (!body.is_empty()).then(|| body.to_vec()),
+        ))
     }
 }
 
