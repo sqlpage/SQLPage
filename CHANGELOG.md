@@ -13,6 +13,7 @@
  - `column` charts now display vertical bars instead of nothing at all.
  - `stacked` is now ignored on chart types that cannot stack, instead of displaying an empty chart.
  - Screen readers now announce the title of the modal component instead of an unnamed dialog.
+ - `sqlpage.request_body` and `sqlpage.request_body_base64` now return NULL when the request has no body. A body that cannot be read, such as one exceeding the payload limit, is now reported as an error instead of being silently replaced with an empty body.
 
 ## v0.45
 
