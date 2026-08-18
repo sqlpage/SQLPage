@@ -23,7 +23,7 @@ SET req = '{
     "timeout_ms": 200
 }';
 SET api_results = sqlpage.fetch_with_meta($req);
-SET sqlpage_version = COALESCE(json_extract($api_results, '$.body.tag_name'), '');
+SET sqlpage_version = COALESCE(json_extract($api_results, '$.json_body.tag_name'), '');
 
 SELECT 'hero' as component,
     'Your first SQL Website' as title,
