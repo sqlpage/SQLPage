@@ -84,7 +84,7 @@ INSERT INTO parameter (component,name,description,type,top_level,optional) VALUE
 ),(
     'code',
     'description_md',
-    'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).',
+    'Rich text in the markdown format. Among others, this allows you to write bold text using `**bold**`, italics using `*italics*`, and links using `[text](https://example.com)`.',
     'TEXT',
     FALSE,
     TRUE

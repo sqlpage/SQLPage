@@ -9,7 +9,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('title','Description of the modal box.','TEXT',TRUE,FALSE),
     ('close','The text to display in the Close button.','TEXT',TRUE,TRUE),
     ('contents','A paragraph of text to display, without any formatting, without having to make additional queries.','TEXT',FALSE,TRUE),
-    ('contents_md','Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).','TEXT',FALSE,TRUE),
+    ('contents_md','Rich text in the markdown format. Among others, this allows you to write bold text using `**bold**`, italics using `*italics*`, and links using `[text](https://example.com)`.','TEXT',FALSE,TRUE),
     ('scrollable','Create a scrollable modal that allows scroll the modal body.','BOOLEAN',TRUE,TRUE),
     ('class','Class attribute added to the container in HTML. It can be used to apply custom styling to this item through css.','TEXT',TRUE,TRUE),
     ('id','ID attribute added to the container in HTML. It can be used to target this item through css or for displaying this item.','TEXT',TRUE,FALSE),

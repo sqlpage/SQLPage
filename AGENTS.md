@@ -128,12 +128,14 @@ For dynamic frontend changes, run the Playwright tests under `tests/end-to-end/`
 Components and functions are documented in [official-site migrations](./examples/official-site/sqlpage/migrations/). Edit the existing migration for an existing entity; add an appropriately ordered migration for a new entity. The official-site database is recreated from migrations on each deployment.
 
 official documentation website sql tables:
-  - `parameter_type(type)`
+  - `parameter_type(name)` -- the allowed values of `parameter.type`
   - `component(name,description,icon,introduced_in_version)` -- icon name from tabler icon
-  - `parameter(top_level BOOLEAN, name, component REFERENCES component(name), description, description_md, type, optional BOOLEAN)` parameter types: BOOLEAN, COLOR, HTML, ICON, INTEGER, JSON, REAL, TEXT, TIMESTAMP, URL
+  - `parameter(top_level BOOLEAN, name, component REFERENCES component(name), description, description_md, type REFERENCES parameter_type(name), optional BOOLEAN)` parameter types: BOOLEAN, COLOR, HTML, ICON, INTEGER, JSON, REAL, TEXT, TIMESTAMP, URL. Set exactly one of `description` (plain text) and `description_md` (markdown).
   - `example(component REFERENCES component(name), description, properties JSON)`
   - `sqlpage_functions(name,icon,description_md,return_type,introduced_in_version)`
   - `sqlpage_function_parameters(function,index,name,description_md,type)`
+  - `blog_posts(title,description,icon,external_url,content,created_at)` -- release announcements and long-form guides
+  - `example_cards(title,folder,db_engine,description)`
 
 #### Project Conventions
 

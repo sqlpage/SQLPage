@@ -45,6 +45,13 @@ INSERT INTO parameter (component,name,description,type,top_level,optional) VALUE
     TRUE
 ),(
     'rss',
+    'sub_category',
+    'Defines a sub-category, nested inside the "category". Ignored unless "category" is also set.',
+    'TEXT',
+    TRUE,
+    TRUE
+),(
+    'rss',
     'explicit',
     'Indicates whether the channel contains explicit content. The value can be either TRUE or FALSE.',
     'BOOLEAN',
@@ -83,6 +90,13 @@ INSERT INTO parameter (component,name,description,type,top_level,optional) VALUE
     'funding_url',
     'Specifies the donation/funding links for the channel. The content of the tag is the recommended string to be used with the link.',
     'URL',
+    TRUE,
+    TRUE
+),(
+    'rss',
+    'funding_text',
+    'The text to display with the donation/funding link. Ignored unless "funding_url" is also set.',
+    'TEXT',
     TRUE,
     TRUE
 ),(

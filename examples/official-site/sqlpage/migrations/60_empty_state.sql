@@ -11,11 +11,11 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('icon','Name of an icon to be displayed on the top of the empty state.','ICON',TRUE,TRUE),
     ('image','The URL (absolute or relative) of an image to display at the top of the empty state.','URL',TRUE,TRUE),
     ('description','A short text displayed below the title.','TEXT',TRUE,TRUE),
+    ('description_md','A short text displayed below the title, formatted using markdown.','TEXT',TRUE,TRUE),
     ('link_text','The text displayed on the button.','TEXT',TRUE,FALSE),
     ('link_icon','Name of an icon to be displayed on the left side of the button.','ICON',TRUE,FALSE),
-    ('link','The URL to which the button should navigate when clicked.','URL',TRUE,FALSE),
-    ('class','Class attribute added to the container in HTML. It can be used to apply custom styling to this item through css.','TEXT',TRUE,TRUE),
-    ('id','ID attribute added to the container in HTML. It can be used to target this item through css or for scrolling to this item through links (use "#id" in link url).','TEXT',TRUE,TRUE)
+    ('link','The URL to which the button should navigate when clicked.','URL',TRUE,FALSE)
+    -- id and class come from 99_shared_id_class_attributes.sql
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES

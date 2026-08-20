@@ -26,11 +26,14 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
     ('footer_link', 'An URL to which the user should be taken when they click on the footer.', 'URL', FALSE, TRUE),
     ('style', 'Inline style property to your iframe embed code. For example "background-color: #FFFFFF"', 'TEXT', FALSE, TRUE),
+    ('height', 'Height of the iframe embed code, in pixels. Used only when embed_mode is ''iframe''.', 'INTEGER', FALSE, TRUE),
+    ('allow', 'The permissions policy of the iframe embed code, for instance "fullscreen; clipboard-write". Used only when embed_mode is ''iframe''.', 'TEXT', FALSE, TRUE),
+    ('sandbox', 'The restrictions to apply to the iframe embed code, for instance "allow-scripts allow-same-origin". Used only when embed_mode is ''iframe''.', 'TEXT', FALSE, TRUE),
     ('icon', 'Name of an icon to display on the right side of the card.', 'ICON', FALSE, TRUE),
     ('color', 'The name of a color, to be displayed on the left of the card to highlight it. If the embed parameter is enabled and you don''t have a title or description, this parameter won''t apply.', 'COLOR', FALSE, TRUE),
     ('background_color', 'The background color of the card.', 'COLOR', FALSE, TRUE),
     ('active', 'Whether this item in the grid is considered "active". Active items are displayed more prominently.', 'BOOLEAN', FALSE, TRUE),
-    ('width', 'The width of the card, between 1 (smallest) and 12 (full-width). The default width is 3, resulting in 4 cards per line.', 'INTEGER', FALSE, TRUE)
+    ('width', 'The width of the card, between 1 (smallest) and 12 (full-width). The default width is 3, resulting in 4 cards per line. When embed_mode is ''iframe'', this is used as the width of the iframe instead, and defaults to 100%.', 'INTEGER', FALSE, TRUE)
 ) x;
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'card', * FROM (VALUES
     ('embed', 'A url whose contents will be fetched and injected into the body of this card.

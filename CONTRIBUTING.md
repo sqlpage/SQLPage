@@ -51,24 +51,27 @@ Windows comes with ODBC pre-installed; SQLPage cannot statically link to the uni
 
 ### Rust
 
-- Use `cargo fmt` to format your Rust code
+- Use `cargo fmt --all` to format your Rust code
 - Run `cargo clippy` to catch common mistakes and improve code quality
 - All code must pass the following checks:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy
+cargo clippy --all-targets --all-features -- -D warnings
 ```
 
 ### Frontend
 
-We use Biome for linting and formatting of the frontend code.
+We use Biome for linting and formatting of the frontend code, and TypeScript
+to typecheck it.
 
 ```bash
-npx @biomejs/biome check .
+npm install # once
+npm run format # apply formatting
+npm test # the check CI runs: biome, typecheck, and the frontend unit tests
 ```
 
-This will check the entire codebase (html, css, js).
+`npm test` checks the entire frontend codebase (html, css, js, ts).
 
 ## Testing
 
@@ -127,7 +130,11 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 
 -- Document all parameters
 INSERT INTO parameter(component, name, description, type, top_level, optional)
-VALUES ('component_name', 'param_name', 'param_description', 'TEXT|BOOLEAN|NUMBER|JSON|ICON|COLOR', false, true);
+VALUES ('component_name', 'param_name', 'param_description', 'TEXT|BOOLEAN|INTEGER|JSON|ICON|COLOR|HTML|REAL|TIMESTAMP|URL', false, true);
+
+-- Use description_md instead of description when the text contains markdown
+INSERT INTO parameter(component, name, description_md, type, top_level, optional)
+VALUES ('component_name', 'other_param', 'Set to `true` to see [the docs](/documentation.sql).', 'BOOLEAN', true, true);
 
 -- Include usage examples
 INSERT INTO example(component, description, properties) VALUES
@@ -180,7 +187,7 @@ VALUES (
     1,
     'parameter_name',
     'Description of what this parameter does and how to use it.',
-    'TEXT|BOOLEAN|NUMBER|JSON'
+    'TEXT|BOOLEAN|INTEGER|JSON'
 );
 ```
 
@@ -208,6 +215,7 @@ git checkout -b feature/your-feature-name
 - Code is properly formatted
 - New features are documented
 - tests cover new functionality
+- `CHANGELOG.md` has an entry for any user-visible change
 
 3. Push your changes and create a Pull Request
 
@@ -216,8 +224,8 @@ git checkout -b feature/your-feature-name
    - Run Rust formatting and clippy checks
    - Execute all tests across multiple platforms (Linux, Windows)
    - Build Docker images for multiple architectures
-   - Run frontend linting with Biome
-   - Test against multiple databases (PostgreSQL, MySQL, MSSQL)
+   - Run frontend linting, typechecking and unit tests (`npm test`)
+   - Test against multiple databases (SQLite, PostgreSQL, MySQL, MSSQL, Oracle, and ODBC)
 
 ## Release Process
 

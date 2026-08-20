@@ -13,9 +13,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('dismissible', 'Whether to render an accessible manual close button. Defaults to true and is independent of automatic dismissal.', 'BOOLEAN', TRUE, TRUE),
     ('duration', 'Automatic dismissal delay in milliseconds. Defaults to 5000. Set to 0 to keep the toast visible until manually dismissed (when `dismissible` is true) or the page is left.', 'INTEGER', TRUE, TRUE),
     ('position', 'Screen placement: `top-start`, `top-center`, `top-end`, `bottom-start`, `bottom-center`, or `bottom-end`. Defaults to `top-end`; invalid values safely fall back to that default.', 'TEXT', TRUE, TRUE),
-    ('trigger', 'Optional URL fragment that opens the toast without reloading the page, with or without the leading `#`. When set, the toast does not open on page load and can be opened repeatedly by a link or button whose target is that fragment. Multiple toasts can share a trigger to open as a stack.', 'TEXT', TRUE, TRUE),
-    ('id', 'Optional stable HTML ID for the toast.', 'TEXT', TRUE, TRUE),
-    ('class', 'Optional custom CSS class appended to the toast.', 'TEXT', TRUE, TRUE)
+    ('trigger', 'Optional URL fragment that opens the toast without reloading the page, with or without the leading `#`. When set, the toast does not open on page load and can be opened repeatedly by a link or button whose target is that fragment. Multiple toasts can share a trigger to open as a stack.', 'TEXT', TRUE, TRUE)
+    -- id and class come from 99_shared_id_class_attributes.sql
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES

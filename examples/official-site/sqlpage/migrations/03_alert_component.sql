@@ -48,7 +48,7 @@ VALUES (
     (
         'alert',
         'description_md',
-        'Detailed description or content of the alert message, in Markdown format, allowing you to use rich text formatting, including **bold** and *italic* text.',
+        'Detailed description or content of the alert message, in Markdown format, allowing you to use rich text formatting, including `**bold**` and `*italic*` text.',
         'TEXT',
         TRUE,
         TRUE

@@ -43,7 +43,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- item level
     ('title', 'Name of the list item, displayed prominently.', 'TEXT', FALSE, FALSE),
     ('description', 'A description of the list item, displayed as greyed-out text.', 'TEXT', FALSE, TRUE),
-    ('description_md', 'A description of the list item, displayed as greyed-out text, in Markdown format, allowing you to use rich text formatting, including **bold** and *italic* text.', 'TEXT', FALSE, TRUE),
+    ('description_md', 'A description of the list item, displayed as greyed-out text, in Markdown format, allowing you to use rich text formatting, including `**bold**` and `*italic*` text.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the list item.', 'URL', FALSE, TRUE),
     ('icon', 'Name of an icon to display on the left side of the item.', 'ICON', FALSE, TRUE),
     ('image_url', 'The URL of a small image to display on the left side of the item.', 'URL', FALSE, TRUE),
@@ -146,14 +146,13 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- top level
     ('title', 'Text header before the paragraph.', 'TEXT', TRUE, TRUE),
     ('center', 'Whether to center the title.', 'BOOLEAN', TRUE, TRUE),
-    ('width', 'How wide the paragraph should be, in characters.', 'INTEGER', TRUE, TRUE),
     ('html', 'Raw html code to include on the page. Don''t use that if you are not sure what you are doing, it may have security implications.', 'TEXT', TRUE, TRUE),
     ('contents', 'A top-level paragraph of text to display, without any formatting, without having to make additional queries.', 'TEXT', TRUE, TRUE),
-    ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', TRUE, TRUE),
+    ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using `**bold**`, italics using `*italics*`, and links using `[text](https://example.com)`.', 'TEXT', TRUE, TRUE),
     ('article', 'Makes long texts more readable by increasing the line height, adding margins, using a serif font, and decorating the initial letter.', 'BOOLEAN', TRUE, TRUE),
     -- item level
     ('contents', 'A span of text to display', 'TEXT', FALSE, FALSE),
-    ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using **bold**, italics using *italics*, and links using [text](https://example.com).', 'TEXT', FALSE, TRUE),
+    ('contents_md', 'Rich text in the markdown format. Among others, this allows you to write bold text using `**bold**`, italics using `*italics*`, and links using `[text](https://example.com)`.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on this span of text.', 'URL', FALSE, TRUE),
     ('color', 'The name of a color for this span of text.', 'COLOR', FALSE, TRUE),
     ('underline', 'Whether the span of text should be underlined.', 'BOOLEAN', FALSE, TRUE),
@@ -264,12 +263,18 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('validate', 'The text to display in the button at the bottom of the form that submits the values. Omit this property to let the browser display the default form validation text, or set it to the empty string to remove the button completely.', 'TEXT', TRUE, TRUE),
     ('validate_color', 'The color of the button at the bottom of the form that submits the values. Omit this property to use the default color.', 'COLOR', TRUE, TRUE),
     ('validate_outline', 'A color to outline the validation button.', 'COLOR', TRUE, TRUE),
+    ('validate_shape', 'The shape of the validation button (e.g., pill, square).', 'TEXT', TRUE, TRUE),
+    ('validate_size', 'The size of the validation button (e.g., sm, lg).', 'TEXT', TRUE, TRUE),
     ('reset', 'The text to display in the button at the bottom of the form that resets the form to its original state. Omit this property not to show a reset button at all.', 'TEXT', TRUE, TRUE),
     ('id', 'A unique identifier for the form, which can then be used to validate the form from a button outside of the form.', 'TEXT', TRUE, TRUE),
     ('auto_submit', 'Automatically submit the form when the user changes any of its fields, and remove the validation button.', 'BOOLEAN', TRUE, TRUE),
     ('validate_icon', 'Name of an icon to be displayed on the left side of the submit button.', 'ICON', TRUE, TRUE),
     ('reset_icon', 'Name of an icon to be displayed on the left side of the reset button.', 'ICON', TRUE, TRUE),
     ('reset_color', 'The color of the button at the bottom of the form that resets the form to its original state. Omit this property to use the default color.', 'COLOR', TRUE, TRUE),
+    ('reset_outline', 'A color to outline the reset button.', 'COLOR', TRUE, TRUE),
+    ('reset_shape', 'The shape of the reset button (e.g., pill, square).', 'TEXT', TRUE, TRUE),
+    ('reset_size', 'The size of the reset button (e.g., sm, lg).', 'TEXT', TRUE, TRUE),
+    ('narrow', 'Whether to trim the horizontal padding between the icon and the label of the validation and reset buttons.', 'BOOLEAN', TRUE, TRUE),
     -- item level
     ('type', 'Declares input control behavior and expected format. All HTML input types are supported (text, number, date, file, checkbox, radio, hidden, ...). SQLPage adds some custom types: textarea, switch, header. text by default. See https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input#input_types', 'TEXT', FALSE, TRUE),
     ('name', 'The name of the input field, that you can use in the target page to get the value the user entered for the field.', 'TEXT', FALSE, FALSE),
@@ -297,6 +302,11 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('minlength', 'Minimum length of text allowed in the field.', 'INTEGER', FALSE, TRUE),
     ('maxlength', 'Maximum length of text allowed in the field.', 'INTEGER', FALSE, TRUE),
     ('formaction', 'When type is "submit", this specifies the URL of the file that will handle the form submission. Useful when you need multiple submit buttons.', 'TEXT', FALSE, TRUE),
+    ('formmethod', 'When type is "submit", the HTTP method to submit the form with. Takes precedence over the form''s own "method".', 'TEXT', FALSE, TRUE),
+    ('formnovalidate', 'When type is "submit", skips the browser''s validation of the other fields when this button submits the form.', 'BOOLEAN', FALSE, TRUE),
+    ('formtarget', 'When type is "submit", where to display the response. Takes the same values as a link target: "_blank" to open a new tab, "_self" to stay in the same one.', 'TEXT', FALSE, TRUE),
+    ('accept', 'Used only for inputs of type "file". A comma-separated list of the file types the user can pick, given as extensions (".pdf,.png") or as MIME types ("image/*").', 'TEXT', FALSE, TRUE),
+    ('list', 'The id of a datalist element holding the suggestions to show for this field. The datalist itself has to be rendered by the "html" component.', 'TEXT', FALSE, TRUE),
     ('class', 'A CSS class to apply to the form element.', 'TEXT', FALSE, TRUE),
     ('prefix_icon','Icon to display on the left side of the input field, on the same line.','ICON',FALSE,TRUE),
     ('prefix','Text to display on the left side of the input field, on the same line.','TEXT',FALSE,TRUE),
@@ -660,6 +670,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
     ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
     ('xticks', 'Number of ticks on the x axis.', 'INTEGER', TRUE, TRUE),
+    ('yticks', 'Number of ticks on the y axis.', 'INTEGER', TRUE, TRUE),
     ('ystep', 'Step between ticks on the y axis.', 'REAL', TRUE, TRUE),
     ('marker', 'Marker size', 'REAL', TRUE, TRUE),
     ('labels', 'Whether to show the data labels on the chart or not.', 'BOOLEAN', TRUE, TRUE),
@@ -673,6 +684,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- item level
     ('x', 'The value of the point on the horizontal axis', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
+    ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
     ('label', 'An alias for parameter "x"', 'REAL', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
@@ -829,6 +841,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('money', 'Name of a numeric column whose values should be displayed as currency amounts, in the currency defined by the `currency` property. This argument can be repeated multiple times.', 'TEXT', TRUE, TRUE),
     ('currency', 'The ISO 4217 currency code (e.g., USD, EUR, GBP, etc.) to use when formatting monetary values.', 'TEXT', TRUE, TRUE),
     ('number_format_digits', 'Maximum number of decimal digits to display for numeric values.', 'INTEGER', TRUE, TRUE),
+    ('number_format_locale', 'A BCP 47 language tag (e.g. "de-DE", "en-IN") deciding how numbers and monetary values are formatted. Defaults to the locale of the visitor''s browser.', 'TEXT', TRUE, TRUE),
     ('edit_url', 'If set, an edit button will be added to each row. The value of this property should be a URL, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row. Clicking the edit button will take the user to that URL. Added in v0.39.0', 'TEXT', TRUE, TRUE),
     ('delete_url', 'If set, a delete button will be added to each row. The value of this property should be a URL, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row. Clicking the delete button will take the user to that URL. Added in v0.39.0', 'TEXT', TRUE, TRUE),
     ('custom_actions', 'If set, a column of custom action buttons will be added to each row. The value of this property should be a JSON array of objects, each object defining a button with the following properties: `name` (the text to display on the button), `icon` (the tabler icon name or image link to display on the button), `link` (the URL to navigate to when the button is clicked, possibly containing the `{id}` placeholder that will be replaced by the value of the `_sqlpage_id` property for that row), and `tooltip` (optional text to display when hovering over the button). Added in v0.39.0', 'JSON', TRUE, TRUE),
@@ -1367,7 +1380,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE),
     ('preview_image', 'The URL of an image to display as a link preview when the page is shared on social media', 'URL', TRUE, TRUE),
     ('navbar_title', 'The title to display in the top navigation bar. Used to display a different title in the top menu than the one that appears in the tab of the browser.', 'TEXT', TRUE, TRUE),
-    ('target', '"_blank" to open the link in a new tab, "_self" to open it in the same tab, "_parent" to open it in the parent frame, or "_top" to open it in the full body of the window', 'TEXT', TRUE, TRUE)
+    ('target', 'Where the menu items should open: "_blank" for a new tab, "_self" for the same tab, "_parent" for the parent frame, or "_top" for the full body of the window. Set it inside a "menu_item" json object; it has no effect when set directly on the shell.', 'TEXT', TRUE, TRUE),
+    ('class', 'class attribute added to the page''s html element. It can be used to apply custom styling to the whole page through css.', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
