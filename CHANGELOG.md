@@ -14,7 +14,7 @@
  - `stacked` is now ignored on chart types that cannot stack, instead of displaying an empty chart.
  - Screen readers now announce the title of the modal component instead of an unnamed dialog.
  - `sqlpage.request_body` and `sqlpage.request_body_base64` now return NULL when the request has no body. A body that cannot be read, such as one exceeding the payload limit, is now reported as an error instead of being silently replaced with an empty body.
- - The configuration guide now documents the defaults of `listen_on`, `port`, `database_url`, `max_database_pool_connections`, `https_certificate_cache_dir`, `system_root_ca_certificates` and `max_recursion_depth`.
+ - The configuration guide now documents the defaults of `database_url`, `max_database_pool_connections`, `https_certificate_cache_dir`, `system_root_ca_certificates` and `max_recursion_depth`, and explains that `https_domain` combined with a non-443 `listen_on` or `port` serves plain HTTP on that port alongside HTTPS on 443.
 
 ## v0.45
 
