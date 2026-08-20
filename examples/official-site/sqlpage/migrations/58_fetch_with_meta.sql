@@ -11,7 +11,19 @@ VALUES (
         'Sends an HTTP request and returns detailed metadata about the response, including status code, headers, and body.
 
 This function is similar to [`fetch`](?function=fetch), but returns a JSON object containing detailed information about the response.
-The returned object has the following structure:
+When the response declares a `content-type` of `application/json`, the parsed body is returned under `json_body`:
+```json
+{
+    "status": 200,
+    "headers": {
+        "content-type": "application/json",
+        "content-length": "1234"
+    },
+    "json_body": { "name": "ditto" }
+}
+```
+
+For every other content type, the body is returned as a string under `body`:
 ```json
 {
     "status": 200,
@@ -19,8 +31,7 @@ The returned object has the following structure:
         "content-type": "text/html",
         "content-length": "1234"
     },
-    "body": "a string, or a json object, depending on the content type",
-    "error": "error message if any"
+    "body": "<html>...</html>"
 }
 ```
 
@@ -42,8 +53,8 @@ where
 -- Extract data from the response json body
 select ''card'' as component;
 select
-    json_extract($response, ''$.body.name'') as title,
-    json_extract($response, ''$.body.abilities[0].ability.name'') as description
+    json_extract($response, ''$.json_body.name'') as title,
+    json_extract($response, ''$.json_body.abilities[0].ability.name'') as description
 from $response;
 ```
 

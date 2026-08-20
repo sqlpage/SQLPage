@@ -149,12 +149,21 @@ pub fn start_echo_server(shutdown: oneshot::Receiver<()>) -> (JoinHandle<()>, u1
     let listener = std::net::TcpListener::bind("localhost:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let server = HttpServer::new(|| {
-        App::new().default_service(fn_service(|mut req: ServiceRequest| async move {
-            let meta = format_request_line_and_headers(&req);
-            let body = format_body(&mut req).await;
-            let resp = build_echo_response(body, meta);
-            Ok(req.into_response(resp))
-        }))
+        App::new()
+            .route(
+                "/json",
+                web::to(|body: web::Bytes| async move {
+                    HttpResponse::Ok()
+                        .insert_header((header::CONTENT_TYPE, "application/json"))
+                        .body(body)
+                }),
+            )
+            .default_service(fn_service(|mut req: ServiceRequest| async move {
+                let meta = format_request_line_and_headers(&req);
+                let body = format_body(&mut req).await;
+                let resp = build_echo_response(body, meta);
+                Ok(req.into_response(resp))
+            }))
     })
     .workers(1)
     .listen(listener)
