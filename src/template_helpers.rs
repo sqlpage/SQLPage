@@ -168,7 +168,7 @@ fn to_array_helper(v: &JsonValue) -> JsonValue {
 struct StaticPathHelper(String);
 
 impl CanHelp for StaticPathHelper {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         let static_file = match args {
             [v] => v.value(),
             _ => return Err("expected one argument".to_string()),
@@ -192,7 +192,7 @@ impl CanHelp for StaticPathHelper {
 struct AppConfigHelper(AppConfig);
 
 impl CanHelp for AppConfigHelper {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         let static_file = match args {
             [v] => v.value(),
             _ => return Err("expected one argument".to_string()),
@@ -223,7 +223,7 @@ impl HelperDef for IconImgHelper {
         _rc: &mut handlebars::RenderContext<'reg, 'rc>,
         writer: &mut dyn handlebars::Output,
     ) -> handlebars::HelperResult {
-        let null = handlebars::JsonValue::Null;
+        let null = JsonValue::Null;
         let [name, size] = [0, 1].map(|i| helper.params().get(i).map_or(&null, PathAndJson::value));
         let size = size.as_u64().unwrap_or(24);
         let content = name.as_str().and_then(|name| ICON_MAP.get(name));
@@ -315,7 +315,7 @@ impl MarkdownHelper {
 }
 
 impl CanHelp for MarkdownHelper {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         let (markdown_src_value, preset_name) = match args {
             [v] => (v.value(), "default"),
             [v, preset] => {
@@ -502,7 +502,7 @@ fn loose_eq_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
 pub struct HelperCheckTruthy(bool);
 
 impl CanHelp for HelperCheckTruthy {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         for arg in args {
             if arg.value().is_truthy(false) == self.0 {
                 return Ok(arg.value().clone());
@@ -517,11 +517,11 @@ impl CanHelp for HelperCheckTruthy {
 }
 
 trait CanHelp: Send + Sync + 'static {
-    fn call(&self, v: &[PathAndJson]) -> Result<JsonValue, String>;
+    fn call(&self, v: &[PathAndJson<'_>]) -> Result<JsonValue, String>;
 }
 
 impl CanHelp for H0 {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         match args {
             [] => Ok(self()),
             _ => Err("expected no arguments".to_string()),
@@ -530,7 +530,7 @@ impl CanHelp for H0 {
 }
 
 impl CanHelp for H {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         match args {
             [v] => Ok(self(v.value())),
             _ => Err("expected one argument".to_string()),
@@ -539,7 +539,7 @@ impl CanHelp for H {
 }
 
 impl CanHelp for EH {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         match args {
             [v] => self(v.value()).map_err(|e| e.to_string()),
             _ => Err("expected one argument".to_string()),
@@ -548,7 +548,7 @@ impl CanHelp for EH {
 }
 
 impl CanHelp for HH {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         match args {
             [a, b] => Ok(self(a.value(), b.value())),
             _ => Err("expected two arguments".to_string()),
@@ -557,7 +557,7 @@ impl CanHelp for HH {
 }
 
 impl CanHelp for HHH {
-    fn call(&self, args: &[PathAndJson]) -> Result<JsonValue, String> {
+    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
         match args {
             [a, b, c] => Ok(self(a.value(), b.value(), c.value())),
             _ => Err("expected three arguments".to_string()),
@@ -569,14 +569,14 @@ struct JFun<F: CanHelp> {
     name: &'static str,
     fun: F,
 }
-impl<F: CanHelp> handlebars::HelperDef for JFun<F> {
+impl<F: CanHelp> HelperDef for JFun<F> {
     fn call_inner<'reg: 'rc, 'rc>(
         &self,
         helper: &handlebars::Helper<'rc>,
         _r: &'reg Handlebars<'reg>,
         _: &'rc Context,
         _rc: &mut handlebars::RenderContext<'reg, 'rc>,
-    ) -> Result<handlebars::ScopedJson<'rc>, RenderError> {
+    ) -> Result<ScopedJson<'rc>, RenderError> {
         let result = self
             .fun
             .call(helper.params().as_slice())
@@ -585,7 +585,7 @@ impl<F: CanHelp> handlebars::HelperDef for JFun<F> {
     }
 }
 
-fn register_helper(h: &mut Handlebars, name: &'static str, fun: impl CanHelp) {
+fn register_helper(h: &mut Handlebars<'_>, name: &'static str, fun: impl CanHelp) {
     h.register_helper(name, Box::new(JFun { name, fun }));
 }
 

@@ -3,7 +3,7 @@ use tokio_stream::StreamExt;
 
 use crate::app_config::AppConfig;
 
-pub fn make_auto_rustls_config(domain: &str, config: &AppConfig) -> ServerConfig {
+pub(super) fn make_auto_rustls_config(domain: &str, config: &AppConfig) -> ServerConfig {
     log::info!("Starting HTTPS configuration for {domain}");
     let mut state = AcmeConfig::new([domain])
         .contact([if let Some(email) = &config.https_certificate_email {

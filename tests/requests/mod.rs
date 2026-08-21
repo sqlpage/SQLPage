@@ -112,7 +112,7 @@ async fn test_download_data_url() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
-    let long_string = "a".repeat(123454);
+    let long_string = "a".repeat(123_454);
     let req = get_request_to("/tests/components/display_form_field.sql")
         .await?
         .insert_header(("content-type", "application/x-www-form-urlencoded"))
@@ -193,7 +193,7 @@ async fn test_variables_function() -> actix_web::Result<()> {
             assert_eq!(
                 actual_decoded, expected_value,
                 "step {i}: {key} mismatch: {actual_decoded:#} != {expected_value:#}"
-            )
+            );
         }
     }
 
@@ -223,8 +223,7 @@ async fn test_invalid_utf8_multipart_text_field_returns_bad_request() -> actix_w
     assert_eq!(
         status,
         StatusCode::BAD_REQUEST,
-        "assertion error, expected 400 bad request on invalid utf8 payload, got {}",
-        status
+        "assertion error, expected 400 bad request on invalid utf8 payload, got {status}"
     );
 
     Ok(())
@@ -252,8 +251,7 @@ async fn test_missing_multipart_content_disposition_returns_bad_request() -> act
     assert_eq!(
         status,
         StatusCode::BAD_REQUEST,
-        "expected 400 bad request on malformed multipart payload, got {}",
-        status
+        "expected 400 bad request on malformed multipart payload, got {status}"
     );
 
     Ok(())

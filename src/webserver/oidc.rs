@@ -66,12 +66,11 @@ pub struct OidcAdditionalClaims(pub(crate) serde_json::Map<String, serde_json::V
 impl openidconnect::AdditionalClaims for OidcAdditionalClaims {}
 type OidcToken = openidconnect::IdToken<
     OidcAdditionalClaims,
-    openidconnect::core::CoreGenderClaim,
-    openidconnect::core::CoreJweContentEncryptionAlgorithm,
-    openidconnect::core::CoreJwsSigningAlgorithm,
+    CoreGenderClaim,
+    CoreJweContentEncryptionAlgorithm,
+    CoreJwsSigningAlgorithm,
 >;
-pub type OidcClaims =
-    openidconnect::IdTokenClaims<OidcAdditionalClaims, openidconnect::core::CoreGenderClaim>;
+pub type OidcClaims = openidconnect::IdTokenClaims<OidcAdditionalClaims, CoreGenderClaim>;
 
 #[derive(Clone, Debug)]
 pub struct OidcConfig {
@@ -395,7 +394,7 @@ impl OidcMiddleware {
 }
 
 async fn discover_provider_metadata(
-    http_client: &awc::Client,
+    http_client: &Client,
     issuer_url: IssuerUrl,
 ) -> anyhow::Result<ProviderMetadataWithLogout> {
     log::debug!("Discovering provider metadata for {issuer_url}");
@@ -800,7 +799,7 @@ async fn process_oidc_callback(
 
 async fn exchange_code_for_token(
     oidc_client: &OidcClient,
-    http_client: &awc::Client,
+    http_client: &Client,
     oidc_callback_params: OidcCallbackParams,
 ) -> anyhow::Result<OidcToken> {
     let span = tracing::info_span!(
@@ -936,12 +935,12 @@ fn get_authenticated_user_info(
 }
 
 pub struct AwcHttpClient<'c> {
-    client: &'c awc::Client,
+    client: &'c Client,
 }
 
 impl<'c> AwcHttpClient<'c> {
     #[must_use]
-    pub fn from_client(client: &'c awc::Client) -> Self {
+    pub fn from_client(client: &'c Client) -> Self {
         Self { client }
     }
 }

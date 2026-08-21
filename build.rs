@@ -84,11 +84,7 @@ async fn process_input_file(client: &awc::Client, path_out: &Path, original: Fil
         .expect("Unable to write compressed frontend asset");
 }
 
-async fn copy_url_to_opened_file(
-    client: &awc::Client,
-    url: &str,
-    outfile: &mut impl std::io::Write,
-) {
+async fn copy_url_to_opened_file(client: &awc::Client, url: &str, outfile: &mut impl Write) {
     // If the file has been downloaded manually, use it
     let cached_file_path = make_url_path(url);
     if !cached_file_path.exists() {
@@ -98,9 +94,9 @@ async fn copy_url_to_opened_file(
     copy_cached_to_opened_file(&cached_file_path, outfile);
 }
 
-fn copy_cached_to_opened_file(source: &Path, outfile: &mut impl std::io::Write) {
-    let reader = std::fs::File::open(source).unwrap();
-    let mut buf = std::io::BufReader::new(reader);
+fn copy_cached_to_opened_file(source: &Path, outfile: &mut impl Write) {
+    let reader = File::open(source).unwrap();
+    let mut buf = BufReader::new(reader);
     // Not async, but performance should not really matter here
     std::io::copy(&mut buf, outfile).unwrap();
 }
@@ -112,9 +108,12 @@ async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
     loop {
         match client.get(url).send().await {
             Ok(mut resp) => {
-                if resp.status() != 200 {
-                    panic!("Received {} status code from {}", resp.status(), url);
-                }
+                assert!(
+                    resp.status() == 200,
+                    "Received {} status code from {}",
+                    resp.status(),
+                    url
+                );
                 let bytes = resp.body().limit(128 * 1024 * 1024).await.unwrap();
                 std::fs::write(path, &bytes)
                     .expect("Failed to write external frontend dependency to local file");
@@ -122,7 +121,7 @@ async fn download_url_to_path(client: &awc::Client, url: &str, path: &Path) {
             }
             Err(err) => {
                 if attempt >= max_attempts {
-                    let path = make_url_path(url);
+                    let path = make_url_path(url).display().to_string();
                     panic!(
                         "We need to download external frontend dependencies to build the static frontend. \n\
                         Could not download static asset after {max_attempts} attempts. You can manually download the file with: \n\
@@ -187,15 +186,16 @@ async fn download_tabler_icons(client: Rc<awc::Client>, sprite_url: &str) {
     file.write_all(b"]").unwrap();
 }
 
+fn take_between<'a>(s: &mut &'a str, start: &str, end: &str) -> Option<&'a str> {
+    let start_index = s.find(start)?;
+    let end_index = s[start_index + start.len()..].find(end)?;
+    let result = &s[start_index + start.len()..][..end_index];
+    *s = &s[start_index + start.len() + end_index + end.len()..];
+    Some(result)
+}
+
 fn extract_icons_from_sprite(sprite_content: &[u8], mut callback: impl FnMut(&str, &str)) {
     let mut sprite_str = std::str::from_utf8(sprite_content).unwrap();
-    fn take_between<'a>(s: &mut &'a str, start: &str, end: &str) -> Option<&'a str> {
-        let start_index = s.find(start)?;
-        let end_index = s[start_index + start.len()..].find(end)?;
-        let result = &s[start_index + start.len()..][..end_index];
-        *s = &s[start_index + start.len() + end_index + end.len()..];
-        Some(result)
-    }
     while let Some(mut symbol_tag) = take_between(&mut sprite_str, "<symbol", "</symbol>") {
         let id = take_between(&mut symbol_tag, "id=\"tabler-", "\"").expect("id not found");
         let content_start = symbol_tag.find('>').unwrap() + 1;

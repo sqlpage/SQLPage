@@ -450,7 +450,7 @@ mod logfmt {
     }
 
     impl LogfmtLayer {
-        pub fn new() -> Self {
+        pub(super) fn new() -> Self {
             Self {
                 stdout_colors: io::stdout().is_terminal(),
                 stderr_colors: io::stderr().is_terminal(),
@@ -458,7 +458,7 @@ mod logfmt {
             }
         }
 
-        pub fn test_writer() -> Self {
+        pub(super) fn test_writer() -> Self {
             Self {
                 stdout_colors: false,
                 stderr_colors: false,

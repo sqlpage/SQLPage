@@ -49,7 +49,7 @@ fn deserialize_map_to_vec_pairs<'de, D: serde::Deserializer<'de>>(
     impl<'de> serde::de::Visitor<'de> for Visitor {
         type Value = Vec<(Cow<'de, str>, Cow<'de, str>)>;
 
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             formatter.write_str("a map")
         }
 

@@ -27,10 +27,7 @@ impl Database {
             set_database_password(&mut connect_options, password);
         }
         connect_options.log_statements(log::LevelFilter::Trace);
-        connect_options.log_slow_statements(
-            log::LevelFilter::Warn,
-            std::time::Duration::from_millis(250),
-        );
+        connect_options.log_slow_statements(log::LevelFilter::Warn, Duration::from_millis(250));
         log::debug!(
             "Connecting to a {:?} database on {}",
             connect_options.kind(),
@@ -147,7 +144,7 @@ fn add_on_return_to_pool(config: &AppConfig, pool_options: PoolOptions<Any>) -> 
 }
 
 fn on_return_to_pool(
-    conn: &mut sqlx::any::AnyConnection,
+    conn: &mut AnyConnection,
     meta: sqlx::pool::PoolConnectionMetadata,
     sql: std::sync::Arc<String>,
 ) -> BoxFuture<'_, Result<bool, sqlx::error::Error>> {
@@ -229,9 +226,9 @@ fn set_custom_connect_options_sqlite(
 ) {
     for extension_name in &config.sqlite_extensions {
         log::info!("Loading SQLite extension: {extension_name}");
-        *sqlite_options = std::mem::take(sqlite_options).extension(extension_name.clone());
+        *sqlite_options = take(sqlite_options).extension(extension_name.clone());
     }
-    *sqlite_options = std::mem::take(sqlite_options)
+    *sqlite_options = take(sqlite_options)
         .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()))
         .function(make_sqlite_fun("upper", str::to_uppercase))
         .function(make_sqlite_fun("lower", str::to_lowercase));

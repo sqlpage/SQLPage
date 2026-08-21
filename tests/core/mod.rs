@@ -23,7 +23,7 @@ async fn test_concurrent_requests() {
         })
         .collect::<Vec<_>>();
     let results = futures_util::future::join_all(reqs).await;
-    for result in results.into_iter() {
+    for result in results {
         let resp = result.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
         let body = test::read_body(resp).await;
@@ -52,7 +52,7 @@ async fn test_routing_with_db_fs() {
 
     if matches!(
         state.db.info.database_type,
-        sqlpage::webserver::database::SupportedDatabase::Oracle
+        webserver::database::SupportedDatabase::Oracle
     ) {
         return;
     }
@@ -116,7 +116,7 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
 
     (&mut *conn)
         .execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
-            sqlpage::webserver::database::SupportedDatabase::Sqlite,
+            webserver::database::SupportedDatabase::Sqlite,
         ))
         .await
         .unwrap();
@@ -140,7 +140,7 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
         .app_data(app_data)
         .to_srv_request();
 
-    let err = sqlpage::webserver::http::main_handler(req)
+    let err = webserver::http::main_handler(req)
         .await
         .expect_err("non-unicode path should not panic and must return bad request");
     assert_eq!(
@@ -213,7 +213,7 @@ async fn test_hidden_files() {
     );
     let resp = resp_result.unwrap_err().error_response();
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
-    let srv_resp = actix_web::test::TestRequest::default().to_srv_response(resp);
+    let srv_resp = test::TestRequest::default().to_srv_response(resp);
     let body = test::read_body(srv_resp).await;
     assert!(
         String::from_utf8_lossy(&body)

@@ -34,9 +34,9 @@ pub(super) struct CsvImport {
 }
 
 enum CopyCsvOption<'a> {
-    Legacy(&'a sqlparser::ast::CopyLegacyOption),
-    CopyLegacyCsvOption(&'a sqlparser::ast::CopyLegacyCsvOption),
-    New(&'a sqlparser::ast::CopyOption),
+    Legacy(&'a CopyLegacyOption),
+    CopyLegacyCsvOption(&'a CopyLegacyCsvOption),
+    New(&'a CopyOption),
 }
 
 impl CopyCsvOption<'_> {
@@ -105,7 +105,7 @@ pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImpo
             }
         };
 
-        let all_options: Vec<CopyCsvOption> = legacy_options
+        let all_options: Vec<CopyCsvOption<'_>> = legacy_options
             .iter()
             .flat_map(|o| match o {
                 CopyLegacyOption::Csv(o) => {

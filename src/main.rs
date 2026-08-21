@@ -60,7 +60,7 @@ fn init_logging() -> anyhow::Result<()> {
     let otel_active = telemetry::init_telemetry()?;
 
     match load_env {
-        Ok(path) => log::info!("Loaded environment variables from {path:?}"),
+        Ok(path) => log::info!("Loaded environment variables from {}", path.display()),
         Err(dotenvy::Error::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => log::debug!(
             "No .env file found, using only environment variables and configuration files"
         ),

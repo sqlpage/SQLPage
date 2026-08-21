@@ -31,7 +31,7 @@ use sqlx::types::Type;
 use sqlx::value::ValueRef;
 
 #[cfg(test)]
-pub fn row_to_json(row: &AnyRow) -> Value {
+pub(super) fn row_to_json(row: &AnyRow) -> Value {
     use Value::Object;
 
     let columns = row.columns();
@@ -48,7 +48,7 @@ pub fn row_to_json(row: &AnyRow) -> Value {
 ///
 /// Every SQL value is decoded exactly once. Private values are addressed by
 /// ordinal, so their generated SQL aliases cannot collide with user columns.
-pub fn row_to_json_with_inputs(
+pub(super) fn row_to_json_with_inputs(
     row: &AnyRow,
     input_count: usize,
 ) -> anyhow::Result<(Value, Vec<Value>)> {
@@ -84,7 +84,7 @@ fn canonical_col_name(col: &AnyColumn) -> String {
     }
 }
 
-pub fn sql_to_json(row: &AnyRow, col: &sqlx::any::AnyColumn) -> Value {
+pub(super) fn sql_to_json(row: &AnyRow, col: &AnyColumn) -> Value {
     let raw_value_result = row.try_get_raw(col.ordinal());
     match raw_value_result {
         Ok(raw_value) if !raw_value.is_null() => {
@@ -122,13 +122,13 @@ fn decode_pg_range<'r, T>(raw_value: sqlx::any::AnyValueRef<'r>) -> Value
 where
     T: std::fmt::Display
         + Type<sqlx::postgres::Postgres>
-        + for<'a> sqlx::decode::Decode<'a, sqlx::postgres::Postgres>,
+        + for<'a> Decode<'a, sqlx::postgres::Postgres>,
 {
     let Ok(pg_val): Result<PgValueRef<'r>, _> = raw_value.try_into() else {
         log::error!("Only postgres range values are supported");
         return Value::Null;
     };
-    match <PgRange<T> as sqlx::decode::Decode<'r, sqlx::postgres::Postgres>>::decode(pg_val) {
+    match <PgRange<T> as Decode<'r, sqlx::postgres::Postgres>>::decode(pg_val) {
         Ok(pg_range) => pg_range.to_string().into(),
         Err(e) => {
             log::error!("Failed to decode postgres range value: {e}");
@@ -144,7 +144,9 @@ fn decimal_to_json(decimal: &BigDecimal) -> Value {
     ))
 }
 
-pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'r>) -> Value {
+pub(super) fn sql_nonnull_to_json<'r>(
+    mut get_ref: impl FnMut() -> sqlx::any::AnyValueRef<'r>,
+) -> Value {
     use AnyTypeInfoKind::{Mssql, MySql};
     let raw_value = get_ref();
     let type_info = raw_value.type_info();
@@ -168,9 +170,7 @@ pub fn sql_nonnull_to_json<'r>(mut get_ref: impl FnMut() -> sqlx::any::AnyValueR
             decode_raw::<bool>(raw_value).into()
         }
         "BIT" if matches!(db_type, MySql(_)) => decode_raw::<u64>(raw_value).into(),
-        "DATE" => decode_raw::<chrono::NaiveDate>(raw_value)
-            .to_string()
-            .into(),
+        "DATE" => decode_raw::<NaiveDate>(raw_value).to_string().into(),
         "TIME" | "TIMETZ" => decode_raw::<chrono::NaiveTime>(raw_value)
             .to_string()
             .into(),
@@ -727,7 +727,7 @@ line2' as multiline_string
 
         let expected_json = serde_json::json!({
             "null_col": null,
-            "empty_string": if empty_str_is_null { serde_json::Value::Null } else { serde_json::Value::String(String::new()) },
+            "empty_string": if empty_str_is_null { Value::Null } else { Value::String(String::new()) },
             "zero_value": 0,
             "negative_int": -42,
             "my_float": 1.23456,

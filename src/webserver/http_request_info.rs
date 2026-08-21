@@ -45,7 +45,7 @@ pub struct RequestInfo {
     pub app_state: Arc<AppState>,
     pub raw_body: Option<Vec<u8>>,
     pub oidc_claims: Option<OidcClaims>,
-    pub server_timing: Arc<super::server_timing::ServerTiming>,
+    pub server_timing: Arc<ServerTiming>,
 }
 
 #[derive(Debug)]
@@ -161,7 +161,7 @@ pub(crate) async fn extract_request_info(
 }
 
 async fn extract_post_data(
-    http_req: &mut actix_web::HttpRequest,
+    http_req: &mut HttpRequest,
     payload: &mut actix_web::dev::Payload,
     config: &crate::app_config::AppConfig,
 ) -> anyhow::Result<(
@@ -181,7 +181,7 @@ async fn extract_post_data(
         let (vars, files) = extract_multipart_post_data(http_req, payload, config).await?;
         Ok((vars, files, None))
     } else {
-        let body = actix_web::web::Bytes::from_request(http_req, payload)
+        let body = web::Bytes::from_request(http_req, payload)
             .await
             .with_actix_error_status()
             .context("could not read the request body")?;
@@ -194,7 +194,7 @@ async fn extract_post_data(
 }
 
 async fn extract_urlencoded_post_variables(
-    http_req: &mut actix_web::HttpRequest,
+    http_req: &mut HttpRequest,
     payload: &mut actix_web::dev::Payload,
 ) -> anyhow::Result<Vec<(String, String)>> {
     Form::<Vec<(String, String)>>::from_request(http_req, payload)
@@ -205,7 +205,7 @@ async fn extract_urlencoded_post_variables(
 }
 
 async fn extract_multipart_post_data(
-    http_req: &mut actix_web::HttpRequest,
+    http_req: &mut HttpRequest,
     payload: &mut actix_web::dev::Payload,
     config: &crate::app_config::AppConfig,
 ) -> anyhow::Result<(Vec<(String, String)>, Vec<(String, TempFile)>)> {
@@ -297,9 +297,7 @@ async fn extract_file(
 
 /// file upload form fields that are left blank result in the browser sending an empty file, with a mime type of application/octet-stream.
 /// We don't want to treat this the same as actual empty files, so we check for this case.
-async fn is_file_field_empty(
-    uploaded_file: &actix_multipart::form::tempfile::TempFile,
-) -> anyhow::Result<bool> {
+async fn is_file_field_empty(uploaded_file: &TempFile) -> anyhow::Result<bool> {
     Ok(
         uploaded_file.content_type == Some(mime_guess::mime::APPLICATION_OCTET_STREAM)
             && uploaded_file.file_name.as_deref().is_none_or(str::is_empty)
