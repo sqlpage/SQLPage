@@ -1,0 +1,10 @@
+# Configuration for cargo-mutants <https://mutants.rs>.
+# Run locally with `cargo mutants`; CI runs it against the pull request diff.
+
+# ignore build.rs downloads and hashes frontend assets at build time as well as
+# executing the build.
+exclude_globs = ["build.rs"]
+
+# The suite starts a web server and talks to a database, so a mutant that
+# deadlocks needs a longer leash than the ~4s baseline would allow.
+minimum_test_timeout = 60

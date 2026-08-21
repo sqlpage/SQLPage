@@ -95,6 +95,19 @@ export DATABASE_URL=mssql://root:Password123!@localhost/sqlpage
 cargo test
 ```
 
+### Mutation Testing
+
+[cargo-mutants](https://mutants.rs) finds dead code or missing tests by mutating 
+params and re-running the suite.
+
+```bash
+cargo mutants --in-diff <(git diff origin/main...HEAD) # what your branch changed
+```
+
+A whole-codebase run takes hours, so CI only mutates the lines a pull request
+touches, and reports without failing the build. Results are attached to the run
+as the `mutants-report` artifact.
+
 ### End-to-End Tests
 
 We use Playwright for end-to-end testing of dynamic frontend features.
@@ -225,6 +238,7 @@ git checkout -b feature/your-feature-name
    - Execute all tests across multiple platforms (Linux, Windows)
    - Build Docker images for multiple architectures
    - Run frontend linting, typechecking and unit tests (`npm test`)
+   - Report surviving mutants for the lines the pull request changed
    - Test against multiple databases (SQLite, PostgreSQL, MySQL, MSSQL, Oracle, and ODBC)
 
 ## Release Process

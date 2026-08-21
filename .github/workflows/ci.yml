@@ -543,3 +543,30 @@ jobs:
           TAG_SUFFIX: ${{ matrix.variant != 'minimal' && format('-{0}', matrix.variant) || '' }}
         run: |
           docker buildx imagetools inspect "${REGISTRY_IMAGE}:${GITHUB_REF_NAME}${TAG_SUFFIX}"
+
+  mutants:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        with:
+          shared-key: rust-sqlpage-mutants
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Mutate only the lines this pull request changed
+        run: |
+          git diff "origin/${{ github.base_ref }}...HEAD" > mutants.diff
+          cargo mutants --in-diff mutants.diff --jobs 2
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mutants-report
+          path: mutants.out/

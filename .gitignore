@@ -14,3 +14,5 @@ sqlpage/sqlpage.db
 tests_uploads/
 /test-results/
 /playwright-report/
+/mutants.out*/
+mutants.diff
