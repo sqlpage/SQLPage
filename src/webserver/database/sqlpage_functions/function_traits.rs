@@ -233,7 +233,7 @@ macro_rules! sqlpage_functions {
         /// One variant per built-in `sqlpage.*` function.
         #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         #[allow(non_camel_case_types)]
-        pub enum SqlPageFunctionName {
+        pub(crate) enum SqlPageFunctionName {
             $($func),*
         }
 

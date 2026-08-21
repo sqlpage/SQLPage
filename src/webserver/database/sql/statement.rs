@@ -55,7 +55,7 @@ pub(in crate::webserver::database) struct DatabaseQuery {
 impl DatabaseQuery {
     /// Whether row evaluation needs the request's existing connection and
     /// must therefore wait until the database stream is closed.
-    pub fn must_buffer_rows(&self) -> bool {
+    pub(crate) fn must_buffer_rows(&self) -> bool {
         self.computed_columns
             .iter()
             .any(|column| column.value.contains_function(SqlPageFunctionName::run_sql))

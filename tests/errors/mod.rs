@@ -14,7 +14,7 @@ async fn direct_request_status(path: &str, app_data: actix_web::web::Data<AppSta
     let req = test::TestRequest::get()
         .uri(path)
         .app_data(app_data)
-        .insert_header(actix_web::http::header::Accept::html())
+        .insert_header(http::header::Accept::html())
         .to_srv_request();
     match main_handler(req).await {
         Ok(resp) => resp.status(),
@@ -72,7 +72,7 @@ async fn test_privileged_paths_are_not_accessible() {
     );
     let resp = resp_result.unwrap_err().error_response();
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
-    let srv_resp = actix_web::test::TestRequest::default().to_srv_response(resp);
+    let srv_resp = test::TestRequest::default().to_srv_response(resp);
     let body = test::read_body(srv_resp).await;
     assert!(
         String::from_utf8_lossy(&body)
@@ -90,7 +90,7 @@ async fn test_404_fallback() {
     ] {
         let resp_result = req_path(f).await;
         let resp = resp_result.unwrap();
-        assert_eq!(resp.status(), http::StatusCode::OK, "{f} isnt 200");
+        assert_eq!(resp.status(), StatusCode::OK, "{f} isnt 200");
 
         let body = test::read_body(resp).await;
         assert!(body.starts_with(b"<!DOCTYPE html>"));
@@ -113,7 +113,7 @@ async fn test_default_404() {
         let resp = resp_result.unwrap();
         assert_eq!(
             resp.status(),
-            http::StatusCode::NOT_FOUND,
+            StatusCode::NOT_FOUND,
             "{f} should return 404"
         );
 
@@ -135,7 +135,7 @@ async fn test_default_404_with_redirect() {
     let resp = resp_result.unwrap();
     assert_eq!(
         resp.status(),
-        http::StatusCode::NOT_FOUND,
+        StatusCode::NOT_FOUND,
         "/i-do-not-exist should return 404"
     );
 
@@ -143,7 +143,7 @@ async fn test_default_404_with_redirect() {
     let resp = resp_result.unwrap();
     assert_eq!(
         resp.status(),
-        http::StatusCode::NOT_FOUND,
+        StatusCode::NOT_FOUND,
         "/i-do-not-exist/ should return 404"
     );
 
@@ -164,7 +164,7 @@ async fn test_default_404_when_request_path_descends_into_file() {
     let resp = resp_result.unwrap();
     assert_eq!(
         resp.status(),
-        http::StatusCode::NOT_FOUND,
+        StatusCode::NOT_FOUND,
         "descending into a file path should behave like a missing resource"
     );
 

@@ -298,7 +298,7 @@ pub fn stream_query_results_with_conn<'a>(
 
 fn with_stmt_position(
     source_file: &Path,
-    query_position: super::sql::SourceSpan,
+    query_position: SourceSpan,
     error: anyhow::Error,
 ) -> anyhow::Error {
     if error.downcast_ref::<ErrorWithStatus>().is_some() {
@@ -335,7 +335,7 @@ async fn execute_single_row(
     query: &SingleRowQuery,
     req: &ExecutionContext,
     db_connection: &mut DbConn,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Value> {
     let mut map = serde_json::Map::with_capacity(query.columns.len());
     let mut inputs = NoInputs;
     for column in &query.columns {
@@ -346,7 +346,7 @@ async fn execute_single_row(
             .into_json();
         map = add_value_to_map(map, (column.name.clone(), value));
     }
-    Ok(serde_json::Value::Object(map))
+    Ok(Value::Object(map))
 }
 
 async fn try_rollback_transaction(db_connection: &mut AnyConnection) {
@@ -732,7 +732,7 @@ async fn evaluate_computed_columns(
     result: &mut QueryResult,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<()> {
-    if let DbItem::Row(serde_json::Value::Object(results)) = &mut result.item {
+    if let DbItem::Row(Value::Object(results)) = &mut result.item {
         for column in columns {
             let value = column
                 .value
@@ -1011,7 +1011,7 @@ mod tests {
                 sqlpage.exception.details = tracing::field::Empty,
                 db.response.returned_rows = tracing::field::Empty,
             );
-            let metrics = crate::telemetry_metrics::TelemetryMetrics::default();
+            let metrics = TelemetryMetrics::default();
             let query_metrics =
                 DbQueryMetricsContext::new(span.clone(), "SELECT".to_string(), "sqlite", &metrics);
             query_metrics.record_success(3);
@@ -1035,7 +1035,7 @@ mod tests {
                 db.response.returned_rows = tracing::field::Empty,
             );
             let error = anyhow!("query failed").context("while executing SELECT 1");
-            let metrics = crate::telemetry_metrics::TelemetryMetrics::default();
+            let metrics = TelemetryMetrics::default();
             let query_metrics =
                 DbQueryMetricsContext::new(span.clone(), "SELECT".to_string(), "sqlite", &metrics);
             query_metrics.record_error(2, &error);

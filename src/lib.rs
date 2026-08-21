@@ -1,6 +1,3 @@
-#![deny(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
-
 //! [SQLPage](https://sql-page.com) is a high-performance web server that converts SQL queries
 //! into dynamic web applications by rendering [handlebars templates](https://sql-page.com/custom_components.sql)
 //! with data coming from SQL queries declared in `.sql` files.
@@ -135,7 +132,7 @@ impl AppState {
             ),
         );
 
-        let oidc_state = crate::webserver::oidc::initialize_oidc_state(config).await?;
+        let oidc_state = webserver::oidc::initialize_oidc_state(config).await?;
         let telemetry_metrics =
             TelemetryMetrics::new(&db.connection, db.info.database_type.otel_name());
 
