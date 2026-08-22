@@ -2,7 +2,11 @@
 
 ## unreleased
 
- - Fixed `nvarchar` comparisons with non-ASCII characters on Microsoft SQL Server, which were silently mangled by an unnecessary cast to `varchar`. Request variables are no longer cast to text on PostgreSQL, MySQL, SQL Server and DuckDB, where the database infers the type from context; the cast is retained on SQLite and on ODBC connections where it is required for correct comparisons. fixes: #516, #1154. see: #1317.
+ - Removed unnecessary `CAST` around request variables:
+   - On PostgreSQL, MySQL, SQL Server and DuckDB, variables are now sent without a text cast and the database infers the type from context, which keeps generated SQL readable (`WHERE id = $1` instead of `WHERE id = CAST($1 AS TEXT)`) and fixes cases where the cast was harmful.
+   - On SQL Server, this fixes `nvarchar` comparisons with non-ASCII characters that were previously mangled by `CAST(... AS VARCHAR)`, and fixes `CONTAINS` and `EXEC` with variables.
+   - On MySQL/MariaDB, this fixes `LIMIT`/`OFFSET` with variables.
+   - The cast is retained on SQLite and on ODBC connections to PostgreSQL, SQLite, Oracle, Snowflake and other databases where it is needed for correct comparisons.
  - AWS Lambda builds and documentation now use the supported Amazon Linux 2023 custom runtime instead of the end-of-life Amazon Linux 2 runtime. Release artifacts include the configuration directory required on Lambda's read-only filesystem.
  - Added a `toast` component with plain-text or Markdown content, icons, colors, six screen placements, configurable auto-dismiss timing, optional manual dismissal, URL-fragment triggers, and automatic stacking of queued notifications.
  - `sqlpage.send_mail` now supports rich email bodies. Use `body_html` for a caller-provided HTML alternative, or `body_md` to render Markdown as HTML. Messages retain a plain-text alternative; `body` may be omitted when `body_md` is used, and `body_md` and `body_html` cannot be combined.
