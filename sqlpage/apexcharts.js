@@ -137,7 +137,7 @@ sqlpage_chart = (() => {
       if (row.yline == null) return [];
       const from = to_axis_value(row.yline);
       if (Number.isNaN(from)) return [];
-      const color = reference_color(row.yline_color);
+      const color = reference_color(row.color);
       const annotation = {
         [axis]: from,
         borderColor: color,
@@ -146,9 +146,9 @@ sqlpage_chart = (() => {
       };
       // apexcharts reads label.text unconditionally, so an annotation without
       // a label must not have the key at all.
-      if (row.yline_label)
+      if (row.label)
         annotation.label = {
-          text: row.yline_label,
+          text: row.label,
           orientation: "horizontal",
           borderColor: color,
           style: { background: color, color: isDarkTheme ? "#000" : "#fff" },

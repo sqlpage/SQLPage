@@ -685,12 +685,11 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('x', 'The value of the point on the horizontal axis', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
-    ('label', 'An alias for parameter "x"', 'REAL', FALSE, TRUE),
+    ('label', 'An alias for parameter "x". On a row that draws a reference line, the text to display next to the line.', 'TEXT', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
     ('yline', 'Draws a reference line across the chart at this value of the y axis instead of plotting a point, to show a limit such as a quota or an alarm threshold. Not drawn if it falls outside of the axis, so set ymax when the limit is above the data.', 'REAL', FALSE, TRUE),
-    ('yline_label', 'A text to display next to the yline.', 'TEXT', FALSE, TRUE),
-    ('yline_color', 'The name of a color for the yline. Grey by default.', 'COLOR', FALSE, TRUE)
+    ('color', 'The name of a color for the reference line this row draws. Grey by default.', 'COLOR', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     ('chart', 'An area chart representing a time series, using the top-level property `time`.
@@ -807,7 +806,7 @@ and a chart can have as many of them as the query returns:
 
 ```sql
 select ''chart'' as component, ''CPU temperature'' as title, true as time, 100 as ymax;
-select celsius as yline, name as yline_label, color as yline_color from thresholds;
+select celsius as yline, name as label, color as color from thresholds;
 select measured_at as x, celsius as y from readings order by measured_at;
 ```
 
@@ -819,8 +818,8 @@ so set `ymax` when the limit is above the data.
 ', json('[
         {"component":"chart", "title": "CPU temperature", "type": "line", "time": true,
          "ytitle": "°C", "ymax": 100, "color": "azure", "marker": 4},
-        {"yline": 70, "yline_label": "target", "yline_color": "green"},
-        {"yline": 90, "yline_label": "throttling", "yline_color": "red"},
+        {"yline": 70, "label": "target", "color": "green"},
+        {"yline": 90, "label": "throttling", "color": "red"},
         {"x": "2024-05-01T08:00:00Z", "y": 52},
         {"x": "2024-05-01T09:00:00Z", "y": 58},
         {"x": "2024-05-01T10:00:00Z", "y": 71},
@@ -839,7 +838,7 @@ is drawn down the chart rather than across it.
 
 ```sql
 select ''chart'' as component, ''bar'' as type, true as horizontal, 100 as ymax;
-select 90 as yline, ''full'' as yline_label, ''red'' as yline_color;
+select 90 as yline, ''full'' as label, ''red'' as color;
 select host as x, percent_used as y from disks order by percent_used;
 ```
 
@@ -847,7 +846,7 @@ A `pie` has no axes, and ignores reference lines.
 ', json('[
         {"component":"chart", "title": "Disk usage", "type": "bar", "horizontal": true,
          "ymax": 100, "color": "azure", "labels": true},
-        {"yline": 90, "yline_label": "full", "yline_color": "red"},
+        {"yline": 90, "label": "full", "color": "red"},
         {"x": "backup-1", "y": 41},
         {"x": "web-2", "y": 63},
         {"x": "db-1", "y": 88},
