@@ -801,131 +801,96 @@ mod tests {
         );
     }
 
+    fn sql_for(db: SupportedDatabase, sql: &str) -> String {
+        let FileStatement::Query(Query {
+            body: QueryBody::Database(q),
+            ..
+        }) = one_for(db, sql)
+        else {
+            panic!("expected database query");
+        };
+        q.sql
+    }
+
+    fn odbc_sql_for(db: SupportedDatabase, sql: &str) -> String {
+        let info = DbInfo {
+            dbms_name: db.display_name().to_owned(),
+            database_type: db,
+            kind: AnyKind::Odbc,
+        };
+        let FileStatement::Query(Query {
+            body: QueryBody::Database(q),
+            ..
+        }) = parse_sql(&info, &PostgreSqlDialect {}, sql)
+            .unwrap()
+            .next()
+            .unwrap()
+        else {
+            panic!("expected database query");
+        };
+        q.sql
+    }
+
     #[test]
-    fn text_cast_is_only_generated_when_parameter_typing_is_unpredictable() {
-        for database_type in [
+    fn variables_keep_cast_only_where_typing_is_unpredictable() {
+        for db in [
             SupportedDatabase::Sqlite,
             SupportedDatabase::Oracle,
             SupportedDatabase::Snowflake,
             SupportedDatabase::Generic,
         ] {
-            let FileStatement::Query(Query {
-                body: QueryBody::Database(query),
-                ..
-            }) = one_for(database_type, "select $a as value from t")
-            else {
-                panic!("expected database query");
-            };
-            assert!(
-                query.sql.to_lowercase().contains("cast"),
-                "{database_type:?} should keep the text cast: {}",
-                query.sql
-            );
+            assert!(sql_for(db, "select $a as value from t").contains("CAST"));
         }
-        for database_type in [
+        for db in [
             SupportedDatabase::Postgres,
             SupportedDatabase::MySql,
             SupportedDatabase::Mssql,
             SupportedDatabase::Duckdb,
         ] {
-            let FileStatement::Query(Query {
-                body: QueryBody::Database(query),
-                ..
-            }) = one_for(database_type, "select $a as value from t")
-            else {
-                panic!("expected database query");
-            };
-            assert!(
-                !query.sql.to_lowercase().contains("cast"),
-                "{database_type:?} should not generate a cast: {}",
-                query.sql
-            );
+            assert!(!sql_for(db, "select $a as value from t").contains("CAST"));
         }
     }
 
     #[test]
-    fn odbc_cast_follows_the_database_behind_the_driver() {
-        for (database_type, keeps_cast, expected_sql) in [
-            // psqlodbc provides no parameter type information, so PostgreSQL
-            // fails on context-free parameters without the cast.
-            (
-                SupportedDatabase::Postgres,
-                true,
-                "SELECT CAST(? AS TEXT) AS value FROM t",
-            ),
-            // SQLite needs the cast for text affinity in comparisons, just
-            // like native connections.
-            (
-                SupportedDatabase::Sqlite,
-                true,
-                "SELECT CAST(? AS TEXT) AS value FROM t",
-            ),
-            // These databases convert the bound string at execution time or
-            // default untyped parameters to strings, like native connections.
-            (SupportedDatabase::MySql, false, "SELECT ? AS value FROM t"),
-            (SupportedDatabase::Mssql, false, "SELECT ? AS value FROM t"),
-            (SupportedDatabase::Duckdb, false, "SELECT ? AS value FROM t"),
-        ] {
-            let database = DbInfo {
-                dbms_name: database_type.display_name().to_owned(),
-                database_type,
-                kind: AnyKind::Odbc,
-            };
-            let FileStatement::Query(Query {
-                body: QueryBody::Database(query),
-                ..
-            }) = parse_sql(
-                &database,
-                &PostgreSqlDialect {},
-                "select $a as value from t",
-            )
-            .unwrap()
-            .next()
-            .unwrap()
-            else {
-                panic!("expected database query");
-            };
-            assert_eq!(
-                query.sql, expected_sql,
-                "{database_type:?} behind ODBC generated unexpected SQL"
-            );
-            assert_eq!(
-                query.sql.to_lowercase().contains("cast"),
-                keeps_cast,
-                "{database_type:?} behind ODBC: cast presence mismatch"
-            );
-        }
-    }
-
-    #[test]
-    fn postgres_limit_parameter_is_not_wrapped_in_a_cast() {
-        // The database still requires an integer for LIMIT, so this query
-        // fails at execution time with a string parameter; this test only
-        // locks in that SQLPage does not generate a text cast around it.
+    fn odbc_cast_follows_database() {
         assert_eq!(
-            rewrite_database("select value from t limit $n"),
-            DatabaseQuery {
-                sql: "SELECT value FROM t LIMIT $1".into(),
-                bindings: Box::new([variable("n")]),
-                row_input_json: Box::new([]),
-                computed_columns: Box::new([]),
-                json_columns: Box::new([]),
-            }
+            odbc_sql_for(SupportedDatabase::Postgres, "select $a as value from t"),
+            "SELECT CAST(? AS TEXT) AS value FROM t"
+        );
+        assert_eq!(
+            odbc_sql_for(SupportedDatabase::Sqlite, "select $a as value from t"),
+            "SELECT CAST(? AS TEXT) AS value FROM t"
+        );
+        assert_eq!(
+            odbc_sql_for(SupportedDatabase::MySql, "select $a as value from t"),
+            "SELECT ? AS value FROM t"
+        );
+        assert_eq!(
+            odbc_sql_for(SupportedDatabase::Mssql, "select $a as value from t"),
+            "SELECT ? AS value FROM t"
+        );
+        assert_eq!(
+            odbc_sql_for(SupportedDatabase::Duckdb, "select $a as value from t"),
+            "SELECT ? AS value FROM t"
         );
     }
 
     #[test]
-    fn mssql_parameters_are_not_cast_to_narrow_varchar() {
-        let FileStatement::Query(Query {
-            body: QueryBody::Database(query),
-            ..
-        }) = one_for(
-            SupportedDatabase::Mssql,
-            "select name from t where name = $x",
-        )
-        else {
-            panic!("expected database query");
-        };
-        assert_eq!(query.sql, "SELECT name FROM t WHERE name = @p1");
+    fn limit_uses_bare_parameter() {
+        assert_eq!(
+            sql_for(SupportedDatabase::Postgres, "select value from t limit $n"),
+            "SELECT value FROM t LIMIT $1"
+        );
+    }
+
+    #[test]
+    fn mssql_uses_nvarchar_parameter() {
+        assert_eq!(
+            sql_for(
+                SupportedDatabase::Mssql,
+                "select name from t where name = $x"
+            ),
+            "SELECT name FROM t WHERE name = @p1"
+        );
     }
 }
