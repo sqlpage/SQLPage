@@ -844,6 +844,33 @@ mod tests {
     }
 
     #[test]
+    fn odbc_connections_keep_the_text_cast_even_for_postgres() {
+        // ODBC drivers provide no parameter type information, so the cast is
+        // needed even when the database behind the driver would normally
+        // infer it from the query context.
+        let database = DbInfo {
+            dbms_name: "PostgreSQL".into(),
+            database_type: SupportedDatabase::Postgres,
+            kind: AnyKind::Odbc,
+        };
+        let FileStatement::Query(Query {
+            body: QueryBody::Database(query),
+            ..
+        }) = parse_sql(
+            &database,
+            &PostgreSqlDialect {},
+            "select $a as value from t",
+        )
+        .unwrap()
+        .next()
+        .unwrap()
+        else {
+            panic!("expected database query");
+        };
+        assert_eq!(query.sql, "SELECT CAST(? AS TEXT) AS value FROM t");
+    }
+
+    #[test]
     fn postgres_limit_parameter_is_not_wrapped_in_a_cast() {
         // The database still requires an integer for LIMIT, so this query
         // fails at execution time with a string parameter; this test only

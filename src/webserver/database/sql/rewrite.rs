@@ -41,6 +41,7 @@ use crate::webserver::database::sqlpage_expr::{
 };
 use crate::webserver::database::sqlpage_functions::functions::SqlPageFunctionName;
 use crate::webserver::database::{DbInfo, SupportedDatabase};
+use sqlx::any::AnyKind;
 
 const SQLPAGE_INPUT_PREFIX: &str = "__sqlpage_input_";
 
@@ -620,7 +621,7 @@ impl QueryRewriter<'_> {
             PlaceholderStyle::Numbered { prefix } => format!("{prefix}{}", sequence + 1),
             PlaceholderStyle::Positional { .. } => format!("${}", sequence + 1),
         };
-        cast_placeholder(placeholder, self.database.database_type)
+        cast_placeholder(placeholder, self.database)
     }
 
     fn add_row_input(&mut self, mut expression: SqlExpr) -> anyhow::Result<RowInputId> {
@@ -1038,25 +1039,32 @@ fn variable_source(prefix: char) -> VariableSource {
 /// Wraps a generated placeholder in the backend-specific text cast when the
 /// database cannot reliably infer that the parameter is a string.
 ///
-/// `SQLPage` always binds parameters as strings. `PostgreSQL` (which pins the
-/// parameter type to `TEXT` when preparing the statement), `MySQL` and `SQL
-/// Server` (which convert the bound string to the type expected by the
-/// surrounding expression) do not need the cast, and it can even be harmful:
-/// on `SQL Server` the parameter is bound as `NVARCHAR(MAX)`, and casting it
-/// to a narrow `VARCHAR` mangles non-ASCII values. `SQLite` and ODBC-backed
-/// databases, whose parameter type inference is unpredictable, keep the
-/// explicit cast.
-fn cast_placeholder(placeholder: String, database: SupportedDatabase) -> SqlExpr {
-    let data_type = match database {
-        SupportedDatabase::Sqlite => DataType::Text,
-        SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
-            length: 4000,
-            unit: None,
-        })),
-        SupportedDatabase::Postgres | SupportedDatabase::MySql | SupportedDatabase::Mssql => {
+/// `SQLPage` always binds parameters as strings. Native `PostgreSQL` (which
+/// pins the parameter type to `TEXT` when preparing the statement), `MySQL`
+/// and `SQL Server` (which convert the bound string to the type expected by
+/// the surrounding expression) do not need the cast, and it can even be
+/// harmful: on `SQL Server` the parameter is bound as `NVARCHAR(MAX)`, and
+/// casting it to a narrow `VARCHAR` mangles non-ASCII values. `SQLite` and
+/// ODBC connections, whose parameter type inference is unpredictable, keep
+/// the explicit cast — through ODBC the cast is needed even for databases
+/// that would otherwise infer the parameter type from the query context,
+/// because the driver provides no parameter type information.
+fn cast_placeholder(placeholder: String, database: &DbInfo) -> SqlExpr {
+    let data_type = match database.kind {
+        AnyKind::Sqlite => DataType::Text,
+        AnyKind::Postgres | AnyKind::MySql | AnyKind::Mssql => {
             return SqlExpr::value(Value::Placeholder(placeholder));
         }
-        _ => DataType::Varchar(None),
+        AnyKind::Odbc => match database.database_type {
+            SupportedDatabase::MySql => DataType::Char(None),
+            SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
+            SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
+            SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
+                length: 4000,
+                unit: None,
+            })),
+            _ => DataType::Varchar(None),
+        },
     };
     SqlExpr::Cast {
         expr: Box::new(SqlExpr::value(Value::Placeholder(placeholder))),
