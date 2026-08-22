@@ -1,4 +1,3 @@
-
 /// Returns a random string of the specified length.
 pub(super) async fn random_string(len: usize) -> anyhow::Result<String> {
     // OsRng can block on Linux, so we run this on a blocking thread.

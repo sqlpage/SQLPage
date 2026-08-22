@@ -102,10 +102,7 @@ enum SendMailError {
     InvalidEmailCc { address: Option<String> },
     InvalidEmailReplyTo { address: String },
     InvalidAttachmentFilename { index: usize },
-    InvalidAttachment {
-        index: usize,
-        reason: anyhow::Error,
-    },
+    InvalidAttachment { index: usize, reason: anyhow::Error },
     SmtpTlsFailed(anyhow::Error),
     SmtpTimeout(anyhow::Error),
     SmtpRejected(anyhow::Error),
@@ -136,10 +133,11 @@ impl SendMailError {
 impl fmt::Display for SendMailError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidMessage(reason) => write_reason(formatter, "Invalid email message", reason),
-            Self::SmtpNotConfigured => formatter.write_str(
-                "sqlpage.send_mail() requires the smtp_host configuration option",
-            ),
+            Self::InvalidMessage(reason) => {
+                write_reason(formatter, "Invalid email message", reason)
+            }
+            Self::SmtpNotConfigured => formatter
+                .write_str("sqlpage.send_mail() requires the smtp_host configuration option"),
             Self::MissingEmailFrom => formatter.write_str(
                 "Email has no from address; set its from property or configure smtp_from",
             ),
@@ -153,14 +151,22 @@ impl fmt::Display for SendMailError {
                 write_invalid_recipient(formatter, "cc", address.as_deref())
             }
             Self::InvalidEmailReplyTo { address } => {
-                write!(formatter, "'{address}' is not a valid reply_to email address")
+                write!(
+                    formatter,
+                    "'{address}' is not a valid reply_to email address"
+                )
             }
             Self::InvalidAttachmentFilename { index } => {
-                write!(formatter, "Attachment filename at index {index} must not be empty")
+                write!(
+                    formatter,
+                    "Attachment filename at index {index} must not be empty"
+                )
             }
-            Self::InvalidAttachment { index, reason } => {
-                write_reason(formatter, &format!("Invalid attachment at index {index}"), reason)
-            }
+            Self::InvalidAttachment { index, reason } => write_reason(
+                formatter,
+                &format!("Invalid attachment at index {index}"),
+                reason,
+            ),
             Self::SmtpTlsFailed(reason) => {
                 write_reason(formatter, "Unable to establish SMTP TLS", reason)
             }
@@ -170,9 +176,11 @@ impl fmt::Display for SendMailError {
             Self::SmtpRejected(reason) => {
                 write_reason(formatter, "SMTP server rejected the email", reason)
             }
-            Self::SmtpConnectionFailed(reason) => {
-                write_reason(formatter, "Unable to communicate with the SMTP server", reason)
-            }
+            Self::SmtpConnectionFailed(reason) => write_reason(
+                formatter,
+                "Unable to communicate with the SMTP server",
+                reason,
+            ),
         }
     }
 }
@@ -185,7 +193,10 @@ fn write_invalid_recipient(
     address: Option<&str>,
 ) -> fmt::Result {
     match address {
-        Some(address) => write!(formatter, "'{address}' is not a valid {field} email address"),
+        Some(address) => write!(
+            formatter,
+            "'{address}' is not a valid {field} email address"
+        ),
         None => write!(formatter, "{field} must contain at least one email address"),
     }
 }
@@ -219,10 +230,7 @@ fn send_mail_result_json(result: SendMailResult<()>) -> String {
         Ok(()) => serde_json::json!({ "status": "accepted" }).to_string(),
         Err(error) => {
             let message = format!("{error:#}");
-            log::warn!(
-                "sqlpage.send_mail failed with {}: {message}",
-                error.code()
-            );
+            log::warn!("sqlpage.send_mail failed with {}: {message}", error.code());
             serde_json::json!({
                 "status": "error",
                 "error_code": error.code(),
@@ -300,12 +308,13 @@ fn resolve_bodies(
 
     let html_body = if let Some(markdown_src) = body_md {
         Some(
-            crate::template_helpers::render_markdown_to_html(config, markdown_src)
-                .map_err(|reason| {
+            crate::template_helpers::render_markdown_to_html(config, markdown_src).map_err(
+                |reason| {
                     SendMailError::InvalidMessage(anyhow::anyhow!(
                         "Failed to render body_md as HTML: {reason}"
                     ))
-                })?,
+                },
+            )?,
         )
     } else {
         body_html.map(ToString::to_string)
@@ -334,7 +343,8 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         attachments,
     } = request;
 
-    let (text_body, html_body) = resolve_bodies(config, body, body_html.as_ref(), body_md.as_ref())?;
+    let (text_body, html_body) =
+        resolve_bodies(config, body, body_html.as_ref(), body_md.as_ref())?;
 
     let sender = from
         .as_deref()
@@ -345,9 +355,7 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         .map_err(|_| SendMailError::InvalidEmailFrom {
             address: sender.to_string(),
         })?;
-    let mut email = Message::builder()
-        .from(sender)
-        .subject(subject.as_ref());
+    let mut email = Message::builder().from(sender).subject(subject.as_ref());
     for recipient in to.parse(RecipientField::To)? {
         email = email.to(recipient);
     }
@@ -357,11 +365,12 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         }
     }
     if let Some(reply_to) = reply_to {
-        let parsed_reply_to = reply_to.parse::<Mailbox>().map_err(|_| {
-            SendMailError::InvalidEmailReplyTo {
-                address: reply_to.to_string(),
-            }
-        })?;
+        let parsed_reply_to =
+            reply_to
+                .parse::<Mailbox>()
+                .map_err(|_| SendMailError::InvalidEmailReplyTo {
+                    address: reply_to.to_string(),
+                })?;
         email = email.reply_to(parsed_reply_to);
     }
     if attachments.is_empty() {
@@ -412,10 +421,9 @@ fn build_email(config: &AppConfig, request: MailRequest<'_>) -> SendMailResult<M
         let content_type = ContentType::parse(media_type)
             .with_context(|| format!("Invalid attachment media type at index {index}"))
             .map_err(|reason| SendMailError::InvalidAttachment { index, reason })?;
-        multipart = multipart.singlepart(Attachment::new(attachment.filename.into_owned()).body(
-            bytes,
-            content_type,
-        ));
+        multipart = multipart.singlepart(
+            Attachment::new(attachment.filename.into_owned()).body(bytes, content_type),
+        );
     }
     email
         .multipart(multipart)
@@ -461,9 +469,7 @@ mod tests {
         thread,
     };
 
-    use super::{
-        SendMailError, SmtpTlsMode, send_mail_result_json, send_mail_with_config,
-    };
+    use super::{SendMailError, SmtpTlsMode, send_mail_result_json, send_mail_with_config};
     use crate::app_config::tests::test_config;
 
     #[tokio::test]
@@ -693,7 +699,11 @@ mod tests {
         .await
         .unwrap_err();
         assert!(matches!(&error, SendMailError::InvalidMessage(_)));
-        assert!(error.to_string().contains("cannot combine 'body_md' with 'body_html'"));
+        assert!(
+            error
+                .to_string()
+                .contains("cannot combine 'body_md' with 'body_html'")
+        );
     }
 
     #[tokio::test]
@@ -711,7 +721,11 @@ mod tests {
         .await
         .unwrap_err();
         assert!(matches!(&error, SendMailError::InvalidMessage(_)));
-        assert!(error.to_string().contains("requires either 'body' or 'body_md'"));
+        assert!(
+            error
+                .to_string()
+                .contains("requires either 'body' or 'body_md'")
+        );
     }
 
     #[tokio::test]
@@ -773,10 +787,7 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(matches!(
-            &error,
-            SendMailError::InvalidAttachment { .. }
-        ));
+        assert!(matches!(&error, SendMailError::InvalidAttachment { .. }));
         assert!(format!("{error:#}").contains("Decoded data exceeds the limit of 1 bytes"));
     }
 

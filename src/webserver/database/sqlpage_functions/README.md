@@ -14,17 +14,20 @@ pub(super) async fn example(request: &RequestInfo, value: Option<Cow<'_, str>>) 
 }
 ```
 
-To add `sqlpage.example`, create `functions/example.rs` and add it to the
-[`sqlpage_functions!`](function_traits.rs) call in [`functions.rs`](functions.rs):
+To add `sqlpage.example`, create `functions/example.rs`, declare its module in
+[`functions.rs`](functions.rs) and add it to the [`sqlpage_functions!`](function_traits.rs) call in
+the same file:
 
 ```rust
+mod example;
+
 sqlpage_functions! {
     // ...
     example,
 }
 ```
 
-The [`sqlpage_functions!`](function_traits.rs) macro declares the modules and generates the
+The [`sqlpage_functions!`](function_traits.rs) macro generates the
 `SqlPageFunctionName` enum the SQL engine dispatches on. Per-function argument extraction, dispatch,
 and return-value conversion are handled generically in [`function_traits.rs`](function_traits.rs) by
 the `Extract`, `Handler`, and `IntoCowResult` traits. A function's argument and return types are read

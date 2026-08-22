@@ -222,13 +222,9 @@ impl<'a, T: IntoCow<'a>> IntoCow<'a> for Option<T> {
     }
 }
 
-/// Declares the listed function modules and builds the [`SqlPageFunctionName`] dispatch enum from
-/// them.
+/// Builds the [`SqlPageFunctionName`] dispatch enum from the listed function modules.
 macro_rules! sqlpage_functions {
     ($($func:ident),* $(,)?) => {
-        $(
-            mod $func;
-        )*
 
         /// One variant per built-in `sqlpage.*` function.
         #[derive(Debug, PartialEq, Eq, Clone, Copy)]

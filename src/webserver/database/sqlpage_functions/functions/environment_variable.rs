@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use anyhow::Context;
 
 /// Returns the value of an environment variable.
-pub(super) async fn environment_variable(name: Cow<'_, str>) -> anyhow::Result<Option<Cow<'_, str>>> {
+pub(super) async fn environment_variable(
+    name: Cow<'_, str>,
+) -> anyhow::Result<Option<Cow<'_, str>>> {
     match std::env::var(&*name) {
         Ok(value) => Ok(Some(Cow::Owned(value))),
         Err(std::env::VarError::NotPresent) if name.contains(['=', '\0']) => anyhow::bail!(

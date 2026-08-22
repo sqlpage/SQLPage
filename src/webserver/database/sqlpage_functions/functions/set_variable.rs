@@ -2,8 +2,7 @@ use std::borrow::Cow;
 
 use crate::webserver::{
     database::sqlpage_functions::url_parameters::URLParameters,
-    http_request_info::ExecutionContext,
-    single_or_vec::SingleOrVec,
+    http_request_info::ExecutionContext, single_or_vec::SingleOrVec,
 };
 
 pub(super) async fn set_variable<'a>(

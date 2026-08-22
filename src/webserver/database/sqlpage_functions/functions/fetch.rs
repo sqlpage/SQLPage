@@ -6,8 +6,7 @@ use tracing::Instrument;
 
 use crate::webserver::{
     database::sqlpage_functions::http_fetch_request::HttpFetchRequest,
-    http_client::make_http_client,
-    http_request_info::RequestInfo,
+    http_client::make_http_client, http_request_info::RequestInfo,
 };
 
 pub(super) fn build_request<'a>(
@@ -94,8 +93,8 @@ pub(super) async fn fetch(
 
     async {
         let response_result = send_request(request, &http_request)?.await;
-        let mut response = response_result
-            .map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
+        let mut response =
+            response_result.map_err(|e| anyhow!("Unable to fetch {}: {e}", http_request.url))?;
 
         tracing::Span::current().record(
             otel::HTTP_RESPONSE_STATUS_CODE,
