@@ -1044,11 +1044,19 @@ fn variable_source(prefix: char) -> VariableSource {
 /// and `SQL Server` (which convert the bound string to the type expected by
 /// the surrounding expression) do not need the cast, and it can even be
 /// harmful: on `SQL Server` the parameter is bound as `NVARCHAR(MAX)`, and
-/// casting it to a narrow `VARCHAR` mangles non-ASCII values. `SQLite` and
-/// ODBC connections, whose parameter type inference is unpredictable, keep
-/// the explicit cast — through ODBC the cast is needed even for databases
-/// that would otherwise infer the parameter type from the query context,
-/// because the driver provides no parameter type information.
+/// casting it to a narrow `VARCHAR` mangles non-ASCII values. `SQLite`
+/// needs it to keep text affinity in comparisons with numbers.
+///
+/// Through ODBC, the decision follows the database behind the driver, since
+/// `SQLPage` knows it from the driver's reported name:
+/// - `PostgreSQL` keeps the cast: `psqlodbc` provides no parameter type
+///   information, and the server then fails on context-free parameters
+///   (`could not determine data type of parameter`).
+/// - `SQLite` keeps it for the same affinity reasons as native connections.
+/// - `MySQL`, `SQL Server` and `DuckDB` drop it, like their native
+///   counterparts: the former two convert the string at execution time, and
+///   `DuckDB` defaults untyped parameters to `VARCHAR`.
+/// - `Oracle`, `Snowflake` and unknown databases keep it conservatively.
 fn cast_placeholder(placeholder: String, database: &DbInfo) -> SqlExpr {
     let data_type = match database.kind {
         AnyKind::Sqlite => DataType::Text,
@@ -1056,13 +1064,14 @@ fn cast_placeholder(placeholder: String, database: &DbInfo) -> SqlExpr {
             return SqlExpr::value(Value::Placeholder(placeholder));
         }
         AnyKind::Odbc => match database.database_type {
-            SupportedDatabase::MySql => DataType::Char(None),
-            SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
             SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
             SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
                 length: 4000,
                 unit: None,
             })),
+            SupportedDatabase::MySql | SupportedDatabase::Mssql | SupportedDatabase::Duckdb => {
+                return SqlExpr::value(Value::Placeholder(placeholder));
+            }
             _ => DataType::Varchar(None),
         },
     };

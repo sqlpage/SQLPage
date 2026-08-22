@@ -806,7 +806,6 @@ mod tests {
         for database_type in [
             SupportedDatabase::Sqlite,
             SupportedDatabase::Oracle,
-            SupportedDatabase::Duckdb,
             SupportedDatabase::Snowflake,
             SupportedDatabase::Generic,
         ] {
@@ -827,6 +826,7 @@ mod tests {
             SupportedDatabase::Postgres,
             SupportedDatabase::MySql,
             SupportedDatabase::Mssql,
+            SupportedDatabase::Duckdb,
         ] {
             let FileStatement::Query(Query {
                 body: QueryBody::Database(query),
@@ -844,30 +844,57 @@ mod tests {
     }
 
     #[test]
-    fn odbc_connections_keep_the_text_cast_even_for_postgres() {
-        // ODBC drivers provide no parameter type information, so the cast is
-        // needed even when the database behind the driver would normally
-        // infer it from the query context.
-        let database = DbInfo {
-            dbms_name: "PostgreSQL".into(),
-            database_type: SupportedDatabase::Postgres,
-            kind: AnyKind::Odbc,
-        };
-        let FileStatement::Query(Query {
-            body: QueryBody::Database(query),
-            ..
-        }) = parse_sql(
-            &database,
-            &PostgreSqlDialect {},
-            "select $a as value from t",
-        )
-        .unwrap()
-        .next()
-        .unwrap()
-        else {
-            panic!("expected database query");
-        };
-        assert_eq!(query.sql, "SELECT CAST(? AS TEXT) AS value FROM t");
+    fn odbc_cast_follows_the_database_behind_the_driver() {
+        for (database_type, keeps_cast, expected_sql) in [
+            // psqlodbc provides no parameter type information, so PostgreSQL
+            // fails on context-free parameters without the cast.
+            (
+                SupportedDatabase::Postgres,
+                true,
+                "SELECT CAST(? AS TEXT) AS value FROM t",
+            ),
+            // SQLite needs the cast for text affinity in comparisons, just
+            // like native connections.
+            (
+                SupportedDatabase::Sqlite,
+                true,
+                "SELECT CAST(? AS TEXT) AS value FROM t",
+            ),
+            // These databases convert the bound string at execution time or
+            // default untyped parameters to strings, like native connections.
+            (SupportedDatabase::MySql, false, "SELECT ? AS value FROM t"),
+            (SupportedDatabase::Mssql, false, "SELECT ? AS value FROM t"),
+            (SupportedDatabase::Duckdb, false, "SELECT ? AS value FROM t"),
+        ] {
+            let database = DbInfo {
+                dbms_name: database_type.display_name().to_owned(),
+                database_type,
+                kind: AnyKind::Odbc,
+            };
+            let FileStatement::Query(Query {
+                body: QueryBody::Database(query),
+                ..
+            }) = parse_sql(
+                &database,
+                &PostgreSqlDialect {},
+                "select $a as value from t",
+            )
+            .unwrap()
+            .next()
+            .unwrap()
+            else {
+                panic!("expected database query");
+            };
+            assert_eq!(
+                query.sql, expected_sql,
+                "{database_type:?} behind ODBC generated unexpected SQL"
+            );
+            assert_eq!(
+                query.sql.to_lowercase().contains("cast"),
+                keeps_cast,
+                "{database_type:?} behind ODBC: cast presence mismatch"
+            );
+        }
     }
 
     #[test]
