@@ -1,3 +1,3 @@
--- https://github.com/sqlpage/SQLPage/issues/516 (psqlodbc needs CAST for context-free params)
+-- Context-free variables (no column or literal) need CAST on SQLite and psqlodbc
 SET other = 'other';
 select 'It works !' as expected, 'It works !' as actual where $x <> $other or $x is null;

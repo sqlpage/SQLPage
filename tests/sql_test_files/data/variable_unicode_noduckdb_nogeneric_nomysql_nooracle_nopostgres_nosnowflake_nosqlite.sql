@@ -1,4 +1,4 @@
--- https://github.com/sqlpage/SQLPage/issues/516 (nvarchar mangling, same root cause)
+-- MSSQL nvarchar with non-ASCII must not be mangled by CAST to VARCHAR
 drop table if exists variable_unicode_t;
 create table variable_unicode_t(name nvarchar(100));
 insert into variable_unicode_t values (N'日本語');

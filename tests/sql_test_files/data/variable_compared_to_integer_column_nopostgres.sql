@@ -1,4 +1,4 @@
--- https://github.com/sqlpage/SQLPage/issues/1154 (variables must work in typed contexts)
+-- Variable compared to integer column must work without explicit cast
 drop table if exists variable_integer_comparison_t;
 create table variable_integer_comparison_t(id int primary key, name varchar(100));
 insert into variable_integer_comparison_t values (1, 'It works !');
