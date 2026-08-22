@@ -2,6 +2,7 @@
 
 ## unreleased
 
+ - SQLPage no longer wraps request variables in a generated `CAST(? AS TEXT)` when talking to PostgreSQL, MySQL, or Microsoft SQL Server. Those databases resolve the parameter type from the surrounding expression, so the cast was redundant there — and on SQL Server it converted the bound Unicode value to a narrow `varchar`, silently mangling non-Latin characters in comparisons with `nvarchar` columns, which now work correctly. SQLite and ODBC-backed databases keep the explicit cast. Generated SQL is now easier to read, e.g. `WHERE id = $1` instead of `WHERE id = CAST($1 AS TEXT)`.
  - AWS Lambda builds and documentation now use the supported Amazon Linux 2023 custom runtime instead of the end-of-life Amazon Linux 2 runtime. Release artifacts include the configuration directory required on Lambda's read-only filesystem.
  - Added a `toast` component with plain-text or Markdown content, icons, colors, six screen placements, configurable auto-dismiss timing, optional manual dismissal, URL-fragment triggers, and automatic stacking of queued notifications.
  - `sqlpage.send_mail` now supports rich email bodies. Use `body_html` for a caller-provided HTML alternative, or `body_md` to render Markdown as HTML. Messages retain a plain-text alternative; `body` may be omitted when `body_md` is used, and `body_md` and `body_html` cannot be combined.

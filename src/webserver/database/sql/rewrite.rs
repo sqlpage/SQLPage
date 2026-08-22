@@ -1035,17 +1035,27 @@ fn variable_source(prefix: char) -> VariableSource {
     }
 }
 
-/// Wraps a generated placeholder in the backend-specific text cast expected
-/// by `SQLPage`'s string-valued binding interface.
+/// Wraps a generated placeholder in the backend-specific text cast when the
+/// database cannot reliably infer that the parameter is a string.
+///
+/// `SQLPage` always binds parameters as strings. `PostgreSQL` (which pins the
+/// parameter type to `TEXT` when preparing the statement), `MySQL` and `SQL
+/// Server` (which convert the bound string to the type expected by the
+/// surrounding expression) do not need the cast, and it can even be harmful:
+/// on `SQL Server` the parameter is bound as `NVARCHAR(MAX)`, and casting it
+/// to a narrow `VARCHAR` mangles non-ASCII values. `SQLite` and ODBC-backed
+/// databases, whose parameter type inference is unpredictable, keep the
+/// explicit cast.
 fn cast_placeholder(placeholder: String, database: SupportedDatabase) -> SqlExpr {
     let data_type = match database {
-        SupportedDatabase::MySql => DataType::Char(None),
-        SupportedDatabase::Mssql => DataType::Varchar(Some(CharacterLength::Max)),
-        SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
+        SupportedDatabase::Sqlite => DataType::Text,
         SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
             length: 4000,
             unit: None,
         })),
+        SupportedDatabase::Postgres | SupportedDatabase::MySql | SupportedDatabase::Mssql => {
+            return SqlExpr::value(Value::Placeholder(placeholder));
+        }
         _ => DataType::Varchar(None),
     };
     SqlExpr::Cast {

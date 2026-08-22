@@ -432,7 +432,7 @@ mod tests {
         };
         assert_eq!(query.bindings.len(), 1);
         assert!(query.computed_columns.is_empty());
-        assert!(query.sql.contains("upper(CAST($1 AS TEXT))"));
+        assert!(query.sql.contains("upper($1)"));
     }
 
     #[test]
@@ -519,10 +519,7 @@ mod tests {
         else {
             panic!("expected database query");
         };
-        assert_eq!(
-            query.sql,
-            "WITH c AS (SELECT CAST(? AS CHAR) AS x) SELECT CAST(? AS CHAR) AS y FROM c"
-        );
+        assert_eq!(query.sql, "WITH c AS (SELECT ? AS x) SELECT ? AS y FROM c");
         assert_eq!(query.bindings.as_ref(), [variable("a"), variable("b")]);
     }
 
@@ -742,7 +739,7 @@ mod tests {
                 "select coalesce(upper(sqlpage.url_encode($prefix)), sqlpage.url_encode(value)) as result from t"
             ),
             DatabaseQuery {
-                sql: "SELECT value AS \"__sqlpage_input_0\", upper(CAST($1 AS TEXT)) AS \"__sqlpage_input_1\" FROM t".into(),
+                sql: "SELECT value AS \"__sqlpage_input_0\", upper($1) AS \"__sqlpage_input_1\" FROM t".into(),
                 bindings: Box::new([call(SqlPageFunctionName::url_encode, [variable("prefix")])]),
                 row_input_json: Box::new([false, false]),
                 computed_columns: Box::new([OutputColumn {
@@ -764,8 +761,7 @@ mod tests {
                 "select sqlpage.url_encode(value) as encoded from t where sqlpage.url_encode($expected) = 'x'"
             ),
             DatabaseQuery {
-                sql: "SELECT value AS \"__sqlpage_input_0\" FROM t WHERE CAST($1 AS TEXT) = 'x'"
-                    .into(),
+                sql: "SELECT value AS \"__sqlpage_input_0\" FROM t WHERE $1 = 'x'".into(),
                 bindings: Box::new([call(
                     SqlPageFunctionName::url_encode,
                     [variable("expected")]
@@ -803,5 +799,79 @@ mod tests {
                 json_columns: Box::new([]),
             }
         );
+    }
+
+    #[test]
+    fn text_cast_is_only_generated_when_parameter_typing_is_unpredictable() {
+        for database_type in [
+            SupportedDatabase::Sqlite,
+            SupportedDatabase::Oracle,
+            SupportedDatabase::Duckdb,
+            SupportedDatabase::Snowflake,
+            SupportedDatabase::Generic,
+        ] {
+            let FileStatement::Query(Query {
+                body: QueryBody::Database(query),
+                ..
+            }) = one_for(database_type, "select $a as value from t")
+            else {
+                panic!("expected database query");
+            };
+            assert!(
+                query.sql.to_lowercase().contains("cast"),
+                "{database_type:?} should keep the text cast: {}",
+                query.sql
+            );
+        }
+        for database_type in [
+            SupportedDatabase::Postgres,
+            SupportedDatabase::MySql,
+            SupportedDatabase::Mssql,
+        ] {
+            let FileStatement::Query(Query {
+                body: QueryBody::Database(query),
+                ..
+            }) = one_for(database_type, "select $a as value from t")
+            else {
+                panic!("expected database query");
+            };
+            assert!(
+                !query.sql.to_lowercase().contains("cast"),
+                "{database_type:?} should not generate a cast: {}",
+                query.sql
+            );
+        }
+    }
+
+    #[test]
+    fn postgres_limit_parameter_is_not_wrapped_in_a_cast() {
+        // The database still requires an integer for LIMIT, so this query
+        // fails at execution time with a string parameter; this test only
+        // locks in that SQLPage does not generate a text cast around it.
+        assert_eq!(
+            rewrite_database("select value from t limit $n"),
+            DatabaseQuery {
+                sql: "SELECT value FROM t LIMIT $1".into(),
+                bindings: Box::new([variable("n")]),
+                row_input_json: Box::new([]),
+                computed_columns: Box::new([]),
+                json_columns: Box::new([]),
+            }
+        );
+    }
+
+    #[test]
+    fn mssql_parameters_are_not_cast_to_narrow_varchar() {
+        let FileStatement::Query(Query {
+            body: QueryBody::Database(query),
+            ..
+        }) = one_for(
+            SupportedDatabase::Mssql,
+            "select name from t where name = $x",
+        )
+        else {
+            panic!("expected database query");
+        };
+        assert_eq!(query.sql, "SELECT name FROM t WHERE name = @p1");
     }
 }
