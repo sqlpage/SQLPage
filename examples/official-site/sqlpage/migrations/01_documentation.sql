@@ -685,9 +685,11 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('x', 'The value of the point on the horizontal axis', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
-    ('label', 'An alias for parameter "x"', 'REAL', FALSE, TRUE),
+    ('label', 'An alias for parameter "x". On a row that draws a reference line, the text to display next to the line.', 'TEXT', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
-    ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE)
+    ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
+    ('yline', 'Draws a reference line across the chart at this value of the y axis instead of plotting a point, to show a limit such as a quota or an alarm threshold. Not drawn if it falls outside of the axis, so set ymax when the limit is above the data.', 'REAL', FALSE, TRUE),
+    ('color', 'The name of a color for the reference line this row draws. Grey by default.', 'COLOR', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     ('chart', 'An area chart representing a time series, using the top-level property `time`.
@@ -790,6 +792,65 @@ The `color` property sets the color of each series separately, in order.
         {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"]},
         {"series": "Phase 2", "label": "Operations", "value": ["2022-01-03", "2022-01-04"]},
         {"series": "Yearly maintenance", "label": "Maintenance", "value": ["2022-01-01", "2022-01-03"]}
+    ]')),
+    ('chart', '
+## Reference lines
+
+A row with a `yline` is not plotted as a data point, but drawn as a line across
+the whole chart, at that value of the y axis. Use it for the limit that the data
+should be read against: a disk quota, an alarm threshold, a service level
+objective.
+
+Reference lines are rows, so they come from a query like everything else,
+and a chart can have as many of them as the query returns:
+
+```sql
+select ''chart'' as component, ''CPU temperature'' as title, true as time, 100 as ymax;
+select celsius as yline, name as label, color as color from thresholds;
+select measured_at as x, celsius as y from readings order by measured_at;
+```
+
+They are drawn as annotations rather than as an extra series, so they are not
+added to the total of a `stacked` chart, and are not filled in an `area` chart.
+
+A line outside of the y axis is not drawn, and does not stretch the axis to fit,
+so set `ymax` when the limit is above the data.
+', json('[
+        {"component":"chart", "title": "CPU temperature", "type": "line", "time": true,
+         "ytitle": "°C", "ymax": 100, "color": "azure", "marker": 4},
+        {"yline": 70, "label": "target", "color": "green"},
+        {"yline": 90, "label": "throttling", "color": "red"},
+        {"x": "2024-05-01T08:00:00Z", "y": 52},
+        {"x": "2024-05-01T09:00:00Z", "y": 58},
+        {"x": "2024-05-01T10:00:00Z", "y": 71},
+        {"x": "2024-05-01T11:00:00Z", "y": 83},
+        {"x": "2024-05-01T12:00:00Z", "y": 94},
+        {"x": "2024-05-01T13:00:00Z", "y": 76},
+        {"x": "2024-05-01T14:00:00Z", "y": 63}
+    ]')),
+    ('chart', '
+## Reference lines follow their axis
+
+A reference belongs to the column it is written in, not to a direction on the
+screen: `yline` always marks a value of `y`, whichever way round the chart is
+drawn. A `horizontal` bar chart runs its y axis from left to right, so a `yline`
+is drawn down the chart rather than across it.
+
+```sql
+select ''chart'' as component, ''bar'' as type, true as horizontal, 100 as ymax;
+select 90 as yline, ''full'' as label, ''red'' as color;
+select host as x, percent_used as y from disks order by percent_used;
+```
+
+A `pie` has no axes, and ignores reference lines.
+', json('[
+        {"component":"chart", "title": "Disk usage", "type": "bar", "horizontal": true,
+         "ymax": 100, "color": "azure", "labels": true},
+        {"yline": 90, "label": "full", "color": "red"},
+        {"x": "backup-1", "y": 41},
+        {"x": "web-2", "y": 63},
+        {"x": "db-1", "y": 88},
+        {"x": "web-1", "y": 96}
     ]')),
     ('chart', '
 ## Multiple charts on the same line
