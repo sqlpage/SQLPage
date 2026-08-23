@@ -627,7 +627,7 @@ mod tests {
         let statement = parse_sql(
             &database,
             &MySqlDialect {},
-            "select '@SQLPAGE_TEMP1' as value from t where id = $id",
+            "select '@SQLPAGE_TEMP1' where id = $id",
         )
         .unwrap()
         .next()
@@ -801,78 +801,54 @@ mod tests {
         );
     }
 
+    fn sql_for_dbinfo(info: DbInfo, sql: &str) -> String {
+        match parse_sql(&info, &PostgreSqlDialect {}, sql).unwrap().next() {
+            Some(FileStatement::Query(Query {
+                body: QueryBody::Database(q),
+                ..
+            })) => q.sql,
+            other => panic!("Expected database query for `{sql}`\nGot: {other:?}"),
+        }
+    }
+
     fn sql_for(db: SupportedDatabase, sql: &str) -> String {
-        let FileStatement::Query(Query {
-            body: QueryBody::Database(q),
-            ..
-        }) = one_for(db, sql)
-        else {
-            panic!("expected database query");
-        };
-        q.sql
+        sql_for_dbinfo(database(db), sql)
     }
 
     fn odbc_sql_for(db: SupportedDatabase, sql: &str) -> String {
-        let info = DbInfo {
-            dbms_name: db.display_name().to_owned(),
-            database_type: db,
-            kind: AnyKind::Odbc,
-        };
-        let FileStatement::Query(Query {
-            body: QueryBody::Database(q),
-            ..
-        }) = parse_sql(&info, &PostgreSqlDialect {}, sql)
-            .unwrap()
-            .next()
-            .unwrap()
-        else {
-            panic!("expected database query");
-        };
-        q.sql
+        sql_for_dbinfo(
+            DbInfo {
+                dbms_name: db.display_name().to_owned(),
+                database_type: db,
+                kind: AnyKind::Odbc,
+            },
+            sql,
+        )
     }
 
     #[test]
     fn variables_keep_cast_only_where_typing_is_unpredictable() {
-        for db in [
-            SupportedDatabase::Sqlite,
-            SupportedDatabase::Oracle,
-            SupportedDatabase::Snowflake,
-            SupportedDatabase::Generic,
-        ] {
-            assert!(sql_for(db, "select $a as value from t").contains("CAST"));
-        }
-        for db in [
-            SupportedDatabase::Postgres,
-            SupportedDatabase::MySql,
-            SupportedDatabase::Mssql,
-            SupportedDatabase::Duckdb,
-        ] {
-            assert!(!sql_for(db, "select $a as value from t").contains("CAST"));
-        }
+        use SupportedDatabase::*;
+        let src = "SELECT $a";
+        assert_eq!(sql_for(Sqlite, src), "SELECT CAST(?1 AS TEXT)");
+        assert_eq!(sql_for(Oracle, src), "SELECT CAST(? AS VARCHAR(4000))");
+        assert_eq!(sql_for(Snowflake, src), "SELECT CAST(? AS VARCHAR)");
+        assert_eq!(sql_for(Generic, src), "SELECT CAST(? AS VARCHAR)");
+        assert_eq!(sql_for(Postgres, src), "SELECT $1");
+        assert_eq!(sql_for(MySql, src), "SELECT ?");
+        assert_eq!(sql_for(Mssql, src), "SELECT @p1");
+        assert_eq!(sql_for(Duckdb, src), "SELECT ?");
     }
 
     #[test]
     fn odbc_cast_follows_database() {
-        assert_eq!(
-            odbc_sql_for(SupportedDatabase::Postgres, "select $a as value from t"),
-            "SELECT CAST(? AS TEXT) AS value FROM t"
-        );
-        assert_eq!(
-            odbc_sql_for(SupportedDatabase::Sqlite, "select $a as value from t"),
-            "SELECT CAST(? AS TEXT) AS value FROM t"
-        );
-        assert_eq!(
-            odbc_sql_for(SupportedDatabase::MySql, "select $a as value from t"),
-            "SELECT ? AS value FROM t"
-        );
-        assert_eq!(
-            odbc_sql_for(SupportedDatabase::Mssql, "select $a as value from t"),
-            "SELECT ? AS value FROM t"
-        );
-        assert_eq!(
-            odbc_sql_for(SupportedDatabase::Duckdb, "select $a as value from t"),
-            "SELECT ? AS value FROM t"
-        );
+        use SupportedDatabase::*;
+        for db in [Postgres, Sqlite] {
+            assert_eq!(odbc_sql_for(db, "select $a"), "SELECT CAST(? AS TEXT)");
+        }
+        for db in [MySql, Mssql, Duckdb] {
+            assert_eq!(odbc_sql_for(db, "select $a"), "SELECT ?");
+        }
     }
 
     #[test]
@@ -880,17 +856,6 @@ mod tests {
         assert_eq!(
             sql_for(SupportedDatabase::Postgres, "select value from t limit $n"),
             "SELECT value FROM t LIMIT $1"
-        );
-    }
-
-    #[test]
-    fn mssql_uses_nvarchar_parameter() {
-        assert_eq!(
-            sql_for(
-                SupportedDatabase::Mssql,
-                "select name from t where name = $x"
-            ),
-            "SELECT name FROM t WHERE name = @p1"
         );
     }
 }
