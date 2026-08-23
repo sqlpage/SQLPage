@@ -801,8 +801,8 @@ mod tests {
         );
     }
 
-    fn sql_for_dbinfo(info: DbInfo, sql: &str) -> String {
-        match parse_sql(&info, &PostgreSqlDialect {}, sql).unwrap().next() {
+    fn sql_for_dbinfo(info: &DbInfo, sql: &str) -> String {
+        match parse_sql(info, &PostgreSqlDialect {}, sql).unwrap().next() {
             Some(FileStatement::Query(Query {
                 body: QueryBody::Database(q),
                 ..
@@ -812,12 +812,12 @@ mod tests {
     }
 
     fn sql_for(db: SupportedDatabase, sql: &str) -> String {
-        sql_for_dbinfo(database(db), sql)
+        sql_for_dbinfo(&database(db), sql)
     }
 
     fn odbc_sql_for(db: SupportedDatabase, sql: &str) -> String {
         sql_for_dbinfo(
-            DbInfo {
+            &DbInfo {
                 dbms_name: db.display_name().to_owned(),
                 database_type: db,
                 kind: AnyKind::Odbc,
