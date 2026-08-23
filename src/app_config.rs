@@ -501,6 +501,9 @@ fn env_config() -> config::Environment {
         .try_parsing(true)
         .list_separator(" ")
         .with_list_parse_key("sqlite_extensions")
+        .with_list_parse_key("oidc_protected_paths")
+        .with_list_parse_key("oidc_public_paths")
+        .with_list_parse_key("oidc_additional_trusted_audiences")
 }
 
 fn deserialize_port<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
@@ -962,6 +965,39 @@ mod test {
 
         unsafe {
             env::remove_var("SQLPAGE_PORT");
+        }
+    }
+
+    #[test]
+    fn test_list_options_can_be_set_through_env_vars() {
+        let _lock = ENV_LOCK
+            .lock()
+            .expect("Another test panicked while holding the lock");
+        unsafe {
+            env::set_var("SQLPAGE_SQLITE_EXTENSIONS", "extension_one extension_two");
+            env::set_var("SQLPAGE_OIDC_PROTECTED_PATHS", "/user /admin");
+            env::set_var("SQLPAGE_OIDC_PUBLIC_PATHS", "/health /login");
+            env::set_var(
+                "SQLPAGE_OIDC_ADDITIONAL_TRUSTED_AUDIENCES",
+                "audience_one audience_two",
+            );
+        }
+
+        let config = load_from_file(Path::new("nonexistent-sqlpage-config.json")).unwrap();
+
+        assert_eq!(config.sqlite_extensions, ["extension_one", "extension_two"]);
+        assert_eq!(config.oidc_protected_paths, ["/user", "/admin"]);
+        assert_eq!(config.oidc_public_paths, ["/health", "/login"]);
+        assert_eq!(
+            config.oidc_additional_trusted_audiences,
+            Some(vec!["audience_one".to_string(), "audience_two".to_string()])
+        );
+
+        unsafe {
+            env::remove_var("SQLPAGE_SQLITE_EXTENSIONS");
+            env::remove_var("SQLPAGE_OIDC_PROTECTED_PATHS");
+            env::remove_var("SQLPAGE_OIDC_PUBLIC_PATHS");
+            env::remove_var("SQLPAGE_OIDC_ADDITIONAL_TRUSTED_AUDIENCES");
         }
     }
 
