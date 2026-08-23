@@ -1,4 +1,27 @@
 # ignore commits from showing up on git diffs.
 
 # === large formatting commits ===
-# TODO :: add commit once merged into mainline
+# Rust formatting passes
+9690e3cf2364ba9019bd8fb79f5e194d4a8d8a23
+1af44a79d09d0da913e694fb3edb60d3672d60ad
+e9ce54fc9c39793ab69ebe6d21a340dff10ca4c2
+728a4522e3383a749c60907616736c2a8b3de99d
+2c271a9e7bc23976f4c849162d61c48d17de26ed
+f0a0c9ac3b8a65c21c570ecdfc2960aacc3ccdab
+
+# Frontend and line-ending formatting
+6081c9ff9fbfa7cfed1ada96d2aefac44dd86c83
+048963a5d060c030f478d900bb54d5f85c9dd169
+
+# Documentation formatting
+a797521360e1e215bdad98b1f8b40efc4cb62207
+
+# === large refactoring commits ===
+e07594579b4519dd130edf3d93b061316dc5890c
+2e39331c5e002463b964d5769ad3fe1cf85f8284
+5cbd12fcfddb5f4040645b0d0272d5abed52a234
+95f228f3833e2c7a01b7c61d707e0928d8ac3096
+75ade135da485b0705470b09ef6b8fa34a5205c7
+e58b8656ac18afa203b7a9b2d69ba18350845e4c
+43f6156ee3fa80fe71dca9dac0d84c47ea566bda
+33a274e15bbfd620383699f300c293706de74270
