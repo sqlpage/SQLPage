@@ -143,6 +143,10 @@ This means `SET` variables always take precedence over request parameters when u
 Only a single textual value (**string or `NULL`**) is stored.
 `SET id = 1` will store the string `'1'`, not the number `1`.
 
+Variables are always sent to the database as text.
+On SQLite, and on ODBC connections to PostgreSQL, SQLite, Oracle, Snowflake, or other databases, SQLPage wraps variables in an explicit cast to text, because their parameter type handling would otherwise make comparisons unpredictable.
+On PostgreSQL, the variable is passed as text, and comparing it to a non-text column requires an explicit cast.
+On MySQL, Microsoft SQL Server, and DuckDB, the database converts the variable to the type expected by the surrounding expression.
 On databases with a strict type system, such as PostgreSQL, if you need a number, you will need to cast your variables: `SELECT * FROM post WHERE id = $id::int`.
 
 Complex structures can be stored as json strings.
