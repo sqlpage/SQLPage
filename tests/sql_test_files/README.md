@@ -16,3 +16,12 @@ Files that only validate data-processing functions should live here. They must
 return rows with an `actual` column plus either `expected` (exact match) or
 `expected_contains` (substring match). Tests in this directory are fetched as
 JSON and validated row by row.
+
+### `data/database-specific/`
+
+Files that only work on a single database engine (because they use
+engine-specific SQL syntax) live in a subdirectory named after that database
+(`sqlite`, `postgres`, `mysql`, `mssql`, `oracle`, `duckdb`, `snowflake`,
+`generic`). They are run by a separate test, only when the current database
+matches. Unlike the other directories, their file names do not need `_no...`
+suffixes to exclude incompatible backends.
