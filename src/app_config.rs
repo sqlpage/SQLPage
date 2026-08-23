@@ -501,6 +501,9 @@ fn env_config() -> config::Environment {
         .try_parsing(true)
         .list_separator(" ")
         .with_list_parse_key("sqlite_extensions")
+        .with_list_parse_key("oidc_protected_paths")
+        .with_list_parse_key("oidc_public_paths")
+        .with_list_parse_key("oidc_additional_trusted_audiences")
 }
 
 fn deserialize_port<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
