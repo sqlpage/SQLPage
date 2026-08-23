@@ -41,6 +41,20 @@ async fn test_concurrent_requests() {
 }
 
 #[actix_web::test]
+async fn test_datagrid_description_presence_controls_placeholder() {
+    let resp = req_path("/tests/components/datagrid_icon_only.sql")
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = String::from_utf8(test::read_body(resp).await.to_vec()).unwrap();
+    assert!(body.contains("Facebook"), "{body}");
+    assert!(body.contains("Empty"), "{body}");
+    assert!(body.contains("Missing"), "{body}");
+    assert!(body.contains("<svg"), "{body}");
+    assert_eq!(body.matches('–').count(), 1, "{body}");
+}
+
+#[actix_web::test]
 async fn test_routing_with_db_fs() {
     let mut config = test_config();
     if config.database_url.contains("memory") {

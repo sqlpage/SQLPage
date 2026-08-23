@@ -2,6 +2,11 @@
 
 ## unreleased
 
+ - Removed unnecessary `CAST` around request variables:
+   - On PostgreSQL, MySQL, SQL Server and DuckDB, variables are now sent without a text cast and the database infers the type from context, which keeps generated SQL readable (`WHERE id = $1` instead of `WHERE id = CAST($1 AS TEXT)`) and fixes cases where the cast was harmful.
+   - On SQL Server, this fixes `nvarchar` comparisons with non-ASCII characters that were previously mangled by `CAST(... AS VARCHAR)`, and fixes `CONTAINS` and `EXEC` with variables.
+   - On MySQL/MariaDB, this fixes `LIMIT`/`OFFSET` with variables.
+   - The cast is retained on SQLite and on ODBC connections to PostgreSQL, SQLite, Oracle, Snowflake and other databases where it is needed for correct comparisons.
  - AWS Lambda builds and documentation now use the supported Amazon Linux 2023 custom runtime instead of the end-of-life Amazon Linux 2 runtime. Release artifacts include the configuration directory required on Lambda's read-only filesystem.
  - Added a `toast` component with plain-text or Markdown content, icons, colors, six screen placements, configurable auto-dismiss timing, optional manual dismissal, URL-fragment triggers, and automatic stacking of queued notifications.
  - `sqlpage.send_mail` now supports rich email bodies. Use `body_html` for a caller-provided HTML alternative, or `body_md` to render Markdown as HTML. Messages retain a plain-text alternative; `body` may be omitted when `body_md` is used, and `body_md` and `body_html` cannot be combined.
@@ -15,6 +20,7 @@
  - Screen readers now announce the title of the modal component instead of an unnamed dialog.
  - `sqlpage.request_body` and `sqlpage.request_body_base64` now return NULL when the request has no body. A body that cannot be read, such as one exceeding the payload limit, is now reported as an error instead of being silently replaced with an empty body.
  - List-valued configuration options, including OIDC paths and trusted audiences, can now be set through environment variables as space-separated lists.
+ - Datagrid rows with an icon or image no longer display an unnecessary en-dash placeholder, and an explicitly empty description remains empty.
  - Charts can display reference lines. A row with a `yline` is drawn as a line across the chart at that value of the y axis, with the row's `label` and `color` for its text and its color. Reference lines are rows, so a chart can have as many of them as the query returns. A line follows its axis, so on a `horizontal` bar chart a `yline` is drawn down the chart rather than across it. They are not added to the total of a `stacked` chart, and are not filled in an `area` chart.
 
 ## v0.45

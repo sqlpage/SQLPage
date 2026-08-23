@@ -432,7 +432,7 @@ mod tests {
         };
         assert_eq!(query.bindings.len(), 1);
         assert!(query.computed_columns.is_empty());
-        assert!(query.sql.contains("upper(CAST($1 AS TEXT))"));
+        assert!(query.sql.contains("upper($1)"));
     }
 
     #[test]
@@ -519,10 +519,7 @@ mod tests {
         else {
             panic!("expected database query");
         };
-        assert_eq!(
-            query.sql,
-            "WITH c AS (SELECT CAST(? AS CHAR) AS x) SELECT CAST(? AS CHAR) AS y FROM c"
-        );
+        assert_eq!(query.sql, "WITH c AS (SELECT ? AS x) SELECT ? AS y FROM c");
         assert_eq!(query.bindings.as_ref(), [variable("a"), variable("b")]);
     }
 
@@ -630,7 +627,7 @@ mod tests {
         let statement = parse_sql(
             &database,
             &MySqlDialect {},
-            "select '@SQLPAGE_TEMP1' as value from t where id = $id",
+            "select '@SQLPAGE_TEMP1' where id = $id",
         )
         .unwrap()
         .next()
@@ -742,7 +739,7 @@ mod tests {
                 "select coalesce(upper(sqlpage.url_encode($prefix)), sqlpage.url_encode(value)) as result from t"
             ),
             DatabaseQuery {
-                sql: "SELECT value AS \"__sqlpage_input_0\", upper(CAST($1 AS TEXT)) AS \"__sqlpage_input_1\" FROM t".into(),
+                sql: "SELECT value AS \"__sqlpage_input_0\", upper($1) AS \"__sqlpage_input_1\" FROM t".into(),
                 bindings: Box::new([call(SqlPageFunctionName::url_encode, [variable("prefix")])]),
                 row_input_json: Box::new([false, false]),
                 computed_columns: Box::new([OutputColumn {
@@ -764,8 +761,7 @@ mod tests {
                 "select sqlpage.url_encode(value) as encoded from t where sqlpage.url_encode($expected) = 'x'"
             ),
             DatabaseQuery {
-                sql: "SELECT value AS \"__sqlpage_input_0\" FROM t WHERE CAST($1 AS TEXT) = 'x'"
-                    .into(),
+                sql: "SELECT value AS \"__sqlpage_input_0\" FROM t WHERE $1 = 'x'".into(),
                 bindings: Box::new([call(
                     SqlPageFunctionName::url_encode,
                     [variable("expected")]
@@ -802,6 +798,64 @@ mod tests {
                 }]),
                 json_columns: Box::new([]),
             }
+        );
+    }
+
+    fn sql_for_dbinfo(info: &DbInfo, sql: &str) -> String {
+        match parse_sql(info, &PostgreSqlDialect {}, sql).unwrap().next() {
+            Some(FileStatement::Query(Query {
+                body: QueryBody::Database(q),
+                ..
+            })) => q.sql,
+            other => panic!("Expected database query for `{sql}`\nGot: {other:?}"),
+        }
+    }
+
+    fn sql_for(db: SupportedDatabase, sql: &str) -> String {
+        sql_for_dbinfo(&database(db), sql)
+    }
+
+    fn odbc_sql_for(db: SupportedDatabase, sql: &str) -> String {
+        sql_for_dbinfo(
+            &DbInfo {
+                dbms_name: db.display_name().to_owned(),
+                database_type: db,
+                kind: AnyKind::Odbc,
+            },
+            sql,
+        )
+    }
+
+    #[test]
+    fn variables_keep_cast_only_where_typing_is_unpredictable() {
+        use SupportedDatabase::*;
+        let src = "SELECT $a";
+        assert_eq!(sql_for(Sqlite, src), "SELECT CAST(?1 AS TEXT)");
+        assert_eq!(sql_for(Oracle, src), "SELECT CAST(? AS VARCHAR(4000))");
+        assert_eq!(sql_for(Snowflake, src), "SELECT CAST(? AS VARCHAR)");
+        assert_eq!(sql_for(Generic, src), "SELECT CAST(? AS VARCHAR)");
+        assert_eq!(sql_for(Postgres, src), "SELECT $1");
+        assert_eq!(sql_for(MySql, src), "SELECT ?");
+        assert_eq!(sql_for(Mssql, src), "SELECT @p1");
+        assert_eq!(sql_for(Duckdb, src), "SELECT ?");
+    }
+
+    #[test]
+    fn odbc_cast_follows_database() {
+        use SupportedDatabase::*;
+        for db in [Postgres, Sqlite] {
+            assert_eq!(odbc_sql_for(db, "select $a"), "SELECT CAST(? AS TEXT)");
+        }
+        for db in [MySql, Mssql, Duckdb] {
+            assert_eq!(odbc_sql_for(db, "select $a"), "SELECT ?");
+        }
+    }
+
+    #[test]
+    fn limit_uses_bare_parameter() {
+        assert_eq!(
+            sql_for(SupportedDatabase::Postgres, "select value from t limit $n"),
+            "SELECT value FROM t LIMIT $1"
         );
     }
 }

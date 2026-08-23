@@ -42,6 +42,9 @@
                         {{/if}}
                         {{#if description}}
                             {{description}}
+                        {{else if (eq description "")}}
+                        {{else if icon}}
+                        {{else if image_url}}
                         {{else}}
                             –
                         {{/if}}

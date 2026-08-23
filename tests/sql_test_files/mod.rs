@@ -8,14 +8,32 @@ use tokio::task::JoinHandle;
 #[actix_web::test]
 async fn run_all_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
-    let test_files = get_sql_test_cases();
+    run_sql_test_cases(&app_data, get_sql_test_cases()).await;
+}
 
+/// Runs the SQL test files in `database-specific/<current database>/`.
+/// These files use syntax that only works on a single database engine, so they
+/// cannot be part of the generic `run_all_sql_test_files` test.
+#[actix_web::test]
+async fn run_database_specific_sql_test_files() {
+    let app_data = crate::common::make_app_data().await;
+    let db_type = database_type_name(&app_data);
+    run_sql_test_cases(&app_data, get_database_specific_test_cases(&db_type)).await;
+}
+
+async fn run_sql_test_cases(
+    app_data: &actix_web::web::Data<AppState>,
+    test_files: Vec<SqlTestCase>,
+) {
+    if test_files.is_empty() {
+        return;
+    }
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let (echo_handle, port) = crate::common::start_echo_server(shutdown_rx);
     wait_for_echo_server(port).await;
 
     for test_file in test_files {
-        run_sql_test(&test_file, &app_data, &echo_handle, port).await;
+        run_sql_test(&test_file, app_data, &echo_handle, port).await;
     }
 
     let _ = shutdown_tx.send(());
@@ -63,9 +81,22 @@ fn get_sql_test_cases() -> Vec<SqlTestCase> {
     tests
 }
 
+fn get_database_specific_test_cases(db_type: &str) -> Vec<SqlTestCase> {
+    read_sql_tests_in_dir(
+        &format!("tests/sql_test_files/data/database-specific/{db_type}"),
+        SqlTestFormat::Json,
+    )
+}
+
+fn database_type_name(app_data: &actix_web::web::Data<AppState>) -> String {
+    format!("{:?}", app_data.db.info.database_type).to_lowercase()
+}
+
 fn read_sql_tests_in_dir(dir: &str, format: SqlTestFormat) -> Vec<SqlTestCase> {
-    std::fs::read_dir(dir)
-        .unwrap()
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new(); // no tests in this directory (e.g. no database-specific tests for this database)
+    };
+    entries
         .filter_map(|e| {
             let path = e.ok()?.path();
             if path.is_dir() || path.extension()? != "sql" {
@@ -86,7 +117,7 @@ async fn run_sql_test(
     let test_file_path = test_file.to_string_lossy().replace('\\', "/");
     let stem = test_file.file_stem().unwrap().to_str().unwrap();
 
-    let db_type = format!("{:?}", app_data.db.info.database_type).to_lowercase();
+    let db_type = database_type_name(app_data);
     if stem.contains(&format!("_no{db_type}")) {
         println!("Skipped {}: {}", test_file.display(), db_type);
         return;
