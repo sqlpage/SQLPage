@@ -287,7 +287,7 @@ pub struct AppConfig {
     #[serde(default = "default_max_email_attachment_size")]
     pub max_email_attachment_size: usize,
 
-    /// Maximum size of uploaded files in bytes. The default is 10MiB (10 * 1024 * 1024 bytes)
+    /// Maximum size of uploaded files in bytes. The default is 5MiB (5 * 1024 * 1024 bytes)
     #[serde(default = "default_max_file_size")]
     pub max_uploaded_file_size: usize,
 
@@ -727,8 +727,7 @@ fn default_compress_responses() -> bool {
 }
 
 fn default_system_root_ca_certificates() -> bool {
-    std::env::var("SSL_CERT_FILE").is_ok_and(|x| !x.is_empty())
-        || std::env::var("SSL_CERT_DIR").is_ok_and(|x| !x.is_empty())
+    crate::webserver::http_client::default_system_root_ca_certificates_from_env()
 }
 
 fn default_max_recursion_depth() -> u8 {
