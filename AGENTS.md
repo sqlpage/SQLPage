@@ -140,7 +140,7 @@ official documentation website sql tables:
 #### Project Conventions
 
 - Built-in UI component templates: `sqlpage/templates/*.handlebars`; header/control components: `src/render.rs`.
-- SQLPage functions: one `async fn` module under `src/webserver/database/sqlpage_functions/functions/`, registered with `sqlpage_functions!` in `functions.rs`.
+- SQLPage functions: one `async fn` module under `src/webserver/database/sqlpage_functions/functions/`, declared with `mod` and registered with `sqlpage_functions!` in `functions.rs`. See its [README](./src/webserver/database/sqlpage_functions/README.md).
 - [Configuration](./configuration.md): see [AppConfig](./src/app_config.rs)
 - Routing: file-based in `src/webserver/routing.rs`. Missing paths use the nearest ancestor `404.sql`; without one, HTML uses `src/default_404.sql` and other formats receive a plain-text 404.
 - Follow patterns from similar modules before introducing new abstractions.

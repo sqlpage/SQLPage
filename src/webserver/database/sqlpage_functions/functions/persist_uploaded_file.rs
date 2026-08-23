@@ -72,7 +72,10 @@ pub(super) async fn persist_uploaded_file<'a>(
 }
 
 #[cfg(unix)]
-pub(super) async fn set_file_mode(path: &std::path::Path, mode: Option<&str>) -> anyhow::Result<()> {
+pub(super) async fn set_file_mode(
+    path: &std::path::Path,
+    mode: Option<&str>,
+) -> anyhow::Result<()> {
     use std::os::unix::fs::PermissionsExt;
     let mode = if let Some(mode) = mode {
         u32::from_str_radix(mode, 8)
@@ -87,6 +90,9 @@ pub(super) async fn set_file_mode(path: &std::path::Path, mode: Option<&str>) ->
 }
 
 #[cfg(not(unix))]
-pub(super) async fn set_file_mode(_path: &std::path::Path, _mode: Option<&str>) -> anyhow::Result<()> {
+pub(super) async fn set_file_mode(
+    _path: &std::path::Path,
+    _mode: Option<&str>,
+) -> anyhow::Result<()> {
     Ok(())
 }
