@@ -5,7 +5,7 @@ This example sends plain-text email with [`sqlpage.send_mail`](https://sql-page.
 Run the example:
 
 ```sh
-docker compose up --build
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 ```
 
 This builds SQLPage from the current repository checkout before starting the example.
