@@ -97,7 +97,7 @@ impl std::error::Error for NicePositionedError {
 
 /// Display a database error without any position information
 #[must_use]
-pub fn display_db_error(
+pub(super) fn display_db_error(
     source_file: &Path,
     query: &str,
     db_err: sqlx::error::Error,
@@ -112,7 +112,7 @@ pub fn display_db_error(
 
 /// Display a database error with a highlighted line and character offset.
 #[must_use]
-pub fn display_stmt_db_error(
+pub(super) fn display_stmt_db_error(
     source_file: &Path,
     query: &str,
     query_position: SourceSpan,
@@ -127,7 +127,7 @@ pub fn display_stmt_db_error(
 }
 
 #[must_use]
-pub fn display_stmt_error(
+pub(super) fn display_stmt_error(
     source_file: &Path,
     query_position: SourceSpan,
     error: anyhow::Error,
@@ -140,14 +140,14 @@ pub fn display_stmt_error(
 }
 
 /// Highlight a line with a character offset.
-pub fn highlight_line_offset<W: std::fmt::Write>(msg: &mut W, line: &str, offset: usize) {
+pub(super) fn highlight_line_offset<W: Write>(msg: &mut W, line: &str, offset: usize) {
     writeln!(msg, "{line}").unwrap();
     writeln!(msg, "{}⬆️", " ".repeat(offset)).unwrap();
 }
 
 /// Highlight an error given a line and a character offset
 /// line and `col_num` are 1-based
-pub fn quote_source_with_highlight(source: &str, line_num: u64, col_num: u64) -> String {
+pub(super) fn quote_source_with_highlight(source: &str, line_num: u64, col_num: u64) -> String {
     let mut msg = String::new();
     let col_num_usize = usize::try_from(col_num)
         .unwrap_or_default()

@@ -50,7 +50,7 @@ impl ResponseWriter {
             .reserve()
             .await
             .map_err(|_| std::io::ErrorKind::WouldBlock)?;
-        sender.send(std::mem::take(&mut self.buffer).into());
+        sender.send(mem::take(&mut self.buffer).into());
         Ok(())
     }
 }
@@ -122,7 +122,7 @@ impl tokio::io::AsyncWrite for AsyncResponseWriter {
         } = self.get_mut();
         match poll_sender.poll_reserve(cx) {
             std::task::Poll::Ready(Ok(())) => {
-                let res = poll_sender.send_item(std::mem::take(&mut writer.buffer).into());
+                let res = poll_sender.send_item(mem::take(&mut writer.buffer).into());
                 std::task::Poll::Ready(res.map_err(|_| std::io::ErrorKind::BrokenPipe.into()))
             }
             std::task::Poll::Pending => std::task::Poll::Pending,
@@ -142,7 +142,7 @@ impl tokio::io::AsyncWrite for AsyncResponseWriter {
 
 impl Drop for ResponseWriter {
     fn drop(&mut self) {
-        if let Err(e) = std::io::Write::flush(self) {
+        if let Err(e) = Write::flush(self) {
             log::debug!("Could not flush data to client: {e}");
         }
     }

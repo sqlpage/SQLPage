@@ -19,7 +19,7 @@ fn base64url_encode(data: &[u8]) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(data)
 }
 
-pub fn make_jwt(claims: &serde_json::Value, secret: &str) -> String {
+pub(crate) fn make_jwt(claims: &serde_json::Value, secret: &str) -> String {
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
 
@@ -32,7 +32,7 @@ pub fn make_jwt(claims: &serde_json::Value, secret: &str) -> String {
     let header_b64 = base64url_encode(header.to_string().as_bytes());
     let payload_b64 = base64url_encode(claims.to_string().as_bytes());
 
-    let message = format!("{}.{}", header_b64, payload_b64);
+    let message = format!("{header_b64}.{payload_b64}");
 
     let mut mac =
         Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("HMAC accepts any key size");
@@ -40,7 +40,7 @@ pub fn make_jwt(claims: &serde_json::Value, secret: &str) -> String {
     let signature = mac.finalize().into_bytes();
     let signature_b64 = base64url_encode(&signature);
 
-    format!("{}.{}.{}", header_b64, payload_b64, signature_b64)
+    format!("{header_b64}.{payload_b64}.{signature_b64}")
 }
 
 type JwtCustomizer<'a> = dyn Fn(serde_json::Value, &str) -> String + Send + Sync + 'a;
@@ -141,11 +141,10 @@ async fn token_endpoint(
         "nonce": nonce,
     });
 
-    let id_token = state
-        .jwt_customizer
-        .take()
-        .map(|customizer| customizer(claims.clone(), &state.secret))
-        .unwrap_or_else(|| make_jwt(&claims, &state.secret));
+    let id_token = state.jwt_customizer.take().map_or_else(
+        || make_jwt(&claims, &state.secret),
+        |customizer| customizer(claims.clone(), &state.secret),
+    );
 
     let delay = state.token_endpoint_delay;
     drop(state);
@@ -167,7 +166,7 @@ async fn token_endpoint(
         .streaming(body)
 }
 
-pub struct FakeOidcProvider {
+pub(crate) struct FakeOidcProvider {
     pub issuer_url: String,
     pub client_id: String,
     pub client_secret: String,
@@ -185,10 +184,10 @@ fn extract_set_cookies(headers: &header::HeaderMap) -> Vec<Cookie<'static>> {
 }
 
 impl FakeOidcProvider {
-    pub async fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let issuer_url = format!("http://127.0.0.1:{}", port);
+        let issuer_url = format!("http://127.0.0.1:{port}");
         let client_id = "test_client".to_string();
         let client_secret = "test_secret".to_string();
 
@@ -236,20 +235,20 @@ impl FakeOidcProvider {
         }
     }
 
-    fn with_state_mut<R>(&self, f: impl FnOnce(&mut ProviderState) -> R) -> R {
+    fn with_state_mut<R>(&self, f: impl FnOnce(&mut ProviderState<'_>) -> R) -> R {
         let mut state = self.state.lock().unwrap();
         f(&mut state)
     }
 
-    pub fn set_token_endpoint_delay(&self, delay: Duration) {
+    pub(crate) fn set_token_endpoint_delay(&self, delay: Duration) {
         self.with_state_mut(|s| s.token_endpoint_delay = delay);
     }
 
-    pub fn discovery_count(&self) -> usize {
+    pub(crate) fn discovery_count(&self) -> usize {
         self.state.lock().unwrap().discovery_count
     }
 
-    pub fn store_auth_code(&self, code: String, nonce: String) {
+    pub(crate) fn store_auth_code(&self, code: String, nonce: String) {
         self.with_state_mut(|s| {
             s.auth_codes.insert(code, nonce);
         });
@@ -283,7 +282,7 @@ macro_rules! request_with_cookies {
         }
         let resp = test::call_service(&$app, req.to_request()).await;
         for new_cookie in extract_set_cookies(resp.headers()) {
-            $cookies.retain(|c: &Cookie| c.name() != new_cookie.name());
+            $cookies.retain(|c: &Cookie<'_>| c.name() != new_cookie.name());
             if !new_cookie.value().is_empty() {
                 $cookies.push(new_cookie);
             }
@@ -293,7 +292,7 @@ macro_rules! request_with_cookies {
 }
 
 async fn setup_oidc_test(
-    provider_mutator: impl FnOnce(&mut ProviderState),
+    provider_mutator: impl FnOnce(&mut ProviderState<'_>),
 ) -> (
     impl actix_web::dev::Service<
         actix_http::Request,
@@ -307,7 +306,7 @@ async fn setup_oidc_test(
         app_config::{AppConfig, test_database_url},
     };
     crate::common::init_log();
-    let provider = FakeOidcProvider::new().await;
+    let provider = FakeOidcProvider::new();
     provider.with_state_mut(provider_mutator);
 
     let db_url = test_database_url();
@@ -436,7 +435,7 @@ async fn test_oidc_happy_path() {
 }
 
 async fn assert_oidc_login_fails(
-    provider_mutator: impl FnOnce(&mut ProviderState),
+    provider_mutator: impl FnOnce(&mut ProviderState<'_>),
     state_override: Option<String>,
 ) {
     let (app, provider) = setup_oidc_test(provider_mutator).await;
@@ -545,7 +544,7 @@ async fn test_oidc_expired_token_is_rejected() {
 }
 
 async fn setup_oidc_test_with_prefix(
-    provider_mutator: impl FnOnce(&mut ProviderState),
+    provider_mutator: impl FnOnce(&mut ProviderState<'_>),
     site_prefix: &str,
 ) -> (
     impl actix_web::dev::Service<
@@ -560,7 +559,7 @@ async fn setup_oidc_test_with_prefix(
         app_config::{AppConfig, test_database_url},
     };
     crate::common::init_log();
-    let provider = FakeOidcProvider::new().await;
+    let provider = FakeOidcProvider::new();
     provider.with_state_mut(provider_mutator);
 
     let db_url = test_database_url();
@@ -596,8 +595,7 @@ async fn test_oidc_with_site_prefix() {
     let redirect_uri = get_query_param(&auth_url, "redirect_uri");
     assert!(
         redirect_uri.contains("/my-app/sqlpage/oidc_callback"),
-        "Redirect URI should contain site prefix. Got: {}",
-        redirect_uri
+        "Redirect URI should contain site prefix. Got: {redirect_uri}"
     );
 }
 
@@ -609,7 +607,7 @@ async fn test_oidc_logout_uses_correct_scheme() {
     };
 
     crate::common::init_log();
-    let provider = FakeOidcProvider::new().await;
+    let provider = FakeOidcProvider::new();
 
     let db_url = test_database_url();
     let config_json = format!(
@@ -718,7 +716,7 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
 
     let handle = tokio::task::spawn_local(async move {
         let mut req = test::TestRequest::get().uri(&callback_uri);
-        for cookie in cookies.iter() {
+        for cookie in &cookies {
             req = req.cookie(cookie.clone());
         }
         test::call_service(&app, req.to_request()).await
@@ -728,7 +726,7 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
     // then advance past the body-read timeout.
     tokio::task::yield_now().await;
     tokio::time::pause();
-    tokio::time::advance(Duration::from_secs(60)).await;
+    tokio::time::advance(Duration::from_mins(1)).await;
 
     let resp = tokio::time::timeout(Duration::from_secs(1), handle)
         .await
@@ -749,7 +747,7 @@ async fn test_oidc_logout_is_session_bound() {
     };
 
     crate::common::init_log();
-    let provider = FakeOidcProvider::new().await;
+    let provider = FakeOidcProvider::new();
 
     let db_url = test_database_url();
     let config_json = format!(

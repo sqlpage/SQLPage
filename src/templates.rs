@@ -78,7 +78,7 @@ pub struct AllTemplates {
     split_templates: FileCache<SplitTemplate>,
 }
 
-const STATIC_TEMPLATES: Dir = include_dir!("$CARGO_MANIFEST_DIR/sqlpage/templates");
+const STATIC_TEMPLATES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/sqlpage/templates");
 
 impl AllTemplates {
     pub fn init(config: &AppConfig) -> anyhow::Result<Self> {

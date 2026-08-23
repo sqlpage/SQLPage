@@ -443,7 +443,7 @@ fn has_single_row_shape(statement: &SqlStatement) -> bool {
         && select.from.is_empty()
         && select.lateral_views.is_empty()
         && select.selection.is_none()
-        && select.group_by == sqlparser::ast::GroupByExpr::Expressions(vec![], vec![])
+        && select.group_by == GroupByExpr::Expressions(vec![], vec![])
         && select.cluster_by.is_empty()
         && select.distribute_by.is_empty()
         && select.sort_by.is_empty()

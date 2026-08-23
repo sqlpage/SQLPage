@@ -115,7 +115,7 @@ pub(crate) struct AppFileStore<'a> {
 }
 
 impl<'a> AppFileStore<'a> {
-    pub fn new(
+    pub(crate) fn new(
         cache: &'a FileCache<SqlFile>,
         filesystem: &'a FileSystem,
         app_state: &'a AppState,
@@ -637,7 +637,6 @@ mod tests {
 
         fn contains(&self, path: &str) -> bool {
             let normalized_path = path.replace('\\', "/");
-            dbg!(&normalized_path, &self.contents);
             self.contents.contains(&normalized_path)
         }
 

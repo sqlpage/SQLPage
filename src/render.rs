@@ -367,7 +367,7 @@ impl HeaderContext {
     }
 
     fn log(self, data: &JsonValue) -> anyhow::Result<PageContext> {
-        handle_log_component(&self.request_context.source_path, Option::None, data)?;
+        handle_log_component(&self.request_context.source_path, None, data)?;
         Ok(PageContext::Header(self))
     }
 
@@ -555,7 +555,7 @@ impl AnyRenderBodyContext {
     }
 }
 
-pub struct JsonBodyRenderer<W: std::io::Write> {
+pub struct JsonBodyRenderer<W: Write> {
     writer: W,
     is_first: bool,
     prefix: &'static [u8],
@@ -563,7 +563,7 @@ pub struct JsonBodyRenderer<W: std::io::Write> {
     separator: &'static [u8],
 }
 
-impl<W: std::io::Write> JsonBodyRenderer<W> {
+impl<W: Write> JsonBodyRenderer<W> {
     pub fn new_array(writer: W) -> JsonBodyRenderer<W> {
         let mut renderer = Self {
             writer,
@@ -741,7 +741,7 @@ impl CsvBodyRenderer {
 }
 
 #[allow(clippy::module_name_repetitions)]
-pub struct HtmlRenderContext<W: std::io::Write> {
+pub struct HtmlRenderContext<W: Write> {
     app_state: Arc<AppState>,
     pub writer: W,
     current_component: Option<SplitTemplateRenderer>,
@@ -754,7 +754,7 @@ const DEFAULT_COMPONENT: &str = "table";
 const PAGE_SHELL_COMPONENT: &str = "shell";
 const FRAGMENT_SHELL_COMPONENT: &str = "shell-empty";
 
-impl<W: std::io::Write> HtmlRenderContext<W> {
+impl<W: Write> HtmlRenderContext<W> {
     pub async fn new(
         app_state: Arc<AppState>,
         request_context: RequestContext,
@@ -1023,11 +1023,11 @@ fn handle_log_component(
     Ok(())
 }
 
-struct HandlebarWriterOutput<W: std::io::Write>(W);
+struct HandlebarWriterOutput<W: Write>(W);
 
-impl<W: std::io::Write> handlebars::Output for HandlebarWriterOutput<W> {
+impl<W: Write> handlebars::Output for HandlebarWriterOutput<W> {
     fn write(&mut self, seg: &str) -> std::io::Result<()> {
-        std::io::Write::write_all(&mut self.0, seg.as_bytes())
+        Write::write_all(&mut self.0, seg.as_bytes())
     }
 }
 
@@ -1043,7 +1043,7 @@ pub struct SplitTemplateRenderer {
 }
 
 const _: () = assert!(
-    std::mem::size_of::<SplitTemplateRenderer>() <= 64,
+    size_of::<SplitTemplateRenderer>() <= 64,
     "SplitTemplateRenderer should be small enough to be allocated on the stack"
 );
 
@@ -1072,11 +1072,7 @@ impl SplitTemplateRenderer {
             .unwrap_or_default()
     }
 
-    fn render_start<W: std::io::Write>(
-        &mut self,
-        writer: W,
-        data: JsonValue,
-    ) -> Result<(), RenderError> {
+    fn render_start<W: Write>(&mut self, writer: W, data: JsonValue) -> Result<(), RenderError> {
         log::trace!(
             "Starting rendering of a template{} with the following top-level parameters: {data}",
             self.split_template
@@ -1108,11 +1104,7 @@ impl SplitTemplateRenderer {
         Ok(())
     }
 
-    fn render_item<W: std::io::Write>(
-        &mut self,
-        writer: W,
-        data: JsonValue,
-    ) -> Result<(), RenderError> {
+    fn render_item<W: Write>(&mut self, writer: W, data: JsonValue) -> Result<(), RenderError> {
         log::trace!("Rendering a new item in the page: {data:?}");
         if let Some(local_vars) = self.local_vars.take() {
             let mut render_context = handlebars::RenderContext::new(None);
@@ -1144,7 +1136,7 @@ impl SplitTemplateRenderer {
         Ok(())
     }
 
-    fn render_end<W: std::io::Write>(&mut self, writer: W) -> Result<(), RenderError> {
+    fn render_end<W: Write>(&mut self, writer: W) -> Result<(), RenderError> {
         log::trace!(
             "Closing a template {}",
             self.split_template

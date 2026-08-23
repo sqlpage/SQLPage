@@ -10,6 +10,19 @@ repository = "https://github.com/sqlpage/SQLPage"
 documentation = "https://docs.rs/sqlpage"
 include = ["/src", "/README.md", "/build.rs", "/sqlpage"]
 
+[lints.rust]
+elided_lifetimes_in_paths = "deny"
+unreachable_pub = "deny"
+unused_qualifications = "deny"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+
 [profile.superoptimized]
 inherits = "release"
 strip = "debuginfo"

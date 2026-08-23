@@ -49,7 +49,7 @@ pub(crate) struct FileSystem {
 }
 
 impl FileSystem {
-    pub async fn init(local_root: impl Into<PathBuf>, db: &Database) -> Self {
+    pub(crate) async fn init(local_root: impl Into<PathBuf>, db: &Database) -> Self {
         Self {
             local_root: local_root.into(),
             db_fs_queries: match DbFsQueries::init(db).await {
@@ -68,7 +68,7 @@ impl FileSystem {
         }
     }
 
-    pub async fn modified_since(
+    pub(crate) async fn modified_since(
         &self,
         app_state: &AppState,
         access: FileAccess<'_>,
@@ -99,7 +99,7 @@ impl FileSystem {
         }
     }
 
-    pub async fn read_to_string(
+    pub(crate) async fn read_to_string(
         &self,
         app_state: &AppState,
         access: FileAccess<'_>,
@@ -127,7 +127,7 @@ impl FileSystem {
         })
     }
 
-    pub async fn read_file(
+    pub(crate) async fn read_file(
         &self,
         app_state: &AppState,
         access: FileAccess<'_>,

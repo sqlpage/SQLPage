@@ -109,7 +109,7 @@ async fn test_csv_filename_header_injection() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_json_columns() {
-    let app_data = crate::common::make_app_data().await;
+    let app_data = make_app_data().await;
     if !matches!(
         app_data.db.to_string().to_lowercase().as_str(),
         "postgres" | "sqlite"
@@ -135,7 +135,7 @@ async fn test_json_columns() {
         "the json should have been parsed, not returned as a string, in: {body_html_escaped}"
     );
     assert!(
-        !body_html_escaped.contains("{"),
+        !body_html_escaped.contains('{'),
         "the json should have been parsed, not returned as a string, in: {body_html_escaped}"
     );
 }

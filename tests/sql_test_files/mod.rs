@@ -1,5 +1,6 @@
 use actix_web::test;
 use sqlpage::AppState;
+use std::fmt::Write as _;
 use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
@@ -93,7 +94,7 @@ async fn run_sql_test(
 
     let mut query_params = "x=1".to_string();
     if test_file_path.contains("fetch") {
-        query_params.push_str(&format!("&echo_port={port}"));
+        write!(query_params, "&echo_port={port}").unwrap();
     }
     let req_str = format!("/{test_file_path}?{query_params}");
 
@@ -137,9 +138,8 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
     );
 
     for row in rows {
-        let obj = match row.as_object() {
-            Some(o) => o,
-            None => continue,
+        let Some(obj) = row.as_object() else {
+            continue;
         };
 
         if let Some(err) = format_error(obj) {
@@ -172,13 +172,12 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
             })
             .unwrap_or_default();
 
-        if expected.is_empty() && expected_contains.is_empty() {
-            panic!(
-                "{}: No `expected` column returned: \n{:#}",
-                test_file.display(),
-                row
-            );
-        }
+        assert!(
+            !(expected.is_empty() && expected_contains.is_empty()),
+            "{}: No `expected` column returned: \n{:#}",
+            test_file.display(),
+            row
+        );
 
         let exact_ok = expected.is_empty() || expected.iter().any(|e| e == &actual);
         let contains_ok = expected_contains.is_empty()
@@ -187,16 +186,13 @@ fn assert_json_test(body: &str, test_file: &std::path::Path) {
         if !exact_ok || !contains_ok {
             let mut msg = format!("Test failed: {}\n", test_file.display());
             if !expected.is_empty() {
-                let expected_strs: Vec<String> = expected.iter().map(|d| d.to_string()).collect();
-                msg.push_str(&format!("Expected: {}\n", expected_strs.join(" or ")));
+                let expected_strs: Vec<String> = expected.iter().map(ToString::to_string).collect();
+                writeln!(msg, "Expected: {}", expected_strs.join(" or ")).unwrap();
             }
             if !expected_contains.is_empty() {
-                msg.push_str(&format!(
-                    "Expected to contain: {}\n",
-                    expected_contains.join(", ")
-                ));
+                writeln!(msg, "Expected to contain: {}", expected_contains.join(", ")).unwrap();
             }
-            msg.push_str(&format!("Actual:   {}\n", actual));
+            writeln!(msg, "Actual:   {actual}").unwrap();
             panic!("{}", msg);
         }
     }

@@ -308,14 +308,14 @@ fn resolve_bodies(
                 })?,
         )
     } else {
-        body_html.map(std::string::ToString::to_string)
+        body_html.map(ToString::to_string)
     };
 
     // If body is provided it takes precedence; otherwise the raw markdown is used.
     let text_body = match body {
         Some(body) => body.into_owned(),
         None => body_md
-            .map(std::string::ToString::to_string)
+            .map(ToString::to_string)
             .expect("body_md is present when body is None"),
     };
     Ok((text_body, html_body))

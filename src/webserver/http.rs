@@ -177,7 +177,7 @@ async fn build_response_header_and_stream<S: Stream<Item = DbItem>>(
                 renderer,
             } => {
                 let body_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
-                let result_stream = body_stream.map(Ok::<_, actix_web::Error>);
+                let result_stream = body_stream.map(Ok::<_, Error>);
                 let http_response = http_response.streaming(result_stream);
                 return Ok(ResponseWithWriter::RenderStream {
                     http_response,
@@ -262,7 +262,7 @@ async fn render_sql(
         otel.name = %sql_execution_span_name(&source_path),
         { otel::CODE_FILE_PATH } = %source_path.display(),
     );
-    actix_web::rt::spawn(tracing::Instrument::instrument(
+    actix_web::rt::spawn(Instrument::instrument(
         async move {
             let request_info = exec_ctx.request();
             let request_context = RequestContext {
@@ -291,7 +291,7 @@ async fn render_sql(
                     resp_send
                         .send(http_response)
                         .unwrap_or_else(|e| log::error!("could not send headers {e:?}"));
-                    tracing::Instrument::instrument(
+                    Instrument::instrument(
                         stream_response(database_entries_stream, renderer),
                         tracing::info_span!("render"),
                     )
@@ -326,7 +326,7 @@ fn sql_execution_span_name(source_path: &std::path::Path) -> String {
     format!("SQL {}", source_path.display())
 }
 
-struct RequestHeaderCarrier<'a>(&'a actix_web::http::header::HeaderMap);
+struct RequestHeaderCarrier<'a>(&'a header::HeaderMap);
 
 impl opentelemetry::propagation::Extractor for RequestHeaderCarrier<'_> {
     fn get(&self, key: &str) -> Option<&str> {
@@ -334,10 +334,7 @@ impl opentelemetry::propagation::Extractor for RequestHeaderCarrier<'_> {
     }
 
     fn keys(&self) -> Vec<&str> {
-        self.0
-            .keys()
-            .map(actix_web::http::header::HeaderName::as_str)
-            .collect()
+        self.0.keys().map(header::HeaderName::as_str).collect()
     }
 }
 
@@ -386,7 +383,7 @@ impl RootSpanBuilder for SqlPageRootSpanBuilder {
             { otel::EXCEPTION_MESSAGE } = tracing::field::Empty,
             "sqlpage.exception.details" = tracing::field::Empty,
         );
-        std::mem::drop(connection_info);
+        drop(connection_info);
         set_otel_parent(request, &span);
         span
     }
@@ -502,8 +499,7 @@ pub async fn main_handler(
     };
     match routing_action {
         NotFound => {
-            let accept_header =
-                header::Accept::parse(&service_request).unwrap_or(header::Accept::star());
+            let accept_header = Accept::parse(&service_request).unwrap_or(Accept::star());
             let prefers_html = accept_header.iter().any(|h| h.item.subtype() == "html");
 
             if prefers_html {
@@ -566,7 +562,7 @@ pub fn create_app(
         Response = ServiceResponse<
             impl MessageBody<Error = impl std::fmt::Display + std::fmt::Debug>,
         >,
-        Error = actix_web::Error,
+        Error = Error,
         InitError = (),
     >,
 > {

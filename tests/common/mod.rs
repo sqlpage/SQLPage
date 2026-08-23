@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::time::Duration;
 
 use actix_web::{
@@ -5,7 +6,7 @@ use actix_web::{
     dev::{ServiceRequest, fn_service},
     http::header,
     http::header::ContentType,
-    test::{self, TestRequest},
+    test::TestRequest,
     web,
     web::Data,
 };
@@ -18,11 +19,11 @@ use sqlpage::{
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
-pub async fn get_request_to_with_data(
+pub(crate) async fn get_request_to_with_data(
     path: &str,
     data: Data<AppState>,
 ) -> actix_web::Result<TestRequest> {
-    Ok(test::TestRequest::get()
+    Ok(TestRequest::get()
         .uri(path)
         .insert_header(ContentType::plaintext())
         .insert_header(header::Accept::html())
@@ -31,23 +32,23 @@ pub async fn get_request_to_with_data(
         .app_data(data))
 }
 
-pub async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
+pub(crate) async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
     let data = make_app_data().await;
     get_request_to_with_data(path, data).await
 }
 
-pub async fn make_app_data_from_config(config: AppConfig) -> Data<AppState> {
+pub(crate) async fn make_app_data_from_config(config: AppConfig) -> Data<AppState> {
     let state = AppState::init(&config).await.unwrap();
     Data::new(state)
 }
 
-pub async fn make_app_data() -> Data<AppState> {
+pub(crate) async fn make_app_data() -> Data<AppState> {
     init_log();
     let config = test_config();
     make_app_data_from_config(config).await
 }
 
-pub async fn req_path(
+pub(crate) async fn req_path(
     path: impl AsRef<str>,
 ) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     let req = get_request_to(path.as_ref()).await?.to_srv_request();
@@ -55,14 +56,14 @@ pub async fn req_path(
 }
 
 const REQ_TIMEOUT: Duration = Duration::from_secs(8);
-pub async fn req_path_with_app_data(
+pub(crate) async fn req_path_with_app_data(
     path: impl AsRef<str>,
     app_data: Data<AppState>,
 ) -> anyhow::Result<actix_web::dev::ServiceResponse> {
     req_path_with_app_data_and_accept(path, app_data, header::Accept::html()).await
 }
 
-pub async fn req_path_with_app_data_json(
+pub(crate) async fn req_path_with_app_data_json(
     path: impl AsRef<str>,
     app_data: Data<AppState>,
 ) -> anyhow::Result<actix_web::dev::ServiceResponse> {
@@ -75,7 +76,7 @@ async fn req_path_with_app_data_and_accept(
     accept: header::Accept,
 ) -> anyhow::Result<actix_web::dev::ServiceResponse> {
     let path = path.as_ref();
-    let req = test::TestRequest::get()
+    let req = TestRequest::get()
         .uri(path)
         .app_data(app_data)
         .insert_header(("cookie", "test_cook=123"))
@@ -94,7 +95,7 @@ async fn req_path_with_app_data_and_accept(
     Ok(resp)
 }
 
-pub fn test_config() -> AppConfig {
+pub(crate) fn test_config() -> AppConfig {
     let db_url = test_database_url();
     serde_json::from_str::<AppConfig>(&format!(
         r#"{{
@@ -111,7 +112,7 @@ pub fn test_config() -> AppConfig {
     .unwrap()
 }
 
-pub fn init_log() {
+pub(crate) fn init_log() {
     telemetry::init_test_logging();
 }
 
@@ -123,7 +124,7 @@ fn format_request_line_and_headers(req: &ServiceRequest) -> String {
         if k.as_str().eq_ignore_ascii_case("date") {
             continue;
         }
-        out.push_str(&format!("|{k}: {}", v.to_str().unwrap_or("?")));
+        write!(out, "|{k}: {}", v.to_str().unwrap_or("?")).unwrap();
     }
     out
 }
@@ -135,24 +136,24 @@ async fn format_body(req: &mut ServiceRequest) -> Vec<u8> {
         .unwrap_or_default()
 }
 
-fn build_echo_response(body: Vec<u8>, meta: String) -> HttpResponse {
+fn build_echo_response(body: &[u8], meta: String) -> HttpResponse {
     let mut resp = meta.into_bytes();
     resp.push(b'|');
-    resp.extend_from_slice(&body);
+    resp.extend_from_slice(body);
     HttpResponse::Ok()
         .insert_header((header::DATE, "Mon, 24 Feb 2025 12:00:00 GMT"))
         .insert_header((header::CONTENT_TYPE, "text/plain"))
         .body(resp)
 }
 
-pub fn start_echo_server(shutdown: oneshot::Receiver<()>) -> (JoinHandle<()>, u16) {
+pub(crate) fn start_echo_server(shutdown: oneshot::Receiver<()>) -> (JoinHandle<()>, u16) {
     let listener = std::net::TcpListener::bind("localhost:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let server = HttpServer::new(|| {
         App::new().default_service(fn_service(|mut req: ServiceRequest| async move {
             let meta = format_request_line_and_headers(&req);
             let body = format_body(&mut req).await;
-            let resp = build_echo_response(body, meta);
+            let resp = build_echo_response(&body, meta);
             Ok(req.into_response(resp))
         }))
     })

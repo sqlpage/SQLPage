@@ -240,7 +240,7 @@ pub(super) fn handle_form_error(
     _req: &HttpRequest,
 ) -> actix_web::Error {
     match decode_err {
-        actix_web::error::UrlencodedError::Overflow { size, limit } => {
+        UrlencodedError::Overflow { size, limit } => {
             actix_web::error::ErrorPayloadTooLarge(format!(
                 "The submitted form data size ({size} bytes) exceeds the maximum allowed upload size ({limit} bytes). \
                     You can increase this limit by setting max_uploaded_file_size in the configuration file.",

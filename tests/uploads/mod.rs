@@ -31,7 +31,7 @@ async fn test_file_upload(target: &str) -> actix_web::Result<()> {
 #[actix_web::test]
 async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     let app_data = crate::common::make_app_data().await;
-    let req = actix_web::test::TestRequest::get()
+    let req = test::TestRequest::get()
         .uri("/tests/uploads/persist_with_mode.sql?mode=644")
         .app_data(app_data.clone())
         .app_data(sqlpage::webserver::http::payload_config(&app_data))
@@ -132,7 +132,7 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
             \r\n\
             "
             .to_string()
-                + "a".repeat(123457).as_str()
+                + "a".repeat(123_457).as_str()
                 + "\r\n\
             --1234567890--\r\n",
         )

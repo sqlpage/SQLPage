@@ -460,7 +460,7 @@ fn configuration_directory() -> PathBuf {
     PathBuf::from("./sqlpage")
 }
 
-fn cannonicalize_if_possible(path: &std::path::Path) -> PathBuf {
+fn cannonicalize_if_possible(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_owned())
 }
 
@@ -674,7 +674,7 @@ fn create_default_database(configuration_directory: &Path) -> String {
 
 #[cfg(any(test, not(feature = "lambda-web")))]
 fn encode_uri(path: &Path) -> std::borrow::Cow<'_, str> {
-    const ASCII_SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
+    const ASCII_SET: &AsciiSet = &percent_encoding::NON_ALPHANUMERIC
         .remove(b'-')
         .remove(b'_')
         .remove(b'.')
@@ -999,7 +999,7 @@ mod test {
         let _lock = ENV_LOCK
             .lock()
             .expect("Another test panicked while holding the lock");
-        let temp_dir = std::env::temp_dir().join("sqlpage_test");
+        let temp_dir = env::temp_dir().join("sqlpage_test");
         std::fs::create_dir_all(&temp_dir).unwrap();
         let config_file_path = temp_dir.join("sqlpage.json");
         let config_web_dir = temp_dir.join("config/web");

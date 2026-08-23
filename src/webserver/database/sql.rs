@@ -186,7 +186,7 @@ fn extract_set_variable(statement: &mut Statement, database: &DbInfo) -> Option<
     )
 }
 
-fn syntax_error(error: ParserError, parser: &Parser, sql: &str) -> FileStatement {
+fn syntax_error(error: ParserError, parser: &Parser<'_>, sql: &str) -> FileStatement {
     let Span {
         start: Location {
             line: start_line,

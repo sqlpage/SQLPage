@@ -10,11 +10,11 @@ type LambdaResponse = Response<Full<Bytes>>;
 type LambdaResult = Result<LambdaResponse, lambda_http::Error>;
 type LambdaRequest = (Request, oneshot::Sender<LambdaResult>);
 
-pub fn is_running_on_lambda() -> bool {
+pub(super) fn is_running_on_lambda() -> bool {
     std::env::var_os("AWS_LAMBDA_RUNTIME_API").is_some()
 }
 
-pub async fn run<F, I, S, B>(factory: F) -> Result<(), lambda_http::Error>
+pub(super) async fn run<F, I, S, B>(factory: F) -> Result<(), lambda_http::Error>
 where
     F: Fn() -> I + Send + Clone + 'static,
     I: IntoServiceFactory<S, actix_http::Request>,

@@ -14,7 +14,7 @@ impl URLParameters {
     }
 
     fn encode_and_push(&mut self, v: &str) {
-        let val: Cow<str> = percent_encode(v.as_bytes(), NON_ALPHANUMERIC).into();
+        let val: Cow<'_, str> = percent_encode(v.as_bytes(), NON_ALPHANUMERIC).into();
         self.0.push_str(&val);
     }
 
@@ -59,7 +59,7 @@ impl URLParameters {
     }
 
     fn add_from_json(&mut self, key: &str, raw_json_value: &str) {
-        if let Ok(str_val) = serde_json::from_str::<Option<Cow<str>>>(raw_json_value) {
+        if let Ok(str_val) = serde_json::from_str::<Option<Cow<'_, str>>>(raw_json_value) {
             if let Some(str_val) = str_val {
                 self.push_kv(key, &str_val);
             }
@@ -98,7 +98,7 @@ impl<'de> Deserialize<'de> for URLParameters {
         impl<'de> serde::de::Visitor<'de> for URLParametersVisitor {
             type Value = URLParameters;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("a sequence")
             }
 
@@ -108,7 +108,7 @@ impl<'de> Deserialize<'de> for URLParameters {
             {
                 let mut out = URLParameters(String::new());
                 while let Some((key, value)) =
-                    map.next_entry::<Cow<str>, Cow<serde_json::value::RawValue>>()?
+                    map.next_entry::<Cow<'_, str>, Cow<'_, serde_json::value::RawValue>>()?
                 {
                     out.add_from_json(&key, value.get());
                 }
@@ -121,8 +121,8 @@ impl<'de> Deserialize<'de> for URLParameters {
     }
 }
 
-impl std::fmt::Display for URLParameters {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for URLParameters {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
