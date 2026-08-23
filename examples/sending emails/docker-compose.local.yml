@@ -1,0 +1,6 @@
+services:
+  web:
+    build:
+      context: ../..
+      args:
+        CARGO_PROFILE: dev
