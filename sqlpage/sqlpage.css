@@ -60,6 +60,10 @@ code {
   font-weight: var(--tblr-body-font-weight);
 }
 
+.apexcharts-tooltip .apexcharts-tooltip-title {
+  color: inherit;
+}
+
 /** table **/
 .table-freeze-headers thead {
   position: sticky;
