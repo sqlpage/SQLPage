@@ -127,33 +127,33 @@ sqlpage_chart = (() => {
     (typeof name === "string" && colorNames[name]) || referenceColor;
 
   /**
-   * @param {ReferenceLine[]} rows - the rows that carry a yline
-   * @param {"x"|"y"} axis - the apexcharts axis the y column is drawn on
+   * @param {ReferenceLine[]} rows - the rows that carry an xline or a yline
+   * @param {"x"|"y"} column - the column the reference is written in
+   * @param {"x"|"y"} axis - the apexcharts axis that column is drawn on
    * @param {(value: any) => any} to_axis_value - puts a SQL value on the axis
    * @returns {object[]} apexcharts axis annotations
    */
-  function y_reference_lines(rows, axis, to_axis_value) {
+  function reference_lines(rows, column, axis, to_axis_value) {
     return rows.flatMap((row) => {
-      if (row.yline == null) return [];
-      const from = to_axis_value(row.yline);
+      const value = row[`${column}line`];
+      if (value == null) return [];
+      const from = to_axis_value(value);
       if (Number.isNaN(from)) return [];
       const color = reference_color(row.color);
-      const annotation = {
-        [axis]: from,
-        borderColor: color,
-        fillColor: color,
-        strokeDashArray: 4,
-      };
-      // apexcharts reads label.text unconditionally, so an annotation without
-      // a label must not have the key at all.
-      if (row.label)
-        annotation.label = {
-          text: row.label,
-          orientation: "horizontal",
+      return [
+        {
+          [axis]: from,
           borderColor: color,
-          style: { background: color, color: isDarkTheme ? "#000" : "#fff" },
-        };
-      return [annotation];
+          fillColor: color,
+          strokeDashArray: 4,
+          label: {
+            text: row.label,
+            orientation: column === "y" ? "horizontal" : "vertical",
+            borderColor: color,
+            style: { background: color, color: isDarkTheme ? "#000" : "#fff" },
+          },
+        },
+      ];
     });
   }
 
@@ -207,20 +207,29 @@ sqlpage_chart = (() => {
     } else if (series.length > 1)
       series = align_series_for(series, chart_type, is_stacked);
 
-    const to_value =
-      is_timeseries && chart_type === "rangeBar"
-        ? (v) =>
-            (typeof v === "number" ? new Date(v * 1000) : new Date(v)).getTime()
-        : Number;
+    const to_timestamp = (v) =>
+      (typeof v === "number" ? new Date(v * 1000) : new Date(v)).getTime();
+    const dates_are_values = is_timeseries && chart_type === "rangeBar";
+    const to_value = dates_are_values ? to_timestamp : Number;
+    const to_category =
+      is_timeseries && !dates_are_values ? to_timestamp : (v) => v;
     const inverted =
       chart_type === "rangeBar" || (chart_type === "bar" && !!data.horizontal);
     const value_axis = inverted ? "x" : "y";
+    const category_axis = inverted ? "y" : "x";
     const options = {
       annotations: {
-        [`${value_axis}axis`]: y_reference_lines(
+        [`${value_axis}axis`]: reference_lines(
           reference_rows,
+          "y",
           value_axis,
           to_value,
+        ),
+        [`${category_axis}axis`]: reference_lines(
+          reference_rows,
+          "x",
+          category_axis,
+          to_category,
         ),
       },
       chart: {
