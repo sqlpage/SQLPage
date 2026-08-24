@@ -387,6 +387,22 @@ test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {
   expect(chart.stacked).toBe(false);
 });
 
+test("gives the tooltip title the color of the tooltip around it", async ({
+  page,
+}) => {
+  await renderChart(page, { type: "line" }, A_DAY_OF_WORK);
+  await page.locator("#test-chart .apexcharts-inner").hover({ force: true });
+
+  const title = page.locator("#test-chart .apexcharts-tooltip-title");
+  await expect(title).toHaveText("Tue");
+  const colors = await title.evaluate((el) => ({
+    title: getComputedStyle(el).color,
+    tooltip: getComputedStyle(el.parentElement as HTMLElement).color,
+  }));
+
+  expect(colors.title).toBe(colors.tooltip);
+});
+
 test("draws a reference line that carries no label", async ({ page }) => {
   const chart = await renderChart(page, { type: "line" }, [
     ...A_IN_EVERY_QUARTER,
