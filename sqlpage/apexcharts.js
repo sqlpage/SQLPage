@@ -50,7 +50,8 @@ sqlpage_chart = (() => {
   };
 
   /** @typedef {number|string|Date} XValue */
-  /** @typedef { {name:string, data:{x:XValue,y:number|null,z?:number}[]} } ChartSeries */
+  /** @typedef { {x:XValue, y:number|null, z?:number, fillColor?:string} } ChartPoint */
+  /** @typedef { {name:string, data:ChartPoint[]} } ChartSeries */
   /** @typedef { { [name:string]: ChartSeries } } Series */
 
   /** @param {XValue} x @returns {number|string} equal x values share a key */
@@ -122,9 +123,12 @@ sqlpage_chart = (() => {
 
   /** @typedef { {[property:string]: string|number|null} } ReferenceLine */
 
+  /** @param {unknown} name @returns {string|undefined} */
+  const named_color = (name) =>
+    typeof name === "string" ? colorNames[name] : undefined;
+
   /** @param {string|number|null} name */
-  const reference_color = (name) =>
-    (typeof name === "string" && colorNames[name]) || referenceColor;
+  const reference_color = (name) => named_color(name) || referenceColor;
 
   /**
    * @param {ReferenceLine[]} rows - the rows that carry an xline or a yline
@@ -174,7 +178,7 @@ sqlpage_chart = (() => {
     const reference_rows = data.points.filter((row) => !Array.isArray(row));
     /** @type { Series } */
     const series_map = {};
-    for (const [name, old_x, old_y, z] of points) {
+    for (const [name, old_x, old_y, color, z] of points) {
       series_map[name] = series_map[name] || { name, data: [] };
       let x = old_x;
       let y = old_y;
@@ -184,18 +188,19 @@ sqlpage_chart = (() => {
           y = y.map((y) => new Date(y).getTime());
         else x = new Date(x);
       }
-      series_map[name].data.push({ x, y, z });
+      series_map[name].data.push({ x, y, z, fillColor: named_color(color) });
     }
     if (data.xmin == null) data.xmin = undefined;
     if (data.xmax == null) data.xmax = undefined;
     if (data.ymin == null) data.ymin = undefined;
     if (data.ymax == null) data.ymax = undefined;
 
-    const colors = [
+    const palette = [
       ...data.colors.filter((c) => c).map((c) => colorNames[c]),
       ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? dark : light)),
       ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? light : dark)),
     ];
+    let colors = palette;
 
     let series = Object.values(series_map);
 
@@ -204,6 +209,9 @@ sqlpage_chart = (() => {
     if (chart_type === "pie") {
       labels = points.map(([name, x, _y]) => x || name);
       series = points.map(([_name, _x, y]) => Number.parseFloat(y));
+      colors = points.map(
+        ([, , , color], i) => named_color(color) || palette[i % palette.length],
+      );
     } else if (series.length > 1)
       series = align_series_for(series, chart_type, is_stacked);
 

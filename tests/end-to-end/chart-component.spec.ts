@@ -10,7 +10,7 @@ declare global {
       w: {
         config: {
           chart: { type: string; stacked: boolean };
-          series: { name: string; data: ChartPoint[] }[];
+          series: { name: string; data?: ChartPoint[] }[];
         };
       };
     }[];
@@ -18,7 +18,16 @@ declare global {
   function sqlpage_chart(): void;
 }
 
-type Row = [series: string, x: unknown, y: unknown, z?: unknown];
+type Row = [
+  series: string,
+  x: unknown,
+  y: unknown,
+  color?: unknown,
+  z?: unknown,
+];
+
+const MARKS =
+  ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect, .apexcharts-pie-area, .apexcharts-heatmap-rect, .apexcharts-marker";
 
 type ReferenceRow = {
   xline?: string | number;
@@ -68,6 +77,37 @@ const A_QUARTERS_OUT_OF_ORDER: Row[] = [
   ["A", "Q2", 2],
 ];
 
+const EXPIRING_ACCOUNTS: Row[] = [
+  ["Accounts", "30 days", 100, "red"],
+  ["Accounts", "60 days", 200, "orange"],
+  ["Accounts", "90 days", 300, "green"],
+];
+
+const RED = "#f03e3e";
+const ORANGE = "#f76707";
+const GREEN = "#37b24d";
+
+const A_RED_ROW_AND_A_GREEN_ROW: Row[] = [
+  ["A", "Q1", 1, "red"],
+  ["A", "Q2", 2, "green"],
+];
+
+const THE_SAME_ROWS_UNCOLORED: Row[] = [
+  ["A", "Q1", 1],
+  ["A", "Q2", 2],
+];
+
+const COLORED_ROWS_OF: Record<string, Row[]> = {
+  rangeBar: [
+    ["A", "one", ["2024-03-01", "2024-03-05"], "red"],
+    ["A", "two", ["2024-03-04", "2024-03-09"], "green"],
+  ],
+  bubble: [
+    ["A", "Q1", 1, "red", 30],
+    ["A", "Q2", 2, "green", 30],
+  ],
+};
+
 const A_FROM_THE_SECOND_CATEGORY: Row[] = [
   ["A", "X2", 10],
   ["A", "X3", 30],
@@ -84,7 +124,7 @@ async function renderChart(
   rows: (Row | ReferenceRow)[],
 ) {
   return page.evaluate(
-    ({ chart, rows }) => {
+    ({ chart, rows, marks }) => {
       document.getElementById("test-chart")?.remove();
       const container = document.createElement("div");
       container.id = "test-chart";
@@ -108,7 +148,7 @@ async function renderChart(
       const rendered = window.charts?.[before];
       const series = (rendered?.w.config.series ?? []).map((s) => ({
         name: s.name,
-        points: s.data.map((p) => [
+        points: (s.data ?? []).map((p) => [
           p.x instanceof Date ? p.x.toISOString() : p.x,
           p.y,
         ]),
@@ -126,14 +166,11 @@ async function renderChart(
         };
       });
       const shapes = [
-        ...container.querySelectorAll<SVGGraphicsElement>(
-          ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect",
-        ),
+        ...container.querySelectorAll<SVGGraphicsElement>(marks),
       ].map((shape) => {
         const { x, y, width, height } = shape.getBBox();
-        return { x, y, width, height };
+        return { x, y, width, height, fill: shape.getAttribute("fill") };
       });
-
       const annotated = [
         ...container.querySelectorAll(
           ".apexcharts-xaxis-annotations, .apexcharts-yaxis-annotations",
@@ -147,6 +184,9 @@ async function renderChart(
         labelTexts: annotated.flatMap((g) =>
           [...g.querySelectorAll("text")].map((t) => t.textContent),
         ),
+        strokes: annotated.flatMap((g) =>
+          [...g.querySelectorAll("line")].map((l) => l.getAttribute("stroke")),
+        ),
       };
 
       return {
@@ -159,9 +199,19 @@ async function renderChart(
         referenceLines,
       };
     },
-    { chart, rows },
+    { chart, rows, marks: MARKS },
   );
 }
+
+const fills = (chart: Awaited<ReturnType<typeof renderChart>>) =>
+  chart.shapes.map(({ fill }) => {
+    const channels = fill?.match(/^rgba\((\d+),(\d+),(\d+),[\d.]+\)$/);
+    if (!channels) return fill;
+    const hex = channels
+      .slice(1)
+      .map((c) => Number(c).toString(16).padStart(2, "0"));
+    return `#${hex.join("")}`;
+  });
 
 test.beforeEach(async ({ page }) => {
   await page.goto(`${BASE}/documentation.sql?component=chart#component`);
@@ -340,9 +390,9 @@ for (const type of ["area", "scatter", "heatmap"]) {
 
 test("keeps the bubble size of the points it lined up", async ({ page }) => {
   const chart = await renderChart(page, { type: "bubble" }, [
-    ["A", "Q1", 1, 30],
-    ["A", "Q2", 2, 30],
-    ["B", "Q2", 5, 70],
+    ["A", "Q1", 1, null, 30],
+    ["A", "Q2", 2, null, 30],
+    ["B", "Q2", 5, null, 70],
   ]);
 
   expect(chart.failures).toEqual([]);
@@ -428,4 +478,116 @@ test("draws a box behind the label of a reference line that carries one", async 
   expect(chart.referenceLines.lines).toBe(1);
   expect(chart.referenceLines.labelBoxes).toBe(1);
   expect(chart.referenceLines.labelTexts).toEqual(["limit"]);
+});
+
+for (const type of [
+  "bar",
+  "column",
+  "rangeBar",
+  "pie",
+  "treemap",
+  "line",
+  "area",
+  "scatter",
+  "bubble",
+]) {
+  test(`colors every mark of a ${type} chart from its own row`, async ({
+    page,
+  }) => {
+    const chart = await renderChart(
+      page,
+      { type, time: type === "rangeBar" },
+      COLORED_ROWS_OF[type] ?? A_RED_ROW_AND_A_GREEN_ROW,
+    );
+
+    expect(chart.failures).toEqual([]);
+    expect(fills(chart)).toEqual([RED, GREEN]);
+  });
+}
+
+test("colors each bar of a horizontal bar chart from its own row (#1228)", async ({
+  page,
+}) => {
+  const chart = await renderChart(
+    page,
+    { type: "bar", horizontal: true },
+    EXPIRING_ACCOUNTS,
+  );
+
+  expect(chart.failures).toEqual([]);
+  expect(fills(chart)).toEqual([RED, ORANGE, GREEN]);
+});
+
+test("leaves a heatmap, which shades its cells from their own value, alone", async ({
+  page,
+}) => {
+  const shaded = await renderChart(
+    page,
+    { type: "heatmap" },
+    THE_SAME_ROWS_UNCOLORED,
+  );
+  const colored = await renderChart(
+    page,
+    { type: "heatmap" },
+    A_RED_ROW_AND_A_GREEN_ROW,
+  );
+
+  expect(colored.failures).toEqual([]);
+  expect(fills(colored)).toEqual(fills(shaded));
+});
+
+test("leaves a row without a color on the color of its series", async ({
+  page,
+}) => {
+  const plain = await renderChart(
+    page,
+    { type: "bar" },
+    THE_SAME_ROWS_UNCOLORED,
+  );
+  const mixed = await renderChart(page, { type: "bar" }, [
+    THE_SAME_ROWS_UNCOLORED[0],
+    ["A", "Q2", 2, "red"],
+  ]);
+
+  expect(mixed.failures).toEqual([]);
+  expect(fills(mixed)).toEqual([fills(plain)[0], RED]);
+});
+
+test("lets a row color override the color given to the whole chart", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, { type: "bar", colors: ["azure"] }, [
+    ["A", "Q1", 1],
+    ["A", "Q2", 2, "red"],
+  ]);
+
+  expect(chart.failures).toEqual([]);
+  expect(fills(chart)).toEqual(["#339af0", RED]);
+});
+
+test("keeps the color of the series when a row names a color SQLPage does not know", async ({
+  page,
+}) => {
+  const plain = await renderChart(
+    page,
+    { type: "bar" },
+    THE_SAME_ROWS_UNCOLORED,
+  );
+  const unknown = await renderChart(page, { type: "bar" }, [
+    ["A", "Q1", 1, "#ff0000"],
+    ["A", "Q2", 2, "chartreuse"],
+  ]);
+
+  expect(unknown.failures).toEqual([]);
+  expect(fills(unknown)).toEqual(fills(plain));
+});
+
+test("keeps coloring reference lines from their own row", async ({ page }) => {
+  const chart = await renderChart(page, { type: "line", ymax: 100 }, [
+    { yline: 70, label: "target", color: "green" },
+    ...THE_SAME_ROWS_UNCOLORED,
+  ]);
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.referenceLines.strokes).toEqual([GREEN]);
 });

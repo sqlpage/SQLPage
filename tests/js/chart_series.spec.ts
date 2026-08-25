@@ -21,7 +21,12 @@ const STACKED = true;
 const UNSTACKED = false;
 
 type XValue = number | string | Date;
-type Point = { x: XValue; y: number | string | null | number[]; z?: number };
+type Point = {
+  x: XValue;
+  y: number | string | null | number[];
+  z?: number;
+  fillColor?: string;
+};
 type Series = { name: string; data: Point[] };
 
 const series = (name: string, ...data: Point[]): Series => ({ name, data });
@@ -164,6 +169,21 @@ test("align_series keeps the third dimension of points it did not fill in", () =
   );
 
   assert.equal(a.data[0].z, 42);
+});
+
+test("align_series keeps the color of a point on the x it belongs to", () => {
+  const [, b] = align_series(
+    [
+      series("a", { x: "Q1", y: 1 }, { x: "Q2", y: 2 }),
+      series("b", { x: "Q2", y: 20, fillColor: "#37b24d" }),
+    ],
+    ADDS_NOTHING_TO_THE_STACK,
+  );
+
+  assert.deepEqual(
+    b.data.map((point) => point.fillColor),
+    [undefined, "#37b24d"],
+  );
 });
 
 test("align_series matches dates by value rather than by identity", () => {
