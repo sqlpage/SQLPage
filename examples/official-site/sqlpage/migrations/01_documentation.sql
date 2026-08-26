@@ -689,7 +689,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
     ('yline', 'Draws a reference line across the chart at this value of the y axis instead of plotting a point, to show a limit such as a quota or an alarm threshold. Not drawn if it falls outside of the axis, so set ymax when the limit is above the data.', 'REAL', FALSE, TRUE),
+    ('yline_end', 'Makes the yline a band instead of a line, reaching to this value.', 'REAL', FALSE, TRUE),
     ('xline', 'Draws a reference line across the chart at this position of the x axis instead of plotting a point, to mark an event such as a deployment. A date or a timestamp when time is set, otherwise one of the x values.', 'TEXT', FALSE, TRUE),
+    ('xline_end', 'Makes the xline a band instead of a line, reaching to this value.', 'TEXT', FALSE, TRUE),
     ('color', 'The name of a color for what this row draws: the bar, slice or point it plots, or the reference line it draws. Defaults to the color of the series for a data point, and to grey for a reference line.', 'COLOR', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
@@ -833,7 +835,7 @@ A `heatmap` shades its cells from their own value and ignores it.
 A row with a `yline` is not plotted as a data point, but drawn as a line across
 the whole chart, at that value of the y axis. Use it for the limit that the data
 should be read against: a disk quota, an alarm threshold, a service level
-objective.
+objective. Add `yline_end` to make it a band instead of a line.
 
 Reference lines are rows, so they come from a query like everything else,
 and a chart can have as many of them as the query returns:
@@ -853,7 +855,7 @@ so set `ymax` when the limit is above the data.
         {"component":"chart", "title": "CPU temperature", "type": "line", "time": true,
          "ytitle": "°C", "ymax": 100, "color": "azure", "marker": 4},
         {"yline": 70, "label": "target", "color": "green"},
-        {"yline": 90, "label": "throttling", "color": "red"},
+        {"yline": 90, "yline_end": 100, "label": "throttling", "color": "red"},
         {"x": "2024-05-01T08:00:00Z", "y": 52},
         {"x": "2024-05-01T09:00:00Z", "y": 58},
         {"x": "2024-05-01T10:00:00Z", "y": 71},
@@ -866,13 +868,14 @@ so set `ymax` when the limit is above the data.
 ## Marking events
 
 `xline` is the counterpart of `yline`: it marks a position on the x axis instead
-of a value on the y axis, for a moment rather than a limit. A single query can
-draw a whole log of them:
+of a value on the y axis. On its own it marks a moment, like a deployment.
+With `xline_end`, it covers everything in between, like an incident or a
+maintenance window. A single query can draw a whole log of them:
 
 ```sql
-select started_at as xline, summary as label,
+select started_at as xline, ended_at as xline_end, summary as label,
     case severity when ''outage'' then ''red'' else ''orange'' end as color
-from deployments where started_at > $since;
+from incidents where started_at > $since;
 ```
 
 When `time` is set, an `xline` is a date or a timestamp, written like the `x` of
@@ -881,7 +884,8 @@ a data point. On a chart with text labels on the x axis, it is one of those labe
         {"component":"chart", "title": "Request latency", "type": "area", "time": true,
          "ytitle": "ms", "color": "blue-lt", "marker": 3},
         {"xline": "2024-05-01T10:00:00Z", "label": "deploy", "color": "green"},
-        {"xline": "2024-05-01T11:30:00Z", "label": "incident", "color": "red"},
+        {"xline": "2024-05-01T11:30:00Z", "xline_end": "2024-05-01T13:00:00Z",
+         "label": "incident", "color": "red"},
         {"x": "2024-05-01T08:00:00Z", "y": 120},
         {"x": "2024-05-01T09:00:00Z", "y": 134},
         {"x": "2024-05-01T10:00:00Z", "y": 128},
