@@ -692,7 +692,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('yline_end', 'Makes the yline a band instead of a line, reaching to this value.', 'REAL', FALSE, TRUE),
     ('xline', 'Draws a reference line across the chart at this position of the x axis instead of plotting a point, to mark an event such as a deployment. A date or a timestamp when time is set, otherwise one of the x values.', 'TEXT', FALSE, TRUE),
     ('xline_end', 'Makes the xline a band instead of a line, reaching to this value.', 'TEXT', FALSE, TRUE),
-    ('color', 'The name of a color for the reference line this row draws. Grey by default.', 'COLOR', FALSE, TRUE)
+    ('color', 'The name of a color for what this row draws: the bar, slice or point it plots, or the reference line it draws. Defaults to the color of the series for a data point, and to grey for a reference line.', 'COLOR', FALSE, TRUE)
 ) x;
 INSERT INTO example(component, description, properties) VALUES
     ('chart', 'An area chart representing a time series, using the top-level property `time`.
@@ -795,6 +795,39 @@ The `color` property sets the color of each series separately, in order.
         {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"]},
         {"series": "Phase 2", "label": "Operations", "value": ["2022-01-03", "2022-01-04"]},
         {"series": "Yearly maintenance", "label": "Maintenance", "value": ["2022-01-01", "2022-01-03"]}
+    ]')),
+    ('chart', '
+## Coloring a single value
+
+A data row can carry its own `color`, to paint the one bar, slice or point it
+plots. Use it when the color says something the axes do not: a threshold
+crossed, a status, the one category the reader should look at first.
+
+```sql
+select ''chart'' as component, ''bar'' as type, true as horizontal,
+    true as labels, false as show_legend;
+select
+    window_label as label,
+    accounts as value,
+    case when days <= 30 then ''red'' when days <= 60 then ''orange'' else ''green'' end as color
+from expiring_accounts order by days;
+```
+
+A row color takes precedence over the color of its series. On a `line` or an
+`area` chart it paints the marker of the point, so set `marker` for it to show.
+A `heatmap` shades its cells from their own value and ignores it.
+', json('[
+        {"component":"chart", "title": "Accounts expiring soon", "type": "bar",
+         "horizontal": true, "labels": true, "show_legend": false},
+        {"label": "30 days", "value": 100, "color": "red"},
+        {"label": "60 days", "value": 200, "color": "orange"},
+        {"label": "90 days", "value": 300, "color": "green"}
+    ]')),
+    ('chart', 'A pie chart whose rows choose their own slice colors.', json('[
+        {"component":"chart", "title": "Support tickets", "type": "pie", "labels": true},
+        {"label": "Resolved", "value": 72, "color": "green"},
+        {"label": "In progress", "value": 21, "color": "yellow"},
+        {"label": "Overdue", "value": 7, "color": "red"}
     ]')),
     ('chart', '
 ## Reference lines
