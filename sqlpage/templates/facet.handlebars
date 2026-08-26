@@ -6,7 +6,7 @@
 {{else}}
     <div class="dropdown">
         <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            {{(default description "Choose facet")}}
+            {{(default dropdown_title (default description "Choose facet"))}}
         </button>
         <div class="dropdown-menu">
             {{#if all_link}}

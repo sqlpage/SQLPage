@@ -6,7 +6,7 @@ This component only renders the filter navigation. **Your SQL query is responsib
 
 Use it alongside a [table](?component=table), [list](?component=list), or [card](?component=card). The links use GET parameters, so the selected filter can be bookmarked and shared.
 
-Set `compact` to display the facets in a dropdown, which is useful for a moderate number of choices or on narrow screens. `all_link` and `all_title` add a link that clears the filter.
+Set `compact` to display the facets in a dropdown, which is useful for a moderate number of choices or on narrow screens. Use `dropdown_title` to show the active facet in the closed dropdown. `all_link` and `all_title` add a link that clears the filter.
 
 The following portable pattern filters a table by category. `sqlpage.link` preserves the current page path while safely generating the URL.
 
@@ -30,7 +30,8 @@ order by category;
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'facet', * FROM (VALUES
     -- Top-level parameters
-    ('description','The facet category label. In compact mode, it is shown on the dropdown button. If omitted, the button displays "Choose facet".','TEXT',TRUE,TRUE),
+    ('description','The facet category label. In compact mode, it is shown on the dropdown button when `dropdown_title` is omitted. If omitted, the button displays "Choose facet".','TEXT',TRUE,TRUE),
+    ('dropdown_title','Text shown on the compact-mode dropdown button. Use it to show the active facet. Defaults to `description`.','TEXT',TRUE,TRUE),
     ('compact','Displays the facets in a dropdown instead of links.','BOOLEAN',TRUE,TRUE),
     ('all_link','URL that clears the filter. If omitted, no All link is displayed.','URL',TRUE,TRUE),
     ('all_title','Text for the link that clears the filter. Defaults to "ALL".','TEXT',TRUE,TRUE),
@@ -108,7 +109,8 @@ VALUES (
                     "all_link": "?component=facet",
                     "all_title": "All",
                     "all_active": false,
-                    "compact": true
+                    "compact": true,
+                    "dropdown_title": "Constitution"
                 },
                 {
                     "title": "Constitution",

@@ -2,5 +2,5 @@ SELECT 'facet' AS component, 'Categories' AS description, '/all' AS all_link, 'A
 SELECT 'It works !' AS title, '/active' AS link, 1 AS active;
 SELECT 'Other category' AS title, '/other' AS link, 0 AS active;
 
-SELECT 'facet' AS component, 'Categories' AS description, 1 AS compact, '/all' AS all_link, 1 AS all_active;
+SELECT 'facet' AS component, 'Categories' AS description, 'It works !' AS dropdown_title, 1 AS compact, '/all' AS all_link, 1 AS all_active;
 SELECT 'It works !' AS title, '/active' AS link, 0 AS active;
