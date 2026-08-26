@@ -876,7 +876,7 @@ impl<W: Write> HtmlRenderContext<W> {
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async, unknown_lints, clippy::unused_async_trait_impl)]
     pub async fn finish_query(&mut self) -> anyhow::Result<()> {
         log::debug!("-> Query {} finished", self.current_statement);
         self.current_statement += 1;

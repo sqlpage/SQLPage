@@ -53,7 +53,7 @@ pub(super) fn fetch_span(http_request: &HttpFetchRequest<'_>) -> tracing::Span {
     let method = http_request.method.as_deref().unwrap_or("GET");
     tracing::info_span!(
         "http.client",
-        "otel.name" = format!("{method}"),
+        "otel.name" = method.to_string(),
         { otel::HTTP_REQUEST_METHOD } = method,
         { otel::URL_FULL } = %http_request.url,
         { otel::HTTP_REQUEST_BODY_SIZE } = tracing::field::Empty,

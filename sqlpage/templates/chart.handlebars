@@ -42,8 +42,8 @@
         {{~#if (gt @row_index 0)}},{{/if~}}
         {{~#if (or xline yline)~}}
         {
-            "xline": {{~stringify xline}},
-            "yline": {{~stringify yline}},
+            "xline": {{~stringify xline}}, "xline_end": {{~stringify xline_end}},
+            "yline": {{~stringify yline}}, "yline_end": {{~stringify yline_end}},
             "label": {{~stringify label}}, "color": {{~stringify color}}
         }
         {{~else~}}

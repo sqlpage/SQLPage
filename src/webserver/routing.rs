@@ -648,6 +648,7 @@ mod tests {
     }
 
     impl FileStore for Store {
+        #[allow(unknown_lints, clippy::unused_async_trait_impl)]
         async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool> {
             Ok(self.contains(access.path().to_string_lossy().to_string().as_str()))
         }
