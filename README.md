@@ -189,7 +189,7 @@ An alternative for Mac OS users is to use [SQLPage's homebrew package](https://f
 SQLPage supports ODBC connections to connect to databases that don't have native drivers.
 You can skip this section if you want to use one of the built-in database drivers (SQLite, PostgreSQL, MySQL, Microsoft SQL Server).
 
-Linux and MacOS release binaries conatain a built-in statically linked ODBC driver manager (unixODBC).
+Linux and MacOS release binaries contain a built-in statically linked ODBC driver manager (unixODBC).
 You still need to install or provide the database-specific ODBC driver for the database you want to connect to.
 
 #### Install your ODBC database driver
