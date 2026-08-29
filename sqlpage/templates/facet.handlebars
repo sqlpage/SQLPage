@@ -1,12 +1,14 @@
 <nav {{#if id}}id="{{id}}"{{/if}} aria-label="{{default description 'facets'}}" class="my-1 {{class}}">
 {{#if (not (default ../compact false))}}
-    <div class="d-flex flex-wrap justify-content-center gap-2">
+    <div class="d-flex flex-wrap gap-2{{#if (default center true)}} justify-content-center{{/if}}">
         {{#if description}}<span class="fw-bold">{{description}}:</span>{{/if}}
         {{#if all_link}}<a {{#if all_active}}class="fw-bold" aria-current="page"{{/if}} href="{{all_link}}">{{default all_title 'ALL'}}</a>{{/if}}
 {{else}}
-    <div class="dropdown">
+    <div class="d-flex align-items-center gap-2 {{#if (default center true)}} justify-content-center{{/if}}">
+    {{#if description}}<span class="fw-bold">{{description}}:</span>{{/if}}
+    <div class="dropdown d-inline-block">
         <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            {{(default dropdown_title (default description "Choose facet"))}}
+            {{#if selected_facet}}{{selected_facet}}{{else}}{{(default dropdown_title (default description "Choose facet"))}}{{/if}}
         </button>
         <div class="dropdown-menu">
             {{#if all_link}}
@@ -21,5 +23,5 @@
         <a class="dropdown-item{{#if active}} active{{/if}}" {{#if active}}aria-current="page"{{/if}} href="{{link}}">{{title}}</a>
     {{/if}}
 {{/each_row}}
-</div>{{#if (default ../compact false)}}</div>{{/if}}
+</div>{{#if (default ../compact false)}}</div></div>{{/if}}
 </nav>

@@ -30,9 +30,11 @@ order by category;
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'facet', * FROM (VALUES
     -- Top-level parameters
-    ('description','The facet category label. In compact mode, it is shown on the dropdown button when `dropdown_title` is omitted. If omitted, the button displays "Choose facet".','TEXT',TRUE,TRUE),
-    ('dropdown_title','Text shown on the compact-mode dropdown button. Use it to show the active facet. Defaults to `description`.','TEXT',TRUE,TRUE),
+    ('description','The facet category label.','TEXT',TRUE,TRUE),
+    ('dropdown_title','Text shown on the compact-mode dropdown button when no facet is selected. Defaults to `Choose facet`.','TEXT',TRUE,TRUE),
+    ('selected_facet','Text shown on the compact-mode dropdown button when facet has been selected. Use it to show the active facet.','TEXT',TRUE,TRUE),
     ('compact','Displays the facets in a dropdown instead of links.','BOOLEAN',TRUE,TRUE),
+    ('center','Whether to center the facet selector','BOOLEAN',TRUE,TRUE),
     ('all_link','URL that clears the filter. If omitted, no All link is displayed.','URL',TRUE,TRUE),
     ('all_title','Text for the link that clears the filter. Defaults to "ALL".','TEXT',TRUE,TRUE),
     ('all_active','Whether the link that clears the filter is active. Defaults to false.','BOOLEAN',TRUE,TRUE),
