@@ -8,7 +8,7 @@
     {{#if description}}<span class="fw-bold">{{description}}:</span>{{/if}}
     <div class="dropdown d-inline-block">
         <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            {{#if selected_facet}}{{selected_facet}}{{else}}{{(default dropdown_title (default description "Choose facet"))}}{{/if}}
+            {{default selected_facet (default dropdown_title (default description "Choose facet"))}}
         </button>
         <div class="dropdown-menu">
             {{#if all_link}}

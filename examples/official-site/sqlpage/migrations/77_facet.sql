@@ -32,7 +32,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     -- Top-level parameters
     ('description','The facet category label.','TEXT',TRUE,TRUE),
     ('dropdown_title','Text shown on the compact-mode dropdown button when no facet is selected. Defaults to `Choose facet`.','TEXT',TRUE,TRUE),
-    ('selected_facet','Text shown on the compact-mode dropdown button when facet has been selected. Use it to show the active facet.','TEXT',TRUE,TRUE),
+    ('selected_facet','An alias for `dropdown_title`.','TEXT',TRUE,TRUE),
     ('compact','Displays the facets in a dropdown instead of links.','BOOLEAN',TRUE,TRUE),
     ('center','Whether to center the facet selector','BOOLEAN',TRUE,TRUE),
     ('all_link','URL that clears the filter. If omitted, no All link is displayed.','URL',TRUE,TRUE),
