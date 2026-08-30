@@ -321,11 +321,10 @@ pub fn stop_at_first_error(
 
     results_stream
         .inspect(move |item| {
-            if let DbItem::Error(err) = item {
-                log::error!("{err:?}");
-                if let Some(tx) = error_tx.take() {
-                    let _ = tx.send(());
-                }
+            if matches!(item, DbItem::Error(_))
+                && let Some(tx) = error_tx.take()
+            {
+                let _ = tx.send(());
             }
         })
         .take_until(error_rx)
