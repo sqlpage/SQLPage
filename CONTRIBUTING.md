@@ -100,6 +100,17 @@ cargo test
 We use Playwright for end-to-end testing of dynamic frontend features.
 Tests are located in [`tests/end-to-end/`](./tests/end-to-end/). Key areas covered include:
 
+Component tests use deterministic SQL applications under `tests/end-to-end/fixtures/<suite>/`.
+Each suite contains an `index.sql` page and a `test.ts` file. Import `test` and `expect` from
+`../../fixture`; the shared fixture opens the matching SQL page before every test and waits for
+all SQLPage components to initialize. Prefer role, label, and text locators over CSS selectors
+when the assertion does not specifically concern generated markup.
+
+Keep official-site smoke and integration tests in root-level `*.spec.ts` files. Component behavior
+tests should render real components through their SQL fixture; do not inject component markup or
+invoke SQLPage's JavaScript initialization functions directly. Parameterized fixtures may accept
+request variables when several tests need the same component with different data.
+
 #### Start a sqlpage instance pointed to the official site source code
 
 ```bash
@@ -117,6 +128,9 @@ cd tests/end-to-end
 npx playwright install chromium
 npm run test
 ```
+
+Playwright starts the component fixture server on port 8081 automatically. The official-site
+server on port 8080 must still be started separately as shown above.
 
 ## Documentation
 
