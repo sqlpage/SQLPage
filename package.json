@@ -13,8 +13,8 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@biomejs/biome": "^2.5.4",
-    "@types/node": "^26.2.0",
+    "@biomejs/biome": "^2.5.11",
+    "@types/node": "^26.4.0",
     "typescript": "^7.0.2"
   },
   "workspaces": [

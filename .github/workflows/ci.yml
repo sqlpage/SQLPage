@@ -26,7 +26,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  HURL_VERSION: 8.0.0
+  HURL_VERSION: 8.0.1
   REGISTRY_USERNAME: lovasoa
   REGISTRY_IMAGE: lovasoa/sqlpage
 
@@ -34,10 +34,10 @@ jobs:
   compile_and_lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           cache: 'npm'
       - run: npm ci
       - run: npm test
@@ -104,7 +104,7 @@ jobs:
             container: oracle
             db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Reuse the exact Linux test harnesses produced by compile_and_lint.
       # This keeps the DB matrix focused on database behavior instead of
       # compiling the same Rust crate five more times.
@@ -160,13 +160,13 @@ jobs:
   windows_test:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
           NODE_OPTIONS: --no-deprecation
       - name: Set up Windows incremental cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             target/debug/.fingerprint/sqlpage-*
@@ -196,10 +196,10 @@ jobs:
       run:
         working-directory: ./tests/end-to-end
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           cache: 'npm'
           cache-dependency-path: ./package-lock.json
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
@@ -252,7 +252,7 @@ jobs:
             tag_suffix: -linux-arm64-duckdb
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - id: cache-scope
         name: Docker cache scope
         run: |
@@ -322,7 +322,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
@@ -419,14 +419,14 @@ jobs:
     outputs:
       examples: ${{ steps.examples.outputs.examples }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: examples
         run: |
           examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print | sed 's#/test.hurl$##' | sort | jq -R -s -c 'split("\n")[:-1]')"
           echo "examples=$examples" >> "$GITHUB_OUTPUT"
       - name: Restore Hurl archive
         id: hurl-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .cache/hurl
           key: hurl-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ env.HURL_VERSION }}
@@ -465,7 +465,7 @@ jobs:
       matrix:
         example: ${{ fromJSON(needs.hurl_examples.outputs.examples) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Download Hurl archive
         uses: actions/download-artifact@v8
         with:

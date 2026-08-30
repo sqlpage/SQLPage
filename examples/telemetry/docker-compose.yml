@@ -124,7 +124,7 @@ services:
         condition: service_started
 
   prometheus:
-    image: prom/prometheus:v3.2.1
+    image: prom/prometheus:v3.14.0
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -141,7 +141,7 @@ services:
     command: ["-config.file=/etc/tempo/config.yaml"]
 
   loki:
-    image: grafana/loki:3.7.2
+    image: grafana/loki:3.7.7
     command: ["-config.file=/etc/loki/local-config.yaml"]
 
   grafana:

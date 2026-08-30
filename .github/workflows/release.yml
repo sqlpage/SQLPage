@@ -29,7 +29,7 @@ jobs:
             target: x86_64-apple-darwin
             features: "odbc-static"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -107,7 +107,7 @@ jobs:
     name: Build AWS Lambda Serverless zip image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: docker build -t sqlpage-lambda . -f lambda.Dockerfile --target runner
       - run: docker build -t sqlpage-lambda-builder . -f lambda.Dockerfile --target builder
       - run: docker run sqlpage-lambda-builder cat deploy.zip > sqlpage-aws-lambda.zip
@@ -122,7 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         env:
           NODE_OPTIONS: --no-deprecation
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
