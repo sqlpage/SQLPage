@@ -1,0 +1,2 @@
+SELECT 'chart' AS component, 'test-chart' AS id, 'Chart test fixture' AS title, 'area' AS type, TRUE AS stacked, TRUE AS time, 4 AS marker;
+WITH points(series, x, y) AS (VALUES ('CPU', '2024-01-01T00:00:00Z', 10), ('CPU', '2024-01-01T00:01:00Z', 20), ('CPU', '2024-01-01T00:02:00Z', 30), ('CPU', '2024-01-01T00:03:00Z', 40), ('GPU', '2024-01-01T00:01:00Z', 50), ('GPU', '2024-01-01T00:02:00Z', 50), ('GPU', '2024-01-01T00:03:00Z', 50)) SELECT * FROM points;

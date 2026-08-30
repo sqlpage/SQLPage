@@ -15,141 +15,19 @@ declare global {
   }
 }
 
-type Row = [
-  series: string,
-  x: unknown,
-  y: unknown,
-  color?: unknown,
-  z?: unknown,
-];
-
 const MARKS =
   ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect, .apexcharts-pie-area, .apexcharts-heatmap-rect, .apexcharts-series .apexcharts-marker";
-
-type ReferenceRow = {
-  xline?: string | number;
-  yline?: number;
-  label?: string;
-  color?: string;
-};
-
-const A_DAY_OF_WORK: Row[] = [
-  ["Coding", "Mon", 6],
-  ["Coding", "Tue", 4],
-  ["Coding", "Wed", 7],
-];
-
-const TASKS_OVER_TIME: Row[] = [
-  ["Design", "Alice", ["2024-03-01", "2024-03-05"]],
-  ["Build", "Bob", ["2024-03-04", "2024-03-09"]],
-];
-
-const CPU_AT_EVERY_MINUTE: Row[] = [
-  ["CPU", "2024-01-01T00:00:00Z", 10],
-  ["CPU", "2024-01-01T00:01:00Z", 20],
-  ["CPU", "2024-01-01T00:02:00Z", 30],
-  ["CPU", "2024-01-01T00:03:00Z", 40],
-];
-
-const GPU_ONLY_ONCE_THE_RENDER_STARTED: Row[] = [
-  ["GPU", "2024-01-01T00:01:00Z", 50],
-  ["GPU", "2024-01-01T00:02:00Z", 50],
-  ["GPU", "2024-01-01T00:03:00Z", 50],
-];
-
-const A_IN_EVERY_QUARTER: Row[] = [
-  ["A", "Q1", 1],
-  ["A", "Q2", 2],
-  ["A", "Q3", 3],
-];
-
-const B_MISSING_THE_FIRST_QUARTER: Row[] = [
-  ["B", "Q2", 20],
-  ["B", "Q3", 30],
-];
-
-const A_QUARTERS_OUT_OF_ORDER: Row[] = [
-  ["A", "Q3", 3],
-  ["A", "Q1", 1],
-  ["A", "Q2", 2],
-];
-
-const EXPIRING_ACCOUNTS: Row[] = [
-  ["Accounts", "30 days", 100, "red"],
-  ["Accounts", "60 days", 200, "orange"],
-  ["Accounts", "90 days", 300, "green"],
-];
 
 const RED = "#f03e3e";
 const ORANGE = "#f76707";
 const GREEN = "#37b24d";
-
-const A_RED_ROW_AND_A_GREEN_ROW: Row[] = [
-  ["A", "Q1", 1, "red"],
-  ["A", "Q2", 2, "green"],
-];
-
-const THE_SAME_ROWS_UNCOLORED: Row[] = [
-  ["A", "Q1", 1],
-  ["A", "Q2", 2],
-];
-
-const COLORED_ROWS_OF: Record<string, Row[]> = {
-  rangeBar: [
-    ["A", "one", ["2024-03-01", "2024-03-05"], "red"],
-    ["A", "two", ["2024-03-04", "2024-03-09"], "green"],
-  ],
-  bubble: [
-    ["A", "Q1", 1, "red", 30],
-    ["A", "Q2", 2, "green", 30],
-  ],
-};
-
-const A_FROM_THE_SECOND_CATEGORY: Row[] = [
-  ["A", "X2", 10],
-  ["A", "X3", 30],
-];
-
-const B_UNTIL_THE_SECOND_CATEGORY: Row[] = [
-  ["B", "X1", 25],
-  ["B", "X2", 20],
-];
-
-async function renderChart(
-  page: Page,
-  chart: Record<string, unknown>,
-  rows: (Row | ReferenceRow)[],
-) {
+async function renderChart(page: Page, fixture: string) {
   const failures: string[] = [];
   const recordError = (message: { type(): string; text(): string }) => {
     if (message.type() === "error") failures.push(message.text());
   };
   page.on("console", recordError);
-  const query = new URLSearchParams({
-    properties: JSON.stringify([
-      {
-        component: "chart",
-        id: "test-chart",
-        title: "Chart test fixture",
-        marker: 4,
-        ...chart,
-        color: chart.colors,
-        colors: undefined,
-      },
-      ...rows.map((row) =>
-        Array.isArray(row)
-          ? {
-              series: row[0],
-              x: row[1],
-              y: row[2],
-              color: row[3],
-              z: row[4],
-            }
-          : row,
-      ),
-    ]),
-  });
-  const response = await page.goto(`/chart/?${query}`);
+  const response = await page.goto(`/chart/${fixture}.sql`);
   expect(response?.ok(), `loading ${response?.url()}`).toBe(true);
   await expect(page.locator("#test-chart .apexcharts-canvas")).toBeVisible();
   page.off("console", recordError);
@@ -227,7 +105,7 @@ const fills = (chart: Awaited<ReturnType<typeof renderChart>>) =>
   });
 
 test("draws a column chart as a vertical bar chart", async ({ page }) => {
-  const chart = await renderChart(page, { type: "column" }, A_DAY_OF_WORK);
+  const chart = await renderChart(page, "column");
 
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(3);
@@ -240,11 +118,7 @@ test("draws a column chart as a vertical bar chart", async ({ page }) => {
 test("gives a stacked series a zero at every x it did not measure", async ({
   page,
 }) => {
-  const chart = await renderChart(
-    page,
-    { type: "area", stacked: true, time: true },
-    [...CPU_AT_EVERY_MINUTE, ...GPU_ONLY_ONCE_THE_RENDER_STARTED],
-  );
+  const chart = await renderChart(page, "stacked-time-series");
 
   expect(chart.failures).toEqual([]);
   expect(chart.series.map((s) => s.name)).toEqual(["CPU", "GPU"]);
@@ -257,11 +131,7 @@ test("gives a stacked series a zero at every x it did not measure", async ({
 });
 
 test("stacks a series above the one it shares an x with", async ({ page }) => {
-  const chart = await renderChart(
-    page,
-    { type: "area", stacked: true, time: true },
-    [...CPU_AT_EVERY_MINUTE, ...GPU_ONLY_ONCE_THE_RENDER_STARTED],
-  );
+  const chart = await renderChart(page, "stacked-time-series");
   const [cpu, gpu] = chart.drawnPerSeries;
 
   expect(gpu.heights).toHaveLength(4);
@@ -272,11 +142,7 @@ test("stacks a series above the one it shares an x with", async ({ page }) => {
 test("keeps a lone series in the order the query returned it (#930)", async ({
   page,
 }) => {
-  const chart = await renderChart(
-    page,
-    { type: "bar" },
-    A_QUARTERS_OUT_OF_ORDER,
-  );
+  const chart = await renderChart(page, "out-of-order");
 
   expect(chart.failures).toEqual([]);
   expect(chart.series[0].points).toEqual([
@@ -289,10 +155,7 @@ test("keeps a lone series in the order the query returned it (#930)", async ({
 test("orders by name the categories two bar series do not share (#951)", async ({
   page,
 }) => {
-  const chart = await renderChart(page, { type: "bar" }, [
-    ...A_FROM_THE_SECOND_CATEGORY,
-    ...B_UNTIL_THE_SECOND_CATEGORY,
-  ]);
+  const chart = await renderChart(page, "disjoint-categories");
 
   expect(chart.failures).toEqual([]);
   expect(chart.series[0].points).toEqual([
@@ -310,10 +173,7 @@ test("orders by name the categories two bar series do not share (#951)", async (
 test("leaves the points of a chart that does not stack alone", async ({
   page,
 }) => {
-  const chart = await renderChart(page, { type: "area", time: true }, [
-    ...CPU_AT_EVERY_MINUTE,
-    ...GPU_ONLY_ONCE_THE_RENDER_STARTED,
-  ]);
+  const chart = await renderChart(page, "unstacked-time-series");
 
   expect(chart.failures).toEqual([]);
   expect(chart.series[1].points).toEqual([
@@ -324,10 +184,7 @@ test("leaves the points of a chart that does not stack alone", async ({
 });
 
 test("stacks a bar series on the categories it skipped", async ({ page }) => {
-  const chart = await renderChart(page, { type: "bar", stacked: true }, [
-    ...A_IN_EVERY_QUARTER,
-    ...B_MISSING_THE_FIRST_QUARTER,
-  ]);
+  const chart = await renderChart(page, "stacked-categories");
 
   expect(chart.failures).toEqual([]);
   expect(chart.series[1].points).toEqual([
@@ -340,10 +197,7 @@ test("stacks a bar series on the categories it skipped", async ({ page }) => {
 test("lines an unstacked series up with the categories it skipped", async ({
   page,
 }) => {
-  const chart = await renderChart(page, { type: "line" }, [
-    ...A_IN_EVERY_QUARTER,
-    ...B_MISSING_THE_FIRST_QUARTER,
-  ]);
+  const chart = await renderChart(page, "line-categories");
 
   expect(chart.failures).toEqual([]);
   expect(chart.series[1].points).toEqual([
@@ -356,10 +210,7 @@ test("lines an unstacked series up with the categories it skipped", async ({
 test("draws nothing where an unstacked series has no value", async ({
   page,
 }) => {
-  const chart = await renderChart(page, { type: "line" }, [
-    ...A_IN_EVERY_QUARTER,
-    ...B_MISSING_THE_FIRST_QUARTER,
-  ]);
+  const chart = await renderChart(page, "line-categories");
   const [a, b] = chart.drawnPerSeries;
 
   expect(a.lefts).toHaveLength(3);
@@ -367,11 +218,7 @@ test("draws nothing where an unstacked series has no value", async ({
 });
 
 test("keeps a measured zero apart from a missing value", async ({ page }) => {
-  const chart = await renderChart(page, { type: "line" }, [
-    ...A_IN_EVERY_QUARTER,
-    ["B", "Q2", 0],
-    ["B", "Q3", 30],
-  ]);
+  const chart = await renderChart(page, "zero-and-missing");
   const [a, b] = chart.drawnPerSeries;
 
   expect(chart.series[1].points).toEqual([
@@ -386,10 +233,7 @@ for (const type of ["area", "scatter", "heatmap"]) {
   test(`lines up the series of a ${type} chart on a category axis`, async ({
     page,
   }) => {
-    const chart = await renderChart(page, { type }, [
-      ...A_IN_EVERY_QUARTER,
-      ...B_MISSING_THE_FIRST_QUARTER,
-    ]);
+    const chart = await renderChart(page, `${type}-categories`);
 
     expect(chart.failures).toEqual([]);
     expect(chart.series[1].points.map((p) => p[0])).toEqual(["Q1", "Q2", "Q3"]);
@@ -397,11 +241,7 @@ for (const type of ["area", "scatter", "heatmap"]) {
 }
 
 test("keeps the bubble size of the points it lined up", async ({ page }) => {
-  const chart = await renderChart(page, { type: "bubble" }, [
-    ["A", "Q1", 1, null, 30],
-    ["A", "Q2", 2, null, 30],
-    ["B", "Q2", 5, null, 70],
-  ]);
+  const chart = await renderChart(page, "bubble-categories");
 
   expect(chart.failures).toEqual([]);
   expect(chart.series[1].points).toEqual([
@@ -411,34 +251,21 @@ test("keeps the bubble size of the points it lined up", async ({ page }) => {
 });
 
 test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
-  const chart = await renderChart(
-    page,
-    { type: "rangeBar", time: true },
-    TASKS_OVER_TIME,
-  );
+  const chart = await renderChart(page, "range-bar");
 
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(2);
 });
 
 test("leaves a treemap chart alone", async ({ page }) => {
-  const chart = await renderChart(page, { type: "treemap" }, [
-    ["North America", "United States", 35],
-    ["North America", "Canada", 15],
-    ["Europe", "France", 30],
-    ["Europe", "Germany", 55],
-  ]);
+  const chart = await renderChart(page, "treemap");
 
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(4);
 });
 
 test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {
-  const chart = await renderChart(
-    page,
-    { type: "rangeBar", stacked: true, time: true },
-    TASKS_OVER_TIME,
-  );
+  const chart = await renderChart(page, "stacked-range-bar");
 
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(2);
@@ -448,7 +275,7 @@ test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {
 test("gives the tooltip title the color of the tooltip around it", async ({
   page,
 }) => {
-  await renderChart(page, { type: "line" }, A_DAY_OF_WORK);
+  await renderChart(page, "tooltip");
   await page.locator("#test-chart .apexcharts-inner").hover({ force: true });
 
   const title = page.locator("#test-chart .apexcharts-tooltip-title");
@@ -462,11 +289,7 @@ test("gives the tooltip title the color of the tooltip around it", async ({
 });
 
 test("draws a reference line that carries no label", async ({ page }) => {
-  const chart = await renderChart(page, { type: "line" }, [
-    ...A_IN_EVERY_QUARTER,
-    { yline: 2 },
-    { xline: "Q2" },
-  ]);
+  const chart = await renderChart(page, "unlabeled-reference-lines");
 
   expect(chart.failures).toEqual([]);
   expect(chart.referenceLines.lines).toBe(2);
@@ -477,10 +300,7 @@ test("draws a reference line that carries no label", async ({ page }) => {
 test("draws a box behind the label of a reference line that carries one", async ({
   page,
 }) => {
-  const chart = await renderChart(page, { type: "line" }, [
-    ...A_IN_EVERY_QUARTER,
-    { yline: 2, label: "limit" },
-  ]);
+  const chart = await renderChart(page, "labeled-reference-line");
 
   expect(chart.failures).toEqual([]);
   expect(chart.referenceLines.lines).toBe(1);
@@ -502,11 +322,7 @@ for (const type of [
   test(`colors every mark of a ${type} chart from its own row`, async ({
     page,
   }) => {
-    const chart = await renderChart(
-      page,
-      { type, time: type === "rangeBar" },
-      COLORED_ROWS_OF[type] ?? A_RED_ROW_AND_A_GREEN_ROW,
-    );
+    const chart = await renderChart(page, `colored-${type}`);
 
     expect(chart.failures).toEqual([]);
     expect(fills(chart)).toEqual([RED, GREEN]);
@@ -516,11 +332,7 @@ for (const type of [
 test("colors each bar of a horizontal bar chart from its own row (#1228)", async ({
   page,
 }) => {
-  const chart = await renderChart(
-    page,
-    { type: "bar", horizontal: true },
-    EXPIRING_ACCOUNTS,
-  );
+  const chart = await renderChart(page, "colored-horizontal-bar");
 
   expect(chart.failures).toEqual([]);
   expect(fills(chart)).toEqual([RED, ORANGE, GREEN]);
@@ -529,16 +341,8 @@ test("colors each bar of a horizontal bar chart from its own row (#1228)", async
 test("leaves a heatmap, which shades its cells from their own value, alone", async ({
   page,
 }) => {
-  const shaded = await renderChart(
-    page,
-    { type: "heatmap" },
-    THE_SAME_ROWS_UNCOLORED,
-  );
-  const colored = await renderChart(
-    page,
-    { type: "heatmap" },
-    A_RED_ROW_AND_A_GREEN_ROW,
-  );
+  const shaded = await renderChart(page, "uncolored-heatmap");
+  const colored = await renderChart(page, "colored-heatmap");
 
   expect(colored.failures).toEqual([]);
   expect(fills(colored)).toEqual(fills(shaded));
@@ -547,15 +351,8 @@ test("leaves a heatmap, which shades its cells from their own value, alone", asy
 test("leaves a row without a color on the color of its series", async ({
   page,
 }) => {
-  const plain = await renderChart(
-    page,
-    { type: "bar" },
-    THE_SAME_ROWS_UNCOLORED,
-  );
-  const mixed = await renderChart(page, { type: "bar" }, [
-    THE_SAME_ROWS_UNCOLORED[0],
-    ["A", "Q2", 2, "red"],
-  ]);
+  const plain = await renderChart(page, "uncolored-bar");
+  const mixed = await renderChart(page, "mixed-colors");
 
   expect(mixed.failures).toEqual([]);
   expect(fills(mixed)).toEqual([fills(plain)[0], RED]);
@@ -564,10 +361,7 @@ test("leaves a row without a color on the color of its series", async ({
 test("lets a row color override the color given to the whole chart", async ({
   page,
 }) => {
-  const chart = await renderChart(page, { type: "bar", colors: ["azure"] }, [
-    ["A", "Q1", 1],
-    ["A", "Q2", 2, "red"],
-  ]);
+  const chart = await renderChart(page, "chart-and-row-colors");
 
   expect(chart.failures).toEqual([]);
   expect(fills(chart)).toEqual(["#339af0", RED]);
@@ -576,25 +370,15 @@ test("lets a row color override the color given to the whole chart", async ({
 test("keeps the color of the series when a row names a color SQLPage does not know", async ({
   page,
 }) => {
-  const plain = await renderChart(
-    page,
-    { type: "bar" },
-    THE_SAME_ROWS_UNCOLORED,
-  );
-  const unknown = await renderChart(page, { type: "bar" }, [
-    ["A", "Q1", 1, "#ff0000"],
-    ["A", "Q2", 2, "chartreuse"],
-  ]);
+  const plain = await renderChart(page, "uncolored-bar");
+  const unknown = await renderChart(page, "unknown-colors");
 
   expect(unknown.failures).toEqual([]);
   expect(fills(unknown)).toEqual(fills(plain));
 });
 
 test("keeps coloring reference lines from their own row", async ({ page }) => {
-  const chart = await renderChart(page, { type: "line", ymax: 100 }, [
-    { yline: 70, label: "target", color: "green" },
-    ...THE_SAME_ROWS_UNCOLORED,
-  ]);
+  const chart = await renderChart(page, "colored-reference-line");
 
   expect(chart.failures).toEqual([]);
   expect(chart.referenceLines.strokes).toEqual([GREEN]);

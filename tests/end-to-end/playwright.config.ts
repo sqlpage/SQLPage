@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const fixtureBaseURL =
   process.env.SQLPAGE_FIXTURE_BASE ?? "http://127.0.0.1:8081";
+const sqlpage =
+  process.env.SQLPAGE_BINARY ?? "cargo run --manifest-path ../../Cargo.toml --";
 
 export default defineConfig({
   testDir: ".",
@@ -28,13 +30,19 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], baseURL: fixtureBaseURL },
     },
   ],
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command:
-          "cargo run --manifest-path ../../Cargo.toml -- --web-root fixtures --config-dir fixture-server",
-        url: fixtureBaseURL,
-        reuseExistingServer: true,
-        timeout: 120_000,
-      },
+  webServer: [
+    {
+      command: sqlpage,
+      cwd: "../../examples/official-site",
+      url: "http://127.0.0.1:8080",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: `${sqlpage} --web-root fixtures --config-dir fixture-server`,
+      url: fixtureBaseURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 });
