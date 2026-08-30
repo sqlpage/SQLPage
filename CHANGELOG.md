@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## unreleased
+## v0.46
 
  - Removed unnecessary `CAST` around request variables:
    - On PostgreSQL, MySQL, SQL Server and DuckDB, variables are now sent without a text cast and the database infers the type from context, which keeps generated SQL readable (`WHERE id = $1` instead of `WHERE id = CAST($1 AS TEXT)`) and fixes cases where the cast was harmful.
