@@ -1,6 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
-
-const BASE = process.env.SQLPAGE_TEST_BASE ?? "http://localhost:8080/";
+import { expect, type Page, test } from "../../fixture";
 
 type ChartPoint = { x: string | number | Date; y: number | null };
 
@@ -15,7 +13,6 @@ declare global {
       };
     }[];
   }
-  function sqlpage_chart(): void;
 }
 
 type Row = [
@@ -27,7 +24,7 @@ type Row = [
 ];
 
 const MARKS =
-  ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect, .apexcharts-pie-area, .apexcharts-heatmap-rect, .apexcharts-marker";
+  ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect, .apexcharts-pie-area, .apexcharts-heatmap-rect, .apexcharts-series .apexcharts-marker";
 
 type ReferenceRow = {
   xline?: string | number;
@@ -123,29 +120,45 @@ async function renderChart(
   chart: Record<string, unknown>,
   rows: (Row | ReferenceRow)[],
 ) {
-  return page.evaluate(
-    ({ chart, rows, marks }) => {
-      document.getElementById("test-chart")?.remove();
-      const container = document.createElement("div");
-      container.id = "test-chart";
-      container.setAttribute("data-pre-init", "chart");
-      const payload = JSON.stringify({
-        colors: [],
+  const failures: string[] = [];
+  const recordError = (message: { type(): string; text(): string }) => {
+    if (message.type() === "error") failures.push(message.text());
+  };
+  page.on("console", recordError);
+  const query = new URLSearchParams({
+    properties: JSON.stringify([
+      {
+        component: "chart",
+        id: "test-chart",
+        title: "Chart test fixture",
         marker: 4,
         ...chart,
-        points: rows,
-      });
-      container.innerHTML = `<data hidden>${payload}</data><div class="chart" style="height:250px"></div>`;
-      document.body.appendChild(container);
+        color: chart.colors,
+        colors: undefined,
+      },
+      ...rows.map((row) =>
+        Array.isArray(row)
+          ? {
+              series: row[0],
+              x: row[1],
+              y: row[2],
+              color: row[3],
+              z: row[4],
+            }
+          : row,
+      ),
+    ]),
+  });
+  const response = await page.goto(`/chart/?${query}`);
+  expect(response?.ok(), `loading ${response?.url()}`).toBe(true);
+  await expect(page.locator("#test-chart .apexcharts-canvas")).toBeVisible();
+  page.off("console", recordError);
 
-      const failures: string[] = [];
-      const reportError = console.error;
-      console.error = (...args) => failures.push(args.map(String).join(" "));
-      const before = window.charts?.length ?? 0;
-      sqlpage_chart();
-      console.error = reportError;
-
-      const rendered = window.charts?.[before];
+  return page.evaluate(
+    ({ failures, marks }) => {
+      const container = document.getElementById("test-chart");
+      if (!container) throw new Error("Chart fixture did not render");
+      const rendered = window.charts?.[0];
       const series = (rendered?.w.config.series ?? []).map((s) => ({
         name: s.name,
         points: (s.data ?? []).map((p) => [
@@ -199,7 +212,7 @@ async function renderChart(
         referenceLines,
       };
     },
-    { chart, rows, marks: MARKS },
+    { failures, marks: MARKS },
   );
 }
 
@@ -212,11 +225,6 @@ const fills = (chart: Awaited<ReturnType<typeof renderChart>>) =>
       .map((c) => Number(c).toString(16).padStart(2, "0"));
     return `#${hex.join("")}`;
   });
-
-test.beforeEach(async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
-  await page.waitForSelector(".apexcharts-canvas");
-});
 
 test("draws a column chart as a vertical bar chart", async ({ page }) => {
   const chart = await renderChart(page, { type: "column" }, A_DAY_OF_WORK);

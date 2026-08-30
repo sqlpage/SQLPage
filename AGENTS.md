@@ -121,7 +121,7 @@ DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test
 
 ODBC tests require the database-specific ODBC driver on the host; starting the container is not sufficient. See the PostgreSQL ODBC and Oracle matrix entries in [CI](./.github/workflows/ci.yml) for driver setup and connection strings. On Linux and macOS, `cargo test --features odbc-static` matches CI's static unixODBC linking.
 
-For dynamic frontend changes, run the Playwright tests under `tests/end-to-end/` as described in [CONTRIBUTING.md](./CONTRIBUTING.md). For examples containing `test.hurl`, run `scripts/test-examples-hurl.sh <example-path>`.
+For dynamic frontend changes, run the Playwright tests under `tests/end-to-end/` as described in [CONTRIBUTING.md](./CONTRIBUTING.md). Component browser tests belong in `tests/end-to-end/fixtures/<suite>/{index.sql,test.ts}` and must import the shared `fixture.ts` harness. Exercise components through SQL fixtures and normal page initialization; do not inject synthetic component DOM or call private initialization functions. Prefer Playwright locators and web-first assertions. For examples containing `test.hurl`, run `scripts/test-examples-hurl.sh <example-path>`.
 
 ### Documentation
 
@@ -143,5 +143,6 @@ official documentation website sql tables:
 - SQLPage functions: one `async fn` module under `src/webserver/database/sqlpage_functions/functions/`, declared with `mod` and registered with `sqlpage_functions!` in `functions.rs`. See its [README](./src/webserver/database/sqlpage_functions/README.md).
 - [Configuration](./configuration.md): see [AppConfig](./src/app_config.rs)
 - Routing: file-based in `src/webserver/routing.rs`. Missing paths use the nearest ancestor `404.sql`; without one, HTML uses `src/default_404.sql` and other formats receive a plain-text 404.
+- Playwright component suites: `tests/end-to-end/fixtures/<suite>/{index.sql,test.ts}` using `tests/end-to-end/fixture.ts`; official-site smoke tests remain in `tests/end-to-end/*.spec.ts`.
 - Follow patterns from similar modules before introducing new abstractions.
 - frontend: see [css](./sqlpage/sqlpage.css) and [js](./sqlpage/sqlpage.js)

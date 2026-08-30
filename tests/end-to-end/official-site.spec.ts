@@ -1,9 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
-const BASE = process.env.SQLPAGE_TEST_BASE ?? "http://localhost:8080/";
-
 test("Open documentation", async ({ page }) => {
-  await page.goto(BASE);
+  await page.goto("/");
 
   await expect(page).toHaveTitle(/SQLPage.*/);
 
@@ -17,13 +15,13 @@ test("Open documentation", async ({ page }) => {
 });
 
 test("chart", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  await page.goto("/documentation.sql?component=chart#component");
   await expect(page.getByText("Loading...")).not.toBeVisible();
   await expect(page.locator(".apexcharts-canvas").first()).toBeVisible();
 });
 
 test("chart supports hiding legend", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  await page.goto("/documentation.sql?component=chart#component");
 
   const expensesChart = page.locator(".card", {
     has: page.getByRole("heading", { name: "Expenses" }),
@@ -51,7 +49,7 @@ const drawnPoints = (card: Locator, series: string) =>
 test("stacked chart draws every series at every x of the chart", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  await page.goto("/documentation.sql?component=chart#component");
   const powerChart = chartCard(page, "Power draw");
   await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
 
@@ -65,7 +63,7 @@ test("stacked chart draws every series at every x of the chart", async ({
 test("stacked chart raises a series only where it has a value", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  await page.goto("/documentation.sql?component=chart#component");
   const powerChart = chartCard(page, "Power draw");
   await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
 
@@ -79,7 +77,7 @@ test("stacked chart raises a series only where it has a value", async ({
 test("chart draws a yline as a line and a yline_end as a band", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  await page.goto("/documentation.sql?component=chart#component");
 
   const temperature = page.locator(".card", {
     has: page.getByRole("heading", { name: "CPU temperature" }),
@@ -99,7 +97,7 @@ test("chart draws a yline as a line and a yline_end as a band", async ({
 test("chart draws an xline as a line and an xline_end as a band", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  await page.goto("/documentation.sql?component=chart#component");
 
   const latency = page.locator(".card", {
     has: page.getByRole("heading", { name: "Request latency" }),
@@ -119,7 +117,7 @@ test("chart draws an xline as a line and an xline_end as a band", async ({
 test("horizontal chart draws a yline down it and an xline across it", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/documentation.sql?component=chart#component`);
+  await page.goto("/documentation.sql?component=chart#component");
 
   const disks = page.locator(".card", {
     has: page.getByRole("heading", { name: "Disk usage" }),
@@ -136,7 +134,7 @@ test("horizontal chart draws a yline down it and an xline across it", async ({
 });
 
 test("map", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=map#component`);
+  await page.goto("/documentation.sql?component=map#component");
   await expect(page.getByText("Loading...")).not.toBeVisible();
   await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible();
 });
@@ -144,7 +142,7 @@ test("map", async ({ page }) => {
 test("toast notifications initialize, stack, dismiss, and render safely", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/documentation.sql?component=toast#component`);
+  await page.goto("/documentation.sql?component=toast#component");
 
   const automatic = page.locator("#toast-auto");
   await expect(automatic).toBeVisible();
@@ -331,7 +329,7 @@ test("toast notifications initialize, stack, dismiss, and render safely", async 
 });
 
 test("form example", async ({ page }) => {
-  await page.goto(`${BASE}/examples/multistep-form`);
+  await page.goto("/examples/multistep-form");
   // Single selection matching the value or label
   await page.getByLabel("From").selectOption("Paris");
   await page.getByText("Next").click();
@@ -345,7 +343,7 @@ test("form example", async ({ page }) => {
 });
 
 test("File upload", async ({ page }) => {
-  await page.goto(`${BASE}/your-first-sql-website`);
+  await page.goto("/your-first-sql-website");
   await page.getByRole("button", { name: "Examples", exact: true }).click();
   await page.getByText("File uploads").click();
   const my_svg = '<svg><text y="20">Hello World</text></svg>';
@@ -362,7 +360,7 @@ test("File upload", async ({ page }) => {
 });
 
 test("Authentication example", async ({ page }) => {
-  await page.goto(`${BASE}/examples/authentication/login.sql`);
+  await page.goto("/examples/authentication/login.sql");
   await expect(page.locator("h1", { hasText: "Authentication" })).toBeVisible();
 
   const usernameInput = page.getByLabel("Username");
@@ -381,7 +379,7 @@ test("Authentication example", async ({ page }) => {
 });
 
 test("table filtering", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=table`);
+  await page.goto("/documentation.sql?component=table");
   const tableSection = page.locator(".card", {
     has: page.getByRole("cell", { name: "Chart", exact: true }),
   });
@@ -398,7 +396,7 @@ test("table filtering", async ({ page }) => {
 });
 
 const sortableTable = async (page: Page) => {
-  await page.goto(`${BASE}/documentation.sql?component=table`);
+  await page.goto("/documentation.sql?component=table");
   return page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "31456" }),
   });
@@ -447,7 +445,7 @@ async function checkNoConsoleErrors(page: Page, component: string) {
     }
   });
 
-  await page.goto(`${BASE}/documentation.sql?component=${component}`);
+  await page.goto(`/documentation.sql?component=${component}`);
   await page.waitForLoadState();
 
   expect(errors).toHaveLength(0);
@@ -470,7 +468,7 @@ test("no console errors on card page", async ({ page }) => {
 });
 
 test("CSP issues unique nonces per request", async ({ page }) => {
-  const csp1 = await (await page.goto(BASE))?.headerValue(
+  const csp1 = await (await page.goto("/"))?.headerValue(
     "content-security-policy",
   );
   const csp2 = await (await page.reload())?.headerValue(
@@ -481,7 +479,7 @@ test("CSP issues unique nonces per request", async ({ page }) => {
 });
 
 test("form component documentation", async ({ page }) => {
-  await page.goto(`${BASE}/component.sql?component=form`);
+  await page.goto("/component.sql?component=form");
 
   const componentForm = page.locator("form", {
     has: page.getByRole("radio", { name: "Chart" }),
@@ -504,7 +502,7 @@ test("form component documentation", async ({ page }) => {
 test("form select combines initial options with remote search results", async ({
   page,
 }) => {
-  await page.goto(`${BASE}/component.sql?component=form`);
+  await page.goto("/component.sql?component=form");
 
   const select = page
     .locator(
@@ -586,7 +584,7 @@ test("form select combines initial options with remote search results", async ({
 });
 
 test("form type=select searchable=true", async ({ page }) => {
-  await page.goto(`${BASE}/examples/form`);
+  await page.goto("/examples/form");
 
   const form = page.locator("form").filter({
     has: page.locator('select[name="region"]'),
@@ -640,7 +638,7 @@ test("form type=select searchable=true", async ({ page }) => {
 });
 
 test("modal", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=modal#component`);
+  await page.goto("/documentation.sql?component=modal#component");
   const openButton = page.getByRole("button", { name: "Open a simple modal" });
   await openButton.click();
 
@@ -657,7 +655,7 @@ test("modal", async ({ page }) => {
 });
 
 test("table action buttons - edit_url and delete_url", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=table`);
+  await page.goto("/documentation.sql?component=table");
   const tableSection = page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "PharmaCo" }),
   });
@@ -675,7 +673,7 @@ test("table action buttons - edit_url and delete_url", async ({ page }) => {
 });
 
 test("table action buttons - custom_actions", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=table`);
+  await page.goto("/documentation.sql?component=table");
   const tableSection = page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "PharmaCo" }),
   });
@@ -691,7 +689,7 @@ test("table action buttons - custom_actions", async ({ page }) => {
 });
 
 test("table action buttons - _sqlpage_actions", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=table`);
+  await page.goto("/documentation.sql?component=table");
   const tableSection = page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "PharmaCo" }),
   });
@@ -722,7 +720,7 @@ test("table action buttons - _sqlpage_actions", async ({ page }) => {
 });
 
 test("table action buttons - disabled action", async ({ page }) => {
-  await page.goto(`${BASE}/documentation.sql?component=table`);
+  await page.goto("/documentation.sql?component=table");
   const tableSection = page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "PharmaCo" }),
   });
