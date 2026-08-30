@@ -40,7 +40,7 @@
     "points": [
     {{~#each_row~}}
         {{~#if (gt @row_index 0)}},{{/if~}}
-        {{~#if (or xline yline)~}}
+        {{~#if (default xline (default yline false)) includeZero=true~}}
         {
             "xline": {{~stringify xline}}, "xline_end": {{~stringify xline_end}},
             "yline": {{~stringify yline}}, "yline_end": {{~stringify yline_end}},
