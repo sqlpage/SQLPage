@@ -8,7 +8,7 @@ use std::pin::Pin;
 use tracing::Instrument;
 
 use super::csv_import::run_csv_import;
-use super::error_highlighting::{display_stmt_db_error, display_stmt_error};
+use super::error_highlighting::{display_stmt_db_error, display_stmt_error, is_positioned_error};
 use super::sql::{
     DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SingleRowQuery, SourceSpan,
     SqlFile,
@@ -301,7 +301,7 @@ fn with_stmt_position(
     query_position: SourceSpan,
     error: anyhow::Error,
 ) -> anyhow::Error {
-    if error.downcast_ref::<ErrorWithStatus>().is_some() {
+    if error.downcast_ref::<ErrorWithStatus>().is_some() || is_positioned_error(&error) {
         error
     } else {
         display_stmt_error(source_file, query_position, error)
