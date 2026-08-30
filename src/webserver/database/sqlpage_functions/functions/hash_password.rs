@@ -5,12 +5,12 @@ pub(super) async fn hash_password(password: Option<String>) -> anyhow::Result<Op
         return Ok(None);
     };
     actix_web::rt::task::spawn_blocking(move || {
+        use argon2::password_hash::PasswordHasher;
+
         // Hashes a password using Argon2. This is a CPU-intensive blocking operation.
         let phf = argon2::Argon2::default();
-        let salt = argon2::password_hash::SaltString::generate(
-            &mut argon2::password_hash::rand_core::OsRng,
-        );
-        let password_hash = &argon2::password_hash::PasswordHash::generate(phf, password, &salt)
+        let password_hash = phf
+            .hash_password(password.as_bytes())
             .map_err(|e| anyhow!("Unable to hash password: {e}"))?;
         Ok(password_hash.to_string())
     })

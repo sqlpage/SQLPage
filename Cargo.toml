@@ -86,7 +86,7 @@ config = { version = "0.15.4", default-features = false, features = [
     "yaml",
 ] }
 markdown = { version = "1", features = ["log"] }
-argon2 = "0.5.3"
+argon2 = "0.6.0"
 actix-web-httpauth = "0.8.0"
 rand = "0.10.0"
 actix-multipart = { version = "0.8.0", default-features = false, features = ["tempfile"] }
