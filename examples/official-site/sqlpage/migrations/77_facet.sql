@@ -6,7 +6,7 @@ This component only renders the filter navigation. **Your SQL query is responsib
 
 Use it alongside a [table](?component=table), [list](?component=list), or [card](?component=card). The links use GET parameters, so the selected filter can be bookmarked and shared.
 
-Set `compact` to display the facets in a dropdown, which is useful for a moderate number of choices or on narrow screens. Use `dropdown_title` to show the active facet in the closed dropdown. `all_link` and `all_title` add a link that clears the filter.
+Set `compact` to display the facets in a dropdown, which is useful for a moderate number of choices or on narrow screens. Use `selected_facet` to show the active facet in the closed dropdown. `all_link` and `all_title` add a link that clears the filter.
 
 The following portable pattern filters a table by category. `sqlpage.link` preserves the current page path while safely generating the URL.
 
@@ -98,8 +98,8 @@ VALUES (
                     "class": "Constitution"
                 },
                 {
-                    "name": "USS Exeter (NCC-1672)",
-                    "class": "Galaxy"
+                    "name": "USS Defiant (NCC-1764)",
+                    "class": "Constitution"
                 },
                 {
                     "name": "USS Exeter (NCC-1672)",
@@ -112,7 +112,8 @@ VALUES (
                     "all_title": "All",
                     "all_active": false,
                     "compact": true,
-                    "dropdown_title": "Constitution"
+                    "dropdown_title": "Select a spaceship class",
+                    "selected_facet": "Constitution"
                 },
                 {
                     "title": "Constitution",
