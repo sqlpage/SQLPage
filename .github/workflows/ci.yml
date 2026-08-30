@@ -213,23 +213,10 @@ jobs:
         with:
           name: sqlpage-linux-debug
           path: ${{ runner.temp }}/sqlpage-bin
-      - name: Start test servers and wait for them to be ready
-        timeout-minutes: 1
+      - name: Run Playwright tests
         run: |
           chmod +x "${{ runner.temp }}/sqlpage-bin/sqlpage"
-          "${{ runner.temp }}/sqlpage-bin/sqlpage" 2>/tmp/stderrlog &
-          tail -f /tmp/stderrlog | grep -q "started successfully"
-          "${{ runner.temp }}/sqlpage-bin/sqlpage" \
-            --web-root "${{ github.workspace }}/tests/end-to-end/fixtures" \
-            --config-dir "${{ github.workspace }}/tests/end-to-end/fixture-server" \
-            2>/tmp/fixture-stderrlog &
-          tail -f /tmp/fixture-stderrlog | grep -q "started successfully"
-        working-directory: ./examples/official-site
-      - name: Run Playwright tests
-        run: npx playwright test
-      - name: show server logs
-        if: failure()
-        run: cat /tmp/stderrlog /tmp/fixture-stderrlog
+          SQLPAGE_BINARY="${{ runner.temp }}/sqlpage-bin/sqlpage" npx playwright test
       - uses: actions/upload-artifact@v7
         if: always()
         with:

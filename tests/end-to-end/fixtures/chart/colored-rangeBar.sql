@@ -1,0 +1,1 @@
+SELECT 'dynamic' AS component, '[{"component":"chart","id":"test-chart","title":"Chart test fixture","type":"rangeBar","time":true,"marker":4},{"series":"A","x":"one","y":["2024-03-01","2024-03-05"],"color":"red"},{"series":"A","x":"two","y":["2024-03-04","2024-03-09"],"color":"green"}]' AS properties;

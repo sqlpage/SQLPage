@@ -1,16 +1,9 @@
 import { expect, type Page, test } from "../../fixture";
 
-type Marker = { coords?: string; title: string };
-
-const PARIS = "48.85,2.35";
 const PARIS_WITHOUT_ITS_LONGITUDE = "48.85,";
 const NOT_COORDINATES = "somewhere nice";
 
-async function renderMap(
-  page: Page,
-  center: string | null,
-  markers: Marker[] = [],
-) {
+async function renderMap(page: Page, fixture: string, markerCount = 0) {
   const errors: string[] = [];
   const logged: string[] = [];
   const recordPageError = (error: Error) => errors.push(error.message);
@@ -19,44 +12,11 @@ async function renderMap(
   };
   page.on("pageerror", recordPageError);
   page.on("console", recordConsoleError);
-  const coordinates = (coords: string) => {
-    const [latitude, longitude = ""] = coords.split(",", 2);
-    return { latitude, longitude };
-  };
-  const isValid = (coords: string) =>
-    coords.split(",", 2).length === 2 &&
-    coords
-      .split(",", 2)
-      .every((part) => Number.isFinite(Number.parseFloat(part)));
-  const validMarkers = markers.filter(
-    (marker) => marker.coords !== undefined && isValid(marker.coords),
-  ).length;
-  const invalidCoordinates =
-    (center !== null && !isValid(center) ? 1 : 0) +
-    markers.filter(
-      (marker) => marker.coords !== undefined && !isValid(marker.coords),
-    ).length;
-  const query = new URLSearchParams({
-    properties: JSON.stringify([
-      {
-        component: "map",
-        title: "Map test fixture",
-        height: 200,
-        tile_source: false,
-        ...(center === null ? {} : coordinates(center)),
-      },
-      ...markers.map(({ coords, ...marker }) => ({
-        ...marker,
-        ...(coords === undefined ? {} : coordinates(coords)),
-      })),
-    ]),
-  });
-  const response = await page.goto(`/map/?${query}`);
+  const response = await page.goto(`/map/${fixture}.sql`);
   expect(response?.ok(), `loading ${response?.url()}`).toBe(true);
   await expect(page.locator("[data-pre-init='map']")).toHaveCount(0);
   await expect(page.locator(".leaflet-map-pane")).toBeAttached();
-  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(validMarkers);
-  await expect.poll(() => logged.length).toBe(invalidCoordinates);
+  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(markerCount);
   page.off("pageerror", recordPageError);
   page.off("console", recordConsoleError);
 
@@ -71,7 +31,7 @@ async function renderMap(
 }
 
 test("centers the map on a pair of coordinates", async ({ page }) => {
-  const map = await renderMap(page, PARIS);
+  const map = await renderMap(page, "valid-center");
 
   expect(map.errors).toEqual([]);
   expect(map.logged).toEqual([]);
@@ -79,7 +39,7 @@ test("centers the map on a pair of coordinates", async ({ page }) => {
 });
 
 test("reports a center whose longitude is missing", async ({ page }) => {
-  const map = await renderMap(page, PARIS_WITHOUT_ITS_LONGITUDE);
+  const map = await renderMap(page, "missing-center-longitude");
 
   expect(map.errors).toEqual([]);
   expect(map.logged).toEqual([
@@ -89,7 +49,7 @@ test("reports a center whose longitude is missing", async ({ page }) => {
 });
 
 test("reports a center that is not a pair of numbers", async ({ page }) => {
-  const map = await renderMap(page, NOT_COORDINATES);
+  const map = await renderMap(page, "invalid-center");
 
   expect(map.errors).toEqual([]);
   expect(map.logged).toEqual([expect.stringContaining(NOT_COORDINATES)]);
@@ -97,7 +57,7 @@ test("reports a center that is not a pair of numbers", async ({ page }) => {
 });
 
 test("draws a marker at a pair of coordinates", async ({ page }) => {
-  const map = await renderMap(page, PARIS, [{ coords: PARIS, title: "Paris" }]);
+  const map = await renderMap(page, "valid-marker", 1);
 
   expect(map.errors).toEqual([]);
   expect(map.logged).toEqual([]);
@@ -107,10 +67,7 @@ test("draws a marker at a pair of coordinates", async ({ page }) => {
 test("reports a marker whose longitude is missing, keeping the others", async ({
   page,
 }) => {
-  const map = await renderMap(page, PARIS, [
-    { coords: PARIS_WITHOUT_ITS_LONGITUDE, title: "Half of Paris" },
-    { coords: PARIS, title: "Paris" },
-  ]);
+  const map = await renderMap(page, "invalid-and-valid-markers", 1);
 
   expect(map.errors).toEqual([]);
   expect(map.logged).toEqual([
