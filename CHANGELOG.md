@@ -25,6 +25,7 @@
  - Tooltip title text is now inhertis the same colour as the tooltip text.
  - Charts can display reference lines. A row with a `yline` is drawn as a line across the chart at that value of the y axis, and a row with an `xline` marks a position on the x axis. Adding `yline_end` or `xline_end` makes a line a band, and the row's `label` and `color` set its text and its color. Reference lines are rows, so a chart can have as many of them as the query returns. Each one follows its own axis, so on a `horizontal` bar chart a `yline` is drawn down the chart rather than across it. They are not added to the total of a `stacked` chart, and are not filled in an `area` chart.
  - Chart data rows can set their own `color`, painting a single bar, slice or point instead of the whole series. It applies to `bar`, `column`, `rangeBar`, `pie`, `treemap`, `scatter` and `bubble` charts, and to the markers of a `line` or an `area` chart.
+- Recursive `sqlpage.run_sql` errors now show one concise, positioned error instead of repeating the full inclusion chain.
 
 ## v0.45
 
