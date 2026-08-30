@@ -218,7 +218,7 @@ jobs:
           chmod +x "${{ runner.temp }}/sqlpage-bin/sqlpage"
           SQLPAGE_BINARY="${{ runner.temp }}/sqlpage-bin/sqlpage" npx playwright test
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: ./tests/end-to-end/playwright-report/
