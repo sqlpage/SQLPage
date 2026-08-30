@@ -95,6 +95,10 @@ impl std::error::Error for NicePositionedError {
     }
 }
 
+pub(super) fn is_positioned_error(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<NicePositionedError>().is_some()
+}
+
 /// Display a database error without any position information
 #[must_use]
 pub(super) fn display_db_error(

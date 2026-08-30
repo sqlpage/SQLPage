@@ -75,7 +75,7 @@ pub(super) async fn run_sql<'a>(
             }
             FinishedQuery => log::trace!("run_sql: Finished query"),
             Error(err) => {
-                return Err(err.context(format!("run_sql: unable to run {sql_file_path:?}")));
+                return Err(err);
             }
         }
     }

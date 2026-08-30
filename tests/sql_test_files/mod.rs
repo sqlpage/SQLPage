@@ -257,6 +257,13 @@ fn assert_html_test(body: &str, test_file: &std::path::Path, stem: &str) {
             expected,
             test_file.display()
         );
+        if stem == "error_too_many_nested_inclusions" {
+            assert!(
+                !body.contains("run_sql: unable to run"),
+                "Recursive inclusion error should not repeat run_sql context: {}",
+                test_file.display()
+            );
+        }
     } else {
         if let Some(error) = extract_error(body) {
             panic!("Error in {}: {}", test_file.display(), error);
