@@ -13,6 +13,7 @@
   ```
 
   SQLPage now keeps the variable value, producing `https://api.example.com/john.doe` as expected.
+- A request that resolves to a directory now returns a 404 page. Directory names that contain a dot are routed to the static file handler, which used to fail with a server error instead.
 
 ## v0.46
 
