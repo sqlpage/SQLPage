@@ -13,6 +13,7 @@
   ```
 
   SQLPage now keeps the variable value, producing `https://api.example.com/john.doe` as expected.
+- Errors from a failed migration now point at the file and the SQL that failed. Before a reversible migration could be reported with the contents of its `.down.sql` half, and any migration with a multi-word name was reported as `0001_add new users.sql` rather than `0001_add_new_users.sql`.
 
 ## v0.46
 

@@ -4603,6 +4603,7 @@ dependencies = [
  "sha2 0.11.0",
  "sqlparser",
  "sqlx-core-oldapi",
+ "tempfile",
  "tokio",
  "tokio-stream",
  "tokio-util",
