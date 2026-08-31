@@ -15,8 +15,13 @@ pub fn make_http_client(config: &crate::app_config::AppConfig) -> anyhow::Result
 }
 
 pub(crate) fn default_system_root_ca_certificates_from_env() -> bool {
-    std::env::var("SSL_CERT_FILE").is_ok_and(|value| !value.is_empty())
-        || std::env::var("SSL_CERT_DIR").is_ok_and(|value| !value.is_empty())
+    system_roots_selected_by(|name| std::env::var(name).ok())
+}
+
+fn system_roots_selected_by(lookup: impl Fn(&str) -> Option<String>) -> bool {
+    ["SSL_CERT_FILE", "SSL_CERT_DIR"]
+        .into_iter()
+        .any(|name| lookup(name).is_some_and(|value| !value.is_empty()))
 }
 
 fn native_certificates() -> anyhow::Result<&'static NativeCertificates> {
@@ -99,5 +104,31 @@ pub(crate) fn get_http_client_from_appdata(
             .map_err(|e| anyhow!("HTTP client initialization failed: {e}"))
     } else {
         Err(anyhow!("HTTP client not found in app data"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::system_roots_selected_by;
+
+    #[test]
+    fn either_ssl_cert_variable_selects_the_system_trust_store() {
+        for variable in ["SSL_CERT_FILE", "SSL_CERT_DIR"] {
+            assert!(
+                system_roots_selected_by(
+                    |name| (name == variable).then(|| "/etc/ssl/certs".to_owned())
+                ),
+                "{variable}"
+            );
+        }
+    }
+
+    #[test]
+    fn unset_or_empty_ssl_cert_variables_leave_the_bundled_roots() {
+        assert!(!system_roots_selected_by(|_| None));
+        assert!(!system_roots_selected_by(|_| Some(String::new())));
+        assert!(!system_roots_selected_by(
+            |name| (name == "SSL_CERT_PATH").then(|| "/etc/ssl/certs".to_owned())
+        ));
     }
 }
