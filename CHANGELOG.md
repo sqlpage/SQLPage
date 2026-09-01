@@ -14,6 +14,7 @@
 
   SQLPage now keeps the variable value, producing `https://api.example.com/john.doe` as expected.
 - Errors from a failed migration now point at the file and the SQL that failed. Before a reversible migration could be reported with the contents of its `.down.sql` half, and any migration with a multi-word name was reported as `0001_add new users.sql` rather than `0001_add_new_users.sql`.
+- A `content_security_policy` that does not contain `'nonce-{NONCE}'` is now sent as written, instead of being silently dropped and leaving the response with no `Content-Security-Policy` header at all. Setting the option to the empty string still disables the header, as documented.
 
 ## v0.46
 

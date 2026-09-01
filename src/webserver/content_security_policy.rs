@@ -22,9 +22,11 @@ pub struct ContentSecurityPolicyTemplate {
 }
 
 impl ContentSecurityPolicyTemplate {
+    /// An empty template disables the header. Any other template is sent,
+    /// whether or not it contains the nonce placeholder.
     #[must_use]
     pub fn is_enabled(&self) -> bool {
-        self.nonce_position.is_some()
+        !self.template.is_empty()
     }
 
     fn format_nonce(&self, nonce: u64) -> String {
@@ -87,6 +89,40 @@ impl ContentSecurityPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actix_web::http::StatusCode;
+
+    fn header_for(template: &str) -> Option<String> {
+        let mut response = HttpResponseBuilder::new(StatusCode::OK);
+        ContentSecurityPolicy::with_random_nonce().apply_to_response(
+            &ContentSecurityPolicyTemplate::from(template),
+            &mut response,
+        );
+        response
+            .finish()
+            .headers()
+            .get(CONTENT_SECURITY_POLICY)
+            .map(|value| value.to_str().unwrap().to_owned())
+    }
+
+    #[test]
+    fn default_policy_substitutes_a_nonce() {
+        let header = header_for(DEFAULT_CONTENT_SECURITY_POLICY).unwrap();
+        assert!(header.starts_with("script-src 'self' 'nonce-"));
+        assert!(!header.contains(NONCE_PLACEHOLDER));
+    }
+
+    #[test]
+    fn custom_policy_without_nonce_placeholder_is_sent_verbatim() {
+        assert_eq!(
+            header_for("default-src 'self'").as_deref(),
+            Some("default-src 'self'")
+        );
+    }
+
+    #[test]
+    fn empty_policy_disables_the_header() {
+        assert_eq!(header_for(""), None);
+    }
 
     #[test]
     fn test_content_security_policy_display() {
