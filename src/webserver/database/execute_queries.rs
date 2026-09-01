@@ -10,8 +10,8 @@ use tracing::Instrument;
 use super::csv_import::run_csv_import;
 use super::error_highlighting::{display_stmt_db_error, display_stmt_error, is_positioned_error};
 use super::sql::{
-    DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SingleRowQuery, SourceSpan,
-    SqlFile,
+    DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SourceSpan, SqlFile,
+    StaticSimpleSelect,
 };
 use super::sqlpage_expr::{NoInputs, RowExpr, RowInputs};
 use crate::dynamic_component::parse_dynamic_rows;
@@ -201,8 +201,8 @@ pub fn stream_query_results_with_conn<'a>(
                     run_csv_import(connection, csv_import, request).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },
                 FileStatement::Query(statement) => match &statement.body {
-                  QueryBody::SingleRow(query) => {
-                    let row = execute_single_row(query, request, db_connection)
+                  QueryBody::StaticSimpleSelect(query) => {
+                    let row = execute_static_simple_select(query, request, db_connection)
                         .await
                         .map_err(|error| with_stmt_position(source_file, statement.source_span, error))?;
                     for item in parse_dynamic_rows(DbItem::Row(row)) {
@@ -330,8 +330,8 @@ pub fn stop_at_first_error(
         .take_until(error_rx)
 }
 
-async fn execute_single_row(
-    query: &SingleRowQuery,
+async fn execute_static_simple_select(
+    query: &StaticSimpleSelect,
     req: &ExecutionContext,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<Value> {
@@ -397,11 +397,11 @@ async fn execute_scalar_query<'a>(
     source_file: &Path,
 ) -> anyhow::Result<Option<String>> {
     let QueryBody::Database(database_query) = &statement.body else {
-        let QueryBody::SingleRow(single_row) = &statement.body else {
+        let QueryBody::StaticSimpleSelect(static_select) = &statement.body else {
             unreachable!()
         };
-        ensure_scalar_column_count(single_row.columns.len())?;
-        let row = execute_single_row(single_row, request, db_connection).await?;
+        ensure_scalar_column_count(static_select.columns.len())?;
+        let row = execute_static_simple_select(static_select, request, db_connection).await?;
         return scalar_value_from_row(DbItem::Row(row));
     };
     let query = bind_query(database_query, request, db_connection).await?;

@@ -36,7 +36,7 @@ pub(in crate::webserver::database) struct Query {
 #[derive(Debug, PartialEq)]
 pub(in crate::webserver::database) enum QueryBody {
     Database(DatabaseQuery),
-    SingleRow(SingleRowQuery),
+    StaticSimpleSelect(StaticSimpleSelect),
 }
 
 /// A statement executed by the configured database.
@@ -62,9 +62,9 @@ impl DatabaseQuery {
     }
 }
 
-/// Exactly one row generated without querying the database.
+/// Execution plan for a documented static simple select.
 #[derive(Debug, PartialEq)]
-pub(in crate::webserver::database) struct SingleRowQuery {
+pub(in crate::webserver::database) struct StaticSimpleSelect {
     pub columns: Box<[OutputColumn<StandaloneExpr>]>,
 }
 

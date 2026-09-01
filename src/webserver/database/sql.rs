@@ -29,8 +29,10 @@ use sqlparser::parser::{Parser, ParserError};
 use sqlparser::tokenizer::Token::{self, EOF, SemiColon};
 use sqlparser::tokenizer::{Location, Span, TokenWithSpan, Tokenizer};
 
+#[cfg(test)]
+use super::SupportedDatabase;
 use super::csv_import::extract_csv_copy_statement;
-use super::{Database, DbInfo, SupportedDatabase};
+use super::{Database, DbInfo};
 use crate::AppState;
 use crate::file_cache::AsyncFromStrWithState;
 use crate::webserver::database::error_highlighting::quote_source_with_highlight;
@@ -43,7 +45,7 @@ mod statement;
 pub(super) use statement::SourceLocation;
 pub use statement::SqlFile;
 pub(super) use statement::{
-    DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SingleRowQuery, SourceSpan,
+    DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SourceSpan, StaticSimpleSelect,
     VariableName,
 };
 
@@ -209,83 +211,6 @@ fn syntax_error(error: ParserError, parser: &Parser<'_>, sql: &str) -> FileState
     )
     .unwrap();
     FileStatement::Error(anyhow::Error::from(error).context(message))
-}
-
-const SQLPAGE_FUNCTION_NAMESPACE: &str = "sqlpage";
-
-pub(super) fn is_sqlpage_func(parts: &[ObjectNamePart]) -> bool {
-    matches!(
-        parts,
-        [
-            ObjectNamePart::Identifier(Ident {
-                value,
-                quote_style: None,
-                ..
-            }),
-            ObjectNamePart::Identifier(Ident { quote_style: None, .. })
-        ] if value.eq_ignore_ascii_case(SQLPAGE_FUNCTION_NAMESPACE)
-    )
-}
-
-pub(super) fn extract_json_columns(
-    statement: &Statement,
-    database: SupportedDatabase,
-) -> Vec<String> {
-    if matches!(
-        database,
-        SupportedDatabase::Postgres | SupportedDatabase::Mssql
-    ) {
-        return Vec::new();
-    }
-    let Statement::Query(query) = statement else {
-        return Vec::new();
-    };
-    let SetExpr::Select(select) = query.body.as_ref() else {
-        return Vec::new();
-    };
-    select
-        .projection
-        .iter()
-        .filter_map(|item| match item {
-            SelectItem::ExprWithAlias { expr, alias } if is_json_expression(expr) => {
-                Some(alias.value.clone())
-            }
-            _ => None,
-        })
-        .collect()
-}
-
-pub(super) fn is_json_expression(expression: &Expr) -> bool {
-    match expression {
-        Expr::Function(function) => {
-            let [ObjectNamePart::Identifier(name)] = function.name.0.as_slice() else {
-                return false;
-            };
-            [
-                "json_object",
-                "json_array",
-                "json_build_object",
-                "json_build_array",
-                "to_json",
-                "to_jsonb",
-                "json_agg",
-                "jsonb_agg",
-                "json_arrayagg",
-                "json_objectagg",
-                "json_group_array",
-                "json_group_object",
-                "json",
-                "jsonb",
-            ]
-            .iter()
-            .any(|candidate| name.value.eq_ignore_ascii_case(candidate))
-        }
-        Expr::Cast { data_type, .. } => matches!(
-            data_type,
-            sqlparser::ast::DataType::JSON | sqlparser::ast::DataType::JSONB
-        ),
-        _ => false,
-    }
 }
 
 fn expression_to_query(expression: Expr) -> Statement {
@@ -552,6 +477,35 @@ mod tests {
     }
 
     #[test]
+    fn numbered_bindings_keep_source_projection_order() {
+        let query = rewrite_database(
+            "select $a as a, sqlpage.url_encode(upper(col || sqlpage.url_encode($b))) as b, $c as c from t",
+        );
+        assert_eq!(
+            query.bindings.as_ref(),
+            [
+                variable("a"),
+                call(SqlPageFunctionName::url_encode, [variable("b")]),
+                variable("c"),
+            ]
+        );
+    }
+
+    #[test]
+    fn numbered_bindings_keep_source_argument_order() {
+        let query = rewrite_database(
+            "select coalesce(upper(sqlpage.url_encode($a)), sqlpage.url_encode(upper(sqlpage.url_encode($b)))) from t",
+        );
+        assert_eq!(
+            query.bindings.as_ref(),
+            [
+                call(SqlPageFunctionName::url_encode, [variable("a")]),
+                call(SqlPageFunctionName::url_encode, [variable("b")]),
+            ]
+        );
+    }
+
+    #[test]
     fn database_cannot_order_by_computed_column() {
         let FileStatement::Error(error) =
             one("select sqlpage.url_encode(value) as encoded from t order by encoded")
@@ -668,9 +622,9 @@ mod tests {
     }
 
     #[test]
-    fn standalone_projection_has_no_database_query() {
+    fn static_simple_select_has_no_database_query() {
         let FileStatement::Query(Query {
-            body: QueryBody::SingleRow(query),
+            body: QueryBody::StaticSimpleSelect(query),
             ..
         }) = one("select sqlpage.url_encode('a b') as value")
         else {
@@ -683,7 +637,7 @@ mod tests {
     fn concat_operator_uses_backend_null_behavior_in_sqlpage_expressions() {
         for database_type in [SupportedDatabase::Oracle, SupportedDatabase::Mssql] {
             let FileStatement::Query(Query {
-                body: QueryBody::SingleRow(query),
+                body: QueryBody::StaticSimpleSelect(query),
                 ..
             }) = one_for(database_type, "select '/' || null as path")
             else {
@@ -723,7 +677,7 @@ mod tests {
     #[test]
     fn unquoted_sqlpage_names_are_case_insensitive() {
         let FileStatement::Query(Query {
-            body: QueryBody::SingleRow(query),
+            body: QueryBody::StaticSimpleSelect(query),
             ..
         }) = one("select SQLPAGE.URL_ENCODE('a b') as value")
         else {
@@ -739,18 +693,57 @@ mod tests {
                 "select coalesce(upper(sqlpage.url_encode($prefix)), sqlpage.url_encode(value)) as result from t"
             ),
             DatabaseQuery {
-                sql: "SELECT value AS \"__sqlpage_input_0\", upper($1) AS \"__sqlpage_input_1\" FROM t".into(),
+                sql: "SELECT upper($1) AS \"__sqlpage_input_0\", value AS \"__sqlpage_input_1\" FROM t".into(),
                 bindings: Box::new([call(SqlPageFunctionName::url_encode, [variable("prefix")])]),
                 row_input_json: Box::new([false, false]),
                 computed_columns: Box::new([OutputColumn {
                     name: "result".into(),
                     value: coalesce([
-                        row(1),
-                        call(SqlPageFunctionName::url_encode, [row(0)]),
+                        row(0),
+                        call(SqlPageFunctionName::url_encode, [row(1)]),
                     ]),
                 }]),
                 json_columns: Box::new([]),
             }
+        );
+    }
+
+    #[test]
+    fn database_fragment_promoted_to_row_input_keeps_source_variables() {
+        assert_eq!(
+            rewrite_database("select concat(1 + 1, sqlpage.request_method(), $x) as result from t"),
+            DatabaseQuery {
+                sql: "SELECT 1 + 1 AS \"__sqlpage_input_0\" FROM t".into(),
+                bindings: Box::new([]),
+                row_input_json: Box::new([false]),
+                computed_columns: Box::new([OutputColumn {
+                    name: "result".into(),
+                    value: SqlPageExpr::Concat {
+                        arguments: Box::new([
+                            row(0),
+                            call(SqlPageFunctionName::request_method, []),
+                            variable("x"),
+                        ]),
+                        null_behavior: ConcatNullBehavior::IgnoreNull,
+                    },
+                }]),
+                json_columns: Box::new([]),
+            }
+        );
+    }
+
+    #[test]
+    fn private_row_input_json_flags_follow_row_input_ids() {
+        let query = rewrite_database(
+            "select concat(to_json(value), sqlpage.url_encode(other)) as result from t",
+        );
+        assert_eq!(query.row_input_json.as_ref(), [true, false]);
+        let SqlPageExpr::Concat { arguments, .. } = &query.computed_columns[0].value else {
+            panic!("expected a concatenated per-row expression");
+        };
+        assert_eq!(
+            arguments.as_ref(),
+            [row(0), call(SqlPageFunctionName::url_encode, [row(1)])]
         );
     }
 

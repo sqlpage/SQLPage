@@ -42,9 +42,11 @@ To be static and simple, a statement must satisfy all of the following:
 
 - No `FROM`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`/`FETCH`, `WITH`, `DISTINCT`, `TOP`, windowing, locks, or other clauses.
 - Each selected item is of the form `value AS alias`.
-- Each `value` is either:
-  - a literal (single-quoted string, number, boolean, or `NULL`), or
-  - a variable (like `$name`, `:message`)
+- Each `value` can be evaluated without a database row. This includes:
+  - literals (single-quoted strings, numbers, booleans, or `NULL`),
+  - variables (like `$name` or `:message`),
+  - `sqlpage.*` functions whose arguments can also be evaluated without a database row,
+  - and combinations of those values using `||`, `concat`, `coalesce`, or JSON constructors.
 
 That’s it. If any part is more complex, it is not a static simple select and will be sent to the database.
 
@@ -53,14 +55,12 @@ That’s it. If any part is more complex, it is not a static simple select and w
 ```sql
 SELECT 'text' AS component, 'Hello' AS contents;
 SELECT 'text' AS component, $name AS contents;
+SELECT 'text' AS component, 'Hello ' || $name AS contents;
 ```
 
 #### Examples that are NOT static (sent to the database)
 
 ```sql
--- Has string concatenation
-select 'from' as component, 'handle_form.sql?id=' || $id as action;
-
 -- Has WHERE
 select 'text' as component, $alert_message as contents where $should_alert;
 

@@ -1,5 +1,19 @@
 # CHANGELOG.md
 
+## v0.46.1
+
+- Fixed a regression introduced in v0.46 that could replace a variable with `NULL` while building a value that also used database expressions and `sqlpage.*` functions. For example, this API request could lose `john.doe` and produce a URL ending at `https://api.example.com/`:
+
+  ```sql
+  SET user_id = 'john.doe';
+  SET api_request = json_object(
+      'timeout_ms', CAST(sqlpage.environment_variable('API_TIMEOUT') AS INTEGER),
+      'url', concat(sqlpage.environment_variable('API_URL'), '/', $user_id)
+  );
+  ```
+
+  SQLPage now keeps the variable value, producing `https://api.example.com/john.doe` as expected.
+
 ## v0.46
 
  - Removed unnecessary `CAST` around request variables:
