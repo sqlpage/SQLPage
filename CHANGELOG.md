@@ -1,5 +1,19 @@
 # CHANGELOG.md
 
+## v0.46.1
+
+- Fixed a regression introduced in v0.46 that could replace a variable with `NULL` while building a value that also used database expressions and `sqlpage.*` functions. For example, this API request could lose `john.doe` and produce a URL ending at `https://api.example.com/`:
+
+  ```sql
+  SET user_id = 'john.doe';
+  SET api_request = json_object(
+      'timeout_ms', CAST(sqlpage.environment_variable('API_TIMEOUT') AS INTEGER),
+      'url', concat(sqlpage.environment_variable('API_URL'), '/', $user_id)
+  );
+  ```
+
+  SQLPage now keeps the variable value, producing `https://api.example.com/john.doe` as expected.
+
 ## v0.46
 
  - Removed unnecessary `CAST` around request variables:
@@ -24,7 +38,6 @@
  - `sqlpage.fetch_with_meta` now correctly documents server JSON responses sent under `json_body`, not `body`.
  - Datagrid rows with an icon or image no longer display an unnecessary en-dash placeholder, and an explicitly empty description remains empty.
  - Tooltip title text is now inhertis the same colour as the tooltip text.
- - Fixed `SET` and request variables becoming `NULL` when used after a database expression and a `sqlpage.*` function inside `concat`, `coalesce`, or a JSON constructor.
  - Charts can display reference lines. A row with a `yline` is drawn as a line across the chart at that value of the y axis, and a row with an `xline` marks a position on the x axis. Adding `yline_end` or `xline_end` makes a line a band, and the row's `label` and `color` set its text and its color. Reference lines are rows, so a chart can have as many of them as the query returns. Each one follows its own axis, so on a `horizontal` bar chart a `yline` is drawn down the chart rather than across it. They are not added to the total of a `stacked` chart, and are not filled in an `area` chart.
  - Chart data rows can set their own `color`, painting a single bar, slice or point instead of the whole series. It applies to `bar`, `column`, `rangeBar`, `pie`, `treemap`, `scatter` and `bubble` charts, and to the markers of a `line` or an `area` chart.
 - Updated the bundled Tabler icon sprite from v3.44.0 to [v3.46.0](https://github.com/tabler/tabler-icons/releases/tag/v3.46.0). This adds 18 icons, including `play-bug`, `remote-control`, `rocking-chair`, `run-sprint`, `tabs`, `treasure-chest`, `vault`, and `yarn`, and includes the upstream fixes listed in the release notes.
