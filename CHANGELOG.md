@@ -13,6 +13,7 @@
   ```
 
   SQLPage now keeps the variable value, producing `https://api.example.com/john.doe` as expected.
+- A request that resolves to a directory now returns a 404 page. Directory names that contain a dot are routed to the static file handler, which used to fail with a server error instead.
 - A `content_security_policy` that does not contain `'nonce-{NONCE}'` is now sent as written, instead of being silently dropped and leaving the response with no `Content-Security-Policy` header at all. Setting the option to the empty string still disables the header, as documented.
 
 ## v0.46
