@@ -173,3 +173,13 @@ async fn test_default_404_when_request_path_descends_into_file() {
     assert!(body.contains("The page you were looking for does not exist"));
     assert!(!body.contains("error"));
 }
+
+#[actix_web::test]
+async fn test_requesting_a_directory_is_not_found() {
+    let resp_result = req_path("/tests/errors/is_a_directory.d").await;
+    let status = match resp_result {
+        Ok(resp) => resp.status(),
+        Err(e) => e.as_response_error().status_code(),
+    };
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
