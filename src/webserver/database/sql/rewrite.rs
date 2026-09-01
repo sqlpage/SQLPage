@@ -45,12 +45,17 @@ use sqlx::any::AnyKind;
 
 const SQLPAGE_INPUT_PREFIX: &str = "__sqlpage_input_";
 
-/// Mutable state used while rewriting one database query.
-struct QueryRewriter<'a> {
+/// State used while partitioning source expressions between `SQLPage` and the database.
+struct QueryPartitioner<'a> {
     database: &'a DbInfo,
-    bindings: Vec<StandaloneExpr>,
     row_input_json: Vec<bool>,
     private_projection: Vec<SelectItem>,
+}
+
+/// State used after partitioning to lower `SQLPage` values into database bindings.
+struct DatabaseLowerer<'a> {
+    database: &'a DbInfo,
+    bindings: Vec<StandaloneExpr>,
     error: Option<anyhow::Error>,
 }
 
@@ -80,7 +85,14 @@ impl sqlparser::ast::Visitor for ComputedAliasFinder<'_> {
 // Keeping the owned AST inline avoids one heap allocation for every ordinary
 // projected expression. The enum is short-lived inside the rewriter.
 #[allow(clippy::large_enum_variant)]
-enum RewrittenProjection {
+enum PartitionedProjection {
+    Database(SqlExpr),
+    PerRow(RowExpr),
+}
+
+/// A partitioned projection after its database fragments have been lowered.
+#[allow(clippy::large_enum_variant)]
+enum LoweredProjection {
     Database(SqlExpr),
     PerRow(RowExpr),
 }
@@ -91,7 +103,8 @@ trait ExprEnvironment {
     type Input;
 
     fn use_database_expr(
-        rewriter: &mut QueryRewriter<'_>,
+        &mut self,
+        database: &DbInfo,
         expression: SqlExpr,
     ) -> anyhow::Result<SqlPageExpr<Self::Input>>;
 }
@@ -99,13 +112,17 @@ trait ExprEnvironment {
 /// Rejects database-owned inputs because no returned row is available.
 struct StandaloneEnvironment;
 /// Projects database-owned inputs into the current returned row.
-struct RowEnvironment;
+struct RowEnvironment<'a> {
+    row_input_json: &'a mut Vec<bool>,
+    private_projection: &'a mut Vec<SelectItem>,
+}
 
 impl ExprEnvironment for StandaloneEnvironment {
     type Input = NoRowInput;
 
     fn use_database_expr(
-        _rewriter: &mut QueryRewriter<'_>,
+        &mut self,
+        _database: &DbInfo,
         expression: SqlExpr,
     ) -> anyhow::Result<StandaloneExpr> {
         if let SqlExpr::Function(function) = &expression
@@ -122,15 +139,23 @@ impl ExprEnvironment for StandaloneEnvironment {
     }
 }
 
-impl ExprEnvironment for RowEnvironment {
+impl ExprEnvironment for RowEnvironment<'_> {
     type Input = RowInputId;
 
     fn use_database_expr(
-        rewriter: &mut QueryRewriter<'_>,
+        &mut self,
+        _database: &DbInfo,
         expression: SqlExpr,
     ) -> anyhow::Result<RowExpr> {
-        let id = rewriter.add_row_input(expression)?;
-        Ok(SqlPageExpr::Input(id))
+        let decode_as_json = is_json_expression(&expression);
+        let index = self.row_input_json.len();
+        let name = format!("{SQLPAGE_INPUT_PREFIX}{index}");
+        self.private_projection.push(SelectItem::ExprWithAlias {
+            expr: expression,
+            alias: Ident::with_quote('"', name),
+        });
+        self.row_input_json.push(decode_as_json);
+        Ok(SqlPageExpr::Input(RowInputId::new(index)))
     }
 }
 
@@ -152,25 +177,20 @@ pub(super) fn rewrite_query(
     semicolon: bool,
 ) -> anyhow::Result<Query> {
     let source_span = source_span(&statement);
-    let mut rewriter = QueryRewriter {
+    let mut partitioner = QueryPartitioner {
         database,
-        bindings: Vec::new(),
         row_input_json: Vec::new(),
         private_projection: Vec::new(),
-        error: None,
     };
-    if let Some(single_row) = rewrite_single_row(&mut statement, &mut rewriter)? {
+    if let Some(single_row) = rewrite_single_row(&mut statement, &mut partitioner)? {
         return Ok(Query {
             body: QueryBody::SingleRow(single_row),
             source_span,
         });
     }
-    let computed_columns = rewrite_top_level_projection(&mut statement, &mut rewriter)?;
-
-    let _ = statement.visit(&mut rewriter);
-    if let Some(error) = rewriter.error {
-        return Err(error);
-    }
+    let mut lowerer = DatabaseLowerer::new(database);
+    let computed_columns =
+        rewrite_top_level_projection(&mut statement, &mut partitioner, &mut lowerer)?;
 
     if let SqlStatement::Query(query) = &mut statement
         && let SetExpr::Select(select) = query.body.as_mut()
@@ -180,14 +200,15 @@ pub(super) fn rewrite_query(
             expr: SqlExpr::value(Value::Null),
             alias: Ident::with_quote('"', format!("{SQLPAGE_INPUT_PREFIX}anchor")),
         });
-        rewriter.row_input_json.push(false);
+        partitioner.row_input_json.push(false);
     }
 
     let json_columns = extract_json_columns(&statement, database.database_type)
         .into_iter()
         .filter(|name| !name.starts_with(SQLPAGE_INPUT_PREFIX))
         .collect();
-    let bindings = rewriter.finish_bindings(&mut statement)?;
+    lowerer.lower_statement(&mut statement)?;
+    let bindings = lowerer.finish_bindings(&mut statement)?;
     let sql = format!(
         "{statement}{semicolon}",
         semicolon = if semicolon { ";" } else { "" }
@@ -197,7 +218,7 @@ pub(super) fn rewrite_query(
         body: QueryBody::Database(DatabaseQuery {
             sql,
             bindings,
-            row_input_json: rewriter.row_input_json.into_boxed_slice(),
+            row_input_json: partitioner.row_input_json.into_boxed_slice(),
             computed_columns: computed_columns.into_boxed_slice(),
             json_columns,
         }),
@@ -209,7 +230,8 @@ pub(super) fn rewrite_query(
 /// and appends their private database inputs as a trailing suffix.
 fn rewrite_top_level_projection(
     statement: &mut SqlStatement,
-    rewriter: &mut QueryRewriter<'_>,
+    partitioner: &mut QueryPartitioner<'_>,
+    lowerer: &mut DatabaseLowerer<'_>,
 ) -> anyhow::Result<Vec<OutputColumn<RowExpr>>> {
     let SqlStatement::Query(query) = statement else {
         return Ok(Vec::new());
@@ -224,8 +246,8 @@ fn rewrite_top_level_projection(
     }
 
     let (mut database_projection, computed_columns) =
-        rewrite_projection_items(std::mem::take(&mut select.projection), rewriter)?;
-    database_projection.append(&mut rewriter.private_projection);
+        rewrite_projection_items(std::mem::take(&mut select.projection), partitioner, lowerer)?;
+    database_projection.append(&mut partitioner.private_projection);
     select.projection = database_projection;
 
     reject_computed_alias_references("WHERE", select.selection.as_ref(), &computed_columns)?;
@@ -245,7 +267,8 @@ fn rewrite_top_level_projection(
 
 fn rewrite_projection_items(
     projection: Vec<SelectItem>,
-    rewriter: &mut QueryRewriter<'_>,
+    partitioner: &mut QueryPartitioner<'_>,
+    lowerer: &mut DatabaseLowerer<'_>,
 ) -> anyhow::Result<(Vec<SelectItem>, Vec<OutputColumn<RowExpr>>)> {
     let mut database_projection = Vec::with_capacity(projection.len());
     let mut computed_columns = Vec::new();
@@ -261,8 +284,13 @@ fn rewrite_projection_items(
         let name = alias
             .as_ref()
             .map_or_else(|| expression.to_string(), |alias| alias.value.clone());
-        match rewriter.rewrite_projection(expression)? {
-            RewrittenProjection::Database(expression) => {
+        let first_private_input = partitioner.private_projection.len();
+        let projection = partitioner.rewrite_projection(expression)?;
+        match lowerer.lower_projection(
+            projection,
+            &mut partitioner.private_projection[first_private_input..],
+        )? {
+            LoweredProjection::Database(expression) => {
                 database_projection.push(match alias {
                     Some(alias) => SelectItem::ExprWithAlias {
                         expr: expression,
@@ -271,7 +299,7 @@ fn rewrite_projection_items(
                     None => SelectItem::UnnamedExpr(expression),
                 });
             }
-            RewrittenProjection::PerRow(value) => {
+            LoweredProjection::PerRow(value) => {
                 computed_columns.push(OutputColumn { name, value });
             }
         }
@@ -384,7 +412,7 @@ fn references_computed_projection(
 /// avoiding both a database round trip and an intermediate row-expression tree.
 fn rewrite_single_row(
     statement: &mut SqlStatement,
-    rewriter: &mut QueryRewriter<'_>,
+    partitioner: &mut QueryPartitioner<'_>,
 ) -> anyhow::Result<Option<SingleRowQuery>> {
     if !has_single_row_shape(statement) {
         return Ok(None);
@@ -411,7 +439,7 @@ fn rewrite_single_row(
         };
         columns.push(OutputColumn {
             name: alias.value,
-            value: build_sqlpage_expr::<StandaloneEnvironment>(rewriter, expr)?,
+            value: build_sqlpage_expr(partitioner.database, &mut StandaloneEnvironment, expr)?,
         });
     }
     Ok(Some(SingleRowQuery {
@@ -501,22 +529,23 @@ fn can_build_standalone(expression: &SqlExpr) -> anyhow::Result<bool> {
     }
 }
 
-impl QueryRewriter<'_> {
+impl QueryPartitioner<'_> {
     /// Splits a projected expression at SQLPage-supported operations while
     /// leaving opaque database operations in the SQL AST.
-    fn rewrite_projection(&mut self, expression: SqlExpr) -> anyhow::Result<RewrittenProjection> {
+    fn rewrite_projection(&mut self, expression: SqlExpr) -> anyhow::Result<PartitionedProjection> {
+        if !projection_is_per_row(&expression)? {
+            return Ok(PartitionedProjection::Database(expression));
+        }
         match expression {
             SqlExpr::Function(function) => {
                 if recognize_sqlpage_function(&function)?.is_some() {
-                    return build_sqlpage_expr::<RowEnvironment>(self, SqlExpr::Function(function))
-                        .map(RewrittenProjection::PerRow);
+                    return self
+                        .build_row_expr(SqlExpr::Function(function))
+                        .map(PartitionedProjection::PerRow);
                 }
-                if let Some(kind) = emulated_function(&function) {
-                    return self.rewrite_emulated_projection(function, kind);
-                }
-                let mut expression = SqlExpr::Function(function);
-                self.rewrite_database_expression(&mut expression)?;
-                Ok(RewrittenProjection::Database(expression))
+                let kind = emulated_function(&function)
+                    .expect("per-row function ownership was already classified");
+                self.rewrite_emulated_projection(function, kind)
             }
             SqlExpr::BinaryOp {
                 left,
@@ -524,37 +553,23 @@ impl QueryRewriter<'_> {
                 right,
             } => {
                 let left = self.rewrite_projection(*left)?;
+                let left = self.projection_into_row_expr(left)?;
                 let right = self.rewrite_projection(*right)?;
-                match (left, right) {
-                    (RewrittenProjection::Database(left), RewrittenProjection::Database(right)) => {
-                        Ok(RewrittenProjection::Database(SqlExpr::BinaryOp {
-                            left: Box::new(left),
-                            op: BinaryOperator::StringConcat,
-                            right: Box::new(right),
-                        }))
-                    }
-                    (left, right) => Ok(RewrittenProjection::PerRow(SqlPageExpr::Concat {
-                        arguments: vec![
-                            self.projection_into_row_expr(left)?,
-                            self.projection_into_row_expr(right)?,
-                        ]
-                        .into_boxed_slice(),
-                        null_behavior: self.database.database_type.concat_operator_null_behavior(),
-                    })),
-                }
+                let right = self.projection_into_row_expr(right)?;
+                Ok(PartitionedProjection::PerRow(SqlPageExpr::Concat {
+                    arguments: vec![left, right].into_boxed_slice(),
+                    null_behavior: self.database.database_type.concat_operator_null_behavior(),
+                }))
             }
             SqlExpr::Nested(expression) => match self.rewrite_projection(*expression)? {
-                RewrittenProjection::Database(expression) => Ok(RewrittenProjection::Database(
+                PartitionedProjection::Database(expression) => Ok(PartitionedProjection::Database(
                     SqlExpr::Nested(Box::new(expression)),
                 )),
-                RewrittenProjection::PerRow(expression) => {
-                    Ok(RewrittenProjection::PerRow(expression))
+                PartitionedProjection::PerRow(expression) => {
+                    Ok(PartitionedProjection::PerRow(expression))
                 }
             },
-            mut expression => {
-                self.rewrite_database_expression(&mut expression)?;
-                Ok(RewrittenProjection::Database(expression))
-            }
+            _ => unreachable!("per-row expression ownership was already classified"),
         }
     }
 
@@ -562,35 +577,16 @@ impl QueryRewriter<'_> {
         &mut self,
         function: Function,
         kind: EmulatedFunction,
-    ) -> anyhow::Result<RewrittenProjection> {
-        let (arguments, original) = take_expression_arguments(function)?;
+    ) -> anyhow::Result<PartitionedProjection> {
+        let (arguments, _) = take_expression_arguments(function)?;
         let mut rewritten = Vec::with_capacity(arguments.len());
-        let mut has_per_row = false;
         for argument in arguments {
             let argument = self.rewrite_projection(argument)?;
-            has_per_row |= matches!(argument, RewrittenProjection::PerRow(_));
-            rewritten.push(argument);
+            rewritten.push(self.projection_into_row_expr(argument)?);
         }
-        if !has_per_row {
-            let arguments = rewritten
-                .into_iter()
-                .map(|argument| match argument {
-                    RewrittenProjection::Database(expression) => expression,
-                    RewrittenProjection::PerRow(_) => unreachable!(),
-                })
-                .collect();
-            return Ok(RewrittenProjection::Database(rebuild_function(
-                original, arguments,
-            )));
-        }
-
-        let arguments = rewritten
-            .into_iter()
-            .map(|argument| self.projection_into_row_expr(argument))
-            .collect::<anyhow::Result<Vec<_>>>()?;
-        Ok(RewrittenProjection::PerRow(build_emulated(
+        Ok(PartitionedProjection::PerRow(build_emulated(
             kind,
-            arguments,
+            rewritten,
             self.database.database_type,
         )?))
     }
@@ -599,18 +595,106 @@ impl QueryRewriter<'_> {
     /// while preserving an already per-row expression unchanged.
     fn projection_into_row_expr(
         &mut self,
-        projection: RewrittenProjection,
+        projection: PartitionedProjection,
     ) -> anyhow::Result<RowExpr> {
         match projection {
-            RewrittenProjection::Database(expression) => {
-                build_sqlpage_expr::<RowEnvironment>(self, expression)
-            }
-            RewrittenProjection::PerRow(expression) => Ok(expression),
+            PartitionedProjection::Database(expression) => self.build_row_expr(expression),
+            PartitionedProjection::PerRow(expression) => Ok(expression),
         }
     }
 
-    fn rewrite_database_expression(&mut self, expression: &mut SqlExpr) -> anyhow::Result<()> {
+    fn build_row_expr(&mut self, expression: SqlExpr) -> anyhow::Result<RowExpr> {
+        build_sqlpage_expr(
+            self.database,
+            &mut RowEnvironment {
+                row_input_json: &mut self.row_input_json,
+                private_projection: &mut self.private_projection,
+            },
+            expression,
+        )
+    }
+}
+
+/// Determines ownership without mutating the AST, so database fragments can
+/// be promoted to row inputs in source order once a per-row parent is known.
+fn projection_is_per_row(expression: &SqlExpr) -> anyhow::Result<bool> {
+    match expression {
+        SqlExpr::Function(function) => {
+            if recognize_sqlpage_function(function)?.is_some() {
+                return Ok(true);
+            }
+            if emulated_function(function).is_none() {
+                return Ok(false);
+            }
+            let FunctionArguments::List(arguments) = &function.args else {
+                anyhow::bail!("Unsupported arguments to {}", function.name);
+            };
+            if arguments.duplicate_treatment.is_some() || !arguments.clauses.is_empty() {
+                anyhow::bail!("Unsupported arguments to {}", function.name);
+            }
+            for argument in &arguments.args {
+                let FunctionArg::Unnamed(FunctionArgExpr::Expr(expression)) = argument else {
+                    anyhow::bail!("Named and wildcard function arguments are not supported");
+                };
+                if projection_is_per_row(expression)? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        SqlExpr::BinaryOp {
+            left,
+            op: BinaryOperator::StringConcat,
+            right,
+        } => Ok(projection_is_per_row(left)? || projection_is_per_row(right)?),
+        SqlExpr::Nested(expression) => projection_is_per_row(expression),
+        _ => Ok(false),
+    }
+}
+
+impl<'a> DatabaseLowerer<'a> {
+    fn new(database: &'a DbInfo) -> Self {
+        Self {
+            database,
+            bindings: Vec::new(),
+            error: None,
+        }
+    }
+
+    /// Accepts a terminal partition result and lowers its database-owned
+    /// fragments. The lowered AST cannot return to recursive partitioning.
+    fn lower_projection(
+        &mut self,
+        projection: PartitionedProjection,
+        private_inputs: &mut [SelectItem],
+    ) -> anyhow::Result<LoweredProjection> {
+        let projection = match projection {
+            PartitionedProjection::Database(mut expression) => {
+                self.lower_expression(&mut expression)?;
+                LoweredProjection::Database(expression)
+            }
+            PartitionedProjection::PerRow(expression) => {
+                for input in private_inputs {
+                    let _ = input.visit(self);
+                    self.take_error()?;
+                }
+                LoweredProjection::PerRow(expression)
+            }
+        };
+        Ok(projection)
+    }
+
+    fn lower_expression(&mut self, expression: &mut SqlExpr) -> anyhow::Result<()> {
         let _ = expression.visit(self);
+        self.take_error()
+    }
+
+    fn lower_statement(&mut self, statement: &mut SqlStatement) -> anyhow::Result<()> {
+        let _ = statement.visit(self);
+        self.take_error()
+    }
+
+    fn take_error(&mut self) -> anyhow::Result<()> {
         self.error.take().map_or(Ok(()), Err)
     }
 
@@ -622,19 +706,6 @@ impl QueryRewriter<'_> {
             PlaceholderStyle::Positional { .. } => format!("${}", sequence + 1),
         };
         cast_placeholder(placeholder, self.database)
-    }
-
-    fn add_row_input(&mut self, mut expression: SqlExpr) -> anyhow::Result<RowInputId> {
-        let decode_as_json = is_json_expression(&expression);
-        self.rewrite_database_expression(&mut expression)?;
-        let index = self.row_input_json.len();
-        let name = format!("{SQLPAGE_INPUT_PREFIX}{index}");
-        self.private_projection.push(SelectItem::ExprWithAlias {
-            expr: expression,
-            alias: Ident::with_quote('"', name),
-        });
-        self.row_input_json.push(decode_as_json);
-        Ok(RowInputId::new(index))
     }
 
     fn finish_bindings(
@@ -708,7 +779,7 @@ impl VisitorMut for PositionalBindingFinalizer {
     }
 }
 
-impl VisitorMut for QueryRewriter<'_> {
+impl VisitorMut for DatabaseLowerer<'_> {
     type Break = ();
 
     fn pre_visit_expr(&mut self, expression: &mut SqlExpr) -> ControlFlow<Self::Break> {
@@ -730,7 +801,7 @@ impl VisitorMut for QueryRewriter<'_> {
             SqlExpr::Function(function) => match recognize_sqlpage_function(function) {
                 Ok(Some(_)) => {
                     let owned = std::mem::replace(expression, SqlExpr::value(Value::Null));
-                    match build_sqlpage_expr::<StandaloneEnvironment>(self, owned) {
+                    match build_sqlpage_expr(self.database, &mut StandaloneEnvironment, owned) {
                         Ok(value) => Some(self.add_binding(value)),
                         Err(error) => {
                             self.error = Some(error.context(
@@ -783,7 +854,8 @@ impl VisitorMut for QueryRewriter<'_> {
 /// environment determines whether opaque database fragments are illegal or
 /// become private row inputs.
 fn build_sqlpage_expr<Environment: ExprEnvironment>(
-    rewriter: &mut QueryRewriter<'_>,
+    database: &DbInfo,
+    environment: &mut Environment,
     expression: SqlExpr,
 ) -> anyhow::Result<SqlPageExpr<Environment::Input>> {
     match expression {
@@ -796,14 +868,14 @@ fn build_sqlpage_expr<Environment: ExprEnvironment>(
             Value::Boolean(value) => Ok(SqlPageExpr::Literal(JsonValue::Bool(value))),
             Value::Null => Ok(SqlPageExpr::Literal(JsonValue::Null)),
             _ => {
-                Environment::use_database_expr(rewriter, SqlExpr::Value(ValueWithSpan::from(value)))
+                environment.use_database_expr(database, SqlExpr::Value(ValueWithSpan::from(value)))
             }
         },
         SqlExpr::Identifier(identifier) => {
             if let Some(variable) = variable_from_ident(&identifier) {
                 Ok(SqlPageExpr::Variable(variable))
             } else {
-                Environment::use_database_expr(rewriter, SqlExpr::Identifier(identifier))
+                environment.use_database_expr(database, SqlExpr::Identifier(identifier))
             }
         }
         SqlExpr::Function(function) => {
@@ -811,7 +883,7 @@ fn build_sqlpage_expr<Environment: ExprEnvironment>(
                 let (arguments, _) = take_expression_arguments(function)?;
                 let arguments = arguments
                     .into_iter()
-                    .map(|argument| build_sqlpage_expr::<Environment>(rewriter, argument))
+                    .map(|argument| build_sqlpage_expr(database, environment, argument))
                     .collect::<anyhow::Result<Vec<_>>>()?;
                 Ok(SqlPageExpr::Call {
                     function: function_name,
@@ -821,11 +893,11 @@ fn build_sqlpage_expr<Environment: ExprEnvironment>(
                 let (arguments, _) = take_expression_arguments(function)?;
                 let arguments = arguments
                     .into_iter()
-                    .map(|argument| build_sqlpage_expr::<Environment>(rewriter, argument))
+                    .map(|argument| build_sqlpage_expr(database, environment, argument))
                     .collect::<anyhow::Result<Vec<_>>>()?;
-                build_emulated(kind, arguments, rewriter.database.database_type)
+                build_emulated(kind, arguments, database.database_type)
             } else {
-                Environment::use_database_expr(rewriter, SqlExpr::Function(function))
+                environment.use_database_expr(database, SqlExpr::Function(function))
             }
         }
         SqlExpr::BinaryOp {
@@ -834,17 +906,14 @@ fn build_sqlpage_expr<Environment: ExprEnvironment>(
             right,
         } => Ok(SqlPageExpr::Concat {
             arguments: vec![
-                build_sqlpage_expr::<Environment>(rewriter, *left)?,
-                build_sqlpage_expr::<Environment>(rewriter, *right)?,
+                build_sqlpage_expr(database, environment, *left)?,
+                build_sqlpage_expr(database, environment, *right)?,
             ]
             .into_boxed_slice(),
-            null_behavior: rewriter
-                .database
-                .database_type
-                .concat_operator_null_behavior(),
+            null_behavior: database.database_type.concat_operator_null_behavior(),
         }),
-        SqlExpr::Nested(expression) => build_sqlpage_expr::<Environment>(rewriter, *expression),
-        expression => Environment::use_database_expr(rewriter, expression),
+        SqlExpr::Nested(expression) => build_sqlpage_expr(database, environment, *expression),
+        expression => environment.use_database_expr(database, expression),
     }
 }
 
@@ -965,17 +1034,6 @@ fn take_expression_arguments(mut function: Function) -> anyhow::Result<(Vec<SqlE
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
     Ok((arguments, function))
-}
-
-fn rebuild_function(mut function: Function, expressions: Vec<SqlExpr>) -> SqlExpr {
-    let FunctionArguments::List(arguments) = &mut function.args else {
-        unreachable!()
-    };
-    arguments.args = expressions
-        .into_iter()
-        .map(|expression| FunctionArg::Unnamed(FunctionArgExpr::Expr(expression)))
-        .collect();
-    SqlExpr::Function(function)
 }
 
 fn make_function(name: &str, expressions: Vec<SqlExpr>) -> SqlExpr {

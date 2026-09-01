@@ -552,6 +552,35 @@ mod tests {
     }
 
     #[test]
+    fn numbered_bindings_keep_source_projection_order() {
+        let query = rewrite_database(
+            "select $a as a, sqlpage.url_encode(upper(col || sqlpage.url_encode($b))) as b, $c as c from t",
+        );
+        assert_eq!(
+            query.bindings.as_ref(),
+            [
+                variable("a"),
+                call(SqlPageFunctionName::url_encode, [variable("b")]),
+                variable("c"),
+            ]
+        );
+    }
+
+    #[test]
+    fn numbered_bindings_keep_source_argument_order() {
+        let query = rewrite_database(
+            "select coalesce(upper(sqlpage.url_encode($a)), sqlpage.url_encode(upper(sqlpage.url_encode($b)))) from t",
+        );
+        assert_eq!(
+            query.bindings.as_ref(),
+            [
+                call(SqlPageFunctionName::url_encode, [variable("a")]),
+                call(SqlPageFunctionName::url_encode, [variable("b")]),
+            ]
+        );
+    }
+
+    #[test]
     fn database_cannot_order_by_computed_column() {
         let FileStatement::Error(error) =
             one("select sqlpage.url_encode(value) as encoded from t order by encoded")
@@ -739,15 +768,39 @@ mod tests {
                 "select coalesce(upper(sqlpage.url_encode($prefix)), sqlpage.url_encode(value)) as result from t"
             ),
             DatabaseQuery {
-                sql: "SELECT value AS \"__sqlpage_input_0\", upper($1) AS \"__sqlpage_input_1\" FROM t".into(),
+                sql: "SELECT upper($1) AS \"__sqlpage_input_0\", value AS \"__sqlpage_input_1\" FROM t".into(),
                 bindings: Box::new([call(SqlPageFunctionName::url_encode, [variable("prefix")])]),
                 row_input_json: Box::new([false, false]),
                 computed_columns: Box::new([OutputColumn {
                     name: "result".into(),
                     value: coalesce([
-                        row(1),
-                        call(SqlPageFunctionName::url_encode, [row(0)]),
+                        row(0),
+                        call(SqlPageFunctionName::url_encode, [row(1)]),
                     ]),
+                }]),
+                json_columns: Box::new([]),
+            }
+        );
+    }
+
+    #[test]
+    fn database_fragment_promoted_to_row_input_keeps_source_variables() {
+        assert_eq!(
+            rewrite_database("select concat(1 + 1, sqlpage.request_method(), $x) as result from t"),
+            DatabaseQuery {
+                sql: "SELECT 1 + 1 AS \"__sqlpage_input_0\" FROM t".into(),
+                bindings: Box::new([]),
+                row_input_json: Box::new([false]),
+                computed_columns: Box::new([OutputColumn {
+                    name: "result".into(),
+                    value: SqlPageExpr::Concat {
+                        arguments: Box::new([
+                            row(0),
+                            call(SqlPageFunctionName::request_method, []),
+                            variable("x"),
+                        ]),
+                        null_behavior: ConcatNullBehavior::IgnoreNull,
+                    },
                 }]),
                 json_columns: Box::new([]),
             }
