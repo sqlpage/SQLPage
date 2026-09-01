@@ -37,9 +37,14 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
     migrator.run(&db.connection).await.map_err(|err| {
         match err {
             MigrateError::Execute(n, source) => {
-                let migration = migrator.iter().find(|&m| m.version == n).unwrap();
-                let source_file =
-                    migrations_dir.join(format!("{:04}_{}.sql", n, migration.description));
+                let migration = failing_migration(&migrator.migrations, n)
+                    .expect("sqlx reports the version of a migration it just ran");
+                let source_file = migrations_dir.join(format!(
+                    "{:04}_{}{}",
+                    n,
+                    migration.description.replace(' ', "_"),
+                    migration.migration_type.suffix()
+                ));
                 display_db_error(&source_file, &migration.sql, source).context(format!(
                     "Failed to apply {} migration {}",
                     db,
@@ -53,6 +58,12 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
         ))
     })?;
     Ok(())
+}
+
+fn failing_migration(migrations: &[Migration], version: i64) -> Option<&Migration> {
+    migrations
+        .iter()
+        .find(|m| m.version == version && !m.migration_type.is_down_migration())
 }
 
 struct DisplayMigration<'a>(&'a Migration);
@@ -82,4 +93,90 @@ fn migration_err(operation: &'static str) -> String {
         where <VERSION> is a positive number, and <DESCRIPTION> is a string.
         The current state of migrations will be stored in a table called _sqlx_migrations."
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::migrate::MigrationType;
+    use tempfile::TempDir;
+
+    fn migration(version: i64, description: &str, migration_type: MigrationType) -> Migration {
+        Migration::new(
+            version,
+            description.to_owned().into(),
+            migration_type,
+            String::new().into(),
+        )
+    }
+
+    async fn apply_error(files: &[(&str, &str)]) -> String {
+        let dir = TempDir::new().unwrap();
+        let migrations_dir = dir.path().join(MIGRATIONS_DIR);
+        std::fs::create_dir(&migrations_dir).unwrap();
+        for (name, sql) in files {
+            std::fs::write(migrations_dir.join(name), sql).unwrap();
+        }
+        let mut config = crate::app_config::tests::test_config();
+        config.database_url = "sqlite::memory:".to_owned();
+        config.configuration_directory = dir.path().to_owned();
+        let db = Database::init(&config).await.unwrap();
+        let error = apply(&config, &db)
+            .await
+            .expect_err("the migration must fail");
+        format!("{error:#}")
+    }
+
+    #[actix_web::test]
+    async fn only_the_failing_migration_is_named() {
+        let error = apply_error(&[
+            ("0001_ok.sql", "CREATE TABLE t(x);"),
+            ("0002_bad_thing.sql", "SELECT * FROM does_not_exist;"),
+        ])
+        .await;
+        assert!(error.contains("[0002] bad thing"), "{error}");
+        assert!(error.contains("0002_bad_thing.sql"), "{error}");
+        assert!(error.contains("does_not_exist"), "{error}");
+        assert!(!error.contains("[0001] ok"), "{error}");
+    }
+
+    #[actix_web::test]
+    async fn a_reversible_migration_reports_the_half_that_ran() {
+        let error = apply_error(&[
+            ("0001_add_new_users.up.sql", "SELECT * FROM does_not_exist;"),
+            ("0001_add_new_users.down.sql", "SELECT 'the down half';"),
+        ])
+        .await;
+        assert!(
+            error.contains("[0001] (ReversibleUp) add new users"),
+            "{error}"
+        );
+        assert!(error.contains("0001_add_new_users.up.sql"), "{error}");
+        assert!(!error.contains("the down half"), "{error}");
+    }
+
+    #[test]
+    fn the_down_half_is_never_the_failing_migration() {
+        let up = migration(1, "x", MigrationType::ReversibleUp);
+        let down = migration(1, "x", MigrationType::ReversibleDown);
+        for pair in [[up.clone(), down.clone()], [down.clone(), up.clone()]] {
+            assert_eq!(
+                failing_migration(&pair, 1).map(|m| m.migration_type),
+                Some(MigrationType::ReversibleUp)
+            );
+        }
+        assert!(failing_migration(&[down], 1).is_none());
+    }
+
+    #[test]
+    fn display_migration_shows_version_description_and_reversibility() {
+        assert_eq!(
+            DisplayMigration(&migration(7, "add users", MigrationType::Simple)).to_string(),
+            "[0007] add users"
+        );
+        assert_eq!(
+            DisplayMigration(&migration(7, "add users", MigrationType::ReversibleUp)).to_string(),
+            "[0007] (ReversibleUp) add users"
+        );
+    }
 }
