@@ -90,8 +90,7 @@ impl FileSystem {
                     .await
             }
             (Err(e), _) => {
-                let status = io_error_status(&e)
-                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                let status = io_error_status(&local_path, &e).await;
                 Err(e).with_status(status).with_context(|| {
                     format!("Unable to read local file metadata for {}", path.display())
                 })
@@ -146,12 +145,8 @@ impl FileSystem {
                 // no local file, try the database
                 db_fs.read_file(app_state, path.as_ref()).await
             }
-            (Err(e), None) if is_path_missing_error(&e) => Err(e)
-                .with_status(actix_web::http::StatusCode::NOT_FOUND)
-                .with_context(|| format!("Unable to read local file {}", path.display())),
             (Err(e), _) => {
-                let status = io_error_status(&e)
-                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                let status = io_error_status(&local_path, &e).await;
                 Err(e)
                     .with_status(status)
                     .with_context(|| format!("Unable to read local file {}", path.display()))
@@ -188,12 +183,11 @@ impl FileSystem {
     ) -> anyhow::Result<bool> {
         let path = access.path();
         let safe_path = self.safe_local_path(app_state, access);
-        let local_exists = match tokio::fs::try_exists(safe_path).await {
+        let local_exists = match tokio::fs::try_exists(&safe_path).await {
             Ok(exists) => exists,
             Err(e) if is_path_missing_error(&e) => false,
             Err(e) => {
-                let status = io_error_status(&e)
-                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                let status = io_error_status(&safe_path, &e).await;
                 return Err(e).with_status(status).with_context(|| {
                     format!("Unable to check if {} exists locally", path.display())
                 });
@@ -252,14 +246,25 @@ fn is_path_missing_error(error: &std::io::Error) -> bool {
     matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory)
 }
 
-fn io_error_status(error: &std::io::Error) -> Option<actix_web::http::StatusCode> {
+async fn io_error_status(local_path: &Path, error: &std::io::Error) -> actix_web::http::StatusCode {
     match error.kind() {
-        ErrorKind::NotFound | ErrorKind::NotADirectory => {
-            Some(actix_web::http::StatusCode::NOT_FOUND)
+        ErrorKind::NotFound | ErrorKind::NotADirectory => actix_web::http::StatusCode::NOT_FOUND,
+        // Reading a directory reports IsADirectory on unix but PermissionDenied on
+        // windows, so the path itself has to be inspected to tell the two apart.
+        ErrorKind::IsADirectory | ErrorKind::PermissionDenied
+            if is_local_directory(local_path).await =>
+        {
+            actix_web::http::StatusCode::NOT_FOUND
         }
-        ErrorKind::PermissionDenied => Some(actix_web::http::StatusCode::FORBIDDEN),
-        _ => None,
+        ErrorKind::PermissionDenied => actix_web::http::StatusCode::FORBIDDEN,
+        _ => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
     }
+}
+
+async fn is_local_directory(path: &Path) -> bool {
+    tokio::fs::metadata(path)
+        .await
+        .is_ok_and(|metadata| metadata.is_dir())
 }
 
 async fn file_modified_since_local(path: &Path, since: DateTime<Utc>) -> tokio::io::Result<bool> {
@@ -504,5 +509,27 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         "File should not be modified since one hour in the future"
     );
 
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_local_file_modification_time() -> anyhow::Result<()> {
+    let config = crate::app_config::tests::test_config();
+    let state = AppState::init(&config).await?;
+    let fs = FileSystem::init(".", &state.db).await;
+    let committed_file = || FileAccess::unprivileged("tests/it_works.txt".as_ref());
+
+    assert!(
+        fs.modified_since(&state, committed_file()?, DateTime::UNIX_EPOCH)
+            .await?
+    );
+    assert!(
+        !fs.modified_since(
+            &state,
+            committed_file()?,
+            Utc::now() + chrono::Duration::hours(1)
+        )
+        .await?
+    );
     Ok(())
 }
