@@ -19,6 +19,6 @@ ENV SA_PASSWORD="Password123!"
 ENV ACCEPT_EULA="Y"
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=10 \
-    CMD sqlcmd -S localhost -U root -P "Password123!" -Q "SELECT 1" || exit 1
+    CMD /opt/mssql-tools18/bin/sqlcmd -S localhost -U root -P "Password123!" -Q "SELECT 1" -No || exit 1
 
 ENTRYPOINT ["/usr/config/entrypoint.sh"]

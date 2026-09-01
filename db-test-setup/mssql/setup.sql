@@ -7,8 +7,16 @@ GO
 USE sqlpage;
 GO
 
-CREATE LOGIN root WITH PASSWORD = 'Password123!';
-CREATE USER root FOR LOGIN root;
+IF SUSER_ID('root') IS NULL
+    BEGIN
+        CREATE LOGIN root WITH PASSWORD = 'Password123!';
+    END;
+GO
+
+IF USER_ID('root') IS NULL
+    BEGIN
+        CREATE USER root FOR LOGIN root;
+    END;
 GO
 
 GRANT CREATE TABLE TO root;

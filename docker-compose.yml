@@ -35,6 +35,10 @@ services:
       POSTGRES_PASSWORD: Password123!
     healthcheck:
       test: pg_isready -U root -d sqlpage
+      interval: 3s
+      timeout: 5s
+      retries: 25
+      start_period: 10s
 
   mysql:
     profiles: ["mysql"]
@@ -43,6 +47,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: Password123!
       MYSQL_DATABASE: sqlpage
+    healthcheck:
+      test: mysql -h 127.0.0.1 -u root -p"Password123!" -e "select 1" sqlpage
+      interval: 3s
+      timeout: 5s
+      retries: 25
+      start_period: 10s
 
   mssql:
     profiles: ["mssql"]
@@ -50,9 +60,9 @@ services:
     build: { context: "db-test-setup/mssql" }
     healthcheck:
       test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U root -P "Password123!" -Q "SELECT 1" -b -o /dev/null -No
-      interval: 10s
-      timeout: 3s
-      retries: 10
+      interval: 3s
+      timeout: 5s
+      retries: 25
       start_period: 10s
 
   mariadb:
@@ -62,6 +72,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: Password123!
       MYSQL_DATABASE: sqlpage
+    healthcheck:
+      test: healthcheck.sh --connect --innodb_initialized
+      interval: 3s
+      timeout: 5s
+      retries: 25
+      start_period: 10s
 
   oracle:
     profiles: ["oracle"]
@@ -73,7 +89,7 @@ services:
       APP_USER_PASSWORD: Password123!
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
-      interval: 10s
+      interval: 3s
       timeout: 5s
-      retries: 10
-      start_period: 5s
+      retries: 25
+      start_period: 10s
