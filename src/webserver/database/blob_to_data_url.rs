@@ -31,7 +31,7 @@ pub fn detect_mime_type(bytes: &[u8]) -> &'static str {
         // Check for Office document types in ZIP central directory
         if bytes.len() >= 50 {
             let central_dir = &bytes[30..bytes.len().min(50)];
-            if central_dir.windows(6).any(|w| w == b"word/") {
+            if central_dir.windows(5).any(|w| w == b"word/") {
                 return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             }
             if central_dir.windows(3).any(|w| w == b"xl/") {
@@ -186,6 +186,34 @@ mod tests {
         assert_eq!(
             detect_mime_type(&[0x00, 0x01, 0x02, 0x03]),
             "application/octet-stream"
+        );
+    }
+
+    fn zip_starting_with(first_entry_name: &[u8]) -> Vec<u8> {
+        let mut blob = b"PK\x03\x04".to_vec();
+        blob.resize(30, 0);
+        blob.extend_from_slice(first_entry_name);
+        blob.resize(50, 0);
+        blob
+    }
+
+    #[test]
+    fn test_detect_office_documents() {
+        assert_eq!(
+            detect_mime_type(&zip_starting_with(b"word/document.xml")),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        );
+        assert_eq!(
+            detect_mime_type(&zip_starting_with(b"xl/workbook.xml")),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        assert_eq!(
+            detect_mime_type(&zip_starting_with(b"ppt/presentation.xml")),
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        );
+        assert_eq!(
+            detect_mime_type(&zip_starting_with(b"other/thing.txt")),
+            "application/zip"
         );
     }
 
