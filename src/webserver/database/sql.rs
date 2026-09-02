@@ -622,6 +622,17 @@ mod tests {
     }
 
     #[test]
+    fn documented_facet_query_is_accepted() {
+        let stmt = one("select category as title, \
+             sqlpage.link(sqlpage.path(), json_object('category', category)) as link, \
+             category = $category as active from my_table group by category order by category");
+        assert!(
+            !matches!(stmt, FileStatement::Error(_)),
+            "the documented facet query must parse"
+        );
+    }
+
+    #[test]
     fn static_simple_select_has_no_database_query() {
         let FileStatement::Query(Query {
             body: QueryBody::StaticSimpleSelect(query),
