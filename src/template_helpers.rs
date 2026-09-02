@@ -8,8 +8,6 @@ use handlebars::{
 };
 use serde_json::Value as JsonValue;
 
-/// Simple static json helper
-type H0 = fn() -> JsonValue;
 /// Simple json to json helper
 type H = fn(&JsonValue) -> JsonValue;
 /// Simple json to json helper with error handling
@@ -518,15 +516,6 @@ impl CanHelp for HelperCheckTruthy {
 
 trait CanHelp: Send + Sync + 'static {
     fn call(&self, v: &[PathAndJson<'_>]) -> Result<JsonValue, String>;
-}
-
-impl CanHelp for H0 {
-    fn call(&self, args: &[PathAndJson<'_>]) -> Result<JsonValue, String> {
-        match args {
-            [] => Ok(self()),
-            _ => Err("expected no arguments".to_string()),
-        }
-    }
 }
 
 impl CanHelp for H {
