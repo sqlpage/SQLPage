@@ -1,6 +1,6 @@
 use actix_web::{
     App, HttpResponse, HttpServer, Responder,
-    cookie::Cookie,
+    cookie::{Cookie, SameSite},
     http::{StatusCode, header},
     test,
     web::{self, Data},
@@ -442,12 +442,22 @@ async fn test_oidc_happy_path() {
         "no-store",
         "the post-login redirect must not re-enter a cached authorization redirect"
     );
+    let set_cookies = extract_set_cookies(callback_resp.headers());
     assert!(
-        extract_set_cookies(callback_resp.headers())
+        set_cookies
             .iter()
             .any(|c| c.name() == REDIRECT_COUNT_COOKIE && c.value().is_empty()),
         "a successful login must clear the redirect counter"
     );
+
+    let auth_cookie = set_cookies
+        .iter()
+        .find(|c| c.name() == "sqlpage_auth")
+        .expect("a successful login must set the auth cookie");
+    assert_eq!(auth_cookie.http_only(), Some(true));
+    assert_eq!(auth_cookie.secure(), Some(true));
+    assert_eq!(auth_cookie.same_site(), Some(SameSite::Lax));
+    assert_eq!(auth_cookie.path(), Some("/"));
 
     let final_resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
     assert_eq!(final_resp.status(), StatusCode::OK);
