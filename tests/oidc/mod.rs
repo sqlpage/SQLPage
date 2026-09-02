@@ -263,6 +263,19 @@ fn get_query_param(url: &Url, name: &str) -> String {
         .to_string()
 }
 
+const REDIRECT_COUNT_COOKIE: &str = "sqlpage_oidc_redirect_count";
+const MAX_OIDC_REDIRECTS: u8 = 3;
+
+fn redirect_count_cookie(cookies: &[Cookie<'static>]) -> u8 {
+    cookies
+        .iter()
+        .find(|c| c.name() == REDIRECT_COUNT_COOKIE)
+        .expect("every redirect to the OIDC provider must carry the redirect counter")
+        .value()
+        .parse()
+        .expect("the redirect counter must be a number")
+}
+
 fn permits_storage_after_proxy_adds_freshness(headers: &header::HeaderMap) -> bool {
     // Reproduces https://github.com/sqlpage/SQLPage/issues/1341, where an
     // intermediary added `Cache-Control: max-age=86400` to OIDC 303 responses.
@@ -429,6 +442,12 @@ async fn test_oidc_happy_path() {
         "no-store",
         "the post-login redirect must not re-enter a cached authorization redirect"
     );
+    assert!(
+        extract_set_cookies(callback_resp.headers())
+            .iter()
+            .any(|c| c.name() == REDIRECT_COUNT_COOKIE && c.value().is_empty()),
+        "a successful login must clear the redirect counter"
+    );
 
     let final_resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
     assert_eq!(final_resp.status(), StatusCode::OK);
@@ -541,6 +560,58 @@ async fn test_oidc_expired_token_is_rejected() {
         claims["exp"] = json!(current_exp - 7200);
     })
     .await;
+}
+
+#[actix_web::test]
+async fn test_repeatedly_failing_callback_stops_redirecting_to_the_provider() {
+    let (app, provider) = setup_oidc_test(|_| {}).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    let callback_path = Url::parse(&redirect_uri).unwrap().path().to_owned();
+    let failing_callback = format!("{callback_path}?code=x&state=wrong_state");
+
+    let mut redirect_counts = vec![redirect_count_cookie(&cookies)];
+    let mut terminal_resp = None;
+    for _ in 0..=MAX_OIDC_REDIRECTS {
+        let resp = request_with_cookies!(
+            app,
+            test::TestRequest::get().uri(&failing_callback),
+            cookies
+        );
+        if resp.status() != StatusCode::SEE_OTHER {
+            terminal_resp = Some(resp);
+            break;
+        }
+        let location = resp
+            .headers()
+            .get(header::LOCATION)
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(
+            location.starts_with(&provider.issuer_url),
+            "a failing callback retries the login flow, but redirected to {location}"
+        );
+        redirect_counts.push(redirect_count_cookie(&cookies));
+    }
+
+    let terminal_resp = terminal_resp.expect(
+        "a persistently failing OIDC callback kept redirecting to the identity provider forever",
+    );
+    assert!(
+        terminal_resp.status().is_server_error(),
+        "giving up on a failing login must report the error, but returned {}",
+        terminal_resp.status()
+    );
+    let expected_counts: Vec<u8> = (1..=MAX_OIDC_REDIRECTS).collect();
+    assert_eq!(
+        redirect_counts, expected_counts,
+        "each redirect back to the provider must increment the redirect counter"
+    );
 }
 
 async fn setup_oidc_test_with_prefix(
