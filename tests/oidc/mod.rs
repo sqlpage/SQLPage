@@ -263,6 +263,13 @@ fn get_query_param(url: &Url, name: &str) -> String {
         .to_string()
 }
 
+async fn settle_background_refreshes() {
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
 fn permits_storage_after_proxy_adds_freshness(headers: &header::HeaderMap) -> bool {
     // Reproduces https://github.com/sqlpage/SQLPage/issues/1341, where an
     // intermediary added `Cache-Control: max-age=86400` to OIDC 303 responses.
@@ -670,9 +677,21 @@ async fn test_slow_discovery_does_not_block_authenticated_requests() {
         request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
     assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
 
+    settle_background_refreshes().await;
+    let count_before = provider.discovery_count();
+
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(resp.status(), StatusCode::OK);
+    settle_background_refreshes().await;
+    assert_eq!(
+        provider.discovery_count(),
+        count_before,
+        "a fresh OIDC snapshot must not trigger a refresh, \
+         otherwise every request hammers the identity provider"
+    );
+
     // Advance time so the OIDC snapshot appears stale.
     // The next request triggers a background refresh.
-    let count_before = provider.discovery_count();
     tokio::time::pause();
     tokio::time::advance(Duration::from_secs(3601)).await;
     // Resume real time so the DB pool and background refresh work normally.
@@ -684,7 +703,7 @@ async fn test_slow_discovery_does_not_block_authenticated_requests() {
     assert_eq!(resp.status(), StatusCode::OK);
 
     // Let the background refresh task complete.
-    tokio::task::yield_now().await;
+    settle_background_refreshes().await;
     assert!(
         provider.discovery_count() > count_before,
         "OIDC provider metadata was not refreshed"
