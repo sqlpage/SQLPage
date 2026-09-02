@@ -101,23 +101,30 @@ fn default_helper(v: &JsonValue, default: &JsonValue) -> JsonValue {
 }
 
 fn plus_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
-    if let (Some(a), Some(b)) = (a.as_i64(), b.as_i64()) {
-        (a + b).into()
-    } else if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
-        (a + b).into()
-    } else {
-        JsonValue::Null
-    }
+    arithmetic_helper(a, b, i64::checked_add, |a, b| a + b)
 }
 
 fn minus_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
-    if let (Some(a), Some(b)) = (a.as_i64(), b.as_i64()) {
-        (a - b).into()
-    } else if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
-        (a - b).into()
-    } else {
-        JsonValue::Null
+    arithmetic_helper(a, b, i64::checked_sub, |a, b| a - b)
+}
+
+/// Integer inputs are kept exact where they fit in an `i64`, and fall back to
+/// floating point rather than overflowing.
+fn arithmetic_helper(
+    a: &JsonValue,
+    b: &JsonValue,
+    exact: fn(i64, i64) -> Option<i64>,
+    approximate: fn(f64, f64) -> f64,
+) -> JsonValue {
+    if let (Some(a), Some(b)) = (a.as_i64(), b.as_i64())
+        && let Some(result) = exact(a, b)
+    {
+        return result.into();
     }
+    if let (Some(a), Some(b)) = (a.as_f64(), b.as_f64()) {
+        return approximate(a, b).into();
+    }
+    JsonValue::Null
 }
 
 fn starts_with_helper(a: &JsonValue, b: &JsonValue) -> JsonValue {
@@ -732,5 +739,154 @@ mod tests {
 
     fn as_json_context<'a>(path: &'a str, value: &'a Value) -> ScopedJson<'a> {
         ScopedJson::Context(value, vec![path.to_string()])
+    }
+
+    mod documented_helpers {
+        use crate::app_config::tests::test_config;
+        use crate::template_helpers::{
+            csv_escape_helper, entries_helper, loose_eq_helper, minus_helper, plus_helper,
+            register_all_helpers, starts_with_helper, to_array_helper, url_encode_helper,
+        };
+        use handlebars::Handlebars;
+        use serde_json::json;
+
+        fn render(template: &str) -> String {
+            let mut registry = Handlebars::new();
+            register_all_helpers(&mut registry, &test_config());
+            registry.render_template(template, &json!({})).unwrap()
+        }
+
+        #[test]
+        fn sum_adds_every_argument() {
+            assert_eq!(render("{{sum 1 2 3}}"), "6");
+            assert_eq!(render("{{sum 1.5 2.25}}"), "3.75");
+        }
+
+        #[test]
+        fn all_and_any_short_circuit_on_truthiness() {
+            assert_eq!(render("{{all 1 2 3}}"), "3");
+            assert_eq!(render("{{all 1 0 3}}"), "0");
+            assert_eq!(render("{{any 0 false 7}}"), "7");
+            assert_eq!(render("{{any 0 false}}"), "false");
+        }
+
+        #[test]
+        fn starts_with_distinguishes_internal_columns() {
+            assert_eq!(
+                starts_with_helper(&json!("_sqlpage_id"), &json!("_sqlpage_")),
+                json!(true)
+            );
+            assert_eq!(
+                starts_with_helper(&json!("price"), &json!("_sqlpage_")),
+                json!(false)
+            );
+            assert_eq!(
+                starts_with_helper(&json!([1, 2, 3]), &json!([1, 2])),
+                json!(true)
+            );
+        }
+
+        #[test]
+        fn plus_and_minus_operate_on_numbers_only() {
+            assert_eq!(plus_helper(&json!(2), &json!(3)), json!(5));
+            assert_eq!(minus_helper(&json!(7), &json!(2)), json!(5));
+            assert_eq!(plus_helper(&json!(2.5), &json!(0.25)), json!(2.75));
+            assert_eq!(minus_helper(&json!(2.5), &json!(0.25)), json!(2.25));
+            assert_eq!(plus_helper(&json!("a"), &json!(1)), json!(null));
+            assert_eq!(minus_helper(&json!("a"), &json!(1)), json!(null));
+        }
+
+        #[test]
+        fn integer_arithmetic_falls_back_to_floats_instead_of_overflowing() {
+            let overflowed = plus_helper(&json!(i64::MAX), &json!(1));
+            assert!(
+                overflowed.as_f64().is_some_and(|v| v > 9.2e18),
+                "{overflowed}"
+            );
+
+            let underflowed = minus_helper(&json!(i64::MIN), &json!(1));
+            assert!(
+                underflowed.as_f64().is_some_and(|v| v < -9.2e18),
+                "{underflowed}"
+            );
+        }
+
+        #[test]
+        fn csv_fields_are_quoted_whenever_they_need_to_be() {
+            for needs_quoting in ["a,b", "a\"b", "a\nb"] {
+                let escaped = csv_escape_helper(&json!(needs_quoting), &json!(","));
+                assert!(
+                    escaped.as_str().unwrap().starts_with('"'),
+                    "{needs_quoting:?} was left unquoted as {escaped}"
+                );
+            }
+            assert_eq!(
+                csv_escape_helper(&json!("a\"b"), &json!(",")),
+                json!("\"a\"\"b\"")
+            );
+            assert_eq!(
+                csv_escape_helper(&json!("plain"), &json!(",")),
+                json!("plain")
+            );
+            assert_eq!(
+                csv_escape_helper(&json!("a;b"), &json!(";")),
+                json!("\"a;b\"")
+            );
+        }
+
+        #[test]
+        fn url_encode_percent_encodes_reserved_characters() {
+            assert_eq!(
+                url_encode_helper(&json!("hello world")),
+                json!("hello%20world")
+            );
+        }
+
+        #[test]
+        fn entries_exposes_objects_and_arrays_as_key_value_pairs() {
+            assert_eq!(
+                entries_helper(&json!({"a": 1})),
+                json!([{"key": "a", "value": 1}])
+            );
+            assert_eq!(
+                entries_helper(&json!([10, 20])),
+                json!([{"key": 0, "value": 10}, {"key": 1, "value": 20}])
+            );
+            assert_eq!(entries_helper(&json!("scalar")), json!([]));
+        }
+
+        #[test]
+        fn to_array_parses_json_list_strings() {
+            assert_eq!(to_array_helper(&json!("[1,2]")), json!([1, 2]));
+            assert_eq!(to_array_helper(&json!("nope")), json!(["nope"]));
+            assert_eq!(to_array_helper(&json!([1, 2])), json!([1, 2]));
+            assert_eq!(to_array_helper(&json!(null)), json!([]));
+        }
+
+        #[test]
+        fn loose_eq_compares_values_as_strings() {
+            assert_eq!(loose_eq_helper(&json!(42), &json!("42")), json!(true));
+            assert_eq!(loose_eq_helper(&json!("42"), &json!(42)), json!(true));
+            assert_eq!(loose_eq_helper(&json!("a"), &json!("a")), json!(true));
+            assert_eq!(loose_eq_helper(&json!(1), &json!(2)), json!(false));
+        }
+    }
+
+    mod app_config_markdown_defaults {
+        use crate::app_config::tests::test_config;
+        use crate::template_helpers::render_markdown_to_html;
+
+        #[test]
+        fn raw_html_is_escaped() {
+            let html = render_markdown_to_html(&test_config(), "<table><tr><td>").unwrap();
+            assert_eq!(html, "&lt;table&gt;&lt;tr&gt;&lt;td&gt;");
+        }
+
+        #[test]
+        fn dangerous_protocols_are_stripped() {
+            let html =
+                render_markdown_to_html(&test_config(), "[click](javascript:alert(1))").unwrap();
+            assert_eq!(html, "<p><a href=\"\">click</a></p>");
+        }
     }
 }
