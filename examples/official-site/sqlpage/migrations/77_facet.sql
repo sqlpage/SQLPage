@@ -20,10 +20,11 @@ select ''facet'' as component,
     ''Category'' as description,
     sqlpage.link(sqlpage.path(), json_object(''category'', null)) as all_link,
     $category is null as all_active;
-select distinct category as title,
+select category as title,
     sqlpage.link(sqlpage.path(), json_object(''category'', category)) as link,
     category = $category as active
 from my_table
+group by category
 order by category;
 ```
 ', '0.46.0');
