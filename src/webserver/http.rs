@@ -455,6 +455,14 @@ async fn serve_file(
             return Ok(HttpResponse::NotModified().finish());
         }
     }
+    // The file's real modification time, not `SystemTime::now()`.
+    //
+    // `now()` changed on every request, so `Last-Modified` advanced by a second between
+    // two fetches of a file that had not changed since 2020. A client doing
+    // `If-Modified-Since` revalidation could never get a meaningful answer, and no cache
+    // could key on it. Omitted entirely when the mtime is unknown: a header that says
+    // "now" is worse than an absent one, because a client believes it.
+    let last_modified = state.file_system.modified_at(state, access).await;
     state
         .file_system
         .read_file(state, access)
@@ -462,14 +470,16 @@ async fn serve_file(
         .with_context(|| format!("Unable to read file {path:?}"))
         .map_err(|e| anyhow_err_to_actix(e, state))
         .map(|b| {
-            HttpResponse::Ok()
-                .insert_header(
-                    mime_guess::from_path(path)
-                        .first()
-                        .map_or_else(ContentType::octet_stream, ContentType),
-                )
-                .insert_header(LastModified(HttpDate::from(SystemTime::now())))
-                .body(b)
+            let mut response = HttpResponse::Ok();
+            response.insert_header(
+                mime_guess::from_path(path)
+                    .first()
+                    .map_or_else(ContentType::octet_stream, ContentType),
+            );
+            if let Some(modified) = last_modified {
+                response.insert_header(LastModified(HttpDate::from(SystemTime::from(modified))));
+            }
+            response.body(b)
         })
 }
 
