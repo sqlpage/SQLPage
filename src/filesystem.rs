@@ -98,6 +98,50 @@ impl FileSystem {
         }
     }
 
+    /// When the file was last modified, or `None` when nothing can say.
+    ///
+    /// Same local-then-database fallback as `modified_since`, because a file served from
+    /// one must report the mtime of that same one. Used for the `Last-Modified` header,
+    /// which was previously `SystemTime::now()` - a value that changed on every request
+    /// and so carried no cache-validation information at all.
+    ///
+    /// `None` rather than a guess when the mtime is unavailable: the caller omits the
+    /// header instead, which is honest. A header that says "now" is worse than no header,
+    /// because a client believes it.
+    pub(crate) async fn modified_at(
+        &self,
+        app_state: &AppState,
+        access: FileAccess<'_>,
+    ) -> Option<DateTime<Utc>> {
+        let path = access.path();
+        let local_path = self.safe_local_path(app_state, access);
+        match tokio::fs::metadata(&local_path)
+            .await
+            .and_then(|m| m.modified())
+        {
+            Ok(modified) => return Some(DateTime::<Utc>::from(modified)),
+            Err(e) if !is_path_missing_error(&e) => {
+                log::debug!(
+                    "Unable to read the modification time of {}: {e}",
+                    local_path.display()
+                );
+                return None;
+            }
+            Err(_) => {}
+        }
+        let db_fs = self.db_fs_queries.as_ref()?;
+        match db_fs.last_modified_in_db(app_state, path.as_ref()).await {
+            Ok(modified) => modified,
+            Err(e) => {
+                log::debug!(
+                    "Unable to read the modification time of {} from the database: {e:#}",
+                    path.display()
+                );
+                None
+            }
+        }
+    }
+
     pub(crate) async fn read_to_string(
         &self,
         app_state: &AppState,
@@ -271,11 +315,23 @@ async fn file_modified_since_local(path: &Path, since: DateTime<Utc>) -> tokio::
     tokio::fs::metadata(path)
         .await
         .and_then(|m| m.modified())
+        // Strictly `>`, and the database query below now matches.
+        //
+        // The two disagreed - local used `>`, the DB `>=` - so a file whose mtime equalled
+        // the client's `If-Modified-Since` was "not modified" from disk and "modified"
+        // from the database. Conditional requests must not depend on where a file is
+        // stored.
+        //
+        // `>` is the correct half, not merely the chosen one: `If-Modified-Since: T` asks
+        // whether the file changed AFTER T, so an mtime of exactly T is not a change and
+        // must answer 304. Under `>=` every revalidation re-sends the whole body, which
+        // defeats the header entirely.
         .map(|modified_at| DateTime::<Utc>::from(modified_at) > since)
 }
 
 pub struct DbFsQueries {
     was_modified: AnyStatement<'static>,
+    last_modified: AnyStatement<'static>,
     read_file: AnyStatement<'static>,
     exists: AnyStatement<'static>,
 }
@@ -304,6 +360,7 @@ impl DbFsQueries {
         Self::check_table_available(db).await?;
         Ok(Self {
             was_modified: Self::make_was_modified_query(db).await?,
+            last_modified: Self::make_last_modified_query(db).await?,
             read_file: Self::make_read_file_query(db).await?,
             exists: Self::make_exists_query(db).await?,
         })
@@ -320,7 +377,11 @@ impl DbFsQueries {
 
     async fn make_was_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
         let was_modified_query = format!(
-            "SELECT 1 from sqlpage_files WHERE last_modified >= {} AND path = {}",
+            // `>` not `>=`: an mtime equal to the client's If-Modified-Since is not a
+            // change since that moment, and must revalidate as 304. This matches
+            // `file_modified_since_local`, which the same request would otherwise
+            // answer differently depending only on where the file is stored.
+            "SELECT 1 from sqlpage_files WHERE last_modified > {} AND path = {}",
             make_placeholder(db.info.kind, 1),
             make_placeholder(db.info.kind, 2)
         );
@@ -330,6 +391,16 @@ impl DbFsQueries {
         ];
         log::debug!("Preparing the database filesystem was_modified_query: {was_modified_query}");
         db.prepare_with(&was_modified_query, param_types).await
+    }
+
+    async fn make_last_modified_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
+        let last_modified_query = format!(
+            "SELECT last_modified from sqlpage_files WHERE path = {}",
+            make_placeholder(db.info.kind, 1),
+        );
+        let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
+        log::debug!("Preparing the database filesystem last_modified_query: {last_modified_query}");
+        db.prepare_with(&last_modified_query, param_types).await
     }
 
     async fn make_read_file_query(db: &Database) -> anyhow::Result<AnyStatement<'static>> {
@@ -349,6 +420,32 @@ impl DbFsQueries {
         );
         let param_types: &[AnyTypeInfo; 1] = &[<str as Type<Postgres>>::type_info().into()];
         db.prepare_with(&exists_query, param_types).await
+    }
+
+    async fn last_modified_in_db(
+        &self,
+        app_state: &AppState,
+        path: &Path,
+    ) -> anyhow::Result<Option<DateTime<Utc>>> {
+        let query = self
+            .last_modified
+            .query_as::<(DateTime<Utc>,)>()
+            .bind(path.display().to_string());
+        log::trace!(
+            "Reading the modification time of {} by executing query: \n{}",
+            path.display(),
+            self.last_modified.sql()
+        );
+        let row = query
+            .fetch_optional(&app_state.db.connection)
+            .await
+            .with_context(|| {
+                format!(
+                    "Unable to read the modification time of {} from the database",
+                    path.display()
+                )
+            })?;
+        Ok(row.map(|(modified,)| modified))
     }
 
     async fn file_modified_since_in_db(
