@@ -182,13 +182,18 @@ impl OidcConfig {
     /// `None`/empty if the caller is not authenticated.
     #[must_use]
     pub fn create_logout_url(&self, redirect_uri: &str, session_token: Option<&str>) -> String {
+        use base64::Engine as _;
+        use hmac::Mac as _;
+
         let timestamp = chrono::Utc::now().timestamp();
-        let signature = compute_logout_signature(
+        let mac = logout_mac(
             redirect_uri,
             timestamp,
             session_token.unwrap_or_default(),
             &self.client_secret,
         );
+        let signature =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
         let query = form_urlencoded::Serializer::new(String::new())
             .append_pair("redirect_uri", redirect_uri)
             .append_pair("timestamp", &timestamp.to_string())
@@ -673,18 +678,18 @@ fn process_oidc_logout(
     Ok(response)
 }
 
-fn compute_logout_signature(
+type LogoutMac = hmac::Hmac<sha2::Sha256>;
+
+fn logout_mac(
     redirect_uri: &str,
     timestamp: i64,
     session_token: &str,
     client_secret: &str,
-) -> String {
-    use base64::Engine;
-    use hmac::{Hmac, KeyInit, Mac};
-    use sha2::Sha256;
+) -> LogoutMac {
+    use hmac::{KeyInit, Mac};
 
-    let mut mac = Hmac::<Sha256>::new_from_slice(client_secret.as_bytes())
-        .expect("HMAC accepts any key size");
+    let mut mac =
+        LogoutMac::new_from_slice(client_secret.as_bytes()).expect("HMAC accepts any key size");
     mac.update(redirect_uri.as_bytes());
     mac.update(&timestamp.to_be_bytes());
     // Bind the signature to the session so a logout URL can only log out the
@@ -692,8 +697,7 @@ fn compute_logout_signature(
     // the redirect_uri and session_token fields.
     mac.update(&(session_token.len() as u64).to_be_bytes());
     mac.update(session_token.as_bytes());
-    let signature = mac.finalize().into_bytes();
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature)
+    mac
 }
 
 fn verify_logout_params(
@@ -702,25 +706,20 @@ fn verify_logout_params(
     client_secret: &str,
 ) -> anyhow::Result<()> {
     use base64::Engine;
-
-    let expected_signature = compute_logout_signature(
-        &params.redirect_uri,
-        params.timestamp,
-        session_token,
-        client_secret,
-    );
+    use hmac::Mac;
 
     let provided_signature = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(&params.signature)
         .with_context(|| "Invalid logout signature encoding")?;
 
-    let expected_signature_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(&expected_signature)
-        .with_context(|| "Failed to decode expected signature")?;
-
-    if expected_signature_bytes[..] != provided_signature[..] {
-        anyhow::bail!("Invalid logout signature");
-    }
+    logout_mac(
+        &params.redirect_uri,
+        params.timestamp,
+        session_token,
+        client_secret,
+    )
+    .verify_slice(&provided_signature)
+    .map_err(|_| anyhow::anyhow!("Invalid logout signature"))?;
 
     let now = chrono::Utc::now().timestamp();
     if now - params.timestamp > LOGOUT_TOKEN_VALIDITY_SECONDS {
@@ -1389,6 +1388,39 @@ mod tests {
             .expect("generated URL should parse");
         verify_logout_params(&params, "session-token", secret)
             .expect("generated URL should validate for the session it was issued for");
+    }
+
+    fn logout_params_stamped(timestamp: i64) -> LogoutParams {
+        use base64::Engine as _;
+        use hmac::Mac as _;
+
+        let mac = logout_mac("/after", timestamp, "session-token", "secret");
+        LogoutParams {
+            redirect_uri: "/after".to_string(),
+            timestamp,
+            signature: base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(mac.finalize().into_bytes()),
+        }
+    }
+
+    #[test]
+    fn a_correctly_signed_logout_token_is_still_rejected_outside_its_time_window() {
+        let now = chrono::Utc::now().timestamp();
+        verify_logout_params(&logout_params_stamped(now), "session-token", "secret")
+            .expect("a freshly issued logout token is accepted");
+
+        for (label, timestamp) in [
+            ("expired", now - LOGOUT_TOKEN_VALIDITY_SECONDS * 2),
+            ("in the future", now + 3600),
+        ] {
+            let err =
+                verify_logout_params(&logout_params_stamped(timestamp), "session-token", "secret")
+                    .expect_err(&format!("a logout token {label} must be rejected"));
+            assert!(
+                !err.to_string().contains("signature"),
+                "{label} token was rejected for the wrong reason: {err}"
+            );
+        }
     }
 
     /// A logout URL is bound to the session it was issued for: presenting it

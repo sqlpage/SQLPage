@@ -16,6 +16,7 @@
 - Word documents stored as `BLOB`, `BYTEA`, or `VARBINARY` in database columns are now detected correctly as `.docx`. Before, `.docx` files were parsed as `application/zip`; now they report as `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
 - Errors from a failed migration now point at the file and the SQL that failed. Before a reversible migration could be reported with the contents of its `.down.sql` half, and any migration with a multi-word name was reported as `0001_add new users.sql` rather than `0001_add_new_users.sql`.
 - A request that resolves to a directory now returns a 404 page. Directory names that contain a dot are routed to the static file handler, which used to fail with a server error instead.
+- The signature on an OIDC logout URL is now compared in constant time.
 - A `content_security_policy` that does not contain `'nonce-{NONCE}'` is now sent as written, instead of being silently dropped and leaving the response with no `Content-Security-Policy` header at all. Setting the option to the empty string still disables the header, as documented.
 
 ## v0.46
