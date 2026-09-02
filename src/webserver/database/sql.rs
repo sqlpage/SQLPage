@@ -376,6 +376,33 @@ mod tests {
     }
 
     #[test]
+    fn emulated_concat_keeps_nested_call_per_row() {
+        let FileStatement::Query(Query {
+            body: QueryBody::Database(query),
+            ..
+        }) = one("select concat(sqlpage.url_encode(value), '!') as encoded from t")
+        else {
+            panic!("expected database query");
+        };
+        assert!(query.bindings.is_empty());
+        assert_eq!(query.row_input_json.len(), 1);
+        assert!(!query.sql.contains("sqlpage."));
+        assert_eq!(
+            query.computed_columns.as_ref(),
+            [OutputColumn {
+                name: "encoded".into(),
+                value: SqlPageExpr::Concat {
+                    arguments: Box::new([
+                        call(SqlPageFunctionName::url_encode, [row(0)]),
+                        text("!"),
+                    ]),
+                    null_behavior: ConcatNullBehavior::IgnoreNull,
+                },
+            }]
+        );
+    }
+
+    #[test]
     fn parentheses_keep_nested_call_per_row() {
         let FileStatement::Query(Query {
             body: QueryBody::Database(query),
@@ -622,6 +649,42 @@ mod tests {
     }
 
     #[test]
+    fn only_nested_run_sql_requires_buffering() {
+        let FileStatement::Query(Query {
+            body: QueryBody::Database(query),
+            ..
+        }) = one("select coalesce(sqlpage.url_encode(path), '') from files")
+        else {
+            panic!("expected database query");
+        };
+        assert!(!query.must_buffer_rows());
+    }
+
+    #[test]
+    fn distinct_is_rejected_only_when_a_projection_is_computed_by_sqlpage() {
+        assert_eq!(
+            sql_for(SupportedDatabase::Postgres, "select distinct a from t"),
+            "SELECT DISTINCT a FROM t"
+        );
+        let FileStatement::Error(err) = one("select distinct sqlpage.url_encode(a) as x from t")
+        else {
+            panic!("expected an error");
+        };
+        assert!(err.to_string().contains("DISTINCT"), "{err}");
+    }
+
+    #[test]
+    fn documented_facet_query_is_accepted() {
+        let stmt = one("select category as title, \
+             sqlpage.link(sqlpage.path(), json_object('category', category)) as link, \
+             category = $category as active from my_table group by category order by category");
+        assert!(
+            !matches!(stmt, FileStatement::Error(_)),
+            "the documented facet query must parse"
+        );
+    }
+
+    #[test]
     fn static_simple_select_has_no_database_query() {
         let FileStatement::Query(Query {
             body: QueryBody::StaticSimpleSelect(query),
@@ -631,6 +694,30 @@ mod tests {
             panic!("expected a single SQLPage-owned row");
         };
         assert_eq!(query.columns.len(), 1);
+    }
+
+    #[test]
+    fn boolean_literal_stays_a_literal_in_the_static_simple_select() {
+        let FileStatement::Query(Query {
+            body: QueryBody::StaticSimpleSelect(query),
+            ..
+        }) = one("select 'shell' as component, true as fixed_top_menu")
+        else {
+            panic!("expected a single SQLPage-owned row");
+        };
+        assert_eq!(
+            query.columns.as_ref(),
+            [
+                OutputColumn {
+                    name: "component".into(),
+                    value: text("shell"),
+                },
+                OutputColumn {
+                    name: "fixed_top_menu".into(),
+                    value: SqlPageExpr::Literal(serde_json::Value::Bool(true)),
+                },
+            ]
+        );
     }
 
     #[test]
@@ -850,5 +937,58 @@ mod tests {
             sql_for(SupportedDatabase::Postgres, "select value from t limit $n"),
             "SELECT value FROM t LIMIT $1"
         );
+    }
+
+    #[test]
+    fn with_and_limit_clauses_are_never_folded_into_a_constant_row() {
+        let query = rewrite_database(
+            "with d as (insert into t(a) values ($v) returning a) \
+             select 'redirect' as component, '/index.sql' as link",
+        );
+        assert!(query.sql.contains("INSERT INTO"), "{}", query.sql);
+        assert_eq!(query.bindings.as_ref(), [variable("v")]);
+
+        assert_eq!(
+            sql_for(SupportedDatabase::Postgres, "select 'a' as x limit 0"),
+            "SELECT 'a' AS x LIMIT 0"
+        );
+    }
+
+    #[test]
+    fn a_database_operand_keeps_the_whole_projection_in_the_database() {
+        assert_eq!(
+            sql_for(SupportedDatabase::Postgres, "select 'x' || now() as v"),
+            "SELECT 'x' || now() AS v"
+        );
+    }
+
+    #[test]
+    fn concat_operator_is_rewritten_to_a_function_only_on_sql_server() {
+        assert_eq!(
+            sql_for(SupportedDatabase::Mssql, "select a || b from t"),
+            "SELECT CONCAT(a, b) FROM t"
+        );
+        assert_eq!(
+            sql_for(SupportedDatabase::Postgres, "select a || b from t"),
+            "SELECT a || b FROM t"
+        );
+    }
+
+    #[test]
+    fn modifiers_on_a_sqlpage_function_are_rejected() {
+        for src in [
+            "select sqlpage.url_encode(a) over () from t",
+            "select sqlpage.url_encode(a) filter (where a > 1) from t",
+            "select sqlpage.url_encode(a) ignore nulls from t",
+            "select sqlpage.url_encode(a) within group (order by a) from t",
+        ] {
+            let FileStatement::Error(error) = one(src) else {
+                panic!("expected a rewrite error for `{src}`");
+            };
+            assert!(
+                error.to_string().contains("Modifiers are not supported"),
+                "`{src}` produced: {error}"
+            );
+        }
     }
 }
