@@ -1,6 +1,6 @@
 use actix_web::{
     App, HttpResponse, HttpServer, Responder,
-    cookie::Cookie,
+    cookie::{Cookie, SameSite},
     http::{StatusCode, header},
     test,
     web::{self, Data},
@@ -447,6 +447,20 @@ async fn test_oidc_happy_path() {
             .iter()
             .any(|c| c.name() == REDIRECT_COUNT_COOKIE && c.value().is_empty()),
         "a successful login must clear the redirect counter"
+    );
+
+    let auth_cookie = extract_set_cookies(callback_resp.headers())
+        .into_iter()
+        .find(|c| c.name() == "sqlpage_auth")
+        .expect("a successful login must set the auth cookie");
+    assert_eq!(
+        (
+            auth_cookie.http_only(),
+            auth_cookie.secure(),
+            auth_cookie.same_site(),
+            auth_cookie.path()
+        ),
+        (Some(true), Some(true), Some(SameSite::Lax), Some("/"))
     );
 
     let final_resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
