@@ -1,6 +1,7 @@
 mod basic;
 mod common;
 mod configuration_docs;
+mod cookies;
 mod core;
 mod data_formats;
 mod errors;
