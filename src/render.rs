@@ -861,13 +861,9 @@ impl<W: Write> HtmlRenderContext<W> {
 
     pub async fn handle_row(&mut self, data: &JsonValue) -> anyhow::Result<()> {
         let new_component = get_object_str(data, "component");
-        let current_component = self
-            .current_component
-            .as_ref()
-            .map(SplitTemplateRenderer::name);
         if let Some(component_name) = new_component {
             self.handle_component(component_name, data).await?;
-        } else if current_component.is_none() {
+        } else if self.current_component.is_none() {
             self.open_component_with_data(DEFAULT_COMPONENT, &JsonValue::Null)
                 .await?;
             self.render_current_template_with_data(&data).await?;
@@ -1065,14 +1061,6 @@ impl SplitTemplateRenderer {
             nonce,
         }
     }
-    fn name(&self) -> &str {
-        self.split_template
-            .list_content
-            .name
-            .as_deref()
-            .unwrap_or_default()
-    }
-
     fn render_start<W: Write>(&mut self, writer: W, data: JsonValue) -> Result<(), RenderError> {
         log::trace!(
             "Starting rendering of a template{} with the following top-level parameters: {data}",
