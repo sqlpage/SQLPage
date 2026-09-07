@@ -367,6 +367,18 @@ test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
   expect(chart.shapes).toHaveLength(2);
 });
 
+test("shows a data point link in its tooltip", async ({ page }) => {
+  await renderChart(page, "link");
+
+  await page.locator("#test-chart .apexcharts-rangebar-area").hover();
+  const link = page.locator("#test-chart .apexcharts-tooltip a");
+  await expect(link).toHaveText("Open link");
+  await expect(link).toHaveAttribute(
+    "href",
+    "/workpackage_edit.sql?workpackage_name=Design",
+  );
+});
+
 test("leaves a treemap chart alone", async ({ page }) => {
   const chart = await renderChart(page, "treemap");
 
