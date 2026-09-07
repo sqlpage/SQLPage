@@ -1,4 +1,5 @@
 use crate::common::req_path;
+use actix_web::http::StatusCode;
 use actix_web::http::header::SET_COOKIE;
 
 async fn set_cookie_header(path: &str) -> String {
@@ -28,4 +29,13 @@ async fn zero_turns_off_a_cookie_protection() {
     assert!(!header.contains("Secure"), "{header}");
     assert!(header.contains("SameSite=Lax"), "{header}");
     assert!(header.contains("Path=/admin"), "{header}");
+}
+
+#[actix_web::test]
+async fn a_page_made_only_of_header_components_still_sends_them() {
+    let resp = req_path("/tests/cookies/header_only_response.sql")
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    assert!(resp.headers().contains_key(SET_COOKIE));
 }
