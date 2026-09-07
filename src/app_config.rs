@@ -863,6 +863,56 @@ mod test {
         assert!(error.contains("SMTP credentials require smtp_tls_mode"));
     }
 
+    fn config_with_timeouts(json: &str) -> AppConfig {
+        let mut config = serde_json::from_str::<AppConfig>(json).unwrap();
+        config.resolve_timeouts();
+        config
+    }
+
+    #[test]
+    fn a_zero_connection_timeout_disables_it() {
+        let config = config_with_timeouts(
+            r#"{
+                "database_url": "postgres://localhost/test",
+                "database_connection_idle_timeout_seconds": 0,
+                "database_connection_max_lifetime_seconds": 120
+            }"#,
+        );
+        assert_eq!(config.database_connection_idle_timeout, None);
+        assert_eq!(
+            config.database_connection_max_lifetime,
+            Some(Duration::from_mins(2))
+        );
+    }
+
+    #[test]
+    fn connection_timeouts_fall_back_to_the_documented_defaults() {
+        let config = config_with_timeouts(r#"{"database_url": "postgres://localhost/test"}"#);
+        assert_eq!(
+            config.database_connection_idle_timeout,
+            Some(Duration::from_mins(30))
+        );
+        assert_eq!(
+            config.database_connection_max_lifetime,
+            Some(Duration::from_hours(1))
+        );
+
+        let sqlite = config_with_timeouts(r#"{"database_url": "sqlite://:memory:"}"#);
+        assert_eq!(sqlite.database_connection_idle_timeout, None);
+        assert_eq!(sqlite.database_connection_max_lifetime, None);
+    }
+
+    #[test]
+    fn an_empty_database_pool_is_rejected() {
+        let mut config = tests::test_config();
+        config.max_database_pool_connections = Some(0);
+        let error = config.validate().unwrap_err().to_string();
+        assert!(error.contains("greater than 0"), "{error}");
+
+        config.max_database_pool_connections = Some(1);
+        config.validate().unwrap();
+    }
+
     #[test]
     fn smtp_credentials_must_be_configured_together() {
         let mut config = tests::test_config();
