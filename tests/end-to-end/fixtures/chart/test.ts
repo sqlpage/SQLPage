@@ -367,16 +367,50 @@ test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
   expect(chart.shapes).toHaveLength(2);
 });
 
-test("shows a data point link in its tooltip", async ({ page }) => {
+test("shows an interactive data point link in a rangeBar tooltip", async ({
+  page,
+}) => {
   await renderChart(page, "link");
 
-  await page.locator("#test-chart .apexcharts-rangebar-area").hover();
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
   const link = page.locator("#test-chart .apexcharts-tooltip a");
   await expect(link).toHaveText("Open link");
   await expect(link).toHaveAttribute(
     "href",
     "/workpackage_edit.sql?workpackage_name=Design",
   );
+  await expect(page.locator("#test-chart .apexcharts-tooltip")).toHaveCSS(
+    "pointer-events",
+    "auto",
+  );
+  await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
+  await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
+    0,
+  );
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
+  await link.click();
+  await expect(page).toHaveURL(/workpackage_edit/);
+});
+
+for (const [type, mark] of [["scatter", ".apexcharts-marker"]]) {
+  test(`shows a data point link in a ${type} tooltip`, async ({ page }) => {
+    await renderChart(page, `link-${type}`);
+
+    const marks = page.locator(`#test-chart ${mark}`);
+    await marks.nth(0).hover({ force: true });
+    await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
+      1,
+    );
+  });
+}
+
+test("formats date ranges in a linked tooltip", async ({ page }) => {
+  await renderChart(page, "link");
+
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
+  await expect(
+    page.locator("#test-chart .apexcharts-tooltip"),
+  ).not.toContainText("1709251200000");
 });
 
 test("leaves a treemap chart alone", async ({ page }) => {
