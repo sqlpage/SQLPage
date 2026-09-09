@@ -64,6 +64,10 @@ code {
   color: inherit;
 }
 
+.apexcharts-tooltip:has(a) {
+  pointer-events: auto;
+}
+
 /** table **/
 .table-freeze-headers thead {
   position: sticky;
