@@ -669,7 +669,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
     ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
     ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
-    ('xticks', 'Number of ticks on the x axis.', 'INTEGER', TRUE, TRUE),
+    ('xticks', 'Number of intervals on the x axis (one less than the number of ticks). Automatic selection usually works best. A point-count workaround such as count(distinct x) - 1 is only accurate for evenly spaced numeric x values; irregular numeric values remain positioned on a continuous scale.', 'INTEGER', TRUE, TRUE),
     ('yticks', 'Number of ticks on the y axis.', 'INTEGER', TRUE, TRUE),
     ('ystep', 'Step between ticks on the y axis.', 'REAL', TRUE, TRUE),
     ('marker', 'Marker size', 'REAL', TRUE, TRUE),
@@ -682,7 +682,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('horizontal', 'Displays a bar chart with horizontal bars instead of vertical ones.', 'BOOLEAN', TRUE, TRUE),
     ('height', 'Height of the chart, in pixels. By default: 250', 'INTEGER', TRUE, TRUE),
     -- item level
-    ('x', 'The value of the point on the horizontal axis', 'REAL', FALSE, FALSE),
+    ('x', 'The value of the point on the horizontal axis. Numeric values use continuous, proportionate positioning; text values are evenly spaced categories. Set the top-level time property for dates and timestamps.', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
     ('label', 'An alias for parameter "x". On a row that draws a reference line, the text to display next to the line.', 'TEXT', FALSE, TRUE),
