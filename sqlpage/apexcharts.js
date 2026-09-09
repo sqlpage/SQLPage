@@ -386,7 +386,8 @@ sqlpage_chart = (() => {
       series,
     };
     if (labels) options.labels = labels;
-    // tickamount is the number of intervals, not the number of ticks
+    // Numeric axes count intervals; category and time axes use tickAmount as a
+    // target for label density.
     if (data.xticks) options.xaxis.tickAmount = data.xticks;
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
