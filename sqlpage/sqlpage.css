@@ -68,6 +68,11 @@ code {
   pointer-events: auto;
 }
 
+.apexcharts-tooltip a {
+  color: currentColor;
+  text-decoration: underline;
+}
+
 /** table **/
 .table-freeze-headers thead {
   position: sticky;

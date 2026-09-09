@@ -383,6 +383,15 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
     "pointer-events",
     "auto",
   );
+  const colors = await link.evaluate((anchor) => {
+    const tooltip = anchor.closest(".apexcharts-tooltip");
+    if (!tooltip) throw new Error("Link has no tooltip");
+    return {
+      link: getComputedStyle(anchor).color,
+      tooltip: getComputedStyle(tooltip).color,
+    };
+  });
+  expect(colors.link).toBe(colors.tooltip);
   await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
   await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
     0,
@@ -392,7 +401,11 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
   await expect(page).toHaveURL(/workpackage_edit/);
 });
 
-for (const [type, mark] of [["scatter", ".apexcharts-marker"]]) {
+for (const [type, mark] of [
+  ["bar", ".apexcharts-bar-area"],
+  ["line", ".apexcharts-marker"],
+  ["scatter", ".apexcharts-marker"],
+]) {
   test(`shows a data point link in a ${type} tooltip`, async ({ page }) => {
     await renderChart(page, `link-${type}`);
 
