@@ -434,7 +434,12 @@ sqlpage_chart = (() => {
       axisValue.appendChild(labelSpan);
       const valueSpan = document.createElement("span");
       valueSpan.className = "apexcharts-tooltip-text-y-value";
-      valueSpan.innerText = value;
+      const formatter = axis === "y" && w.config.tooltip.y.formatter;
+      const format = (v) =>
+        formatter ? formatter(v, { seriesIndex, dataPointIndex, w }) : v;
+      valueSpan.innerText = Array.isArray(value)
+        ? value.map(format).join(" - ")
+        : format(value);
       axisValue.appendChild(valueSpan);
       tooltip.appendChild(axisValue);
     }
