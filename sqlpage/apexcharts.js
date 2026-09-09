@@ -442,7 +442,7 @@ sqlpage_chart = (() => {
       axisValue.appendChild(valueSpan);
       tooltip.appendChild(axisValue);
     }
-    add_link_to_tooltip(tooltip, link);
+    addLinkToTooltip(tooltip, link);
     return tooltip.outerHTML;
   }
 
@@ -451,7 +451,7 @@ sqlpage_chart = (() => {
   }
 
   /** @param {HTMLElement} tooltip @param {string|undefined} link */
-  function add_link_to_tooltip(tooltip, link) {
+  function addLinkToTooltip(tooltip, link) {
     if (!link) return;
     const linkContainer = document.createElement("div");
     linkContainer.className = "apexcharts-tooltip-y-group";
