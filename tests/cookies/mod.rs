@@ -35,3 +35,28 @@ async fn a_log_row_does_not_end_the_header_phase() {
     let header = set_cookie_header("/tests/cookies/log_before_cookie.sql").await;
     assert!(header.starts_with("session=abc123"), "{header}");
 }
+
+#[actix_web::test]
+async fn removing_a_cookie_expires_it() {
+    let header = set_cookie_header("/tests/cookies/remove_cookie.sql").await;
+    assert!(header.starts_with("session=;"), "{header}");
+    assert!(header.contains("Max-Age=0"), "{header}");
+}
+
+#[actix_web::test]
+async fn an_rfc_3339_expires_date_becomes_an_http_date() {
+    let header = set_cookie_header("/tests/cookies/cookie_expires_rfc3339.sql").await;
+    assert!(
+        header.contains("Expires=Fri, 15 Jun 2035 12:34:56 GMT"),
+        "{header}"
+    );
+}
+
+#[actix_web::test]
+async fn a_unix_timestamp_expires_date_becomes_an_http_date() {
+    let header = set_cookie_header("/tests/cookies/cookie_expires_timestamp.sql").await;
+    assert!(
+        header.contains("Expires=Sat, 01 Jan 2033 00:00:00 GMT"),
+        "{header}"
+    );
+}
