@@ -405,9 +405,14 @@ sqlpage_chart = (() => {
 
   function chartTooltip({ seriesIndex, dataPointIndex, w }, raw_points) {
     const series = w.config.series[seriesIndex];
-    const name = series?.name || w.config.labels?.[dataPointIndex] || "";
-    const point = series?.data?.[dataPointIndex];
-    const link = series?.data ? point?.link : raw_points[dataPointIndex]?.[5];
+    const has_series_data = Array.isArray(series?.data);
+    const point_index = has_series_data ? dataPointIndex : seriesIndex;
+    const raw_point = raw_points[point_index];
+    const name = series?.name || w.config.labels?.[point_index] || "";
+    const point = has_series_data
+      ? series.data[dataPointIndex]
+      : { y: raw_point?.[2], z: raw_point?.[4] };
+    const link = has_series_data ? point?.link : raw_point?.[5];
 
     const tooltip = document.createElement("div");
     tooltip.className = "apexcharts-tooltip-text";

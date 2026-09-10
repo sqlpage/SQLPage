@@ -417,6 +417,18 @@ for (const [type, mark] of [
   });
 }
 
+test("links each slice of a pie chart from its own row", async ({ page }) => {
+  const chart = await renderChart(page, "link-pie");
+
+  expect(chart.failures).toEqual([]);
+  const slices = page.locator("#test-chart .apexcharts-pie-area");
+  const link = page.locator("#test-chart .apexcharts-tooltip a");
+  await slices.nth(0).hover();
+  await expect(link).toHaveAttribute("href", "/linked.sql");
+  await slices.nth(1).hover();
+  await expect(link).toHaveAttribute("href", "/linked-too.sql");
+});
+
 test("formats date ranges in a linked tooltip", async ({ page }) => {
   await renderChart(page, "link");
 
