@@ -39,6 +39,7 @@ sqlpage_chart = (() => {
   const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
   const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
+  const NUMERIC_X_CHART_TYPES = ["line", "area", "bar", "scatter", "bubble"];
   const APEXCHARTS_TYPE_ALIASES = { column: "bar" };
   const Y_WHEN_A_SERIES_SKIPS_A_LABEL = {
     bar: 0,
@@ -58,7 +59,19 @@ sqlpage_chart = (() => {
   const x_key = (x) => (x instanceof Date ? x.getTime() : x);
 
   /** @param {ChartSeries[]} series */
-  const x_is_text = (series) => typeof series[0]?.data[0]?.x === "string";
+  const x_is_text = (series) => typeof series[0]?.data?.[0]?.x === "string";
+
+  /** @param {ChartSeries[]} series @param {string} chart_type */
+  function xaxis_type_for(series, chart_type, is_timeseries, is_horizontal) {
+    if (is_timeseries) return "datetime";
+    if (x_is_text(series)) return "category";
+    if (
+      typeof series[0]?.data?.[0]?.x === "number" &&
+      !is_horizontal &&
+      NUMERIC_X_CHART_TYPES.includes(chart_type)
+    )
+      return "numeric";
+  }
 
   /**
    * @param {ChartSeries[]} series
@@ -117,7 +130,12 @@ sqlpage_chart = (() => {
 
   // The unit tests load this file as a CommonJS module; browsers have no `module`.
   if (typeof module !== "undefined")
-    module.exports = { align_series, align_series_for, merged_x_values };
+    module.exports = {
+      align_series,
+      align_series_for,
+      merged_x_values,
+      xaxis_type_for,
+    };
 
   const referenceColor = colorNames[isDarkTheme ? "gray-lt" : "gray"];
 
@@ -207,9 +225,14 @@ sqlpage_chart = (() => {
     let colors = palette;
 
     let series = Object.values(series_map);
+    const xaxis_type = xaxis_type_for(
+      series,
+      chart_type,
+      is_timeseries,
+      !!data.horizontal,
+    );
 
     let labels;
-    const categories = x_is_text(series);
     if (chart_type === "pie") {
       labels = points.map(([name, x, _y]) => x || name);
       series = points.map(([_name, _x, y]) => Number.parseFloat(y));
@@ -303,7 +326,7 @@ sqlpage_chart = (() => {
         title: {
           text: data.xtitle || undefined,
         },
-        type: is_timeseries ? "datetime" : categories ? "category" : undefined,
+        type: xaxis_type,
         labels: {
           datetimeUTC: false,
         },
@@ -363,7 +386,8 @@ sqlpage_chart = (() => {
       series,
     };
     if (labels) options.labels = labels;
-    // tickamount is the number of intervals, not the number of ticks
+    // Numeric axes count intervals; category and time axes use tickAmount as a
+    // target for label density.
     if (data.xticks) options.xaxis.tickAmount = data.xticks;
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
