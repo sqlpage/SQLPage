@@ -1,5 +1,9 @@
 import ApexCharts from "apexcharts";
-import { align_series_for, xaxis_type_for } from "./chart_series.js";
+import {
+  align_series_for,
+  xaxis_tick_amount,
+  xaxis_type_for,
+} from "./chart_series.js";
 import { add_init_fn } from "./init.js";
 
 /**
@@ -138,12 +142,11 @@ const sqlpage_chart = (() => {
     let colors = palette;
 
     let series = [...series_map.values()];
-    const xaxis_type = xaxis_type_for(
-      series,
+    const xaxis_type = xaxis_type_for(series, {
       chart_type,
       is_timeseries,
-      !!data.horizontal,
-    );
+      is_horizontal: !!data.horizontal,
+    });
 
     let labels;
     if (chart_type === "pie") {
@@ -299,10 +302,7 @@ const sqlpage_chart = (() => {
       series,
     };
     if (labels) options.labels = labels;
-    // ApexCharts counts numeric intervals rather than tick positions.
-    if (data.xticks)
-      options.xaxis.tickAmount =
-        xaxis_type === "numeric" ? Math.max(1, data.xticks - 1) : data.xticks;
+    options.xaxis.tickAmount = xaxis_tick_amount(data.xticks, xaxis_type);
     const chart = new ApexCharts(
       chartContainer,
       /** @type {import("apexcharts").ApexOptions} */ (options),

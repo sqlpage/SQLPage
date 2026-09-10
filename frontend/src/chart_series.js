@@ -20,12 +20,16 @@ const x_key = (x) => (x instanceof Date ? x.getTime() : x);
 /** @param {ChartSeries[]} series */
 const x_is_text = (series) => typeof series[0]?.data?.[0]?.x === "string";
 
-/** @param {ChartSeries[]} series @param {string} chart_type */
+/**
+ * Numeric x values need an explicit axis type to retain their proportional
+ * spacing; otherwise ApexCharts treats them as evenly spaced categories.
+ *
+ * @param {ChartSeries[]} series
+ * @param {{chart_type:string, is_timeseries:boolean, is_horizontal:boolean}} options
+ */
 export function xaxis_type_for(
   series,
-  chart_type,
-  is_timeseries,
-  is_horizontal,
+  { chart_type, is_timeseries, is_horizontal },
 ) {
   if (is_timeseries) return "datetime";
   if (x_is_text(series)) return "category";
@@ -35,6 +39,18 @@ export function xaxis_type_for(
     NUMERIC_X_CHART_TYPES.includes(chart_type)
   )
     return "numeric";
+}
+
+/**
+ * ApexCharts expects intervals for numeric axes, while SQLPage exposes the
+ * more intuitive number of tick positions to users.
+ *
+ * @param {number|undefined} xticks
+ * @param {string|undefined} xaxis_type
+ */
+export function xaxis_tick_amount(xticks, xaxis_type) {
+  if (!xticks) return;
+  return xaxis_type === "numeric" ? Math.max(1, xticks - 1) : xticks;
 }
 
 /**

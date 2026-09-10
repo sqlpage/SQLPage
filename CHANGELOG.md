@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
 ## v0.47.0 (unreleased)
+- `xticks` now represents the requested number of tick positions on numeric x-axes, rather than the number of intervals between them.
 - **Mac users:** the downloadable `sqlpage-macos.tgz` now runs natively on Apple silicon (M-series Macs) and no longer runs on Intel Macs. Homebrew remains the recommended and easiest installation method. On an Intel Mac, [install Homebrew](https://brew.sh/) if needed, then run `brew install sqlpage` (or `brew update` followed by `brew upgrade sqlpage` if you already installed it with Homebrew). Open Terminal in your existing website folder and run `sqlpage` instead of `./sqlpage.bin`; keep your SQL files, database, and `sqlpage` configuration folder in place. Intel installations may build from source and take longer; see the [macOS installation guide](https://sql-page.com/your-first-sql-website/?os=macos#download) for setup and older macOS requirements.
 - Updated sqlx-oldapi to v0.6.57 to fix SQL Server fallback expressions such as `ISNULL($missing, 'default')` truncating defaults or failing for date values when the bound variable is `NULL`.
 - Fixed MSSQL `JSON_OBJECT('key': value)` expressions being rejected by SQLPage's parser, including when used in `SET` statements or nested in `sqlpage.*` function calls.
@@ -18,7 +19,6 @@
 ## v0.46.2
 
 - Numeric x values on Cartesian charts now explicitly use a continuous numeric axis, preventing fractional tick positions from being displayed as misleading rounded integers.
-- `xticks` now represents the requested number of tick positions on numeric x-axes, rather than the number of intervals between them.
 
 ## v0.46.1
 
