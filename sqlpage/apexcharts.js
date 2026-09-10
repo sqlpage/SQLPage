@@ -393,9 +393,10 @@ sqlpage_chart = (() => {
       series,
     };
     if (labels) options.labels = labels;
-    // Numeric axes count intervals; category and time axes use tickAmount as a
-    // target for label density.
-    if (data.xticks) options.xaxis.tickAmount = data.xticks;
+    // ApexCharts counts numeric intervals rather than tick positions.
+    if (data.xticks)
+      options.xaxis.tickAmount =
+        xaxis_type === "numeric" ? Math.max(1, data.xticks - 1) : data.xticks;
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
     if (window.charts) window.charts.push(chart);
