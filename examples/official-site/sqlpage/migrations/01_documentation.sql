@@ -669,7 +669,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
     ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
     ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
-    ('xticks', 'Number of tick positions on a numeric x-axis. On category and time axes, this is a target for label density, so the visible label count may differ.', 'INTEGER', TRUE, TRUE),
+    ('xticks', 'Number of tick positions on a numeric x-axis. For example, 5 requests five evenly spaced positions, including the two ends. On category and time axes, it asks ApexCharts to show up to that many labels; it may show fewer to keep labels from overlapping.', 'INTEGER', TRUE, TRUE),
     ('yticks', 'Number of ticks on the y axis.', 'INTEGER', TRUE, TRUE),
     ('ystep', 'Step between ticks on the y axis.', 'REAL', TRUE, TRUE),
     ('marker', 'Marker size', 'REAL', TRUE, TRUE),

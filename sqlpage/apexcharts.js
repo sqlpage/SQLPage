@@ -61,8 +61,17 @@ sqlpage_chart = (() => {
   /** @param {ChartSeries[]} series */
   const x_is_text = (series) => typeof series[0]?.data?.[0]?.x === "string";
 
-  /** @param {ChartSeries[]} series @param {string} chart_type */
-  function xaxis_type_for(series, chart_type, is_timeseries, is_horizontal) {
+  /**
+   * Numeric x values need an explicit axis type to retain their proportional
+   * spacing; otherwise ApexCharts treats them as evenly spaced categories.
+   *
+   * @param {ChartSeries[]} series
+   * @param {{chart_type:string, is_timeseries:boolean, is_horizontal:boolean}} options
+   */
+  function xaxis_type_for(
+    series,
+    { chart_type, is_timeseries, is_horizontal },
+  ) {
     if (is_timeseries) return "datetime";
     if (x_is_text(series)) return "category";
     if (
@@ -71,6 +80,18 @@ sqlpage_chart = (() => {
       NUMERIC_X_CHART_TYPES.includes(chart_type)
     )
       return "numeric";
+  }
+
+  /**
+   * ApexCharts expects intervals for numeric axes, while SQLPage exposes the
+   * more intuitive number of tick positions to users.
+   *
+   * @param {number|undefined} xticks
+   * @param {string|undefined} xaxis_type
+   */
+  function xaxis_tick_amount(xticks, xaxis_type) {
+    if (!xticks) return;
+    return xaxis_type === "numeric" ? Math.max(1, xticks - 1) : xticks;
   }
 
   /**
@@ -231,12 +252,11 @@ sqlpage_chart = (() => {
     let colors = palette;
 
     let series = Object.values(series_map);
-    const xaxis_type = xaxis_type_for(
-      series,
+    const xaxis_type = xaxis_type_for(series, {
       chart_type,
       is_timeseries,
-      !!data.horizontal,
-    );
+      is_horizontal: !!data.horizontal,
+    });
 
     let labels;
     if (chart_type === "pie") {
@@ -393,10 +413,7 @@ sqlpage_chart = (() => {
       series,
     };
     if (labels) options.labels = labels;
-    // ApexCharts counts numeric intervals rather than tick positions.
-    if (data.xticks)
-      options.xaxis.tickAmount =
-        xaxis_type === "numeric" ? Math.max(1, data.xticks - 1) : data.xticks;
+    options.xaxis.tickAmount = xaxis_tick_amount(data.xticks, xaxis_type);
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
     if (window.charts) window.charts.push(chart);
