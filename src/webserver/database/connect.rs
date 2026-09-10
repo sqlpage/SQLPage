@@ -271,3 +271,91 @@ fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
         unreachable!("Unsupported database type");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::row::Row;
+    use tempfile::TempDir;
+
+    fn config_in(dir: &TempDir, database_url: &str) -> AppConfig {
+        let mut config = crate::app_config::tests::test_config();
+        config.database_url = database_url.to_owned();
+        config.configuration_directory = dir.path().to_path_buf();
+        config.max_database_pool_connections = Some(1);
+        config
+    }
+
+    #[actix_web::test]
+    async fn on_connect_sql_runs_on_new_pool_connections() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join(ON_CONNECT_FILE),
+            "CREATE TEMPORARY TABLE on_connect_marker(value TEXT);
+             INSERT INTO on_connect_marker(value) VALUES ('on_connect ran');",
+        )
+        .unwrap();
+
+        let db = Database::init(&config_in(&dir, "sqlite::memory:"))
+            .await
+            .unwrap();
+        let value: String = sqlx::query::query("SELECT value FROM on_connect_marker")
+            .fetch_one(&db.connection)
+            .await
+            .unwrap()
+            .try_get(0)
+            .unwrap();
+
+        assert_eq!(value, "on_connect ran");
+    }
+
+    #[actix_web::test]
+    async fn on_reset_sql_runs_when_a_connection_returns_to_the_pool() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join(ON_CONNECT_FILE),
+            "CREATE TABLE IF NOT EXISTS reset_log(id INTEGER);",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join(ON_RESET_FILE),
+            "INSERT INTO reset_log(id) VALUES (1);
+             SELECT 1 AS is_healthy;",
+        )
+        .unwrap();
+        let db_file = dir.path().join("on_reset.db");
+        let config = config_in(&dir, &format!("sqlite://{}?mode=rwc", db_file.display()));
+
+        let db = Database::init(&config).await.unwrap();
+        drop(db.connection.acquire().await.unwrap());
+        let resets: i64 = sqlx::query::query("SELECT COUNT(*) FROM reset_log")
+            .fetch_one(&db.connection)
+            .await
+            .unwrap()
+            .try_get(0)
+            .unwrap();
+
+        assert!(resets > 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connection_retries_wait_five_seconds_before_giving_up() {
+        for (retries, expected_wait) in [(0, Duration::ZERO), (2, Duration::from_secs(10))] {
+            let dir = TempDir::new().unwrap();
+            let missing = dir.path().join("nonexistent_directory").join("db.sqlite");
+            let mut config = config_in(&dir, &format!("sqlite://{}", missing.display()));
+            config.database_connection_retries = retries;
+
+            let start = tokio::time::Instant::now();
+            let Err(error) = Database::init(&config).await else {
+                panic!("connecting to a missing database must fail");
+            };
+
+            assert_eq!(start.elapsed(), expected_wait, "{retries} retries");
+            assert!(
+                format!("{error:#}").contains("Unable to open connection to"),
+                "{error:#}"
+            );
+        }
+    }
+}

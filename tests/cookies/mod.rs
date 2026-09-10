@@ -39,3 +39,28 @@ async fn a_page_made_only_of_header_components_still_sends_them() {
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
     assert!(resp.headers().contains_key(SET_COOKIE));
 }
+
+#[actix_web::test]
+async fn removing_a_cookie_expires_it() {
+    let header = set_cookie_header("/tests/cookies/remove_cookie.sql").await;
+    assert!(header.starts_with("session=;"), "{header}");
+    assert!(header.contains("Max-Age=0"), "{header}");
+}
+
+#[actix_web::test]
+async fn an_rfc_3339_expires_date_becomes_an_http_date() {
+    let header = set_cookie_header("/tests/cookies/cookie_expires_rfc3339.sql").await;
+    assert!(
+        header.contains("Expires=Fri, 15 Jun 2035 12:34:56 GMT"),
+        "{header}"
+    );
+}
+
+#[actix_web::test]
+async fn a_unix_timestamp_expires_date_becomes_an_http_date() {
+    let header = set_cookie_header("/tests/cookies/cookie_expires_timestamp.sql").await;
+    assert!(
+        header.contains("Expires=Sat, 01 Jan 2033 00:00:00 GMT"),
+        "{header}"
+    );
+}
