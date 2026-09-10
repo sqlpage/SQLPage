@@ -51,7 +51,7 @@ sqlpage_chart = (() => {
   };
 
   /** @typedef {number|string|Date} XValue */
-  /** @typedef { {x:XValue, y:number|null, z?:number, fillColor?:string} } ChartPoint */
+  /** @typedef { {x:XValue, y:number|null, z?:number, fillColor?:string, link?:string} } ChartPoint */
   /** @typedef { {name:string, data:ChartPoint[]} } ChartSeries */
   /** @typedef { { [name:string]: ChartSeries } } Series */
 
@@ -200,7 +200,7 @@ sqlpage_chart = (() => {
     const reference_rows = data.points.filter((row) => !Array.isArray(row));
     /** @type { Series } */
     const series_map = {};
-    for (const [name, old_x, old_y, color, z] of points) {
+    for (const [name, old_x, old_y, color, z, link] of points) {
       series_map[name] = series_map[name] || { name, data: [] };
       let x = old_x;
       let y = old_y;
@@ -210,7 +210,13 @@ sqlpage_chart = (() => {
           y = y.map((y) => new Date(y).getTime());
         else x = new Date(x);
       }
-      series_map[name].data.push({ x, y, z, fillColor: named_color(color) });
+      series_map[name].data.push({
+        x,
+        y,
+        z,
+        link,
+        fillColor: named_color(color),
+      });
     }
     if (data.xmin == null) data.xmin = undefined;
     if (data.xmax == null) data.xmax = undefined;
@@ -355,8 +361,9 @@ sqlpage_chart = (() => {
       },
       tooltip: {
         fillSeriesColor: false,
-        custom:
-          chart_type === "bubble" || chart_type === "scatter"
+        custom: points.some((point) => point[5])
+          ? (args) => chartTooltip(args, points)
+          : chart_type === "bubble" || chart_type === "scatter"
             ? bubbleTooltip
             : undefined,
         y: {
@@ -396,9 +403,16 @@ sqlpage_chart = (() => {
     c.removeAttribute("data-pre-init");
   }
 
-  function bubbleTooltip({ seriesIndex, dataPointIndex, w }) {
-    const { name, data } = w.config.series[seriesIndex];
-    const point = data[dataPointIndex];
+  function chartTooltip({ seriesIndex, dataPointIndex, w }, raw_points) {
+    const series = w.config.series[seriesIndex];
+    const has_series_data = Array.isArray(series?.data);
+    const point_index = has_series_data ? dataPointIndex : seriesIndex;
+    const raw_point = raw_points[point_index];
+    const name = series?.name || w.config.labels?.[point_index] || "";
+    const point = has_series_data
+      ? series.data[dataPointIndex]
+      : { y: raw_point?.[2], z: raw_point?.[4] };
+    const link = has_series_data ? point?.link : raw_point?.[5];
 
     const tooltip = document.createElement("div");
     tooltip.className = "apexcharts-tooltip-text";
@@ -424,11 +438,33 @@ sqlpage_chart = (() => {
       axisValue.appendChild(labelSpan);
       const valueSpan = document.createElement("span");
       valueSpan.className = "apexcharts-tooltip-text-y-value";
-      valueSpan.innerText = value;
+      const formatter = axis === "y" && w.config.tooltip.y.formatter;
+      const format = (v) =>
+        formatter ? formatter(v, { seriesIndex, dataPointIndex, w }) : v;
+      valueSpan.innerText = Array.isArray(value)
+        ? value.map(format).join(" - ")
+        : format(value);
       axisValue.appendChild(valueSpan);
       tooltip.appendChild(axisValue);
     }
+    addLinkToTooltip(tooltip, link);
     return tooltip.outerHTML;
+  }
+
+  function bubbleTooltip(args) {
+    return chartTooltip(args, []);
+  }
+
+  /** @param {HTMLElement} tooltip @param {string|undefined} link */
+  function addLinkToTooltip(tooltip, link) {
+    if (!link) return;
+    const linkContainer = document.createElement("div");
+    linkContainer.className = "apexcharts-tooltip-y-group";
+    const anchor = document.createElement("a");
+    anchor.href = link;
+    anchor.textContent = "Open link";
+    linkContainer.appendChild(anchor);
+    tooltip.appendChild(linkContainer);
   }
 
   return sqlpage_chart;
