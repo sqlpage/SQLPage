@@ -14,6 +14,26 @@ body contains "Hurl User"
 body contains "user.sql?id"
 body not contains "An error occurred"
 
+POST http://localhost:8080/
+[FormParams]
+Username: Hurl Alpha
+HTTP 200
+[Asserts]
+body contains "Hurl Alpha"
+body not contains "An error occurred"
+
+GET http://localhost:8080/table.sql
+HTTP 200
+[Asserts]
+xpath "string(//button[@data-server-sort-column='username']/@data-server-sort-column)" == "username"
+body not contains "An error occurred"
+
+GET http://localhost:8080/table.sql?sort_username=ASCENDING
+HTTP 200
+[Asserts]
+xpath "normalize-space(string(//tbody/tr[1]/td[2]))" == "Hurl Alpha"
+body not contains "An error occurred"
+
 GET http://localhost:8080/user.sql?id=1
 HTTP 200
 [Asserts]
