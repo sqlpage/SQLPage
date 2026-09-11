@@ -669,7 +669,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('xtitle', 'Title of the x axis, displayed below it.', 'TEXT', TRUE, TRUE),
     ('ytitle', 'Title of the y axis, displayed to its left.', 'TEXT', TRUE, TRUE),
     ('ztitle', 'Title of the z axis, displayed in tooltips.', 'TEXT', TRUE, TRUE),
-    ('xticks', 'Number of ticks on the x axis.', 'INTEGER', TRUE, TRUE),
+    ('xticks', 'Number of intervals used to generate a numeric x-axis, normally producing one more tick position. On category and time axes, this is a target for label density, so the visible label count may differ.', 'INTEGER', TRUE, TRUE),
     ('yticks', 'Number of ticks on the y axis.', 'INTEGER', TRUE, TRUE),
     ('ystep', 'Step between ticks on the y axis.', 'REAL', TRUE, TRUE),
     ('marker', 'Marker size', 'REAL', TRUE, TRUE),
@@ -682,12 +682,13 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('horizontal', 'Displays a bar chart with horizontal bars instead of vertical ones.', 'BOOLEAN', TRUE, TRUE),
     ('height', 'Height of the chart, in pixels. By default: 250', 'INTEGER', TRUE, TRUE),
     -- item level
-    ('x', 'The value of the point on the horizontal axis', 'REAL', FALSE, FALSE),
+    ('x', 'The value of the point on the horizontal axis. Numeric values use continuous, proportionate positioning; text values are evenly spaced categories. Set the top-level time property for dates and timestamps.', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
     ('label', 'An alias for parameter "x". On a row that draws a reference line, the text to display next to the line.', 'TEXT', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
+    ('link', 'Adds a clickable link to this point in its tooltip.', 'URL', FALSE, TRUE),
     ('yline', 'Draws a reference line across the chart at this value of the y axis instead of plotting a point, to show a limit such as a quota or an alarm threshold. Not drawn if it falls outside of the axis, so set ymax when the limit is above the data.', 'REAL', FALSE, TRUE),
     ('yline_end', 'Makes the yline a band instead of a line, reaching to this value.', 'REAL', FALSE, TRUE),
     ('xline', 'Draws a reference line across the chart at this position of the x axis instead of plotting a point, to mark an event such as a deployment. A date or a timestamp when time is set, otherwise one of the x values.', 'TEXT', FALSE, TRUE),
@@ -789,10 +790,10 @@ The `color` property sets the color of each series separately, in order.
         { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 62},{ "series": "MySQL", "x": "2010", "y": 83},
         { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 38},{ "series": "MySQL", "x": "2020", "y": 87}
       ]')),
-    ('chart', 'A timeline displaying events with a start and an end date',
+    ('chart', 'A timeline displaying events with a start and an end date. A data row can include a `link` to make it available as a clickable action in the tooltip.',
     json('[
         {"component":"chart", "title": "Project Timeline", "type": "rangeBar", "time": true, "color": ["teal", "cyan"], "labels": true, "xmin": "2021-12-28", "xmax": "2022-01-04" },
-        {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"]},
+        {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"], "link": "/examples/chart.sql?phase=1"},
         {"series": "Phase 2", "label": "Operations", "value": ["2022-01-03", "2022-01-04"]},
         {"series": "Yearly maintenance", "label": "Maintenance", "value": ["2022-01-01", "2022-01-03"]}
     ]')),

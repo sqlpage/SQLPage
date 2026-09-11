@@ -8,8 +8,10 @@ declare global {
       w: {
         config: {
           chart: { type: string; stacked: boolean };
+          xaxis: { type?: string; tickAmount?: number };
           series: { name: string; data?: ChartPoint[] }[];
         };
+        globals: { labels: (string | number)[] };
       };
     }[];
   }
@@ -62,6 +64,30 @@ async function renderChart(page: Page, fixture: string) {
         const { x, y, width, height } = shape.getBBox();
         return { x, y, width, height, fill: shape.getAttribute("fill") };
       });
+      const axisLabels = [
+        ...container.querySelectorAll<SVGGraphicsElement>(
+          ".apexcharts-xaxis-label tspan",
+        ),
+      ].map((label) => {
+        const { left, width } = label.getBoundingClientRect();
+        return { text: label.textContent, center: left + width / 2 };
+      });
+      const barGroups = Object.values(
+        [
+          ...container.querySelectorAll<SVGGraphicsElement>(
+            ".apexcharts-bar-area",
+          ),
+        ].reduce<Record<string, number[]>>((groups, bar) => {
+          const index = bar.getAttribute("j") ?? "";
+          const { left, width } = bar.getBoundingClientRect();
+          const centers = groups[index] ?? [];
+          centers.push(left + width / 2);
+          groups[index] = centers;
+          return groups;
+        }, {}),
+      ).map(
+        (centers) => centers.reduce((sum, x) => sum + x, 0) / centers.length,
+      );
       const annotated = [
         ...container.querySelectorAll(
           ".apexcharts-xaxis-annotations, .apexcharts-yaxis-annotations",
@@ -84,6 +110,16 @@ async function renderChart(page: Page, fixture: string) {
         failures,
         type: rendered?.w.config.chart.type ?? null,
         stacked: rendered?.w.config.chart.stacked ?? null,
+        xaxis: {
+          type: rendered?.w.config.xaxis.type ?? null,
+          tickAmount: rendered?.w.config.xaxis.tickAmount ?? null,
+        },
+        generatedLabels: rendered?.w.globals.labels ?? [],
+        axisLabels,
+        dataLabels: [
+          ...container.querySelectorAll(".apexcharts-datalabel"),
+        ].map((label) => label.textContent),
+        barGroups,
         series,
         drawnPerSeries,
         shapes,
@@ -103,6 +139,80 @@ const fills = (chart: Awaited<ReturnType<typeof renderChart>>) =>
       .map((c) => Number(c).toString(16).padStart(2, "0"));
     return `#${hex.join("")}`;
   });
+
+test("positions complete numeric bar series on an explicit numeric axis (#733)", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "numeric-axis");
+  const xs = Array.from({ length: 12 }, (_, index) => index + 1);
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.xaxis).toEqual({ type: "numeric", tickAmount: null });
+  expect(chart.generatedLabels).toEqual(xs);
+  expect(chart.axisLabels.map(({ text }) => Number(text))).toEqual(xs);
+  expect(chart.dataLabels.map(Number)).toEqual([...xs, ...xs]);
+  expect(chart.barGroups).toHaveLength(xs.length);
+  for (const [index, label] of chart.axisLabels.entries())
+    expect(Math.abs(label.center - chart.barGroups[index])).toBeLessThan(1);
+});
+
+test("keeps irregular numeric x values proportionately spaced", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "numeric-axis-irregular");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.xaxis.type).toBe("numeric");
+  expect(chart.generatedLabels).toEqual([0.25, 1.63, 3.01]);
+  expect(chart.axisLabels.map(({ text }) => text)).toEqual([
+    "0.3",
+    "1.6",
+    "3.0",
+  ]);
+  expect(chart.axisLabels.map(({ text }) => text)).not.toContain("2");
+  expect(chart.barGroups[2] - chart.barGroups[1]).toBeGreaterThan(
+    5 * (chart.barGroups[1] - chart.barGroups[0]),
+  );
+});
+
+test("keeps an explicit x interval count", async ({ page }) => {
+  const chart = await renderChart(page, "numeric-axis-xticks");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.xaxis).toEqual({ type: "numeric", tickAmount: 2 });
+});
+
+test("keeps text x values as categories", async ({ page }) => {
+  const chart = await renderChart(page, "index");
+
+  expect(chart.xaxis.type).toBe("category");
+  expect(chart.generatedLabels).toEqual(["Mon", "Tue", "Wed"]);
+});
+
+test("keeps time series on a datetime axis", async ({ page }) => {
+  const chart = await renderChart(page, "unstacked-time-series");
+
+  expect(chart.xaxis.type).toBe("datetime");
+});
+
+test("keeps numeric horizontal bars on their category-oriented axis", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "numeric-horizontal-bar");
+
+  expect(chart.xaxis.type).toBeNull();
+  expect(chart.shapes).toHaveLength(3);
+});
+
+test("keeps a rangeBar timeline on its datetime value axis", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "range-bar");
+
+  expect(chart.type).toBe("rangeBar");
+  expect(chart.xaxis.type).toBe("datetime");
+  expect(chart.shapes).toHaveLength(2);
+});
 
 test("draws a column chart as a vertical bar chart", async ({ page }) => {
   const chart = await renderChart(page, "column");
@@ -255,6 +365,77 @@ test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
 
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(2);
+});
+
+test("shows an interactive data point link in a rangeBar tooltip", async ({
+  page,
+}) => {
+  await renderChart(page, "link");
+
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
+  const link = page.locator("#test-chart .apexcharts-tooltip a");
+  await expect(link).toHaveText("Open link");
+  await expect(link).toHaveAttribute(
+    "href",
+    "/workpackage_edit.sql?workpackage_name=Design",
+  );
+  await expect(page.locator("#test-chart .apexcharts-tooltip")).toHaveCSS(
+    "pointer-events",
+    "auto",
+  );
+  const colors = await link.evaluate((anchor) => {
+    const tooltip = anchor.closest(".apexcharts-tooltip");
+    if (!tooltip) throw new Error("Link has no tooltip");
+    return {
+      link: getComputedStyle(anchor).color,
+      tooltip: getComputedStyle(tooltip).color,
+    };
+  });
+  expect(colors.link).toBe(colors.tooltip);
+  await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
+  await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
+    0,
+  );
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
+  await link.click();
+  await expect(page).toHaveURL(/workpackage_edit/);
+});
+
+for (const [type, mark] of [
+  ["bar", ".apexcharts-bar-area"],
+  ["line", ".apexcharts-marker"],
+  ["scatter", ".apexcharts-marker"],
+]) {
+  test(`shows a data point link in a ${type} tooltip`, async ({ page }) => {
+    await renderChart(page, `link-${type}`);
+
+    const marks = page.locator(`#test-chart ${mark}`);
+    await marks.nth(0).hover({ force: true });
+    await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
+      1,
+    );
+  });
+}
+
+test("links each slice of a pie chart from its own row", async ({ page }) => {
+  const chart = await renderChart(page, "link-pie");
+
+  expect(chart.failures).toEqual([]);
+  const slices = page.locator("#test-chart .apexcharts-pie-area");
+  const link = page.locator("#test-chart .apexcharts-tooltip a");
+  await slices.nth(0).hover();
+  await expect(link).toHaveAttribute("href", "/linked.sql");
+  await slices.nth(1).hover();
+  await expect(link).toHaveAttribute("href", "/linked-too.sql");
+});
+
+test("formats date ranges in a linked tooltip", async ({ page }) => {
+  await renderChart(page, "link");
+
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
+  await expect(
+    page.locator("#test-chart .apexcharts-tooltip"),
+  ).not.toContainText("1709251200000");
 });
 
 test("leaves a treemap chart alone", async ({ page }) => {
