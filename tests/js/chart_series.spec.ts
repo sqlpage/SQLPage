@@ -37,16 +37,31 @@ test("uses a continuous axis for numeric Cartesian x values", () => {
   const numeric = [series("a", { x: 1, y: 1 }, { x: 12, y: 12 })];
 
   for (const type of ["line", "area", "bar", "scatter", "bubble"])
-    assert.equal(xaxis_type_for(numeric, type, false, false), "numeric");
+    assert.equal(
+      xaxis_type_for(numeric, {
+        chart_type: type,
+        is_timeseries: false,
+        is_horizontal: false,
+      }),
+      "numeric",
+    );
 });
 
 test("keeps text and time x values on their respective axes", () => {
   assert.equal(
-    xaxis_type_for([series("a", { x: "Q1", y: 1 })], "bar", false, false),
+    xaxis_type_for([series("a", { x: "Q1", y: 1 })], {
+      chart_type: "bar",
+      is_timeseries: false,
+      is_horizontal: false,
+    }),
     "category",
   );
   assert.equal(
-    xaxis_type_for([series("a", { x: 1, y: 1 })], "bar", true, false),
+    xaxis_type_for([series("a", { x: 1, y: 1 })], {
+      chart_type: "bar",
+      is_timeseries: true,
+      is_horizontal: false,
+    }),
     "datetime",
   );
 });
@@ -55,8 +70,22 @@ test("does not turn category-oriented charts into numeric axes", () => {
   const numeric = [series("a", { x: 1, y: 1 })];
 
   for (const type of ["heatmap", "rangeBar", "pie", "treemap"])
-    assert.equal(xaxis_type_for(numeric, type, false, false), undefined);
-  assert.equal(xaxis_type_for(numeric, "bar", false, true), undefined);
+    assert.equal(
+      xaxis_type_for(numeric, {
+        chart_type: type,
+        is_timeseries: false,
+        is_horizontal: false,
+      }),
+      undefined,
+    );
+  assert.equal(
+    xaxis_type_for(numeric, {
+      chart_type: "bar",
+      is_timeseries: false,
+      is_horizontal: true,
+    }),
+    undefined,
+  );
 });
 
 test("merged_x_values keeps the order the series agree on", () => {
