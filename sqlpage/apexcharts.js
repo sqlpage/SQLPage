@@ -419,9 +419,10 @@ sqlpage_chart = (() => {
     tooltip.className = "apexcharts-tooltip-text";
     tooltip.style.fontFamily = "inherit";
 
-    const seriesName = document.createElement("div");
+    const seriesName = document.createElement(link ? "a" : "div");
     seriesName.className = "apexcharts-tooltip-y-group";
     seriesName.style.fontWeight = "bold";
+    if (seriesName instanceof HTMLAnchorElement) seriesName.href = link;
     seriesName.innerText = name;
     tooltip.appendChild(seriesName);
 
@@ -448,7 +449,6 @@ sqlpage_chart = (() => {
       axisValue.appendChild(valueSpan);
       tooltip.appendChild(axisValue);
     }
-    addLinkToTooltip(tooltip, link);
     return tooltip.outerHTML;
   }
 
@@ -470,18 +470,6 @@ sqlpage_chart = (() => {
       },
       true,
     );
-  }
-
-  /** @param {HTMLElement} tooltip @param {string|undefined} link */
-  function addLinkToTooltip(tooltip, link) {
-    if (!link) return;
-    const linkContainer = document.createElement("div");
-    linkContainer.className = "apexcharts-tooltip-y-group";
-    const anchor = document.createElement("a");
-    anchor.href = link;
-    anchor.textContent = "Open link";
-    linkContainer.appendChild(anchor);
-    tooltip.appendChild(linkContainer);
   }
 
   return sqlpage_chart;

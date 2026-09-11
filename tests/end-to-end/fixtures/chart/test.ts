@@ -373,8 +373,10 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
   await renderChart(page, "link");
 
   await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
-  const link = page.locator("#test-chart .apexcharts-tooltip a");
-  await expect(link).toHaveText("Open link");
+  const link = page.locator(
+    "#test-chart .apexcharts-tooltip .apexcharts-tooltip-text > a",
+  );
+  await expect(link).toHaveText("Design");
   await expect(link).toHaveAttribute(
     "href",
     "/workpackage_edit.sql?workpackage_name=Design",
