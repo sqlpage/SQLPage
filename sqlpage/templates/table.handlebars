@@ -45,7 +45,9 @@
                                     {{~#if (array_contains_case_insensitive ../../raw_numbers @key)}} data-raw_number="1"{{/if~}}
                                     {{~#if (array_contains_case_insensitive ../../money @key)}} data-money="1"{{/if~}}
                                 >
-                                    {{~#if ../../sort~}}
+                                    {{~#if (array_contains_case_insensitive (to_array ../../server_sort_column) @key)~}}
+                                        <button class="table-sort sort d-inline" data-server-sort-column="{{@key}}">{{@key}}</button>
+                                    {{~else if ../../sort~}}
                                         <button class="table-sort sort d-inline" data-sort="{{@key}}">{{@key}}</button>
                                     {{~else~}}
                                         {{~@key~}}

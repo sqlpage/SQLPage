@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## Unreleased
+
+- The table component supports `server_sort_column`. Columns named by this property reload the current page with a `sort_<column>=ASCENDING|DESCENDING` URL parameter when their headers are clicked, enabling database-side sorting before pagination.
+
 ## v0.46.1
 
 - Fixed a regression introduced in v0.46 that could replace a variable with `NULL` while building a value that also used database expressions and `sqlpage.*` functions. For example, this API request could lose `john.doe` and produce a URL ending at `https://api.example.com/`:

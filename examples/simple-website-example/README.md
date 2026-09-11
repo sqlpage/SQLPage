@@ -6,6 +6,7 @@ This website illustrates how to create a basic Create-Read-Update-Delete (CRUD) 
 It has the following bsic features:
 
  - Displays a list of user names using the [list component](https://sql-page.com/documentation.sql?component=list#component) (in [`index.sql`](./index.sql#L14-L20))
+ - Displays an admin table whose user-name column uses [server-side table sorting](https://sql-page.com/documentation.sql?component=table#component) (in [`table.sql`](./table.sql))
  - Add a new user name to the list through a [form](https://sql-page.com/documentation.sql?component=form#component) (in [`index.sql`](./index.sql#L1-L9))
  - View a user's personal page by clicking on a name in the list (in [`user.sql`](./user.sql))
  - Delete a user from the list by clicking on the delete button in the user's personal page (in [`delete.sql`](./delete.sql))

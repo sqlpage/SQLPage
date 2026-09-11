@@ -31,17 +31,24 @@ function setup_table(root_el) {
   const table_el = root_el.querySelector("table");
   if (!table_el) return;
   /** @type {NodeListOf<HTMLElement>} */
-  const sort_button_els = table_el.querySelectorAll("button.sort[data-sort]");
+  const sort_button_els = table_el.querySelectorAll("button.sort");
   const sort_buttons = [...sort_button_els];
+  const client_sort_buttons = sort_buttons.filter(
+    (button) => !button.dataset.serverSortColumn,
+  );
+  const server_sort_buttons = sort_buttons.filter(
+    (button) => !!button.dataset.serverSortColumn,
+  );
   const item_parent = table_el.querySelector("tbody");
-  const has_sort = sort_buttons.length > 0;
+  const has_client_sort = client_sort_buttons.length > 0;
 
-  if (search_input || has_sort) {
-    const items = table_parse_data(table_el, sort_buttons);
+  if (search_input || has_client_sort) {
+    const items = table_parse_data(table_el, client_sort_buttons);
     if (search_input) setup_table_search_behavior(search_input, items);
-    if (has_sort && item_parent)
-      setup_sort_behavior(sort_buttons, items, item_parent);
+    if (has_client_sort && item_parent)
+      setup_sort_behavior(client_sort_buttons, items, item_parent);
   }
+  setup_server_sort_behavior(server_sort_buttons);
 
   // Change number format AFTER parsing and storing the sort keys
   apply_number_formatting(table_el);
@@ -157,6 +164,36 @@ function setup_sort_behavior(sort_buttons, items, item_parent) {
       item_parent.append(...items.map((item) => item.el));
     });
   });
+}
+
+/**
+ * Reloads the current page with the selected server-side sort column and direction.
+ * @param {HTMLElement[]} sort_buttons
+ */
+function setup_server_sort_behavior(sort_buttons) {
+  const current_url = new URL(window.location.href);
+  for (const button of sort_buttons) {
+    const column = button.dataset.serverSortColumn;
+    if (!column) continue;
+
+    const parameter = `sort_${column}`;
+    const direction = current_url.searchParams.get(parameter);
+    if (direction === "ASCENDING") button.classList.add("asc");
+    if (direction === "DESCENDING") button.classList.add("desc");
+
+    button.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const next_direction =
+        url.searchParams.get(parameter) === "ASCENDING"
+          ? "DESCENDING"
+          : "ASCENDING";
+      for (const key of [...url.searchParams.keys()]) {
+        if (key.startsWith("sort_")) url.searchParams.delete(key);
+      }
+      url.searchParams.set(parameter, next_direction);
+      window.location.assign(url.toString());
+    });
+  }
 }
 
 function sqlpage_table() {
