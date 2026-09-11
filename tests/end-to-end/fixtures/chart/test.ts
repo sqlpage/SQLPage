@@ -392,6 +392,8 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
     };
   });
   expect(colors.link).toBe(colors.tooltip);
+  await link.hover();
+  await expect(link).toBeVisible();
   await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
   await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
     0,
@@ -414,6 +416,23 @@ for (const [type, mark] of [
     await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
       1,
     );
+  });
+}
+
+for (const [type, mark] of [
+  ["bar", ".apexcharts-bar-area"],
+  ["scatter", ".apexcharts-marker"],
+]) {
+  test(`keeps a data point link open when entering a ${type} tooltip`, async ({
+    page,
+  }) => {
+    await renderChart(page, `link-${type}`);
+
+    await page.locator(`#test-chart ${mark}`).nth(0).hover({ force: true });
+    const link = page.locator("#test-chart .apexcharts-tooltip a");
+    await expect(link).toHaveCount(1);
+    await link.hover();
+    await expect(link).toBeVisible();
   });
 }
 
