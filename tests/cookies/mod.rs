@@ -31,6 +31,12 @@ async fn zero_turns_off_a_cookie_protection() {
 }
 
 #[actix_web::test]
+async fn a_log_row_does_not_end_the_header_phase() {
+    let header = set_cookie_header("/tests/cookies/log_before_cookie.sql").await;
+    assert!(header.starts_with("session=abc123"), "{header}");
+}
+
+#[actix_web::test]
 async fn removing_a_cookie_expires_it() {
     let header = set_cookie_header("/tests/cookies/remove_cookie.sql").await;
     assert!(header.starts_with("session=;"), "{header}");
