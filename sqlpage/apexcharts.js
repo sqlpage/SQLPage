@@ -1,5 +1,3 @@
-/* !include https://cdn.jsdelivr.net/npm/apexcharts@7.1.0/dist/apexcharts.min.js */
-
 sqlpage_chart = (() => {
   function sqlpage_chart() {
     /** @type {NodeListOf<HTMLElement>} */

@@ -1,5 +1,3 @@
-/* !include https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/js/tom-select.popular.min.js */
-
 function sqlpage_select_dropdown() {
   /** @type {NodeListOf<HTMLSelectElement>} */
   const selects = document.querySelectorAll("[data-pre-init=select-dropdown]");
