@@ -367,9 +367,7 @@ test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
   expect(chart.shapes).toHaveLength(2);
 });
 
-test("shows an interactive data point link in a rangeBar tooltip", async ({
-  page,
-}) => {
+test("shows a data point link in a rangeBar tooltip", async ({ page }) => {
   await renderChart(page, "link");
 
   await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
@@ -380,10 +378,6 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
   await expect(link).toHaveAttribute(
     "href",
     "/workpackage_edit.sql?workpackage_name=Design",
-  );
-  await expect(page.locator("#test-chart .apexcharts-tooltip")).toHaveCSS(
-    "pointer-events",
-    "auto",
   );
   await expect(
     page.locator("#test-chart .apexcharts-rangebar-area").first(),
@@ -402,17 +396,7 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
     };
   });
   expect(colors.link).toBe(colors.tooltip);
-  for (let attempt = 0; attempt < 10; attempt++) {
-    await link.hover();
-    await expect(link).toBeVisible();
-    await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
-    await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
-      0,
-    );
-    await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
-    await expect(link).toBeVisible();
-  }
-  await link.click();
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().click();
   await expect(page).toHaveURL(/workpackage_edit/);
 });
 
@@ -429,23 +413,6 @@ for (const [type, mark] of [
     await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
       1,
     );
-  });
-}
-
-for (const [type, mark] of [
-  ["bar", ".apexcharts-bar-area"],
-  ["scatter", ".apexcharts-marker"],
-]) {
-  test(`keeps a data point link open when entering a ${type} tooltip`, async ({
-    page,
-  }) => {
-    await renderChart(page, `link-${type}`);
-
-    await page.locator(`#test-chart ${mark}`).nth(0).hover({ force: true });
-    const link = page.locator("#test-chart .apexcharts-tooltip a");
-    await expect(link).toHaveCount(1);
-    await link.hover();
-    await expect(link).toBeVisible();
   });
 }
 

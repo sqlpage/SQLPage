@@ -368,6 +368,7 @@ sqlpage_chart = (() => {
       },
       tooltip: {
         fillSeriesColor: false,
+        interactive: has_point_links,
         custom: has_point_links
           ? (args) => chartTooltip(args, points)
           : chart_type === "bubble" || chart_type === "scatter"
@@ -405,7 +406,6 @@ sqlpage_chart = (() => {
     if (data.xticks) options.xaxis.tickAmount = data.xticks;
     const chart = new ApexCharts(chartContainer, options);
     chart.render();
-    keepLinkedTooltipOpen(chartContainer);
     if (window.charts) window.charts.push(chart);
     else window.charts = [chart];
     c.removeAttribute("data-pre-init");
@@ -468,22 +468,6 @@ sqlpage_chart = (() => {
 
   function bubbleTooltip(args) {
     return chartTooltip(args, []);
-  }
-
-  /** @param {HTMLElement} chartContainer */
-  function keepLinkedTooltipOpen(chartContainer) {
-    chartContainer.addEventListener(
-      "mouseout",
-      (event) => {
-        const nextTarget = event.relatedTarget;
-        if (
-          nextTarget instanceof Element &&
-          nextTarget.closest(".apexcharts-tooltip")?.querySelector("a")
-        )
-          event.stopPropagation();
-      },
-      true,
-    );
   }
 
   return sqlpage_chart;

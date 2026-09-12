@@ -64,18 +64,6 @@ code {
   color: inherit;
 }
 
-.apexcharts-tooltip.apexcharts-active:has(a) {
-  isolation: isolate;
-  pointer-events: auto;
-}
-
-.apexcharts-tooltip.apexcharts-active:has(a)::before {
-  content: "";
-  position: absolute;
-  inset: -12px;
-  z-index: -1;
-}
-
 .apexcharts-tooltip a {
   color: currentColor;
   text-decoration: underline;
