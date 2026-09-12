@@ -64,6 +64,16 @@ code {
   color: inherit;
 }
 
+.apexcharts-tooltip a {
+  color: currentColor;
+  text-decoration: underline;
+}
+
+.apexcharts-canvas:has(.apexcharts-tooltip.apexcharts-active a)
+  .apexcharts-svg {
+  cursor: pointer;
+}
+
 /** table **/
 .table-freeze-headers thead {
   position: sticky;

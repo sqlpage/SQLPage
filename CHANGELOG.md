@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- **Beta:** Chart data points can now include a `link`. The link is shown in an interactive tooltip, and clicking the data point itself also follows it. Interactive tooltips depend on [ApexCharts PR #5307](https://github.com/apexcharts/apexcharts.js/pull/5307).
+
 ## v0.46.2
 
 - Numeric x values on Cartesian charts now explicitly use a continuous numeric axis, preventing fractional tick positions from being displayed as misleading rounded integers.
