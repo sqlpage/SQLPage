@@ -2,7 +2,6 @@
 
 ## unreleased
 
-- Chart data points can now include a `link`, which is shown as a clickable link in the point's tooltip.
 - Numeric x values on Cartesian charts now explicitly use a continuous numeric axis, preventing fractional tick positions from being displayed as misleading rounded integers.
 
 ## v0.46.1
