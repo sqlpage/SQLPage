@@ -2,7 +2,7 @@
 
 ## unreleased
 
-- Chart data points can now include a `link`, which is shown as a clickable link in the point's tooltip.
+- **Beta:** Chart data points can now include a `link`. The link is shown in an interactive tooltip, and clicking the data point itself also follows it. Interactive tooltips depend on [upstream ApexCharts support](https://github.com/apexcharts/apexcharts.js/issues/4469).
 
 ## v0.46.2
 

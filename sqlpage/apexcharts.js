@@ -258,6 +258,7 @@ sqlpage_chart = (() => {
       chart_type === "rangeBar" || (chart_type === "bar" && !!data.horizontal);
     const value_axis = inverted ? "x" : "y";
     const category_axis = inverted ? "y" : "x";
+    const has_point_links = points.some((point) => point[5]);
     const options = {
       annotations: {
         [`${value_axis}axis`]: reference_lines(
@@ -288,6 +289,12 @@ sqlpage_chart = (() => {
         },
         zoom: {
           enabled: false,
+        },
+        events: {
+          dataPointSelection: (_event, _chart, args) => {
+            const link = pointLink(args, points);
+            if (link) window.location.assign(link);
+          },
         },
       },
       theme: {
@@ -361,7 +368,7 @@ sqlpage_chart = (() => {
       },
       tooltip: {
         fillSeriesColor: false,
-        custom: points.some((point) => point[5])
+        custom: has_point_links
           ? (args) => chartTooltip(args, points)
           : chart_type === "bubble" || chart_type === "scatter"
             ? bubbleTooltip
@@ -413,7 +420,7 @@ sqlpage_chart = (() => {
     const point = has_series_data
       ? series.data[dataPointIndex]
       : { y: raw_point?.[2], z: raw_point?.[4] };
-    const link = has_series_data ? point?.link : raw_point?.[5];
+    const link = pointLink({ seriesIndex, dataPointIndex, w }, raw_points);
 
     const tooltip = document.createElement("div");
     tooltip.className = "apexcharts-tooltip-text";
@@ -450,6 +457,13 @@ sqlpage_chart = (() => {
       tooltip.appendChild(axisValue);
     }
     return tooltip.outerHTML;
+  }
+
+  function pointLink({ seriesIndex, dataPointIndex, w }, raw_points) {
+    const series = w.config.series[seriesIndex];
+    return Array.isArray(series?.data)
+      ? series.data[dataPointIndex]?.link
+      : raw_points[seriesIndex]?.[5];
   }
 
   function bubbleTooltip(args) {

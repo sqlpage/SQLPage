@@ -385,6 +385,14 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
     "pointer-events",
     "auto",
   );
+  await expect(
+    page.locator("#test-chart .apexcharts-rangebar-area").first(),
+  ).toHaveCSS("cursor", "pointer");
+  await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
+  await expect(
+    page.locator("#test-chart .apexcharts-rangebar-area").nth(1),
+  ).not.toHaveCSS("cursor", "pointer");
+  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
   const colors = await link.evaluate((anchor) => {
     const tooltip = anchor.closest(".apexcharts-tooltip");
     if (!tooltip) throw new Error("Link has no tooltip");
@@ -394,13 +402,16 @@ test("shows an interactive data point link in a rangeBar tooltip", async ({
     };
   });
   expect(colors.link).toBe(colors.tooltip);
-  await link.hover();
-  await expect(link).toBeVisible();
-  await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
-  await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
-    0,
-  );
-  await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await link.hover();
+    await expect(link).toBeVisible();
+    await page.locator("#test-chart .apexcharts-rangebar-area").nth(1).hover();
+    await expect(page.locator("#test-chart .apexcharts-tooltip a")).toHaveCount(
+      0,
+    );
+    await page.locator("#test-chart .apexcharts-rangebar-area").first().hover();
+    await expect(link).toBeVisible();
+  }
   await link.click();
   await expect(page).toHaveURL(/workpackage_edit/);
 });
