@@ -53,7 +53,7 @@ sqlpage_chart = (() => {
   /** @typedef {number|string|Date} XValue */
   /** @typedef { {x:XValue, y:number|null, z?:number, fillColor?:string} } ChartPoint */
   /** @typedef { {name:string, data:ChartPoint[]} } ChartSeries */
-  /** @typedef { { [name:string]: ChartSeries } } Series */
+  /** @typedef { Map<string, ChartSeries> } Series */
 
   /** @param {XValue} x @returns {number|string} equal x values share a key */
   const x_key = (x) => (x instanceof Date ? x.getTime() : x);
@@ -199,9 +199,11 @@ sqlpage_chart = (() => {
     const points = data.points.filter(Array.isArray);
     const reference_rows = data.points.filter((row) => !Array.isArray(row));
     /** @type { Series } */
-    const series_map = {};
+    const series_map = new Map();
     for (const [name, old_x, old_y, color, z] of points) {
-      series_map[name] = series_map[name] || { name, data: [] };
+      /** @type {ChartSeries} */
+      const point_series = series_map.get(name) ?? { name, data: [] };
+      series_map.set(name, point_series);
       let x = old_x;
       let y = old_y;
       if (is_timeseries) {
@@ -210,7 +212,7 @@ sqlpage_chart = (() => {
           y = y.map((y) => new Date(y).getTime());
         else x = new Date(x);
       }
-      series_map[name].data.push({ x, y, z, fillColor: named_color(color) });
+      point_series.data.push({ x, y, z, fillColor: named_color(color) });
     }
     if (data.xmin == null) data.xmin = undefined;
     if (data.xmax == null) data.xmax = undefined;
@@ -224,7 +226,7 @@ sqlpage_chart = (() => {
     ];
     let colors = palette;
 
-    let series = Object.values(series_map);
+    let series = [...series_map.values()];
     const xaxis_type = xaxis_type_for(
       series,
       chart_type,
