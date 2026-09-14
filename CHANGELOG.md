@@ -5,6 +5,7 @@
 ## v0.46.2
 
 - Numeric x values on Cartesian charts now explicitly use a continuous numeric axis, preventing fractional tick positions from being displayed as misleading rounded integers.
+- `xticks` now represents the requested number of tick positions on numeric x-axes, rather than the number of intervals between them.
 
 ## v0.46.1
 
