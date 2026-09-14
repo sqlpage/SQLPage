@@ -9,7 +9,7 @@ declare global {
         config: {
           chart: { type: string; stacked: boolean };
           xaxis: { type?: string; tickAmount?: number };
-          series: { name: string; data?: ChartPoint[] }[];
+          series: { name: string | number; data?: ChartPoint[] }[];
         };
         globals: { labels: (string | number)[] };
       };
@@ -485,6 +485,25 @@ test("keeps the color of the series when a row names a color SQLPage does not kn
 
   expect(unknown.failures).toEqual([]);
   expect(fills(unknown)).toEqual(fills(plain));
+});
+
+test("renders series named after built-in JavaScript properties", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "builtin-series-names");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.series.map((s) => s.name)).toEqual(["toString", "constructor"]);
+  expect(chart.shapes).toHaveLength(2);
+});
+
+test("keeps numeric series names in the order their rows came back in", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "numeric-series-names");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.series.map((s) => s.name)).toEqual([2024, 2023, "total"]);
 });
 
 test("keeps coloring reference lines from their own row", async ({ page }) => {
