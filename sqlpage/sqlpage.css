@@ -50,6 +50,10 @@ td > p {
   --tblr-datagrid-item-width: 6rem;
 }
 
+.sqlpage-big-number-card {
+  --tblr-card-spacer-y: 1rem;
+}
+
 code {
   font-size: 100%;
 }
