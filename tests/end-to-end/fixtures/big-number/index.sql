@@ -1,3 +1,5 @@
+SELECT 'shell' AS component, COALESCE($theme, 'light') AS theme;
+
 SELECT
     'big_number' AS component,
     2 AS columns;
@@ -14,3 +16,8 @@ SELECT
     '5,678' AS value,
     'blue' AS color,
     '#linked-color' AS value_link;
+
+SELECT
+    'default-color' AS id,
+    'Default value' AS title,
+    '9,012' AS value;
