@@ -22,7 +22,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('progress_percent', 'The value of the progress (0-100).', 'INTEGER', FALSE, TRUE),
     ('progress_color', 'The color of the progress bar (e.g., "primary", "success", "danger").', 'TEXT', FALSE, TRUE),
     ('dropdown_item', 'A list of JSON objects containing links. e.g. {"label":"This week", "link":"?days=7"}', 'JSON', FALSE, TRUE),
-    ('color', 'The color of the card', 'COLOR', FALSE, TRUE)
+    ('color', 'The color of the card background and its main value.', 'COLOR', FALSE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES

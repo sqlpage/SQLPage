@@ -8,7 +8,7 @@
   {{#unless ../columns}}style="min-width: 9rem;"{{/unless}}
   {{~#if id}} id="{{id}}"{{/if~}}
   >
-    <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}">
+    <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}" style="--tblr-card-spacer-y: 1rem;">
       <div class="card-body d-flex flex-column">
         
         {{#if title}}
@@ -47,7 +47,7 @@
         {{/if}}
        
         <div class="d-flex align-items-center mt-1">
-          <div class="h1 {{#if description}}mb-3{{else}}mb-0{{/if}} mt-auto text-nowrap text-truncate">
+          <div class="h1 {{#if description}}mb-3{{else}}mb-0{{/if}} mt-auto text-nowrap text-truncate {{#if color}}text-{{color}}{{/if}}">
             {{#if value_link}}
               <a href="{{value_link}}"
                  class="text-decoration-none"
