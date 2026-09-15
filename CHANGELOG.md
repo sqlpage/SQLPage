@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- Big number cards with a `color` once again display their main value in that color in light and dark themes, including values with a link. Their compact vertical padding has also been restored.
+
 ## v0.46.2
 
 - Numeric x values on Cartesian charts now explicitly use a continuous numeric axis, preventing fractional tick positions from being displayed as misleading rounded integers.
