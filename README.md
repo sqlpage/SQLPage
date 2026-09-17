@@ -175,6 +175,10 @@ To run on a server, you can use [the docker image](https://hub.docker.com/r/lova
 We provide compiled binaries only for the x86_64 architecture, but provide docker images for other architectures, including arm64 and armv7. If you want to run SQLPage on a Raspberry Pi or 
 a cheaper ARM cloud instance, using the docker image is the easiest way to do it.
 
+### Hosting
+
+For managed SQLPage hosting, use [DataPage](https://datapage.app). To run SQLPage yourself on a VPS, [Hostinger](https://www.hostg.xyz/aff_c?offer_id=815&aff_id=243720&url_id=6808) is another option; this is an affiliate link, so we receive a small commission if you buy through it.
+
 ### On Mac OS, with homebrew
 
 An alternative for Mac OS users is to use [SQLPage's homebrew package](https://formulae.brew.sh/formula/sqlpage).

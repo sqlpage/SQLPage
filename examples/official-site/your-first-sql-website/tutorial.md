@@ -181,6 +181,9 @@ To deploy your SQLPage website online, the easiest way is to use [DataPage.app](
 a managed hosting service for SQLPage websites maintained by the same people who develop SQLPage.
 Just create an account, and follow the instructions to upload your website to our servers. It will be live in seconds!
 
+### Using Hostinger
+Alternatively, you can use a [Hostinger VPS](https://www.hostg.xyz/aff_c?offer_id=815&aff_id=243720&url_id=6808) to run SQLPage yourself. DataPage is the simpler, SQLPage-specific managed option; a VPS gives you more control, but you are responsible for the server, updates, networking, HTTPS, and database configuration. This is an affiliate link, so we receive a small commission if you make a purchase through it.
+
 ### Manually
 If you prefer to host your website yourself, you can use a cloud provider or a VPS provider. You will need to:
 - Configure domain name resolution to point to your server
@@ -196,4 +199,4 @@ If you prefer to host your website yourself, you can use a cloud provider or a V
 - Read the [SQLPage documentation](/documentation.sql) to learn about all the components available in SQLPage
 - Read about [SQLPage's extensions to SQL](/extensions-to-sql) for a specification of the SQL syntax you can use in SQLPage, the data types used when exchanging data with the browser and with the database, a clear explanation of how *SQLPage variables* and *SQLPage functions* work.
 - Join the [SQLPage community](https://github.com/sqlpage/SQLPage/discussions) to ask questions and share your projects
-- If you like videos better, check this series that shows how to build and deploy your app from scratch [SQLPage on Youtube](https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_) 
+- If you like videos better, check this series that shows how to build and deploy your app from scratch [SQLPage on Youtube](https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_)
