@@ -259,7 +259,7 @@ jobs:
             ref_scope="pr-${{ github.event.pull_request.number }}"
           fi
 
-          recipe_hash="${{ hashFiles('Dockerfile', '.cargo/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**') }}"
+          recipe_hash="${{ hashFiles('Dockerfile', '.cargo/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**', 'package.json', 'package-lock.json') }}"
           {
             echo "current=sqlpage-${ref_scope}${{ matrix.tag_suffix }}-${recipe_hash}"
             echo "main=sqlpage-main${{ matrix.tag_suffix }}-${recipe_hash}"
@@ -339,7 +339,7 @@ jobs:
             ref_scope="pr-${{ github.event.pull_request.number }}"
           fi
 
-          recipe_hash="${{ hashFiles('Dockerfile', '.cargo/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**') }}"
+          recipe_hash="${{ hashFiles('Dockerfile', '.cargo/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**', 'package.json', 'package-lock.json') }}"
           {
             echo "artifact=sqlpage-${ref_scope}-linux-amd64-hurl-${recipe_hash}"
             echo "current=sqlpage-${ref_scope}-linux-amd64-${recipe_hash}"

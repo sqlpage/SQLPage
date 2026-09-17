@@ -1,3 +1,5 @@
+import { add_init_fn } from "./init.js";
+
 function sqlpage_select_dropdown() {
   /** @type {NodeListOf<HTMLSelectElement>} */
   const selects = document.querySelectorAll("[data-pre-init=select-dropdown]");

@@ -1,5 +1,6 @@
 /target
 node_modules/
+frontend/dist/
 .git/
 sqlpage.db
 docs/

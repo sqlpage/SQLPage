@@ -4,6 +4,7 @@
     "includes": [
       "**",
       "!**/*.svg",
+      "!frontend/dist",
       "!examples/official-site/pgconf",
       "!tests/end-to-end/test-results",
       "!.zed/*.json",

@@ -7,29 +7,35 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const SERVED_ASSETS: &[(&str, &[&str])] = &[
-    ("sqlpage.js", &["@tabler/core/dist/js/tabler.min.js"]),
     (
-        "sqlpage.css",
+        "frontend/dist/sqlpage.js",
+        &["node_modules/@tabler/core/dist/js/tabler.min.js"],
+    ),
+    (
+        "sqlpage/sqlpage.css",
         &[
-            "@tabler/core/dist/css/tabler.min.css",
-            "tom-select/dist/css/tom-select.bootstrap5.css",
-            "@tabler/core/dist/css/tabler-vendors.min.css",
+            "node_modules/@tabler/core/dist/css/tabler.min.css",
+            "node_modules/tom-select/dist/css/tom-select.bootstrap5.css",
+            "node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
         ],
     ),
-    ("apexcharts.js", &["apexcharts/dist/apexcharts.min.js"]),
     (
-        "tomselect.js",
-        &["tom-select/dist/js/tom-select.popular.min.js"],
+        "frontend/dist/apexcharts.js",
+        &["node_modules/apexcharts/dist/apexcharts.min.js"],
     ),
-    ("favicon.svg", &[]),
+    (
+        "frontend/dist/tomselect.js",
+        &["node_modules/tom-select/dist/js/tom-select.popular.min.js"],
+    ),
+    ("sqlpage/favicon.svg", &[]),
 ];
 
-const ICON_SPRITE: &str = "@tabler/icons-sprite/dist/tabler-sprite.svg";
+const ICON_SPRITE: &str = "node_modules/@tabler/icons-sprite/dist/tabler-sprite.svg";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    for &(name, libraries) in SERVED_ASSETS {
-        build_served_asset(name, libraries);
+    for &(source, libraries) in SERVED_ASSETS {
+        build_served_asset(source, libraries);
     }
     build_icon_map();
     set_odbc_rpath();
@@ -39,29 +45,29 @@ fn out_dir() -> PathBuf {
     PathBuf::from(std::env::var("OUT_DIR").unwrap())
 }
 
-fn open_library(library: &str) -> File {
-    let path = Path::new("node_modules").join(library);
-    println!("cargo:rerun-if-changed={}", path.display());
-    File::open(&path).unwrap_or_else(|err| {
+fn open_input(path: &str) -> File {
+    println!("cargo:rerun-if-changed={path}");
+    File::open(path).unwrap_or_else(|err| {
         panic!(
-            "Unable to read {}: {err}\n\
-             The browser libraries come from npm: run `npm ci` before `cargo build`.",
-            path.display()
+            "Unable to read {path}: {err}\n\
+             The browser assets are built by npm: \
+             run `npm ci && npm run build` before `cargo build`."
         )
     })
 }
 
-fn build_served_asset(name: &str, libraries: &[&str]) {
-    let source = Path::new("sqlpage").join(name);
-    println!("cargo:rerun-if-changed={}", source.display());
-
-    let built = out_dir().join(name);
+fn build_served_asset(source: &str, libraries: &[&str]) {
+    let built = out_dir().join(Path::new(source).file_name().unwrap());
+    // A minified library can end without a semicolon, and the bundle that
+    // follows opens with `(`, which JavaScript would read as a call to it.
+    let is_script = Path::new(source).extension().is_some_and(|ext| ext == "js");
+    let separator: &[u8] = if is_script { b";\n" } else { b"\n" };
     let mut gzipped = gzip::Encoder::new(File::create(&built).unwrap()).unwrap();
     for library in libraries {
-        std::io::copy(&mut open_library(library), &mut gzipped).unwrap();
-        gzipped.write_all(b"\n").unwrap();
+        std::io::copy(&mut open_input(library), &mut gzipped).unwrap();
+        gzipped.write_all(separator).unwrap();
     }
-    std::io::copy(&mut File::open(&source).unwrap(), &mut gzipped).unwrap();
+    std::io::copy(&mut open_input(source), &mut gzipped).unwrap();
     gzipped
         .finish()
         .as_result()
@@ -76,7 +82,7 @@ fn build_served_asset(name: &str, libraries: &[&str]) {
 
 fn build_icon_map() {
     let mut sprite = Vec::with_capacity(3 * 1024 * 1024);
-    open_library(ICON_SPRITE).read_to_end(&mut sprite).unwrap();
+    open_input(ICON_SPRITE).read_to_end(&mut sprite).unwrap();
     let mut icon_map = File::create(out_dir().join("icons.rs")).unwrap();
     icon_map.write_all(b"[").unwrap();
     extract_icons_from_sprite(&sprite, |name, content| {

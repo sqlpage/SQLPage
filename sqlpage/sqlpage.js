@@ -1,3 +1,5 @@
+import { add_init_fn } from "./init.js";
+
 const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
 
 function sqlpage_card() {
@@ -345,12 +347,6 @@ function load_scripts() {
     script.src = js;
     document.head.appendChild(script);
   }
-}
-
-function add_init_fn(f) {
-  document.addEventListener("DOMContentLoaded", f);
-  document.addEventListener("fragment-loaded", f);
-  if (document.readyState !== "loading") setTimeout(f, 0);
 }
 
 function normalize_hash(hash) {
