@@ -12,7 +12,7 @@ const STYLESHEET = [
 ];
 
 const COPIED = {
-  "favicon.svg": "sqlpage/favicon.svg",
+  "favicon.svg": "frontend/src/favicon.svg",
   "tabler-sprite.svg":
     "node_modules/@tabler/icons-sprite/dist/tabler-sprite.svg",
 };
@@ -25,7 +25,7 @@ function refuse(warning) {
 
 async function bundle(entry) {
   const build = await rolldown({
-    input: { [entry]: `sqlpage/${entry}.js` },
+    input: { [entry]: `frontend/src/${entry}.js` },
     onwarn: refuse,
   });
   await build.write({ dir: DIST, format: "iife", minify: true });
@@ -34,7 +34,7 @@ async function bundle(entry) {
 
 async function stylesheet() {
   const vendored = await Promise.all(STYLESHEET.map((s) => readFile(s)));
-  const own = await readFile("sqlpage/sqlpage.css");
+  const own = await readFile("frontend/src/sqlpage.css");
   const parts = [...vendored.map((v) => `${v}\n`), own];
   await writeFile(`${DIST}/sqlpage.css`, parts.join(""));
 }

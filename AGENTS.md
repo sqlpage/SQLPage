@@ -34,7 +34,7 @@ JavaScript where needed.
   retries, and optional `on_connect.sql`/`on_reset.sql` hooks. Database-specific SQL should be isolated or
   covered by the relevant database tests.
 - **Rendering and components** (`src/render.rs`, `src/templates.rs`, `src/dynamic_component.rs`,
-  `src/template_helpers.rs`, `sqlpage/templates/`, `sqlpage/sqlpage.css`, `sqlpage/sqlpage.js`). Built-in components live in `sqlpage/templates/*.handlebars` and cover shells, text,
+  `src/template_helpers.rs`, `sqlpage/templates/`, `frontend/src/`). Built-in components live in `sqlpage/templates/*.handlebars` and cover shells, text,
   tables, lists, cards, charts, forms, navigation, modals, downloads, maps, and more. Query columns map to
   component properties; nested/dynamic components and `sqlpage.run_sql` support composition and lazy loading.
   Custom Handlebars components can be placed in the configured `sqlpage/templates` directory. Raw HTML and
@@ -145,4 +145,4 @@ official documentation website sql tables:
 - Routing: file-based in `src/webserver/routing.rs`. Missing paths use the nearest ancestor `404.sql`; without one, HTML uses `src/default_404.sql` and other formats receive a plain-text 404.
 - Playwright component suites: `tests/end-to-end/fixtures/<suite>/{index.sql,test.ts}` using `tests/end-to-end/fixture.ts`; official-site smoke tests remain in `tests/end-to-end/*.spec.ts`.
 - Follow patterns from similar modules before introducing new abstractions.
-- frontend: see [css](./sqlpage/sqlpage.css) and [js](./sqlpage/sqlpage.js)
+- frontend: see [frontend/src](./frontend/src/), bundled by `npm run build`
