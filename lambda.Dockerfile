@@ -2,7 +2,7 @@ FROM node:26-slim AS frontend
 WORKDIR /usr/src/sqlpage
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
-COPY sqlpage/ sqlpage/
+COPY frontend/src/ frontend/src/
 COPY scripts/build-frontend.mjs scripts/
 RUN node scripts/build-frontend.mjs
 
