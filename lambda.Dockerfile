@@ -14,7 +14,6 @@ RUN cargo init .
 COPY Cargo.toml Cargo.lock ./
 RUN cargo build --release
 COPY . .
-COPY --from=frontend /usr/src/sqlpage/node_modules node_modules
 COPY --from=frontend /usr/src/sqlpage/frontend/dist frontend/dist
 RUN cargo build --release --features lambda-web
 RUN   mv target/release/sqlpage bootstrap && \

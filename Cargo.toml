@@ -12,15 +12,8 @@ include = [
     "/src",
     "/README.md",
     "/build.rs",
-    "/sqlpage",
+    "/sqlpage/templates",
     "/frontend/dist",
-    "/node_modules/@tabler/core/dist/css/tabler.min.css",
-    "/node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
-    "/node_modules/@tabler/core/dist/js/tabler.min.js",
-    "/node_modules/@tabler/icons-sprite/dist/tabler-sprite.svg",
-    "/node_modules/apexcharts/dist/apexcharts.min.js",
-    "/node_modules/tom-select/dist/css/tom-select.bootstrap5.css",
-    "/node_modules/tom-select/dist/js/tom-select.popular.min.js",
 ]
 
 [lints.rust]
