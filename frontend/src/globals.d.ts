@@ -11,17 +11,9 @@ type Untyped = any;
 /** Leaflet, loaded from a CDN by sqlpage_map when a page holds a map. */
 declare const L: Untyped;
 
-/**
- * A Bootstrap a page loaded for itself, preferred over the bundled copy. Its
- * widgets are untyped: naming a few of them here would only claim more than
- * this file knows.
- */
-interface PageBootstrap {
-  [widget: string]: Untyped;
-}
-
 interface Window {
   /** Every chart rendered on the page, in the order they were built. */
   charts?: unknown[];
-  bootstrap?: PageBootstrap;
+  /** A Bootstrap a page loaded for itself, preferred over the bundled copy. */
+  bootstrap?: typeof import("@tabler/core").bootstrap;
 }
