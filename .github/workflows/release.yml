@@ -38,6 +38,11 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
           NODE_OPTIONS: --no-deprecation
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'npm'
+      - run: npm ci --omit=dev --ignore-scripts
       - name: Build
         run: cargo build --profile superoptimized --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
       - name: Upload unsigned Windows artifact
@@ -95,6 +100,11 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
           NODE_OPTIONS: --no-deprecation
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'npm'
+      - run: npm ci --omit=dev --ignore-scripts
       - name: Build
         run: cargo build --profile superoptimized --locked --target x86_64-unknown-linux-gnu --features "odbc-static"
       - uses: actions/upload-artifact@v7
@@ -160,10 +170,15 @@ jobs:
         env:
           NODE_OPTIONS: --no-deprecation
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'npm'
+      - run: npm ci --omit=dev --ignore-scripts
       - name: Publish to crates.io
         run: |
           set +e
-          cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} 2>&1 | tee cargo-publish.log
+          cargo publish --allow-dirty --token ${{ secrets.CRATES_IO_TOKEN }} 2>&1 | tee cargo-publish.log
           status=${PIPESTATUS[0]}
           set -e
           if [ "$status" -ne 0 ]; then

@@ -8,7 +8,19 @@ license = "MIT"
 homepage = "https://sql-page.com/"
 repository = "https://github.com/sqlpage/SQLPage"
 documentation = "https://docs.rs/sqlpage"
-include = ["/src", "/README.md", "/build.rs", "/sqlpage"]
+include = [
+    "/src",
+    "/README.md",
+    "/build.rs",
+    "/sqlpage",
+    "/node_modules/@tabler/core/dist/css/tabler.min.css",
+    "/node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
+    "/node_modules/@tabler/core/dist/js/tabler.min.js",
+    "/node_modules/@tabler/icons-sprite/dist/tabler-sprite.svg",
+    "/node_modules/apexcharts/dist/apexcharts.min.js",
+    "/node_modules/tom-select/dist/css/tom-select.bootstrap5.css",
+    "/node_modules/tom-select/dist/js/tom-select.popular.min.js",
+]
 
 [lints.rust]
 elided_lifetimes_in_paths = "deny"
@@ -144,7 +156,4 @@ tempfile = "3"
 tokio = { version = "1", features = ["rt", "time", "test-util"] }
 
 [build-dependencies]
-awc = { version = "3", features = ["rustls-0_23-webpki-roots"] }
-rustls = "0.23"
-actix-rt = "2.8"
 libflate = "2"

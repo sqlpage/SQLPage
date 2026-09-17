@@ -1,3 +1,8 @@
+FROM --platform=$BUILDPLATFORM node:26-slim AS frontend
+WORKDIR /usr/src/sqlpage
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
 FROM --platform=$BUILDPLATFORM rust:1.95-slim AS builder
 
 WORKDIR /usr/src/sqlpage
@@ -14,6 +19,7 @@ RUN /usr/local/bin/setup-cross-compilation.sh "$TARGETARCH" "$BUILDARCH"
 COPY .cargo/ .cargo/
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY sqlpage/ sqlpage/
+COPY --from=frontend /usr/src/sqlpage/node_modules node_modules
 RUN /usr/local/bin/build-dependencies.sh
 
 COPY . .

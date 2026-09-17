@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
 ## v0.47.0 (unreleased)
+- `cargo install sqlpage`, and any build from the crates.io tarball, no longer needs internet access. The browser libraries now come from npm and ship inside the published crate. Building from a git checkout needs `npm ci` first. Pre-built binaries and the Docker image are unaffected.
 
 ## v0.46.3
 
