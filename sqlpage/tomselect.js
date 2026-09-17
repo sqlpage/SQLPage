@@ -1,3 +1,4 @@
+import TomSelect from "tom-select/popular";
 import { add_init_fn } from "./init.js";
 
 function sqlpage_select_dropdown() {
@@ -27,8 +28,8 @@ function sqlpage_select_dropdown_individual(s) {
     load: sqlpage_load_options_source(s.dataset.options_source),
     valueField: "value",
     labelField: "label",
-    searchField: "label",
-    create: s.dataset.create_new,
+    searchField: ["label"],
+    create: !!s.dataset.create_new,
     maxOptions: null,
     closeAfterSelect: !s.multiple,
     clearAfterSelect: true,

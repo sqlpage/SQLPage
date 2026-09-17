@@ -1,3 +1,4 @@
+import ApexCharts from "apexcharts";
 import { align_series_for, xaxis_type_for } from "./chart_series.js";
 import { add_init_fn } from "./init.js";
 
@@ -301,7 +302,10 @@ const sqlpage_chart = (() => {
     // Numeric axes count intervals; category and time axes use tickAmount as a
     // target for label density.
     if (data.xticks) options.xaxis.tickAmount = data.xticks;
-    const chart = new ApexCharts(chartContainer, options);
+    const chart = new ApexCharts(
+      chartContainer,
+      /** @type {import("apexcharts").ApexOptions} */ (options),
+    );
     chart.render();
     if (window.charts) window.charts.push(chart);
     else window.charts = [chart];
