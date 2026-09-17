@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- OIDC login now sends a URL-safe nonce hash, allowing providers such as Zoho Accounts that reject `=` in nonce values to authenticate successfully.
 - Big number cards with a `color` once again display their main value in that color in light and dark themes, including values with a link. Their compact vertical padding has also been restored.
 
 ## v0.46.2

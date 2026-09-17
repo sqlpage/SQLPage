@@ -1123,13 +1123,16 @@ fn build_auth_url(oidc_state: &OidcState) -> AuthUrl {
 
 fn hash_nonce(nonce: &Nonce) -> String {
     use argon2::PasswordHasher;
+    use base64::Engine as _;
     // low-cost parameters: oidc tokens are short-lived and the source nonce is high-entropy
     let params = argon2::Params::new(8, 1, 1, Some(16)).expect("bug: invalid Argon2 parameters");
     let argon2 = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
     let hash = argon2
         .hash_password(nonce.secret().as_bytes())
         .expect("bug: failed to hash nonce");
-    hash.to_string()
+    // OIDC nonce values appear in the authorization URL. Encoding the PHC
+    // representation makes it URL-safe even with providers that reject `=`.
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hash.to_string())
 }
 
 fn check_nonce(id_token_nonce: Option<&Nonce>, expected_nonce: &Nonce) -> Result<(), String> {
@@ -1141,19 +1144,20 @@ fn check_nonce(id_token_nonce: Option<&Nonce>, expected_nonce: &Nonce) -> Result
 
 fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), String> {
     use argon2::PasswordVerifier;
+    use base64::Engine as _;
 
     log::debug!(
         "Checking nonce: {} == {}",
         id_token_nonce.secret(),
         state_nonce.secret()
     );
-    let hash =
-        argon2::password_hash::phc::PasswordHash::new(id_token_nonce.secret()).map_err(|e| {
-            format!(
-                "Failed to parse state nonce ({}): {e}",
-                id_token_nonce.secret()
-            )
-        })?;
+    let decoded_hash = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(id_token_nonce.secret())
+        .map_err(|e| format!("Failed to decode nonce hash: {e}"))?;
+    let decoded_hash = std::str::from_utf8(&decoded_hash)
+        .map_err(|e| format!("Nonce hash is not valid UTF-8: {e}"))?;
+    let hash = argon2::password_hash::phc::PasswordHash::new(decoded_hash)
+        .map_err(|e| format!("Failed to parse nonce hash: {e}"))?;
     argon2::Argon2::default()
         .verify_password(state_nonce.secret().as_bytes(), &hash)
         .map_err(|e| format!("Failed to verify nonce ({}): {e}", state_nonce.secret()))?;
@@ -1361,6 +1365,21 @@ mod tests {
         let claims: OidcClaims = serde_json::from_str(claims_json)
             .expect("Auth0 returns updated_at as RFC3339 string, not unix timestamp");
         assert!(claims.updated_at().is_some());
+    }
+
+    #[test]
+    fn oidc_nonce_hash_is_base64url_encoded_and_verifiable() {
+        let source_nonce = Nonce::new("test nonce source".to_string());
+        let encoded_hash = hash_nonce(&source_nonce);
+
+        assert!(
+            encoded_hash
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_')),
+            "the nonce sent to the identity provider must be base64url without padding"
+        );
+        nonce_matches(&Nonce::new(encoded_hash), &source_nonce)
+            .expect("a base64url-encoded nonce hash must verify");
     }
 
     #[test]
