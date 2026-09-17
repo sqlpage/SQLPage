@@ -1,4 +1,8 @@
+import { bootstrap as bundled_bootstrap } from "@tabler/core";
 import { add_init_fn } from "./init.js";
+
+// A page may load its own Bootstrap; prefer it over the bundled copy.
+const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
 
 const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
 
@@ -359,8 +363,7 @@ function normalize_hash(hash) {
 }
 
 function open_toasts_for_hash(toasts) {
-  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
-  if (!Toast) return;
+  const Toast = page_bootstrap().Toast;
   const hash = normalize_hash(window.location.hash);
   if (!hash) return;
   for (const toast of toasts) {
@@ -386,8 +389,7 @@ function restore_focus_after_toast(toast, container) {
 }
 
 function sqlpage_toast() {
-  const Toast = (window.bootstrap || window.tabler?.bootstrap)?.Toast;
-  if (!Toast) return;
+  const Toast = page_bootstrap().Toast;
 
   const initialized_toasts = [];
   /** @type {NodeListOf<HTMLElement>} */
@@ -463,7 +465,7 @@ window.addEventListener("hashchange", () =>
 );
 
 function init_bootstrap_components(event) {
-  const bootstrap = window.bootstrap || window.tabler.bootstrap;
+  const bootstrap = page_bootstrap();
   const fragment = event.target;
   for (const el of fragment.querySelectorAll('[data-bs-toggle="tooltip"]')) {
     new bootstrap.Tooltip(el);
@@ -486,8 +488,7 @@ function open_modal_for_hash() {
   if (!hash) return;
   const modal = document.getElementById(hash);
   if (!modal?.classList.contains("modal")) return;
-  const bootstrap_modal =
-    window.tabler.bootstrap.Modal.getOrCreateInstance(modal);
+  const bootstrap_modal = page_bootstrap().Modal.getOrCreateInstance(modal);
   bootstrap_modal.show();
   modal.addEventListener(
     "hidden.bs.modal",
