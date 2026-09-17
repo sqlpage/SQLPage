@@ -4,6 +4,13 @@ import { add_init_fn } from "./init.js";
 // A page may load its own Bootstrap; prefer it over the bundled copy.
 const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
 
+/**
+ * Bootstrap declares getOrCreateInstance on the base class, which returns a
+ * BaseComponent and so loses show().
+ * @typedef {InstanceType<typeof bundled_bootstrap.Toast>} ToastWidget
+ * @typedef {InstanceType<typeof bundled_bootstrap.Modal>} ModalWidget
+ */
+
 const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
 
 function sqlpage_card() {
@@ -368,7 +375,7 @@ function open_toasts_for_hash(toasts) {
   if (!hash) return;
   for (const toast of toasts) {
     if (normalize_hash(toast.dataset.toastTrigger) === hash) {
-      Toast.getOrCreateInstance(toast).show();
+      /** @type {ToastWidget} */ (Toast.getOrCreateInstance(toast)).show();
     }
   }
 }
@@ -413,7 +420,9 @@ function sqlpage_toast() {
     }
 
     toast.removeAttribute("data-pre-init");
-    const instance = Toast.getOrCreateInstance(toast);
+    const instance = /** @type {ToastWidget} */ (
+      Toast.getOrCreateInstance(toast)
+    );
     initialized_toasts.push(toast);
     toast.addEventListener("hidden.bs.toast", () => {
       restore_focus_after_toast(toast, container);
@@ -488,7 +497,9 @@ function open_modal_for_hash() {
   if (!hash) return;
   const modal = document.getElementById(hash);
   if (!modal?.classList.contains("modal")) return;
-  const bootstrap_modal = page_bootstrap().Modal.getOrCreateInstance(modal);
+  const bootstrap_modal = /** @type {ModalWidget} */ (
+    page_bootstrap().Modal.getOrCreateInstance(modal)
+  );
   bootstrap_modal.show();
   modal.addEventListener(
     "hidden.bs.modal",
