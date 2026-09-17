@@ -20,11 +20,7 @@ fi
 
 echo "[3/3] Prefetching raw HTTP assets used by build.rs"
 mapfile -t urls < <(
-    {
-        rg -o --no-filename 'https://[[:alnum:]][[:alnum:].-]*/[^" )]+' build.rs
-        rg -o --no-filename '^/\* !include https://[^ ]+' sqlpage/*.css sqlpage/*.js sqlpage/*.svg \
-            | sed 's#^/\* !include ##'
-    } | sort -u
+    rg -o --no-filename 'https://[[:alnum:]][[:alnum:].-]*/[^" )]+' build.rs | sort -u
 )
 
 for url in "${urls[@]}"; do

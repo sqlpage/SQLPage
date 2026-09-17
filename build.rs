@@ -5,10 +5,37 @@ use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
 use std::hash::Hasher;
 use std::io::Read;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
+
+const SERVED_ASSETS: &[(&str, &[&str])] = &[
+    (
+        "sqlpage.js",
+        &["https://cdn.jsdelivr.net/npm/@tabler/core@1.5.0/dist/js/tabler.min.js"],
+    ),
+    (
+        "sqlpage.css",
+        &[
+            "https://cdn.jsdelivr.net/npm/@tabler/core@1.5.0/dist/css/tabler.min.css",
+            "https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/css/tom-select.bootstrap5.css",
+            "https://cdn.jsdelivr.net/npm/@tabler/core@1.5.0/dist/css/tabler-vendors.min.css",
+        ],
+    ),
+    (
+        "apexcharts.js",
+        &["https://cdn.jsdelivr.net/npm/apexcharts@7.1.0/dist/apexcharts.min.js"],
+    ),
+    (
+        "tomselect.js",
+        &["https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/js/tom-select.popular.min.js"],
+    ),
+    ("favicon.svg", &[]),
+];
+
+const ICON_SPRITE_URL: &str =
+    "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.46.0/dist/tabler-sprite.svg";
 
 #[actix_rt::main]
 async fn main() {
@@ -17,20 +44,18 @@ async fn main() {
         .unwrap();
 
     println!("cargo:rerun-if-changed=build.rs");
-    let c = Rc::new(make_client());
+    let client = Rc::new(make_client());
 
-    for h in [
-        spawn(download_deps(c.clone(), "sqlpage.js")),
-        spawn(download_deps(c.clone(), "sqlpage.css")),
-        spawn(download_tabler_icons(
-            c.clone(),
-            "https://cdn.jsdelivr.net/npm/@tabler/icons-sprite@3.46.0/dist/tabler-sprite.svg",
-        )),
-        spawn(download_deps(c.clone(), "apexcharts.js")),
-        spawn(download_deps(c.clone(), "tomselect.js")),
-        spawn(download_deps(c.clone(), "favicon.svg")),
-    ] {
-        h.await.unwrap();
+    let mut assets = Vec::with_capacity(SERVED_ASSETS.len() + 1);
+    for &(name, libraries) in SERVED_ASSETS {
+        assets.push(spawn(build_served_asset(client.clone(), name, libraries)));
+    }
+    assets.push(spawn(download_tabler_icons(
+        client.clone(),
+        ICON_SPRITE_URL,
+    )));
+    for asset in assets {
+        asset.await.unwrap();
     }
     set_odbc_rpath();
 }
@@ -42,46 +67,38 @@ fn make_client() -> awc::Client {
         .finish()
 }
 
-/// Creates a file with inlined remote files included
-async fn download_deps(client: Rc<awc::Client>, filename: &str) {
-    let path_in = format!("sqlpage/{filename}");
-    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-    let path_out: PathBuf = out_dir.join(filename);
-    // Generate outfile by reading infile and interpreting all comments
-    // like "/* !include https://... */" as a request to include the contents of
-    // the URL in the generated file.
-    println!("cargo:rerun-if-changed={path_in}");
-    let original = File::open(path_in).unwrap();
-    process_input_file(&client, &path_out, original).await;
-    std::fs::write(
-        format!("{}.filename.txt", path_out.display()),
-        hashed_filename(&path_out),
-    )
-    .unwrap();
+fn out_dir() -> PathBuf {
+    PathBuf::from(std::env::var("OUT_DIR").unwrap())
 }
 
-async fn process_input_file(client: &awc::Client, path_out: &Path, original: File) {
-    let mut outfile = gzip::Encoder::new(File::create(path_out).unwrap()).unwrap();
-    for l in BufReader::new(original).lines() {
-        let line = l.unwrap();
-        if line.starts_with("/* !include https://") {
-            let url = line
-                .trim_start_matches("/* !include ")
-                .trim_end_matches(" */");
-            if std::env::var("DOCS_RS").is_err() {
-                copy_url_to_opened_file(client, url, &mut outfile).await;
-            } else {
-                return;
-            }
-            outfile.write_all(b"\n").unwrap();
-        } else {
-            writeln!(outfile, "{line}").unwrap();
+async fn build_served_asset(
+    client: Rc<awc::Client>,
+    name: &'static str,
+    libraries: &'static [&'static str],
+) {
+    let source = Path::new("sqlpage").join(name);
+    println!("cargo:rerun-if-changed={}", source.display());
+
+    let built = out_dir().join(name);
+    let mut gzipped = gzip::Encoder::new(File::create(&built).unwrap()).unwrap();
+    // docs.rs builds without network access, so the libraries are left out there.
+    if std::env::var_os("DOCS_RS").is_none() {
+        for url in libraries {
+            copy_url_to_opened_file(&client, url, &mut gzipped).await;
+            gzipped.write_all(b"\n").unwrap();
         }
     }
-    outfile
+    std::io::copy(&mut File::open(&source).unwrap(), &mut gzipped).unwrap();
+    gzipped
         .finish()
         .as_result()
         .expect("Unable to write compressed frontend asset");
+
+    std::fs::write(
+        format!("{}.filename.txt", built.display()),
+        hashed_filename(&built),
+    )
+    .unwrap();
 }
 
 async fn copy_url_to_opened_file(client: &awc::Client, url: &str, outfile: &mut impl Write) {
@@ -174,8 +191,7 @@ fn make_url_path(url: &str) -> PathBuf {
 }
 
 async fn download_tabler_icons(client: Rc<awc::Client>, sprite_url: &str) {
-    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-    let icon_map_path = out_dir.join("icons.rs");
+    let icon_map_path = out_dir().join("icons.rs");
     let mut sprite_content = Vec::with_capacity(3 * 1024 * 1024);
     copy_url_to_opened_file(&client, sprite_url, &mut sprite_content).await;
     let mut file = File::create(icon_map_path).unwrap();
