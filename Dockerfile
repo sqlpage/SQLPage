@@ -1,7 +1,10 @@
 FROM --platform=$BUILDPLATFORM node:26-slim AS frontend
 WORKDIR /usr/src/sqlpage
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --ignore-scripts
+COPY sqlpage/ sqlpage/
+COPY scripts/build-frontend.mjs scripts/
+RUN node scripts/build-frontend.mjs
 
 FROM --platform=$BUILDPLATFORM rust:1.95-slim AS builder
 
@@ -20,6 +23,7 @@ COPY .cargo/ .cargo/
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY sqlpage/ sqlpage/
 COPY --from=frontend /usr/src/sqlpage/node_modules node_modules
+COPY --from=frontend /usr/src/sqlpage/frontend/dist frontend/dist
 RUN /usr/local/bin/build-dependencies.sh
 
 COPY . .

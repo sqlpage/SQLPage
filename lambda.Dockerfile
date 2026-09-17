@@ -1,7 +1,10 @@
 FROM node:26-slim AS frontend
 WORKDIR /usr/src/sqlpage
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --ignore-scripts
+COPY sqlpage/ sqlpage/
+COPY scripts/build-frontend.mjs scripts/
+RUN node scripts/build-frontend.mjs
 
 FROM rust:1.95-alpine AS builder
 RUN rustup component add clippy rustfmt
@@ -12,6 +15,7 @@ COPY Cargo.toml Cargo.lock ./
 RUN cargo build --release
 COPY . .
 COPY --from=frontend /usr/src/sqlpage/node_modules node_modules
+COPY --from=frontend /usr/src/sqlpage/frontend/dist frontend/dist
 RUN cargo build --release --features lambda-web
 RUN   mv target/release/sqlpage bootstrap && \
       strip --strip-all bootstrap && \
