@@ -1,6 +1,6 @@
 [package]
 name = "sqlpage"
-version = "0.46.2"
+version = "0.46.3"
 edition = "2024"
 description = "Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components."
 keywords = ["web", "sql", "framework"]
@@ -71,7 +71,7 @@ lambda_http = { version = "1.3.0", default-features = false, features = [
 actix-http = { version = "3", optional = true }
 actix-service = { version = "2", optional = true }
 http-body-util = { version = "0.1", optional = true }
-sqlparser = { version = "0.62.0", default-features = false, features = [
+sqlparser = { version = "0.63.0", default-features = false, features = [
     "std",
     "visitor",
 ] }

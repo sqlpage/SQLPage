@@ -1,9 +1,12 @@
 # CHANGELOG.md
 
-## unreleased
+## v0.47.0 (unreleased)
+
+## v0.46.3
 
 - OIDC login now sends a URL-safe nonce hash, allowing providers such as Zoho Accounts that reject `=` in nonce values to authenticate successfully.
 - Big number cards with a `color` once again display their main value in that color in light and dark themes, including values with a link. Their compact vertical padding has also been restored.
+- Updated to [sqlparser v0.63](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.63.0.md) fixing the handling of some advanced database-specific SQL features.
 
 ## v0.46.2
 
