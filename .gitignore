@@ -10,6 +10,7 @@ x.sql
 xbed.sql
 **/sqlpage.bin
 node_modules/
+frontend/dist/
 sqlpage/sqlpage.db
 tests_uploads/
 /test-results/

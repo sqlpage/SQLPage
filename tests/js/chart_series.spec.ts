@@ -1,20 +1,11 @@
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import test from "node:test";
-
-const browser_globals_apexcharts_reads_when_it_loads = {
-  document: { body: null },
-  add_init_fn: () => {},
-};
-Object.assign(globalThis, browser_globals_apexcharts_reads_when_it_loads);
-
-const require = createRequire(import.meta.url);
-const {
+import {
   align_series,
   align_series_for,
   merged_x_values,
   xaxis_type_for,
-} = require("../../sqlpage/apexcharts.js");
+} from "../../sqlpage/chart_series.js";
 
 const ADDS_NOTHING_TO_THE_STACK = 0;
 const LEAVES_A_GAP = null;

@@ -13,6 +13,7 @@ include = [
     "/README.md",
     "/build.rs",
     "/sqlpage",
+    "/frontend/dist",
     "/node_modules/@tabler/core/dist/css/tabler.min.css",
     "/node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
     "/node_modules/@tabler/core/dist/js/tabler.min.js",

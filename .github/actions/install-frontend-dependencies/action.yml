@@ -1,5 +1,5 @@
-name: Install frontend dependencies
-description: Set up Node.js and install the frontend workspace dependencies
+name: Install and build the frontend
+description: Set up Node.js, install the frontend workspace dependencies and bundle the browser assets
 runs:
   using: composite
   steps:
@@ -8,4 +8,6 @@ runs:
         node-version: 26
         cache: npm
     - run: npm ci --ignore-scripts
+      shell: bash
+    - run: npm run build
       shell: bash
