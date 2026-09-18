@@ -13,6 +13,7 @@ const {
   align_series,
   align_series_for,
   merged_x_values,
+  xaxis_type_for,
 } = require("../../sqlpage/apexcharts.js");
 
 const ADDS_NOTHING_TO_THE_STACK = 0;
@@ -31,6 +32,32 @@ type Series = { name: string; data: Point[] };
 
 const series = (name: string, ...data: Point[]): Series => ({ name, data });
 const xs = (s: Series) => s.data.map((p) => p.x);
+
+test("uses a continuous axis for numeric Cartesian x values", () => {
+  const numeric = [series("a", { x: 1, y: 1 }, { x: 12, y: 12 })];
+
+  for (const type of ["line", "area", "bar", "scatter", "bubble"])
+    assert.equal(xaxis_type_for(numeric, type, false, false), "numeric");
+});
+
+test("keeps text and time x values on their respective axes", () => {
+  assert.equal(
+    xaxis_type_for([series("a", { x: "Q1", y: 1 })], "bar", false, false),
+    "category",
+  );
+  assert.equal(
+    xaxis_type_for([series("a", { x: 1, y: 1 })], "bar", true, false),
+    "datetime",
+  );
+});
+
+test("does not turn category-oriented charts into numeric axes", () => {
+  const numeric = [series("a", { x: 1, y: 1 })];
+
+  for (const type of ["heatmap", "rangeBar", "pie", "treemap"])
+    assert.equal(xaxis_type_for(numeric, type, false, false), undefined);
+  assert.equal(xaxis_type_for(numeric, "bar", false, true), undefined);
+});
 
 test("merged_x_values keeps the order the series agree on", () => {
   const merged = merged_x_values([

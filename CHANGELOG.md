@@ -1,5 +1,18 @@
 # CHANGELOG.md
 
+## v0.47.0 (unreleased)
+- `cargo install sqlpage`, and any build from the crates.io tarball, no longer needs internet access. The browser libraries now come from npm and ship inside the published crate. Building from a git checkout needs `npm ci` first. Pre-built binaries and the Docker image are unaffected.
+
+## v0.46.3
+
+- OIDC login now sends a URL-safe nonce hash, allowing providers such as Zoho Accounts that reject `=` in nonce values to authenticate successfully.
+- Big number cards with a `color` once again display their main value in that color in light and dark themes, including values with a link. Their compact vertical padding has also been restored.
+- Updated to [sqlparser v0.63](https://github.com/apache/datafusion-sqlparser-rs/blob/main/changelog/0.63.0.md) fixing the handling of some advanced database-specific SQL features.
+
+## v0.46.2
+
+- Numeric x values on Cartesian charts now explicitly use a continuous numeric axis, preventing fractional tick positions from being displayed as misleading rounded integers.
+
 ## v0.46.1
 
 - Upgraded the bundled ApexCharts from v5.13.0 to [v7.1.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v7.1.0) and the Tabler core from v1.4.0 to v1.5.0. The ApexCharts upgrade fixes logarithmic-axis scaling, stacked baselines on irregular data, and annotations on charts with no data, and ships a smaller default bundle.

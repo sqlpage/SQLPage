@@ -644,6 +644,48 @@ mod logfmt {
         }
     }
 
+    struct SpanFieldWriter {
+        seen_mapped: [bool; SPAN_FIELDS.len()],
+        extra: BTreeMap<&'static str, String>,
+        include_all: bool,
+    }
+
+    impl SpanFieldWriter {
+        fn new(include_all: bool) -> Self {
+            Self {
+                seen_mapped: [false; SPAN_FIELDS.len()],
+                extra: BTreeMap::new(),
+                include_all,
+            }
+        }
+
+        fn push(&mut self, buf: &mut String, fields: &HashMap<&'static str, String>) {
+            for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
+                if self.seen_mapped[i] {
+                    continue;
+                }
+                if let Some(val) = fields.get(span_key) {
+                    write_logfmt_value(buf, logfmt_key, val);
+                    self.seen_mapped[i] = true;
+                }
+            }
+            if self.include_all {
+                for (&key, val) in fields {
+                    if SPAN_FIELDS.iter().any(|(span_key, _)| key == *span_key) {
+                        continue;
+                    }
+                    self.extra.entry(key).or_insert_with(|| val.clone());
+                }
+            }
+        }
+
+        fn finish(self, buf: &mut String) {
+            for (key, val) in self.extra {
+                write_logfmt_value(buf, key, &val);
+            }
+        }
+    }
+
     fn write_span_fields<S>(
         buf: &mut String,
         scope: Option<tracing_subscriber::registry::Scope<'_, S>>,
@@ -651,79 +693,19 @@ mod logfmt {
     ) where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        if let Some(scope) = scope {
-            let mut seen_mapped_fields = [false; SPAN_FIELDS.len()];
-            let mut extra_fields = BTreeMap::new();
-
-            for span in scope {
-                let ext = span.extensions();
-                if let Some(fields) = ext.get::<SpanFields>() {
-                    for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
-                        if seen_mapped_fields[i] {
-                            continue;
-                        }
-                        if let Some(val) = fields.0.get(span_key) {
-                            write_logfmt_value(buf, logfmt_key, val);
-                            seen_mapped_fields[i] = true;
-                        }
-                    }
-                    if include_all_span_fields {
-                        for (&key, val) in &fields.0 {
-                            if SPAN_FIELDS.iter().any(|(span_key, _)| key == *span_key) {
-                                continue;
-                            }
-                            extra_fields.entry(key).or_insert_with(|| val.clone());
-                        }
-                    }
-                }
-            }
-
-            if include_all_span_fields {
-                for (key, val) in extra_fields {
-                    write_logfmt_value(buf, key, &val);
-                }
+        let Some(scope) = scope else { return };
+        let mut writer = SpanFieldWriter::new(include_all_span_fields);
+        for span in scope {
+            let ext = span.extensions();
+            if let Some(fields) = ext.get::<SpanFields>() {
+                writer.push(buf, &fields.0);
             }
         }
+        writer.finish(buf);
     }
 
     fn includes_all_span_fields() -> bool {
         tracing::level_filters::LevelFilter::current() >= tracing::level_filters::LevelFilter::DEBUG
-    }
-
-    #[cfg(test)]
-    fn write_span_field_maps<'a>(
-        buf: &mut String,
-        span_fields: impl IntoIterator<Item = &'a HashMap<&'static str, String>>,
-        include_all_span_fields: bool,
-    ) {
-        let mut seen_mapped_fields = [false; SPAN_FIELDS.len()];
-        let mut extra_fields = BTreeMap::new();
-
-        for fields in span_fields {
-            for (i, &(span_key, logfmt_key)) in SPAN_FIELDS.iter().enumerate() {
-                if seen_mapped_fields[i] {
-                    continue;
-                }
-                if let Some(val) = fields.get(span_key) {
-                    write_logfmt_value(buf, logfmt_key, val);
-                    seen_mapped_fields[i] = true;
-                }
-            }
-            if include_all_span_fields {
-                for (&key, val) in fields {
-                    if SPAN_FIELDS.iter().any(|(span_key, _)| key == *span_key) {
-                        continue;
-                    }
-                    extra_fields.entry(key).or_insert_with(|| val.clone());
-                }
-            }
-        }
-
-        if include_all_span_fields {
-            for (key, val) in extra_fields {
-                write_logfmt_value(buf, key, &val);
-            }
-        }
     }
 
     fn write_trace_id<S>(
@@ -819,7 +801,9 @@ mod logfmt {
                 ("otel.kind", "server".to_string()),
             ]);
 
-            write_span_field_maps(&mut buf, [&span_fields], true);
+            let mut writer = SpanFieldWriter::new(true);
+            writer.push(&mut buf, &span_fields);
+            writer.finish(&mut buf);
 
             assert_eq!(
                 buf,
@@ -836,11 +820,32 @@ mod logfmt {
                 ("otel.kind", "server".to_string()),
             ]);
 
-            write_span_field_maps(&mut buf, [&span_fields], false);
+            let mut writer = SpanFieldWriter::new(false);
+            writer.push(&mut buf, &span_fields);
+            writer.finish(&mut buf);
 
             assert_eq!(buf, " http.request.method=GET");
         }
 
+        #[test]
+        fn the_nearest_span_wins_when_a_field_is_set_twice() {
+            let mut buf = String::new();
+            let inner = HashMap::from([
+                (otel::HTTP_REQUEST_METHOD, "POST".to_string()),
+                (otel::HTTP_ROUTE, "/inner".to_string()),
+            ]);
+            let outer = HashMap::from([
+                (otel::HTTP_REQUEST_METHOD, "GET".to_string()),
+                (otel::HTTP_ROUTE, "/outer".to_string()),
+            ]);
+
+            let mut writer = SpanFieldWriter::new(true);
+            writer.push(&mut buf, &inner);
+            writer.push(&mut buf, &outer);
+            writer.finish(&mut buf);
+
+            assert_eq!(buf, " http.request.method=POST http.route=/inner");
+        }
         #[test]
         fn event_fields_are_rendered_when_message_is_missing() {
             let mut buf = String::new();

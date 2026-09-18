@@ -228,6 +228,5 @@ fn cast_placeholder(placeholder: String, database: &DbInfo) -> SqlExpr {
         data_type,
         format: None,
         kind: CastKind::Cast,
-        array: false,
     }
 }
