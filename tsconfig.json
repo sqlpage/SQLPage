@@ -11,5 +11,5 @@
     "noImplicitAny": false,
     "types": []
   },
-  "include": ["sqlpage/*.js", "sqlpage/globals.d.ts"]
+  "include": ["frontend/src"]
 }

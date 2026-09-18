@@ -5,7 +5,7 @@ import {
   align_series_for,
   merged_x_values,
   xaxis_type_for,
-} from "../../sqlpage/chart_series.js";
+} from "../../frontend/src/chart_series.js";
 
 const ADDS_NOTHING_TO_THE_STACK = 0;
 const LEAVES_A_GAP = null;
