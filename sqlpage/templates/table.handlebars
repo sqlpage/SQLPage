@@ -110,7 +110,7 @@
                                     <div class="badges-list">
                                     {{~#each this~}}
                                         {{~#with this~}}
-                                            {{#delay}}{{#if size}}badge-{{size}}{{/if}}{{#if color}}{{#if (not light)}} bg-{{color}} text-{{color}}-fg{{else}} bg-{{color}}-lt text-{{color}}-lt-fg{{/if}}{{/if}}{{#if pill}} badge-pill{{/if}}{{/delay}}
+                                            {{#delay}}{{#if size}}badge-{{size}}{{/if}}{{#if color}}{{#if (not light)}} bg-{{color}} text-{{color}}-fg{{else}} bg-{{color}}-lt text-{{color}}-lt-fg{{/if}}{{/if}}{{#if outline}} badge-outline{{/if}}{{#if pill}} badge-pill{{/if}}{{/delay}}
                                             {{~#if link~}}
                                             <a href="{{link}}" class="badge {{flush_delayed}}">{{title}}</a>
                                             {{~else~}}
@@ -157,8 +157,8 @@
                             </td>
                             {{/each}}
                     </tr>
-                    {{!~ 
-                        After this <tr> has been rendered, if this was a footer, we need to reopen a new <tbody> 
+                    {{!~
+                        After this <tr> has been rendered, if this was a footer, we need to reopen a new <tbody>
                         No need for another delayed closure since the previous one still applies
                     ~}}
                     {{~#if _sqlpage_footer}} </tfoot><tbody class="table-tbody list"> {{/if~}}

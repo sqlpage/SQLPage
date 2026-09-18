@@ -331,7 +331,7 @@ For instance, if you were creating a form to manage a list of users, you could c
  - a file named `users.sql` that would contain a list of users and a form to create a new user,
  - a file named `create_user.sql` that would insert the new user in the database, and then redirect to `users.sql`.
 
-`create_user.sql` could contain the following sql statement to [safely](safety.sql) insert the new user in the database: 
+`create_user.sql` could contain the following sql statement to [safely](safety.sql) insert the new user in the database:
 
 ```sql
 INSERT INTO users(name) VALUES(:username)
@@ -341,7 +341,7 @@ RETURNING ''redirect'' AS component, ''users.sql'' AS link
 When loading the page, the value for `:username` will be `NULL` if no value has been submitted.
 ',
     json('[{"component":"form", "action": "create_user.sql"}, {"name": "username"}]')),
-    ('form', 'A user registration form, illustrating the use of required fields, and different input types.', 
+    ('form', 'A user registration form, illustrating the use of required fields, and different input types.',
     json('[{"component":"form", "title": "User", "validate": "Create new user"}, '||
     '{"name": "First name", "placeholder": "John"}, '||
     '{"name": "Last name", "required": true, "description": "We need your last name for legal purposes."},'||
@@ -374,7 +374,7 @@ When loading the page, the value for `:username` will be `NULL` if no value has 
 
     ('form', 'This example illustrates the use of the `select` type.
 In this select input, the various options are hardcoded, but they could also be loaded from a database table,
-[using a function to convert the rows into a json array](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) like 
+[using a function to convert the rows into a json array](/blog.sql?post=JSON%20in%20SQL%3A%20A%20Comprehensive%20Guide) like
  - `json_group_array()` in SQLite,
  - `json_agg()` in Postgres,
  - `JSON_ARRAYAGG()` in MySQL, or
@@ -383,7 +383,7 @@ In this select input, the various options are hardcoded, but they could also be 
 
 In SQLite, the query would look like
 ```sql
-SELECT 
+SELECT
     ''select'' as type,
     ''Select a fruit...'' as empty_option,
     json_group_array(json_object(
@@ -402,7 +402,7 @@ FROM fruits
 You can authorize the user to select multiple options by setting the `multiple` property to `true`.
 This creates a more compact (but arguably less user-friendly) alternative to a series of checkboxes.
 In this case, you should add square brackets to the name of the field (e.g. `''my_field[]'' as name`).
-The target page will then receive the value as a JSON array of strings, which you can iterate over using 
+The target page will then receive the value as a JSON array of strings, which you can iterate over using
  - the `json_each` function [in SQLite](https://www.sqlite.org/json1.html) and [Postgres](https://www.postgresql.org/docs/9.3/functions-json.html),
  - the [`OPENJSON`](https://learn.microsoft.com/fr-fr/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16) function in Microsoft SQL Server.
  - in MySQL, json manipulation is less straightforward: see [the SQLPage MySQL json example](https://github.com/sqlpage/SQLPage/tree/main/examples/mysql%20json%20handling)
@@ -466,7 +466,7 @@ where label like $search || ''%'';
 
 ##### `form`
 
-', json('[{"component":"form", "action":"examples/show_variables.sql", "reset": "Reset"}, 
+', json('[{"component":"form", "action":"examples/show_variables.sql", "reset": "Reset"},
     {"name": "component", "type": "select",
     "value": "form",
     "options": [{"label": "Form", "value": "form"}],
@@ -483,7 +483,7 @@ We could also save all the options in a database table, and then run a simple qu
 
 ```sql
 SELECT ''form'' AS component;
-SELECT 
+SELECT
     ''radio'' as type,
     ''db'' as name,
     option_name as label,
@@ -520,7 +520,7 @@ This can also be used to implement [CSRF protection](https://en.wikipedia.org/wi
 if your website has authenticated users that can perform sensitive actions through simple links.
 But note that SQLPage cookies already have the `SameSite=strict` attribute by default, which protects you against CSRF attacks by default in most cases.
 
-', json('[{"component":"form", "validate": "Delete", "validate_color": "red"}, 
+', json('[{"component":"form", "validate": "Delete", "validate_color": "red"},
     {"type": "hidden", "name": "resource_id", "value": "1234"},
     {"name": "confirm", "label": "Please type \"sensitive resource\" here to confirm the deletion", "required": true}
     ]')),
@@ -552,7 +552,7 @@ VALUES (
 )
 ```
 ',
-    json('[{"component":"form", "enctype": "multipart/form-data", "title": "Upload a picture", "validate": "Upload", "action": "examples/handle_picture_upload.sql"}, 
+    json('[{"component":"form", "enctype": "multipart/form-data", "title": "Upload a picture", "validate": "Upload", "action": "examples/handle_picture_upload.sql"},
     {"name": "my_file", "type": "file", "accept": "image/png, image/jpeg",  "label": "Picture", "description": "Upload a small picture", "required": true}
     ]')),
     ('form', '
@@ -603,7 +603,7 @@ many short ascii text values are submitted.
     ('form', '
 ## Bulk data insertion
 
-You can use the `file` type to allow the user to upload a [CSV](https://en.wikipedia.org/wiki/Comma-separated_values) 
+You can use the `file` type to allow the user to upload a [CSV](https://en.wikipedia.org/wiki/Comma-separated_values)
 file containing data to insert in a table.
 
 SQLPage can load data from a CSV file and insert it into a database table.
@@ -649,7 +649,7 @@ name,description,price
 "MySQL","A popular open-source relational database",0
 ```
 ',
-    json('[{"component":"form", "title": "CSV import", "validate": "Load data", "action": "examples/handle_csv_upload.sql"}, 
+    json('[{"component":"form", "title": "CSV import", "validate": "Load data", "action": "examples/handle_csv_upload.sql"},
     {"name": "product_data_input", "type": "file", "accept": "text/csv",  "label": "Products", "description": "Upload a CSV with a name, description, and price columns", "required": true}
     ]'))
 ;
@@ -749,12 +749,12 @@ for instance by rounding timestamps to a common interval.',
     '{"series": "GPU", "x": "2024-03-01T10:15:00Z", "value": 120}, '||
     '{"series": "GPU", "x": "2024-03-01T10:30:00Z", "value": 140}]')),
     ('chart', 'A line chart with multiple series. One of the most common types of charts, often used to show trends over time.
-Also demonstrates the use of the `toolbar` attribute to allow the user to download the graph as an image or the data as a CSV file.', 
+Also demonstrates the use of the `toolbar` attribute to allow the user to download the graph as an image or the data as a CSV file.',
     json('[{"component":"chart", "title": "Revenue", "ymin": 0, "toolbar": true},
-    {"series": "Chicago Store", "x": 2021, "value": 35}, 
-    {"series": "Chicago Store", "x": 2022, "value": 15}, 
-    {"series": "Chicago Store", "x": 2023, "value": 45}, 
-    {"series": "New York Store", "x": 2021, "value": 30}, 
+    {"series": "Chicago Store", "x": 2021, "value": 35},
+    {"series": "Chicago Store", "x": 2022, "value": 15},
+    {"series": "Chicago Store", "x": 2023, "value": 45},
+    {"series": "New York Store", "x": 2021, "value": 30},
     {"series": "New York Store", "x": 2022, "value": 55},
     {"series": "New York Store", "x": 2023, "value": 19}
     ]')),
@@ -1003,8 +1003,8 @@ INSERT INTO example(component, description, properties) VALUES
         ]')),
     (
         'table', 'A table that uses badges to display user permissions.
-        
-To describe the badges contained in a column, you need to create a JSON array. Each object represents a badge defined 
+
+To describe the badges contained in a column, you need to create a JSON array. Each object represents a badge defined
 using the following properties:
 
 - `title`: the text displayed on the badge.
@@ -1012,7 +1012,8 @@ using the following properties:
 - `color`: the color of the badge (e.g., red, green, blue, but also primary, warning, danger, etc.). Only base color names are supported.
 - `light`: create a light version of the badge (boolean).
 - `pill`: badge with rounded corners (boolean).
-- `link`: add a link to the badge and make it clickable.                                 
+- `outline`: badge with a border and no fill.
+- `link`: add a link to the badge and make it clickable.
 
         ',
         json(
@@ -1020,7 +1021,7 @@ using the following properties:
          {"Username": "john.doe", "Permissions": [{"title":"read","color":"green"}]},
          {"Username": "mary.johnson", "Permissions": [{"title":"admin","color":"blue"},{"title":"read","color":"green"},{"title":"write","color":"blue"}]},
          {"Username": "robert.brown", "Permissions": [{"title":"read","color":"green"},{"title":"write","color":"blue"}]},
-         {"Username": "emily.davis", "Permissions": [{"title":"read","color":"blue"}]},
+         {"Username": "emily.davis", "Permissions": [{"title":"none","outline":true}]},
          {"Username": "michael.wilson", "Permissions": [{"title":"read","color":"green"},{"title":"write","color":"blue"}]},
         ]'
     )),
@@ -1034,7 +1035,7 @@ using the following properties:
     'table',
     'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.
 
-Numbers can be displayed 
+Numbers can be displayed
  - as raw digits without formatting using the `raw_numbers` property,
  - as currency using the `money` property to define columns that contain monetary values and `currency` to define the currency,
  - as numbers with a fixed maximum number of decimal digits using the `number_format_digits` property.
@@ -1140,8 +1141,8 @@ Numbers can be displayed
     'table',
     'A table that adapts its layout to the resolution of the device being used.
 
-If your table contains many columns, it won’t be comfortable to read on a mobile device such as a phone or tablet. 
-To solve this problem, the `column_visibility` setting allows you to specify the minimum resolution at which 
+If your table contains many columns, it won’t be comfortable to read on a mobile device such as a phone or tablet.
+To solve this problem, the `column_visibility` setting allows you to specify the minimum resolution at which
 a column should be displayed.
 
 - `phone`: The column is displayed on all devices.
@@ -1149,7 +1150,7 @@ a column should be displayed.
 - `desktop`: The column is displayed on all devices with width greater than 992px.
 - `large_desktop`: The column is displayed only on devices with width greater than 1200px.
 
-To specify column visibility, simply provide a JSON object in which the column name is the key and the selected resolution 
+To specify column visibility, simply provide a JSON object in which the column name is the key and the selected resolution
 is the value. By default, a column is visible starting at the `phone` resolution.
 
 To try the example below, feel free to resize your browser window.
@@ -1192,27 +1193,27 @@ or the [`JSON_OBJECTAGG`](https://dev.mysql.com/doc/refman/8.4/en/aggregate-func
 
 For instance, let''s say we have a table with three columns: store, item, and quantity_sold.
 We want to create a pivot table where each row is a store, and each column is an item.
-We will return a set of json objects that look like this: `{"store":"Madrid", "Item1": 42, "Item2": 7, "Item3": 0}` 
+We will return a set of json objects that look like this: `{"store":"Madrid", "Item1": 42, "Item2": 7, "Item3": 0}`
 
 ```sql
 SELECT ''table'' AS component;
 with filled_data as (
   select
     stores.store, items.item,
-    (select coalesce(sum(quantity_sold), 0) from store_sales where store=stores.store and item=items.item) as quantity 
+    (select coalesce(sum(quantity_sold), 0) from store_sales where store=stores.store and item=items.item) as quantity
   from (select distinct store from store_sales) as stores
   cross join (select distinct item from store_sales) as items
   order by stores.store, items.item
 )
-SELECT 
+SELECT
     ''dynamic'' AS component,
     JSON_PATCH( -- SQLite-specific, refer to your database documentation for the equivalent JSON functions
         JSON_OBJECT(''store'', store),
         JSON_GROUP_OBJECT(item, quantity)
     ) AS properties
-FROM 
+FROM
     filled_data
-GROUP BY 
+GROUP BY
     store;
 ```
 
@@ -1396,7 +1397,7 @@ For smaller files, this is easier and faster to use than creating a separate SQL
 INSERT INTO component(name, icon, description) VALUES
     ('dynamic', 'repeat', 'Renders other components, given their properties as JSON.
 If you are looking for a way to run FOR loops, to share similar code between pages of your site,
-or to render multiple components for every line returned by your SQL query, then this is the component to use'); 
+or to render multiple components for every line returned by your SQL query, then this is the component to use');
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'dynamic', * FROM (VALUES
     -- top level
@@ -1405,7 +1406,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('dynamic', 'The dynamic component has a single top-level property named `properties`, but it can render any number of other components.
-Let''s start with something simple to illustrate the logic. We''ll render a `text` component with two row-level properties: `contents` and `italics`. 
+Let''s start with something simple to illustrate the logic. We''ll render a `text` component with two row-level properties: `contents` and `italics`.
 ', json('[{"component":"dynamic", "properties": "[{\"component\":\"text\"}, {\"contents\":\"Hello, I am a dynamic component !\", \"italics\":true}]"}]')),
     ('dynamic', '
 ## Static component data stored in `.json` files
@@ -1508,7 +1509,7 @@ We want to create a table where each row is a user, and each column is a role.
 We will return a set of json objects that look like this: `{"name": "Alice", "admin": true, "editor": false, "viewer": true}`
 ```sql
 SELECT ''table'' AS component;
-SELECT ''dynamic'' AS component, 
+SELECT ''dynamic'' AS component,
     json_patch(
         json_object(''name'', name),
         json_object_agg(role, is_admin)
@@ -1662,7 +1663,7 @@ It is common to want to share the same shell between multiple pages.
 #### Static menu
 
 If your menu is completely static (it does not depend on the database content),
-you can use the [`dynamic`](?component=dynamic#component) component together with the 
+you can use the [`dynamic`](?component=dynamic#component) component together with the
 [`sqlpage.read_file_as_text`](functions.sql?function=read_file_as_text#function) function to load the shell from
 a json file.
 
@@ -1725,7 +1726,7 @@ set role = (
     WHERE sessions.session_id = sqlpage.cookie(''session_id'')
 ); -- Read more about how to handle user sessions in the "authentication" component documentation
 
-SELECT 
+SELECT
     ''shell'' AS component,
     ''My authenticated website'' AS title,
 
@@ -1751,7 +1752,7 @@ reduce the size of image-based icons. The following snippet provides an example,
 available [here](examples/menu_icon.sql).
 
 ```sql
-SELECT 
+SELECT
     ''shell''             AS component,
     ''SQLPage''           AS title,
     ''database''          AS icon,
@@ -1768,7 +1769,7 @@ SELECT
 
 Use `shell-empty` to opt out of SQLPage''s component system and return raw data directly.
 
-By default, SQLPage wraps all your content in a complete HTML page with navigation and styling. 
+By default, SQLPage wraps all your content in a complete HTML page with navigation and styling.
 The `shell-empty` component tells SQLPage to skip this HTML wrapper and return only the raw content you specify.
 
 Use it to create endpoints that return things like
@@ -1781,11 +1782,11 @@ to set the correct [content type](https://developer.mozilla.org/en-US/docs/Web/H
 ',
      json('[
         {
-            "component":"http_header", 
+            "component":"http_header",
             "Content-Type":"application/xml"
         },
         {
-            "component":"shell-empty", 
+            "component":"shell-empty",
             "contents": "<?xml version=\"1.0\"?>\n <user>\n   <account>42</account>\n   <login>john.doe</login>\n </user>"
         }
     ]')
@@ -1797,8 +1798,8 @@ This is useful when you want to generate a snippet of HTML that can be dynamical
 Make sure you know what you are doing, and be careful to escape the HTML properly,
 as you are stepping out of the safe SQLPage framework and into the wild world of HTML.
 
-In this scenario, you can use the `html` property, which serves as an alias for the `contents` property. 
-This property improves code readability by clearly indicating that you are generating HTML. 
+In this scenario, you can use the `html` property, which serves as an alias for the `contents` property.
+This property improves code readability by clearly indicating that you are generating HTML.
 Since SQLPage returns HTML by default, there is no need to specify the content type in the HTTP header.
 ',
     json('[{"component":"shell-empty", "html": "<!DOCTYPE html>\n<html>\n<head>\n  <title>My page</title>\n</head>\n<body>\n  <h1>My page</h1>\n</body>\n</html>"}]'));
