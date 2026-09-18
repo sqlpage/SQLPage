@@ -35,11 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: 'npm'
-      - run: npm ci
+      - uses: ./.github/actions/install-frontend-dependencies
       - run: npm test
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
@@ -82,11 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: 'npm'
-      - run: npm ci --omit=dev --ignore-scripts
+      - uses: ./.github/actions/install-frontend-dependencies
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
@@ -180,11 +172,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: 'npm'
-      - run: npm ci --omit=dev --ignore-scripts
+      - uses: ./.github/actions/install-frontend-dependencies
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
@@ -221,14 +209,8 @@ jobs:
         working-directory: ./tests/end-to-end
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: 'npm'
-          cache-dependency-path: ./package-lock.json
+      - uses: ./.github/actions/install-frontend-dependencies
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
-      - run: npm ci
-        working-directory: .
       - run: npx playwright install --with-deps --only-shell chromium
       # The browser tests exercise the official site, but they do not need a
       # separate Rust build. Reuse the binary compiled and tested above.
