@@ -6,36 +6,22 @@ use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-const SERVED_ASSETS: &[(&str, &[&str])] = &[
-    (
-        "frontend/dist/sqlpage.js",
-        &["node_modules/@tabler/core/dist/js/tabler.min.js"],
-    ),
-    (
-        "sqlpage/sqlpage.css",
-        &[
-            "node_modules/@tabler/core/dist/css/tabler.min.css",
-            "node_modules/tom-select/dist/css/tom-select.bootstrap5.css",
-            "node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
-        ],
-    ),
-    (
-        "frontend/dist/apexcharts.js",
-        &["node_modules/apexcharts/dist/apexcharts.min.js"],
-    ),
-    (
-        "frontend/dist/tomselect.js",
-        &["node_modules/tom-select/dist/js/tom-select.popular.min.js"],
-    ),
-    ("sqlpage/favicon.svg", &[]),
+const DIST: &str = "frontend/dist";
+
+const SERVED_ASSETS: &[&str] = &[
+    "sqlpage.js",
+    "sqlpage.css",
+    "apexcharts.js",
+    "tomselect.js",
+    "favicon.svg",
 ];
 
-const ICON_SPRITE: &str = "node_modules/@tabler/icons-sprite/dist/tabler-sprite.svg";
+const ICON_SPRITE: &str = "tabler-sprite.svg";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    for &(source, libraries) in SERVED_ASSETS {
-        build_served_asset(source, libraries);
+    for name in SERVED_ASSETS {
+        build_served_asset(name);
     }
     build_icon_map();
     set_odbc_rpath();
@@ -45,29 +31,27 @@ fn out_dir() -> PathBuf {
     PathBuf::from(std::env::var("OUT_DIR").unwrap())
 }
 
-fn open_input(path: &str) -> File {
-    println!("cargo:rerun-if-changed={path}");
-    File::open(path).unwrap_or_else(|err| {
+fn built_asset(name: &str) -> PathBuf {
+    Path::new(DIST).join(name)
+}
+
+fn open_input(name: &str) -> File {
+    let path = built_asset(name);
+    println!("cargo:rerun-if-changed={}", path.display());
+    File::open(&path).unwrap_or_else(|err| {
         panic!(
-            "Unable to read {path}: {err}\n\
+            "Unable to read {}: {err}\n\
              The browser assets are built by npm: \
-             run `npm ci && npm run build` before `cargo build`."
+             run `npm ci && npm run build` before `cargo build`.",
+            path.display()
         )
     })
 }
 
-fn build_served_asset(source: &str, libraries: &[&str]) {
-    let built = out_dir().join(Path::new(source).file_name().unwrap());
-    // A minified library can end without a semicolon, and the bundle that
-    // follows opens with `(`, which JavaScript would read as a call to it.
-    let is_script = Path::new(source).extension().is_some_and(|ext| ext == "js");
-    let separator: &[u8] = if is_script { b";\n" } else { b"\n" };
+fn build_served_asset(name: &str) {
+    let built = out_dir().join(name);
     let mut gzipped = gzip::Encoder::new(File::create(&built).unwrap()).unwrap();
-    for library in libraries {
-        std::io::copy(&mut open_input(library), &mut gzipped).unwrap();
-        gzipped.write_all(separator).unwrap();
-    }
-    std::io::copy(&mut open_input(source), &mut gzipped).unwrap();
+    std::io::copy(&mut open_input(name), &mut gzipped).unwrap();
     gzipped
         .finish()
         .as_result()
@@ -75,7 +59,7 @@ fn build_served_asset(source: &str, libraries: &[&str]) {
 
     std::fs::write(
         format!("{}.filename.txt", built.display()),
-        hashed_filename(source, libraries),
+        hashed_file_content(name),
     )
     .unwrap();
 }
@@ -91,32 +75,27 @@ fn build_icon_map() {
     icon_map.write_all(b"]").unwrap();
 }
 
-fn hashed_filename(source: &str, libraries: &[&str]) -> String {
+fn hashed_file_content(name: &str) -> String {
+    let path = built_asset(name);
+    let mut file = File::open(&path).unwrap();
+    let mut buf = [0u8; 4096];
     let mut hasher = DefaultHasher::new();
-    for path in libraries.iter().copied().chain([source]) {
-        hash_contents(path, &mut hasher);
+    loop {
+        let bytes_read = file
+            .read(&mut buf)
+            .unwrap_or_else(|e| panic!("error reading '{}': {e}", path.display()));
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.write(&buf[..bytes_read]);
     }
-    let name = Path::new(source);
+    let name = Path::new(name);
     format!(
         "{}.{:x}.{}",
         name.file_stem().unwrap().to_str().unwrap(),
         hasher.finish(),
         name.extension().unwrap().to_str().unwrap()
     )
-}
-
-fn hash_contents(path: &str, hasher: &mut DefaultHasher) {
-    let mut file = File::open(path).unwrap();
-    let mut buf = [0u8; 4096];
-    loop {
-        let bytes_read = file
-            .read(&mut buf)
-            .unwrap_or_else(|e| panic!("error reading '{path}': {e}"));
-        if bytes_read == 0 {
-            break;
-        }
-        hasher.write(&buf[..bytes_read]);
-    }
 }
 
 fn take_between<'a>(s: &mut &'a str, start: &str, end: &str) -> Option<&'a str> {

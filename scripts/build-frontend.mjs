@@ -1,9 +1,21 @@
-import { mkdir } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { rolldown } from "rolldown";
 
 const DIST = "frontend/dist";
 
 const ENTRIES = ["sqlpage", "apexcharts", "tomselect"];
+
+const STYLESHEET = [
+  "node_modules/@tabler/core/dist/css/tabler.min.css",
+  "node_modules/tom-select/dist/css/tom-select.bootstrap5.css",
+  "node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
+];
+
+const COPIED = {
+  "favicon.svg": "sqlpage/favicon.svg",
+  "tabler-sprite.svg":
+    "node_modules/@tabler/icons-sprite/dist/tabler-sprite.svg",
+};
 
 // An unresolved import is a warning, and rolldown then leaves the dependency
 // out of the bundle instead of failing, so no warning may be ignored here.
@@ -20,5 +32,18 @@ async function bundle(entry) {
   await build.close();
 }
 
+async function stylesheet() {
+  const vendored = await Promise.all(STYLESHEET.map((s) => readFile(s)));
+  const own = await readFile("sqlpage/sqlpage.css");
+  const parts = [...vendored.map((v) => `${v}\n`), own];
+  await writeFile(`${DIST}/sqlpage.css`, parts.join(""));
+}
+
 await mkdir(DIST, { recursive: true });
-await Promise.all(ENTRIES.map(bundle));
+await Promise.all([
+  ...ENTRIES.map(bundle),
+  stylesheet(),
+  ...Object.entries(COPIED).map(([name, from]) =>
+    copyFile(from, `${DIST}/${name}`),
+  ),
+]);
