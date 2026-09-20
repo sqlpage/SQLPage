@@ -117,3 +117,33 @@ INSERT INTO example(component, description, properties) VALUES
             "image":"https://upload.wikimedia.org/wikipedia/commons/f/fa/Globe.svg"
         }]')
     );
+
+INSERT INTO example(component, description, properties) VALUES
+    ('button', 'Create buttons with badges or notifications.
+    
+Since version 0.47, you can add badges or notifications to buttons. To do so, use the `badge` property and provide a JSON object containing the following properties:
+- `title`: The text displayed inside the badge (optional).
+- `color`: The color of the badge (e.g., red, green, blue, but also primary, warning, danger, etc.) (optional). 
+- `notification`: A boolean indicating whether the badge should be displayed as a notification (optional).
+- `blink`: A boolean indicating whether the badge should blink (optional).
+',
+    json('[
+        {"component":"button"}, 
+        {
+            "title":"New",
+            "badge": {"color": "red", "notification": true}
+        },
+        {
+            "title":"Required",
+            "badge": {"color": "red", "notification": true, "blink": true}
+        },
+        {
+            "title":"Inbox",
+            "badge": {"title":"42","color": "blue"}
+        },
+        {
+            "title":"Selected",
+            "badge": {"title":"5","color": "green","notification": true}
+        }
+    ]')
+    );
