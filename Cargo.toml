@@ -149,5 +149,3 @@ actix-http = "3"
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "time", "test-util"] }
 
-[build-dependencies]
-libflate = "2"

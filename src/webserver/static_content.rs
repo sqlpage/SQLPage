@@ -25,7 +25,14 @@ macro_rules! static_file_endpoint {
                 .insert_header(ETag(file_etag))
                 .insert_header(ContentEncoding::Gzip)
                 .body(
-                    &include_bytes!(concat!(env!("OUT_DIR"), "/", $filestem, ".", $extension))[..],
+                    &include_bytes!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/frontend/dist/",
+                        $filestem,
+                        ".",
+                        $extension,
+                        ".gz"
+                    ))[..],
                 )
         })
     }};
