@@ -129,7 +129,48 @@ HTTP 302
 [Asserts]
 header "Location" == "currencies_list.sql"
 
+GET http://localhost:8080/logout.sql?path=.%2Fcurrencies_list.sql
+HTTP 302
+[Asserts]
+header "Location" == "./currencies_list.sql"
+
+GET http://localhost:8080/logout.sql?path=https%3A%2F%2Fevil.example
+HTTP 302
+[Asserts]
+header "Location" == "/login.sql"
+
+GET http://localhost:8080/logout.sql?path=%2F%2Fevil.example
+HTTP 302
+[Asserts]
+header "Location" == "/login.sql"
+
+GET http://localhost:8080/logout.sql?path=%2F%5Cevil.example
+HTTP 302
+[Asserts]
+header "Location" == "/login.sql"
+
+GET http://localhost:8080/logout.sql?path=%2F%252Fevil.example
+HTTP 302
+[Asserts]
+header "Location" == "/login.sql"
+
 GET http://localhost:8080/currencies_list.sql
 HTTP 302
 [Asserts]
 header "Location" == "/login.sql?path=/currencies_list.sql"
+
+POST http://localhost:8080/create_session.sql?path=https%3A%2F%2Fevil.example
+[FormParams]
+username: admin
+password: admin
+HTTP 302
+[Asserts]
+header "Location" == "/"
+
+POST http://localhost:8080/create_session.sql?path=.%2Fcurrencies_list.sql
+[FormParams]
+username: admin
+password: admin
+HTTP 302
+[Asserts]
+header "Location" == "./currencies_list.sql"
