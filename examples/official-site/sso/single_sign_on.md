@@ -92,6 +92,8 @@ Sometimes, you don't want to protect your entire website with a login, but only 
 You can achieve this by adding the `oidc_protected_paths` option to your `sqlpage.json` file.
 
 This option takes a list of URL prefixes. If a user requests a page whose address starts with one of these prefixes, they will be required to log in.
+SQLPage decodes and normalizes path aliases such as `/admin/./dashboard.sql` before checking these prefixes, so another spelling of a protected URL still requires login. Public exceptions keep their configured spelling, and `/public/` remains distinct from `/public`.
+For SQL files, the check also covers the file the URL resolves to. Protecting `/admin/dashboard.sql` therefore protects its shorter `/admin/dashboard` URL, and protecting `/admin/index.sql` protects `/admin/`.
 
 **Example:** Protect only pages in the `/admin` folder.
 
