@@ -23,11 +23,13 @@ SQLPage will redirect all requests that do not start with the prefix to `/<site_
 
 **Directory requests (paths ending with `/`)**: SQLPage looks for an `index.sql` file in that directory and executes it if found.
 
-**Direct SQL file requests (`.sql` extension)**: SQLPage executes the requested SQL file if it exists.
+**Direct SQL file requests (`.sql` extension)**: SQLPage executes the requested SQL file if it exists. The extension is matched without regard to ASCII letter case, so `/report.SQL` is also executed. It is never served as source text.
 
 **Static asset requests (other extensions)**: SQLPage serves files like CSS, JavaScript, images, or any other static content directly.
 
 **Clean URL requests (no extension)**: SQLPage first tries to find a matching `.sql` file. If that doesn''t exist but there''s an `index.sql` file in a directory with the same name, it redirects to the directory path with a trailing slash.
+
+Paths with trailing spaces are rejected. On Windows, paths with trailing dots or NTFS stream names are rejected too. These spellings can refer to a different file than their URL suggests on some storage systems.
 
 ### Error Handling
 

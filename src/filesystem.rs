@@ -213,6 +213,7 @@ impl FileSystem {
 fn validate_unprivileged_path(path: &Path) -> anyhow::Result<()> {
     for (i, component) in path.components().enumerate() {
         if let Component::Normal(c) = component {
+            let name = c.as_encoded_bytes();
             if i == 0 && c.eq_ignore_ascii_case("sqlpage") {
                 return Err(ErrorWithStatus {
                     status: actix_web::http::StatusCode::FORBIDDEN,
@@ -221,11 +222,23 @@ fn validate_unprivileged_path(path: &Path) -> anyhow::Result<()> {
                     || "The /sqlpage/ path prefix is reserved for internal use. It is not public.",
                 );
             }
-            if c.as_encoded_bytes().starts_with(b".") {
+            if name.starts_with(b".") {
                 return Err(ErrorWithStatus {
                     status: actix_web::http::StatusCode::FORBIDDEN,
                 })
                 .with_context(|| "Directory traversal is not allowed");
+            }
+            // SQL Server ignores trailing spaces when comparing file-store paths.
+            // Windows can also alias trailing dots and NTFS stream names to the
+            // same file. Reject these spellings before routing can serve a SQL
+            // file as an ordinary static asset.
+            if name.ends_with(b" ")
+                || cfg!(windows) && (name.ends_with(b".") || name.contains(&b':'))
+            {
+                return Err(ErrorWithStatus {
+                    status: actix_web::http::StatusCode::FORBIDDEN,
+                })
+                .with_context(|| "Noncanonical file paths are not allowed");
             }
         } else {
             return Err(ErrorWithStatus {
@@ -240,6 +253,31 @@ fn validate_unprivileged_path(path: &Path) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod unprivileged_path_tests {
+    use super::FileAccess;
+    use std::path::Path;
+
+    #[test]
+    fn rejects_trailing_space_aliases() {
+        assert!(FileAccess::unprivileged(Path::new("index.sql ")).is_err());
+        assert!(FileAccess::unprivileged(Path::new("folder /index.sql")).is_err());
+        assert!(FileAccess::unprivileged(Path::new("index.sql")).is_ok());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn rejects_windows_trailing_dot_aliases() {
+        assert!(FileAccess::unprivileged(Path::new("index.sql.")).is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn rejects_windows_ntfs_stream_aliases() {
+        assert!(FileAccess::unprivileged(Path::new("index.sql::$DATA")).is_err());
+    }
 }
 
 fn is_path_missing_error(error: &std::io::Error) -> bool {
