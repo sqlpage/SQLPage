@@ -18,12 +18,13 @@ cd sqlpage
 The first time you build the project, Cargo and npm download their
 dependencies, so you will need internet access, and the build may take a while.
 
-Run the following commands from the root of the repository to build the project in development mode:
+Run this command from the root of a checkout to install the locked npm dependencies, build the browser assets, and build SQLPage in development mode:
 
 ```bash
-npm ci
-cargo build
+npm run build:rust
 ```
+
+After the browser assets have been built, you can run `cargo build` directly for Rust-only changes. Run `npm run build` again after changing frontend sources. Builds from the published crate use its included browser assets and do not need Node.js.
 
 The resulting executable will be in `target/debug/sqlpage`.
 
@@ -32,7 +33,7 @@ The resulting executable will be in `target/debug/sqlpage`.
 To build the project in release mode:
 
 ```bash
-cargo build --release
+npm run build:rust -- --release
 ```
 
 The resulting executable will be in `target/release/sqlpage`.
@@ -42,8 +43,8 @@ The resulting executable will be in `target/release/sqlpage`.
 SQLPage can either be built with an integrated odbc driver manager (static linking),
 or depend on having one already installed on the system where it is running (dynamic linking).
 
-- Dynamic ODBC (default): `cargo build`
-- Static ODBC (Linux and MacOS only): `cargo build --features odbc-static`
+- Dynamic ODBC (default): `npm run build:rust`
+- Static ODBC (Linux and MacOS only): `npm run build:rust -- --features odbc-static`
 
 Windows comes with ODBC pre-installed; SQLPage cannot statically link to the unixODBC driver manager on windows.
 
