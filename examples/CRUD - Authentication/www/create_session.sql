@@ -22,6 +22,26 @@ RETURNING
 -- The user browser will now have a cookie named `session_token` that we can check later
 -- to see if the user is logged in.
 
+-- Only redirect to a local page. Relative links are accepted for existing
+-- example pages such as currencies_list.sql.
 SELECT
     'redirect' AS component,
-    ifnull($path, '/') AS link;
+    iif(
+        $path IS NOT NULL
+        AND length($path) > 0
+        AND (
+            (substr($path, 1, 1) = '/' AND substr($path, 2, 1) <> '/')
+            OR (
+                (substr($path, 1, 1) GLOB '[A-Za-z0-9_]'
+                    OR substr($path, 1, 2) = './'
+                    OR substr($path, 1, 3) = '../')
+                AND instr($path, ':') = 0
+            )
+        )
+        AND instr($path, char(92)) = 0
+        AND instr($path, '%') = 0
+        AND instr($path, char(0)) = 0
+        AND ($path GLOB '*[' || char(1) || '-' || char(31) || char(127) || ']*') = 0,
+        $path,
+        '/'
+    ) AS link;
