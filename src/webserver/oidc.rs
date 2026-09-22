@@ -1701,7 +1701,7 @@ mod tests {
         impl FileStore for OneFile {
             async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool> {
                 tokio::task::yield_now().await;
-                Ok(access.path().to_str() == Some(self.0))
+                Ok(access.path() == std::path::Path::new(self.0))
             }
         }
 
@@ -1721,6 +1721,12 @@ mod tests {
             )
             .await
             .unwrap();
+            if url == "/private/missing" {
+                assert!(
+                    matches!(&route, RoutingAction::CustomNotFound(path) if path == std::path::Path::new(file)),
+                    "the clean URL must resolve to its custom 404 SQL file"
+                );
+            }
             assert!(
                 !oidc.is_public_route(&route),
                 "{url} resolves to a protected SQL file"
