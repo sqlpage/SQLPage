@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "node scripts/build-frontend.mjs",
+    "build:rust": "npm ci --ignore-scripts && npm run build && cargo build",
     "test": "biome check . && npm run typecheck && node --test \"tests/js/**/*.spec.ts\"",
     "typecheck": "tsc && tsc -p tests/js && tsc -p tests/end-to-end",
     "format": "biome format --write .",
