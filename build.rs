@@ -75,7 +75,7 @@ fn build_served_asset(source: &str, libraries: &[&str]) {
 
     std::fs::write(
         format!("{}.filename.txt", built.display()),
-        hashed_filename(&built),
+        hashed_filename(source, libraries),
     )
     .unwrap();
 }
@@ -91,27 +91,32 @@ fn build_icon_map() {
     icon_map.write_all(b"]").unwrap();
 }
 
-// Given a filename, creates a new unique filename based on the file contents
-fn hashed_filename(path: &Path) -> String {
+fn hashed_filename(source: &str, libraries: &[&str]) -> String {
+    let mut hasher = DefaultHasher::new();
+    for path in libraries.iter().copied().chain([source]) {
+        hash_contents(path, &mut hasher);
+    }
+    let name = Path::new(source);
+    format!(
+        "{}.{:x}.{}",
+        name.file_stem().unwrap().to_str().unwrap(),
+        hasher.finish(),
+        name.extension().unwrap().to_str().unwrap()
+    )
+}
+
+fn hash_contents(path: &str, hasher: &mut DefaultHasher) {
     let mut file = File::open(path).unwrap();
     let mut buf = [0u8; 4096];
-    let mut hasher = DefaultHasher::new();
     loop {
         let bytes_read = file
             .read(&mut buf)
-            .unwrap_or_else(|e| panic!("error reading '{}': {}", path.display(), e));
+            .unwrap_or_else(|e| panic!("error reading '{path}': {e}"));
         if bytes_read == 0 {
             break;
         }
         hasher.write(&buf[..bytes_read]);
     }
-    let hash = hasher.finish();
-    format!(
-        "{}.{:x}.{}",
-        path.file_stem().unwrap().to_str().unwrap(),
-        hash,
-        path.extension().unwrap().to_str().unwrap()
-    )
 }
 
 fn take_between<'a>(s: &mut &'a str, start: &str, end: &str) -> Option<&'a str> {
