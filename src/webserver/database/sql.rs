@@ -269,7 +269,7 @@ mod tests {
         ConcatNullBehavior, RowInputId, SqlPageExpr, VariableRef, VariableSource,
     };
     use crate::webserver::database::sqlpage_functions::functions::SqlPageFunctionName;
-    use sqlparser::dialect::{MySqlDialect, PostgreSqlDialect};
+    use sqlparser::dialect::{MsSqlDialect, MySqlDialect, PostgreSqlDialect};
     use sqlx::any::AnyKind;
 
     fn database(database_type: SupportedDatabase) -> DbInfo {
@@ -294,6 +294,14 @@ mod tests {
     fn one_for(database_type: SupportedDatabase, sql: &str) -> FileStatement {
         let database = database(database_type);
         parse_sql(&database, &PostgreSqlDialect {}, sql)
+            .unwrap()
+            .next()
+            .unwrap()
+    }
+
+    fn one_mssql(sql: &str) -> FileStatement {
+        let database = database(SupportedDatabase::Mssql);
+        parse_sql(&database, &MsSqlDialect {}, sql)
             .unwrap()
             .next()
             .unwrap()
@@ -344,6 +352,50 @@ mod tests {
 
     fn text<Input>(value: &str) -> SqlPageExpr<Input> {
         SqlPageExpr::Literal(serde_json::Value::String(value.into()))
+    }
+
+    fn assert_json_object_colon_arguments_work(parse: fn(&str) -> FileStatement) {
+        let json_object = SqlPageExpr::JsonObject(Box::new([(text("a"), text("b"))]));
+
+        let FileStatement::Query(Query {
+            body: QueryBody::StaticSimpleSelect(query),
+            ..
+        }) = parse("select 'text' as component, json_object('a':'b') as contents")
+        else {
+            panic!("expected a static SQLPage-owned row");
+        };
+        assert_eq!(query.columns[1].value, json_object);
+
+        let FileStatement::SetVariable {
+            target,
+            value:
+                Query {
+                    body: QueryBody::StaticSimpleSelect(query),
+                    ..
+                },
+        } = parse("set x = json_object('a':'b')")
+        else {
+            panic!("expected a SQLPage-owned SET value");
+        };
+        assert_eq!(target.0, "x");
+        assert_eq!(query.columns[0].value, json_object);
+
+        let FileStatement::Query(Query {
+            body: QueryBody::StaticSimpleSelect(query),
+            ..
+        }) = parse(
+            "select 'dynamic' as component, sqlpage.run_sql('frag.sql', json_object('a':'b')) as properties",
+        )
+        else {
+            panic!("expected a static SQLPage-owned row");
+        };
+        assert_eq!(
+            query.columns[1].value,
+            call(
+                SqlPageFunctionName::run_sql,
+                [text("frag.sql"), json_object]
+            )
+        );
     }
 
     #[test]
@@ -694,6 +746,36 @@ mod tests {
             panic!("expected a single SQLPage-owned row");
         };
         assert_eq!(query.columns.len(), 1);
+    }
+
+    #[test]
+    fn json_object_colon_arguments_work_in_sqlpage_expressions() {
+        assert_json_object_colon_arguments_work(one);
+        assert_json_object_colon_arguments_work(one_mssql);
+    }
+
+    #[test]
+    fn json_object_colon_arguments_do_not_fail_projection_analysis() {
+        for statement in [
+            one("select json_object('a': value) as contents from items"),
+            one_mssql("select json_object('a': value) as contents from items"),
+        ] {
+            let FileStatement::Query(Query {
+                body: QueryBody::Database(query),
+                ..
+            }) = statement
+            else {
+                panic!("expected a database query");
+            };
+            assert!(query.row_input_json.is_empty());
+            assert!(query.computed_columns.is_empty());
+            assert!(
+                query
+                    .sql
+                    .to_ascii_lowercase()
+                    .contains("json_object('a' : value)")
+            );
+        }
     }
 
     #[test]

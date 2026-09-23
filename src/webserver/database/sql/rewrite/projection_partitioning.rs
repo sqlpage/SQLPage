@@ -1,13 +1,13 @@
 //! Assigns selected expressions to the database or per-row `SQLPage` evaluation.
 
 use sqlparser::ast::{
-    BinaryOperator, DataType, Expr as SqlExpr, FunctionArg, FunctionArgExpr, FunctionArguments,
-    Ident, ObjectNamePart, SelectItem, SetExpr, Statement as SqlStatement,
+    BinaryOperator, DataType, Expr as SqlExpr, Ident, ObjectNamePart, SelectItem, SetExpr,
+    Statement as SqlStatement,
 };
 
 use super::sqlpage_expression::{
-    SqlPageExpressionContext, build_emulated, build_sqlpage_expr, emulated_function,
-    recognize_sqlpage_function, take_expression_arguments,
+    EmulatedFunction, SqlPageExpressionContext, build_emulated, build_sqlpage_expr,
+    emulated_function, expression_arguments, recognize_sqlpage_function,
 };
 use crate::webserver::database::sqlpage_expr::{RowExpr, RowInputId, SqlPageExpr};
 use crate::webserver::database::{DbInfo, SupportedDatabase};
@@ -77,13 +77,15 @@ impl<'a> ProjectionPartitioner<'a> {
                 }
                 let kind = emulated_function(&function)
                     .expect("per-row function ownership was already classified");
-                let arguments = take_expression_arguments(function)?
-                    .into_iter()
-                    .map(|argument| {
-                        let projection = self.partition_projection(argument)?;
-                        self.projection_into_row_expr(projection)
-                    })
-                    .collect::<anyhow::Result<Vec<_>>>()?;
+                let arguments =
+                    expression_arguments(&function, matches!(kind, EmulatedFunction::JsonObject))?
+                        .into_iter()
+                        .cloned()
+                        .map(|argument| {
+                            let projection = self.partition_projection(argument)?;
+                            self.projection_into_row_expr(projection)
+                        })
+                        .collect::<anyhow::Result<Vec<_>>>()?;
                 Ok(PartitionedProjection::PerRow(build_emulated(
                     kind,
                     arguments,
@@ -145,19 +147,12 @@ fn projection_is_per_row(expression: &SqlExpr) -> anyhow::Result<bool> {
             if recognize_sqlpage_function(function)?.is_some() {
                 return Ok(true);
             }
-            if emulated_function(function).is_none() {
+            let Some(kind) = emulated_function(function) else {
                 return Ok(false);
-            }
-            let FunctionArguments::List(arguments) = &function.args else {
-                anyhow::bail!("Unsupported arguments to {}", function.name);
             };
-            if arguments.duplicate_treatment.is_some() || !arguments.clauses.is_empty() {
-                anyhow::bail!("Unsupported arguments to {}", function.name);
-            }
-            for argument in &arguments.args {
-                let FunctionArg::Unnamed(FunctionArgExpr::Expr(expression)) = argument else {
-                    anyhow::bail!("Named and wildcard function arguments are not supported");
-                };
+            let arguments =
+                expression_arguments(function, matches!(kind, EmulatedFunction::JsonObject))?;
+            for expression in arguments {
                 if projection_is_per_row(expression)? {
                     return Ok(true);
                 }
