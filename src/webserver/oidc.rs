@@ -6,6 +6,7 @@ use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 use tokio::time::Instant;
 
 use crate::webserver::http_client::get_http_client_from_appdata;
+use crate::webserver::routing::{AppFileStore, RoutingAction, calculate_route};
 use crate::{AppState, app_config::AppConfig};
 use actix_web::http::header;
 use actix_web::{
@@ -139,28 +140,47 @@ impl TryFrom<&AppConfig> for OidcConfig {
 impl OidcConfig {
     #[must_use]
     pub fn is_public_path(&self, path: &str) -> bool {
-        // Percent-decode both the request path and the configured prefixes
-        // before comparing. Otherwise an unauthenticated request could encode a
-        // byte of a protected prefix (e.g. `/%70rotected/`, which the router
-        // decodes to `/protected/` and serves) to dodge the rule. The prefixes
-        // are decoded too because a `site_prefix` such as `/my app/` is stored
-        // percent-encoded (`/my%20app/...`); decoding only one side would never
-        // match and would wrongly make protected pages public. Matching stays a
-        // plain string prefix, preserving the documented `/public` vs `/public/`
-        // distinction (those resolve to different files).
-        fn decode(s: &str) -> std::borrow::Cow<'_, str> {
-            percent_encoding::percent_decode_str(s).decode_utf8_lossy()
-        }
-        let decoded = decode(path);
-        let path = decoded.as_ref();
-        !self
-            .protected_paths
+        let Some(path) = normalize_oidc_path(path) else {
+            return false;
+        };
+        self.is_public_normalized_path(&path)
+    }
+
+    fn is_public_normalized_path(&self, path: &str) -> bool {
+        // Filesystems can resolve differently cased paths to the same file.
+        // Protect all ASCII case aliases; a public override must still match
+        // the configured spelling exactly.
+        !self.protected_paths.iter().any(|p| {
+            normalize_oidc_path(p).is_none_or(|prefix| {
+                path.to_ascii_lowercase()
+                    .starts_with(&prefix.to_ascii_lowercase())
+            })
+        }) || self
+            .public_paths
             .iter()
-            .any(|p| path.starts_with(decode(p).as_ref()))
-            || self
-                .public_paths
-                .iter()
-                .any(|p| path.starts_with(decode(p).as_ref()))
+            .any(|p| normalize_oidc_path(p).is_some_and(|prefix| path.starts_with(&prefix)))
+    }
+
+    fn is_public_route(&self, action: &RoutingAction) -> bool {
+        let (RoutingAction::Execute(path) | RoutingAction::CustomNotFound(path)) = action else {
+            return true;
+        };
+        let Some(site_prefix) = normalize_oidc_path(&self.site_prefix) else {
+            return false;
+        };
+        let mut route = site_prefix.trim_end_matches('/').to_string();
+        for component in path.components() {
+            if let std::path::Component::Normal(name) = component {
+                let Some(name) = name.to_str() else {
+                    return false;
+                };
+                route.push('/');
+                route.push_str(name);
+            } else {
+                return false;
+            }
+        }
+        self.is_public_normalized_path(&route)
     }
 
     /// Creates a custom ID token verifier that supports multiple issuers
@@ -201,6 +221,37 @@ impl OidcConfig {
             .finish();
         format!("{}?{}", self.logout_uri, query)
     }
+}
+
+/// Match the router's decoded filesystem path components before applying URL
+/// prefix rules. Preserve a final slash: `/public` and `/public/` are different
+/// routes. Invalid or ambiguous paths must never be classified as public.
+fn normalize_oidc_path(path: &str) -> Option<String> {
+    use std::path::{Component, Path};
+
+    let decoded = percent_encoding::percent_decode_str(path)
+        .decode_utf8()
+        .ok()?;
+    if !decoded.starts_with('/') || decoded.contains('\\') {
+        return None;
+    }
+    let mut normalized = String::from("/");
+    for component in Path::new(decoded.as_ref()).components() {
+        match component {
+            Component::RootDir | Component::CurDir => {}
+            Component::Normal(name) => {
+                if normalized.len() > 1 {
+                    normalized.push('/');
+                }
+                normalized.push_str(name.to_str()?);
+            }
+            Component::ParentDir | Component::Prefix(_) => return None,
+        }
+    }
+    if decoded.ends_with('/') && normalized != "/" {
+        normalized.push('/');
+    }
+    Some(normalized)
 }
 
 fn get_app_host(config: &AppConfig) -> String {
@@ -358,6 +409,13 @@ impl OidcState {
     }
 }
 
+fn request_is_builtin_static_path(request: &ServiceRequest, config: &OidcConfig) -> bool {
+    request
+        .path()
+        .strip_prefix(&config.site_prefix)
+        .is_some_and(|path| path.starts_with("sqlpage/"))
+}
+
 pub async fn initialize_oidc_state(
     app_config: &AppConfig,
 ) -> anyhow::Result<Option<Arc<OidcState>>> {
@@ -488,7 +546,7 @@ async fn handle_request(
         }
         Ok(None) => {
             log::trace!("No authenticated user found");
-            handle_unauthenticated_request(oidc_state, request)
+            handle_unauthenticated_request(oidc_state, request).await
         }
         Err(e) => {
             log::debug!(
@@ -497,19 +555,41 @@ async fn handle_request(
             if let Some(c) = http_client {
                 oidc_state.maybe_refresh(c, OIDC_CLIENT_MIN_REFRESH_INTERVAL);
             }
-            handle_unauthenticated_request(oidc_state, request)
+            handle_unauthenticated_request(oidc_state, request).await
         }
     }
 }
 
-fn handle_unauthenticated_request(
+async fn handle_unauthenticated_request(
     oidc_state: &OidcState,
     request: ServiceRequest,
 ) -> MiddlewareResponse {
     log::debug!("Handling unauthenticated request to {}", request.path());
 
     if oidc_state.config.is_public_path(request.path()) {
-        return MiddlewareResponse::Forward(request);
+        let route = {
+            let app_state = request.app_data::<web::Data<AppState>>();
+            let path_and_query = request.uri().path_and_query();
+            match (app_state, path_and_query) {
+                (Some(state), Some(path_and_query)) => {
+                    let store = AppFileStore::new(&state.sql_file_cache, &state.file_system, state);
+                    Some(calculate_route(path_and_query, &store, &state.config).await)
+                }
+                _ => None,
+            }
+        };
+        match route {
+            Some(Ok(action)) if oidc_state.config.is_public_route(&action) => {
+                // Reuse the authorized route in the main handler so a file-store
+                // change between this check and dispatch cannot change its identity.
+                request.extensions_mut().insert(action);
+                return MiddlewareResponse::Forward(request);
+            }
+            Some(Err(_)) if request_is_builtin_static_path(&request, &oidc_state.config) => {
+                return MiddlewareResponse::Forward(request);
+            }
+            _ => {}
+        }
     }
 
     log::debug!("Redirecting to OIDC provider");
@@ -1125,7 +1205,7 @@ fn hash_nonce(nonce: &Nonce) -> String {
     use argon2::PasswordHasher;
     use base64::Engine as _;
     // low-cost parameters: oidc tokens are short-lived and the source nonce is high-entropy
-    let params = argon2::Params::new(8, 1, 1, Some(16)).expect("bug: invalid Argon2 parameters");
+    let params = nonce_argon2_params();
     let argon2 = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
     let hash = argon2
         .hash_password(nonce.secret().as_bytes())
@@ -1133,6 +1213,24 @@ fn hash_nonce(nonce: &Nonce) -> String {
     // OIDC nonce values appear in the authorization URL. Encoding the PHC
     // representation makes it URL-safe even with providers that reject `=`.
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hash.to_string())
+}
+
+fn nonce_argon2_params() -> argon2::Params {
+    argon2::Params::new(8, 1, 1, Some(16)).expect("bug: invalid Argon2 parameters")
+}
+
+fn validate_nonce_hash_profile(
+    hash: &argon2::password_hash::phc::PasswordHash,
+) -> Result<argon2::Params, String> {
+    let params = argon2::Params::try_from(hash)
+        .map_err(|e| format!("Invalid nonce hash parameters: {e}"))?;
+    if hash.algorithm.as_str() != "argon2id"
+        || hash.version != Some(u32::from(argon2::Version::V0x13))
+        || params != nonce_argon2_params()
+    {
+        return Err("Unsupported nonce hash parameters".to_string());
+    }
+    Ok(params)
 }
 
 fn check_nonce(id_token_nonce: Option<&Nonce>, expected_nonce: &Nonce) -> Result<(), String> {
@@ -1151,6 +1249,9 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
         id_token_nonce.secret(),
         state_nonce.secret()
     );
+    if id_token_nonce.secret().len() > 256 {
+        return Err("Nonce hash is too long".to_string());
+    }
     let decoded_hash = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(id_token_nonce.secret())
         .map_err(|e| format!("Failed to decode nonce hash: {e}"))?;
@@ -1158,7 +1259,8 @@ fn nonce_matches(id_token_nonce: &Nonce, state_nonce: &Nonce) -> Result<(), Stri
         .map_err(|e| format!("Nonce hash is not valid UTF-8: {e}"))?;
     let hash = argon2::password_hash::phc::PasswordHash::new(decoded_hash)
         .map_err(|e| format!("Failed to parse nonce hash: {e}"))?;
-    argon2::Argon2::default()
+    let params = validate_nonce_hash_profile(&hash)?;
+    argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params)
         .verify_password(state_nonce.secret().as_bytes(), &hash)
         .map_err(|e| format!("Failed to verify nonce ({}): {e}", state_nonce.secret()))?;
     log::debug!("Nonce successfully verified");
@@ -1383,6 +1485,39 @@ mod tests {
     }
 
     #[test]
+    fn oidc_nonce_rejects_unbounded_or_changed_hash_profiles() {
+        use base64::Engine as _;
+
+        let source_nonce = Nonce::new("test nonce source".to_string());
+        let encoded = hash_nonce(&source_nonce);
+        let phc = String::from_utf8(
+            base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .decode(encoded)
+                .unwrap(),
+        )
+        .unwrap();
+        let short_output = format!("{}$AAAAAAAAAAAAAAAA", phc.rsplit_once('$').unwrap().0);
+        for invalid in [
+            phc.replacen("argon2id", "argon2i", 1),
+            phc.replacen("v=19", "v=16", 1),
+            phc.replacen("m=8", "m=65536", 1),
+            phc.replacen("t=1", "t=2", 1),
+            phc.replacen("m=8,t=1,p=1", "m=16,t=1,p=2", 1),
+            short_output,
+        ] {
+            let hash = argon2::password_hash::phc::PasswordHash::new(&invalid).unwrap();
+            assert!(
+                validate_nonce_hash_profile(&hash).is_err(),
+                "unexpectedly accepted {invalid}"
+            );
+        }
+        assert!(
+            nonce_matches(&Nonce::new("A".repeat(257)), &source_nonce).is_err(),
+            "oversized nonce hashes must be rejected before decoding"
+        );
+    }
+
+    #[test]
     fn logout_url_generation_and_parsing_are_compatible() {
         let secret = "super_secret_key";
         let config = OidcConfig {
@@ -1538,6 +1673,79 @@ mod tests {
         assert!(
             !config.is_public_path("/%70rotected/"),
             "/%70rotected/ decodes to /protected/ and must stay protected"
+        );
+    }
+
+    #[test]
+    fn filesystem_path_aliases_do_not_bypass_oidc_protection() {
+        let config = test_oidc_config_with_paths(vec!["/users/settings".to_string()], vec![]);
+        for path in [
+            "/users/%2e/settings.sql",
+            "/users//settings.sql",
+            "/users/%2fsettings.sql",
+            "/USERS/settings.sql",
+            "/users/%5csettings.sql",
+        ] {
+            assert!(!config.is_public_path(path), "{path} must be protected");
+        }
+        assert!(config.is_public_path("/users/profile.sql"));
+    }
+
+    #[tokio::test]
+    async fn resolved_sql_file_aliases_do_not_bypass_oidc_protection() {
+        use crate::filesystem::FileAccess;
+        use crate::webserver::routing::FileStore;
+        use awc::http::uri::PathAndQuery;
+
+        struct OneFile(&'static str);
+        impl FileStore for OneFile {
+            async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool> {
+                tokio::task::yield_now().await;
+                Ok(access.path() == std::path::Path::new(self.0))
+            }
+        }
+
+        let routing_config = crate::app_config::tests::test_config();
+        for (url, file) in [
+            ("/private/secret", "private/secret.sql"),
+            ("/private/", "private/index.sql"),
+            ("/private/data.json", "private/data.json.sql"),
+            ("/private/missing", "private/404.sql"),
+        ] {
+            let oidc = test_oidc_config_with_paths(vec![format!("/{file}")], vec![]);
+            assert!(oidc.is_public_path(url), "{url} is a distinct URL spelling");
+            let route = calculate_route(
+                &PathAndQuery::try_from(url).unwrap(),
+                &OneFile(file),
+                &routing_config,
+            )
+            .await
+            .unwrap();
+            if url == "/private/missing" {
+                assert!(
+                    matches!(&route, RoutingAction::CustomNotFound(path) if path == std::path::Path::new(file)),
+                    "the clean URL must resolve to its custom 404 SQL file"
+                );
+            }
+            assert!(
+                !oidc.is_public_route(&route),
+                "{url} resolves to a protected SQL file"
+            );
+        }
+
+        let mut prefixed_oidc =
+            test_oidc_config_with_paths(vec!["/my%20app/private/secret.sql".to_string()], vec![]);
+        prefixed_oidc.site_prefix = "/my%20app/".to_string();
+        assert!(
+            !prefixed_oidc.is_public_route(&RoutingAction::Execute("private/secret.sql".into()))
+        );
+
+        let public_oidc = test_oidc_config_with_paths(
+            vec!["/private".to_string()],
+            vec!["/private/public/".to_string()],
+        );
+        assert!(
+            public_oidc.is_public_route(&RoutingAction::Execute("private/public/index.sql".into()))
         );
     }
 

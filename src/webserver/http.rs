@@ -16,7 +16,9 @@ use actix_web::http::header::Accept;
 use actix_web::http::header::{ContentType, Header, HttpDate, IfModifiedSince, LastModified};
 use actix_web::http::{StatusCode, header};
 use actix_web::web::PayloadConfig;
-use actix_web::{App, Error, HttpResponse, HttpServer, dev::ServiceResponse, middleware, web};
+use actix_web::{
+    App, Error, HttpMessage, HttpResponse, HttpServer, dev::ServiceResponse, middleware, web,
+};
 use opentelemetry_semantic_conventions::attribute as otel;
 use tracing::{Instrument, Span};
 use tracing_actix_web::{DefaultRootSpanBuilder, RootSpanBuilder, TracingLogger};
@@ -487,7 +489,14 @@ pub async fn main_handler(
         .uri()
         .path_and_query()
         .ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
-    let routing_action = match calculate_route(path_and_query, &store, &app_state.config).await {
+    let authorized_route = service_request
+        .extensions_mut()
+        .remove::<super::routing::RoutingAction>();
+    let routing_action = match authorized_route {
+        Some(action) => Ok(action),
+        None => calculate_route(path_and_query, &store, &app_state.config).await,
+    };
+    let routing_action = match routing_action {
         Ok(action) => action,
         Err(e) => {
             let e = e.context(format!(
