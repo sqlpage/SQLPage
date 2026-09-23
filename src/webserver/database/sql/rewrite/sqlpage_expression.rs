@@ -5,8 +5,9 @@ use std::str::FromStr as _;
 use anyhow::{Context as _, anyhow};
 use serde_json::Value as JsonValue;
 use sqlparser::ast::{
-    BinaryOperator, Expr as SqlExpr, Function, FunctionArg, FunctionArgExpr, FunctionArgumentList,
-    FunctionArguments, Ident, ObjectName, ObjectNamePart, Value, ValueWithSpan,
+    BinaryOperator, Expr as SqlExpr, Function, FunctionArg, FunctionArgExpr, FunctionArgOperator,
+    FunctionArgumentList, FunctionArguments, Ident, ObjectName, ObjectNamePart, Value,
+    ValueWithSpan,
 };
 
 use crate::webserver::database::sqlpage_expr::{
@@ -71,18 +72,16 @@ pub(super) fn is_static_simple_select_expression(expression: &SqlExpr) -> anyhow
         }) => Ok(true),
         SqlExpr::Identifier(identifier) => Ok(variable_from_ident(identifier).is_some()),
         SqlExpr::Function(function) => {
-            if recognize_sqlpage_function(function)?.is_none()
-                && emulated_function(function).is_none()
-            {
+            let sqlpage_function = recognize_sqlpage_function(function)?;
+            let emulated = emulated_function(function);
+            if sqlpage_function.is_none() && emulated.is_none() {
                 return Ok(false);
             }
-            let FunctionArguments::List(arguments) = &function.args else {
-                return Ok(false);
-            };
-            for argument in &arguments.args {
-                let FunctionArg::Unnamed(FunctionArgExpr::Expr(expression)) = argument else {
-                    return Ok(false);
-                };
+            let arguments = expression_arguments(
+                function,
+                matches!(emulated, Some(EmulatedFunction::JsonObject)),
+            )?;
+            for expression in arguments {
                 if !is_static_simple_select_expression(expression)? {
                     return Ok(false);
                 }
@@ -126,8 +125,9 @@ pub(super) fn build_sqlpage_expr<Context: SqlPageExpressionContext>(
             ),
         SqlExpr::Function(function) => {
             if let Some(function_name) = recognize_sqlpage_function(&function)? {
-                let arguments = take_expression_arguments(function)?
+                let arguments = expression_arguments(&function, false)?
                     .into_iter()
+                    .cloned()
                     .map(|argument| build_sqlpage_expr(database, context, argument))
                     .collect::<anyhow::Result<Vec<_>>>()?;
                 Ok(SqlPageExpr::Call {
@@ -135,10 +135,12 @@ pub(super) fn build_sqlpage_expr<Context: SqlPageExpressionContext>(
                     arguments: arguments.into_boxed_slice(),
                 })
             } else if let Some(kind) = emulated_function(&function) {
-                let arguments = take_expression_arguments(function)?
-                    .into_iter()
-                    .map(|argument| build_sqlpage_expr(database, context, argument))
-                    .collect::<anyhow::Result<Vec<_>>>()?;
+                let arguments =
+                    expression_arguments(&function, matches!(kind, EmulatedFunction::JsonObject))?
+                        .into_iter()
+                        .cloned()
+                        .map(|argument| build_sqlpage_expr(database, context, argument))
+                        .collect::<anyhow::Result<Vec<_>>>()?;
                 build_emulated(kind, arguments, database.database_type)
             } else {
                 context.use_database_expr(SqlExpr::Function(function))
@@ -270,23 +272,40 @@ pub(super) fn emulated_function(function: &Function) -> Option<EmulatedFunction>
     }
 }
 
-pub(super) fn take_expression_arguments(function: Function) -> anyhow::Result<Vec<SqlExpr>> {
-    let FunctionArguments::List(arguments) = function.args else {
+pub(super) fn expression_arguments(
+    function: &Function,
+    json_object_key_value_pairs: bool,
+) -> anyhow::Result<Vec<&SqlExpr>> {
+    let FunctionArguments::List(arguments) = &function.args else {
         anyhow::bail!("Unsupported arguments to {}", function.name);
     };
     if arguments.duplicate_treatment.is_some() || !arguments.clauses.is_empty() {
         anyhow::bail!("Unsupported arguments to {}", function.name);
     }
-    arguments
-        .args
-        .into_iter()
-        .map(|argument| match argument {
-            FunctionArg::Unnamed(FunctionArgExpr::Expr(expression)) => Ok(expression),
-            _ => Err(anyhow!(
-                "Named and wildcard function arguments are not supported"
-            )),
-        })
-        .collect()
+    let mut expressions = Vec::with_capacity(arguments.args.len());
+    for argument in &arguments.args {
+        match argument {
+            FunctionArg::Unnamed(FunctionArgExpr::Expr(expression)) => {
+                expressions.push(expression);
+            }
+            FunctionArg::ExprNamed {
+                name,
+                arg: FunctionArgExpr::Expr(expression),
+                operator: FunctionArgOperator::Colon | FunctionArgOperator::Value,
+            } if json_object_key_value_pairs => {
+                // MSSQL and PostgreSQL allow JSON_OBJECT(key: value) / (key VALUE value).
+                // SQLPage's emulation stores object arguments as alternating key/value
+                // expressions, so expand this syntax into that representation here.
+                // Keep the expression in the argument name as the key, in source order.
+                expressions.push(name);
+                expressions.push(expression);
+            }
+            _ => {
+                anyhow::bail!("Named and wildcard function arguments are not supported");
+            }
+        }
+    }
+    Ok(expressions)
 }
 
 pub(super) fn variable_from_expr(expression: &SqlExpr) -> Option<VariableRef> {
