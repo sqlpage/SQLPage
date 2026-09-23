@@ -293,10 +293,6 @@ pub(super) fn expression_arguments(
                 arg: FunctionArgExpr::Expr(expression),
                 operator: FunctionArgOperator::Colon | FunctionArgOperator::Value,
             } if json_object_key_value_pairs => {
-                // MSSQL and PostgreSQL allow JSON_OBJECT(key: value) / (key VALUE value).
-                // SQLPage's emulation stores object arguments as alternating key/value
-                // expressions, so expand this syntax into that representation here.
-                // Keep the expression in the argument name as the key, in source order.
                 expressions.push(name);
                 expressions.push(expression);
             }

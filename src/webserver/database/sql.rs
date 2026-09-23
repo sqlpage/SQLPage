@@ -354,6 +354,50 @@ mod tests {
         SqlPageExpr::Literal(serde_json::Value::String(value.into()))
     }
 
+    fn assert_json_object_colon_arguments_work(parse: fn(&str) -> FileStatement) {
+        let json_object = SqlPageExpr::JsonObject(Box::new([(text("a"), text("b"))]));
+
+        let FileStatement::Query(Query {
+            body: QueryBody::StaticSimpleSelect(query),
+            ..
+        }) = parse("select 'text' as component, json_object('a':'b') as contents")
+        else {
+            panic!("expected a static SQLPage-owned row");
+        };
+        assert_eq!(query.columns[1].value, json_object);
+
+        let FileStatement::SetVariable {
+            target,
+            value:
+                Query {
+                    body: QueryBody::StaticSimpleSelect(query),
+                    ..
+                },
+        } = parse("set x = json_object('a':'b')")
+        else {
+            panic!("expected a SQLPage-owned SET value");
+        };
+        assert_eq!(target.0, "x");
+        assert_eq!(query.columns[0].value, json_object);
+
+        let FileStatement::Query(Query {
+            body: QueryBody::StaticSimpleSelect(query),
+            ..
+        }) = parse(
+            "select 'dynamic' as component, sqlpage.run_sql('frag.sql', json_object('a':'b')) as properties",
+        )
+        else {
+            panic!("expected a static SQLPage-owned row");
+        };
+        assert_eq!(
+            query.columns[1].value,
+            call(
+                SqlPageFunctionName::run_sql,
+                [text("frag.sql"), json_object]
+            )
+        );
+    }
+
     #[test]
     fn database_only_parent_forces_binding() {
         let FileStatement::Query(Query {
@@ -705,62 +749,33 @@ mod tests {
     }
 
     #[test]
-    fn mssql_json_object_colon_arguments_work_in_sqlpage_expressions() {
-        let json_object = SqlPageExpr::JsonObject(Box::new([(text("a"), text("b"))]));
-
-        let FileStatement::Query(Query {
-            body: QueryBody::StaticSimpleSelect(query),
-            ..
-        }) = one_mssql("select 'text' as component, json_object('a':'b') as contents")
-        else {
-            panic!("expected a static SQLPage-owned row");
-        };
-        assert_eq!(query.columns[1].value, json_object);
-
-        let FileStatement::SetVariable {
-            target,
-            value:
-                Query {
-                    body: QueryBody::StaticSimpleSelect(query),
-                    ..
-                },
-        } = one_mssql("set x = json_object('a':'b')")
-        else {
-            panic!("expected a SQLPage-owned SET value");
-        };
-        assert_eq!(target.0, "x");
-        assert_eq!(query.columns[0].value, json_object);
-
-        let FileStatement::Query(Query {
-            body: QueryBody::StaticSimpleSelect(query),
-            ..
-        }) = one_mssql(
-            "select 'dynamic' as component, sqlpage.run_sql('frag.sql', json_object('a':'b')) as properties",
-        )
-        else {
-            panic!("expected a static SQLPage-owned row");
-        };
-        assert_eq!(
-            query.columns[1].value,
-            call(
-                SqlPageFunctionName::run_sql,
-                [text("frag.sql"), json_object]
-            )
-        );
+    fn json_object_colon_arguments_work_in_sqlpage_expressions() {
+        assert_json_object_colon_arguments_work(one);
+        assert_json_object_colon_arguments_work(one_mssql);
     }
 
     #[test]
-    fn mssql_json_object_colon_arguments_do_not_fail_projection_analysis() {
-        let FileStatement::Query(Query {
-            body: QueryBody::Database(query),
-            ..
-        }) = one_mssql("select json_object('a': value) as contents from items")
-        else {
-            panic!("expected a database query");
-        };
-        assert!(query.row_input_json.is_empty());
-        assert!(query.computed_columns.is_empty());
-        assert!(query.sql.contains("json_object('a' : value)"));
+    fn json_object_colon_arguments_do_not_fail_projection_analysis() {
+        for statement in [
+            one("select json_object('a': value) as contents from items"),
+            one_mssql("select json_object('a': value) as contents from items"),
+        ] {
+            let FileStatement::Query(Query {
+                body: QueryBody::Database(query),
+                ..
+            }) = statement
+            else {
+                panic!("expected a database query");
+            };
+            assert!(query.row_input_json.is_empty());
+            assert!(query.computed_columns.is_empty());
+            assert!(
+                query
+                    .sql
+                    .to_ascii_lowercase()
+                    .contains("json_object('a' : value)")
+            );
+        }
     }
 
     #[test]
