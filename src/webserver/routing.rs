@@ -127,7 +127,9 @@ impl CanonicalRequestPath {
             normalized_url,
             relative_file_path,
             trailing_slash: raw_path.ends_with(FORWARD_SLASH),
-            builtin_static: relative.is_some_and(|path| path.starts_with("sqlpage/")),
+            builtin_static: relative.is_some_and(|path| {
+                path.starts_with("sqlpage/") || super::static_content::is_builtin_asset_path(path)
+            }),
         }
     }
 
@@ -455,6 +457,15 @@ mod tests {
         assert!(path.is_builtin_static());
 
         let encoded = PathAndQuery::from_static("/my%20app/%73qlpage/sqlpage.js");
+        let path = CanonicalRequestPath::parse(&encoded, "/my%20app/");
+        assert!(!path.is_builtin_static());
+
+        let filename = crate::utils::static_filename!("sqlpage.js");
+        let request = PathAndQuery::from_str(&format!("/my%20app/{filename}")).unwrap();
+        let path = CanonicalRequestPath::parse(&request, "/my%20app/");
+        assert!(path.is_builtin_static());
+
+        let encoded = PathAndQuery::from_str(&format!("/my%20app/%73{}", &filename[1..])).unwrap();
         let path = CanonicalRequestPath::parse(&encoded, "/my%20app/");
         assert!(!path.is_builtin_static());
     }

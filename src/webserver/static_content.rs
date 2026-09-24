@@ -7,6 +7,17 @@ use actix_web::{
     web,
 };
 
+pub(super) fn is_builtin_asset_path(path: &str) -> bool {
+    [
+        static_filename!("sqlpage.js"),
+        static_filename!("apexcharts.js"),
+        static_filename!("tomselect.js"),
+        static_filename!("sqlpage.css"),
+        static_filename!("favicon.svg"),
+    ]
+    .contains(&path)
+}
+
 macro_rules! static_file_endpoint {
     ($filestem:literal, $extension:literal, $mime:literal) => {{
         const FILENAME_WITH_TAG: &str = static_filename!(concat!($filestem, ".", $extension));

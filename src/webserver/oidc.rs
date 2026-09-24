@@ -545,16 +545,20 @@ async fn handle_unauthenticated_request(
     let path_and_query = request.uri().path_and_query();
     let canonical = path_and_query
         .map(|path| CanonicalRequestPath::parse(path, &oidc_state.config.site_prefix));
+    // Built-in assets have fixed content and are served by their own Actix
+    // services, so they stay public even when their top-level URLs match a
+    // configured protected-path prefix.
+    if canonical
+        .as_ref()
+        .is_some_and(CanonicalRequestPath::is_builtin_static)
+    {
+        return MiddlewareResponse::Forward(request);
+    }
     if canonical
         .as_ref()
         .is_some_and(|path| oidc_state.path_policy.is_public(path.normalized_url()))
     {
         let canonical = canonical.expect("checked above");
-        // Built-in assets are handled by their own Actix services, not the
-        // SQL-file router. Classify them explicitly before route resolution.
-        if canonical.is_builtin_static() {
-            return MiddlewareResponse::Forward(request);
-        }
         let route = {
             let app_state = request.app_data::<web::Data<AppState>>();
             match (app_state, path_and_query) {

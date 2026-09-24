@@ -391,6 +391,29 @@ async fn test_public_clean_url_cannot_execute_a_protected_sql_file() {
 }
 
 #[actix_web::test]
+async fn test_top_level_builtin_assets_are_accessible_without_login_when_protected() {
+    let protected_paths = ["/sqlpage."];
+    let (app, _provider) = setup_oidc_test_with_paths(|_| {}, &protected_paths, &[]).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    let homepage = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_ne!(homepage.status(), StatusCode::SEE_OTHER);
+    let homepage = String::from_utf8(test::read_body(homepage).await.to_vec()).unwrap();
+    let script_src = homepage
+        .split_once("src=\"/sqlpage.")
+        .and_then(|(_, rest)| rest.split_once('"'))
+        .map(|(src, _)| format!("/sqlpage.{src}"))
+        .expect("homepage should reference the top-level SQLPage JavaScript bundle");
+
+    let asset = request_with_cookies!(app, test::TestRequest::get().uri(&script_src), cookies);
+    assert_eq!(asset.status(), StatusCode::OK);
+    assert_eq!(
+        asset.headers().get(header::CONTENT_TYPE).unwrap(),
+        "application/javascript;charset=UTF-8"
+    );
+}
+
+#[actix_web::test]
 async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
