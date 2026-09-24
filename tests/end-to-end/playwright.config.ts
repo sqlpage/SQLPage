@@ -1,9 +1,25 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const fixtureBaseURL =
-  process.env.SQLPAGE_FIXTURE_BASE ?? "http://127.0.0.1:8081";
 const sqlpage =
   process.env.SQLPAGE_BINARY ?? "cargo run --manifest-path ../../Cargo.toml --";
+
+const anyFreePort = "127.0.0.1:0";
+const compileAndStart = 600_000;
+
+// Playwright uppercases the named capture group of `wait` into the environment
+// it hands the worker processes, which is where the tests read the address back
+// from: https://playwright.dev/docs/api/class-testconfig#test-config-web-server
+function announcedAddress(variable: string) {
+  return {
+    announcement: new RegExp(
+      `View your website at:.*?http://(?<${variable.toLowerCase()}>\\S+)`,
+    ),
+    url: `http://${process.env[variable]}`,
+  };
+}
+
+const officialSite = announcedAddress("SQLPAGE_OFFICIAL_SITE_ADDRESS");
+const fixtures = announcedAddress("SQLPAGE_FIXTURES_ADDRESS");
 
 export default defineConfig({
   testDir: ".",
@@ -19,30 +35,29 @@ export default defineConfig({
     {
       name: "official-site",
       testMatch: "*.spec.ts",
-      use: {
-        ...devices["Desktop Chrome"],
-        baseURL: process.env.SQLPAGE_TEST_BASE ?? "http://127.0.0.1:8080",
-      },
+      use: { ...devices["Desktop Chrome"], baseURL: officialSite.url },
     },
     {
       name: "fixtures",
       testMatch: "fixtures/**/test.ts",
-      use: { ...devices["Desktop Chrome"], baseURL: fixtureBaseURL },
+      use: { ...devices["Desktop Chrome"], baseURL: fixtures.url },
     },
   ],
   webServer: [
     {
+      name: "official site",
       command: sqlpage,
       cwd: "../../examples/official-site",
-      url: "http://127.0.0.1:8080",
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      env: { SQLPAGE_LISTEN_ON: anyFreePort },
+      wait: { stderr: officialSite.announcement },
+      timeout: compileAndStart,
     },
     {
+      name: "fixtures",
       command: `${sqlpage} --web-root fixtures --config-dir fixture-server`,
-      url: fixtureBaseURL,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      env: { SQLPAGE_LISTEN_ON: anyFreePort },
+      wait: { stderr: fixtures.announcement },
+      timeout: compileAndStart,
     },
   ],
 });
