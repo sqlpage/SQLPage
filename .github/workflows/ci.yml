@@ -50,17 +50,7 @@ jobs:
       # different DATABASE_URL values. Package the Linux test executables once
       # here so those jobs do not recompile SQLPage or its dependencies.
       - name: Package Linux Rust test binaries
-        run: |
-          set -euo pipefail
-          rm -rf target/sqlpage-test-binaries
-          mkdir -p target/sqlpage-test-binaries
-          cargo test --features odbc-static --no-run --message-format=json \
-            | jq -r 'select(.profile.test == true and .executable != null) | .executable' \
-            | while IFS= read -r test_binary; do
-                cp -- "$test_binary" target/sqlpage-test-binaries/
-              done
-          test -n "$(find target/sqlpage-test-binaries -maxdepth 1 -type f -print -quit)"
-          tar -C target/sqlpage-test-binaries -czf target/sqlpage-linux-test-binaries.tar.gz .
+        run: scripts/package-test-binaries.sh
       - name: Build Linux binary
         run: cargo build --features odbc-static
       - name: Upload Linux Rust test binaries
@@ -150,19 +140,7 @@ jobs:
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          test_binaries=(target/sqlpage-test-binaries/*)
-          if ((${#test_binaries[@]} == 0)); then
-            echo "No test binaries were found in target/sqlpage-test-binaries" >&2
-            exit 1
-          fi
-          for test_binary in "${test_binaries[@]}"; do
-            echo "::group::$(basename "$test_binary")"
-            "$test_binary" --quiet
-            echo "::endgroup::"
-          done
+        run: scripts/run-test-binaries.sh
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           MALLOC_CHECK_: 3
