@@ -88,8 +88,7 @@ pattern for the relevant area.
 - Document other user-visible behavior—SQL syntax extensions, variables, control flow, errors, uploads,
   rendering, HTTP endpoints, performance, or deployment—in the corresponding official-site SQL page or
   migration. Follow nearby migrations and keep examples executable and database-portable where possible.
-- Update `CHANGELOG.md` for user-visible changes, bug fixes, breaking changes, deprecations, and noteworthy
-  internal changes. Keep the entry concise and use the existing version/section conventions.
+- Update `CHANGELOG.md` for user-visible changes only (new features, bug fixes, breaking changes, deprecations). Keep the entry concise and not too technical, focusing on the impact for users. Don't update the entry for a version that was already released (tagged).
 
 ## Validation
 
