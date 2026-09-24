@@ -6,7 +6,9 @@ use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 use tokio::time::Instant;
 
 use crate::webserver::http_client::get_http_client_from_appdata;
-use crate::webserver::routing::{AppFileStore, RoutingAction, calculate_route};
+use crate::webserver::routing::{
+    AppFileStore, CanonicalRequestPath, RoutingAction, canonical_url_path, resolve_route,
+};
 use crate::{AppState, app_config::AppConfig};
 use actix_web::http::header;
 use actix_web::{
@@ -140,47 +142,8 @@ impl TryFrom<&AppConfig> for OidcConfig {
 impl OidcConfig {
     #[must_use]
     pub fn is_public_path(&self, path: &str) -> bool {
-        let Some(path) = normalize_oidc_path(path) else {
-            return false;
-        };
-        self.is_public_normalized_path(&path)
-    }
-
-    fn is_public_normalized_path(&self, path: &str) -> bool {
-        // Filesystems can resolve differently cased paths to the same file.
-        // Protect all ASCII case aliases; a public override must still match
-        // the configured spelling exactly.
-        !self.protected_paths.iter().any(|p| {
-            normalize_oidc_path(p).is_none_or(|prefix| {
-                path.to_ascii_lowercase()
-                    .starts_with(&prefix.to_ascii_lowercase())
-            })
-        }) || self
-            .public_paths
-            .iter()
-            .any(|p| normalize_oidc_path(p).is_some_and(|prefix| path.starts_with(&prefix)))
-    }
-
-    fn is_public_route(&self, action: &RoutingAction) -> bool {
-        let (RoutingAction::Execute(path) | RoutingAction::CustomNotFound(path)) = action else {
-            return true;
-        };
-        let Some(site_prefix) = normalize_oidc_path(&self.site_prefix) else {
-            return false;
-        };
-        let mut route = site_prefix.trim_end_matches('/').to_string();
-        for component in path.components() {
-            if let std::path::Component::Normal(name) = component {
-                let Some(name) = name.to_str() else {
-                    return false;
-                };
-                route.push('/');
-                route.push_str(name);
-            } else {
-                return false;
-            }
-        }
-        self.is_public_normalized_path(&route)
+        let path = canonical_url_path(path);
+        OidcPathPolicy::new(self).is_public(path.as_deref())
     }
 
     /// Creates a custom ID token verifier that supports multiple issuers
@@ -223,35 +186,53 @@ impl OidcConfig {
     }
 }
 
-/// Match the router's decoded filesystem path components before applying URL
-/// prefix rules. Preserve a final slash: `/public` and `/public/` are different
-/// routes. Invalid or ambiguous paths must never be classified as public.
-fn normalize_oidc_path(path: &str) -> Option<String> {
-    use std::path::{Component, Path};
+/// Prefixes are decoded once when the OIDC state starts. The protected
+/// spelling is case-folded conservatively for case-insensitive file stores;
+/// public exceptions still require their configured spelling.
+struct OidcPathPolicy {
+    protected: Option<Vec<String>>,
+    public: Vec<String>,
+}
 
-    let decoded = percent_encoding::percent_decode_str(path)
-        .decode_utf8()
-        .ok()?;
-    if !decoded.starts_with('/') || decoded.contains('\\') {
-        return None;
-    }
-    let mut normalized = String::from("/");
-    for component in Path::new(decoded.as_ref()).components() {
-        match component {
-            Component::RootDir | Component::CurDir => {}
-            Component::Normal(name) => {
-                if normalized.len() > 1 {
-                    normalized.push('/');
-                }
-                normalized.push_str(name.to_str()?);
-            }
-            Component::ParentDir | Component::Prefix(_) => return None,
+impl OidcPathPolicy {
+    fn new(config: &OidcConfig) -> Self {
+        Self {
+            protected: config
+                .protected_paths
+                .iter()
+                .map(|path| canonical_url_path(path).map(|path| path.to_ascii_lowercase()))
+                .collect(),
+            public: config
+                .public_paths
+                .iter()
+                .filter_map(|path| canonical_url_path(path))
+                .collect(),
         }
     }
-    if decoded.ends_with('/') && normalized != "/" {
-        normalized.push('/');
+
+    fn is_public(&self, path: Option<&str>) -> bool {
+        let (Some(path), Some(protected)) = (path, self.protected.as_ref()) else {
+            return false;
+        };
+        let folded = path.to_ascii_lowercase();
+        !protected.iter().any(|prefix| folded.starts_with(prefix))
+            || self.public.iter().any(|prefix| path.starts_with(prefix))
     }
-    Some(normalized)
+
+    fn is_public_route(&self, action: &RoutingAction, site_prefix: &str) -> bool {
+        match action {
+            RoutingAction::Execute(_)
+            | RoutingAction::CustomNotFound(_)
+            | RoutingAction::Serve(_) => {
+                let resource = crate::webserver::routing::canonical_resource_url_for_action(
+                    site_prefix,
+                    action,
+                );
+                self.is_public(resource.as_deref())
+            }
+            RoutingAction::Redirect(_) | RoutingAction::NotFound => true,
+        }
+    }
 }
 
 fn get_app_host(config: &AppConfig) -> String {
@@ -288,6 +269,7 @@ struct OidcSnapshot {
 
 pub struct OidcState {
     pub config: OidcConfig,
+    path_policy: OidcPathPolicy,
     /// Current snapshot. The lock is only held for the instant
     /// needed to clone/swap the Arc — never across await points.
     snapshot: std::sync::RwLock<Arc<OidcSnapshot>>,
@@ -301,6 +283,7 @@ impl OidcState {
         let (client, end_session_endpoint) = build_oidc_client(&oidc_cfg, &http_client).await?;
 
         Ok(Self {
+            path_policy: OidcPathPolicy::new(&oidc_cfg),
             config: oidc_cfg,
             snapshot: std::sync::RwLock::new(Arc::new(OidcSnapshot {
                 client,
@@ -407,13 +390,6 @@ impl OidcState {
             .to_string();
         Ok(absolute_redirect_uri)
     }
-}
-
-fn request_is_builtin_static_path(request: &ServiceRequest, config: &OidcConfig) -> bool {
-    request
-        .path()
-        .strip_prefix(&config.site_prefix)
-        .is_some_and(|path| path.starts_with("sqlpage/"))
 }
 
 pub async fn initialize_oidc_state(
@@ -566,26 +542,38 @@ async fn handle_unauthenticated_request(
 ) -> MiddlewareResponse {
     log::debug!("Handling unauthenticated request to {}", request.path());
 
-    if oidc_state.config.is_public_path(request.path()) {
+    let path_and_query = request.uri().path_and_query();
+    let canonical = path_and_query
+        .map(|path| CanonicalRequestPath::parse(path, &oidc_state.config.site_prefix));
+    if canonical
+        .as_ref()
+        .is_some_and(|path| oidc_state.path_policy.is_public(path.normalized_url()))
+    {
+        let canonical = canonical.expect("checked above");
+        // Built-in assets are handled by their own Actix services, not the
+        // SQL-file router. Classify them explicitly before route resolution.
+        if canonical.is_builtin_static() {
+            return MiddlewareResponse::Forward(request);
+        }
         let route = {
             let app_state = request.app_data::<web::Data<AppState>>();
-            let path_and_query = request.uri().path_and_query();
             match (app_state, path_and_query) {
                 (Some(state), Some(path_and_query)) => {
                     let store = AppFileStore::new(&state.sql_file_cache, &state.file_system, state);
-                    Some(calculate_route(path_and_query, &store, &state.config).await)
+                    Some(resolve_route(&canonical, path_and_query, &store, &state.config).await)
                 }
                 _ => None,
             }
         };
         match route {
-            Some(Ok(action)) if oidc_state.config.is_public_route(&action) => {
+            Some(Ok(route))
+                if oidc_state
+                    .path_policy
+                    .is_public_route(route.action(), &oidc_state.config.site_prefix) =>
+            {
                 // Reuse the authorized route in the main handler so a file-store
                 // change between this check and dispatch cannot change its identity.
-                request.extensions_mut().insert(action);
-                return MiddlewareResponse::Forward(request);
-            }
-            Some(Err(_)) if request_is_builtin_static_path(&request, &oidc_state.config) => {
+                request.extensions_mut().insert(route);
                 return MiddlewareResponse::Forward(request);
             }
             _ => {}
@@ -1691,10 +1679,22 @@ mod tests {
         assert!(config.is_public_path("/users/profile.sql"));
     }
 
+    #[test]
+    fn compiled_policy_checks_the_resolved_static_target_and_fails_closed() {
+        let config = test_oidc_config_with_paths(vec!["/private/secret.txt".to_string()], vec![]);
+        let policy = OidcPathPolicy::new(&config);
+        assert!(policy.is_public(Some("/private/alias.txt")));
+        let action = RoutingAction::Serve("private/secret.txt".into());
+        assert!(!policy.is_public_route(&action, &config.site_prefix));
+
+        let invalid = test_oidc_config_with_paths(vec!["/%ff".to_string()], vec![]);
+        assert!(!OidcPathPolicy::new(&invalid).is_public(Some("/public/page.sql")));
+    }
+
     #[tokio::test]
     async fn resolved_sql_file_aliases_do_not_bypass_oidc_protection() {
         use crate::filesystem::FileAccess;
-        use crate::webserver::routing::FileStore;
+        use crate::webserver::routing::{FileStore, calculate_route};
         use awc::http::uri::PathAndQuery;
 
         struct OneFile(&'static str);
@@ -1713,6 +1713,7 @@ mod tests {
             ("/private/missing", "private/404.sql"),
         ] {
             let oidc = test_oidc_config_with_paths(vec![format!("/{file}")], vec![]);
+            let policy = OidcPathPolicy::new(&oidc);
             assert!(oidc.is_public_path(url), "{url} is a distinct URL spelling");
             let route = calculate_route(
                 &PathAndQuery::try_from(url).unwrap(),
@@ -1728,7 +1729,7 @@ mod tests {
                 );
             }
             assert!(
-                !oidc.is_public_route(&route),
+                !policy.is_public_route(&route, &oidc.site_prefix),
                 "{url} resolves to a protected SQL file"
             );
         }
@@ -1736,17 +1737,19 @@ mod tests {
         let mut prefixed_oidc =
             test_oidc_config_with_paths(vec!["/my%20app/private/secret.sql".to_string()], vec![]);
         prefixed_oidc.site_prefix = "/my%20app/".to_string();
-        assert!(
-            !prefixed_oidc.is_public_route(&RoutingAction::Execute("private/secret.sql".into()))
-        );
+        assert!(!OidcPathPolicy::new(&prefixed_oidc).is_public_route(
+            &RoutingAction::Execute("private/secret.sql".into()),
+            &prefixed_oidc.site_prefix
+        ));
 
         let public_oidc = test_oidc_config_with_paths(
             vec!["/private".to_string()],
             vec!["/private/public/".to_string()],
         );
-        assert!(
-            public_oidc.is_public_route(&RoutingAction::Execute("private/public/index.sql".into()))
-        );
+        assert!(OidcPathPolicy::new(&public_oidc).is_public_route(
+            &RoutingAction::Execute("private/public/index.sql".into()),
+            &public_oidc.site_prefix
+        ));
     }
 
     #[test]

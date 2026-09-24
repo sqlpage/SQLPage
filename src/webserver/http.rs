@@ -33,7 +33,7 @@ use crate::filesystem::FileAccess;
 use crate::webserver::routing::RoutingAction::{
     CustomNotFound, Execute, NotFound, Redirect, Serve,
 };
-use crate::webserver::routing::{AppFileStore, calculate_route};
+use crate::webserver::routing::{AppFileStore, CanonicalRequestPath, ResolvedRoute, resolve_route};
 use actix_web::body::MessageBody;
 use anyhow::{Context, bail};
 use chrono::{DateTime, Utc};
@@ -489,21 +489,20 @@ pub async fn main_handler(
         .uri()
         .path_and_query()
         .ok_or_else(|| ErrorBadRequest("expected valid path with query from request"))?;
-    let authorized_route = service_request
-        .extensions_mut()
-        .remove::<super::routing::RoutingAction>();
-    let routing_action = match authorized_route {
-        Some(action) => Ok(action),
-        None => calculate_route(path_and_query, &store, &app_state.config).await,
-    };
-    let routing_action = match routing_action {
-        Ok(action) => action,
-        Err(e) => {
-            let e = e.context(format!(
-                "The server was unable to fulfill your request. \n\
-                The following page is not accessible: {path_and_query:?}"
-            ));
-            return Err(anyhow_err_to_actix(e, app_state));
+    let authorized_route = { service_request.extensions_mut().remove::<ResolvedRoute>() };
+    let routing_action = if let Some(route) = authorized_route {
+        route.into_action()
+    } else {
+        let path = CanonicalRequestPath::parse(path_and_query, &app_state.config.site_prefix);
+        match resolve_route(&path, path_and_query, &store, &app_state.config).await {
+            Ok(route) => route.into_action(),
+            Err(e) => {
+                let e = e.context(format!(
+                    "The server was unable to fulfill your request. \n\
+                    The following page is not accessible: {path_and_query:?}"
+                ));
+                return Err(anyhow_err_to_actix(e, app_state));
+            }
         }
     };
     match routing_action {
