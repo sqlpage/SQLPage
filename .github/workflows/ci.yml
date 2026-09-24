@@ -372,6 +372,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
+      - docker_build
       - hurl_examples
     strategy:
       fail-fast: false
