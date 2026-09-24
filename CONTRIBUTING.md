@@ -19,6 +19,20 @@ Default builds require a system ODBC driver manager. On Linux and macOS,
 be installed separately. Windows uses its system ODBC driver manager. Published
 crates include browser assets and do not require Node.js.
 
+### Optional: Nix dev shell
+
+If you have [Nix](https://nixos.org/download/) with flakes enabled, `nix develop` provides the tools above at the versions CI uses. With [direnv](https://direnv.net/), `direnv allow` enters the shell automatically when you enter the directory.
+
+| Command | What it runs |
+| --- | --- |
+| `nix fmt` | rustfmt, Biome, and nixfmt |
+| `nix flake check` | formatting, plus the flake's own version assertions |
+| `nix run .#lint-rust` | `cargo fmt --check` and `cargo clippy` |
+| `nix run .#test-rust` | the Rust test suites |
+| `nix run .#test-browser` | the Playwright suites |
+| `nix run .#test-examples` | one example's Hurl suite |
+| `nix build .#odbc-drivers` | an `odbcinst.ini`; point `ODBCSYSINI` at it for the ODBC tests |
+
 ## Validation
 
 For Rust changes:

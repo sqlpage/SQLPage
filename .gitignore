@@ -29,3 +29,7 @@ developerID_application.cer
 sqlpage.key
 sqlpage.p12
 sqlpage_cert.pem
+
+# Nix build result and direnv cache
+/result
+.direnv/
