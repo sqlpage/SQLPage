@@ -321,6 +321,21 @@ async fn setup_oidc_test(
     >,
     FakeOidcProvider,
 ) {
+    setup_oidc_test_with_paths(provider_mutator, &["/"], &[]).await
+}
+
+async fn setup_oidc_test_with_paths(
+    provider_mutator: impl FnOnce(&mut ProviderState<'_>),
+    protected_paths: &[&str],
+    public_paths: &[&str],
+) -> (
+    impl actix_web::dev::Service<
+        actix_http::Request,
+        Response = actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>,
+        Error = actix_web::Error,
+    >,
+    FakeOidcProvider,
+) {
     use sqlpage::{
         AppState,
         app_config::{AppConfig, test_database_url},
@@ -330,6 +345,8 @@ async fn setup_oidc_test(
     provider.with_state_mut(provider_mutator);
 
     let db_url = test_database_url();
+    let protected_paths = serde_json::to_string(protected_paths).unwrap();
+    let public_paths = serde_json::to_string(public_paths).unwrap();
     let config_json = format!(
         r#"{{
         "database_url": "{db_url}",
@@ -343,7 +360,8 @@ async fn setup_oidc_test(
         "oidc_issuer_url": "{}",
         "oidc_client_id": "{}",
         "oidc_client_secret": "{}",
-        "oidc_protected_paths": ["/"],
+        "oidc_protected_paths": {protected_paths},
+        "oidc_public_paths": {public_paths},
         "host": "localhost:1"
     }}"#,
         provider.issuer_url, provider.client_id, provider.client_secret
@@ -353,6 +371,46 @@ async fn setup_oidc_test(
     let app_state = AppState::init(&config).await.unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
     (app, provider)
+}
+
+#[actix_web::test]
+async fn test_public_clean_url_cannot_execute_a_protected_sql_file() {
+    let file = "/tests/sql_test_files/data/regex_match_routing.sql";
+    let protected_paths = [file];
+    let (app, _provider) = setup_oidc_test_with_paths(|_| {}, &protected_paths, &[]).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    let clean_url = file.strip_suffix(".sql").unwrap();
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri(clean_url), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let resp = request_with_cookies!(app, test::TestRequest::get().uri(file), cookies);
+    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+
+    let public = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_ne!(public.status(), StatusCode::SEE_OTHER);
+}
+
+#[actix_web::test]
+async fn test_top_level_builtin_assets_are_accessible_without_login_when_protected() {
+    let protected_paths = ["/sqlpage."];
+    let (app, _provider) = setup_oidc_test_with_paths(|_| {}, &protected_paths, &[]).await;
+    let mut cookies: Vec<Cookie<'static>> = Vec::new();
+
+    let homepage = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_ne!(homepage.status(), StatusCode::SEE_OTHER);
+    let homepage = String::from_utf8(test::read_body(homepage).await.to_vec()).unwrap();
+    let script_src = homepage
+        .split_once("src=\"/sqlpage.")
+        .and_then(|(_, rest)| rest.split_once('"'))
+        .map(|(src, _)| format!("/sqlpage.{src}"))
+        .expect("homepage should reference the top-level SQLPage JavaScript bundle");
+
+    let asset = request_with_cookies!(app, test::TestRequest::get().uri(&script_src), cookies);
+    assert_eq!(asset.status(), StatusCode::OK);
+    assert_eq!(
+        asset.headers().get(header::CONTENT_TYPE).unwrap(),
+        "application/javascript;charset=UTF-8"
+    );
 }
 
 #[actix_web::test]

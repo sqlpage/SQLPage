@@ -99,6 +99,134 @@ pub enum RoutingAction {
     Serve(PathBuf),
 }
 
+/// The HTTP path as interpreted by routing. The request is percent-decoded
+/// once; the URL spelling used by OIDC and the filesystem candidate are
+/// derived from those same bytes. Invalid UTF-8 has no public URL identity,
+/// but can still be routed for authenticated users on Unix.
+#[derive(Debug)]
+pub(crate) struct CanonicalRequestPath {
+    normalized_url: Option<String>,
+    relative_file_path: Option<PathBuf>,
+    trailing_slash: bool,
+    builtin_static: bool,
+}
+
+impl CanonicalRequestPath {
+    pub(crate) fn parse(path_and_query: &PathAndQuery, prefix: &str) -> Self {
+        let raw_path = path_and_query.path();
+        let decoded = percent_encoding::percent_decode_str(raw_path).collect::<Vec<u8>>();
+        let normalized_url = normalized_url_path(&decoded);
+        let relative = raw_path.strip_prefix(prefix);
+        let relative_file_path = relative.and_then(|_| {
+            let decoded_prefix = percent_encoding::percent_decode_str(prefix).collect::<Vec<u8>>();
+            decoded
+                .strip_prefix(decoded_prefix.as_slice())
+                .map(decoded_file_path)
+        });
+        Self {
+            normalized_url,
+            relative_file_path,
+            trailing_slash: raw_path.ends_with(FORWARD_SLASH),
+            builtin_static: relative.is_some_and(|path| {
+                path.starts_with("sqlpage/") || super::static_content::is_builtin_asset_path(path)
+            }),
+        }
+    }
+
+    pub(crate) fn normalized_url(&self) -> Option<&str> {
+        self.normalized_url.as_deref()
+    }
+
+    pub(crate) const fn is_builtin_static(&self) -> bool {
+        self.builtin_static
+    }
+}
+
+#[cfg(unix)]
+fn decoded_file_path(decoded: &[u8]) -> PathBuf {
+    use std::{ffi::OsString, os::unix::ffi::OsStringExt};
+    PathBuf::from(OsString::from_vec(decoded.to_vec()))
+}
+
+#[cfg(not(unix))]
+fn decoded_file_path(decoded: &[u8]) -> PathBuf {
+    PathBuf::from(String::from_utf8_lossy(decoded).as_ref())
+}
+
+/// Canonical URL spelling for policy prefixes and decoded request paths.
+/// Trailing slash is retained because `/public` and `/public/` differ.
+pub(crate) fn canonical_url_path(encoded: &str) -> Option<String> {
+    let decoded = percent_encoding::percent_decode_str(encoded).collect::<Vec<u8>>();
+    normalized_url_path(&decoded)
+}
+
+fn normalized_url_path(decoded: &[u8]) -> Option<String> {
+    use std::path::Component;
+
+    let decoded = std::str::from_utf8(decoded).ok()?;
+    if !decoded.starts_with('/') || decoded.contains('\\') {
+        return None;
+    }
+    let mut normalized = String::from("/");
+    for component in Path::new(decoded).components() {
+        match component {
+            Component::RootDir | Component::CurDir => {}
+            Component::Normal(name) => {
+                if normalized.len() > 1 {
+                    normalized.push('/');
+                }
+                normalized.push_str(name.to_str()?);
+            }
+            Component::ParentDir | Component::Prefix(_) => return None,
+        }
+    }
+    if decoded.ends_with('/') && normalized != "/" {
+        normalized.push('/');
+    }
+    Some(normalized)
+}
+
+/// Routing's resolved action is kept intact from authorization to dispatch.
+#[derive(Debug)]
+pub(crate) struct ResolvedRoute(RoutingAction);
+
+impl ResolvedRoute {
+    pub(crate) fn action(&self) -> &RoutingAction {
+        &self.0
+    }
+
+    pub(crate) fn into_action(self) -> RoutingAction {
+        self.0
+    }
+}
+
+pub(crate) fn canonical_resource_url_for_action(
+    site_prefix: &str,
+    action: &RoutingAction,
+) -> Option<String> {
+    match action {
+        Execute(path) | CustomNotFound(path) | Serve(path) => {
+            canonical_resource_url(site_prefix, path)
+        }
+        Redirect(_) | NotFound => None,
+    }
+}
+
+fn canonical_resource_url(site_prefix: &str, path: &Path) -> Option<String> {
+    use std::path::Component;
+
+    let prefix = canonical_url_path(site_prefix)?;
+    let mut url = prefix.trim_end_matches('/').to_string();
+    for component in path.components() {
+        let Component::Normal(name) = component else {
+            return None;
+        };
+        url.push('/');
+        url.push_str(name.to_str()?);
+    }
+    Some(url)
+}
+
 #[expect(async_fn_in_trait)]
 pub trait FileStore {
     async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool>;
@@ -147,56 +275,64 @@ where
     T: FileStore,
     C: RoutingConfig,
 {
-    let result = match check_path(path_and_query, config) {
-        Ok(path) => match path.extension().and_then(|e| e.to_str()) {
-            Some(SQL_EXTENSION) => find_file_or_not_found(&path, SQL_EXTENSION, store).await?,
-            Some(extension) => match find_file(&path, extension, store).await? {
-                Some(action) => action,
-                None => calculate_route_without_extension(path_and_query, path, store).await?,
-            },
-            None => calculate_route_without_extension(path_and_query, path, store).await?,
-        },
-        Err(action) => action,
-    };
-    debug!("Route: [{path_and_query}] -> {result:?}");
-    Ok(result)
+    let request_path = CanonicalRequestPath::parse(path_and_query, config.prefix());
+    Ok(resolve_route(&request_path, path_and_query, store, config)
+        .await?
+        .into_action())
 }
 
-fn check_path<C>(path_and_query: &PathAndQuery, config: &C) -> Result<PathBuf, RoutingAction>
+pub(crate) async fn resolve_route<T, C>(
+    request_path: &CanonicalRequestPath,
+    path_and_query: &PathAndQuery,
+    store: &T,
+    config: &C,
+) -> anyhow::Result<ResolvedRoute>
 where
+    T: FileStore,
     C: RoutingConfig,
 {
-    match path_and_query.path().strip_prefix(config.prefix()) {
-        None => Err(Redirect(config.prefix().to_string())),
-        Some(path) => {
-            let decoded = percent_encoding::percent_decode_str(path);
-            #[cfg(unix)]
-            {
-                use std::ffi::OsString;
-                use std::os::unix::ffi::OsStringExt;
-
-                let decoded = decoded.collect::<Vec<u8>>();
-                Ok(PathBuf::from(OsString::from_vec(decoded)))
+    let result = match &request_path.relative_file_path {
+        Some(path) => match path.extension().and_then(|e| e.to_str()) {
+            Some(SQL_EXTENSION) => find_file_or_not_found(path, SQL_EXTENSION, store).await?,
+            Some(extension) => match find_file(path, extension, store).await? {
+                Some(action) => action,
+                None => {
+                    calculate_route_without_extension(
+                        path_and_query,
+                        path,
+                        request_path.trailing_slash,
+                        store,
+                    )
+                    .await?
+                }
+            },
+            None => {
+                calculate_route_without_extension(
+                    path_and_query,
+                    path,
+                    request_path.trailing_slash,
+                    store,
+                )
+                .await?
             }
-            #[cfg(not(unix))]
-            {
-                Ok(PathBuf::from(decoded.decode_utf8_lossy().as_ref()))
-            }
-        }
-    }
+        },
+        None => Redirect(config.prefix().to_string()),
+    };
+    debug!("Route: [{path_and_query}] -> {result:?}");
+    Ok(ResolvedRoute(result))
 }
 
 async fn calculate_route_without_extension<T>(
     path_and_query: &PathAndQuery,
-    mut path: PathBuf,
+    path: &Path,
+    trailing_slash: bool,
     store: &T,
 ) -> anyhow::Result<RoutingAction>
 where
     T: FileStore,
 {
-    if path_and_query.path().ends_with(FORWARD_SLASH) {
-        path.push(INDEX);
-        find_file_or_not_found(&path, SQL_EXTENSION, store).await
+    if trailing_slash {
+        find_file_or_not_found(&path.join(INDEX), SQL_EXTENSION, store).await
     } else {
         let path_with_ext = PathBuf::from(format!("{}.{SQL_EXTENSION}", path.display()));
         match find_file_or_not_found(&path_with_ext, SQL_EXTENSION, store).await? {
@@ -274,12 +410,80 @@ fn append_to_path(path_and_query: &PathAndQuery, append: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::RoutingAction::{CustomNotFound, Execute, NotFound, Redirect, Serve};
-    use super::{FileAccess, FileStore, RoutingAction, RoutingConfig, calculate_route};
+    use super::{
+        CanonicalRequestPath, FileAccess, FileStore, RoutingAction, RoutingConfig, calculate_route,
+        canonical_resource_url_for_action, resolve_route,
+    };
     use StoreConfig::{Custom, Default, Empty, File};
     use awc::http::uri::PathAndQuery;
     use std::default::Default as StdDefault;
     use std::path::PathBuf;
     use std::str::FromStr;
+
+    #[test]
+    fn canonical_request_uses_one_decode_for_policy_and_file_path() {
+        let request = PathAndQuery::from_static("/my%20app/private/%2e/secret.sql");
+        let path = CanonicalRequestPath::parse(&request, "/my%20app/");
+        assert_eq!(path.normalized_url(), Some("/my app/private/secret.sql"));
+        assert_eq!(
+            path.relative_file_path.as_deref(),
+            Some(std::path::Path::new("private/secret.sql"))
+        );
+
+        let encoded_twice = PathAndQuery::from_static("/my%20app/private/%252e/secret.sql");
+        let path = CanonicalRequestPath::parse(&encoded_twice, "/my%20app/");
+        assert_eq!(
+            path.normalized_url(),
+            Some("/my app/private/%2e/secret.sql")
+        );
+        assert_eq!(
+            path.relative_file_path.as_deref(),
+            Some(std::path::Path::new("private/%2e/secret.sql"))
+        );
+
+        let invalid = PathAndQuery::from_static("/my%20app/private/%ff.sql");
+        let path = CanonicalRequestPath::parse(&invalid, "/my%20app/");
+        assert_eq!(path.normalized_url(), None);
+        assert!(path.relative_file_path.is_some());
+
+        let malformed_prefix = CanonicalRequestPath::parse(&request, "/my%2");
+        assert!(malformed_prefix.relative_file_path.is_none());
+    }
+
+    #[test]
+    fn builtin_assets_are_identified_from_the_unmodified_prefixed_path() {
+        let request = PathAndQuery::from_static("/my%20app/sqlpage/sqlpage.js");
+        let path = CanonicalRequestPath::parse(&request, "/my%20app/");
+        assert!(path.is_builtin_static());
+
+        let encoded = PathAndQuery::from_static("/my%20app/%73qlpage/sqlpage.js");
+        let path = CanonicalRequestPath::parse(&encoded, "/my%20app/");
+        assert!(!path.is_builtin_static());
+
+        let filename = crate::utils::static_filename!("sqlpage.js");
+        let request = PathAndQuery::from_str(&format!("/my%20app/{filename}")).unwrap();
+        let path = CanonicalRequestPath::parse(&request, "/my%20app/");
+        assert!(path.is_builtin_static());
+
+        let encoded = PathAndQuery::from_str(&format!("/my%20app/%73{}", &filename[1..])).unwrap();
+        let path = CanonicalRequestPath::parse(&encoded, "/my%20app/");
+        assert!(!path.is_builtin_static());
+    }
+
+    #[tokio::test]
+    async fn resolved_route_carries_the_dispatched_file_identity() {
+        let request = PathAndQuery::from_static("/my%20app/private/secret");
+        let config = Config::new("/my%20app/");
+        let path = CanonicalRequestPath::parse(&request, config.prefix());
+        let route = resolve_route(&path, &request, &Store::new("private/secret.sql"), &config)
+            .await
+            .unwrap();
+        assert_eq!(
+            canonical_resource_url_for_action(config.prefix(), route.action()).as_deref(),
+            Some("/my app/private/secret.sql")
+        );
+        assert_eq!(route.into_action(), execute("private/secret.sql"));
+    }
 
     mod execute {
         use super::StoreConfig::{Default, File};
