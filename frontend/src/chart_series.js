@@ -1,5 +1,5 @@
 /** @typedef {number|string|Date} XValue */
-/** @typedef { {x:XValue, y:number|string|number[]|null, z?:number, fillColor?:string} } ChartPoint */
+/** @typedef { {x:XValue, y:number|string|number[]|null, z?:number, fillColor?:string, link?:string} } ChartPoint */
 /** @typedef { {name:string, data:ChartPoint[]} } ChartSeries */
 /** @typedef { Map<string, ChartSeries> } Series */
 

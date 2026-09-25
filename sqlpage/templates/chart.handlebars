@@ -51,8 +51,9 @@
             {{~ stringify (default series (default ../title "")) ~}},
             {{~ stringify (default x label) ~}},
             {{~ stringify (default y value) ~}}
-            {{~#if (or color z)}}, {{~ stringify color ~}} {{~/if~}}
-            {{~#if z}}, {{~ stringify z ~}} {{~/if~}}
+            {{~#if (or color z link)}}, {{~ stringify color ~}} {{~/if~}}
+            {{~#if (or z link)}}, {{~ stringify z ~}} {{~/if~}}
+            {{~#if link}}, {{~ stringify link ~}} {{~/if~}}
         ]
         {{~/if~}}
     {{~/each_row~}}
