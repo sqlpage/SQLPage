@@ -104,6 +104,9 @@ jobs:
           - database: oracle
             container: oracle
             db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
+          - database: duckdb
+            container: ""
+            db_url: "Driver=DuckDB;Database=/tmp/sqlpage-test.duckdb"
     steps:
       - uses: actions/checkout@v7
       # Reuse the exact Linux test harnesses produced by compile_and_lint.
@@ -121,6 +124,11 @@ jobs:
       - name: Install PostgreSQL ODBC driver
         if: matrix.setup_odbc
         run: sudo apt-get install -y odbc-postgresql
+      - name: Install DuckDB ODBC driver
+        if: matrix.database == 'duckdb'
+        run: |
+          sudo apt-get update && sudo apt-get install -y unixodbc unzip
+          sudo scripts/install-duckdb-odbc.sh
       - name: Install Oracle ODBC driver
         if: matrix.database == 'oracle'
         run: |
