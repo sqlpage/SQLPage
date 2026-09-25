@@ -7,6 +7,7 @@ mod data_formats;
 mod errors;
 mod exec;
 mod oidc;
+mod parameter_binding;
 mod requests;
 mod server_timing;
 pub mod sql_test_files;
