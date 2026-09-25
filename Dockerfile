@@ -6,7 +6,7 @@ COPY frontend/src/ frontend/src/
 COPY scripts/build-frontend.mjs scripts/
 RUN node scripts/build-frontend.mjs
 
-FROM --platform=$BUILDPLATFORM rust:1.95-slim AS builder
+FROM --platform=$BUILDPLATFORM rust:1.98.1-slim AS builder
 
 WORKDIR /usr/src/sqlpage
 ARG TARGETARCH
