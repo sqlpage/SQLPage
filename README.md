@@ -143,8 +143,9 @@ select
 
 ### Using executables
 
-The easiest way to get started is to download the latest release from the
+Download the latest release from the
 [releases page](https://github.com/sqlpage/SQLPage/releases).
+On macOS, [Homebrew](#on-macos-with-homebrew) is the recommended and easiest installation method.
 
 - Download the binary that corresponds to your operating system (linux, macos, or windows).
 - Uncompress it: `tar -xzf sqlpage-*.tgz`
@@ -172,21 +173,24 @@ To run on a server, you can use [the docker image](https://hub.docker.com/r/lova
     COPY --from=lovasoa/sqlpage:main /usr/local/bin/sqlpage /usr/local/bin/sqlpage
     ``` 
 
-We provide compiled binaries only for the x86_64 architecture, but provide docker images for other architectures, including arm64 and armv7. If you want to run SQLPage on a Raspberry Pi or 
+We provide release binaries for Linux and Windows on x86_64, and macOS on Apple silicon (arm64). Intel Mac users should use [Homebrew](#on-macos-with-homebrew). We also provide docker images for arm64 and armv7. If you want to run SQLPage on a Raspberry Pi or
 a cheaper ARM cloud instance, using the docker image is the easiest way to do it.
 
 ### Hosting
 
 For managed SQLPage hosting, use [DataPage](https://datapage.app). To run SQLPage yourself on a VPS, [Hostinger](https://www.hostg.xyz/aff_c?offer_id=815&aff_id=243720&url_id=6808) is another option; this is an affiliate link, so we receive a small commission if you buy through it.
 
-### On Mac OS, with homebrew
+### On macOS, with Homebrew
 
-An alternative for Mac OS users is to use [SQLPage's homebrew package](https://formulae.brew.sh/formula/sqlpage).
+[SQLPage's Homebrew package](https://formulae.brew.sh/formula/sqlpage) is the recommended way to install SQLPage on macOS, including Intel Macs.
 
-- [Install homebrew](https://brew.sh/)
+- [Install Homebrew](https://brew.sh/) and follow the installer's instructions to add `brew` to your PATH.
 - In a terminal, run the following commands:
   - `brew install sqlpage`
 
+To update an existing Homebrew installation, run `brew update` followed by `brew upgrade sqlpage`.
+Run `sqlpage` from your website folder. If you previously downloaded `sqlpage.bin`, use `sqlpage` instead of `./sqlpage.bin`; your website files and configuration stay in place.
+Intel Macs may need to build from source. See the [macOS installation guide](https://sql-page.com/your-first-sql-website/?os=macos#download) for details and older macOS requirements.
 
 ### ODBC Setup
 
