@@ -11,8 +11,6 @@ you can skip this step and [start writing your website](#tutorial).
 In the _release assets_ section, you will find files named `sqlpage-windows.zip`, `sqlpage-linux.tgz`, and `sqlpage-macos.tgz`.
 Download the one that corresponds to your operating system, and extract the executable file from the archive.
 
-`sqlpage-macos.tgz` is built for Apple silicon only as Apple dropped support for Intel Macs after macOS 26. If needed, install SQLPage there with Homebrew, docker, or from source.
-
 > **Note**: On Mac OS, Apple blocks the execution of downloaded files by default. The easiest way to run SQLPage is to use [Homebrew](https://brew.sh).
 
 > **Note**: Advanced users can alternatively install SQLPage using:
