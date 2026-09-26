@@ -16,7 +16,7 @@
 //! - If found: **Execute** the SQL file
 //! - If not found: Look for custom 404 handlers (see Error Handling below)
 //!
-//! #### Paths with `.sql` extension:
+//! #### Paths with `.sql` extension (any ASCII letter case):
 //! - If the file exists: **Execute** the SQL file  
 //! - If not found: Look for custom 404 handlers (see Error Handling below)
 //!
@@ -292,10 +292,24 @@ where
     C: RoutingConfig,
 {
     let result = match &request_path.relative_file_path {
-        Some(path) => match path.extension().and_then(|e| e.to_str()) {
-            Some(SQL_EXTENSION) => find_file_or_not_found(path, SQL_EXTENSION, store).await?,
-            Some(extension) => match find_file(path, extension, store).await? {
-                Some(action) => action,
+        Some(path) => {
+            let _ = FileAccess::unprivileged(path)?;
+            match path.extension().and_then(|e| e.to_str()) {
+                Some(extension) if extension.eq_ignore_ascii_case(SQL_EXTENSION) => {
+                    find_file_or_not_found(path, SQL_EXTENSION, store).await?
+                }
+                Some(extension) => match find_file(path, extension, store).await? {
+                    Some(action) => action,
+                    None => {
+                        calculate_route_without_extension(
+                            path_and_query,
+                            path,
+                            request_path.trailing_slash,
+                            store,
+                        )
+                        .await?
+                    }
+                },
                 None => {
                     calculate_route_without_extension(
                         path_and_query,
@@ -305,17 +319,8 @@ where
                     )
                     .await?
                 }
-            },
-            None => {
-                calculate_route_without_extension(
-                    path_and_query,
-                    path,
-                    request_path.trailing_slash,
-                    store,
-                )
-                .await?
             }
-        },
+        }
         None => Redirect(config.prefix().to_string()),
     };
     debug!("Route: [{path_and_query}] -> {result:?}");
@@ -420,6 +425,13 @@ mod tests {
     use std::path::PathBuf;
     use std::str::FromStr;
 
+    #[tokio::test]
+    async fn rejects_trailing_space_before_clean_url_resolution() {
+        let request = PathAndQuery::from_static("/index%20");
+        let result = calculate_route(&request, &Store::new("index .sql"), &Config::default()).await;
+        assert!(result.is_err());
+    }
+
     #[test]
     fn canonical_request_uses_one_decode_for_policy_and_file_path() {
         let request = PathAndQuery::from_static("/my%20app/private/%2e/secret.sql");
@@ -487,7 +499,12 @@ mod tests {
 
     mod execute {
         use super::StoreConfig::{Default, File};
-        use super::{do_route, execute};
+        use super::{RoutingConfig, do_route, execute};
+        use crate::filesystem::FileAccess;
+        use crate::webserver::routing::{
+            CanonicalRequestPath, FileStore, canonical_resource_url_for_action, resolve_route,
+        };
+        use awc::http::uri::PathAndQuery;
 
         #[tokio::test]
         async fn root_path_executes_index() {
@@ -519,6 +536,39 @@ mod tests {
             let expected = execute("index.sql");
 
             assert_eq!(expected, actual);
+        }
+
+        struct CaseInsensitiveSqlStore;
+
+        impl FileStore for CaseInsensitiveSqlStore {
+            async fn contains(&self, access: FileAccess<'_>) -> anyhow::Result<bool> {
+                tokio::task::yield_now().await;
+                Ok(access
+                    .path()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case("index.sql"))
+            }
+        }
+
+        #[tokio::test]
+        async fn mixed_case_sql_alias_is_executed_on_case_insensitive_storage() {
+            let request = PathAndQuery::from_static("/index.%53QL");
+            let config = super::Config::default();
+            let path = CanonicalRequestPath::parse(&request, config.prefix());
+            let route = resolve_route(&path, &request, &CaseInsensitiveSqlStore, &config)
+                .await
+                .unwrap();
+            assert_eq!(&execute("index.SQL"), route.action());
+            assert_eq!(
+                canonical_resource_url_for_action(config.prefix(), route.action()).as_deref(),
+                Some("/index.SQL")
+            );
+        }
+
+        #[tokio::test]
+        async fn mixed_case_sql_file_is_executed_with_site_prefix() {
+            let actual = do_route("/prefix/index.Sql", File("index.Sql"), Some("/prefix/")).await;
+            assert_eq!(execute("index.Sql"), actual);
         }
 
         #[tokio::test]
