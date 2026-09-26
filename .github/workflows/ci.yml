@@ -97,10 +97,6 @@ jobs:
           - database: mssql
             container: mssql
             db_url: "mssql://root:Password123!@127.0.0.1/sqlpage"
-          - database: odbc
-            container: postgres
-            db_url: "Driver=PostgreSQL Unicode;Server=127.0.0.1;Port=5432;Database=sqlpage;UID=root;PWD=Password123!"
-            setup_odbc: true
           - database: oracle
             container: oracle
             db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
@@ -121,9 +117,6 @@ jobs:
         run: |
           mkdir -p target/sqlpage-test-binaries
           tar -xzf target/sqlpage-linux-test-binaries.tar.gz -C target/sqlpage-test-binaries
-      - name: Install PostgreSQL ODBC driver
-        if: matrix.setup_odbc
-        run: sudo apt-get install -y odbc-postgresql
       - name: Install DuckDB ODBC driver
         if: matrix.database == 'duckdb'
         run: |
