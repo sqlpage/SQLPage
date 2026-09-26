@@ -685,6 +685,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('x', 'The value of the point on the horizontal axis. Numeric values use continuous, proportionate positioning; text values are evenly spaced categories. Set the top-level time property for dates and timestamps.', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
+    ('link', 'A URL to open when the data point or its tooltip title is clicked.', 'URL', FALSE, TRUE),
     ('label', 'An alias for parameter "x". On a row that draws a reference line, the text to display next to the line.', 'TEXT', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
@@ -789,10 +790,10 @@ The `color` property sets the color of each series separately, in order.
         { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 62},{ "series": "MySQL", "x": "2010", "y": 83},
         { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 38},{ "series": "MySQL", "x": "2020", "y": 87}
       ]')),
-    ('chart', 'A timeline displaying events with a start and an end date',
+    ('chart', 'A timeline displaying events with a start and an end date. A data row can include a `link` to open when its bar or tooltip title is clicked.',
     json('[
         {"component":"chart", "title": "Project Timeline", "type": "rangeBar", "time": true, "color": ["teal", "cyan"], "labels": true, "xmin": "2021-12-28", "xmax": "2022-01-04" },
-        {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"]},
+        {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"], "link": "/examples/chart.sql?phase=1"},
         {"series": "Phase 2", "label": "Operations", "value": ["2022-01-03", "2022-01-04"]},
         {"series": "Yearly maintenance", "label": "Maintenance", "value": ["2022-01-01", "2022-01-03"]}
     ]')),
