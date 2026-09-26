@@ -118,7 +118,7 @@ docker compose up --wait mssql # or postgres, mysql, mariadb, oracle
 DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test
 ```
 
-ODBC tests require the database-specific ODBC driver on the host; starting the container is not sufficient. See the PostgreSQL ODBC and Oracle matrix entries in [CI](./.github/workflows/ci.yml) for driver setup and connection strings. On Linux and macOS, `cargo test --features odbc-static` matches CI's static unixODBC linking.
+ODBC tests require the database-specific ODBC driver on the host; starting the container is not sufficient. See the Oracle and DuckDB matrix entries in [CI](./.github/workflows/ci.yml) for driver setup and connection strings. On Linux and macOS, `cargo test --features odbc-static` matches CI's static unixODBC linking.
 
 For dynamic frontend changes, run the Playwright tests under `tests/end-to-end/` as described in [CONTRIBUTING.md](./CONTRIBUTING.md). Component browser tests belong in `tests/end-to-end/fixtures/<suite>/{index.sql,test.ts}` and must import the shared `fixture.ts` harness. Exercise components through SQL fixtures and normal page initialization; do not inject synthetic component DOM or call private initialization functions. Prefer Playwright locators and web-first assertions. For examples containing `test.hurl`, run `scripts/test-examples-hurl.sh <example-path>`.
 

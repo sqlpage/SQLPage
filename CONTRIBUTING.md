@@ -112,16 +112,7 @@ tests should render real components through their SQL fixture; do not inject com
 invoke SQLPage's JavaScript initialization functions directly. Parameterized fixtures may accept
 request variables when several tests need the same component with different data.
 
-#### Start a sqlpage instance pointed to the official site source code
-
-```bash
-cd examples/official-site
-cargo run
-```
-
 #### Run the tests
-
-In a separate terminal, run the tests:
 
 ```bash
 npm install
@@ -130,8 +121,7 @@ npx playwright install chromium
 npm run test
 ```
 
-Playwright starts the component fixture server on port 8081 automatically. The official-site
-server on port 8080 must still be started separately as shown above.
+Playwright starts both servers itself on a free port. Set `SQLPAGE_BINARY` to run the servers from an already compiled binary instead of `cargo run`.
 
 ## Documentation
 
