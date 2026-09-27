@@ -1,12 +1,14 @@
 # CHANGELOG.md
 
 ## v0.47.0 (unreleased)
+- **Mac users:** the downloadable `sqlpage-macos.tgz` now runs natively on Apple silicon (M-series Macs) and no longer runs on Intel Macs. Homebrew remains the recommended and easiest installation method. On an Intel Mac, [install Homebrew](https://brew.sh/) if needed, then run `brew install sqlpage` (or `brew update` followed by `brew upgrade sqlpage` if you already installed it with Homebrew). Open Terminal in your existing website folder and run `sqlpage` instead of `./sqlpage.bin`; keep your SQL files, database, and `sqlpage` configuration folder in place. Intel installations may build from source and take longer; see the [macOS installation guide](https://sql-page.com/your-first-sql-website/?os=macos#download) for setup and older macOS requirements.
 - Updated sqlx-oldapi to v0.6.57 to fix SQL Server fallback expressions such as `ISNULL($missing, 'default')` truncating defaults or failing for date values when the bound variable is `NULL`.
 - Fixed MSSQL `JSON_OBJECT('key': value)` expressions being rejected by SQLPage's parser, including when used in `SET` statements or nested in `sqlpage.*` function calls.
 - OIDC now checks both normalized request paths and their resolved SQL files against protected prefixes, closing authentication bypasses through path and clean-URL aliases. Nonce verification also rejects provider-returned Argon2 parameters outside SQLPage's fixed low-cost profile before hashing.
 - SQL files with a mixed-case `.sql` extension are executed instead of served as static files. HTTP paths with trailing spaces, and Windows file aliases with trailing dots or NTFS stream names, are rejected to prevent source disclosure through storage aliases.
 - `cargo install sqlpage`, and any build from the crates.io tarball, no longer needs internet access. The browser libraries now come from npm and ship inside the published crate. Building from a git checkout needs `npm ci` first. Pre-built binaries and the Docker image are unaffected.
 - The browser libraries are now part of the browser scripts. SQLPage no longer defines the `window.tabler` and `window.bootstrap` globals; custom scripts that reached for them should load their own copy of Bootstrap.
+- The startup message now reports the address the server actually bound instead of the one it was configured with.
 
 ## v0.46.3
 

@@ -26,7 +26,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             features: ""
           - os: macos-latest
-            target: x86_64-apple-darwin
+            target: aarch64-apple-darwin
             features: "odbc-static"
     steps:
       - uses: actions/checkout@v7

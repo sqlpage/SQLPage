@@ -1,4 +1,3 @@
 {
-  "database_url": "sqlite::memory:",
-  "port": 8081
+  "database_url": "sqlite::memory:"
 }

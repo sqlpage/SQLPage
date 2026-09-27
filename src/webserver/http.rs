@@ -40,6 +40,7 @@ use chrono::{DateTime, Utc};
 use futures_util::StreamExt;
 use futures_util::stream::Stream;
 use std::borrow::Cow;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -680,7 +681,7 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         }
     }
 
-    log_welcome_message(config);
+    log_welcome_message(config, &server.addrs());
     server
         .run()
         .await
@@ -691,25 +692,33 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
     Ok(())
 }
 
-fn log_welcome_message(config: &AppConfig) {
+fn website_url(bound_to: SocketAddr) -> String {
+    let port = bound_to.port();
+    let ip = bound_to.ip();
+    if ip.is_unspecified() {
+        format!(
+            "http://localhost:{port}\n\
+            (also accessible from other devices using your IP address)"
+        )
+    } else if ip.is_ipv6() {
+        format!("http://[{ip}]:{port}")
+    } else {
+        format!("http://{ip}:{port}")
+    }
+}
+
+fn log_welcome_message(config: &AppConfig, bound_to: &[SocketAddr]) {
     let address_message = if let Some(unix_socket) = &config.unix_socket {
         format!("unix socket \"{}\"", unix_socket.display())
     } else if let Some(domain) = &config.https_domain {
         format!("https://{domain}")
     } else {
-        let listen_on = config.listen_on();
-        let port = listen_on.port();
-        let ip = listen_on.ip();
-        if ip.is_unspecified() {
-            format!(
-                "http://localhost:{port}\n\
-            (also accessible from other devices using your IP address)"
-            )
-        } else if ip.is_ipv6() {
-            format!("http://[{ip}]:{port}")
-        } else {
-            format!("http://{ip}:{port}")
-        }
+        bound_to
+            .iter()
+            .copied()
+            .map(website_url)
+            .collect::<Vec<String>>()
+            .join("\n")
     };
 
     let (sparkle, link, computer, rocket) = if cfg!(target_os = "windows") {
@@ -747,9 +756,32 @@ fn bind_unix_socket_err(e: std::io::Error, unix_socket: &std::path::Path) -> any
 
 #[cfg(test)]
 mod tests {
-    use super::{request_span_name, sql_execution_span_name};
+    use super::{request_span_name, sql_execution_span_name, website_url};
     use actix_web::test::TestRequest;
     use std::path::Path;
+
+    #[test]
+    fn website_url_reports_the_address_the_server_bound() {
+        assert_eq!(
+            website_url("127.0.0.1:34567".parse().unwrap()),
+            "http://127.0.0.1:34567"
+        );
+    }
+
+    #[test]
+    fn website_url_sends_an_unspecified_address_to_localhost() {
+        assert!(
+            website_url("0.0.0.0:8080".parse().unwrap()).starts_with("http://localhost:8080\n")
+        );
+    }
+
+    #[test]
+    fn website_url_brackets_an_ipv6_address() {
+        assert_eq!(
+            website_url("[::1]:8080".parse().unwrap()),
+            "http://[::1]:8080"
+        );
+    }
 
     #[test]
     fn request_span_name_uses_request_path_when_no_matched_route_exists() {
