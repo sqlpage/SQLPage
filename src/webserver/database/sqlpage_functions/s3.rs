@@ -1,5 +1,5 @@
-use crate::webserver::http_request_info::RequestInfo;
 use crate::app_config::AppConfig;
+use crate::webserver::http_request_info::RequestInfo;
 use anyhow::Context;
 use aws_config::BehaviorVersion;
 use aws_sdk_s3::presigning::PresigningConfig;
@@ -106,7 +106,7 @@ async fn get_from_s3_with_client<'a>(
     Ok(presigned_request.uri().to_string())
 }
 
-async fn get_s3_client(config: &crate::app_config::AppConfig) -> aws_sdk_s3::Client {
+async fn get_s3_client(config: &AppConfig) -> aws_sdk_s3::Client {
     let mut loader = aws_config::defaults(BehaviorVersion::latest());
 
     if let Some(endpoint) = &config.s3_endpoint {
@@ -160,10 +160,12 @@ mod tests {
         let data = "file:///etc/passwd";
         let result = prepare_upload_body(data, &config).await;
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Security violation"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Security violation")
+        );
     }
 
     #[tokio::test]
