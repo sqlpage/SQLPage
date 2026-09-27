@@ -15,33 +15,36 @@ const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
 
 function sqlpage_embed() {
   /** @type {NodeListOf<HTMLElement>} */
-  const embeds = document.querySelectorAll("[data-embed]:not([aria-busy=true])");
+  const embeds = document.querySelectorAll(
+    "[data-embed]:not([aria-busy=true])",
+  );
   for (const c of embeds) {
     if (!c.dataset.embed) continue;
     c.ariaBusy = "true";
     let url;
     try {
-      url = new URL(c.dataset.embed, window.location.href)
+      url = new URL(c.dataset.embed, window.location.href);
     } catch {
-      console.error(`'${c.dataset.embed}' is not a valid url`)
+      console.error(`'${c.dataset.embed}' is not a valid url`);
       continue;
     }
     url.searchParams.set("_sqlpage_embed", "");
 
     fetch(url)
-      .then(res => res.text())
-      .then(html => {
+      .then((res) => res.text())
+      .then((html) => {
         c.innerHTML = html;
         c.ariaBusy = "false";
         delete c.dataset.embed;
-        c.dispatchEvent(new CustomEvent("fragment-loaded", {
-          bubbles: true
-      }));
-    })
-    .catch(err => console.error("Fetch error: ", err));
-    }
+        c.dispatchEvent(
+          new CustomEvent("fragment-loaded", {
+            bubbles: true,
+          }),
+        );
+      })
+      .catch((err) => console.error("Fetch error: ", err));
+  }
 }
-
 
 /** @param {HTMLElement} root_el */
 function setup_table(root_el) {

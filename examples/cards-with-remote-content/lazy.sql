@@ -1,6 +1,6 @@
 select 'lazy' as component;
 
-select 
+select
     '/chart-example.sql?_sqlpage_embed' as embed,
     'card my-2' as class,
     'height:340px' as style;
