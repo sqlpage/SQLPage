@@ -1462,9 +1462,10 @@ GROUP BY name;
 ', NULL);
 
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
-    ('loader-start', 'refresh', 'Display a spinner to indicate page is loading.', '0.25.0');
+    ('loader-start', 'refresh', 'Display a spinner to indicate page is loading.', '0.47.0');
 
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'loader-start', * FROM (VALUES
+    ('id', 'HTML identifier for the loading container.', 'TEXT', TRUE, TRUE),
     ('spinner', '
 The name of a [spinner](https://tabler.io/docs/components/spinners) (from tabler.io).
 Default is "spinner-border".
@@ -1478,10 +1479,10 @@ updates.
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
     ('loader-stop', 'refresh-off', '
 Hide the spinner displayed by the loader-start component.
-', '0.25.0');
+', '0.47.0');
 
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
-    ('progress', 'time-duration-15', 'Display a progress bar.', '0.25.0');
+    ('progress', 'time-duration-15', 'Display a progress bar.', '0.47.0');
 
 INSERT INTO parameter(component, name, description_md, type, top_level, optional) SELECT 'progress', * FROM (VALUES
     -- top-level

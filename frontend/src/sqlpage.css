@@ -237,7 +237,7 @@ div.sqlpage-progress-container:has(+ .sqlpage-progress-container) {
   display: none;
 }
 .sqlpage-progress-container label {
-  text-align:left;
+  text-align: left;
   color: var(--tblr-text-primary);
 }
 .sqlpage-progress-container label:after {
