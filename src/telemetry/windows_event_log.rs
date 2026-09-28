@@ -32,7 +32,7 @@ pub fn write(level: tracing::Level, message: &str) {
             event_type,
             0,
             0,
-            std::ptr::null(),
+            std::ptr::null_mut(),
             1,
             0,
             strings.as_ptr(),
