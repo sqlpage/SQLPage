@@ -6,7 +6,7 @@ COPY frontend/src/ frontend/src/
 COPY scripts/build-frontend.mjs scripts/
 RUN node scripts/build-frontend.mjs
 
-FROM rust:1.95-alpine AS builder
+FROM rust:1.98.1-alpine AS builder
 RUN rustup component add clippy rustfmt
 RUN apk add --no-cache musl-dev zip
 WORKDIR /usr/src/sqlpage
