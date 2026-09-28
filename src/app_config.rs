@@ -982,6 +982,8 @@ mod test {
             config_dir: None,
             config_file: None,
             command: None,
+            #[cfg(windows)]
+            service: None,
         };
 
         let config = AppConfig::from_cli(&cli).unwrap();
@@ -1027,6 +1029,8 @@ mod test {
             config_dir: None,
             config_file: Some(config_file_path.clone()),
             command: None,
+            #[cfg(windows)]
+            service: None,
         };
 
         let config = AppConfig::from_cli(&cli).unwrap();
@@ -1046,6 +1050,8 @@ mod test {
             config_dir: None,
             config_file: Some(config_file_path),
             command: None,
+            #[cfg(windows)]
+            service: None,
         };
 
         let config = AppConfig::from_cli(&cli_with_web_root).unwrap();
@@ -1082,6 +1088,8 @@ mod test {
             config_dir: None,
             config_file: None,
             command: None,
+            #[cfg(windows)]
+            service: None,
         };
 
         let config = AppConfig::from_cli(&cli).unwrap();

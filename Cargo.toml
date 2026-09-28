@@ -58,7 +58,7 @@ handlebars = "6.2.0"
 log = "0.4.17"
 mime_guess = "2.0.4"
 futures-util = "0.3.21"
-tokio = { version = "1.24.1", features = ["macros", "rt", "process", "sync"] }
+tokio = { version = "1.24.1", features = ["macros", "rt", "process", "sync", "signal"] }
 tokio-stream = "0.1.9"
 anyhow = "1"
 serde = "1"
@@ -133,6 +133,13 @@ opentelemetry-http = { version = "0.32", default-features = false }
 opentelemetry-semantic-conventions = { version = "0.32", features = ["semconv_experimental"] }
 
 
+[target.'cfg(target_os = "linux")'.dependencies]
+sd-notify = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.8"
+windows-sys = { version = "0.61", features = ["Win32_System_EventLog", "Win32_Security"] }
+
 [features]
 default = []
 odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]
@@ -148,4 +155,3 @@ lambda-web = [
 actix-http = "3"
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "time", "test-util"] }
-

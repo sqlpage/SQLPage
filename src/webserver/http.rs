@@ -624,6 +624,27 @@ fn default_headers() -> middleware::DefaultHeaders {
 }
 
 pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {
+    run_server_inner(config, state, None, || Ok(())).await
+}
+
+/// Runs the server with externally managed shutdown and readiness reporting.
+/// The readiness callback runs after the listeners and workers have started.
+/// Completing `shutdown` drains requests for up to 30 seconds before closing the database.
+pub async fn run_server_with_shutdown(
+    config: &AppConfig,
+    state: AppState,
+    shutdown: impl Future<Output = ()> + Send + 'static,
+    on_ready: impl FnOnce() -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    run_server_inner(config, state, Some(Box::pin(shutdown)), on_ready).await
+}
+
+async fn run_server_inner(
+    config: &AppConfig,
+    state: AppState,
+    shutdown: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    on_ready: impl FnOnce() -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
     let listen_on = config.listen_on();
     let state = web::Data::new(state);
     let final_state = web::Data::clone(&state);
@@ -637,6 +658,9 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         return Ok(());
     }
     let mut server = HttpServer::new(factory);
+    if let Some(shutdown) = shutdown {
+        server = server.shutdown_signal(shutdown);
+    }
     #[cfg_attr(
         not(target_family = "unix"),
         expect(
@@ -681,15 +705,29 @@ pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<(
         }
     }
 
-    log_welcome_message(config, &server.addrs());
-    server
-        .run()
-        .await
-        .with_context(|| "Unable to start the application")?;
+    let addresses = server.addrs();
+    let mut server = Box::pin(server.run());
+    // Actix starts its workers and accept thread on the first poll, not in run().
+    let initial =
+        futures_util::future::poll_fn(|cx| std::task::Poll::Ready(server.as_mut().poll(cx))).await;
+    let result = match initial {
+        std::task::Poll::Ready(result) => result.context("Unable to start the application"),
+        std::task::Poll::Pending => match on_ready() {
+            Ok(()) => {
+                log_welcome_message(config, &addresses);
+                server.await.context("HTTP server failed")
+            }
+            Err(error) => {
+                let handle = server.handle();
+                let _ = tokio::join!(handle.stop(true), server);
+                Err(error)
+            }
+        },
+    };
 
     // We are done, we can close the database connection
     final_state.db.close().await?;
-    Ok(())
+    result
 }
 
 fn website_url(bound_to: SocketAddr) -> String {
