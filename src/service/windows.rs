@@ -33,7 +33,8 @@ pub(crate) fn dispatch(cli: Cli) -> anyhow::Result<()> {
 
 fn service_main(_arguments: Vec<OsString>) {
     if let Err(error) = run_service() {
-        sqlpage::telemetry::windows_event_log::write(tracing::Level::ERROR, &format!("{error:#}"));
+        sqlpage::telemetry::windows_event_log::write(tracing::Level::ERROR, format!("{error:#}"));
+        sqlpage::telemetry::windows_event_log::shutdown();
         *RESULT.lock().unwrap() = Some(Err(error));
     }
 }
@@ -78,8 +79,9 @@ fn run_service() -> anyhow::Result<()> {
     })();
     let failed = result.is_err();
     if let Err(error) = &result {
-        sqlpage::telemetry::windows_event_log::write(tracing::Level::ERROR, &format!("{error:#}"));
+        sqlpage::telemetry::windows_event_log::write(tracing::Level::ERROR, format!("{error:#}"));
     }
+    sqlpage::telemetry::windows_event_log::shutdown();
     // Publish the result before reporting Stopped: the dispatcher may return as
     // soon as SCM receives that status. No work may remain after this call.
     *RESULT.lock().unwrap() = Some(result);

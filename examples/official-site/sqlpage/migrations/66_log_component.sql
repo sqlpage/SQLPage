@@ -8,7 +8,7 @@ Use it to track what happens and troubleshoot issues.
 - Running from a terminal (Linux, macOS, or Windows PowerShell/Command Prompt): they show up in the window.
 - Docker: run `docker logs <container_name>`.
 - Linux service (systemd): run `journalctl -u sqlpage`.
-- Native Windows service (`--service NAME`): open Event Viewer → Windows Logs → Application and select the SQLPage source. See the [service setup guide](/your-first-sql-website/service.sql).
+- Native Windows service (`--service NAME`): open Event Viewer → Windows Logs → Application and select the SQLPage source. Logs are queued in the background; sustained overload can drop records, and messages are limited to 16 KiB. See the [service setup guide](/your-first-sql-website/service.sql).
 - Outside native Windows service mode, this component''s output is written to [standard error (stderr)](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)). SQLPage request access logs are separate and are written to standard output (stdout).
 ');
 

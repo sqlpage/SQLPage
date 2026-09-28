@@ -189,8 +189,12 @@ pub fn init_telemetry() -> anyhow::Result<bool> {
 /// Initializes service logging in the Windows Application event log, with optional OTLP export.
 #[cfg(windows)]
 pub fn init_windows_service_telemetry() -> anyhow::Result<bool> {
+    windows_event_log::init()?;
     init_telemetry_with_log_layer(logfmt::LogfmtLayer::windows_service())
 }
+
+#[cfg(any(windows, test))]
+mod background_log;
 
 #[cfg(windows)]
 pub mod windows_event_log;
@@ -548,7 +552,7 @@ mod logfmt {
                     eprint!("{buf}");
                 }
                 #[cfg(windows)]
-                OutputMode::WindowsEventLog => super::windows_event_log::write(level, &buf),
+                OutputMode::WindowsEventLog => super::windows_event_log::write(level, buf),
             }
         }
     }

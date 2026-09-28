@@ -7,6 +7,7 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ("SQLPage service test " + $name)
 $created = $false
 $listener = $null
 $client = $null
+$startedAt = Get-Date
 
 function Wait-State([string]$state) {
     $service = Get-Service $name
@@ -25,7 +26,7 @@ try {
     $configuration = @{ listen_on = "127.0.0.1:$port"; database_url = 'sqlite::memory:' } |
         ConvertTo-Json
     [IO.File]::WriteAllText((Join-Path $root 'sqlpage\sqlpage.json'), $configuration)
-    [IO.File]::WriteAllText((Join-Path $root 'index.sql'), "SELECT 'text' AS component, 'service ready' AS contents;")
+    [IO.File]::WriteAllText((Join-Path $root 'index.sql'), "SELECT 'log' AS component, '$name flush marker' AS message; SELECT 'text' AS component, 'service ready' AS contents;")
     $command = '"{0}" --service {1} --web-root "{2}"' -f $Binary, $name, $root
     New-Service -Name $name -BinaryPathName $command -StartupType Manual | Out-Null
     $created = $true
@@ -68,11 +69,14 @@ try {
     Wait-State 'Stopped'
     $status = Get-CimInstance Win32_Service -Filter "Name='$name'"
     if ($status.ExitCode -ne 0) { throw 'Clean stop reported a failure' }
+    $events = Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'SQLPage'; StartTime = $startedAt }
+    $flushed = $events | Where-Object { $_.Properties[0].Value -like "*$name flush marker*" }
+    if (-not $flushed) { throw 'The service stopped before its queued log record was written' }
     Start-Service $name
     Wait-State 'Running'
     Stop-Service $name
     Wait-State 'Stopped'
-    Write-Host 'Windows service startup failure, readiness, graceful stop, and restart passed.'
+    Write-Host 'Windows service startup failure, readiness, graceful stop, log flush, and restart passed.'
 } finally {
     if ($client) { $client.Dispose() }
     if ($listener) { $listener.Stop() }

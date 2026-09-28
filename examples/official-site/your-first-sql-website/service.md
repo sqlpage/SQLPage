@@ -89,6 +89,13 @@ shutdown controls initiate cleanup. Failures report service-specific exit code 1
 details and application logs appear in **Event Viewer → Windows Logs → Application**
 under the **SQLPage** source. Existing OpenTelemetry export remains available.
 
+Event Viewer logging uses a background writer so Windows log writes do not block
+HTTP workers. The queue holds up to 256 records, each truncated to 16 KiB at a UTF-8
+character boundary. If the writer cannot keep up, new records are dropped and a
+warning reports the number lost when the writer progresses or during shutdown.
+Accepted records are flushed before the service reports `STOPPED`. Use `LOG_LEVEL`
+or `RUST_LOG` to reduce log volume if needed.
+
 To remove the service:
 
 ```powershell

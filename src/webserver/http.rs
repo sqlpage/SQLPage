@@ -624,7 +624,7 @@ fn default_headers() -> middleware::DefaultHeaders {
 }
 
 pub async fn run_server(config: &AppConfig, state: AppState) -> anyhow::Result<()> {
-    run_server_inner(config, state, None, || Ok(())).await
+    run_server_inner(config, state, None, Box::new(|| Ok(()))).await
 }
 
 /// Runs the server with externally managed shutdown and readiness reporting.
@@ -636,14 +636,16 @@ pub async fn run_server_with_shutdown(
     shutdown: impl Future<Output = ()> + Send + 'static,
     on_ready: impl FnOnce() -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    run_server_inner(config, state, Some(Box::pin(shutdown)), on_ready).await
+    run_server_inner(config, state, Some(Box::pin(shutdown)), Box::new(on_ready)).await
 }
 
 async fn run_server_inner(
     config: &AppConfig,
     state: AppState,
     shutdown: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
-    on_ready: impl FnOnce() -> anyhow::Result<()>,
+    // Erase the callback type at this boundary: otherwise every caller causes
+    // another specialization of the entire HTTP server and middleware stack.
+    on_ready: Box<dyn FnOnce() -> anyhow::Result<()> + '_>,
 ) -> anyhow::Result<()> {
     let listen_on = config.listen_on();
     let state = web::Data::new(state);
