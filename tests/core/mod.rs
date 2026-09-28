@@ -7,6 +7,8 @@ use sqlx::executor::Executor as _;
 
 use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
 
+mod path_aliases;
+
 #[actix_web::test]
 async fn test_concurrent_requests() {
     let components = [
