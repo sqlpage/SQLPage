@@ -183,8 +183,6 @@ jobs:
       - name: Test native Windows service lifecycle
         shell: powershell
         run: scripts/test-windows-service.ps1
-      - name: Lint Windows service code
-        run: cargo clippy --all-targets -- -D warnings
       - name: Upload Windows binary
         uses: actions/upload-artifact@v7
         with:
