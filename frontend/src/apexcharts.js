@@ -15,6 +15,15 @@ import { add_init_fn } from "./init.js";
  * @property {string} [link]
  */
 
+/** @param {string|number|null} value @param {string|undefined} link */
+function formatTooltipX(value, link) {
+  if (!link || !value) return value;
+  const anchor = document.createElement("a");
+  anchor.setAttribute("href", link);
+  anchor.textContent = String(value);
+  return anchor.outerHTML;
+}
+
 const sqlpage_chart = (() => {
   function sqlpage_chart() {
     /** @type {NodeListOf<HTMLElement>} */
@@ -197,6 +206,9 @@ const sqlpage_chart = (() => {
     const value_axis = inverted ? "x" : "y";
     const category_axis = inverted ? "y" : "x";
     const has_point_links = points.some((point) => point.link);
+    const text_x_values = chart_series.every(({ data }) =>
+      data.every(({ x }) => x == null || typeof x === "string"),
+    );
     const options = {
       annotations: {
         [`${value_axis}axis`]: reference_lines(
@@ -307,11 +319,17 @@ const sqlpage_chart = (() => {
       tooltip: {
         fillSeriesColor: false,
         interactive: has_point_links,
-        custom: has_point_links
-          ? (args) => chartTooltip(args, points)
-          : chart_type === "bubble" || chart_type === "scatter"
+        custom:
+          chart_type === "bubble" || chart_type === "scatter"
             ? bubbleTooltip
             : undefined,
+        x: {
+          formatter:
+            has_point_links && text_x_values
+              ? (value, args) =>
+                  formatTooltipX(value, args?.w && pointLink(args, points))
+              : undefined,
+        },
         y: {
           formatter: (value) => {
             if (value == null) return "";
@@ -354,27 +372,19 @@ const sqlpage_chart = (() => {
 
   /**
    * @param {{seriesIndex:number, dataPointIndex:number, w:any}} args
-   * @param {DataPoint[]} points
    */
-  function chartTooltip({ seriesIndex, dataPointIndex, w }, points) {
+  function chartTooltip({ seriesIndex, dataPointIndex, w }) {
     const series = w.config.series[seriesIndex];
-    const has_series_data = Array.isArray(series?.data);
-    const point_index = has_series_data ? dataPointIndex : seriesIndex;
-    const raw_point = points[point_index];
-    const name = series?.name || w.config.labels?.[point_index] || "";
-    const point = has_series_data
-      ? series.data[dataPointIndex]
-      : { y: raw_point?.y, z: raw_point?.z };
-    const link = pointLink({ seriesIndex, dataPointIndex, w }, points);
+    const name = series?.name || "";
+    const point = series?.data[dataPointIndex];
 
     const tooltip = document.createElement("div");
     tooltip.className = "apexcharts-tooltip-text";
     tooltip.style.fontFamily = "inherit";
 
-    const seriesName = document.createElement(link ? "a" : "div");
+    const seriesName = document.createElement("div");
     seriesName.className = "apexcharts-tooltip-y-group";
     seriesName.style.fontWeight = "bold";
-    if (seriesName instanceof HTMLAnchorElement) seriesName.href = link;
     seriesName.innerText = name;
     tooltip.appendChild(seriesName);
 
@@ -416,7 +426,7 @@ const sqlpage_chart = (() => {
   }
 
   function bubbleTooltip(args) {
-    return chartTooltip(args, []);
+    return chartTooltip(args);
   }
 
   return sqlpage_chart;
