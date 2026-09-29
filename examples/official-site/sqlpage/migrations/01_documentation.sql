@@ -949,7 +949,8 @@ Advanced users can apply custom styles to table columns using a CSS class with t
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'table', * FROM (VALUES
     -- top level
-    ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
+    ('sort', 'Make the columns clickable to let the user sort by the value contained in the column in the browser.', 'BOOLEAN', TRUE, TRUE),
+    ('server_sort_column', 'A column name, or JSON array of column names, whose headers reload the current page with a sort_<column>=ASCENDING or sort_<column>=DESCENDING URL parameter. Use this for database-side sorting, particularly with pagination. Your SQL query must read the parameter and apply the corresponding ORDER BY safely.', 'JSON', TRUE, TRUE),
     ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE),
     ('initial_search_value', 'Pre-fills the search bar used to filter the table. The user will still be able to edit the value to display table rows that will initially be filtered out.', 'TEXT', TRUE, TRUE),
     ('search_placeholder', 'Customizes the placeholder text shown in the search input field. Replaces the default "Search..." with text that better describes what users should search for.', 'TEXT', TRUE, TRUE),
@@ -1008,6 +1009,25 @@ INSERT INTO example(component, description, properties) VALUES
     (
     'table',
     'A table with column sorting. Sorting sorts numbers in numeric order, and strings in alphabetical order.
+
+This example uses client-side sorting: it reorders only the rows already loaded in the browser. For paginated data, use `server_sort_column` so that the database sorts before applying `LIMIT` and `OFFSET`.
+
+## Server-side sorting
+
+Set `server_sort_column` to the name of a result column. Clicking its header reloads the current page with `sort_<column>=ASCENDING` or `sort_<column>=DESCENDING`. Read that parameter in SQL and use fixed expressions in `ORDER BY`; do not interpolate the parameter into SQL.
+
+```sql
+SELECT ''table'' AS component,
+    ''name'' AS server_sort_column;
+
+SELECT id, name
+FROM users
+ORDER BY
+    CASE WHEN $sort_name = ''ASCENDING'' THEN name END ASC,
+    CASE WHEN $sort_name = ''DESCENDING'' THEN name END DESC,
+    id
+LIMIT 100 OFFSET COALESCE(CAST($offset AS INTEGER), 0);
+```
 
 Numbers can be displayed 
  - as raw digits without formatting using the `raw_numbers` property,
