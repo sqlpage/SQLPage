@@ -1,5 +1,5 @@
 import { bootstrap as bundled_bootstrap } from "@tabler/core";
-import { add_init_fn } from "./init.js";
+import { add_init_fn } from "./init.ts";
 
 // A page may load its own Bootstrap; prefer it over the bundled copy.
 const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
@@ -7,15 +7,14 @@ const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
 /**
  * Bootstrap declares getOrCreateInstance on the base class, which returns a
  * BaseComponent and so loses show().
- * @typedef {InstanceType<typeof bundled_bootstrap.Toast>} ToastWidget
- * @typedef {InstanceType<typeof bundled_bootstrap.Modal>} ModalWidget
  */
+type ToastWidget = InstanceType<typeof bundled_bootstrap.Toast>;
+type ModalWidget = InstanceType<typeof bundled_bootstrap.Modal>;
 
-const nonce = /** @type {HTMLScriptElement} */ (document.currentScript).nonce;
+const nonce = (document.currentScript as HTMLScriptElement).nonce;
 
 function sqlpage_card() {
-  /** @type {NodeListOf<HTMLElement>} */
-  const cards = document.querySelectorAll("[data-pre-init=card]");
+  const cards = document.querySelectorAll<HTMLElement>("[data-pre-init=card]");
   for (const c of cards) {
     c.removeAttribute("data-pre-init");
     if (!c.dataset.embed) continue;
@@ -40,14 +39,13 @@ function sqlpage_card() {
   }
 }
 
-/** @param {HTMLElement} root_el */
-function setup_table(root_el) {
-  /** @type {HTMLInputElement | null} */
-  const search_input = root_el.querySelector("input.search");
+function setup_table(root_el: HTMLElement) {
+  const search_input = root_el.querySelector<HTMLInputElement>("input.search");
   const table_el = root_el.querySelector("table");
   if (!table_el) return;
-  /** @type {NodeListOf<HTMLElement>} */
-  const sort_button_els = table_el.querySelectorAll("button.sort[data-sort]");
+  const sort_button_els = table_el.querySelectorAll<HTMLElement>(
+    "button.sort[data-sort]",
+  );
   const sort_buttons = [...sort_button_els];
   const item_parent = table_el.querySelector("tbody");
   const has_sort = sort_buttons.length > 0;
@@ -64,10 +62,11 @@ function setup_table(root_el) {
 }
 
 /**
- * @param {HTMLInputElement} search_input
- * @param {TableRow[]} items
  */
-function setup_table_search_behavior(search_input, items) {
+function setup_table_search_behavior(
+  search_input: HTMLInputElement,
+  items: TableRow[],
+) {
   function onSearch() {
     const lower_search = search_input.value
       .toLowerCase()
@@ -85,10 +84,8 @@ function setup_table_search_behavior(search_input, items) {
   onSearch();
 }
 
-/**@param {HTMLElement} table_el */
-function apply_number_formatting(table_el) {
-  /** @type {NodeListOf<HTMLElement>} */
-  const header_els = table_el.querySelectorAll("thead > tr > th");
+function apply_number_formatting(table_el: HTMLElement) {
+  const header_els = table_el.querySelectorAll<HTMLElement>("thead > tr > th");
   const col_types = [...header_els].map((el) => el.dataset.column_type);
   const col_rawnums = [...header_els].map((el) => !!el.dataset.raw_number);
   const col_money = [...header_els].map((el) => !!el.dataset.money);
@@ -119,19 +116,18 @@ function apply_number_formatting(table_el) {
   }
 }
 
-/** @typedef { {el: HTMLElement, sort_keys: {num: number, str: string}[]} } TableRow */
+type TableRow = { el: HTMLElement; sort_keys: { num: number; str: string }[] };
 
 /** Prepare the table rows for sorting.
- * @param {HTMLElement} table_el
- * @param {HTMLElement[]} sort_buttons
- * @returns {TableRow[]}
  */
-function table_parse_data(table_el, sort_buttons) {
+function table_parse_data(
+  table_el: HTMLElement,
+  sort_buttons: HTMLElement[],
+): TableRow[] {
   const is_num = [...sort_buttons].map(
     (btn_el) => btn_el.parentElement?.dataset.column_type === "number",
   );
-  /** @type {NodeListOf<HTMLElement>} */
-  const row_els = table_el.querySelectorAll("tbody tr");
+  const row_els = table_el.querySelectorAll<HTMLElement>("tbody tr");
   return [...row_els].map((tr_el) => {
     const cells = tr_el.getElementsByTagName("td");
     return {
@@ -147,11 +143,12 @@ function table_parse_data(table_el, sort_buttons) {
 
 /**
  * Adds event listeners to the sort buttons to sort the table rows.
- * @param {HTMLElement[]} sort_buttons
- * @param {TableRow[]} items
- * @param {HTMLElement} item_parent
  */
-function setup_sort_behavior(sort_buttons, items, item_parent) {
+function setup_sort_behavior(
+  sort_buttons: HTMLElement[],
+  items: TableRow[],
+  item_parent: HTMLElement,
+) {
   sort_buttons.forEach((button, button_index) => {
     button.addEventListener("click", function sort_items() {
       const sort_desc = button.classList.contains("asc");
@@ -176,8 +173,9 @@ function setup_sort_behavior(sort_buttons, items, item_parent) {
 }
 
 function sqlpage_table() {
-  /** @type {NodeListOf<HTMLElement>} */
-  const tables = document.querySelectorAll("[data-pre-init=table]");
+  const tables = document.querySelectorAll<HTMLElement>(
+    "[data-pre-init=table]",
+  );
   for (const r of tables) {
     r.removeAttribute("data-pre-init");
     try {
@@ -217,10 +215,10 @@ function sqlpage_map() {
     onLeafletLoad();
   }
   /**
-   * @param {string|undefined} coords
-   * @returns {[number, number] | undefined}
    */
-  function parseCoords(coords) {
+  function parseCoords(
+    coords: string | undefined,
+  ): [number, number] | undefined {
     if (!coords) return undefined;
     const parsed = coords.split(",", 2).map((c) => Number.parseFloat(c));
     if (parsed.length !== 2 || !parsed.every(Number.isFinite)) {
@@ -233,8 +231,7 @@ function sqlpage_map() {
   }
   function onLeafletLoad() {
     is_leaflet_loaded = true;
-    /** @type {NodeListOf<HTMLElement>} */
-    const maps = document.querySelectorAll("[data-pre-init=map]");
+    const maps = document.querySelectorAll<HTMLElement>("[data-pre-init=map]");
     for (const m of maps) {
       const tile_source = m.dataset.tile_source;
       const maxZoom = Number(m.dataset.max_zoom);
@@ -318,8 +315,7 @@ function sqlpage_map() {
 }
 
 function sqlpage_form() {
-  /** @type {NodeListOf<HTMLInputElement>} */
-  const file_inputs = document.querySelectorAll(
+  const file_inputs = document.querySelectorAll<HTMLInputElement>(
     "input[type=file][data-max-size]",
   );
   for (const input of file_inputs) {
@@ -338,8 +334,9 @@ function sqlpage_form() {
     });
   }
 
-  /** @type {NodeListOf<HTMLFormElement>} */
-  const auto_submit_forms = document.querySelectorAll("form[data-auto-submit]");
+  const auto_submit_forms = document.querySelectorAll<HTMLFormElement>(
+    "form[data-auto-submit]",
+  );
   for (const form of auto_submit_forms) {
     form.addEventListener("change", () => form.submit());
   }
@@ -352,8 +349,7 @@ function get_tabler_color(name) {
 }
 
 function load_scripts() {
-  /** @type {NodeListOf<HTMLElement>} */
-  const addjs = document.querySelectorAll("[data-sqlpage-js]");
+  const addjs = document.querySelectorAll<HTMLElement>("[data-sqlpage-js]");
   const existing_scripts = new Set(
     [...document.querySelectorAll("script")].map((s) => s.src),
   );
@@ -383,7 +379,7 @@ function open_toasts_for_hash(toasts) {
   if (!hash) return;
   for (const toast of toasts) {
     if (normalize_hash(toast.dataset.toastTrigger) === hash) {
-      /** @type {ToastWidget} */ (Toast.getOrCreateInstance(toast)).show();
+      (Toast.getOrCreateInstance(toast) as ToastWidget).show();
     }
   }
 }
@@ -406,17 +402,16 @@ function restore_focus_after_toast(toast, container) {
 function sqlpage_toast() {
   const Toast = page_bootstrap().Toast;
 
-  const initialized_toasts = [];
-  /** @type {NodeListOf<HTMLElement>} */
-  const toasts = document.querySelectorAll('[data-pre-init="toast"]');
+  const initialized_toasts: HTMLElement[] = [];
+  const toasts = document.querySelectorAll<HTMLElement>(
+    '[data-pre-init="toast"]',
+  );
   for (const toast of toasts) {
     const source_container = toast.parentElement;
     if (!source_container) continue;
     const position = source_container.dataset.sqlpageToastPosition;
-    let container = /** @type {HTMLElement | null} */ (
-      document.querySelector(
-        `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
-      )
+    let container: HTMLElement | null = document.querySelector(
+      `.toast-container[data-sqlpage-toast-position="${position}"]:not([data-pre-init])`,
     );
     if (!container) {
       container = source_container;
@@ -428,9 +423,7 @@ function sqlpage_toast() {
     }
 
     toast.removeAttribute("data-pre-init");
-    const instance = /** @type {ToastWidget} */ (
-      Toast.getOrCreateInstance(toast)
-    );
+    const instance = Toast.getOrCreateInstance(toast) as ToastWidget;
     initialized_toasts.push(toast);
     toast.addEventListener("hidden.bs.toast", () => {
       restore_focus_after_toast(toast, container);
@@ -505,9 +498,9 @@ function open_modal_for_hash() {
   if (!hash) return;
   const modal = document.getElementById(hash);
   if (!modal?.classList.contains("modal")) return;
-  const bootstrap_modal = /** @type {ModalWidget} */ (
-    page_bootstrap().Modal.getOrCreateInstance(modal)
-  );
+  const bootstrap_modal = page_bootstrap().Modal.getOrCreateInstance(
+    modal,
+  ) as ModalWidget;
   bootstrap_modal.show();
   modal.addEventListener(
     "hidden.bs.modal",
