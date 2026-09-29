@@ -41,6 +41,7 @@ export function xaxis_type_for(
     NUMERIC_X_CHART_TYPES.includes(chart_type)
   )
     return "numeric";
+  return undefined;
 }
 
 /**

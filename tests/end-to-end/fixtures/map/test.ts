@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "../../fixture";
+import { expect, type Page, test } from "../../fixture.ts";
 
 const PARIS_WITHOUT_ITS_LONGITUDE = "48.85,";
 const NOT_COORDINATES = "somewhere nice";
