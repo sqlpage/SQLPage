@@ -172,7 +172,10 @@ test("linked text x labels keep the native bar tooltip", async ({ page }) => {
   await expect(
     tooltip.locator(".apexcharts-tooltip-series-group.apexcharts-active"),
   ).toHaveCount(1);
-  await tooltip.locator("a").click();
+  await expect(
+    tooltip.locator(".apexcharts-tooltip-text-y-value a"),
+  ).toHaveAttribute("href", "/linked.sql");
+  await tooltip.locator(".apexcharts-tooltip-title a").click();
   await expect(page).toHaveURL(/\/linked\.sql$/);
 });
 
@@ -188,6 +191,32 @@ test("linked date x values retain ApexCharts' native date formatting", async ({
   await expect(title).toBeVisible();
   await expect(title).not.toContainText(/\d{13}/);
   await expect(title.locator("a")).toHaveCount(0);
+  await expect(
+    page.locator("#test-chart .apexcharts-tooltip-text-y-value a"),
+  ).toHaveAttribute("href", "/linked.sql");
+});
+
+test("pie values link to their respective points", async ({ page }) => {
+  await renderChart(page, "link-pie");
+  const slices = page.locator("#test-chart .apexcharts-pie-area");
+  const link = page.locator(
+    "#test-chart .apexcharts-tooltip-series-group.apexcharts-active .apexcharts-tooltip-text-y-value a",
+  );
+  await slices.nth(0).hover();
+  await expect(link).toHaveAttribute("href", "/linked.sql");
+  await slices.nth(1).hover();
+  await expect(link).toHaveAttribute("href", "/linked-too.sql");
+});
+
+test("the custom scatter tooltip renders a linked value", async ({ page }) => {
+  await renderChart(page, "link-scatter");
+  await page
+    .locator("#test-chart .apexcharts-marker")
+    .first()
+    .hover({ force: true });
+  await expect(
+    page.locator("#test-chart .apexcharts-tooltip-text-y-value a"),
+  ).toHaveAttribute("href", "/linked.sql");
 });
 
 test("positions complete numeric bar series on an explicit numeric axis (#733)", async ({
