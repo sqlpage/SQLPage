@@ -11,14 +11,14 @@ export type Series = Map<string, ChartSeries>;
 
 const NUMERIC_X_CHART_TYPES = ["line", "area", "bar", "scatter", "bubble"];
 
-const Y_WHEN_A_SERIES_SKIPS_A_LABEL: Record<string, number | null> = {
-  bar: 0,
-  line: null,
-  area: null,
-  scatter: null,
-  bubble: null,
-  heatmap: null,
-};
+const Y_WHEN_A_SERIES_SKIPS_A_LABEL = new Map<string, number | null>([
+  ["bar", 0],
+  ["line", null],
+  ["area", null],
+  ["scatter", null],
+  ["bubble", null],
+  ["heatmap", null],
+]);
 
 /** equal x values share a key */
 const x_key = (x: XValue): number | string =>
@@ -92,7 +92,8 @@ export function align_series_for(
   is_stacked: boolean,
 ): ChartSeries[] {
   if (is_stacked) return align_series(series, 0);
-  if (x_is_text(series) && chart_type in Y_WHEN_A_SERIES_SKIPS_A_LABEL)
-    return align_series(series, Y_WHEN_A_SERIES_SKIPS_A_LABEL[chart_type]);
+  const y_when_missing = Y_WHEN_A_SERIES_SKIPS_A_LABEL.get(chart_type);
+  if (x_is_text(series) && y_when_missing !== undefined)
+    return align_series(series, y_when_missing);
   return series;
 }
