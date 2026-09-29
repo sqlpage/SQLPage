@@ -547,6 +547,16 @@ test("keeps the default palette when the chart names a color SQLPage does not kn
   expect(fills(unknown)).toEqual(fills(plain));
 });
 
+test("draws a chart whose color names a built-in JavaScript property", async ({
+  page,
+}) => {
+  const plain = await renderChart(page, "uncolored-bar");
+  const chart = await renderChart(page, "builtin-chart-color");
+
+  expect(chart.failures).toEqual([]);
+  expect(fills(chart)).toEqual(fills(plain));
+});
+
 test("renders series named after built-in JavaScript properties", async ({
   page,
 }) => {

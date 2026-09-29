@@ -67,8 +67,8 @@ const sqlpage_chart = (() => {
     ["black", "#000000", "#000000"],
     ["white", "#ffffff", "#f8f9fa"],
   ];
-  const colorNames = Object.fromEntries(
-    tblrColors.flatMap(([name, dark, light]) => [
+  const colorNames = new Map(
+    tblrColors.flatMap(([name, dark, light]): [string, string][] => [
       [name, dark],
       [`${name}-lt`, light],
     ]),
@@ -76,14 +76,18 @@ const sqlpage_chart = (() => {
   const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
   const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
-  const APEXCHARTS_TYPE_ALIASES = { column: "bar" };
+  const STROKE_WIDTHS = new Map([
+    ["area", 3],
+    ["line", 2],
+  ]);
+  const APEXCHARTS_TYPE_ALIASES = new Map([["column", "bar"]]);
 
-  const referenceColor = colorNames[isDarkTheme ? "gray-lt" : "gray"];
+  const referenceColor = colorNames.get(isDarkTheme ? "gray-lt" : "gray");
 
   type ReferenceLine = { [property: string]: string | number | null };
 
   const named_color = (name: unknown): string | undefined =>
-    typeof name === "string" ? colorNames[name] : undefined;
+    typeof name === "string" ? colorNames.get(name) : undefined;
 
   const reference_color = (name: string | number | null) =>
     named_color(name) || referenceColor;
@@ -128,7 +132,7 @@ const sqlpage_chart = (() => {
     chartContainer.innerHTML = "";
     const is_timeseries = !!data.time;
     const chart_type =
-      APEXCHARTS_TYPE_ALIASES[data.type] || data.type || "line";
+      APEXCHARTS_TYPE_ALIASES.get(data.type) || data.type || "line";
     const is_stacked =
       !!data.stacked && STACKABLE_CHART_TYPES.includes(chart_type);
     const points: DataPoint[] = data.points
@@ -277,11 +281,7 @@ const sqlpage_chart = (() => {
         type: chart_type === "area" ? "gradient" : "solid",
       },
       stroke: {
-        width:
-          {
-            area: 3,
-            line: 2,
-          }[chart_type] || 0,
+        width: STROKE_WIDTHS.get(chart_type) ?? 0,
         lineCap: "round",
         curve: "smooth",
       },
