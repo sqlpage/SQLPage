@@ -1,22 +1,34 @@
+import type { ApexOptions } from "apexcharts";
 import ApexCharts from "apexcharts";
-import { align_series_for, xaxis_type_for } from "./chart_series.js";
-import { add_init_fn } from "./init.js";
+import {
+  align_series_for,
+  type ChartPoint,
+  type ChartSeries,
+  type Series,
+  xaxis_type_for,
+} from "./chart_series.ts";
+import { add_init_fn } from "./init.ts";
 
-/**
- * @typedef {import("./chart_series.js").ChartSeries} ChartSeries
- * @typedef {import("./chart_series.js").ChartPoint} ChartPoint
- * @typedef {import("./chart_series.js").Series} Series
- * @typedef {object} DataPoint
- * @property {string} name
- * @property {string|number|null} x
- * @property {string|number|number[]|null} y
- * @property {string|null} [color]
- * @property {string|number|null} [z]
- * @property {string} [link]
- */
+type DataPoint = {
+  name: string;
+  x: string | number | null;
+  y: string | number | number[] | null;
+  color?: string | null;
+  z?: string | number | null;
+  link?: string;
+};
 
-/** @param {string|number|null} value @param {string|undefined} link */
-function formatTooltipX(value, link) {
+type TooltipArgs = {
+  seriesIndex: number;
+  dataPointIndex: number;
+  // biome-ignore lint/suspicious/noExplicitAny: ApexCharts leaves its tooltip context untyped
+  w: any;
+};
+
+function formatTooltipX(
+  value: string | number | null,
+  link: string | undefined,
+) {
   if (!link || !value) return value;
   const anchor = document.createElement("a");
   anchor.setAttribute("href", link);
@@ -26,8 +38,9 @@ function formatTooltipX(value, link) {
 
 const sqlpage_chart = (() => {
   function sqlpage_chart() {
-    /** @type {NodeListOf<HTMLElement>} */
-    const charts = document.querySelectorAll("[data-pre-init=chart]");
+    const charts = document.querySelectorAll<HTMLElement>(
+      "[data-pre-init=chart]",
+    );
     for (const c of charts) {
       try {
         build_sqlpage_chart(c);
@@ -67,24 +80,21 @@ const sqlpage_chart = (() => {
 
   const referenceColor = colorNames[isDarkTheme ? "gray-lt" : "gray"];
 
-  /** @typedef { {[property:string]: string|number|null} } ReferenceLine */
+  type ReferenceLine = { [property: string]: string | number | null };
 
-  /** @param {unknown} name @returns {string|undefined} */
-  const named_color = (name) =>
+  const named_color = (name: unknown): string | undefined =>
     typeof name === "string" ? colorNames[name] : undefined;
 
-  /** @param {string|number|null} name */
-  const reference_color = (name) => named_color(name) || referenceColor;
+  const reference_color = (name: string | number | null) =>
+    named_color(name) || referenceColor;
 
-  /**
-   * @param {ReferenceLine[]} rows - the rows that carry an xline or a yline
-   * @param {"x"|"y"} column - the column the reference is written in
-   * @param {"x"|"y"} axis - the apexcharts axis that column is drawn on
-   * @param {(value: any) => any} to_axis_value - puts a SQL value on the axis
-   * @returns {object[]} apexcharts axis annotations
-   */
-  function reference_lines(rows, column, axis, to_axis_value) {
-    const on_axis = (value) => {
+  function reference_lines(
+    rows: ReferenceLine[],
+    column: "x" | "y",
+    axis: "x" | "y",
+    to_axis_value: (value: string | number) => unknown,
+  ): object[] {
+    const on_axis = (value: string | number | null) => {
       if (value == null) return null;
       const placed = to_axis_value(value);
       return Number.isNaN(placed) ? null : placed;
@@ -111,21 +121,17 @@ const sqlpage_chart = (() => {
     });
   }
 
-  /** @param {HTMLElement} c */
-  function build_sqlpage_chart(c) {
+  function build_sqlpage_chart(c: HTMLElement) {
     const [data_element] = c.getElementsByTagName("data");
     const data = JSON.parse(data_element.textContent);
-    const chartContainer = /** @type {HTMLElement} */ (
-      c.querySelector(".chart")
-    );
+    const chartContainer = c.querySelector(".chart") as HTMLElement;
     chartContainer.innerHTML = "";
     const is_timeseries = !!data.time;
     const chart_type =
       APEXCHARTS_TYPE_ALIASES[data.type] || data.type || "line";
     const is_stacked =
       !!data.stacked && STACKABLE_CHART_TYPES.includes(chart_type);
-    /** @type {DataPoint[]} */
-    const points = data.points
+    const points: DataPoint[] = data.points
       .filter(Array.isArray)
       .map(([name, x, y, color, z, link]) => ({
         name,
@@ -135,32 +141,31 @@ const sqlpage_chart = (() => {
         z,
         link: link ?? undefined,
       }));
-    /** @type {ReferenceLine[]} */
-    const reference_rows = data.points.filter((row) => !Array.isArray(row));
-    /** @type { Series } */
-    const series_map = new Map();
+    const reference_rows: ReferenceLine[] = data.points.filter(
+      (row: unknown) => !Array.isArray(row),
+    );
+    const series_map: Series = new Map();
     for (const { name, x: old_x, y: old_y, color, z, link } of points) {
-      /** @type {ChartSeries} */
-      const point_series = series_map.get(name) ?? { name, data: [] };
+      const point_series: ChartSeries = series_map.get(name) ?? {
+        name,
+        data: [],
+      };
       series_map.set(name, point_series);
-      /** @type {string|number|Date|null} */
-      let x = old_x;
+      let x: string | number | Date | null = old_x;
       let y = old_y;
       if (is_timeseries) {
         if (typeof x === "number") x = new Date(x * 1000);
         else if (chart_type === "rangeBar" && Array.isArray(y))
           y = y.map((y) => new Date(y).getTime());
-        else x = new Date(/** @type {string|number} */ (x ?? 0));
+        else x = new Date((x ?? 0) as string | number);
       }
-      point_series.data.push(
-        /** @type {ChartPoint} */ ({
-          x,
-          y,
-          z,
-          link,
-          fillColor: named_color(color),
-        }),
-      );
+      point_series.data.push({
+        x,
+        y,
+        z,
+        link,
+        fillColor: named_color(color),
+      } as ChartPoint);
     }
     if (data.xmin == null) data.xmin = undefined;
     if (data.xmax == null) data.xmax = undefined;
@@ -355,24 +360,19 @@ const sqlpage_chart = (() => {
       colors,
       series,
     };
-    if (labels) options.labels = labels;
+    if (labels) (options as { labels?: unknown }).labels = labels;
     // Numeric axes count intervals; category and time axes use tickAmount as a
     // target for label density.
-    if (data.xticks) options.xaxis.tickAmount = data.xticks;
-    const chart = new ApexCharts(
-      chartContainer,
-      /** @type {import("apexcharts").ApexOptions} */ (options),
-    );
+    if (data.xticks)
+      (options.xaxis as { tickAmount?: number }).tickAmount = data.xticks;
+    const chart = new ApexCharts(chartContainer, options as ApexOptions);
     chart.render().catch(console.error);
     if (window.charts) window.charts.push(chart);
     else window.charts = [chart];
     c.removeAttribute("data-pre-init");
   }
 
-  /**
-   * @param {{seriesIndex:number, dataPointIndex:number, w:any}} args
-   */
-  function chartTooltip({ seriesIndex, dataPointIndex, w }) {
+  function chartTooltip({ seriesIndex, dataPointIndex, w }: TooltipArgs) {
     const series = w.config.series[seriesIndex];
     const name = series?.name || "";
     const point = series?.data[dataPointIndex];
@@ -413,18 +413,17 @@ const sqlpage_chart = (() => {
     return tooltip.outerHTML;
   }
 
-  /**
-   * @param {{seriesIndex:number, dataPointIndex:number, w:any}} args
-   * @param {DataPoint[]} points
-   */
-  function pointLink({ seriesIndex, dataPointIndex, w }, points) {
+  function pointLink(
+    { seriesIndex, dataPointIndex, w }: TooltipArgs,
+    points: DataPoint[],
+  ) {
     const series = w.config.series[seriesIndex];
     return Array.isArray(series?.data)
       ? series.data[dataPointIndex]?.link
       : points[seriesIndex]?.link;
   }
 
-  function bubbleTooltip(args) {
+  function bubbleTooltip(args: TooltipArgs) {
     return chartTooltip(args);
   }
 

@@ -33,7 +33,7 @@ async function serve(name, content) {
 
 async function script(entry) {
   const build = await rolldown({
-    input: { [entry]: `frontend/src/${entry}.js` },
+    input: { [entry]: `frontend/src/${entry}` },
     onwarn: refuse,
   });
   const { output } = await build.generate({ format: "iife", minify: true });

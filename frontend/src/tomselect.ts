@@ -1,9 +1,10 @@
 import TomSelect from "tom-select/popular";
-import { add_init_fn } from "./init.js";
+import { add_init_fn } from "./init.ts";
 
 function sqlpage_select_dropdown() {
-  /** @type {NodeListOf<HTMLSelectElement>} */
-  const selects = document.querySelectorAll("[data-pre-init=select-dropdown]");
+  const selects = document.querySelectorAll<HTMLSelectElement>(
+    "[data-pre-init=select-dropdown]",
+  );
   for (const s of selects) {
     try {
       sqlpage_select_dropdown_individual(s);
@@ -13,11 +14,7 @@ function sqlpage_select_dropdown() {
   }
 }
 
-/**
- * Initialize a select dropdown for a single element
- * @param {HTMLSelectElement} s - The select element to initialize
- */
-function sqlpage_select_dropdown_individual(s) {
+function sqlpage_select_dropdown_individual(s: HTMLSelectElement) {
   s.removeAttribute("data-pre-init");
   // See: https://github.com/orchidjs/tom-select/issues/716
   // By default, TomSelect will not retain the focus if s is already focused
@@ -48,10 +45,10 @@ function sqlpage_select_dropdown_individual(s) {
   });
 }
 
-function sqlpage_load_options_source(options_source) {
+function sqlpage_load_options_source(options_source: string | undefined) {
   if (!options_source) return;
-  return async (query, callback) => {
-    const err = (label) => callback([{ label, value: "" }]);
+  return async (query: string, callback: (options: unknown[]) => void) => {
+    const err = (label: string) => callback([{ label, value: "" }]);
     const options_url = new URL(options_source, document.baseURI);
     options_url.searchParams.set("search", query);
     const resp = await fetch(options_url);
