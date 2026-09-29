@@ -4,8 +4,25 @@ import { add_init_fn } from "./init.js";
 
 /**
  * @typedef {import("./chart_series.js").ChartSeries} ChartSeries
+ * @typedef {import("./chart_series.js").ChartPoint} ChartPoint
  * @typedef {import("./chart_series.js").Series} Series
+ * @typedef {object} DataPoint
+ * @property {string} name
+ * @property {string|number|null} x
+ * @property {string|number|number[]|null} y
+ * @property {string|null} [color]
+ * @property {string|number|null} [z]
+ * @property {string} [link]
  */
+
+/** @param {string|number|null} value @param {string|undefined} link */
+function formatTooltipX(value, link) {
+  if (!link || !value) return value;
+  const anchor = document.createElement("a");
+  anchor.setAttribute("href", link);
+  anchor.textContent = String(value);
+  return anchor.outerHTML;
+}
 
 const sqlpage_chart = (() => {
   function sqlpage_chart() {
@@ -107,23 +124,43 @@ const sqlpage_chart = (() => {
       APEXCHARTS_TYPE_ALIASES[data.type] || data.type || "line";
     const is_stacked =
       !!data.stacked && STACKABLE_CHART_TYPES.includes(chart_type);
-    const points = data.points.filter(Array.isArray);
+    /** @type {DataPoint[]} */
+    const points = data.points
+      .filter(Array.isArray)
+      .map(([name, x, y, color, z, link]) => ({
+        name,
+        x,
+        y,
+        color,
+        z,
+        link: link ?? undefined,
+      }));
+    /** @type {ReferenceLine[]} */
     const reference_rows = data.points.filter((row) => !Array.isArray(row));
     /** @type { Series } */
     const series_map = new Map();
-    for (const [name, old_x, old_y, color, z] of points) {
+    for (const { name, x: old_x, y: old_y, color, z, link } of points) {
       /** @type {ChartSeries} */
       const point_series = series_map.get(name) ?? { name, data: [] };
       series_map.set(name, point_series);
+      /** @type {string|number|Date|null} */
       let x = old_x;
       let y = old_y;
       if (is_timeseries) {
         if (typeof x === "number") x = new Date(x * 1000);
         else if (chart_type === "rangeBar" && Array.isArray(y))
           y = y.map((y) => new Date(y).getTime());
-        else x = new Date(x);
+        else x = new Date(/** @type {string|number} */ (x ?? 0));
       }
-      point_series.data.push({ x, y, z, fillColor: named_color(color) });
+      point_series.data.push(
+        /** @type {ChartPoint} */ ({
+          x,
+          y,
+          z,
+          link,
+          fillColor: named_color(color),
+        }),
+      );
     }
     if (data.xmin == null) data.xmin = undefined;
     if (data.xmax == null) data.xmax = undefined;
@@ -137,23 +174,26 @@ const sqlpage_chart = (() => {
     ];
     let colors = palette;
 
-    let series = [...series_map.values()];
+    const chart_series = [...series_map.values()];
     const xaxis_type = xaxis_type_for(
-      series,
+      chart_series,
       chart_type,
       is_timeseries,
       !!data.horizontal,
     );
 
-    let labels;
-    if (chart_type === "pie") {
-      labels = points.map(([name, x, _y]) => x || name);
-      series = points.map(([_name, _x, y]) => Number.parseFloat(y));
+    const labels =
+      chart_type === "pie" ? points.map(({ name, x }) => x || name) : undefined;
+    const series =
+      chart_type === "pie"
+        ? points.map(({ y }) => Number.parseFloat(String(y)))
+        : chart_series.length > 1
+          ? align_series_for(chart_series, chart_type, is_stacked)
+          : chart_series;
+    if (chart_type === "pie")
       colors = points.map(
-        ([, , , color], i) => named_color(color) || palette[i % palette.length],
+        ({ color }, i) => named_color(color) || palette[i % palette.length],
       );
-    } else if (series.length > 1)
-      series = align_series_for(series, chart_type, is_stacked);
 
     const to_timestamp = (v) =>
       (typeof v === "number" ? new Date(v * 1000) : new Date(v)).getTime();
@@ -165,6 +205,10 @@ const sqlpage_chart = (() => {
       chart_type === "rangeBar" || (chart_type === "bar" && !!data.horizontal);
     const value_axis = inverted ? "x" : "y";
     const category_axis = inverted ? "y" : "x";
+    const has_point_links = points.some((point) => point.link);
+    const text_x_values = chart_series.every(({ data }) =>
+      data.every(({ x }) => x == null || typeof x === "string"),
+    );
     const options = {
       annotations: {
         [`${value_axis}axis`]: reference_lines(
@@ -195,6 +239,12 @@ const sqlpage_chart = (() => {
         },
         zoom: {
           enabled: false,
+        },
+        events: {
+          dataPointSelection: (_event, _chart, args) => {
+            const link = pointLink(args, points);
+            if (link) window.location.assign(link);
+          },
         },
       },
       theme: {
@@ -268,10 +318,18 @@ const sqlpage_chart = (() => {
       },
       tooltip: {
         fillSeriesColor: false,
+        interactive: has_point_links,
         custom:
           chart_type === "bubble" || chart_type === "scatter"
             ? bubbleTooltip
             : undefined,
+        x: {
+          formatter:
+            has_point_links && text_x_values
+              ? (value, args) =>
+                  formatTooltipX(value, args?.w && pointLink(args, points))
+              : undefined,
+        },
         y: {
           formatter: (value) => {
             if (value == null) return "";
@@ -311,9 +369,13 @@ const sqlpage_chart = (() => {
     c.removeAttribute("data-pre-init");
   }
 
-  function bubbleTooltip({ seriesIndex, dataPointIndex, w }) {
-    const { name, data } = w.config.series[seriesIndex];
-    const point = data[dataPointIndex];
+  /**
+   * @param {{seriesIndex:number, dataPointIndex:number, w:any}} args
+   */
+  function chartTooltip({ seriesIndex, dataPointIndex, w }) {
+    const series = w.config.series[seriesIndex];
+    const name = series?.name || "";
+    const point = series?.data[dataPointIndex];
 
     const tooltip = document.createElement("div");
     tooltip.className = "apexcharts-tooltip-text";
@@ -339,11 +401,31 @@ const sqlpage_chart = (() => {
       axisValue.appendChild(labelSpan);
       const valueSpan = document.createElement("span");
       valueSpan.className = "apexcharts-tooltip-text-y-value";
-      valueSpan.innerText = value;
+      const formatter = axis === "y" && w.config.tooltip.y.formatter;
+      const format = (v) =>
+        formatter ? formatter(v, { seriesIndex, dataPointIndex, w }) : v;
+      valueSpan.innerText = Array.isArray(value)
+        ? value.map(format).join(" - ")
+        : format(value);
       axisValue.appendChild(valueSpan);
       tooltip.appendChild(axisValue);
     }
     return tooltip.outerHTML;
+  }
+
+  /**
+   * @param {{seriesIndex:number, dataPointIndex:number, w:any}} args
+   * @param {DataPoint[]} points
+   */
+  function pointLink({ seriesIndex, dataPointIndex, w }, points) {
+    const series = w.config.series[seriesIndex];
+    return Array.isArray(series?.data)
+      ? series.data[dataPointIndex]?.link
+      : points[seriesIndex]?.link;
+  }
+
+  function bubbleTooltip(args) {
+    return chartTooltip(args);
   }
 
   return sqlpage_chart;

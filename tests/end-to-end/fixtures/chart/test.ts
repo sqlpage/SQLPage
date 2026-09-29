@@ -140,6 +140,56 @@ const fills = (chart: Awaited<ReturnType<typeof renderChart>>) =>
     return `#${hex.join("")}`;
   });
 
+test("linked range bar uses the native tooltip with a linked x title", async ({
+  page,
+}) => {
+  await renderChart(page, "link");
+  const bars = page.locator("#test-chart .apexcharts-rangebar-area");
+  await bars.nth(1).hover();
+  await expect(
+    page.locator("#test-chart .apexcharts-tooltip-title a"),
+  ).toHaveCount(0);
+  await bars.first().hover();
+  const link = page.locator("#test-chart .apexcharts-tooltip-title a");
+  await expect(link).toHaveText("Alice");
+  await expect(link).toHaveAttribute(
+    "href",
+    "/workpackage_edit.sql?workpackage_name=Design",
+  );
+  await link.hover();
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page).toHaveURL(/workpackage_edit/);
+});
+
+test("linked text x labels keep the native bar tooltip", async ({ page }) => {
+  await renderChart(page, "link-bar");
+  await page.locator("#test-chart .apexcharts-bar-area").first().hover();
+  const tooltip = page.locator("#test-chart .apexcharts-tooltip");
+  await expect(tooltip.locator(".apexcharts-tooltip-title a")).toHaveText(
+    "Linked",
+  );
+  await expect(
+    tooltip.locator(".apexcharts-tooltip-series-group.apexcharts-active"),
+  ).toHaveCount(1);
+  await tooltip.locator("a").click();
+  await expect(page).toHaveURL(/\/linked\.sql$/);
+});
+
+test("linked date x values retain ApexCharts' native date formatting", async ({
+  page,
+}) => {
+  await renderChart(page, "link-time");
+  await page
+    .locator("#test-chart .apexcharts-marker")
+    .first()
+    .hover({ force: true });
+  const title = page.locator("#test-chart .apexcharts-tooltip-title");
+  await expect(title).toBeVisible();
+  await expect(title).not.toContainText(/\d{13}/);
+  await expect(title.locator("a")).toHaveCount(0);
+});
+
 test("positions complete numeric bar series on an explicit numeric axis (#733)", async ({
   page,
 }) => {
