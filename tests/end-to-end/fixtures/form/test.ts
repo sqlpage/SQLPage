@@ -1,4 +1,4 @@
-import { expect, test } from "../../fixture";
+import { expect, test } from "../../fixture.ts";
 
 const fields = [
   { selector: 'input[name="modern_text"]', name: "text" },

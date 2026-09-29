@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "../../fixture";
+import { expect, type Page, test } from "../../fixture.ts";
 
 type ChartPoint = { x: string | number | Date; y: number | null };
 

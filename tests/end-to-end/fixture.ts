@@ -1,7 +1,7 @@
 import path from "node:path";
 import { test as base, expect } from "@playwright/test";
 
-const fixturesDirectory = path.resolve(__dirname, "fixtures");
+const fixturesDirectory = path.resolve(import.meta.dirname, "fixtures");
 
 export const test = base.extend({
   page: async ({ page }, use, testInfo) => {

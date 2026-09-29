@@ -1,4 +1,4 @@
-import { expect, test } from "../../fixture";
+import { expect, test } from "../../fixture.ts";
 
 for (const theme of ["light", "dark"]) {
   test(`colored values match their cards in the ${theme} theme`, async ({
