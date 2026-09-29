@@ -131,7 +131,7 @@ const sqlpage_chart = (() => {
     if (data.ymax == null) data.ymax = undefined;
 
     const palette = [
-      ...data.colors.filter((c) => c).map((c) => colorNames[c]),
+      ...data.colors.map(named_color).filter((c) => c !== undefined),
       ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? dark : light)),
       ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? light : dark)),
     ];

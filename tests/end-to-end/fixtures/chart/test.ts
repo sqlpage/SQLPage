@@ -487,6 +487,16 @@ test("keeps the color of the series when a row names a color SQLPage does not kn
   expect(fills(unknown)).toEqual(fills(plain));
 });
 
+test("keeps the default palette when the chart names a color SQLPage does not know", async ({
+  page,
+}) => {
+  const plain = await renderChart(page, "uncolored-bar");
+  const unknown = await renderChart(page, "unknown-chart-color");
+
+  expect(unknown.failures).toEqual([]);
+  expect(fills(unknown)).toEqual(fills(plain));
+});
+
 test("renders series named after built-in JavaScript properties", async ({
   page,
 }) => {
