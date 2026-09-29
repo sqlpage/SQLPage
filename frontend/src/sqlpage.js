@@ -32,6 +32,10 @@ function sqlpage_card() {
           bubbles: true,
         });
         c.dispatchEvent(fragLoadedEvt);
+      })
+      .catch((e) => {
+        console.error(e);
+        c.querySelector(".card-loading-placeholder")?.remove();
       });
   }
 }
@@ -176,7 +180,11 @@ function sqlpage_table() {
   const tables = document.querySelectorAll("[data-pre-init=table]");
   for (const r of tables) {
     r.removeAttribute("data-pre-init");
-    setup_table(r);
+    try {
+      setup_table(r);
+    } catch (e) {
+      console.error(e);
+    }
   }
 }
 

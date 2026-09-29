@@ -168,7 +168,7 @@ const sqlpage_chart = (() => {
     if (data.ymax == null) data.ymax = undefined;
 
     const palette = [
-      ...data.colors.filter((c) => c).map((c) => colorNames[c]),
+      ...data.colors.map(named_color).filter((c) => c !== undefined),
       ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? dark : light)),
       ...tblrColors.map(([_, dark, light]) => (isDarkTheme ? light : dark)),
     ];
@@ -339,10 +339,9 @@ const sqlpage_chart = (() => {
                 return d.toLocaleDateString();
               return d.toLocaleString();
             }
-            const str_val = value.toLocaleString();
-            if (str_val.length > 10 && Number.isNaN(value))
-              return value.toFixed(2);
-            return str_val;
+            return value.toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+            });
           },
         },
       },
@@ -364,7 +363,7 @@ const sqlpage_chart = (() => {
       chartContainer,
       /** @type {import("apexcharts").ApexOptions} */ (options),
     );
-    chart.render();
+    chart.render().catch(console.error);
     if (window.charts) window.charts.push(chart);
     else window.charts = [chart];
     c.removeAttribute("data-pre-init");
