@@ -32,6 +32,10 @@ function sqlpage_card() {
           bubbles: true,
         });
         c.dispatchEvent(fragLoadedEvt);
+      })
+      .catch((e) => {
+        console.error(e);
+        c.querySelector(".card-loading-placeholder")?.remove();
       });
   }
 }
