@@ -281,10 +281,9 @@ const sqlpage_chart = (() => {
                 return d.toLocaleDateString();
               return d.toLocaleString();
             }
-            const str_val = value.toLocaleString();
-            if (str_val.length > 10 && Number.isNaN(value))
-              return value.toFixed(2);
-            return str_val;
+            return value.toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+            });
           },
         },
       },
