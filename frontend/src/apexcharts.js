@@ -306,7 +306,7 @@ const sqlpage_chart = (() => {
       chartContainer,
       /** @type {import("apexcharts").ApexOptions} */ (options),
     );
-    chart.render();
+    chart.render().catch(console.error);
     if (window.charts) window.charts.push(chart);
     else window.charts = [chart];
     c.removeAttribute("data-pre-init");
