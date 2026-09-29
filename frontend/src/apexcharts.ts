@@ -84,7 +84,10 @@ const sqlpage_chart = (() => {
 
   const referenceColor = colorNames.get(isDarkTheme ? "gray-lt" : "gray");
 
-  type ReferenceLine = { [property: string]: string | number | null };
+  type ReferenceLine = Record<
+    "xline" | "xline_end" | "yline" | "yline_end" | "label" | "color",
+    string | number | null
+  >;
 
   const named_color = (name: unknown): string | undefined =>
     typeof name === "string" ? colorNames.get(name) : undefined;
