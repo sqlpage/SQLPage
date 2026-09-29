@@ -372,7 +372,7 @@ function sqlpage_form() {
   }
 }
 
-function get_tabler_color(name) {
+function get_tabler_color(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(
     `--tblr-${name}`,
   );
@@ -394,8 +394,8 @@ function load_scripts() {
   }
 }
 
-function normalize_hash(hash) {
-  const normalized = hash?.replace(/^#/, "");
+function normalize_hash(hash: string | undefined) {
+  const normalized = hash?.replace(/^#/, "") ?? "";
   try {
     return decodeURIComponent(normalized);
   } catch {
@@ -403,7 +403,7 @@ function normalize_hash(hash) {
   }
 }
 
-function open_toasts_for_hash(toasts) {
+function open_toasts_for_hash(toasts: Iterable<HTMLElement>) {
   const Toast = page_bootstrap().Toast;
   const hash = normalize_hash(window.location.hash);
   if (!hash) return;
@@ -414,9 +414,9 @@ function open_toasts_for_hash(toasts) {
   }
 }
 
-function restore_focus_after_toast(toast, container) {
+function restore_focus_after_toast(toast: HTMLElement, container: HTMLElement) {
   if (!toast.contains(document.activeElement)) return;
-  const next_close = container.querySelector(
+  const next_close = container.querySelector<HTMLElement>(
     '.toast.show [data-bs-dismiss="toast"]',
   );
   if (next_close) {
@@ -501,27 +501,39 @@ add_init_fn(sqlpage_modal);
 add_init_fn(load_scripts);
 add_init_fn(sqlpage_toast);
 window.addEventListener("hashchange", () =>
-  open_toasts_for_hash(document.querySelectorAll("[data-toast-trigger]")),
+  open_toasts_for_hash(
+    document.querySelectorAll<HTMLElement>("[data-toast-trigger]"),
+  ),
 );
 
-function init_bootstrap_components(event) {
+function init_bootstrap_components(fragment: Element | Document) {
   const bootstrap = page_bootstrap();
-  const fragment = event.target;
-  for (const el of fragment.querySelectorAll('[data-bs-toggle="tooltip"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-toggle="tooltip"]',
+  )) {
     new bootstrap.Tooltip(el);
   }
-  for (const el of fragment.querySelectorAll('[data-bs-toggle="popover"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-toggle="popover"]',
+  )) {
     new bootstrap.Popover(el);
   }
-  for (const el of fragment.querySelectorAll('[data-bs-toggle="dropdown"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-toggle="dropdown"]',
+  )) {
     new bootstrap.Dropdown(el);
   }
-  for (const el of fragment.querySelectorAll('[data-bs-ride="carousel"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-ride="carousel"]',
+  )) {
     new bootstrap.Carousel(el);
   }
 }
 
-document.addEventListener("fragment-loaded", init_bootstrap_components);
+document.addEventListener("fragment-loaded", ({ target }) => {
+  if (target instanceof Element || target instanceof Document)
+    init_bootstrap_components(target);
+});
 
 function open_modal_for_hash() {
   const hash = window.location.hash.substring(1);
