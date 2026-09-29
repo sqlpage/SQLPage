@@ -175,11 +175,12 @@ test("keeps irregular numeric x values proportionately spaced", async ({
   );
 });
 
-test("keeps an explicit x interval count", async ({ page }) => {
+test("renders the requested number of numeric x ticks", async ({ page }) => {
   const chart = await renderChart(page, "numeric-axis-xticks");
 
   expect(chart.failures).toEqual([]);
   expect(chart.xaxis).toEqual({ type: "numeric", tickAmount: 2 });
+  expect(chart.axisLabels).toHaveLength(3);
 });
 
 test("keeps text x values as categories", async ({ page }) => {
