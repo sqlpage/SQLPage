@@ -30,5 +30,5 @@ export const test = base.extend({
   },
 });
 
-export type { Page } from "@playwright/test";
+export type { ConsoleMessage, Page } from "@playwright/test";
 export { expect };

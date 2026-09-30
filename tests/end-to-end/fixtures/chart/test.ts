@@ -1,28 +1,4 @@
-import { expect, type Page, test } from "../../fixture.ts";
-
-type ChartPoint = { x: string | number | Date; y: number | null };
-
-declare global {
-  interface Window {
-    charts?: {
-      w: {
-        config: {
-          chart: { type: string; stacked: boolean };
-          xaxis: { type?: string; tickAmount?: number };
-          series: { name: string | number; data?: ChartPoint[] }[];
-          tooltip: {
-            custom?: (args: {
-              seriesIndex: number;
-              dataPointIndex: number;
-              w: unknown;
-            }) => string;
-          };
-        };
-        globals: { labels: (string | number)[] };
-      };
-    }[];
-  }
-}
+import { type ConsoleMessage, expect, type Page, test } from "../../fixture.ts";
 
 const MARKS =
   ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect, .apexcharts-pie-area, .apexcharts-heatmap-rect, .apexcharts-series .apexcharts-marker";
@@ -32,7 +8,7 @@ const ORANGE = "#f76707";
 const GREEN = "#37b24d";
 async function renderChart(page: Page, fixture: string) {
   const failures: string[] = [];
-  const recordError = (message: { type(): string; text(): string }) => {
+  const recordError = (message: ConsoleMessage) => {
     if (message.type() === "error") failures.push(message.text());
   };
   page.on("console", recordError);
@@ -46,13 +22,15 @@ async function renderChart(page: Page, fixture: string) {
       const container = document.getElementById("test-chart");
       if (!container) throw new Error("Chart fixture did not render");
       const rendered = window.charts?.[0];
-      const series = (rendered?.w.config.series ?? []).map((s) => ({
-        name: s.name,
-        points: (s.data ?? []).map((p) => [
-          p.x instanceof Date ? p.x.toISOString() : p.x,
-          p.y,
-        ]),
-      }));
+      const series = (rendered?.w.config.series ?? [])
+        .filter((s) => typeof s !== "number")
+        .map((s) => ({
+          name: s.name,
+          points: s.data.map((p) => [
+            p.x instanceof Date ? p.x.toISOString() : p.x,
+            p.y,
+          ]),
+        }));
       const drawnPerSeries = series.map(({ name }) => {
         const markers = [
           ...container.querySelectorAll<SVGGraphicsElement>(
@@ -122,9 +100,12 @@ async function renderChart(page: Page, fixture: string) {
           tickAmount: rendered?.w.config.xaxis.tickAmount ?? null,
         },
         generatedLabels: rendered?.w.globals.labels ?? [],
+        threeDimensional: rendered?.w.globals.isDataXYZ ?? null,
         axisLabels,
         dataLabels: [
-          ...container.querySelectorAll(".apexcharts-datalabel"),
+          ...container.querySelectorAll(
+            ".apexcharts-datalabel, .apexcharts-pie-label",
+          ),
         ].map((label) => label.textContent),
         barGroups,
         series,
@@ -407,6 +388,16 @@ for (const type of ["area", "scatter", "heatmap"]) {
   });
 }
 
+test("counts a third dimension only where the rows carried one", async ({
+  page,
+}) => {
+  const flat = await renderChart(page, "index");
+  const bubbles = await renderChart(page, "bubble-categories");
+
+  expect(flat.threeDimensional).toBe(false);
+  expect(bubbles.threeDimensional).toBe(true);
+});
+
 test("keeps the bubble size of the points it lined up", async ({ page }) => {
   const chart = await renderChart(page, "bubble-categories");
 
@@ -453,6 +444,22 @@ test("gives the tooltip title the color of the tooltip around it", async ({
   }));
 
   expect(colors.title).toBe(colors.tooltip);
+});
+
+test("names the series of every bar of a range bar chart", async ({ page }) => {
+  const chart = await renderChart(page, "labeled-range-bar");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.dataLabels).toEqual(["Design", "Build"]);
+});
+
+test("gives every slice of a pie chart its label and its share", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "labeled-pie");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.dataLabels).toEqual(["Yes: 65%", "No: 35%"]);
 });
 
 test("draws a reference line that carries no label", async ({ page }) => {
@@ -601,11 +608,7 @@ test("labels each axis of a bubble tooltip with its own title", async ({
     const custom = chart.w.config.tooltip.custom;
     if (!custom) throw new Error("A bubble chart needs the custom tooltip");
     const holder = document.createElement("div");
-    holder.innerHTML = custom({
-      seriesIndex: 0,
-      dataPointIndex: 1,
-      w: chart.w,
-    });
+    holder.innerHTML = custom({ seriesIndex: 0, dataPointIndex: 1 });
     const values = holder.querySelectorAll(".apexcharts-tooltip-text-y-value");
     return [...holder.querySelectorAll(".apexcharts-tooltip-text-y-label")].map(
       (label, i): [string, string] => [

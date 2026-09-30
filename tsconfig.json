@@ -16,7 +16,6 @@
     "noUnusedParameters": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
-    "noImplicitAny": false,
     "types": [],
     "noImplicitReturns": true
   },
