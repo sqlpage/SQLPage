@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "../../fixture";
+import { expect, type Page, test } from "../../fixture.ts";
 
 type ChartPoint = { x: string | number | Date; y: number | null };
 
@@ -10,6 +10,13 @@ declare global {
           chart: { type: string; stacked: boolean };
           xaxis: { type?: string; tickAmount?: number };
           series: { name: string | number; data?: ChartPoint[] }[];
+          tooltip: {
+            custom?: (args: {
+              seriesIndex: number;
+              dataPointIndex: number;
+              w: unknown;
+            }) => string;
+          };
         };
         globals: { labels: (string | number)[] };
       };
@@ -576,6 +583,16 @@ test("keeps the default palette when the chart names a color SQLPage does not kn
   expect(fills(unknown)).toEqual(fills(plain));
 });
 
+test("draws a chart whose color names a built-in JavaScript property", async ({
+  page,
+}) => {
+  const plain = await renderChart(page, "uncolored-bar");
+  const chart = await renderChart(page, "builtin-chart-color");
+
+  expect(chart.failures).toEqual([]);
+  expect(fills(chart)).toEqual(fills(plain));
+});
+
 test("renders series named after built-in JavaScript properties", async ({
   page,
 }) => {
@@ -600,4 +617,36 @@ test("keeps coloring reference lines from their own row", async ({ page }) => {
 
   expect(chart.failures).toEqual([]);
   expect(chart.referenceLines.strokes).toEqual([GREEN]);
+});
+
+test("labels each axis of a bubble tooltip with its own title", async ({
+  page,
+}) => {
+  await renderChart(page, "titled-bubble");
+
+  const rows = await page.evaluate(() => {
+    const chart = window.charts?.[0];
+    if (!chart) throw new Error("Chart fixture did not render");
+    const custom = chart.w.config.tooltip.custom;
+    if (!custom) throw new Error("A bubble chart needs the custom tooltip");
+    const holder = document.createElement("div");
+    holder.innerHTML = custom({
+      seriesIndex: 0,
+      dataPointIndex: 1,
+      w: chart.w,
+    });
+    const values = holder.querySelectorAll(".apexcharts-tooltip-text-y-value");
+    return [...holder.querySelectorAll(".apexcharts-tooltip-text-y-label")].map(
+      (label, i): [string, string] => [
+        label.textContent?.trim() ?? "",
+        values[i]?.textContent?.trim() ?? "",
+      ],
+    );
+  });
+
+  expect(rows).toEqual([
+    ["Weekday:", "Tue"],
+    ["Hours:", "4"],
+    ["Weight:", "30"],
+  ]);
 });

@@ -18,6 +18,8 @@ type DataPoint = {
   link?: string;
 };
 
+type AxisTitles = Record<"x" | "y" | "z", string | undefined>;
+
 type TooltipArgs = {
   seriesIndex: number;
   dataPointIndex: number;
@@ -29,12 +31,24 @@ function linkTooltipValue(
   value: string | number | null,
   link: string | undefined,
 ) {
-  if (!link || !value) return value;
+  const text = value == null ? "" : String(value);
+  if (!link || !value) return text;
   const anchor = document.createElement("a");
   anchor.setAttribute("href", link);
-  anchor.textContent = String(value);
+  anchor.textContent = text;
   return anchor.outerHTML;
 }
+
+const rangeBarLabel = (_value: string | number, args?: TooltipArgs) =>
+  args ? args.w.config.series[args.seriesIndex].name : "";
+
+const pieLabel = (value: string | number, args?: TooltipArgs) =>
+  args
+    ? `${args.w.config.labels[args.seriesIndex]}: ${Number(value).toFixed()}%`
+    : "";
+
+const numberLabel = (value: string | number) =>
+  value == null ? "" : value.toLocaleString?.() || String(value);
 
 const sqlpage_chart = (() => {
   function sqlpage_chart() {
@@ -67,8 +81,8 @@ const sqlpage_chart = (() => {
     ["black", "#000000", "#000000"],
     ["white", "#ffffff", "#f8f9fa"],
   ];
-  const colorNames = Object.fromEntries(
-    tblrColors.flatMap(([name, dark, light]) => [
+  const colorNames = new Map(
+    tblrColors.flatMap(([name, dark, light]): [string, string][] => [
       [name, dark],
       [`${name}-lt`, light],
     ]),
@@ -76,14 +90,21 @@ const sqlpage_chart = (() => {
   const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
   const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
-  const APEXCHARTS_TYPE_ALIASES = { column: "bar" };
+  const STROKE_WIDTHS = new Map([
+    ["area", 3],
+    ["line", 2],
+  ]);
+  const APEXCHARTS_TYPE_ALIASES = new Map([["column", "bar"]]);
 
-  const referenceColor = colorNames[isDarkTheme ? "gray-lt" : "gray"];
+  const referenceColor = colorNames.get(isDarkTheme ? "gray-lt" : "gray");
 
-  type ReferenceLine = { [property: string]: string | number | null };
+  type ReferenceLine = Record<
+    "xline" | "xline_end" | "yline" | "yline_end" | "label" | "color",
+    string | number | null
+  >;
 
   const named_color = (name: unknown): string | undefined =>
-    typeof name === "string" ? colorNames[name] : undefined;
+    typeof name === "string" ? colorNames.get(name) : undefined;
 
   const reference_color = (name: string | number | null) =>
     named_color(name) || referenceColor;
@@ -128,7 +149,7 @@ const sqlpage_chart = (() => {
     chartContainer.innerHTML = "";
     const is_timeseries = !!data.time;
     const chart_type =
-      APEXCHARTS_TYPE_ALIASES[data.type] || data.type || "line";
+      APEXCHARTS_TYPE_ALIASES.get(data.type) || data.type || "line";
     const is_stacked =
       !!data.stacked && STACKABLE_CHART_TYPES.includes(chart_type);
     const points: DataPoint[] = data.points
@@ -188,7 +209,9 @@ const sqlpage_chart = (() => {
     );
 
     const labels =
-      chart_type === "pie" ? points.map(({ name, x }) => x || name) : undefined;
+      chart_type === "pie"
+        ? points.map(({ name, x }) => String(x || name))
+        : undefined;
     const series =
       chart_type === "pie"
         ? points.map(({ y }) => Number.parseFloat(String(y)))
@@ -210,11 +233,16 @@ const sqlpage_chart = (() => {
       chart_type === "rangeBar" || (chart_type === "bar" && !!data.horizontal);
     const value_axis = inverted ? "x" : "y";
     const category_axis = inverted ? "y" : "x";
+    const axis_titles: AxisTitles = {
+      x: data.xtitle || undefined,
+      y: data.ytitle || undefined,
+      z: data.ztitle || undefined,
+    };
     const has_point_links = points.some((point) => point.link);
     const text_x_values = chart_series.every(({ data }) =>
       data.every(({ x }) => x == null || typeof x === "string"),
     );
-    const options = {
+    const options: ApexOptions = {
       annotations: {
         [`${value_axis}axis`]: reference_lines(
           reference_rows,
@@ -247,7 +275,7 @@ const sqlpage_chart = (() => {
         },
         events: {
           dataPointSelection: (_event, _chart, args) => {
-            const link = pointLink(args, points);
+            const link = args && pointLink(args, points);
             if (link) window.location.assign(link);
           },
         },
@@ -267,21 +295,16 @@ const sqlpage_chart = (() => {
         },
         formatter:
           chart_type === "rangeBar"
-            ? (_val, { seriesIndex, w }) => w.config.series[seriesIndex].name
+            ? rangeBarLabel
             : chart_type === "pie"
-              ? (value, { seriesIndex, w }) =>
-                  `${w.config.labels[seriesIndex]}: ${value.toFixed()}%`
-              : (value) => value?.toLocaleString?.() || value,
+              ? pieLabel
+              : numberLabel,
       },
       fill: {
         type: chart_type === "area" ? "gradient" : "solid",
       },
       stroke: {
-        width:
-          {
-            area: 3,
-            line: 2,
-          }[chart_type] || 0,
+        width: STROKE_WIDTHS.get(chart_type) ?? 0,
         lineCap: "round",
         curve: "smooth",
       },
@@ -292,12 +315,15 @@ const sqlpage_chart = (() => {
         min: data.xmin,
         max: data.xmax,
         title: {
-          text: data.xtitle || undefined,
+          text: axis_titles.x,
         },
         type: xaxis_type,
         labels: {
           datetimeUTC: false,
         },
+        // Numeric axes count intervals; category and time axes use tickAmount
+        // as a target for label density.
+        tickAmount: data.xticks || undefined,
       },
       yaxis: {
         logarithmic: !!data.logarithmic,
@@ -306,12 +332,7 @@ const sqlpage_chart = (() => {
         stepSize: data.ystep,
         tickAmount: data.yticks,
         title: {
-          text: data.ytitle || undefined,
-        },
-      },
-      zaxis: {
-        title: {
-          text: data.ztitle || undefined,
+          text: axis_titles.y,
         },
       },
       markers: {
@@ -326,7 +347,7 @@ const sqlpage_chart = (() => {
         interactive: has_point_links,
         custom:
           chart_type === "bubble" || chart_type === "scatter"
-            ? bubbleTooltip
+            ? (args: TooltipArgs) => chartTooltip(args, axis_titles)
             : undefined,
         x: {
           formatter:
@@ -368,19 +389,18 @@ const sqlpage_chart = (() => {
       colors,
       series,
     };
-    if (labels) (options as { labels?: unknown }).labels = labels;
-    // Numeric axes count intervals; category and time axes use tickAmount as a
-    // target for label density.
-    if (data.xticks)
-      (options.xaxis as { tickAmount?: number }).tickAmount = data.xticks;
-    const chart = new ApexCharts(chartContainer, options as ApexOptions);
+    if (labels) options.labels = labels;
+    const chart = new ApexCharts(chartContainer, options);
     chart.render().catch(console.error);
     if (window.charts) window.charts.push(chart);
     else window.charts = [chart];
     c.removeAttribute("data-pre-init");
   }
 
-  function chartTooltip({ seriesIndex, dataPointIndex, w }: TooltipArgs) {
+  function chartTooltip(
+    { seriesIndex, dataPointIndex, w }: TooltipArgs,
+    titles: AxisTitles,
+  ) {
     const series = w.config.series[seriesIndex];
     const name = series?.name || "";
     const point = series?.data[dataPointIndex];
@@ -395,14 +415,12 @@ const sqlpage_chart = (() => {
     seriesName.innerText = name;
     tooltip.appendChild(seriesName);
 
-    for (const axis of ["x", "y", "z"]) {
+    for (const axis of ["x", "y", "z"] as const) {
       const value = point[axis];
       if (value == null) continue;
       const axisValue = document.createElement("div");
       axisValue.className = "apexcharts-tooltip-y-group";
-      let axis_conf = w.config[`${axis}axis`];
-      if (axis_conf.length) axis_conf = axis_conf[0];
-      const title = axis_conf.title.text || axis;
+      const title = titles[axis] || axis;
       const labelSpan = document.createElement("span");
       labelSpan.className = "apexcharts-tooltip-text-y-label";
       labelSpan.innerText = `${title}: `;
@@ -431,10 +449,6 @@ const sqlpage_chart = (() => {
     return Array.isArray(series?.data)
       ? series.data[dataPointIndex]?.link
       : points[seriesIndex]?.link;
-  }
-
-  function bubbleTooltip(args: TooltipArgs) {
-    return chartTooltip(args);
   }
 
   return sqlpage_chart;

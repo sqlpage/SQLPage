@@ -1,4 +1,5 @@
 import { bootstrap as bundled_bootstrap } from "@tabler/core";
+import type * as Leaflet from "leaflet";
 import { add_init_fn } from "./init.ts";
 
 // A page may load its own Bootstrap; prefer it over the bundled copy.
@@ -186,6 +187,15 @@ function sqlpage_table() {
   }
 }
 
+// Leaflet is loaded from a CDN by sqlpage_map, so it is a global, not an import.
+declare const L: typeof Leaflet;
+
+type MarkerStyle = Leaflet.MarkerOptions &
+  Leaflet.PathOptions & {
+    /** A GeoJSON feature may size its own icon, overriding the SVG's width. */
+    size?: number | string;
+  };
+
 let is_leaflet_injected = false;
 let is_leaflet_loaded = false;
 
@@ -214,11 +224,9 @@ function sqlpage_map() {
   if (first_map && is_leaflet_loaded) {
     onLeafletLoad();
   }
-  /**
-   */
   function parseCoords(
     coords: string | undefined,
-  ): [number, number] | undefined {
+  ): Leaflet.LatLngTuple | undefined {
     if (!coords) return undefined;
     const parsed = coords.split(",", 2).map((c) => Number.parseFloat(c));
     if (parsed.length !== 2 || !parsed.every(Number.isFinite)) {
@@ -241,76 +249,98 @@ function sqlpage_map() {
       const center = parseCoords(m.dataset.center);
       if (tile_source)
         L.tileLayer(tile_source, { attribution, maxZoom }).addTo(map);
-      map._sqlpage_markers = [];
-      for (const marker_elem of m.getElementsByClassName("marker")) {
-        setTimeout(addMarker, 0, marker_elem, map);
+      const markers: (Leaflet.Marker | Leaflet.GeoJSON)[] = [];
+      for (const marker_elem of m.querySelectorAll<HTMLElement>(".marker")) {
+        setTimeout(() => {
+          const marker = addMarker(marker_elem, map);
+          if (marker) markers.push(marker);
+        }, 0);
       }
       setTimeout(() => {
         if (center) map.setView(center, zoom);
         else {
-          const markerBounds = (m) =>
-            m.getLatLng ? m.getLatLng() : m.getBounds();
-          const bounds = map._sqlpage_markers.map(markerBounds);
-          if (bounds.length > 0) map.fitBounds(bounds);
+          const bounds = L.latLngBounds([]);
+          for (const marker of markers)
+            bounds.extend(
+              marker instanceof L.Marker
+                ? marker.getLatLng()
+                : marker.getBounds(),
+            );
+          if (markers.length > 0) map.fitBounds(bounds);
           else map.setView([51.505, 10], zoom);
           if (!Number.isNaN(zoom)) map.setZoom(zoom);
         }
       }, 100);
       m.removeAttribute("data-pre-init");
-      m.getElementsByClassName("spinner-border")[0]?.remove();
+      m.querySelector(".spinner-border")?.remove();
     }
   }
 
-  function addMarker(marker_elem, map) {
-    const { dataset } = marker_elem;
-    const options = {
-      color: marker_elem.dataset.color,
-      title: marker_elem.getElementsByTagName("h3")[0].textContent.trim(),
+  function addMarker(marker_elem: HTMLElement, map: Leaflet.Map) {
+    const { color, coords, geojson, link } = marker_elem.dataset;
+    const options: MarkerStyle = {
+      color,
+      title: marker_elem.querySelector("h3")?.textContent?.trim(),
     };
-    const marker = dataset.coords
+    const marker = coords
       ? createMarker(marker_elem, options)
-      : createGeoJSONMarker(marker_elem, options);
-    if (!marker) return;
+      : geojson && createGeoJSONMarker(marker_elem, geojson, options);
+    if (!marker) return undefined;
     marker.addTo(map);
-    map._sqlpage_markers.push(marker);
-    if (marker_elem.textContent.trim()) marker.bindPopup(marker_elem);
-    else if (marker_elem.dataset.link) {
+    if (marker_elem.textContent?.trim()) marker.bindPopup(marker_elem);
+    else if (link) {
       marker.on("click", () => {
-        window.location.href = marker_elem.dataset.link;
+        window.location.href = link;
       });
     }
+    return marker;
   }
-  function createMarker(marker_elem, options) {
+  function createMarker(marker_elem: HTMLElement, options: MarkerStyle) {
     const coords = parseCoords(marker_elem.dataset.coords);
-    if (!coords) return undefined;
-    const icon_obj = marker_elem.getElementsByClassName("mapicon")[0];
-    if (icon_obj) {
-      const size =
-        1.5 *
-        +(options.size || icon_obj.firstChild?.getAttribute("width") || 24);
-      options.icon = L.divIcon({
-        html: icon_obj,
-        className: `border-0 bg-${options.color || "primary"} bg-gradient text-white rounded-circle shadow d-flex justify-content-center align-items-center`,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-      });
-    }
-    return L.marker(coords, options);
+    return coords && createMarkerAt(marker_elem, coords, options);
   }
-  function createGeoJSONMarker(marker_elem, options) {
-    const geojson = JSON.parse(marker_elem.dataset.geojson);
+  function createMarkerAt(
+    marker_elem: HTMLElement,
+    coords: Leaflet.LatLngTuple,
+    options: MarkerStyle,
+  ) {
+    const icon_obj = marker_elem.querySelector<HTMLElement>(".mapicon");
+    if (!icon_obj) return L.marker(coords, options);
+    const size =
+      1.5 *
+      +(
+        options.size ||
+        icon_obj.firstElementChild?.getAttribute("width") ||
+        24
+      );
+    const icon = L.divIcon({
+      html: icon_obj,
+      className: `border-0 bg-${options.color || "primary"} bg-gradient text-white rounded-circle shadow d-flex justify-content-center align-items-center`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+    return L.marker(coords, { ...options, icon });
+  }
+  function createGeoJSONMarker(
+    marker_elem: HTMLElement,
+    geojson: string,
+    options: MarkerStyle,
+  ) {
     if (options.color) {
       options.color = get_tabler_color(options.color) || options.color;
     }
-    function style({ properties }) {
-      if (typeof properties !== "object") return options;
-      return { ...options, ...properties };
-    }
-    function pointToLayer(feature, latlng) {
-      marker_elem.dataset.coords = `${latlng.lat},${latlng.lng}`;
-      return createMarker(marker_elem, { ...options, ...feature.properties });
-    }
-    return L.geoJSON(geojson, { style, pointToLayer });
+    return L.geoJSON(JSON.parse(geojson), {
+      style: (feature) => {
+        const properties = feature?.properties;
+        if (typeof properties !== "object") return options;
+        return { ...options, ...properties };
+      },
+      pointToLayer: (feature, latlng) =>
+        createMarkerAt(marker_elem, [latlng.lat, latlng.lng], {
+          ...options,
+          ...feature.properties,
+        }),
+    });
   }
 }
 
@@ -342,7 +372,7 @@ function sqlpage_form() {
   }
 }
 
-function get_tabler_color(name) {
+function get_tabler_color(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(
     `--tblr-${name}`,
   );
@@ -364,8 +394,8 @@ function load_scripts() {
   }
 }
 
-function normalize_hash(hash) {
-  const normalized = hash?.replace(/^#/, "");
+function normalize_hash(hash: string | undefined) {
+  const normalized = hash?.replace(/^#/, "") ?? "";
   try {
     return decodeURIComponent(normalized);
   } catch {
@@ -373,7 +403,7 @@ function normalize_hash(hash) {
   }
 }
 
-function open_toasts_for_hash(toasts) {
+function open_toasts_for_hash(toasts: Iterable<HTMLElement>) {
   const Toast = page_bootstrap().Toast;
   const hash = normalize_hash(window.location.hash);
   if (!hash) return;
@@ -384,9 +414,9 @@ function open_toasts_for_hash(toasts) {
   }
 }
 
-function restore_focus_after_toast(toast, container) {
+function restore_focus_after_toast(toast: HTMLElement, container: HTMLElement) {
   if (!toast.contains(document.activeElement)) return;
-  const next_close = container.querySelector(
+  const next_close = container.querySelector<HTMLElement>(
     '.toast.show [data-bs-dismiss="toast"]',
   );
   if (next_close) {
@@ -471,27 +501,39 @@ add_init_fn(sqlpage_modal);
 add_init_fn(load_scripts);
 add_init_fn(sqlpage_toast);
 window.addEventListener("hashchange", () =>
-  open_toasts_for_hash(document.querySelectorAll("[data-toast-trigger]")),
+  open_toasts_for_hash(
+    document.querySelectorAll<HTMLElement>("[data-toast-trigger]"),
+  ),
 );
 
-function init_bootstrap_components(event) {
+function init_bootstrap_components(fragment: Element | Document) {
   const bootstrap = page_bootstrap();
-  const fragment = event.target;
-  for (const el of fragment.querySelectorAll('[data-bs-toggle="tooltip"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-toggle="tooltip"]',
+  )) {
     new bootstrap.Tooltip(el);
   }
-  for (const el of fragment.querySelectorAll('[data-bs-toggle="popover"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-toggle="popover"]',
+  )) {
     new bootstrap.Popover(el);
   }
-  for (const el of fragment.querySelectorAll('[data-bs-toggle="dropdown"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-toggle="dropdown"]',
+  )) {
     new bootstrap.Dropdown(el);
   }
-  for (const el of fragment.querySelectorAll('[data-bs-ride="carousel"]')) {
+  for (const el of fragment.querySelectorAll<HTMLElement>(
+    '[data-bs-ride="carousel"]',
+  )) {
     new bootstrap.Carousel(el);
   }
 }
 
-document.addEventListener("fragment-loaded", init_bootstrap_components);
+document.addEventListener("fragment-loaded", ({ target }) => {
+  if (target instanceof Element || target instanceof Document)
+    init_bootstrap_components(target);
+});
 
 function open_modal_for_hash() {
   const hash = window.location.hash.substring(1);
