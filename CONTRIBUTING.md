@@ -48,6 +48,22 @@ or depend on having one already installed on the system where it is running (dyn
 
 Windows comes with ODBC pre-installed; SQLPage cannot statically link to the unixODBC driver manager on windows.
 
+### (Optional) Nix Dev Shell
+
+If you have [Nix](https://nixos.org/download/) with flakes enabled, `nix develop` drops you into a dev shell with everything needed to build and test SQLPage.
+
+If you use [direnv](https://direnv.net/), `direnv allow` is a one time command to auto assume the shell when you enter the dir.
+
+| Command | What it runs |
+| --- | --- |
+| `nix fmt` | rustfmt, Biome, and nixfmt |
+| `nix flake check` | the formats all files |
+| `nix run .#lint-rust` | `cargo fmt --check` and `cargo clippy` |
+| `nix run .#test-rust` | the Rust test suites |
+| `nix run .#test-browser` | the Playwright suites |
+| `nix run .#test-examples` | the Hurl suite |
+| `nix build .#odbc-drivers` | builds an `odbcinst.ini`; point `ODBCSYSINI` at it to run the ODBC tests |
+
 ## Code Style and Linting
 
 ### Rust
