@@ -180,6 +180,8 @@ a cheaper ARM cloud instance, using the docker image is the easiest way to do it
 
 For managed SQLPage hosting, use [DataPage](https://datapage.app). To run SQLPage yourself on a VPS, [Hostinger](https://www.hostg.xyz/aff_c?offer_id=815&aff_id=243720&url_id=6808) is another option; this is an affiliate link, so we receive a small commission if you buy through it.
 
+To start automatically at boot, see [running SQLPage as a Windows or systemd service](examples/official-site/your-first-sql-website/service.md), including installation, logs, and graceful shutdown.
+
 ### On macOS, with Homebrew
 
 [SQLPage's Homebrew package](https://formulae.brew.sh/formula/sqlpage) is the recommended way to install SQLPage on macOS, including Intel Macs.
