@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
 ## v0.47.0 (unreleased)
+- The CRUD authentication example now accepts only local login and logout return paths, preventing crafted links from redirecting users to another site.
 - **Mac users:** the downloadable `sqlpage-macos.tgz` now runs natively on Apple silicon (M-series Macs) and no longer runs on Intel Macs. Homebrew remains the recommended and easiest installation method. On an Intel Mac, [install Homebrew](https://brew.sh/) if needed, then run `brew install sqlpage` (or `brew update` followed by `brew upgrade sqlpage` if you already installed it with Homebrew). Open Terminal in your existing website folder and run `sqlpage` instead of `./sqlpage.bin`; keep your SQL files, database, and `sqlpage` configuration folder in place. Intel installations may build from source and take longer; see the [macOS installation guide](https://sql-page.com/your-first-sql-website/?os=macos#download) for setup and older macOS requirements.
 - Chart data points can now include a `link`. Clicking a point opens that URL; when the tooltip has a text x value as its title, that title links to it too. The tooltip remains open while the pointer moves onto the link. ApexCharts was updated to [v7.6.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v7.6.0) to support this.
 - Updated sqlx-oldapi to v0.6.57 to fix SQL Server fallback expressions such as `ISNULL($missing, 'default')` truncating defaults or failing for date values when the bound variable is `NULL`.

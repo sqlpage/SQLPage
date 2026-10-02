@@ -77,13 +77,9 @@ SELECT
      WHERE username = :username) AS password_hash;
 ```
 
-If authentication succeeds, create_session.sql redirects back to starting page using the $path value as the final redirect target:
+If authentication succeeds, create_session.sql redirects back to the starting page only when `$path` is a local URL path. It accepts paths beginning with one `/`, relative page names such as `currencies_list.sql`, and relative `./` or `../` paths. It rejects external URLs, authority-relative URLs (`//example.com`), backslashes, percent escapes, and control characters. An unsafe value falls back to `/` after login or `/login.sql` after logout. Keep this check when adapting the example to your own pages; add any extra return routes to your application's allowlist if you use one.
 
-```sql
-SELECT
-    'redirect' AS component,
-    ifnull($path, '/') AS link;
-```
+See [create_session.sql](create_session.sql) for the full local-path check. [logout.sql](logout.sql) applies the same check before redirecting.
 
 ### Adding User/Login/Logout buttons to the page menu
 
