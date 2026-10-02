@@ -26,7 +26,8 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('rel', '"nofollow" when the contents of the target link are not endorsed, "noopener" when the target is not trusted, and "noreferrer" to hide where the user came from when they open the link.', 'TEXT', FALSE, TRUE),
     ('target', '"_blank" to open the link in a new tab, "_self" to open it in the same tab, "_parent" to open it in the parent frame, or "_top" to open it in the full body of the window.', 'TEXT', FALSE, TRUE),
     ('download', 'If defined, the link will download the target instead of navigating to it. Set the value to the desired name of the downloaded file.', 'TEXT', FALSE, TRUE),
-    ('id', 'HTML Identifier to add to the button element.', 'TEXT', FALSE, TRUE)
+    ('id', 'HTML Identifier to add to the button element.', 'TEXT', FALSE, TRUE),
+    ('badge', 'A JSON object defining a badge or notification to display on the button. The object can contain the following properties: title, color, notification, blink).', 'JSON', FALSE, TRUE)
 ) x;
 
 -- Inserting example information for the button component
@@ -116,4 +117,34 @@ INSERT INTO example(component, description, properties) VALUES
             "title":"Open an article",
             "image":"https://upload.wikimedia.org/wikipedia/commons/f/fa/Globe.svg"
         }]')
+    );
+
+INSERT INTO example(component, description, properties) VALUES
+    ('button', 'Create buttons with badges or notifications.
+    
+Since version 0.47, you can add badges or notifications to buttons. To do so, use the `badge` property and provide a JSON object containing the following properties:
+- `title`: The text displayed inside the badge (optional).
+- `color`: The color of the badge (e.g., red, green, blue, but also primary, warning, danger, etc.) (optional). 
+- `notification`: A boolean indicating whether the badge should be displayed as a notification (optional).
+- `blink`: A boolean indicating whether the badge should blink (optional).
+',
+    json('[
+        {"component":"button"}, 
+        {
+            "title":"New",
+            "badge": {"color": "red", "notification": true}
+        },
+        {
+            "title":"Required",
+            "badge": {"color": "red", "notification": true, "blink": true}
+        },
+        {
+            "title":"Inbox",
+            "badge": {"title":"42","color": "blue"}
+        },
+        {
+            "title":"Selected",
+            "badge": {"title":"5","color": "green","notification": true}
+        }
+    ]')
     );
