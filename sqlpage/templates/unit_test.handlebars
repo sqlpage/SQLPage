@@ -1,0 +1,20 @@
+<div id="{{id}}" class="{{class}}">
+    {{#if test_suite}}<h1>{{test_suite}}</h1>{{/if}}
+    {{#each_row}}
+        <article class="border rounded p-3 mb-2" role="status" aria-label="{{#if success}}pass{{else}}fail{{/if}}">
+            <div class="d-flex align-items-start">
+                <div aria-hidden="true" class="flex-shrink-0 me-3 {{#if success}} text-success{{else}} text-danger{{/if}}">
+                    {{#if success}}{{icon_img 'circle-check'}}{{else}}{{icon_img 'circle-x'}}{{/if}}
+                </div>
+                <div class="flex-grow-1 min-width-0">
+                    <h3 class="h4 mb-1">{{title}}</h3>
+                    {{~#if description~}}
+                        <p class="text-secondary mb-0">{{description}}</p>
+                    {{~/if~}}
+                </div>
+                <span class="badge ms-3{{#if success}} bg-success-lt text-success{{else}} bg-danger-lt text-danger{{/if}}">{{#if success}}PASS{{else}}FAIL{{/if}}</span>
+            </div>
+        </article>
+    {{/each_row}}
+</div>
+
