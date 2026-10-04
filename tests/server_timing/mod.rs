@@ -3,7 +3,7 @@ use sqlpage::webserver::http::main_handler;
 
 use crate::common::{get_request_to, make_app_data_from_config, test_config};
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
     let mut config = test_config();
     config.environment = sqlpage::app_config::DevOrProd::Production;
@@ -25,7 +25,7 @@ async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
     let mut config = test_config();
     config.environment = sqlpage::app_config::DevOrProd::Development;
@@ -70,7 +70,7 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_server_timing_format() -> actix_web::Result<()> {
     let req = get_request_to("/tests/sql_test_files/data/postgres_cast_syntax.sql")
         .await?
@@ -103,7 +103,7 @@ async fn test_server_timing_format() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_server_timing_in_redirect() -> actix_web::Result<()> {
     let mut config = test_config();
     config.environment = sqlpage::app_config::DevOrProd::Development;

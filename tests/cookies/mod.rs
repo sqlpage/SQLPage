@@ -12,7 +12,7 @@ async fn set_cookie_header(path: &str) -> String {
         .to_owned()
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn cookies_are_http_only_secure_and_same_site_strict_by_default() {
     let header = set_cookie_header("/tests/cookies/set_cookie_defaults.sql").await;
     assert!(header.starts_with("session=abc123"), "{header}");
@@ -22,7 +22,7 @@ async fn cookies_are_http_only_secure_and_same_site_strict_by_default() {
     assert!(header.contains("Path=/"), "{header}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn zero_turns_off_a_cookie_protection() {
     let header = set_cookie_header("/tests/cookies/set_cookie_opt_out.sql").await;
     assert!(!header.contains("HttpOnly"), "{header}");
@@ -31,7 +31,7 @@ async fn zero_turns_off_a_cookie_protection() {
     assert!(header.contains("Path=/admin"), "{header}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn a_page_made_only_of_header_components_still_sends_them() {
     let resp = req_path("/tests/cookies/header_only_response.sql")
         .await
@@ -40,20 +40,20 @@ async fn a_page_made_only_of_header_components_still_sends_them() {
     assert!(resp.headers().contains_key(SET_COOKIE));
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn a_log_row_does_not_end_the_header_phase() {
     let header = set_cookie_header("/tests/cookies/log_before_cookie.sql").await;
     assert!(header.starts_with("session=abc123"), "{header}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn removing_a_cookie_expires_it() {
     let header = set_cookie_header("/tests/cookies/remove_cookie.sql").await;
     assert!(header.starts_with("session=;"), "{header}");
     assert!(header.contains("Max-Age=0"), "{header}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn an_rfc_3339_expires_date_becomes_an_http_date() {
     let header = set_cookie_header("/tests/cookies/cookie_expires_rfc3339.sql").await;
     assert!(
@@ -62,7 +62,7 @@ async fn an_rfc_3339_expires_date_becomes_an_http_date() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn a_unix_timestamp_expires_date_becomes_an_http_date() {
     let header = set_cookie_header("/tests/cookies/cookie_expires_timestamp.sql").await;
     assert!(

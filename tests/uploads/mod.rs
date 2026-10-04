@@ -28,7 +28,7 @@ async fn test_file_upload(target: &str) -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     let app_data = crate::common::make_app_data().await;
     let req = test::TestRequest::get()
@@ -84,17 +84,17 @@ async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_file_upload_direct() -> actix_web::Result<()> {
     test_file_upload("/tests/uploads/upload_file_test.sql").await
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_file_upload_through_runsql() -> actix_web::Result<()> {
     test_file_upload("/tests/uploads/upload_file_runsql_test.sql").await
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_blank_file_upload_field() -> actix_web::Result<()> {
     let req = get_request_to("/tests/uploads/upload_file_test.sql")
         .await?
@@ -120,7 +120,7 @@ async fn test_blank_file_upload_field() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_file_upload_too_large() -> actix_web::Result<()> {
     let req = get_request_to("/tests/uploads/upload_file_test.sql")
         .await?
@@ -149,7 +149,7 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_upload_file_data_url() -> actix_web::Result<()> {
     let req = get_request_to("/tests/uploads/upload_file_data_url_test.sql")
         .await?
@@ -171,7 +171,7 @@ async fn test_upload_file_data_url() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_uploaded_file_name() -> actix_web::Result<()> {
     let req = get_request_to("/tests/uploads/uploaded_file_name_test.sql")
         .await?
@@ -193,7 +193,7 @@ async fn test_uploaded_file_name() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_csv_upload() -> actix_web::Result<()> {
     let req = get_request_to("/tests/uploads/upload_csv_test.sql")
         .await?

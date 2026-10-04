@@ -9,7 +9,7 @@ use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data,
 
 mod path_aliases;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_concurrent_requests() {
     let components = [
         "table", "form", "card", "datagrid", "hero", "list", "timeline",
@@ -42,7 +42,7 @@ async fn test_concurrent_requests() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_datagrid_description_presence_controls_placeholder() {
     let resp = req_path("/tests/components/datagrid_icon_only.sql")
         .await
@@ -56,7 +56,7 @@ async fn test_datagrid_description_presence_controls_placeholder() {
     assert_eq!(body.matches('–').count(), 1, "{body}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_routing_with_db_fs() {
     let mut config = test_config();
     if config.database_url.contains("memory") {
@@ -64,7 +64,9 @@ async fn test_routing_with_db_fs() {
     }
 
     config.site_prefix = "/prefix/".to_string();
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
 
     if matches!(
         state.db.info.database_type,
@@ -101,7 +103,9 @@ async fn test_routing_with_db_fs() {
         .await
         .unwrap();
 
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let app_data = actix_web::web::Data::new(state);
 
     let resp = req_path_with_app_data("/prefix/on_db.sql", app_data.clone())
@@ -117,7 +121,7 @@ async fn test_routing_with_db_fs() {
 }
 
 #[cfg(unix)]
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let mut config = test_config();
     if !config.database_url.starts_with("sqlite") {
@@ -126,7 +130,9 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     config.database_url =
         "sqlite://file:test_non_unicode_static_path?mode=memory&cache=shared".to_string();
 
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let expected_db_path = "\u{FFFD}.txt";
     let mut conn = state.db.connection.acquire().await.unwrap();
 
@@ -149,7 +155,9 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
         .unwrap();
     drop(conn);
 
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let app_data = actix_web::web::Data::new(state);
     let req = test::TestRequest::get()
         .uri("/%FF.txt")
@@ -165,11 +173,13 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_routing_with_prefix() {
     let mut config = test_config();
     config.site_prefix = "/prefix/".to_string();
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
 
     let app_data = actix_web::web::Data::new(state);
     let resp = req_path_with_app_data(
@@ -220,7 +230,7 @@ async fn test_routing_with_prefix() {
     assert_eq!(location.to_str().unwrap(), "/prefix/");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_hidden_files() {
     let resp_result = req_path("/tests/core/.hidden.sql").await;
     assert!(
@@ -238,7 +248,7 @@ async fn test_hidden_files() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_official_website_documentation() {
     let app_data = make_app_data_for_official_website().await;
     let resp = req_path_with_app_data("/component.sql?component=button", app_data)
@@ -255,7 +265,7 @@ async fn test_official_website_documentation() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_official_website_basic_auth_example() {
     let resp = req_path_with_app_data(
         "/examples/authentication/basic_auth.sql",

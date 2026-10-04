@@ -3,7 +3,7 @@ use sqlpage::webserver::http::main_handler;
 
 use crate::common::get_request_to;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     // Set up environment variable for webhook secret
     unsafe {
@@ -39,7 +39,7 @@ async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
     // Set up environment variable for webhook secret
     unsafe {
@@ -69,7 +69,7 @@ async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_webhook_hmac_missing_signature() -> actix_web::Result<()> {
     // Set up environment variable for webhook secret
     unsafe {

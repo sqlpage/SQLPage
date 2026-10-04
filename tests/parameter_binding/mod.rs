@@ -6,7 +6,7 @@ use sqlpage::webserver::http::main_handler;
 
 use crate::common::{get_request_to_with_data, make_app_data};
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> actix_web::Result<()>
 {
     let data = make_app_data().await;

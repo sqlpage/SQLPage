@@ -3,7 +3,7 @@ use sqlpage::webserver::{database::SupportedDatabase, http::main_handler};
 
 use crate::common::{get_request_to_with_data, make_app_data};
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_transaction_error() -> actix_web::Result<()> {
     let data = make_app_data().await;
     let path = match data.db.info.database_type {
@@ -41,7 +41,7 @@ async fn test_transaction_error() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     let app_data = make_app_data().await;
     let big_csv = "col1,col2\nval1,val2\n".repeat(1000);

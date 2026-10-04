@@ -96,6 +96,12 @@ export DATABASE_URL=mssql://root:Password123!@localhost/sqlpage
 cargo test
 ```
 
+Integration tests that create application state should use `common::make_app_state_from_config` or
+`common::make_app_data_from_config` and `#[actix_web::rt::test(system = "crate::common::TestSystem")]`.
+The shared test runtime clears prepared statements and closes database pools before shutdown,
+including after a panic. This prevents Oracle's ODBC driver from hanging at process exit.
+When testing Oracle locally, use `cargo test -- --test-threads=2` to avoid overwhelming the listener.
+
 ### End-to-End Tests
 
 We use Playwright for end-to-end testing of dynamic frontend features.

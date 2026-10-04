@@ -14,5 +14,6 @@ These scripts pass configuration between build stages through temporary files in
 ## CI runs these
 
 - **`package-test-binaries.sh`**: Compiles the Rust test harnesses once and tars them, so the database matrix runs the same executables instead of recompiling SQLPage six times.
-- **`run-test-binaries.sh`**: Runs SQLPage compiled executables against whatever `DATABASE_URL` names.
+- **`install-oracle-odbc.sh`**: Verifies and extracts the pinned Oracle Instant Client ZIPs, registers a private ODBC driver, and writes its environment to `GITHUB_ENV`. CI caches the archives under `RUNNER_TEMP`. Requires curl, unzip, unixODBC, and libaio.
+- **`run-test-binaries.sh`**: Runs SQLPage compiled executables against whatever `DATABASE_URL` names. Additional arguments are forwarded to each Rust harness; Oracle CI uses `--test-threads=2` to avoid exhausting its listener/process capacity.
 - **`test-examples-hurl.sh`**: Starts an example's containers and runs its `test.hurl` suite. Takes an example path to filter on.

@@ -1,7 +1,7 @@
 use actix_web::{http::header, test::TestRequest};
 use sqlpage::webserver::http::main_handler;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_exec() {
     let app_data = crate::common::make_app_data().await;
     let req = TestRequest::get()

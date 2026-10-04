@@ -37,8 +37,75 @@ pub(crate) async fn get_request_to(path: &str) -> actix_web::Result<TestRequest>
     get_request_to_with_data(path, data).await
 }
 
+// Pools must close while the test runtime is still running. Cancelling their
+// background work at runtime teardown can leave Oracle statements/connections
+// open and deadlock the ODBC driver's process destructor.
+thread_local! {
+    static TEST_POOLS: std::cell::RefCell<Vec<sqlx::any::AnyPool>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+pub(crate) struct TestSystem(actix_web::rt::SystemRunner);
+
+impl TestSystem {
+    pub(crate) fn new() -> Self {
+        Self(actix_web::rt::System::new())
+    }
+
+    pub(crate) fn block_on<F: Future>(&self, future: F) -> F::Output {
+        use futures_util::FutureExt as _;
+
+        self.0.block_on(async {
+            let result = std::panic::AssertUnwindSafe(future).catch_unwind().await;
+            let pools = TEST_POOLS.with(std::cell::RefCell::take);
+            for pool in pools {
+                use sqlx::connection::Connection as _;
+
+                // Release prepared statements before disconnecting. Oracle can
+                // retain native resources if cached statements outlive their connection.
+                let mut connections = Vec::new();
+                for _ in 0..pool.size() {
+                    let mut connection = pool.acquire().await.unwrap();
+                    connection.clear_cached_statements().await.unwrap();
+                    connections.push(connection);
+                }
+                drop(connections);
+                pool.close().await;
+            }
+            match result {
+                Ok(output) => output,
+                Err(panic) => std::panic::resume_unwind(panic),
+            }
+        })
+    }
+}
+
+pub(crate) async fn make_app_state_from_config(config: &AppConfig) -> anyhow::Result<AppState> {
+    let state = AppState::init(config).await?;
+    TEST_POOLS.with(|pools| pools.borrow_mut().push(state.db.connection.clone()));
+    Ok(state)
+}
+
+#[test]
+fn test_system_closes_pools_on_success_and_panic() {
+    for panic_in_test in [false, true] {
+        let system = TestSystem::new();
+        let mut pool = None;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            system.block_on(async {
+                let mut config = test_config();
+                config.database_url = "sqlite::memory:".to_owned();
+                let state = make_app_state_from_config(&config).await.unwrap();
+                pool = Some(state.db.connection.clone());
+                assert!(!panic_in_test, "intentional test panic");
+            });
+        }));
+        assert_eq!(result.is_err(), panic_in_test);
+        assert!(pool.unwrap().is_closed());
+    }
+}
+
 pub(crate) async fn make_app_data_from_config(config: AppConfig) -> Data<AppState> {
-    let state = AppState::init(&config).await.unwrap();
+    let state = make_app_state_from_config(&config).await.unwrap();
     Data::new(state)
 }
 

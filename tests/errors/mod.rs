@@ -30,7 +30,7 @@ async fn direct_request_status(path: &str, app_data: actix_web::web::Data<AppSta
 /// that same reserved path must still be rejected with 403, even while the cache
 /// entry is fresh. Before the fix, the fresh cache hit short-circuited the
 /// unprivileged path guard and the private SQL was executed and served.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     // Keep cache entries "fresh" so the bug (skipping the path guard on fresh hits) is exercised.
     let mut config = test_config();
@@ -63,7 +63,7 @@ async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_privileged_paths_are_not_accessible() {
     let resp_result = req_path("/sqlpage/migrations/0001_init.sql").await;
     assert!(
@@ -81,7 +81,7 @@ async fn test_privileged_paths_are_not_accessible() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_404_fallback() {
     for f in [
         "/tests/errors/does_not_exist.sql",
@@ -102,7 +102,7 @@ async fn test_404_fallback() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_default_404() {
     for f in [
         "/i-do-not-exist.html",
@@ -129,7 +129,7 @@ async fn test_default_404() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_default_404_with_redirect() {
     let resp_result = req_path("/i-do-not-exist").await;
     let resp = resp_result.unwrap();
@@ -158,7 +158,7 @@ async fn test_default_404_with_redirect() {
     assert!(!body.contains("error"));
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_default_404_when_request_path_descends_into_file() {
     let resp_result = req_path("/tests/it_works.txt/site/wp-includes/wlwmanifest.xml").await;
     let resp = resp_result.unwrap();
@@ -174,7 +174,7 @@ async fn test_default_404_when_request_path_descends_into_file() {
     assert!(!body.contains("error"));
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_requesting_a_directory_is_not_found() {
     let resp_result = req_path("/tests/errors/is_a_directory.d").await;
     let status = match resp_result {
