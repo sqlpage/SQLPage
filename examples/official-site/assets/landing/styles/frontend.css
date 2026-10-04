@@ -70,6 +70,9 @@
   height: 24px;
   flex-shrink: 0;
 }
+.frontend-tabs button > span {
+  min-width: 0;
+}
 .frontend-tabs strong {
   display: block;
   font-size: 20px;
@@ -90,7 +93,7 @@
 }
 .frontend-panel {
   display: grid;
-  grid-template-columns: 0.95fr 2fr;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 2fr);
   align-items: center;
   gap: 45px;
   min-height: 245px;
@@ -149,6 +152,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 16px;
 }
 .customize-diagram b,
@@ -303,13 +307,22 @@
   .frontend-panel {
     grid-template-columns: 1fr;
     gap: 25px;
-    min-height: 310px;
+    min-height: 360px;
+    align-content: center;
   }
   .frontend-copy {
     max-width: 550px;
   }
   .customize-diagram {
     justify-content: flex-start;
+  }
+  .ship-diagram {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 850px) {
+  .frontend-tabs {
+    grid-template-columns: 1fr 1fr;
   }
 }
 @media (max-width: 600px) {

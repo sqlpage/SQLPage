@@ -308,24 +308,43 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   ).toBeFocused();
   await page.locator("#components").scrollIntoViewIfNeeded();
   await expect(demo.getByText("98%", { exact: true })).toBeVisible();
-  await page.locator(".frontend-tabs").scrollIntoViewIfNeeded();
-  const frontendHeight = (await page.locator(".frontend-panels").boundingBox())!
-    .height;
-  for (const name of [
-    "Make it yours",
-    "Ship it anywhere",
-    "Safe by default",
-    "Instant",
-  ]) {
-    await features.getByRole("tab", { name }).click();
-    expect(
-      (await page.locator(".frontend-panels").boundingBox())!.height,
-    ).toBeCloseTo(frontendHeight, 0);
+  // Check both sides of the tablet breakpoint, not just the phone layout.
+  for (const width of [320, 390, 768, 827, 1000]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.locator(".frontend-tabs").scrollIntoViewIfNeeded();
+    const panelHeight = (await page.locator(".frontend-panels").boundingBox())!
+      .height;
+    for (const name of [
+      "Make it yours",
+      "Ship it anywhere",
+      "Safe by default",
+      "Instant",
+    ]) {
+      await features.getByRole("tab", { name }).click();
+      expect(
+        await page.locator(".frontend-panels").evaluate((panel) => {
+          const bounds = panel.getBoundingClientRect();
+          return [
+            ...panel.querySelectorAll(
+              '[role="tabpanel"]:not([hidden]) .feature-node',
+            ),
+          ].every((node) => {
+            const rect = node.getBoundingClientRect();
+            return rect.left >= bounds.left && rect.right <= bounds.right;
+          });
+        }),
+      ).toBe(true);
+      if (width === 390) {
+        expect(
+          (await page.locator(".frontend-panels").boundingBox())!.height,
+        ).toBeCloseTo(panelHeight, 0);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
   }
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
   expect(errors).toEqual([]);
 });
