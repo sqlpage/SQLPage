@@ -104,11 +104,16 @@ export function initSections(root) {
     root.querySelector('[aria-label="Application stack"]'),
     "aria-pressed",
     (button) => {
-      root.querySelector(".stack-comparison").dataset.stack =
-        button.dataset.stack;
+      const comparison = root.querySelector(".stack-comparison");
+      comparison.dataset.stack = button.dataset.stack;
+      for (const copy of comparison.querySelectorAll("[data-stack-copy]"))
+        copy.setAttribute(
+          "aria-hidden",
+          String(copy.dataset.stackCopy !== button.dataset.stack),
+        );
       root.querySelector("[data-stack-caption]").textContent =
         button.dataset.stack === "sqlpage"
-          ? "-- Your SQL files and your database. That's the stack."
+          ? "-- Same five layers. SQLPage handles the plumbing."
           : "-- 5 layers, all yours. Illustrative, not a benchmark.";
     },
     signal,

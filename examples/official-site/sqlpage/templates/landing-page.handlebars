@@ -211,7 +211,7 @@
           <div class="scene-stop purpose-sculpture" data-scene-stop aria-hidden="true">
           </div>
           <div class="purpose-grid">
-            <div class="stack-comparison">
+            <div class="stack-comparison" data-stack="typical">
               <p class="eyebrow">-- What do you have to maintain?</p>
               <div class="segmented" role="group" aria-label="Application stack">
                 <button aria-pressed="true" data-stack="typical">A typical webapp</button>
@@ -219,16 +219,20 @@
               </div>
               <ul class="stack-list">
                 <li data-stack-layer>
-                  Frontend project <small>to update</small>
+                  <span>Frontend</span>
+                  <small class="stack-detail"><span data-stack-copy="typical">to update</span><span data-stack-copy="sqlpage" aria-hidden="true">built in</span></small>
                 </li>
                 <li data-stack-layer>
-                  Build tooling <small>to keep working</small>
+                  <span>Build tooling</span>
+                  <small class="stack-detail"><span data-stack-copy="typical">to keep working</span><span data-stack-copy="sqlpage" aria-hidden="true">static files</span></small>
                 </li>
                 <li data-stack-layer>
-                  API server <small>to patch</small>
+                  <span>API server</span>
+                  <small class="stack-detail"><span data-stack-copy="typical">to patch</span><span data-stack-copy="sqlpage" aria-hidden="true">SQLPage returns json</span></small>
                 </li>
                 <li data-stack-layer>
-                  Session and state <small>to keep in sync</small>
+                  <span>Session and state</span>
+                  <small class="stack-detail"><span data-stack-copy="typical">to keep in sync</span><span data-stack-copy="sqlpage" aria-hidden="true">built-in OIDC + state in db</span></small>
                 </li>
                 <li class="database-layer">
                   Database <small>you already own this</small>

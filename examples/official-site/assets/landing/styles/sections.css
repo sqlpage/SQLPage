@@ -265,8 +265,8 @@
   border-radius: 8px;
   font-size: 15px;
   transition:
-    opacity 0.25s,
-    background 0.25s;
+    border-color 0.4s,
+    background 0.4s;
 }
 .stack-list small {
   font: 11px var(--mono);
@@ -276,10 +276,45 @@
   border-color: #29c8d7;
   background: #0b1121;
 }
+.stack-list .stack-detail {
+  display: grid;
+  max-width: 62%;
+  text-align: right;
+  line-height: 1.5;
+}
+.stack-detail span {
+  grid-area: 1 / 1;
+  align-self: center;
+  transition:
+    opacity 360ms ease,
+    transform 360ms ease;
+  transition-delay: var(--stack-delay, 0ms);
+}
+.stack-detail [data-stack-copy="sqlpage"] {
+  opacity: 0;
+  transform: translateY(8px);
+  color: #63d6df;
+}
+.stack-list li:nth-child(2) {
+  --stack-delay: 45ms;
+}
+.stack-list li:nth-child(3) {
+  --stack-delay: 90ms;
+}
+.stack-list li:nth-child(4) {
+  --stack-delay: 135ms;
+}
 .stack-comparison[data-stack="sqlpage"] [data-stack-layer] {
-  opacity: 0.28;
-  text-decoration: line-through;
-  background: #141b2e;
+  border-color: #29c8d750;
+  background: #102333;
+}
+.stack-comparison[data-stack="sqlpage"] [data-stack-copy="typical"] {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.stack-comparison[data-stack="sqlpage"] [data-stack-copy="sqlpage"] {
+  opacity: 1;
+  transform: translateY(0);
 }
 .benefit-grid {
   display: grid;

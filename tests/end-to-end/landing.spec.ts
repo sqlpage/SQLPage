@@ -176,6 +176,17 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
     "data-stack",
     "sqlpage",
   );
+  const comparison = page.locator(".stack-comparison");
+  await expect(
+    comparison.locator('[data-stack-copy="sqlpage"]').last(),
+  ).toHaveAttribute("aria-hidden", "false");
+  await page
+    .getByRole("button", { name: "A typical webapp", exact: true })
+    .click();
+  await expect(comparison).toHaveAttribute("data-stack", "typical");
+  await expect(
+    comparison.locator('[data-stack-copy="sqlpage"]').last(),
+  ).toHaveAttribute("aria-hidden", "true");
   await page.getByRole("tab", { name: "Managed hosting" }).click();
   await expect(
     page.getByRole("link", { name: "Explore managed hosting" }),
