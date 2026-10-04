@@ -34,6 +34,14 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
     )
     .toBeLessThan(0.05);
 
+  // Keep the real cinematic check above; stop idle animation while exercising UI
+  // so software WebGL on CI does not compete with iframe and input rendering.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator(".sqlpage-world")).toHaveAttribute(
+    "data-motion",
+    "off",
+  );
+
   const demo = page.frameLocator('iframe[title="Live SQLPage component demo"]');
   await page.locator("#components").scrollIntoViewIfNeeded();
   await expect(demo.getByRole("cell", { name: "Acme Corp" })).toBeVisible();
