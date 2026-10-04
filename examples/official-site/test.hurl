@@ -83,7 +83,7 @@ GET http://localhost:8080/landing-demos/demo.sql?component=chart
 HTTP 200
 [Asserts]
 body contains "Tickets resolved"
-body contains "Wednesday"
+body contains "2026-09-30"
 body not contains "An error occurred"
 
 POST http://localhost:8080/landing-demos/demo.sql?component=form
@@ -104,4 +104,4 @@ body not contains "An error occurred"
 GET http://localhost:8080/landing-demos/source.sql?component=../../configuration
 HTTP 200
 [Asserts]
-jsonpath "$.source" contains "Acme Corp"
+jsonpath "$.source" contains "from customers"

@@ -25,10 +25,18 @@ without WebGL or CDN access, and animation respects reduced-motion preferences.
 The sections live in `landing-page.handlebars` with `sections.css` and a small
 `sections.js` controller for keyboard-accessible component, stack and deployment
 selectors. Component previews use the normal SQLPage shell and built-in components
-in `landing-demos/`, styled by `demo.css`. The source endpoint reads those same
+in `landing-demos/`, styled by `demo.css`. The demo data is seeded into customer, ticket, feedback and profile tables by
+`78_landing_demos.sql`. The source endpoint reads those same
 SQL files from a fixed allowlist; it never accepts arbitrary file paths. The form
 submits to SQLPage for a request-local preview without changing the site database.
 
 One shared canvas follows the `data-scene-stop` rectangles in the sections.
 `scroll-progress.js` measures them after responsive layout changes and interpolates
 the reference frame; the original GLB, shaders and lighting are unchanged.
+
+The opening viewport pins while its text fades and the sculpture turns and grows
+into a full-screen pose, then docks at the component section. Reduced motion and
+WebGL failures use the ordinary page flow. Each preview observes its rendered
+SQLPage content to size the iframe, including after a form submission. SQL source
+uses the same Highlight.js engine as the documentation, with a pinned SQL-only
+grammar and a readable plain-text fallback when the CDN is unavailable.

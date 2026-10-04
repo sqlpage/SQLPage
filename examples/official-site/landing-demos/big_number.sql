@@ -1,5 +1,8 @@
-select 'big_number' as component, 2 as columns;
-select 'Tickets resolved' as title, 42 as value,
-    '12 more than last week' as description, 'cyan' as color;
-select 'Happy customers' as title, '98%' as value,
-    'A little SQL goes a long way' as description;
+select 'big_number' as component, 'landing-kpis' as id, 2 as columns;
+select 'Tickets resolved' as title, count(*) as value,
+    'This week' as description, 'cyan' as color
+from tickets;
+select 'Happy customers' as title,
+    cast(round(100.0 * avg(satisfied)) as integer) || '%' as value,
+    'Positive customer feedback' as description
+from customer_feedback;

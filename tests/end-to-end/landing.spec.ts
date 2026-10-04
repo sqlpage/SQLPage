@@ -15,6 +15,25 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   );
   await expect(page.locator("canvas")).toHaveCount(1);
 
+  // The pinned introduction fades around a full-screen sculpture before docking.
+  const initialSize = (await page.locator("canvas").boundingBox())!.height;
+  await page.evaluate(() => {
+    const hero = document.querySelector<HTMLElement>(".experience")!;
+    const viewport = hero.querySelector<HTMLElement>(".viewport")!;
+    window.scrollTo(0, (hero.offsetHeight - viewport.offsetHeight) * 0.76);
+  });
+  await expect
+    .poll(async () => (await page.locator("canvas").boundingBox())!.height)
+    .toBeGreaterThan(initialSize * 1.2);
+  await expect
+    .poll(() =>
+      page
+        .locator(".hero-copy span")
+        .first()
+        .evaluate((element) => Number(getComputedStyle(element).opacity)),
+    )
+    .toBeLessThan(0.05);
+
   const demo = page.frameLocator('iframe[title="Live SQLPage component demo"]');
   await page.locator("#components").scrollIntoViewIfNeeded();
   await expect(demo.getByRole("cell", { name: "Acme Corp" })).toBeVisible();
@@ -24,11 +43,14 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   await demo.getByRole("searchbox").clear();
   await demo.getByRole("button", { name: "seats", exact: true }).click();
   await expect(demo.locator("tbody tr").first()).toContainText("Initech");
-  await expect(page.locator("#demo-source")).toContainText("Acme Corp");
+  await expect(page.locator("#demo-source")).toContainText("from customers");
+  await expect(
+    page.locator("#demo-source .hljs-keyword").first(),
+  ).toBeVisible();
 
   await page.getByRole("tab", { name: "chart", exact: false }).click();
   await expect(demo.locator(".apexcharts-canvas")).toBeVisible();
-  await expect(page.locator("#demo-source")).toContainText("Wednesday");
+  await expect(page.locator("#demo-source")).toContainText("from tickets");
   // Arrow navigation selects the next component and keeps the active tab focusable.
   await page
     .getByRole("tab", { name: "chart", exact: false })
@@ -40,6 +62,9 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   await expect(demo.getByRole("alert")).toContainText("Hello, Ada!");
   await page.getByRole("tab", { name: "big_number" }).click();
   await expect(demo.getByText("98%", { exact: true })).toBeVisible();
+  await expect
+    .poll(async () => (await page.locator("iframe").boundingBox())!.height)
+    .toBeLessThan(220);
 
   await page
     .getByRole("button", { name: "A SQLPage app", exact: true })

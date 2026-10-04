@@ -1,4 +1,4 @@
-/* Real SQLPage components, scoped to the standalone landing demo shell. */
+/* Standalone SQLPage demos: content-sized shells and compact native components. */
 :root {
   --tblr-body-bg: #0d1224;
   --tblr-bg-surface: #0d1224;
@@ -6,16 +6,28 @@
   --tblr-primary: #28c8d6;
   --tblr-body-color: #dbe0ec;
 }
+html,
+body,
+.page,
+.page-wrapper {
+  min-height: 0 !important;
+  height: auto !important;
+}
 body {
   font-size: 13px;
   background: #0d1224;
+}
+.page,
+.page-wrapper {
+  display: block;
 }
 #sqlpage_header,
 #sqlpage_footer {
   display: none;
 }
 #sqlpage_main_wrapper {
-  padding: 16px !important;
+  flex: none !important;
+  padding: 20px !important;
   margin: 0 !important;
   max-width: none;
 }
@@ -32,19 +44,41 @@ body {
   font-size: 17px;
   font-weight: 500;
 }
+/* The native table search and its SQLPage text title share one header row. */
+#sqlpage_main_wrapper:has(#landing-customers) {
+  position: relative;
+}
+#sqlpage_main_wrapper:has(#landing-customers) > h1 {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 !important;
+}
+#sqlpage_main_wrapper:has(#landing-customers) > p {
+  display: none;
+}
+#landing-customers .card-body > .p-3 {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 0 16px !important;
+}
 .table {
   font-size: 12px;
   --tblr-table-border-color: #1b2337;
 }
-.table th {
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: #9caac4;
-  background: #0b1020;
-}
 .table td,
 .table th {
-  padding: 10px 12px;
+  padding: 11px 12px;
+}
+.table th {
+  font-size: 10px;
+  color: #9caac4;
+  background: #0b1020;
 }
 .table-responsive {
   border-radius: 8px;
@@ -69,25 +103,52 @@ body {
   margin-right: 5px;
   vertical-align: middle;
 }
+.table tr.trial td._col_status {
+  color: #7ab8fa;
+}
+.table tr.late td._col_status {
+  color: #e2ae67;
+}
 input.form-control {
+  min-height: 38px;
   background: #090e1d;
   border-color: #273149;
   font-size: 12px;
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 .search {
   max-width: 160px;
 }
+form.mt-3 {
+  margin: 0 !important;
+}
 .form-fieldset {
-  padding: 14px;
+  padding: 0;
+  margin: 0 !important;
   border: 0;
   background: transparent;
 }
-.form-fieldset h2,
-#sqlpage_main_wrapper h3 {
+.form-fieldset h2 {
+  text-align: left !important;
+  margin-bottom: 20px !important;
   font-size: 18px;
   font-weight: 500;
 }
+.form-label {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 7px;
+  color: #bac5d6;
+}
+.form-fieldset .mb-3 {
+  margin-bottom: 16px !important;
+}
 .btn-primary {
+  font-size: 13px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  box-shadow: 0 3px 14px #20c8d518;
   background: #27c4d2;
   border-color: #27c4d2;
   color: #06121b;
@@ -95,32 +156,61 @@ input.form-control {
 .apexcharts-tooltip {
   color: #0d1224;
 }
-/* The table's native search sits beside its SQLPage text heading. */
-#sqlpage_main_wrapper:has(#landing-customers) {
-  position: relative;
-}
-#sqlpage_main_wrapper:has(#landing-customers) > h1 {
-  position: absolute;
-  top: 37px;
-  left: 28px;
-}
-#sqlpage_main_wrapper > h1 {
-  font-size: 18px;
-  font-weight: 500;
+#landing-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   margin: 0 !important;
+  height: auto !important;
 }
-#landing-customers .card-body > .p-3 {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 0 20px !important;
+#landing-kpis > .col {
+  width: auto;
+  min-width: 0 !important;
+  padding: 0;
+  margin: 0;
+}
+#landing-kpis .card {
+  height: 100%;
+  border: 1px solid #26344b;
+  border-radius: 10px;
+  background: #131b2f;
+}
+#landing-kpis .bg-cyan-lt {
+  background: linear-gradient(120deg, #0d2a36, #122333) !important;
+}
+#landing-kpis .card-body {
+  padding: 20px;
+}
+#landing-kpis .subheader {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #9badc5;
+}
+#landing-kpis .h1 {
+  font-size: 42px;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  margin-top: 12px !important;
+  margin-bottom: 10px !important;
+}
+#landing-kpis .d-flex.flex-wrap {
+  margin: 0 !important;
+  font-size: 12px;
+  color: #a9bacf;
+}
+#landing-kpis .text-truncate {
+  white-space: normal;
+}
+#landing-kpis .text-cyan {
+  color: #43ccd7 !important;
 }
 @media (max-width: 480px) {
   #sqlpage_main_wrapper {
-    padding: 8px !important;
+    padding: 16px !important;
   }
   #sqlpage_main_wrapper:has(#landing-customers) > h1 {
     left: 16px;
-    top: 31px;
+    top: 16px;
     font-size: 16px;
   }
   .search {
@@ -130,8 +220,10 @@ input.form-control {
   .table th {
     padding: 9px 7px;
   }
-}
-
-#sqlpage_main_wrapper > p:empty {
-  display: none;
+  #landing-kpis .card-body {
+    padding: 16px 12px;
+  }
+  #landing-kpis .h1 {
+    font-size: 36px;
+  }
 }

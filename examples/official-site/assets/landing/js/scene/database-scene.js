@@ -19,7 +19,7 @@ import { createSelectiveGlow } from "./selective-glow.js";
 
 const clamp = THREE.MathUtils.clamp;
 /**
- * @typedef {{ motion: boolean, frame?: {left: number, top: number, size: number} }} SceneState
+ * @typedef {{ motion: boolean, turn?: number, frame?: {left: number, top: number, size: number} }} SceneState
  * @typedef {{ zoom(amount: number): void, reset(): void, dispose(): void }} SceneController
  * @param {{ mount: HTMLElement, hitArea: HTMLElement, anchor: HTMLElement|null,
  *   getState: () => SceneState, onReady: () => void, onError: () => void }} options
@@ -400,6 +400,7 @@ export function createDatabaseScene({
     hitArea.style.width = `${right - left}px`;
     hitArea.style.height = `${bottom - top}px`;
   };
+  const upAxis = new THREE.Vector3(0, 1, 0);
   const update = (timestamp) => {
     if (disposed || contextLost || !visible) return;
     const dt = Math.min((timestamp - last) / 1000 || 0.016, 0.05);
@@ -415,7 +416,9 @@ export function createDatabaseScene({
     );
     controls.update(dt, readySent && state.motion);
     dragPivot.quaternion.copy(dragQuaternion);
-    scrollPivot.quaternion.copy(DEFAULT_TILT);
+    scrollPivot.quaternion
+      .setFromAxisAngle(upAxis, state.turn ?? 0)
+      .multiply(DEFAULT_TILT);
     parallaxPivot.rotation.set(parallax.y * 0.035, parallax.x * 0.055, 0);
     const distance = clamp(CAMERA_DISTANCE * Math.exp(renderedZoom), 5.9, 17);
     cameraForSculpture(camera, distance, parallax.x * 0.11, parallax.y * 0.075);
@@ -425,7 +428,7 @@ export function createDatabaseScene({
     canvasLeft = position.left;
     canvasTop = position.top;
     canvasWidth = canvasHeight = position.size;
-    const frameKey = `${canvasLeft},${canvasTop},${canvasWidth}`;
+    const frameKey = `${canvasLeft},${canvasTop},${canvasWidth},${state.turn}`;
     if (frameKey !== lastFrame) needsRender = true;
     lastFrame = frameKey;
     Object.assign(renderer.domElement.style, {

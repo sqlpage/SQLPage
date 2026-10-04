@@ -1,3 +1,5 @@
+import { initSqlHighlight } from "./sql-highlight.js";
+
 /** Accessible tab groups share selection and keyboard behavior. */
 function tabs(group, attribute, select, signal) {
   const buttons = [...group.querySelectorAll("button")];
@@ -44,6 +46,24 @@ export function initSections(root) {
   const panel = root.querySelector("#demo-panel");
   const source = root.querySelector("#demo-source");
   const status = root.querySelector(".demo-status");
+  const renderSource = initSqlHighlight(source, signal);
+  const preview = panel.querySelector("iframe");
+  let resizePreview;
+  function fitPreview() {
+    resizePreview?.disconnect();
+    const content = preview.contentDocument?.querySelector(
+      "#sqlpage_main_wrapper",
+    );
+    if (!content) return;
+    const fit = () => {
+      preview.style.height = `${Math.ceil(content.getBoundingClientRect().height) + 2}px`;
+    };
+    resizePreview = new ResizeObserver(fit);
+    resizePreview.observe(content);
+    fit();
+  }
+  preview.addEventListener("load", fitPreview, { signal });
+  fitPreview();
   let request;
   async function loadSource(component) {
     request?.abort();
@@ -56,7 +76,7 @@ export function initSections(root) {
       );
       if (!response.ok) throw new Error("Source unavailable");
       const data = await response.json();
-      source.textContent = data.source;
+      void renderSource(data.source);
     } catch (error) {
       if (error.name !== "AbortError") {
         source.textContent =
@@ -106,5 +126,6 @@ export function initSections(root) {
   return () => {
     events.abort();
     request?.abort();
+    resizePreview?.disconnect();
   };
 }
