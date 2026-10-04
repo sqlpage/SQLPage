@@ -192,8 +192,8 @@ test("linked date x values retain ApexCharts' native date formatting", async ({
   await renderChart(page, "link-time");
   await page
     .locator("#test-chart .apexcharts-marker")
-    .first()
-    .hover({ force: true });
+    .nth(1) // the center marker: '2024-03-02' AS x, 15 AS y
+    .hover({ force: true }); // apexcharts displays other elements on top of the marker, we just want to hover at its position
   const title = page.locator("#test-chart .apexcharts-tooltip-title");
   await expect(title).toBeVisible();
   await expect(title).not.toContainText(/\d{13}/);
