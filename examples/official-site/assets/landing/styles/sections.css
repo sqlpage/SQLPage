@@ -315,7 +315,8 @@
   grid-template-columns: 1.2fr 0.5fr 1fr;
   gap: 45px;
   align-items: center;
-  margin: 40px 0;
+  padding-left: 24%;
+  margin: -100px 0 40px;
 }
 .purpose-intro > p:first-child {
   color: #a6abbb;
@@ -767,6 +768,7 @@ a.chip:hover {
     font-size: clamp(35px, 8.5vw, 52px);
   }
   .purpose-intro {
+    padding-left: 0;
     grid-template-columns: 1fr 1fr;
     margin: 35px 0;
   }
