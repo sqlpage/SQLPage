@@ -191,7 +191,7 @@
 }
 .run-orbit > span .icon {
   margin-left: 3px;
-  width: 21px;
+  --icon-size: 21px;
 }
 .run-orbit > i {
   position: absolute;

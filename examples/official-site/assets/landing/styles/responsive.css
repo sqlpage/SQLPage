@@ -58,7 +58,7 @@
     border-width: 4px;
   }
   .run-orbit > span .icon {
-    width: 18px;
+    --icon-size: 18px;
   }
   .ribbon-sequence code {
     font-size: 17px;
@@ -250,7 +250,7 @@
     border-width: 3px;
   }
   .run-orbit > span .icon {
-    width: 18px;
+    --icon-size: 18px;
   }
   .viewport .sql-ribbon {
     top: var(--portrait-ribbon-top, 78%);
@@ -269,7 +269,7 @@
     letter-spacing: -0.6px;
   }
   .ribbon-sequence .icon {
-    width: 17px;
+    --icon-size: 17px;
   }
   .ribbon-dot {
     margin-left: 23px;
@@ -313,8 +313,10 @@
   .mobile-menu {
     display: grid;
     place-items: center;
-    width: 43px;
-    height: 43px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    flex-shrink: 0;
     border: 1px solid #8acbdd35;
     border-radius: 50%;
     background: linear-gradient(150deg, #b2e6fa14, #06121d55);

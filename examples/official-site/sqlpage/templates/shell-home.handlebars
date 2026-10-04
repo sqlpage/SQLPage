@@ -16,7 +16,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://sql-page.com/sqlpage_social_preview.webp" />
     <title>SQLPage — The living query</title>
-    <link rel="icon" href="/assets/landing/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="{{static_path 'favicon.svg'}}" type="image/svg+xml" />
     <link rel="preload" as="image" href="/assets/landing/assets/scene-first-frame.webp" fetchpriority="high" />
     <link rel="stylesheet" href="/assets/landing/styles/main.css" />
     <script type="module" src="/assets/landing/js/main.js"></script>
@@ -74,7 +74,7 @@
               aria-expanded="false"
               hidden
             >
-              <span class="icon icon-menu" aria-hidden="true"></span>
+              <span class="icon icon-menu" aria-hidden="true">{{icon_img "menu-2"}}</span>
             </button>
           </header>
           <aside class="engraved-comment" aria-label="SQL comment">
@@ -104,10 +104,7 @@
               ><span class="run-orbit" aria-hidden="true"
                 ><i></i
                 ><span
-                  ><span
-                    class="icon icon-play"
-                    aria-hidden="true"
-                  ></span></span></span
+                  ><span class="icon icon-play" aria-hidden="true">{{icon_img "player-play"}}</span></span></span
               ><span>Run it</span></a
             >
           </div>
@@ -140,26 +137,22 @@
               <div class="ribbon-sequence">
                 <a
                   href="/component.sql?component=list"
-                  ><span class="icon icon-list" aria-hidden="true"></span
-                  ><code>select 'list' as component;</code
+                  ><span class="icon icon-list" aria-hidden="true">{{icon_img "list"}}</span><code>select 'list' as component;</code
                   ><span class="ribbon-dot" aria-hidden="true">•</span></a
                 >
                 <a
                   href="/component.sql?component=chart"
-                  ><span class="icon icon-chart" aria-hidden="true"></span
-                  ><code>select 'chart' as component;</code
+                  ><span class="icon icon-chart" aria-hidden="true">{{icon_img "chart-line"}}</span><code>select 'chart' as component;</code
                   ><span class="ribbon-dot" aria-hidden="true">•</span></a
                 >
                 <a
                   href="/component.sql?component=table"
-                  ><span class="icon icon-table" aria-hidden="true"></span
-                  ><code>select 'table' as component;</code
+                  ><span class="icon icon-table" aria-hidden="true">{{icon_img "table"}}</span><code>select 'table' as component;</code
                   ><span class="ribbon-dot" aria-hidden="true">•</span></a
                 >
                 <a
                   href="/component.sql?component=card"
-                  ><span class="icon icon-code" aria-hidden="true"></span
-                  ><code>select 'card' as component;</code
+                  ><span class="icon icon-code" aria-hidden="true">{{icon_img "code"}}</span><code>select 'card' as component;</code
                   ><span class="ribbon-dot" aria-hidden="true">•</span></a
                 >
               </div>
@@ -183,7 +176,7 @@
       >
         <form method="dialog">
           <button class="dialog-close" aria-label="Close navigation">
-            <span class="icon icon-close" aria-hidden="true"></span>
+            <span class="icon icon-close" aria-hidden="true">{{icon_img "x"}}</span>
           </button>
         </form>
         <h2 id="navigation-title">SQLPage</h2>
