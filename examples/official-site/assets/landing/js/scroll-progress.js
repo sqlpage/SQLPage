@@ -19,6 +19,23 @@ export function initScrollProgress(section, mount, state) {
     top: a.top + (b.top - a.top) * t,
     size: a.size + (b.size - a.size) * t,
   });
+  function travel(a, b, t) {
+    const pose = mix(a, b, ease(t));
+    const arc = Math.sin(Math.PI * t);
+    const bounds = SCULPTURE_FRAME.bounds;
+    const center = bounds.left + SCULPTURE_FRAME.bodyWidth / 2;
+    // Travel through the outer gutter, compact enough to clear demos and copy.
+    // The sine envelope preserves each authored landing pose without a pause.
+    const size = pose.size;
+    pose.size +=
+      (Math.min(size, (innerWidth * 0.12) / SCULPTURE_FRAME.bodyWidth) - size) *
+      arc;
+    pose.left += (size - pose.size) * center;
+    pose.top += ((size - pose.size) * (bounds.top + bounds.bottom)) / 2;
+    pose.left += (innerWidth * 0.92 - (pose.left + pose.size * center)) * arc;
+    pose.top -= innerHeight * 0.08 * arc;
+    return pose;
+  }
   const viewport = section.querySelector(".viewport");
   const intro = section.querySelector(".intro-row");
   const header = section.querySelector(".site-header");
@@ -62,7 +79,8 @@ export function initScrollProgress(section, mount, state) {
     section.style.setProperty("--ribbon-opacity", String(1 - ease(p / 0.5)));
     intro.inert = header.inert = opacity < 0.05;
     ribbon.inert = p > 0.5;
-    state.turn = 0;
+    // Unwrapped rotation is continuous across every section and reverses naturally.
+    state.turn = state.motion ? (scroll / innerHeight) * Math.PI * 0.8 : 0;
     if (heroRange && scroll <= anchors[1].scroll) {
       const bounds = SCULPTURE_FRAME.bounds;
       const size = Math.min(
@@ -77,26 +95,24 @@ export function initScrollProgress(section, mount, state) {
       };
       const end = heroRange + Math.max(0, viewport.offsetHeight - innerHeight);
       if (scroll <= end) {
-        const t = ease((p - 0.06) / 0.7);
+        const t = ease(p);
         const origin = {
           ...anchors[0],
           top: anchors[0].top + viewport.getBoundingClientRect().top,
         };
         state.frame = mix(origin, gallery, t);
-        // The position describes a gentle spiral; orientation completes one turn.
+        // The position describes a gentle spiral while rotation follows scroll.
         const arc = Math.sin(t * Math.PI);
         state.frame.left +=
           Math.sin(t * Math.PI * 2) * innerWidth * 0.035 * arc;
         state.frame.top +=
           Math.cos(t * Math.PI * 2) * innerHeight * 0.025 * arc;
-        state.turn = state.motion ? ease((p - 0.1) / 0.75) * Math.PI * 2 : 0;
       } else {
-        state.frame = mix(
+        state.frame = travel(
           gallery,
           { ...anchors[1], top: anchors[1].top - scroll },
-          ease((scroll - end) / (anchors[1].scroll - end)),
+          clamp((scroll - end) / (anchors[1].scroll - end)),
         );
-        state.turn = state.motion ? Math.PI * 2 : 0;
       }
     } else {
       let index = 0;
@@ -104,11 +120,21 @@ export function initScrollProgress(section, mount, state) {
         index++;
       const a = anchors[index];
       const b = anchors[index + 1];
-      // Hold subsequent compositions while reading; travel near section boundaries.
-      const start =
-        b.scroll - Math.min(innerHeight * 0.75, (b.scroll - a.scroll) * 0.55);
-      state.frame = mix(a, b, ease((scroll - start) / (b.scroll - start)));
-      state.frame.top -= scroll;
+      const t = clamp((scroll - a.scroll) / (b.scroll - a.scroll));
+      state.frame = state.motion
+        ? travel(
+            { ...a, top: a.top - a.scroll },
+            { ...b, top: b.top - b.scroll },
+            t,
+          )
+        : mix(a, b, ease(t));
+      if (!state.motion) state.frame.top -= scroll;
+      if (state.motion && scroll > b.scroll) {
+        // Keep the last composition gently orbiting while scrolling toward the footer.
+        const tail = (scroll - b.scroll) / innerHeight;
+        state.frame.left += Math.sin(tail * 2) * innerWidth * 0.025;
+        state.frame.top += (Math.cos(tail * 2) - 1) * innerHeight * 0.035;
+      }
     }
     Object.assign(preview.style, {
       left: `${state.frame.left}px`,

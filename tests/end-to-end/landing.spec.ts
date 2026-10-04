@@ -34,6 +34,44 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
     )
     .toBeLessThan(0.05);
 
+  // Sample the reading interval too: no parked pose or straight transfer between stops.
+  const route = await page
+    .locator("[data-scene-stop]")
+    .evaluateAll((stops) =>
+      stops
+        .slice(0, 2)
+        .map((stop) => stop.closest("section")!.offsetTop - innerHeight * 0.12),
+    );
+  const poses: { x: number; turn: number }[] = [];
+  let previousTurn = Number(
+    await page.locator("canvas").getAttribute("data-scroll-turn"),
+  );
+  for (const progress of [0, 0.25, 0.5]) {
+    const scroll = Math.round(route[0] + (route[1] - route[0]) * progress);
+    await page.evaluate((y) => window.scrollTo(0, y), scroll);
+    await expect
+      .poll(async () =>
+        Number(await page.locator("canvas").getAttribute("data-scroll-turn")),
+      )
+      .toBeGreaterThan(previousTurn + 0.01);
+    poses.push(
+      await page.locator("canvas").evaluate((canvas) => {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: rect.x + rect.width * 0.488205,
+          turn: Number(canvas.dataset.scrollTurn),
+        };
+      }),
+    );
+    previousTurn = poses.at(-1)!.turn;
+  }
+  expect(poses[1].turn).toBeGreaterThan(poses[0].turn);
+  expect(poses[2].turn).toBeGreaterThan(poses[1].turn);
+  expect(Math.abs(poses[1].x - poses[0].x)).toBeGreaterThan(5);
+  expect(Math.abs(poses[1].x - (poses[0].x + poses[2].x) / 2)).toBeGreaterThan(
+    5,
+  );
+
   // Keep the real cinematic check above; stop idle animation while exercising UI
   // so software WebGL on CI does not compete with iframe and input rendering.
   await page.emulateMedia({ reducedMotion: "reduce" });

@@ -431,6 +431,7 @@ export function createDatabaseScene({
     const frameKey = `${canvasLeft},${canvasTop},${canvasWidth},${state.turn}`;
     if (frameKey !== lastFrame) needsRender = true;
     lastFrame = frameKey;
+    renderer.domElement.dataset.scrollTurn = String(state.turn ?? 0);
     Object.assign(renderer.domElement.style, {
       position: "absolute",
       left: `${canvasLeft}px`,
