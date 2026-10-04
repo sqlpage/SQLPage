@@ -18,11 +18,21 @@ export function initSqlHighlight(element, signal) {
       /* Plain SQL stays readable if the optional CDN is unavailable. */
     });
   function paint() {
-    if (engine && !signal.aborted)
-      element.innerHTML = engine.highlight(element.textContent, {
-        language: "sql",
-      }).value;
+    if (signal.aborted) return;
+    const lines = element.textContent.trimEnd().split("\n");
+    const fragment = document.createDocumentFragment();
+    for (const [index, line] of lines.entries()) {
+      const row = document.createElement("span");
+      row.className = "sql-line";
+      if (engine)
+        row.innerHTML = engine.highlight(line, { language: "sql" }).value;
+      else row.textContent = line;
+      fragment.append(row);
+      if (index < lines.length - 1) fragment.append("\n");
+    }
+    element.replaceChildren(fragment);
   }
+  paint();
   return (code) => {
     element.textContent = code;
     paint();

@@ -27,7 +27,7 @@ body {
 }
 #sqlpage_main_wrapper {
   flex: none !important;
-  padding: 20px !important;
+  padding: 24px !important;
   margin: 0 !important;
   max-width: none;
 }
@@ -50,12 +50,12 @@ body {
 }
 #sqlpage_main_wrapper:has(#landing-customers) > h1 {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 24px;
+  left: 24px;
   height: 38px;
   display: flex;
   align-items: center;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 500;
   margin: 0 !important;
 }
@@ -68,46 +68,51 @@ body {
   padding: 0 0 16px !important;
 }
 .table {
-  font-size: 12px;
+  font-size: 14px;
   --tblr-table-border-color: #1b2337;
 }
 .table td,
 .table th {
-  padding: 11px 12px;
+  padding: 13px 12px;
 }
 .table th {
-  font-size: 10px;
+  font-size: 11px;
   color: #9caac4;
-  background: #0b1020;
+  background: transparent;
+}
+#landing-customers .table th {
+  background: transparent;
 }
 .table-responsive {
   border-radius: 8px;
 }
 .table-sort {
   color: #94a3bb;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
-.table td._col_status {
-  color: #54cbb4;
-  font-size: 11px;
+.table td._col_name {
+  font-weight: 600;
+  white-space: nowrap;
 }
-.table td._col_status::before {
-  content: "";
+.table td._col_status p {
   display: inline-block;
-  width: 5px;
-  height: 5px;
-  background: currentColor;
-  border-radius: 50%;
-  margin-right: 5px;
-  vertical-align: middle;
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 5px;
+  background: #123737;
+  color: #5ed4b6;
+  font-size: 11px;
+  font-weight: 600;
 }
-.table tr.trial td._col_status {
-  color: #7ab8fa;
+.table tr.trial td._col_status p {
+  background: #123459;
+  color: #8bbcf5;
 }
-.table tr.late td._col_status {
-  color: #e2ae67;
+.table tr.late td._col_status p {
+  background: #4b3526;
+  color: #ecb56b;
 }
 input.form-control {
   min-height: 38px;
@@ -118,7 +123,7 @@ input.form-control {
   padding: 8px 12px;
 }
 .search {
-  max-width: 160px;
+  max-width: 190px;
 }
 form.mt-3 {
   margin: 0 !important;
@@ -216,9 +221,16 @@ form.mt-3 {
   .search {
     max-width: 135px;
   }
+  .table {
+    font-size: 11px;
+  }
   .table td,
   .table th {
-    padding: 9px 7px;
+    padding: 10px 5px;
+  }
+  .table td._col_status p {
+    padding: 3px 6px;
+    font-size: 10px;
   }
   #landing-kpis .card-body {
     padding: 16px 12px;

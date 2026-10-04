@@ -64,6 +64,18 @@ export function initSections(root) {
   }
   preview.addEventListener("load", fitPreview, { signal });
   fitPreview();
+  root.querySelector("[data-copy-sql]").addEventListener(
+    "click",
+    async () => {
+      try {
+        await navigator.clipboard.writeText(source.textContent);
+        status.textContent = "SQL copied.";
+      } catch {
+        status.textContent = "Copy unavailable. Select the SQL below.";
+      }
+    },
+    { signal },
+  );
   let request;
   async function loadSource(component) {
     request?.abort();
@@ -90,6 +102,7 @@ export function initSections(root) {
     "aria-selected",
     (button) => {
       const component = button.dataset.demo;
+      root.querySelector("#demo-filename").textContent = `${component}.sql`;
       panel.setAttribute("aria-labelledby", button.id);
       panel.querySelector("iframe").src =
         `/landing-demos/demo.sql?component=${component}`;
@@ -114,7 +127,7 @@ export function initSections(root) {
       root.querySelector("[data-stack-caption]").textContent =
         button.dataset.stack === "sqlpage"
           ? "-- Same five layers. SQLPage handles the plumbing."
-          : "-- 5 layers, all yours. Illustrative, not a benchmark.";
+          : "-- 5 layers, all yours.";
     },
     signal,
   );

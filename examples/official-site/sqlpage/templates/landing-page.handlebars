@@ -177,7 +177,7 @@
         <svg class="section-wave" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true"><use class="wave-back" href="#landing-wave" /><use class="wave-front" href="#landing-wave" /></svg>
         <div class="section-inner">
           <p class="eyebrow">-- real SQLPage components, a few lines each</p>
-          <h2 id="demo-title">Data,<br />but clickable.</h2>
+          <h2 id="demo-title">Data,<br />but clickable</h2>
           <div class="scene-stop demo-sculpture" data-scene-stop aria-hidden="true">
           </div>
           <p class="eyebrow picker-caption">-- pick a component</p>
@@ -190,7 +190,11 @@
             </div>
             <div id="demo-panel" role="tabpanel" aria-labelledby="tab-table">
               <iframe title="Live SQLPage component demo" src="/landing-demos/demo.sql?component=table" loading="lazy"></iframe>
-              <pre class="code-panel"><code id="demo-source">{{demo_source}}</code></pre>
+              <p class="demo-annotation">Actually rendered by<br />SQLPage, live {{icon_img "arrow-down-left"}}</p>
+              <div class="sql-editor">
+                <div class="sql-editor-header"><span id="demo-filename">table.sql</span><button type="button" data-copy-sql aria-label="Copy SQL">{{icon_img "copy"}} <span>Copy</span></button></div>
+                <pre class="code-panel"><code id="demo-source">{{demo_source}}</code></pre>
+              </div>
               <p class="demo-status" role="status"></p>
               <a class="demo-docs" href="/component.sql?component=table">Explore the table component {{icon_img "arrow-up-right"}}</a>
             </div>
@@ -238,7 +242,7 @@
                   Database <small>you already own this</small>
                 </li>
               </ul>
-              <p class="eyebrow" data-stack-caption>-- 5 layers, all yours. Illustrative, not a benchmark.</p>
+              <p class="eyebrow" data-stack-caption>-- 5 layers, all yours.</p>
             </div>
             <div class="benefit-grid">
               <article class="benefit featured">

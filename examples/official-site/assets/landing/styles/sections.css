@@ -71,7 +71,6 @@
 }
 .landing-section .section-inner > h2,
 .purpose-intro,
-.demo-layout,
 .purpose-grid,
 .deployment-grid > div:not(.scene-stop),
 .database-grid {
@@ -92,7 +91,75 @@
   font-size: clamp(60px, 7.7vw, 106px);
 }
 .picker-caption {
-  margin-top: 65px;
+  margin-top: 75px;
+  margin-bottom: 20px;
+}
+.sql-editor {
+  margin-top: 18px;
+  border: 1px solid #293246;
+  border-radius: 12px;
+  background: #080e1b;
+  box-shadow: 0 14px 28px #07111d20;
+  overflow: hidden;
+}
+.sql-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1c2537;
+  font: 12px var(--mono);
+  color: #c3cbd9;
+}
+#demo-filename {
+  padding: 12px 20px;
+  border-top: 2px solid #74b6e9;
+  border-right: 1px solid #1c2537;
+  background: #101626;
+}
+.sql-editor-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 0;
+  background: transparent;
+  color: #94a9be;
+  font: inherit;
+}
+.sql-editor-header button:hover {
+  color: #64d5df;
+}
+.sql-editor-header svg {
+  width: 15px;
+  height: 15px;
+}
+.sql-editor .code-panel {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 18px 20px;
+  overflow-x: auto;
+}
+#demo-source {
+  display: block;
+  white-space: normal;
+  counter-reset: sql-line;
+}
+.sql-line {
+  display: block;
+  position: relative;
+  padding-left: 2.4em;
+  white-space: pre;
+  counter-increment: sql-line;
+}
+.sql-line::before {
+  content: counter(sql-line);
+  position: absolute;
+  left: 0;
+  width: 1.4em;
+  color: #4c5e78;
+  text-align: right;
+  user-select: none;
 }
 .demo-layout {
   display: grid;
@@ -113,7 +180,7 @@
   padding: 18px 16px;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   transition:
@@ -142,14 +209,32 @@
 .component-picker button[aria-selected="true"] {
   background: #07111d;
   color: white;
-  border-color: #21cad9;
-  box-shadow: 0 4px 20px #1bc6d52b;
+  border-color: #202c3e;
+  border-left: 3px solid #74b6e9;
+  box-shadow: 0 12px 28px #07111d30;
 }
 .component-picker button[aria-selected="true"] svg {
   color: #29c8d7;
 }
 #demo-panel {
+  position: relative;
   min-width: 0;
+}
+.demo-annotation {
+  position: absolute;
+  top: -86px;
+  left: 48%;
+  margin: 0;
+  color: #73949d;
+  font: italic 17px / 1.35 cursive;
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+.demo-annotation svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  margin-left: 18px;
 }
 #demo-panel iframe {
   display: block;
@@ -157,8 +242,9 @@
   height: 280px;
   transition: height 220ms ease;
   border: 1px solid #2b344c;
-  border-radius: 15px;
+  border-radius: 18px;
   background: #0d1224;
+  box-shadow: 0 18px 30px #07111d18;
 }
 .code-panel {
   background: #080e1b;
@@ -577,7 +663,6 @@ a.chip:hover {
   }
   .landing-section .section-inner > h2,
   .purpose-intro,
-  .demo-layout,
   .purpose-grid,
   .database-grid {
     width: 91%;
@@ -600,7 +685,20 @@ a.chip:hover {
     max-width: 78%;
   }
   .picker-caption {
-    margin-top: 35px;
+    margin-top: 40px;
+  }
+  .demo-annotation {
+    display: none;
+  }
+  .sql-editor .code-panel {
+    padding: 16px 12px;
+  }
+  .sql-line {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .sql-editor-header button {
+    padding-inline: 12px;
   }
   .demo-layout {
     grid-template-columns: 1fr;

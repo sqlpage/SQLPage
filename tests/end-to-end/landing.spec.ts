@@ -39,7 +39,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
     .locator("[data-scene-stop]")
     .evaluateAll((stops) =>
       stops
-        .slice(0, 2)
+        .slice(1, 3)
         .map((stop) => stop.closest("section")!.offsetTop - innerHeight * 0.12),
     );
   const poses: { x: number; y: number; turn: number }[] = [];
@@ -150,6 +150,13 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   await expect(
     page.locator("#demo-source .hljs-keyword").first(),
   ).toBeVisible();
+
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy SQL", exact: true }).click();
+  await expect(page.locator(".demo-status")).toHaveText("SQL copied.");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+    "from customers",
+  );
 
   await page.getByRole("tab", { name: "chart", exact: false }).click();
   await expect(demo.locator(".apexcharts-canvas")).toBeVisible();

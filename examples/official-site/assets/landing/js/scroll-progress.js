@@ -150,6 +150,39 @@ export function initScrollProgress(section, mount, state) {
         state.frame.top -= Math.sin(tail * 2) * innerHeight * 0.02;
       }
     }
+    // The full-width demo owns the screen while its controls are being read.
+    // Fold the sculpture into the outside gutter before the panel reaches it,
+    // then release it smoothly into the next section's reserved landing rail.
+    if (
+      state.motion &&
+      scroll >= anchors[1].scroll &&
+      scroll < anchors[2].scroll
+    ) {
+      const bounds = SCULPTURE_FRAME.bounds;
+      const panel = root.querySelector("#demo-panel").getBoundingClientRect();
+      const bottom = state.frame.top + state.frame.size * bounds.bottom;
+      const t =
+        (scroll - anchors[1].scroll) / (anchors[2].scroll - anchors[1].scroll);
+      const clearance =
+        ease((bottom + 100 - panel.top) / 100) * (1 - ease((t - 0.7) / 0.3));
+      const width = Math.max(
+        14,
+        Math.min(innerWidth * 0.05, (innerWidth - panel.right - 10) * 0.7),
+      );
+      const size = width / SCULPTURE_FRAME.bodyWidth;
+      state.frame = mix(
+        state.frame,
+        {
+          left: innerWidth - width - 8 - size * bounds.left,
+          top:
+            state.frame.top +
+            ((state.frame.size - size) * (bounds.top + bounds.bottom)) / 2,
+          size,
+        },
+        clearance,
+      );
+      state.frame.top -= Math.sin(clearance * Math.PI) * 15;
+    }
     Object.assign(preview.style, {
       left: `${state.frame.left}px`,
       top: `${state.frame.top}px`,
