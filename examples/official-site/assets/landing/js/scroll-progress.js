@@ -19,13 +19,16 @@ export function initScrollProgress(section, mount, state) {
     top: a.top + (b.top - a.top) * t,
     size: a.size + (b.size - a.size) * t,
   });
-  function travel(a, b, t) {
-    const pose = mix(a, b, ease(t));
-    const arc = Math.sin(Math.PI * t);
+  function travel(a, b, t, distance) {
+    // Spend most of the reading interval near the stops, with a quick passage
+    // between them. A small drift keeps the sculpture alive at either landing.
+    const progress = t - (0.96 * Math.sin(2 * Math.PI * t)) / (2 * Math.PI);
+    const pose = mix(a, b, ease(progress));
+    const arc = Math.sin(Math.PI * progress) ** 2;
     const bounds = SCULPTURE_FRAME.bounds;
     const center = bounds.left + SCULPTURE_FRAME.bodyWidth / 2;
     // Travel through the outer gutter, compact enough to clear demos and copy.
-    // The sine envelope preserves each authored landing pose without a pause.
+    // The envelope also slows the gutter detour and scale change at each stop.
     const size = pose.size;
     pose.size +=
       (Math.min(size, (innerWidth * 0.12) / SCULPTURE_FRAME.bodyWidth) - size) *
@@ -39,6 +42,7 @@ export function initScrollProgress(section, mount, state) {
       Math.min(innerHeight * 0.7, centerY),
     );
     pose.top += (corridorY - centerY - innerHeight * 0.08) * arc;
+    pose.top -= (distance * 0.04 * Math.sin(2 * Math.PI * t)) / (2 * Math.PI);
     return pose;
   }
   const viewport = section.querySelector(".viewport");
@@ -115,8 +119,9 @@ export function initScrollProgress(section, mount, state) {
       } else {
         state.frame = travel(
           gallery,
-          { ...anchors[1], top: anchors[1].top - scroll },
+          { ...anchors[1], top: anchors[1].top - anchors[1].scroll },
           clamp((scroll - end) / (anchors[1].scroll - end)),
+          anchors[1].scroll - end,
         );
       }
     } else {
@@ -131,6 +136,7 @@ export function initScrollProgress(section, mount, state) {
             { ...a, top: a.top - a.scroll },
             { ...b, top: b.top - b.scroll },
             t,
+            b.scroll - a.scroll,
           )
         : mix(a, b, ease(t));
       if (!state.motion) state.frame.top -= scroll;
@@ -138,7 +144,7 @@ export function initScrollProgress(section, mount, state) {
         // Keep the last composition gently orbiting while scrolling toward the footer.
         const tail = (scroll - b.scroll) / innerHeight;
         state.frame.left += Math.sin(tail * 2) * innerWidth * 0.025;
-        state.frame.top += (Math.cos(tail * 2) - 1) * innerHeight * 0.035;
+        state.frame.top -= Math.sin(tail * 2) * innerHeight * 0.02;
       }
     }
     Object.assign(preview.style, {

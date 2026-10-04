@@ -42,11 +42,11 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
         .slice(0, 2)
         .map((stop) => stop.closest("section")!.offsetTop - innerHeight * 0.12),
     );
-  const poses: { x: number; turn: number }[] = [];
+  const poses: { x: number; y: number; turn: number }[] = [];
   let previousTurn = Number(
     await page.locator("canvas").getAttribute("data-scroll-turn"),
   );
-  for (const progress of [0, 0.25, 0.5, 1]) {
+  for (const progress of [0, 0.03, 0.06, 0.25, 0.5, 1]) {
     const scroll = Math.round(route[0] + (route[1] - route[0]) * progress);
     await page.evaluate((y) => window.scrollTo(0, y), scroll);
     await expect
@@ -59,6 +59,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
         const rect = canvas.getBoundingClientRect();
         return {
           x: rect.x + rect.width * 0.488205,
+          y: rect.y + rect.height / 2,
           turn: Number(canvas.dataset.scrollTurn),
         };
       }),
@@ -67,8 +68,17 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   }
   expect(poses[1].turn).toBeGreaterThan(poses[0].turn);
   expect(poses[2].turn).toBeGreaterThan(poses[1].turn);
-  expect(Math.abs(poses[1].x - poses[0].x)).toBeGreaterThan(5);
-  expect(Math.abs(poses[2].x - (poses[0].x + poses[3].x) / 2)).toBeGreaterThan(
+  // Near the anchor, vertical movement is gentle but never parked; rotation
+  // keeps the same pace as the subsequent transition.
+  const drift = Math.abs(poses[2].y - poses[1].y);
+  const scrollStep = (route[1] - route[0]) * 0.03;
+  expect(drift).toBeGreaterThan(0.2);
+  expect(drift).toBeLessThan(scrollStep * 0.15);
+  const restingSpin = (poses[2].turn - poses[1].turn) / 0.03;
+  const travelingSpin = (poses[4].turn - poses[3].turn) / 0.25;
+  expect(restingSpin / travelingSpin).toBeCloseTo(1, 1);
+  expect(Math.abs(poses[4].x - poses[0].x)).toBeGreaterThan(5);
+  expect(Math.abs(poses[4].x - (poses[0].x + poses[5].x) / 2)).toBeGreaterThan(
     5,
   );
 
