@@ -35,12 +35,14 @@ export function initScrollProgress(section, mount, state) {
     const corridor = onRight ? innerWidth - width / 2 - 10 : width / 2 + 10;
     const x = pose.left + pose.size * centerX;
     const y = pose.top + pose.size * centerY;
-    pose.size += (size - pose.size) * passage;
+    const scalePassage = ease(t / 0.18) * (1 - ease((t - 0.65) / 0.35));
+    pose.size += (size - pose.size) * scalePassage;
     pose.left = x + (corridor - x) * passage - pose.size * centerX;
     pose.top =
       y -
       pose.size * centerY +
-      Math.sin(Math.PI * progress) ** 2 * innerHeight * 0.06;
+      Math.sin(Math.PI * progress) ** 2 * innerHeight * 0.06 -
+      Math.sin(Math.PI * clamp(t / 0.3)) ** 2 * innerHeight * 0.08;
     return pose;
   }
   const viewport = section.querySelector(".viewport");
