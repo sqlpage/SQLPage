@@ -69,7 +69,7 @@
 .purpose-section .scene-stop {
   left: 0;
   right: auto;
-  top: 150px;
+  top: 130px;
   width: 18%;
 }
 .landing-section.purpose-section .section-inner > h2 {
@@ -303,7 +303,7 @@
   padding-bottom: 105px;
 }
 .purpose-section h2 {
-  min-height: 330px;
+  min-height: 355px;
   font-size: clamp(48px, 6.5vw, 89px);
 }
 .purpose-section h2 span {
