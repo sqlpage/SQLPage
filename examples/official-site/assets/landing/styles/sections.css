@@ -80,7 +80,12 @@
   width: 100%;
 }
 
+.landing-section .demo-sculpture {
+  top: -50px;
+  width: 18%;
+}
 .demo-section {
+  padding-top: 70px;
   --section-color: #f6f8fa;
   background: #f6f8fa;
   color: #0b1020;
