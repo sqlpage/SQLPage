@@ -375,7 +375,7 @@ const sqlpage_chart = (() => {
             return linkTooltipValue(
               formatted,
               w?.config &&
-                args?.seriesIndex &&
+                args?.seriesIndex !== undefined &&
                 pointLink({ ...args, w }, points),
             );
           },
