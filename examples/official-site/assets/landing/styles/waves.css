@@ -1,0 +1,58 @@
+/* Shared flowing silhouettes overlap the previous section, hiding hard joins. */
+.wave-definitions {
+  position: absolute;
+}
+.section-wave {
+  position: absolute;
+  top: -72px;
+  left: 0;
+  width: 100%;
+  height: 74px;
+  overflow: hidden;
+  pointer-events: none;
+  fill: var(--section-color);
+}
+.wave-front {
+  stroke: #39d3e5;
+  stroke-width: 0.6;
+  animation: landing-wave 18s ease-in-out infinite alternate;
+}
+.wave-back {
+  opacity: 0.22;
+  fill: #39d3e5;
+  transform: translate(-160px, -8px);
+  animation: landing-wave-echo 24s ease-in-out infinite alternate-reverse;
+}
+@keyframes landing-wave-echo {
+  from {
+    transform: translate(120px, -8px);
+  }
+  to {
+    transform: translate(-120px, -3px);
+  }
+}
+@keyframes landing-wave {
+  from {
+    transform: translate(-150px, 0);
+  }
+  to {
+    transform: translate(150px, 6px);
+  }
+}
+@media (max-width: 900px) {
+  .section-wave {
+    top: -48px;
+    height: 50px;
+  }
+}
+@media (max-width: 600px) {
+  .section-wave {
+    top: -36px;
+    height: 38px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .section-wave use {
+    animation: none;
+  }
+}

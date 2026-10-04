@@ -22,8 +22,10 @@ export function initScrollProgress(section, mount, state) {
   function travel(a, b, t, distance) {
     // Spend most of the reading interval near the stops, with a quick passage
     // between them. A small drift keeps the sculpture alive at either landing.
-    const progress = t - (0.96 * Math.sin(2 * Math.PI * t)) / (2 * Math.PI);
-    const pose = mix(a, b, ease(progress));
+    // The first 70% belongs to the current section, the last 30% is a
+    // transition. Unlike easing the whole interval, this creates a real dwell.
+    const progress = ease((t - 0.7) / 0.3);
+    const pose = mix(a, b, progress);
     const arc = Math.sin(Math.PI * progress) ** 2;
     const bounds = SCULPTURE_FRAME.bounds;
     const center = bounds.left + SCULPTURE_FRAME.bodyWidth / 2;
@@ -42,7 +44,8 @@ export function initScrollProgress(section, mount, state) {
       Math.min(innerHeight * 0.7, centerY),
     );
     pose.top += (corridorY - centerY - innerHeight * 0.08) * arc;
-    pose.top -= (distance * 0.04 * Math.sin(2 * Math.PI * t)) / (2 * Math.PI);
+    // Only a few pixels of vertical drift while reading; rotation is independent.
+    pose.top -= Math.sin(t * Math.PI * 2) * Math.min(8, distance * 0.004);
     return pose;
   }
   const viewport = section.querySelector(".viewport");

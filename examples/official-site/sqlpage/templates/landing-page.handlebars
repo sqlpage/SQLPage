@@ -23,6 +23,9 @@
   </head>
   <body>
     <main class="sqlpage-world" data-motion="off" data-scene="idle">
+      <svg class="wave-definitions" aria-hidden="true" width="0" height="0">
+        <defs><path id="landing-wave" d="M-600 48 C-400 12 -200 85 0 48 S400 12 600 48 S1000 85 1200 48 S1600 12 1800 48 V120 H-600 Z" /></defs>
+      </svg>
       <a class="skip-link" href="/your-first-sql-website/"
         >Start building with SQLPage</a
       >
@@ -171,6 +174,7 @@
       </section>
 
       <section class="landing-section demo-section" id="components" aria-labelledby="demo-title">
+        <svg class="section-wave" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true"><use class="wave-back" href="#landing-wave" /><use class="wave-front" href="#landing-wave" /></svg>
         <div class="section-inner">
           <p class="eyebrow">-- real SQLPage components, a few lines each</p>
           <h2 id="demo-title">Data,<br />but clickable.</h2>
@@ -195,6 +199,7 @@
         </div>
       </section>
       <section class="landing-section purpose-section" aria-labelledby="purpose-title">
+        <svg class="section-wave" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true"><use class="wave-back" href="#landing-wave" /><use class="wave-front" href="#landing-wave" /></svg>
         <div class="section-inner">
           <p class="eyebrow">-- Low maintenance, on purpose.</p>
           <h2 id="purpose-title"><em>A useful tool for them.</em><br /><span>A manageable application<br />for you.</span></h2>
@@ -255,6 +260,7 @@
         </div>
       </section>
       <section class="landing-section deployment-section" aria-labelledby="deployment-title">
+        <svg class="section-wave" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true"><use class="wave-back" href="#landing-wave" /><use class="wave-front" href="#landing-wave" /></svg>
         <div class="section-inner deployment-grid">
           <div>
             <p class="eyebrow">-- Your files. Your deployment.</p>
@@ -293,6 +299,7 @@ $ cd /srv/tickets &amp;&amp; sqlpage
         </div>
       </section>
       <section class="landing-section databases-section" aria-labelledby="databases-title">
+        <svg class="section-wave" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true"><use class="wave-back" href="#landing-wave" /><use class="wave-front" href="#landing-wave" /></svg>
         <div class="section-inner">
           <p class="eyebrow">SELECT * FROM your_database;</p>
           <h2 id="databases-title">Keep your<br />database. <em>Add<br />the app.</em></h2>
@@ -306,16 +313,17 @@ $ cd /srv/tickets &amp;&amp; sqlpage
             <a href="/your-first-sql-website/#connect-to-a-custom-database">MariaDB<small>-- native driver</small></a>
             <a href="/your-first-sql-website/#connect-to-a-custom-database">SQL Server<small>-- native driver</small></a>
             <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Oracle<small>-- through ODBC</small></a>
-            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">ClickHouse<small>-- through ODBC</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">ClickHouse<small>-- ODBC + pg protocol</small></a>
             <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Snowflake<small>-- through ODBC</small></a>
             <a href="https://github.com/sqlpage/SQLPage#odbc-setup">BigQuery<small>-- through ODBC</small></a>
             <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Databricks<small>-- through ODBC</small></a>
-            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">DuckDB<small>-- quack {{icon_img "feather"}}</small></a>
-            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Db2<small>-- yes, this one too</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">DuckDB<small>-- quack <span class="emoji">🦆 👍</span></small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Db2<small>-- yes, but why ?</small></a>
           </div>
         </div>
       </section>
       <section class="landing-section commit-section" aria-labelledby="commit-title">
+        <svg class="section-wave" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true"><use class="wave-back" href="#landing-wave" /><use class="wave-front" href="#landing-wave" /></svg>
         <div class="section-inner">
           <p class="eyebrow">-- A tool for them. Not a second job for you.</p>
           <h2 id="commit-title">Small team.<br />Serious tools;</h2>

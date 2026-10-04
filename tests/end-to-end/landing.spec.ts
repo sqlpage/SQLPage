@@ -46,7 +46,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   let previousTurn = Number(
     await page.locator("canvas").getAttribute("data-scroll-turn"),
   );
-  for (const progress of [0, 0.03, 0.06, 0.25, 0.5, 1]) {
+  for (const progress of [0, 0.03, 0.06, 0.5, 0.85, 1]) {
     const scroll = Math.round(route[0] + (route[1] - route[0]) * progress);
     await page.evaluate((y) => window.scrollTo(0, y), scroll);
     await expect
@@ -75,12 +75,59 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   expect(drift).toBeGreaterThan(0.2);
   expect(drift).toBeLessThan(scrollStep * 0.15);
   const restingSpin = (poses[2].turn - poses[1].turn) / 0.03;
-  const travelingSpin = (poses[4].turn - poses[3].turn) / 0.25;
+  const travelingSpin = (poses[4].turn - poses[3].turn) / 0.35;
   expect(restingSpin / travelingSpin).toBeCloseTo(1, 1);
+  expect(Math.abs(poses[3].x - poses[0].x)).toBeLessThan(2);
+  expect(Math.abs(poses[3].y - poses[0].y)).toBeLessThan(12);
   expect(Math.abs(poses[4].x - poses[0].x)).toBeGreaterThan(5);
   expect(Math.abs(poses[4].x - (poses[0].x + poses[5].x) / 2)).toBeGreaterThan(
     5,
   );
+
+  // Reading poses stay in the reserved rail, clear of real component controls.
+  const readingStops = await page.locator("[data-scene-stop]").all();
+  for (let index = 0; index < readingStops.length - 1; index++) {
+    const previous = await page
+      .locator("canvas")
+      .getAttribute("data-scroll-turn");
+    await readingStops[index].evaluate((stop) => {
+      const section = stop.closest("section")!;
+      const next = section.nextElementSibling as HTMLElement;
+      window.scrollTo(
+        0,
+        (section.offsetTop + next.offsetTop) / 2 - innerHeight * 0.12,
+      );
+    });
+    await expect(page.locator("canvas")).not.toHaveAttribute(
+      "data-scroll-turn",
+      previous!,
+    );
+    const overlap = await readingStops[index].evaluate((stop) => {
+      const frame = document.querySelector("canvas")!.getBoundingClientRect();
+      const body = {
+        left: frame.left + frame.width * 0.291366,
+        right: frame.left + frame.width * 0.685044,
+        top: frame.top + frame.height * 0.224284,
+        bottom: frame.top + frame.height * 0.803486,
+      };
+      return [
+        ...stop
+          .closest("section")!
+          .querySelectorAll(
+            ".demo-layout, .purpose-grid, .deployment-example, .database-grid",
+          ),
+      ].some((element) => {
+        const rect = element.getBoundingClientRect();
+        return (
+          body.left < rect.right &&
+          body.right > rect.left &&
+          body.top < rect.bottom &&
+          body.bottom > rect.top
+        );
+      });
+    });
+    expect(overlap).toBe(false);
+  }
 
   // Keep the real cinematic check above; stop idle animation while exercising UI
   // so software WebGL on CI does not compete with iframe and input rendering.

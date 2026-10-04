@@ -5,11 +5,6 @@
   position: absolute;
   height: 100svh;
 }
-.purpose-section .purpose-sculpture {
-  top: 53%;
-  left: 32%;
-  width: 5%;
-}
 /* The shared sculpture is positioned by section anchors, never duplicated. */
 .scene-layer {
   position: fixed;
@@ -38,12 +33,10 @@
   position: relative;
 }
 .landing-section {
+  --section-color: #080d19;
   position: relative;
   margin-top: -1px;
   padding: 110px 5.5% 100px;
-  border-top: 2px solid #3bd4e1;
-  border-radius: 50% 50% 0 0 / 65px 65px 0 0;
-  box-shadow: 0 -12px 35px #39d3e51c;
 }
 .section-inner {
   position: relative;
@@ -67,16 +60,29 @@
 }
 .scene-stop {
   position: absolute;
-  width: 22%;
+  top: 20px;
+  right: 0;
+  width: 14%;
   aspect-ratio: 0.68;
   pointer-events: none;
 }
-.demo-sculpture {
-  top: -20px;
-  right: 6%;
-  width: 17%;
+.purpose-section .scene-stop {
+  width: 9%;
 }
+.landing-section .section-inner > h2,
+.purpose-intro,
+.demo-layout,
+.purpose-grid,
+.deployment-grid > div:not(.scene-stop),
+.database-grid {
+  width: 80%;
+}
+.deployment-grid > div:not(.scene-stop) {
+  width: 100%;
+}
+
 .demo-section {
+  --section-color: #f6f8fa;
   background: #f6f8fa;
   color: #0b1020;
   padding-bottom: 85px;
@@ -185,6 +191,7 @@
   margin-top: 30px;
 }
 .purpose-section {
+  --section-color: #101324;
   background: #101324;
   padding-bottom: 175px;
 }
@@ -334,16 +341,16 @@ a.chip:hover {
   height: 14px;
 }
 .deployment-section {
-  background: linear-gradient(110deg, #30d6df, #2bb5c4);
+  --section-color: #2bc5cf;
+  background: var(--section-color);
   color: #071322;
-  margin-top: -50px;
   padding-bottom: 140px;
-  overflow: clip;
 }
 .deployment-grid {
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 80px;
+  grid-template-columns: 1.1fr 1fr;
+  padding-right: 20%;
+  gap: 40px;
 }
 .deployment-section .eyebrow {
   color: #15566a;
@@ -380,22 +387,12 @@ a.chip:hover {
   color: #123e51;
   border-color: #123e51;
 }
-.deployment-sculpture {
-  left: 1%;
-  top: calc(100% - 10px);
-  width: 17%;
-}
 .databases-section {
+  --section-color: #27314b;
   background: #27314b;
-  margin-top: -50px;
 }
 .databases-section h2 {
   font-size: clamp(64px, 8.4vw, 116px);
-}
-.database-sculpture {
-  top: -15px;
-  right: 5%;
-  width: 21%;
 }
 .database-grid {
   display: grid;
@@ -431,6 +428,12 @@ a.chip:hover {
   font-size: 11px;
   color: #588a9c;
 }
+.emoji {
+  font-family:
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 15px;
+}
+
 .database-grid svg {
   width: 12px;
   height: 12px;
@@ -440,11 +443,6 @@ a.chip:hover {
 }
 .commit-section h2 {
   color: #2fc7d4;
-}
-.commit-sculpture {
-  top: -20px;
-  right: 2%;
-  width: 22%;
 }
 .commit-action {
   display: flex;
@@ -497,7 +495,6 @@ a.chip:hover {
 @media (max-width: 900px) {
   .landing-section {
     padding: 80px 6% 70px;
-    border-radius: 50% 50% 0 0 / 40px 40px 0 0;
   }
   .demo-layout {
     grid-template-columns: 165px minmax(0, 1fr);
@@ -522,13 +519,8 @@ a.chip:hover {
   .purpose-grid {
     grid-template-columns: 1fr;
   }
-  .purpose-section .purpose-sculpture {
-    top: 45%;
-    left: 85%;
-    width: 7%;
-  }
   .deployment-grid {
-    gap: 30px;
+    gap: 20px;
   }
   .database-grid {
     gap: 14px;
@@ -542,9 +534,25 @@ a.chip:hover {
   }
 }
 @media (max-width: 600px) {
+  .landing-section .scene-stop,
+  .purpose-section .scene-stop {
+    width: 8%;
+    right: -3%;
+    top: 35px;
+  }
+  .landing-section .section-inner > h2,
+  .purpose-intro,
+  .demo-layout,
+  .purpose-grid,
+  .database-grid {
+    width: 91%;
+    max-width: 91%;
+  }
+  .deployment-grid {
+    padding-right: 9%;
+  }
   .landing-section {
     padding: 65px 6% 65px;
-    border-radius: 50% 50% 0 0 / 28px 28px 0 0;
   }
   .landing-section h2 {
     font-size: clamp(43px, 10.5vw, 63px);
@@ -552,11 +560,6 @@ a.chip:hover {
   }
   .eyebrow {
     font-size: 10px;
-  }
-  .demo-sculpture {
-    width: 20%;
-    top: 20px;
-    right: 0;
   }
   .demo-section h2 {
     max-width: 78%;
@@ -622,7 +625,7 @@ a.chip:hover {
     gap: 10px;
   }
   .deployment-section h2 {
-    font-size: 76px;
+    font-size: 68px;
   }
   .deployment-notes {
     margin: 25px 0;
@@ -632,15 +635,6 @@ a.chip:hover {
   }
   .deployment-section {
     padding-bottom: 150px;
-  }
-  .deployment-sculpture {
-    width: 20%;
-    top: calc(100% + 10px);
-  }
-  .database-sculpture {
-    width: 23%;
-    top: 15px;
-    right: 0;
   }
   .databases-section h2 {
     max-width: 75%;
@@ -656,11 +650,6 @@ a.chip:hover {
   .database-grid a {
     font-size: 18px;
     padding: 20px 14px;
-  }
-  .commit-sculpture {
-    width: 20%;
-    right: 0;
-    top: 24px;
   }
   .commit-section h2 {
     font-size: 43px;
