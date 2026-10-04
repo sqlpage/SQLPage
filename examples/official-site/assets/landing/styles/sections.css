@@ -67,7 +67,23 @@
   pointer-events: none;
 }
 .purpose-section .scene-stop {
-  width: 9%;
+  left: 0;
+  right: auto;
+  top: 145px;
+  width: 12%;
+}
+.landing-section.purpose-section .section-inner > h2 {
+  width: 100%;
+}
+.purpose-section h2 span {
+  width: 80%;
+  margin-left: 20%;
+}
+.landing-section .deployment-sculpture {
+  left: 0;
+  right: auto;
+  top: auto;
+  bottom: -110px;
 }
 .landing-section .section-inner > h2,
 .purpose-intro,
@@ -725,6 +741,22 @@ a.chip:hover {
   .code-panel {
     padding: 16px;
     font-size: 11px;
+  }
+  .purpose-section .scene-stop {
+    left: 0;
+    right: auto;
+    top: 125px;
+    width: 14%;
+  }
+  .landing-section .demo-sculpture {
+    width: 19%;
+    right: 0;
+    top: 0;
+  }
+  .landing-section .deployment-sculpture {
+    top: auto;
+    bottom: -55px;
+    left: 0;
   }
   .purpose-section h2 {
     font-size: clamp(35px, 8.5vw, 52px);

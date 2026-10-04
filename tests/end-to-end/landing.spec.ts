@@ -68,23 +68,21 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   }
   expect(poses[1].turn).toBeGreaterThan(poses[0].turn);
   expect(poses[2].turn).toBeGreaterThan(poses[1].turn);
-  // Near the anchor, vertical movement is gentle but never parked; rotation
-  // keeps the same pace as the subsequent transition.
-  const drift = Math.abs(poses[2].y - poses[1].y);
+  // Reading follows ordinary document scrolling; spin is independent of docking.
   const scrollStep = (route[1] - route[0]) * 0.03;
-  expect(drift).toBeGreaterThan(0.2);
-  expect(drift).toBeLessThan(scrollStep * 0.15);
+  expect(poses[2].y - poses[1].y).toBeCloseTo(-scrollStep, 0);
   const restingSpin = (poses[2].turn - poses[1].turn) / 0.03;
   const travelingSpin = (poses[4].turn - poses[3].turn) / 0.35;
   expect(restingSpin / travelingSpin).toBeCloseTo(1, 1);
-  expect(Math.abs(poses[3].x - poses[0].x)).toBeLessThan(2);
-  expect(Math.abs(poses[3].y - poses[0].y)).toBeLessThan(12);
-  expect(Math.abs(poses[4].x - poses[0].x)).toBeGreaterThan(5);
-  expect(Math.abs(poses[4].x - (poses[0].x + poses[5].x) / 2)).toBeGreaterThan(
-    5,
-  );
+  expect(Math.abs(poses[1].x - poses[0].x)).toBeLessThan(2);
+  // The transfer stays between its landing positions, with a curved vertical arc.
+  for (const pose of poses) {
+    expect(pose.x).toBeGreaterThan(Math.min(poses[0].x, poses[5].x) - 40);
+    expect(pose.x).toBeLessThan(Math.max(poses[0].x, poses[5].x) + 40);
+  }
+  expect(poses[3].y).toBeLessThan(poses[0].y - scrollStep * 5);
 
-  // Reading poses stay in the reserved rail, clear of real component controls.
+  // Reading poses stay clear of real component controls.
   const readingStops = await page.locator("[data-scene-stop]").all();
   for (let index = 0; index < readingStops.length - 1; index++) {
     const previous = await page

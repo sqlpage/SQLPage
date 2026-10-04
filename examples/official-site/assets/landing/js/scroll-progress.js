@@ -20,32 +20,13 @@ export function initScrollProgress(section, mount, state) {
     size: a.size + (b.size - a.size) * t,
   });
   function travel(a, b, t, distance) {
-    // Spend most of the reading interval near the stops, with a quick passage
-    // between them. A small drift keeps the sculpture alive at either landing.
-    // The first 70% belongs to the current section, the last 30% is a
-    // transition. Unlike easing the whole interval, this creates a real dwell.
-    const progress = ease((t - 0.7) / 0.3);
+    // Keep the authored pose attached to its section during reading. Transfer
+    // through the space above the content, along a broad, bounded curve.
+    const progress = ease((t - 0.4) / 0.6);
     const pose = mix(a, b, progress);
     const arc = Math.sin(Math.PI * progress) ** 2;
-    const bounds = SCULPTURE_FRAME.bounds;
-    const center = bounds.left + SCULPTURE_FRAME.bodyWidth / 2;
-    // Travel through the outer gutter, compact enough to clear demos and copy.
-    // The envelope also slows the gutter detour and scale change at each stop.
-    const size = pose.size;
-    pose.size +=
-      (Math.min(size, (innerWidth * 0.12) / SCULPTURE_FRAME.bodyWidth) - size) *
-      arc;
-    pose.left += (size - pose.size) * center;
-    pose.top += ((size - pose.size) * (bounds.top + bounds.bottom)) / 2;
-    pose.left += (innerWidth * 0.92 - (pose.left + pose.size * center)) * arc;
-    const centerY = pose.top + (pose.size * (bounds.top + bounds.bottom)) / 2;
-    const corridorY = Math.max(
-      innerHeight * 0.3,
-      Math.min(innerHeight * 0.7, centerY),
-    );
-    pose.top += (corridorY - centerY - innerHeight * 0.08) * arc;
-    // Only a few pixels of vertical drift while reading; rotation is independent.
-    pose.top -= Math.sin(t * Math.PI * 2) * Math.min(8, distance * 0.004);
+    pose.left += Math.sin(progress * Math.PI * 2) * innerWidth * 0.025 * arc;
+    pose.top -= arc * distance * 0.65;
     return pose;
   }
   const viewport = section.querySelector(".viewport");
@@ -121,11 +102,12 @@ export function initScrollProgress(section, mount, state) {
           Math.cos(t * Math.PI * 2) * innerHeight * 0.025 * arc;
       } else {
         state.frame = travel(
-          gallery,
-          { ...anchors[1], top: anchors[1].top - anchors[1].scroll },
+          { ...gallery, top: gallery.top + scroll },
+          anchors[1],
           clamp((scroll - end) / (anchors[1].scroll - end)),
           anchors[1].scroll - end,
         );
+        state.frame.top -= scroll;
       }
     } else {
       let index = 0;
@@ -135,53 +117,9 @@ export function initScrollProgress(section, mount, state) {
       const b = anchors[index + 1];
       const t = clamp((scroll - a.scroll) / (b.scroll - a.scroll));
       state.frame = state.motion
-        ? travel(
-            { ...a, top: a.top - a.scroll },
-            { ...b, top: b.top - b.scroll },
-            t,
-            b.scroll - a.scroll,
-          )
+        ? travel(a, b, t, b.scroll - a.scroll)
         : mix(a, b, ease(t));
-      if (!state.motion) state.frame.top -= scroll;
-      if (state.motion && scroll > b.scroll) {
-        // Keep the last composition gently orbiting while scrolling toward the footer.
-        const tail = (scroll - b.scroll) / innerHeight;
-        state.frame.left += Math.sin(tail * 2) * innerWidth * 0.025;
-        state.frame.top -= Math.sin(tail * 2) * innerHeight * 0.02;
-      }
-    }
-    // The full-width demo owns the screen while its controls are being read.
-    // Fold the sculpture into the outside gutter before the panel reaches it,
-    // then release it smoothly into the next section's reserved landing rail.
-    if (
-      state.motion &&
-      scroll >= anchors[1].scroll &&
-      scroll < anchors[2].scroll
-    ) {
-      const bounds = SCULPTURE_FRAME.bounds;
-      const panel = root.querySelector("#demo-panel").getBoundingClientRect();
-      const bottom = state.frame.top + state.frame.size * bounds.bottom;
-      const t =
-        (scroll - anchors[1].scroll) / (anchors[2].scroll - anchors[1].scroll);
-      const clearance =
-        ease((bottom + 100 - panel.top) / 100) * (1 - ease((t - 0.7) / 0.3));
-      const width = Math.max(
-        14,
-        Math.min(innerWidth * 0.05, (innerWidth - panel.right - 10) * 0.7),
-      );
-      const size = width / SCULPTURE_FRAME.bodyWidth;
-      state.frame = mix(
-        state.frame,
-        {
-          left: innerWidth - width - 8 - size * bounds.left,
-          top:
-            state.frame.top +
-            ((state.frame.size - size) * (bounds.top + bounds.bottom)) / 2,
-          size,
-        },
-        clearance,
-      );
-      state.frame.top -= Math.sin(clearance * Math.PI) * 15;
+      state.frame.top -= scroll;
     }
     Object.assign(preview.style, {
       left: `${state.frame.left}px`,
