@@ -1,0 +1,88 @@
+.sqlpage-world {
+  overflow-x: clip;
+  background: var(--ink);
+}
+.experience {
+  position: relative;
+  height: 245svh;
+  min-height: 1640px;
+  --composition-width: min(100vw, 195svh);
+  --composition-left: max(0px, calc((100vw - 195svh) / 2));
+  --progress: 0;
+  --intro-opacity: 1;
+  --intro-shift: 0px;
+  --ribbon-opacity: 1;
+}
+.viewport {
+  height: 100svh;
+  min-height: 560px;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 79% 26%, #183d4755, transparent 57%), #080e11;
+}
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+}
+.scene-preview {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  max-width: none;
+  width: min(85vw, 140svh);
+  height: auto;
+  left: 32%;
+  top: 8%;
+}
+[data-scene="ready"] .scene-preview {
+  visibility: hidden;
+}
+[data-scene="ready"] .scene-canvas {
+  opacity: 1;
+}
+.scene-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cinematic-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, #05090da6, transparent 66%),
+    radial-gradient(ellipse at 53% 49%, transparent 39%, #04070b66 100%);
+  opacity: calc(0.9 - var(--progress) * 0.3);
+}
+.surface-finish {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.2;
+  background: repeating-linear-gradient(
+    0deg,
+    #a9ccd203 0,
+    #a9ccd203 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: screen;
+}
+
+/* The landing page remains usable without a working WebGL scene. */
+.sqlpage-world:not([data-scene="ready"]) .experience {
+  height: var(--stage-height, 100svh);
+  min-height: 560px;
+}
+.sqlpage-world:not([data-scene="ready"]) .viewport {
+  position: relative;
+  top: 0;
+}

@@ -1,0 +1,49 @@
+/* Native modal provides focus trapping, Escape and focus restoration. */
+.navigation-dialog {
+  position: fixed;
+  width: min(90vw, 440px);
+  max-height: 85svh;
+  overflow: auto;
+  color: var(--foreground);
+  background: #0b141bec;
+  border: 1px solid #355766;
+  border-radius: 12px;
+  padding: 30px;
+  backdrop-filter: blur(24px);
+}
+.navigation-dialog::backdrop {
+  background: #02090de0;
+  backdrop-filter: blur(10px);
+}
+.navigation-dialog h2 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -1px;
+}
+.navigation-dialog p {
+  color: #8b9fa5;
+}
+.navigation-dialog nav {
+  display: flex;
+  flex-direction: column;
+  margin-top: 13px;
+}
+.navigation-dialog nav a {
+  font-size: 20px;
+  padding: 17px 0;
+  border-top: 1px solid #43626a44;
+}
+.navigation-dialog nav a:hover {
+  color: var(--cyan);
+}
+.dialog-close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  color: inherit;
+  background: none;
+  border: 0;
+}

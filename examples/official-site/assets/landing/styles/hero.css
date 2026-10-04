@@ -1,0 +1,246 @@
+.engraved-comment {
+  position: absolute;
+  right: calc(var(--composition-left) + var(--composition-width) * 0.045);
+  top: 16%;
+  z-index: 15;
+  width: clamp(248px, 18vw, 330px);
+  opacity: var(--intro-opacity);
+  transform: translateX(calc(var(--progress) * 30px));
+  pointer-events: none;
+}
+.metal-recess {
+  position: relative;
+  overflow: hidden;
+  padding: 19px 24px 20px;
+  border: 0;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      #b7d0da01 0,
+      #b7d0da01 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    linear-gradient(135deg, #020609, #0a1217 72%, #0b1419);
+  box-shadow:
+    inset 0 5px 9px #000b,
+    inset 3px 0 6px #0007,
+    inset -1px -1px 1px #93b0be15,
+    0 1px 0 #7895a51b;
+}
+.metal-recess:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 1px #000,
+    inset 0 -1px 0 #afc8d313;
+  pointer-events: none;
+}
+.metal-recess:after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 2px;
+  border-top: 1px solid #0007;
+  border-left: 1px solid #0003;
+  pointer-events: none;
+}
+.metal-recess code {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  color: #83969f;
+  font: clamp(13px, 0.82vw, 16px) / 1.65 var(--mono);
+  letter-spacing: -0.025em;
+  text-shadow:
+    0 -1px 1px #000,
+    0 1px 0 #bfd7e01b;
+}
+.metal-recess code b {
+  font-weight: 400;
+  color: #607781;
+}
+.hero-copy {
+  position: absolute;
+  top: 13%;
+  left: calc(var(--composition-left) + var(--composition-width) * 0.042);
+  width: calc(var(--composition-width) * 0.608);
+  pointer-events: none;
+}
+.hero-copy h1 {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: clamp(88px, min(13.3vw, 19.5svh), 320px);
+  line-height: 0.94;
+  letter-spacing: -0.075em;
+  font-weight: 800;
+}
+.hero-copy h1 > span {
+  display: block;
+  position: relative;
+  width: max-content;
+  white-space: nowrap;
+  opacity: var(--intro-opacity);
+  transform: translate3d(var(--intro-shift), 0, 0);
+  will-change: transform, opacity;
+  /* Negative tracking needs a painted gutter for the final glyph. */
+  padding-inline-end: 0.105em;
+  overflow: visible;
+}
+.hero-copy .title-select,
+.hero-copy .title-from {
+  z-index: 6;
+}
+.hero-copy .title-website {
+  z-index: 4;
+  align-self: flex-end;
+  margin-inline-end: -0.105em;
+}
+.hero-copy .title-from {
+  align-self: flex-end;
+  margin-right: calc(var(--composition-width) * 0.045);
+}
+.anchor-letter {
+  display: inline;
+}
+.title-select,
+.title-from {
+  color: #e9e8e7;
+  text-shadow:
+    0 2px 1px #ffffff16,
+    1px 4px 8px #0008,
+    -1px -1px 0 #fff5;
+  background: linear-gradient(112deg, #f1efed, #e5e7e9 46%, #fff 73%, #dddfe3);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.title-website {
+  font-size: 0.985em;
+  letter-spacing: -0.071em;
+  padding: 4px 0 9px;
+  background: linear-gradient(
+    130deg,
+    #39869b,
+    #67cadc 44%,
+    #49adc7 70%,
+    #7edbef
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 2px #030a0f8c);
+}
+.title-from {
+  font-size: 0.985em;
+  line-height: 1.03;
+}
+.intro-row {
+  position: absolute;
+  left: 4.65%;
+  top: 72%;
+  width: fit-content;
+  max-width: calc(var(--composition-width) * 0.5);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: clamp(28px, 3vw, 60px);
+  opacity: var(--intro-opacity);
+  transform: translateX(var(--intro-shift));
+  pointer-events: auto;
+}
+.intro-row p {
+  font-size: clamp(17px, 1.5vw, 27px);
+  line-height: 1.35;
+  font-weight: 550;
+  letter-spacing: -0.5px;
+  margin: 0;
+  flex: 1;
+  color: #d5d7d9;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px #0009;
+}
+.run-link {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  color: #5fcfe2;
+  font-size: clamp(20px, 1.8vw, 29px);
+  white-space: nowrap;
+  transition: color 0.25s;
+  letter-spacing: -0.5px;
+}
+.run-orbit {
+  width: 70px;
+  height: 70px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid #4fb6ca70;
+  border-radius: 50%;
+  transition: box-shadow 0.3s;
+}
+.run-orbit > span {
+  position: absolute;
+  inset: 6px;
+  border: 5px solid #56bfd0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow:
+    inset 0 0 12px #42daf31a,
+    0 0 13px #42daf31a;
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+.run-orbit > span .icon {
+  margin-left: 3px;
+  width: 21px;
+}
+.run-orbit > i {
+  position: absolute;
+  inset: -6px;
+  border-top: 2px solid #57c5db;
+  border-right: 2px solid transparent;
+  border-bottom: 2px solid #57c5db;
+  border-left: 2px solid transparent;
+  border-radius: 50%;
+  transform: rotate(25deg);
+  transition: transform 0.55s;
+}
+.run-orbit > i:before,
+.run-orbit > i:after {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  top: 10px;
+  right: 9px;
+  background: #6bd7e9;
+  box-shadow: 0 0 8px #43c9ed;
+  border-radius: 50%;
+}
+.run-orbit > i:after {
+  top: auto;
+  right: auto;
+  bottom: 10px;
+  left: 9px;
+}
+.run-link:hover {
+  color: #b7f2ff;
+}
+.run-link:hover .run-orbit {
+  box-shadow: 0 0 32px #59d7ed22;
+}
+.run-link:hover .run-orbit > i {
+  transform: rotate(100deg);
+}
+.run-link:hover .run-orbit > span {
+  background: #51c1d0;
+  color: #07171c;
+}

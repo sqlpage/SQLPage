@@ -1,0 +1,55 @@
+/* External SVG masks inherit the surrounding text color, including hover states. */
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--icon-size, 24px);
+  height: var(--icon-size, 24px);
+  background-color: currentColor;
+  -webkit-mask: var(--icon-image) center / contain no-repeat;
+  mask: var(--icon-image) center / contain no-repeat;
+}
+
+.icon-diamond {
+  --icon-size: 24px;
+  --icon-image: url("../assets/icons/diamond.svg");
+}
+
+.icon-database {
+  --icon-size: 35px;
+  --icon-image: url("../assets/icons/database.svg");
+}
+
+.icon-menu {
+  --icon-size: 25px;
+  --icon-image: url("../assets/icons/menu.svg");
+}
+
+.icon-play {
+  --icon-size: 23px;
+  --icon-image: url("../assets/icons/play.svg");
+}
+
+.icon-list {
+  --icon-size: 22px;
+  --icon-image: url("../assets/icons/list.svg");
+}
+
+.icon-chart {
+  --icon-size: 22px;
+  --icon-image: url("../assets/icons/chart.svg");
+}
+
+.icon-table {
+  --icon-size: 22px;
+  --icon-image: url("../assets/icons/table.svg");
+}
+
+.icon-code {
+  --icon-size: 22px;
+  --icon-image: url("../assets/icons/code.svg");
+}
+
+.icon-close {
+  --icon-size: 24px;
+  --icon-image: url("../assets/icons/close.svg");
+}

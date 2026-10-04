@@ -3,7 +3,8 @@ HTTP 200
 [Asserts]
 body contains "SQLPage"
 body contains "Documentation"
-body contains "Get Started"
+body contains "Run it"
+body contains "/assets/landing/js/main.js"
 body not contains "An error occurred"
 
 GET http://localhost:8080/documentation.sql

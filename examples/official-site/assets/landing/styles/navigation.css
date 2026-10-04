@@ -1,0 +1,176 @@
+.site-header {
+  height: 12.5%;
+  max-height: 145px;
+  min-height: 96px;
+  margin: 0 calc(var(--composition-left) + var(--composition-width) * 0.045);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  position: relative;
+  z-index: 30;
+}
+.brand {
+  font-weight: 750;
+  font-size: clamp(25px, 2.6vw, 43px);
+  letter-spacing: -1.4px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  text-shadow: 0 2px 3px #0009;
+}
+.brand-symbol {
+  display: grid;
+  justify-items: center;
+  color: #7ad8e6;
+}
+.brand-symbol .icon:first-child {
+  margin-bottom: -3px;
+  filter: drop-shadow(0 0 5px #38c9e554);
+}
+.brand-symbol .icon:last-child {
+  width: 39px;
+  height: 42px;
+  color: #4cb9ce;
+} /* Thin, smoked glass: refracted background, a polished edge, and an inner caustic. */
+.desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.desktop-nav .glass-button {
+  --glass-x: 50%;
+  --glass-y: 20%;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 46px;
+  padding: 12px 22px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: clamp(14px, 1.32vw, 21px);
+  color: #d7e0e4;
+  background:
+    radial-gradient(
+      ellipse at var(--glass-x) var(--glass-y),
+      #9cdef715,
+      transparent 68%
+    ),
+    linear-gradient(118deg, #b4e9fa0b, transparent 38%, #74c4de08),
+    linear-gradient(180deg, #263c482b 0%, #0711178c 54%, #18333d55 100%);
+  backdrop-filter: blur(17px) saturate(1.22) brightness(1.08);
+  -webkit-backdrop-filter: blur(17px) saturate(1.22) brightness(1.08);
+  box-shadow:
+    inset 0 1px 1px #e3f6ff19,
+    inset 1px 0 1px #a7eaff0c,
+    inset 0 -1.5px 1px #62b8cc30,
+    inset 0 -5px 9px #56cae508,
+    0 5px 16px #0005,
+    0 1px 2px #0008;
+  transition:
+    box-shadow 0.32s,
+    color 0.25s,
+    transform 0.25s;
+}
+.desktop-nav .glass-button:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    #a5d9e638 0%,
+    #5c9daf38 22%,
+    #142f3f14 46%,
+    #46a0b16b 76%,
+    #b2edf24d 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.desktop-nav .glass-button:after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 12%;
+  right: 12%;
+  height: 42%;
+  border-radius: 50% 50% 45% 45% / 15% 15% 75% 75%;
+  background: linear-gradient(165deg, #dcf4ff0f, transparent 62%);
+  border-top: 1px solid #e9fbff19;
+  pointer-events: none;
+  opacity: 0.65;
+  transition: opacity 0.3s;
+}
+.desktop-nav .glass-button > span {
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.015em;
+  text-shadow:
+    0 1px 2px #000b,
+    0 -1px 0 #ffffff08;
+}
+.desktop-nav .glass-button:hover,
+.desktop-nav .glass-button:focus-visible {
+  color: #f0f9fc;
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 1px #ebfaff36,
+    inset 0 -1.5px 2px #84e1f270,
+    inset 0 -7px 14px #65cfe511,
+    0 6px 18px #0005,
+    0 2px 12px #3cc5e21b;
+}
+.desktop-nav .glass-button:hover:after {
+  opacity: 1;
+}
+.desktop-nav .glass-button:active {
+  transform: translateY(0.5px);
+  box-shadow:
+    inset 0 2px 7px #0005,
+    inset 0 -1px 1px #8cdded50,
+    0 1px 7px #0005;
+}
+.desktop-nav .hosting-link {
+  background:
+    radial-gradient(
+      ellipse at var(--glass-x) var(--glass-y),
+      #a6e7fa24,
+      transparent 72%
+    ),
+    linear-gradient(180deg, #47718345, #15334163 52%, #21566950);
+  box-shadow:
+    inset 0 1px 1px #e5f8ff29,
+    inset 0 -1.5px 2px #90e8f378,
+    inset 0 -6px 12px #75d7ee18,
+    0 5px 17px #0004,
+    0 2px 16px #52d7f12b;
+}
+.desktop-nav .hosting-link:before {
+  background: linear-gradient(
+    137deg,
+    #c7f4ff5c,
+    #4591a464 25%,
+    #2350673b 45%,
+    #74e0f6b3 76%,
+    #caf8ff8f
+  );
+}
+.mobile-menu {
+  display: none;
+  background: none;
+  border: 0;
+  color: #d3e3e6;
+  padding: 10px;
+}
