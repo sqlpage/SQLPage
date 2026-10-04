@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test --reporter=line",
-    "gui": "playwright test --ui -- --projects='*'"
+    "gui": "playwright test --ui"
   },
   "keywords": [],
   "author": "",
