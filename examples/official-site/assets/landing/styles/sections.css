@@ -208,8 +208,11 @@
   line-height: 1.45;
 }
 .yak {
-  font: 19px / 1.2 var(--mono);
-  color: #a6abbb;
+  display: block;
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  justify-self: center;
 }
 .purpose-grid {
   display: grid;
@@ -593,7 +596,7 @@ a.chip:hover {
     grid-column: 1 / -1;
   }
   .yak {
-    font-size: 14px;
+    width: 140px;
   }
   .benefit-grid {
     gap: 10px;
