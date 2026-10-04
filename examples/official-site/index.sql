@@ -4,4 +4,7 @@ select 'http_header' as component,
     -- The scene uses pinned Three.js ES modules; keep this exception on the home page.
     'script-src ''self'' https://cdn.jsdelivr.net' as "Content-Security-Policy";
 
-select 'shell-home' as component;
+-- A full document template uses an empty shell rather than the default site chrome.
+select 'shell-empty' as component;
+select 'landing-page' as component,
+    sqlpage.read_file_as_text('landing-demos/table.sql') as demo_source;

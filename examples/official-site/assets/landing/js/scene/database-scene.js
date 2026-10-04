@@ -18,13 +18,8 @@ import {
 import { createSelectiveGlow } from "./selective-glow.js";
 
 const clamp = THREE.MathUtils.clamp;
-const smoothstep = (x, a, b) => {
-  const p = clamp((x - a) / (b - a), 0, 1);
-  return p * p * (3 - 2 * p);
-};
-
 /**
- * @typedef {{ progress: number, motion: boolean }} SceneState
+ * @typedef {{ motion: boolean, frame?: {left: number, top: number, size: number} }} SceneState
  * @typedef {{ zoom(amount: number): void, reset(): void, dispose(): void }} SceneController
  * @param {{ mount: HTMLElement, hitArea: HTMLElement, anchor: HTMLElement|null,
  *   getState: () => SceneState, onReady: () => void, onError: () => void }} options
@@ -54,8 +49,7 @@ export function createDatabaseScene({
     contextLost = false,
     frame = 0,
     last = 0,
-    time = 0,
-    progress = getState().progress;
+    time = 0;
   let renderedZoom = 0,
     width = 1,
     height = 1,
@@ -67,9 +61,7 @@ export function createDatabaseScene({
     canvasTop = 0,
     canvasWidth = 1000,
     canvasHeight = 1000;
-  let nativeResolution = false;
-  let visibleHeight = window.innerHeight,
-    entryOverflow = 0;
+  let lastFrame = "";
   const pointer = new THREE.Vector2();
   const parallax = new THREE.Vector2();
   const zeroPointer = new THREE.Vector2();
@@ -334,11 +326,9 @@ export function createDatabaseScene({
 
   const resize = () => {
     width = Math.max(1, mount.clientWidth);
-    landing = layoutLandingFrame(mount, anchor, getState().progress);
+    landing = layoutLandingFrame(mount, anchor);
     height = landing.height;
-    visibleHeight = window.innerHeight;
-    entryOverflow = Math.max(0, height - visibleHeight);
-    nativeResolution = false;
+
     // Render the landing frame at the WebP's exact raster resolution. Both
     // surfaces then receive the same browser scaling, including on high-DPI phones.
     renderer.setPixelRatio(1);
@@ -410,16 +400,12 @@ export function createDatabaseScene({
     hitArea.style.width = `${right - left}px`;
     hitArea.style.height = `${bottom - top}px`;
   };
-  const upAxis = new THREE.Vector3(0, 1, 0);
-  const galleryPosition = new THREE.Vector3(0, -0.08, 0);
-  const galleryDepth = new THREE.Vector3();
   const update = (timestamp) => {
     if (disposed || contextLost || !visible) return;
     const dt = Math.min((timestamp - last) / 1000 || 0.016, 0.05);
     last = timestamp;
     const state = getState();
     const ease = 1 - Math.exp(-dt * 8);
-    progress = THREE.MathUtils.lerp(progress, state.progress, ease);
     renderedZoom = THREE.MathUtils.lerp(renderedZoom, controls.userZoom, ease);
     // Loading time and pointer movement must not advance the reference frame.
     if (loaded && readySent && state.motion) time += dt;
@@ -429,34 +415,19 @@ export function createDatabaseScene({
     );
     controls.update(dt, readySent && state.motion);
     dragPivot.quaternion.copy(dragQuaternion);
-    const journey = smoothstep(progress, 0, 1);
-    const centerAmount = smoothstep(progress, 0.08, 0.72);
-    scrollPivot.quaternion
-      .setFromAxisAngle(upAxis, state.motion ? journey * Math.PI * 2 : 0)
-      .multiply(DEFAULT_TILT);
+    scrollPivot.quaternion.copy(DEFAULT_TILT);
     parallaxPivot.rotation.set(parallax.y * 0.035, parallax.x * 0.055, 0);
-    // Camera dolly is derived from ordinary page scrolling; wheel events remain untouched.
-    const distance = clamp(
-      THREE.MathUtils.lerp(CAMERA_DISTANCE, 8.2, journey) *
-        Math.exp(renderedZoom),
-      5.9,
-      17,
-    );
+    const distance = clamp(CAMERA_DISTANCE * Math.exp(renderedZoom), 5.9, 17);
     cameraForSculpture(camera, distance, parallax.x * 0.11, parallax.y * 0.075);
-    // A short screen sees the lower part of the initially taller stage after
-    // it pins. Centre and size the gallery inside that visible window.
-    if (entryOverflow > 0) {
-      galleryDepth.set(0, 0, 0).project(camera);
-      galleryPosition
-        .set(0, -entryOverflow / height, galleryDepth.z)
-        .unproject(camera);
-    } else galleryPosition.set(0, -0.08, 0);
-    // The first live canvas uses the same raster and CSS rectangle as the
-    // lossless preview. Scrolling expands it into the full gallery viewport.
-    canvasLeft = THREE.MathUtils.lerp(landing.left, 0, centerAmount);
-    canvasTop = THREE.MathUtils.lerp(landing.top, 0, centerAmount);
-    canvasWidth = THREE.MathUtils.lerp(landing.size, width, centerAmount);
-    canvasHeight = THREE.MathUtils.lerp(landing.size, height, centerAmount);
+    // One square renderer follows measured section anchors. The model, lighting,
+    // camera and materials stay the same throughout the page.
+    const position = state.frame ?? landing;
+    canvasLeft = position.left;
+    canvasTop = position.top;
+    canvasWidth = canvasHeight = position.size;
+    const frameKey = `${canvasLeft},${canvasTop},${canvasWidth}`;
+    if (frameKey !== lastFrame) needsRender = true;
+    lastFrame = frameKey;
     Object.assign(renderer.domElement.style, {
       position: "absolute",
       left: `${canvasLeft}px`,
@@ -464,33 +435,8 @@ export function createDatabaseScene({
       width: `${canvasWidth}px`,
       height: `${canvasHeight}px`,
     });
-    camera.aspect = canvasWidth / canvasHeight;
+    camera.aspect = 1;
     camera.updateProjectionMatrix();
-    if (centerAmount > 0 && !nativeResolution) {
-      const ratio = Math.min(
-        window.devicePixelRatio || 1,
-        width < 680 ? 1.4 : 1.7,
-      );
-      renderer.setPixelRatio(ratio);
-      renderer.setSize(width, height, false);
-      glow.setSize(width * ratio, height * ratio, 1);
-      starsMaterial.uniforms.uRatio.value = ratio;
-      nativeResolution = true;
-    } else if (centerAmount === 0 && nativeResolution) {
-      renderer.setPixelRatio(1);
-      renderer.setSize(1000, 1000, false);
-      glow.setSize(1000, 1000, 1);
-      starsMaterial.uniforms.uRatio.value = 1;
-      nativeResolution = false;
-    }
-    placement.position.copy(galleryPosition).multiplyScalar(centerAmount);
-    const galleryScale = Math.min(
-      1.08 * Math.min(1, visibleHeight / height),
-      (width / height) * 1.4,
-    );
-    placement.scale.setScalar(
-      THREE.MathUtils.lerp(1, galleryScale, centerAmount),
-    );
     decoration.rotation.y = state.motion ? time * 0.014 : decoration.rotation.y;
     starsMaterial.uniforms.uTime.value = time;
     liquidClock.value = time;
@@ -515,12 +461,22 @@ export function createDatabaseScene({
     interior.uInteriorPulse.value = pulse;
     interiorLight.intensity = (0.6 * pulse) / 14;
     const changing =
-      Math.abs(progress - state.progress) > 0.0001 ||
       Math.abs(renderedZoom - controls.userZoom) > 0.0001 ||
       pointers.size > 0 ||
       !lastOrientation.equals(dragQuaternion) ||
       parallax.lengthSq() > 0.000001;
-    if (loaded && (state.motion || needsRender || changing)) {
+    const inView =
+      canvasTop + canvasHeight * 0.81 > 0 &&
+      canvasTop + canvasHeight * 0.22 < window.innerHeight;
+    if (readySent) {
+      hitArea.inert = !inView;
+      hitArea.tabIndex = inView ? 0 : -1;
+    }
+    if (
+      loaded &&
+      (inView || !readySent) &&
+      (state.motion || needsRender || changing)
+    ) {
       scene.updateMatrixWorld(true);
       interiorLight.getWorldPosition(interior.uInteriorPosition.value);
       interiorLight.getWorldScale(interiorScale);

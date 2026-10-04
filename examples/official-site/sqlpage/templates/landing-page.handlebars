@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Turn your database into tools you can share. A little SQL. A whole world of possibility."
+    />
+    <meta name="theme-color" content="#080e11" />
+    <link rel="canonical" href="https://sql-page.com/" />
+    <meta name="generator" content="SQLPage" />
+    <meta property="og:title" content="SQLPage — The living query" />
+    <meta property="og:description" content="Build interactive websites and apps with only SQL queries." />
+    <meta property="og:image" content="https://sql-page.com/sqlpage_social_preview.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://sql-page.com/sqlpage_social_preview.webp" />
+    <title>SQLPage - SQL websites</title>
+    <link rel="icon" href="{{static_path 'favicon.svg'}}" type="image/svg+xml" />
+    <link rel="preload" as="image" href="/assets/landing/assets/scene-first-frame.webp" fetchpriority="high" />
+    <link rel="stylesheet" href="/assets/landing/styles/main.css" />
+    <script type="module" src="/assets/landing/js/main.js"></script>
+  </head>
+  <body>
+    <main class="sqlpage-world" data-motion="off" data-scene="idle">
+      <a class="skip-link" href="/your-first-sql-website/"
+        >Start building with SQLPage</a
+      >
+      <div class="scene-layer">          <img class="scene-preview" src="/assets/landing/assets/scene-first-frame.webp"
+            width="1000" height="1000" alt="" aria-hidden="true"
+            fetchpriority="high" decoding="sync" />
+          <div class="scene-canvas" aria-hidden="true"></div>
+          <div
+            class="model-interaction"
+            tabindex="-1"
+            role="application"
+            aria-label="Interactive 3D database sculpture"
+            aria-describedby="view-instructions"
+            data-ready="false"
+            inert
+          >
+            <span class="sr-only" id="view-instructions"
+              >Drag in any direction to rotate the 3D model. Scroll the page to
+              turn and zoom the scene. Use arrow keys to rotate, Shift with left
+              or right to roll, plus and minus to zoom, and Home to reset. On a
+              touch screen, drag to rotate or pinch to zoom.</span
+            >
+          </div>
+</div>
+      <section class="experience" id="top" aria-labelledby="page-title">
+        <div class="viewport">
+          <div class="cinematic-shade" aria-hidden="true"></div>
+          <div class="surface-finish" aria-hidden="true"></div>
+          <header class="site-header">
+            <a class="brand" href="#top" aria-label="SQLPage home">
+              <img class="brand-symbol" src="/assets/icon.webp" width="220" height="248" alt="" />
+              <span>SQLPage</span>
+            </a>
+            <nav class="desktop-nav" aria-label="Main navigation">
+              <a
+                class="glass-button"
+                href="/documentation.sql"
+                ><span>Documentation</span></a
+              >
+              <a
+                class="glass-button"
+                href="/examples/"
+                ><span>Examples</span></a
+              >
+              <a
+                class="glass-button"
+                href="https://github.com/sqlpage/SQLPage"
+                target="_blank"
+                rel="noopener noreferrer"
+                ><span>GitHub</span></a
+              >
+              <a
+                class="glass-button"
+                href="https://datapage.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                ><span>Hosting</span></a
+              >
+            </nav>
+            <button
+              class="mobile-menu"
+              type="button"
+              aria-label="Open navigation"
+              aria-haspopup="dialog"
+              aria-controls="navigation"
+              aria-expanded="false"
+              hidden
+            >
+              <span class="icon icon-menu" aria-hidden="true">{{icon_img "menu-2"}}</span>
+            </button>
+          </header>
+          <aside class="engraved-comment" aria-label="SQL comment">
+            <div class="metal-recess">
+              <code
+                ><span><b>--</b> .sql files on git</span
+                ><span><b>--</b> HTML on the wire</span></code
+              >
+            </div>
+          </aside>
+          <div class="hero-copy">
+            <h1 id="page-title">
+              <span class="title-select">SELECT</span
+              ><span class="title-website"
+                >a websit<span class="anchor-letter">e</span></span
+              ><span class="title-from">FROM sql;</span>
+            </h1>
+          </div>
+          <div class="intro-row">
+            <p>
+              Turn your database into tools<br class="desktop-break" />
+              you can share.
+            </p>
+            <a
+              class="run-link"
+              href="/your-first-sql-website/"
+              ><span class="run-orbit" aria-hidden="true"
+                ><i></i
+                ><span
+                  ><span class="icon icon-play" aria-hidden="true">{{icon_img "player-play"}}</span></span></span
+              ><span>Run it</span></a
+            >
+          </div>
+          <div class="scene-error" role="alert" hidden>
+            <p>The 3D scene couldn’t load.</p>
+            <p>
+              Check your connection. WebGL and hardware acceleration are needed
+              to explore it.
+            </p>
+            <button type="button" data-retry>Try again</button>
+          </div>
+          <div class="sql-ribbon">
+            <div class="ribbon-track">
+              <div class="ribbon-sequence">
+                <a
+                  href="/component.sql?component=list"
+                  ><span class="icon icon-list" aria-hidden="true">{{icon_img "list"}}</span><code>select 'list' as component;</code
+                  ><span class="ribbon-dot" aria-hidden="true">•</span></a
+                >
+                <a
+                  href="/component.sql?component=chart"
+                  ><span class="icon icon-chart" aria-hidden="true">{{icon_img "chart-line"}}</span><code>select 'chart' as component;</code
+                  ><span class="ribbon-dot" aria-hidden="true">•</span></a
+                >
+                <a
+                  href="/component.sql?component=table"
+                  ><span class="icon icon-table" aria-hidden="true">{{icon_img "table"}}</span><code>select 'table' as component;</code
+                  ><span class="ribbon-dot" aria-hidden="true">•</span></a
+                >
+                <a
+                  href="/component.sql?component=card"
+                  ><span class="icon icon-code" aria-hidden="true">{{icon_img "code"}}</span><code>select 'card' as component;</code
+                  ><span class="ribbon-dot" aria-hidden="true">•</span></a
+                >
+              </div>
+            </div>
+          </div>
+          <footer class="viewport-footer">
+            <a
+              href="https://github.com/sqlpage/SQLPage"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Free &amp; open source</a
+            >
+          </footer>
+        </div>
+      </section>
+
+      <section class="landing-section demo-section" id="components" aria-labelledby="demo-title">
+        <div class="section-inner">
+          <p class="eyebrow">-- real SQLPage components, a few lines each</p>
+          <h2 id="demo-title">Data,<br />but clickable.</h2>
+          <div class="scene-stop demo-sculpture" data-scene-stop aria-hidden="true">
+          </div>
+          <p class="eyebrow picker-caption">-- pick a component</p>
+          <div class="demo-layout">
+            <div class="component-picker" role="tablist" aria-label="SQLPage components" aria-orientation="vertical">
+              <button id="tab-chart" role="tab" aria-selected="false" aria-controls="demo-panel" tabindex="-1" data-demo="chart">{{icon_img "chart-bar"}}<span><strong>chart</strong><small>A timeline from 3 rows</small></span></button>
+              <button id="tab-table" role="tab" aria-selected="true" aria-controls="demo-panel" data-demo="table">{{icon_img "table"}}<span><strong>table</strong><small>Sortable and searchable</small></span></button>
+              <button id="tab-form" role="tab" aria-selected="false" aria-controls="demo-panel" tabindex="-1" data-demo="form">{{icon_img "forms"}}<span><strong>form</strong><small>Fields from rows</small></span></button>
+              <button id="tab-big_number" role="tab" aria-selected="false" aria-controls="demo-panel" tabindex="-1" data-demo="big_number">{{icon_img "number-42-small"}}<span><strong>big_number</strong><small>KPIs at a glance</small></span></button>
+            </div>
+            <div id="demo-panel" role="tabpanel" aria-labelledby="tab-table">
+              <iframe title="Live SQLPage component demo" src="/landing-demos/demo.sql?component=table" loading="lazy"></iframe>
+              <pre class="code-panel"><code id="demo-source">{{demo_source}}</code></pre>
+              <p class="demo-status" role="status"></p>
+              <a class="demo-docs" href="/component.sql?component=table">Explore the table component {{icon_img "arrow-up-right"}}</a>
+            </div>
+          </div>
+          <p class="eyebrow section-footnote">-- Suspiciously few files.<br />Yes, that's the app.</p>
+        </div>
+      </section>
+      <section class="landing-section purpose-section" aria-labelledby="purpose-title">
+        <div class="section-inner">
+          <p class="eyebrow">-- Low maintenance, on purpose.</p>
+          <h2 id="purpose-title"><em>A useful tool for them.</em><br /><span>A manageable application<br />for you.</span></h2>
+          <div class="purpose-intro">
+            <p>You need a webapp,<br />but you don't want to maintain a webapp. Build it, or let your coding agent do it. Don't maintain 1000 lines of code.</p>
+            <pre class="yak" aria-label="No yak shaving">   /\___/\
+  (  •   •  )
+  /|       |\
+ / |_______| \
+    ||   ||</pre>
+            <p class="eyebrow">-- The yak stays unshaved.<br />-- App maintenance is not a hobby.</p>
+          </div>
+          <div class="scene-stop purpose-sculpture" data-scene-stop aria-hidden="true">
+          </div>
+          <div class="purpose-grid">
+            <div class="stack-comparison">
+              <p class="eyebrow">-- What do you have to maintain?</p>
+              <div class="segmented" role="group" aria-label="Application stack">
+                <button aria-pressed="true" data-stack="typical">A typical webapp</button>
+                <button aria-pressed="false" data-stack="sqlpage">A SQLPage app</button>
+              </div>
+              <ul class="stack-list">
+                <li data-stack-layer>
+                  Frontend project <small>to update</small>
+                </li>
+                <li data-stack-layer>
+                  Build tooling <small>to keep working</small>
+                </li>
+                <li data-stack-layer>
+                  API server <small>to patch</small>
+                </li>
+                <li data-stack-layer>
+                  Session and state <small>to keep in sync</small>
+                </li>
+                <li class="database-layer">
+                  Database <small>you already own this</small>
+                </li>
+              </ul>
+              <p class="eyebrow" data-stack-caption>-- 5 layers, all yours. Illustrative, not a benchmark.</p>
+            </div>
+            <div class="benefit-grid">
+              <article class="benefit featured">
+                <h3>10× fewer lines</h3>
+                <p>Forms, tables and charts are components you call, not code you write and keep alive.</p>
+                <small>DROP the busywork;</small>
+              </article>
+              <article class="benefit">
+                <h3>Stateless</h3>
+                <p>All state lives in the database. Scale by adding servers, deploy by copying files, restart whenever you like.</p>
+              </article>
+              <article class="benefit">
+                <h3>Agent-friendly</h3>
+                <p>Small, declarative SQL files are easy for a coding agent to write and easy for you to review. Robots welcome. Humans too.</p>
+                <span class="chip">Bring your own robot.</span><span class="chip">Agent not included.</span><span class="chip">You're still the boss.</span>
+              </article>
+              <article class="benefit">
+                <h3>The database is the job</h3>
+                <p>You already back it up, secure it and keep it healthy. That is the maintenance. The app just reads and writes.</p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="landing-section deployment-section" aria-labelledby="deployment-title">
+        <div class="section-inner deployment-grid">
+          <div>
+            <p class="eyebrow">-- Your files. Your deployment.</p>
+            <h2 id="deployment-title">No<br />frontend<br />to build.</h2>
+            <p class="eyebrow deployment-notes">-- read, edit, and act.<br />-- forms, tables, charts, and navigation.<br />-- Tables with manners. CRUD, but polite.</p>
+          </div>
+          <div class="deployment-example">
+            <pre class="file-tree"><code>tickets/
+├─ index.sql
+├─ edit.sql
+└─ sqlpage/
+   └─ migrations/
+      └─ 0001_priority.sql
+<span>-- node_modules/: not here</span></code></pre>
+            <div class="segmented" role="tablist" aria-label="Deployment options">
+              <button id="server-tab" role="tab" aria-selected="true" aria-controls="server-panel" data-deployment="server">Run it on your server</button>
+              <button id="hosting-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="hosting-panel" data-deployment="hosting">Managed hosting</button>
+            </div>
+            <div id="server-panel" role="tabpanel" aria-labelledby="server-tab">
+              <pre class="code-panel"><code>$ git clone [YOUR REPOSITORY] /srv/tickets
+$ cd /srv/tickets &amp;&amp; sqlpage
+<span>-- deploy: put the files on your server.</span></code></pre>
+              <p>Your repository, your server, next to the database you already run.</p>
+              <a class="chip" href="/your-first-sql-website/">Get SQLPage {{icon_img "arrow-up-right"}}</a>
+            </div>
+            <div id="hosting-panel" role="tabpanel" aria-labelledby="hosting-tab" hidden>
+              <pre class="code-panel"><code>-- Your SQL files. A hosted SQLPage app.
+-- Connect your database. Publish your app.</code></pre>
+              <p>Let someone else look after the server. Keep your SQL and your database.</p>
+              <a class="chip" href="https://datapage.app/" target="_blank" rel="noopener noreferrer">Explore managed hosting {{icon_img "arrow-up-right"}}</a>
+            </div>
+            <p><span class="chip">Forks encouraged.</span><br /><span class="chip">Batteries included. Strings unattached.</span></p>
+          </div>
+          <div class="scene-stop deployment-sculpture" data-scene-stop aria-hidden="true">
+          </div>
+        </div>
+      </section>
+      <section class="landing-section databases-section" aria-labelledby="databases-title">
+        <div class="section-inner">
+          <p class="eyebrow">SELECT * FROM your_database;</p>
+          <h2 id="databases-title">Keep your<br />database. <em>Add<br />the app.</em></h2>
+          <p><span class="chip">We're seeing other databases.</span> <span class="chip">A healthy relationship model.</span></p>
+          <div class="scene-stop database-sculpture" data-scene-stop aria-hidden="true">
+          </div>
+          <div class="database-grid">
+            <a href="/your-first-sql-website/">SQLite<small>-- built in</small></a>
+            <a href="/your-first-sql-website/#connect-to-a-custom-database">PostgreSQL<small>-- native driver</small></a>
+            <a href="/your-first-sql-website/#connect-to-a-custom-database">MySQL<small>-- native driver</small></a>
+            <a href="/your-first-sql-website/#connect-to-a-custom-database">MariaDB<small>-- native driver</small></a>
+            <a href="/your-first-sql-website/#connect-to-a-custom-database">SQL Server<small>-- native driver</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Oracle<small>-- through ODBC</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">ClickHouse<small>-- through ODBC</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Snowflake<small>-- through ODBC</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">BigQuery<small>-- through ODBC</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Databricks<small>-- through ODBC</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">DuckDB<small>-- quack {{icon_img "feather"}}</small></a>
+            <a href="https://github.com/sqlpage/SQLPage#odbc-setup">Db2<small>-- yes, this one too</small></a>
+          </div>
+        </div>
+      </section>
+      <section class="landing-section commit-section" aria-labelledby="commit-title">
+        <div class="section-inner">
+          <p class="eyebrow">-- A tool for them. Not a second job for you.</p>
+          <h2 id="commit-title">Small team.<br />Serious tools;</h2>
+          <div class="scene-stop commit-sculpture" data-scene-stop aria-hidden="true">
+          </div>
+          <div class="commit-action">
+            <a class="primary-button" href="/your-first-sql-website/">COMMIT; <span>start with a query</span></a>
+            <p class="eyebrow">DELETE busy;<br />-- NULL drama.</p>
+          </div>
+          <footer class="landing-footer">
+            <a class="brand" href="#top"><img src="/assets/icon.webp" width="24" height="27" alt="" />SQLPage</a>
+            <nav aria-label="Footer navigation">
+              <a href="/documentation.sql">Documentation</a>
+              <a href="/examples/">Examples</a>
+              <a href="https://github.com/sqlpage/SQLPage">GitHub</a>
+              <a href="https://editor.datapage.app">Online editor</a>
+              <a href="https://github.com/sqlpage/SQLPage/issues/new/choose">Report a bug</a>
+            </nav>
+          </footer>
+        </div>
+      </section>
+      <dialog
+        id="navigation"
+        class="navigation-dialog"
+        aria-labelledby="navigation-title"
+        aria-describedby="navigation-description"
+      >
+        <form method="dialog">
+          <button class="dialog-close" aria-label="Close navigation">
+            <span class="icon icon-close" aria-hidden="true">{{icon_img "x"}}</span>
+          </button>
+        </form>
+        <h2 id="navigation-title">SQLPage</h2>
+        <p id="navigation-description">A little SQL goes a long way.</p>
+        <nav aria-label="Mobile navigation"></nav>
+      </dialog>
+    </main>
+  </body>
+</html>

@@ -71,3 +71,37 @@ GET http://localhost:8080/examples/authentication/logout.sql
 HTTP 302
 [Asserts]
 header "Location" == "login.sql"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=table
+HTTP 200
+[Asserts]
+body contains "Acme Corp"
+body contains "data-pre-init=\"table\""
+body not contains "An error occurred"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=chart
+HTTP 200
+[Asserts]
+body contains "Tickets resolved"
+body contains "Wednesday"
+body not contains "An error occurred"
+
+POST http://localhost:8080/landing-demos/demo.sql?component=form
+[FormParams]
+name: Ada
+team: SQL builders
+HTTP 200
+[Asserts]
+body contains "Hello, Ada!"
+body not contains "An error occurred"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=big_number
+HTTP 200
+[Asserts]
+body contains "98%"
+body not contains "An error occurred"
+
+GET http://localhost:8080/landing-demos/source.sql?component=../../configuration
+HTTP 200
+[Asserts]
+jsonpath "$.source" contains "Acme Corp"

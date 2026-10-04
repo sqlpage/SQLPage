@@ -2,7 +2,7 @@ import { portraitFlow } from "./portrait-flow.js";
 
 // Normalized projection of the actual sculpture at DEFAULT_TILT, time zero,
 // with the square reference camera. The WebP and live camera share this frame.
-const reference = {
+export const SCULPTURE_FRAME = {
   shoulder: { x: 0.3499337213692189, y: 0.41625745331853664 },
   bodyWidth: 0.3936780897606217,
   bounds: {
@@ -21,12 +21,12 @@ function frameAt(width, height, anchor, portrait, bodyWidth = width * 0.48) {
   const desiredWidth = portrait
     ? bodyWidth
     : Math.min(compositionWidth * 0.335, height * 0.59);
-  let size = desiredWidth / reference.bodyWidth;
+  let size = desiredWidth / SCULPTURE_FRAME.bodyWidth;
   const align = () => {
-    const left = anchor.x - reference.shoulder.x * size;
-    const top = anchor.y - reference.shoulder.y * size;
+    const left = anchor.x - SCULPTURE_FRAME.shoulder.x * size;
+    const top = anchor.y - SCULPTURE_FRAME.shoulder.y * size;
     const bounds = Object.fromEntries(
-      Object.entries(reference.bounds).map(([key, value]) => [
+      Object.entries(SCULPTURE_FRAME.bounds).map(([key, value]) => [
         key,
         value * size + (key === "top" || key === "bottom" ? top : left),
       ]),
@@ -62,7 +62,7 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
   const screenHeight = window.innerHeight;
   const portrait = width < 900 && screenHeight >= width;
   const shortLandscape = !portrait && screenHeight < 560;
-  const viewport = mount.parentElement;
+  const viewport = mount.closest(".sqlpage-world").querySelector(".viewport");
   const section = viewport.parentElement;
   const heading = anchor?.closest(".hero-copy")?.querySelector(".title-from");
   const intro = viewport.querySelector(".intro-row");
@@ -84,13 +84,13 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
   };
   const measureLetter = () => {
     if (portrait && heading) {
-      const surface = mount.getBoundingClientRect();
+      const surface = viewport.getBoundingClientRect();
       return {
         x:
           width * 0.95 -
-          ((reference.bounds.right - reference.shoulder.x) *
+          ((SCULPTURE_FRAME.bounds.right - SCULPTURE_FRAME.shoulder.x) *
             portraitBodyWidth) /
-            reference.bodyWidth,
+            SCULPTURE_FRAME.bodyWidth,
         y:
           portraitShoulderY ??
           heading.getBoundingClientRect().bottom - surface.top + width * 0.19,
@@ -98,7 +98,7 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
     }
     if (!anchor) return { x: width * 0.55, y: height * 0.48 };
     const rect = anchor.getBoundingClientRect();
-    const surface = mount.getBoundingClientRect();
+    const surface = viewport.getBoundingClientRect();
     const style = getComputedStyle(anchor);
     const fontSize = parseFloat(style.fontSize);
     const context = document.createElement("canvas").getContext("2d");
@@ -125,15 +125,16 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
   if (portrait && intro && heading && ribbon && footer && comment) {
     const headingBottom =
       heading.getBoundingClientRect().bottom -
-      mount.getBoundingClientRect().top;
+      viewport.getBoundingClientRect().top;
     const commentTop = headingBottom + 18;
     section.style.setProperty("--portrait-comment-top", `${commentTop}px`);
     const introTop = commentTop + comment.offsetHeight + 20;
     const minimumArtBottom =
       headingBottom +
       width * 0.19 +
-      ((reference.bounds.bottom - reference.shoulder.y) * portraitBodyWidth) /
-        reference.bodyWidth;
+      ((SCULPTURE_FRAME.bounds.bottom - SCULPTURE_FRAME.shoulder.y) *
+        portraitBodyWidth) /
+        SCULPTURE_FRAME.bodyWidth;
     const availableArtBottom =
       screenHeight - ribbon.offsetHeight - footer.offsetHeight - 80;
     const spareHeight = Math.max(0, availableArtBottom - minimumArtBottom);
@@ -145,8 +146,9 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
     portraitShoulderY = Math.max(
       headingBottom + width * 0.19,
       availableArtBottom -
-        ((reference.bounds.bottom - reference.shoulder.y) * portraitBodyWidth) /
-          reference.bodyWidth,
+        ((SCULPTURE_FRAME.bounds.bottom - SCULPTURE_FRAME.shoulder.y) *
+          portraitBodyWidth) /
+          SCULPTURE_FRAME.bodyWidth,
     );
     const pose = frameAt(
       width,
@@ -168,7 +170,7 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
     intro.style.left = `${width * 0.04}px`;
   } else if (heading && intro) {
     const rect = heading.getBoundingClientRect();
-    const surface = mount.getBoundingClientRect();
+    const surface = viewport.getBoundingClientRect();
     intro.style.top = `${Math.max(0, Math.min(rect.bottom - surface.top + 32, height * 0.87 - intro.offsetHeight - 20))}px`;
     intro.style.left = `${rect.left - surface.left + progress * 90}px`;
   }
@@ -177,7 +179,9 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
     width,
     height,
   };
-  const preview = viewport.querySelector(".scene-preview");
+  const preview = mount
+    .closest(".sqlpage-world")
+    .querySelector(".scene-preview");
   preview.style.width = preview.style.height = `${frame.size}px`;
   preview.style.left = `${frame.left}px`;
   preview.style.top = `${frame.top}px`;

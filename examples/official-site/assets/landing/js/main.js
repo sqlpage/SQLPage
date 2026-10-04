@@ -1,5 +1,6 @@
 import { initExperience } from "./experience.js";
 import { initNavigation } from "./navigation.js";
+import { initSections } from "./sections.js";
 
 const root = document.querySelector(".sqlpage-world");
 // Author one sequence; its decorative copy never enters the tab order.
@@ -9,7 +10,11 @@ copy.setAttribute("aria-hidden", "true");
 for (const link of copy.querySelectorAll("a")) link.tabIndex = -1;
 sequence.after(copy);
 root.dataset.enhanced = "true";
-const cleanups = [initNavigation(root), initExperience(root)];
+const cleanups = [
+  initNavigation(root),
+  initSections(root),
+  initExperience(root),
+];
 window.addEventListener("pagehide", (event) => {
   // Preserve state when entering the browser's back/forward cache.
   if (!event.persisted)

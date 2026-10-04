@@ -1,4 +1,3 @@
-import { layoutLandingFrame } from "./scene/landing-frame.js";
 import { initScrollProgress } from "./scroll-progress.js";
 
 /** CDN and WebGL failures are isolated from ordinary page navigation. */
@@ -9,7 +8,7 @@ export function initExperience(root) {
   const anchor = root.querySelector(".anchor-letter");
   const error = root.querySelector(".scene-error");
   const media = matchMedia("(prefers-reduced-motion: reduce)");
-  const state = { progress: 0, motion: !media.matches };
+  const state = { motion: !media.matches };
   const events = new AbortController();
   let controller, stopScroll;
   let generation = 0;
@@ -26,8 +25,6 @@ export function initExperience(root) {
     hitArea.tabIndex = status === "ready" ? 0 : -1;
   }
   function stopScene() {
-    stopScroll?.();
-    stopScroll = undefined;
     controller?.dispose();
     controller = undefined;
   }
@@ -46,7 +43,6 @@ export function initExperience(root) {
         onReady() {
           if (disposed || attempt !== generation) return;
           setStatus("ready");
-          stopScroll = initScrollProgress(section, mount, state);
         },
         onError() {
           if (disposed || attempt !== generation) return;
@@ -64,18 +60,7 @@ export function initExperience(root) {
       setStatus("error");
     }
   }
-  const layoutPreview = () => {
-    if (!disposed && root.dataset.scene !== "ready")
-      layoutLandingFrame(mount, anchor);
-  };
-  const previewObserver = new ResizeObserver(layoutPreview);
-  previewObserver.observe(mount);
-  window.addEventListener("resize", layoutPreview, { signal: events.signal });
-  window.visualViewport?.addEventListener("resize", layoutPreview, {
-    signal: events.signal,
-  });
-  document.fonts.ready.then(layoutPreview);
-  layoutPreview();
+  stopScroll = initScrollProgress(section, mount, state);
   syncMotion();
   media.addEventListener("change", syncMotion, { signal: events.signal });
   root
@@ -90,8 +75,8 @@ export function initExperience(root) {
   return () => {
     disposed = true;
     generation++;
-    previewObserver.disconnect();
     events.abort();
+    stopScroll?.();
     stopScene();
   };
 }

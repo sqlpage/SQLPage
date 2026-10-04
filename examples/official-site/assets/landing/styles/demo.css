@@ -1,0 +1,137 @@
+/* Real SQLPage components, scoped to the standalone landing demo shell. */
+:root {
+  --tblr-body-bg: #0d1224;
+  --tblr-bg-surface: #0d1224;
+  --tblr-border-color: #273149;
+  --tblr-primary: #28c8d6;
+  --tblr-body-color: #dbe0ec;
+}
+body {
+  font-size: 13px;
+  background: #0d1224;
+}
+#sqlpage_header,
+#sqlpage_footer {
+  display: none;
+}
+#sqlpage_main_wrapper {
+  padding: 16px !important;
+  margin: 0 !important;
+  max-width: none;
+}
+.card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  margin: 0 !important;
+}
+.card-body {
+  padding: 10px;
+}
+.card-title {
+  font-size: 17px;
+  font-weight: 500;
+}
+.table {
+  font-size: 12px;
+  --tblr-table-border-color: #1b2337;
+}
+.table th {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #9caac4;
+  background: #0b1020;
+}
+.table td,
+.table th {
+  padding: 10px 12px;
+}
+.table-responsive {
+  border-radius: 8px;
+}
+.table-sort {
+  color: #94a3bb;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.table td._col_status {
+  color: #54cbb4;
+  font-size: 11px;
+}
+.table td._col_status::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+input.form-control {
+  background: #090e1d;
+  border-color: #273149;
+  font-size: 12px;
+}
+.search {
+  max-width: 160px;
+}
+.form-fieldset {
+  padding: 14px;
+  border: 0;
+  background: transparent;
+}
+.form-fieldset h2,
+#sqlpage_main_wrapper h3 {
+  font-size: 18px;
+  font-weight: 500;
+}
+.btn-primary {
+  background: #27c4d2;
+  border-color: #27c4d2;
+  color: #06121b;
+}
+.apexcharts-tooltip {
+  color: #0d1224;
+}
+/* The table's native search sits beside its SQLPage text heading. */
+#sqlpage_main_wrapper:has(#landing-customers) {
+  position: relative;
+}
+#sqlpage_main_wrapper:has(#landing-customers) > h1 {
+  position: absolute;
+  top: 37px;
+  left: 28px;
+}
+#sqlpage_main_wrapper > h1 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 !important;
+}
+#landing-customers .card-body > .p-3 {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0 20px !important;
+}
+@media (max-width: 480px) {
+  #sqlpage_main_wrapper {
+    padding: 8px !important;
+  }
+  #sqlpage_main_wrapper:has(#landing-customers) > h1 {
+    left: 16px;
+    top: 31px;
+    font-size: 16px;
+  }
+  .search {
+    max-width: 135px;
+  }
+  .table td,
+  .table th {
+    padding: 9px 7px;
+  }
+}
+
+#sqlpage_main_wrapper > p:empty {
+  display: none;
+}
