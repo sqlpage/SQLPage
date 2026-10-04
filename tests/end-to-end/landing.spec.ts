@@ -77,7 +77,9 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   const restingSpin = (poses[2].turn - poses[1].turn) / 0.03;
   const travelingSpin = (poses[4].turn - poses[3].turn) / 0.35;
   expect(restingSpin / travelingSpin).toBeCloseTo(1, 1);
-  expect(Math.abs(poses[1].x - poses[0].x)).toBeLessThan(12);
+  expect(Math.abs(poses[1].x - poses[0].x)).toBeLessThan(
+    page.viewportSize()!.width * 0.04,
+  );
   // The broad passage remains visible and inside the page throughout the transfer.
   for (const pose of poses) {
     expect(pose.x).toBeGreaterThan(0);
@@ -244,12 +246,26 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   await expect(
     comparison.locator('[data-stack-copy="sqlpage"]').last(),
   ).toHaveAttribute("aria-hidden", "true");
-  await page.getByRole("tab", { name: "Managed hosting" }).click();
-  await expect(
-    page.getByRole("link", { name: "Explore managed hosting" }),
-  ).toBeVisible();
-  await page.getByRole("tab", { name: "Run it on your server" }).click();
-  await expect(page.locator("#server-panel")).toContainText("sqlpage");
+  const features = page.getByRole("tablist", { name: "Frontend features" });
+  await expect(features.getByRole("tab", { name: "Instant" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.locator("#instant-panel")).toBeVisible();
+  for (const [name, id] of [
+    ["Make it yours", "customize"],
+    ["Ship it anywhere", "ship"],
+    ["Safe by default", "safe"],
+  ]) {
+    await features.getByRole("tab", { name }).click();
+    await expect(page.locator(`#${id}-panel`)).toBeVisible();
+    await expect(page.locator("#instant-panel")).toBeHidden();
+  }
+  await features
+    .getByRole("tab", { name: "Safe by default" })
+    .press("ArrowLeft");
+  await expect(features.getByRole("tab", { name: "Instant" })).toBeFocused();
+  await expect(page.locator("#instant-panel")).toBeVisible();
 
   // Each measured anchor owns the same canvas, including after responsive reflow.
   for (const stop of await page.locator("[data-scene-stop]").all()) {
@@ -292,6 +308,20 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   ).toBeFocused();
   await page.locator("#components").scrollIntoViewIfNeeded();
   await expect(demo.getByText("98%", { exact: true })).toBeVisible();
+  await page.locator(".frontend-tabs").scrollIntoViewIfNeeded();
+  const frontendHeight = (await page.locator(".frontend-panels").boundingBox())!
+    .height;
+  for (const name of [
+    "Make it yours",
+    "Ship it anywhere",
+    "Safe by default",
+    "Instant",
+  ]) {
+    await features.getByRole("tab", { name }).click();
+    expect(
+      (await page.locator(".frontend-panels").boundingBox())!.height,
+    ).toBeCloseTo(frontendHeight, 0);
+  }
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

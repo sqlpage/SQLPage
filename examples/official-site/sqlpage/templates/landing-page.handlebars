@@ -271,40 +271,37 @@
       <section class="landing-section deployment-section" aria-labelledby="deployment-title">
         <svg class="section-wave" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true"><use class="wave-back" href="#landing-wave" /><use class="wave-front" href="#landing-wave" /></svg>
         <div class="section-inner deployment-grid">
-          <div>
+          <header class="frontend-heading">
             <p class="eyebrow">-- Your files. Your deployment.</p>
-            <h2 id="deployment-title">No<br />frontend<br />to build.</h2>
-            <p class="eyebrow deployment-notes">-- read, edit, and act.<br />-- forms, tables, charts, and navigation.<br />-- Tables with manners. CRUD, but polite.</p>
+            <h2 id="deployment-title">No frontend<br />to build.</h2>
+          </header>
+          <p class="eyebrow deployment-notes">-- read, edit, and act.<br />-- forms, tables, charts, and navigation.<br />-- Tables with manners. CRUD, but polite.</p>
+          <div class="frontend-tabs" role="tablist" aria-label="Frontend features">
+            <button id="customize-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="customize-panel" data-feature="customize">{{icon_img "pencil"}}<span><strong>Make it yours</strong><small>templates, css, js</small></span></button>
+            <button id="ship-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="ship-panel" data-feature="ship">{{icon_img "cube"}}<span><strong>Ship it anywhere</strong><small>files, docker, nix</small></span></button>
+            <button id="instant-tab" role="tab" aria-selected="true" aria-controls="instant-panel" data-feature="instant">{{icon_img "bolt"}}<span><strong>Instant</strong><small>server-rendered</small></span></button>
+            <button id="safe-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="safe-panel" data-feature="safe">{{icon_img "shield-check"}}<span><strong>Safe by default</strong><small>SQLi, XSS, CSRF</small></span></button>
           </div>
-          <div class="deployment-example">
-            <pre class="file-tree"><code>tickets/
-├─ index.sql
-├─ edit.sql
-└─ sqlpage/
-   └─ migrations/
-      └─ 0001_priority.sql
-<span>-- node_modules/: not here</span></code></pre>
-            <div class="segmented" role="tablist" aria-label="Deployment options">
-              <button id="server-tab" role="tab" aria-selected="true" aria-controls="server-panel" data-deployment="server">Run it on your server</button>
-              <button id="hosting-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="hosting-panel" data-deployment="hosting">Managed hosting</button>
+          <div class="deployment-example frontend-panels">
+            <div id="customize-panel" class="frontend-panel" role="tabpanel" aria-labelledby="customize-tab" hidden>
+              <div class="frontend-copy"><h3>Override any component.</h3><p>The default frontend is fully customizable.</p><a href="/custom_components.sql">Make it yours {{icon_img "arrow-up-right"}}</a></div>
+              <div class="customize-diagram" aria-label="Handlebars, CSS and JavaScript make your component"><span class="feature-node">.handlebars</span><b>+</b><span class="feature-node">.css</span><b>+</b><span class="feature-node">.js</span><b>→</b><span class="feature-node feature-result">your<br />component</span></div>
             </div>
-            <div id="server-panel" role="tabpanel" aria-labelledby="server-tab">
-              <pre class="code-panel"><code>$ git clone [YOUR REPOSITORY] /srv/tickets
-$ cd /srv/tickets &amp;&amp; sqlpage
-<span>-- deploy: put the files on your server.</span></code></pre>
-              <p>Your repository, your server, next to the database you already run.</p>
-              <a class="chip" href="/your-first-sql-website/">Get SQLPage {{icon_img "arrow-up-right"}}</a>
+            <div id="ship-panel" class="frontend-panel" role="tabpanel" aria-labelledby="ship-tab" hidden>
+              <div class="frontend-copy"><h3>Copy files. Or don't.</h3><p>The good old way works. So does a very lightweight Docker image.</p></div>
+              <div class="ship-diagram"><span class="feature-node">your files</span><b aria-hidden="true">→</b><div class="ship-options"><a class="feature-node" href="/your-first-sql-website/">copy to server<small>the good old way</small></a><a class="feature-node" href="https://github.com/sqlpage/SQLPage/blob/main/Dockerfile">docker<small>tiny image</small></a><a class="feature-node" href="https://search.nixos.org/packages?channel=unstable&amp;show=sqlpage">nix</a><a class="feature-node" href="https://github.com/sqlpage/SQLPage/blob/main/sqlpage.service">systemd</a></div></div>
+              <p class="frontend-footnote">Forks encouraged. · Batteries included. Strings unattached.</p>
             </div>
-            <div id="hosting-panel" role="tabpanel" aria-labelledby="hosting-tab" hidden>
-              <pre class="code-panel"><code>-- Your SQL files. A hosted SQLPage app.
--- Connect your database. Publish your app.</code></pre>
-              <p>Let someone else look after the server. Keep your SQL and your database.</p>
-              <a class="chip" href="https://datapage.app/" target="_blank" rel="noopener noreferrer">Explore managed hosting {{icon_img "arrow-up-right"}}</a>
+            <div id="instant-panel" class="frontend-panel" role="tabpanel" aria-labelledby="instant-tab">
+              <div class="frontend-copy"><h3>Instant by default.</h3><p>HTML streams to the browser while the database is still working.</p><a href="/performance.sql">sql-page.com/performance {{icon_img "arrow-up-right"}}</a></div>
+              <div class="instant-diagram"><p>typical app (illustrative)</p><div class="render-timeline" aria-label="Typical app: HTML, JavaScript, API, then render"><span>HTML</span><span>JS</span><span>API</span><span>render</span></div><p>SQLPage</p><div class="stream-timeline" aria-label="SQLPage streams server-rendered HTML"></div><div class="render-labels"><span>rendered on the server</span><span>+ interactive in the browser</span></div></div>
             </div>
-            <p><span class="chip">Forks encouraged.</span><br /><span class="chip">Batteries included. Strings unattached.</span></p>
+            <div id="safe-panel" class="frontend-panel" role="tabpanel" aria-labelledby="safe-tab" hidden>
+              <div class="frontend-copy"><h3>Safe by default.</h3><p>The common attacks are handled for you.</p><a href="/safety.sql">sql-page.com/safety {{icon_img "arrow-up-right"}}</a><p class="frontend-footnote">-- "1; DROP TABLE users;" is just a string here</p></div>
+              <div class="safety-diagram"><div class="attack-list"><div><span class="feature-node">SQL injection</span><i></i><span>blocked ×</span></div><div><span class="feature-node">XSS</span><i></i><span>blocked ×</span></div><div><span class="feature-node">CSRF</span><i></i><span>blocked ×</span></div></div>{{icon_img "shield-check"}}</div>
+            </div>
           </div>
-          <div class="scene-stop deployment-sculpture" data-scene-stop aria-hidden="true">
-          </div>
+          <div class="scene-stop deployment-sculpture" data-scene-stop aria-hidden="true"></div>
         </div>
       </section>
       <section class="landing-section databases-section" aria-labelledby="databases-title">

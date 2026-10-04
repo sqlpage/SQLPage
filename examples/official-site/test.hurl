@@ -4,6 +4,10 @@ HTTP 200
 body contains "SQLPage"
 body contains "Documentation"
 body contains "Run it"
+body contains "Instant by default."
+body contains "Override any component."
+body contains "Copy files. Or don't."
+xpath "string(//button[@id='instant-tab']/@aria-selected)" == "true"
 body contains "/assets/landing/js/main.js"
 body not contains "An error occurred"
 

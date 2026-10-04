@@ -81,19 +81,9 @@
   font-size: clamp(48px, 5.8vw, 76px);
   line-height: 1.05;
 }
-.landing-section .deployment-sculpture {
-  left: 0;
-  right: auto;
-  top: auto;
-  bottom: -110px;
-}
 .landing-section .section-inner > h2,
-.deployment-grid > div:not(.scene-stop),
 .database-grid {
   width: 80%;
-}
-.deployment-grid > div:not(.scene-stop) {
-  width: 100%;
 }
 
 .landing-section .demo-sculpture {
@@ -497,53 +487,6 @@ a.chip:hover {
   width: 14px;
   height: 14px;
 }
-.deployment-section {
-  --section-color: #2bc5cf;
-  background: var(--section-color);
-  color: #071322;
-  padding-bottom: 140px;
-}
-.deployment-grid {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  padding-right: 20%;
-  gap: 40px;
-}
-.deployment-section .eyebrow {
-  color: #15566a;
-}
-.deployment-section h2 {
-  font-size: clamp(70px, 9.5vw, 130px);
-}
-.deployment-notes {
-  margin-top: 45px;
-}
-.deployment-example {
-  padding-top: 25px;
-  font-size: 16px;
-  line-height: 1.5;
-}
-.file-tree {
-  background: #081421;
-  color: #26b9cd;
-  border-radius: 12px;
-  padding: 28px;
-  font: 15px / 1.8 var(--mono);
-  transform: rotate(1deg);
-  box-shadow: 10px 10px 0 #112a39;
-  margin-bottom: 35px;
-}
-.file-tree span,
-.code-panel span {
-  color: #778799;
-}
-.deployment-section .segmented button[aria-selected="true"] {
-  background: #f6f8fa;
-}
-.deployment-section .chip {
-  color: #123e51;
-  border-color: #123e51;
-}
 .databases-section {
   --section-color: #27314b;
   background: #27314b;
@@ -676,9 +619,6 @@ a.chip:hover {
   .purpose-grid {
     grid-template-columns: 1fr;
   }
-  .deployment-grid {
-    gap: 20px;
-  }
   .database-grid {
     gap: 14px;
   }
@@ -703,9 +643,6 @@ a.chip:hover {
   .database-grid {
     width: 91%;
     max-width: 91%;
-  }
-  .deployment-grid {
-    padding-right: 9%;
   }
   .landing-section {
     padding: 65px 6% 65px;
@@ -768,11 +705,6 @@ a.chip:hover {
     right: 0;
     top: 0;
   }
-  .landing-section .deployment-sculpture {
-    top: auto;
-    bottom: -55px;
-    left: 0;
-  }
   .purpose-section h2 span {
     font-size: clamp(28px, 7.5vw, 38px);
   }
@@ -809,22 +741,6 @@ a.chip:hover {
   }
   .purpose-section {
     padding-bottom: 115px;
-  }
-  .deployment-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .deployment-section h2 {
-    font-size: 68px;
-  }
-  .deployment-notes {
-    margin: 25px 0;
-  }
-  .deployment-example {
-    padding: 0;
-  }
-  .deployment-section {
-    padding-bottom: 150px;
   }
   .databases-section h2 {
     max-width: 75%;

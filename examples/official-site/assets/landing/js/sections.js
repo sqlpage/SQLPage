@@ -154,12 +154,12 @@ export function initSections(root) {
     signal,
   );
   tabs(
-    root.querySelector('[aria-label="Deployment options"]'),
+    root.querySelector('[aria-label="Frontend features"]'),
     "aria-selected",
     (button) => {
-      for (const id of ["server", "hosting"])
+      for (const id of ["customize", "ship", "instant", "safe"])
         root.querySelector(`#${id}-panel`).hidden =
-          id !== button.dataset.deployment;
+          id !== button.dataset.feature;
     },
     signal,
   );
