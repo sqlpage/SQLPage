@@ -16,23 +16,17 @@
   letter-spacing: -1.4px;
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 12px;
   text-shadow: 0 2px 3px #0009;
 }
 .brand-symbol {
-  display: grid;
-  justify-items: center;
-  color: #7ad8e6;
+  display: block;
+  width: 72px;
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 10px #37e5ef1a);
 }
-.brand-symbol .icon:first-child {
-  margin-bottom: -3px;
-  filter: drop-shadow(0 0 5px #38c9e554);
-}
-.brand-symbol .icon:last-child {
-  width: 39px;
-  height: 42px;
-  color: #4cb9ce;
-} /* Thin, smoked glass: refracted background, a polished edge, and an inner caustic. */
+/* Thin, smoked glass with a polished edge. */
 .desktop-nav {
   display: flex;
   align-items: center;
@@ -121,18 +115,8 @@
     0 1px 2px #000b,
     0 -1px 0 #ffffff08;
 }
-.desktop-nav .glass-button:hover,
-.desktop-nav .glass-button:focus-visible {
-  color: #f0f9fc;
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 1px #ebfaff36,
-    inset 0 -1.5px 2px #84e1f270,
-    inset 0 -7px 14px #65cfe511,
-    0 6px 18px #0005,
-    0 2px 12px #3cc5e21b;
-}
-.desktop-nav .glass-button:hover:after {
+.desktop-nav .glass-button:hover:after,
+.desktop-nav .glass-button:focus-visible:after {
   opacity: 1;
 }
 .desktop-nav .glass-button:active {
@@ -142,7 +126,11 @@
     inset 0 -1px 1px #8cdded50,
     0 1px 7px #0005;
 }
-.desktop-nav .hosting-link {
+.desktop-nav .glass-button:hover,
+.desktop-nav .glass-button:focus-visible {
+  color: #f0f9fc;
+  transform: translateY(-1px);
+  border-color: #67d9ea99;
   background:
     radial-gradient(
       ellipse at var(--glass-x) var(--glass-y),
@@ -157,7 +145,8 @@
     0 5px 17px #0004,
     0 2px 16px #52d7f12b;
 }
-.desktop-nav .hosting-link:before {
+.desktop-nav .glass-button:hover:before,
+.desktop-nav .glass-button:focus-visible:before {
   background: linear-gradient(
     137deg,
     #c7f4ff5c,

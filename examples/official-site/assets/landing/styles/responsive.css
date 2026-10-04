@@ -28,7 +28,7 @@
     gap: 14px;
   }
   .brand-symbol {
-    transform: scale(0.85);
+    width: 60px;
   }
   .engraved-comment {
     top: 16%;
@@ -76,8 +76,7 @@
     font-size: 25px;
   }
   .brand-symbol {
-    transform: scale(0.75);
-    width: 31px;
+    width: 54px;
   }
   .hero-copy {
     top: 24%;
@@ -171,8 +170,7 @@
     gap: 11px;
   }
   .brand-symbol {
-    transform: scale(0.76);
-    width: 32px;
+    width: 48px;
   }
   .engraved-comment {
     top: var(--portrait-comment-top, 310px);

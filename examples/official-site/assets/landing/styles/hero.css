@@ -110,11 +110,8 @@
 .title-select,
 .title-from {
   color: #e9e8e7;
-  text-shadow:
-    0 2px 1px #ffffff16,
-    1px 4px 8px #0008,
-    -1px -1px 0 #fff5;
-  background: linear-gradient(112deg, #f1efed, #e5e7e9 46%, #fff 73%, #dddfe3);
+  text-shadow: none;
+  background: linear-gradient(180deg, #fafafa 0%, #eceeef 42%, #bfc5c8 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -123,13 +120,7 @@
   font-size: 0.985em;
   letter-spacing: -0.071em;
   padding: 4px 0 9px;
-  background: linear-gradient(
-    130deg,
-    #39869b,
-    #67cadc 44%,
-    #49adc7 70%,
-    #7edbef
-  );
+  background: linear-gradient(180deg, #83deea 0%, #58c8da 48%, #39adc4 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

@@ -33,7 +33,8 @@ export function finishMetal(material, environment) {
   const rim = material.name.includes("Gunmetal");
   material.color.set(lid ? "#23303a" : rim ? "#3a4651" : "#252c33");
   material.metalness = 0.96;
-  material.roughness = lid ? 0.19 : rim ? 0.23 : 0.34;
+  // Keep the cap polished: the satin shell roughness blurs the reflected wires.
+  material.roughness = lid ? 0.09 : rim ? 0.23 : 0.34;
   material.envMap = environment;
   material.envMapIntensity =
     (lid ? 0.62 : rim ? 0.76 : 0.68) * STUDIO_RADIANCE_SCALE;
@@ -46,12 +47,12 @@ export function finishMetal(material, environment) {
       float metalGrain = fract(sin(dot(floor(vMetalPosition * vec3(190.0, 1250.0, 190.0)), vec3(12.9898, 78.233, 43.128))) * 43758.5453);
       float toolPath = ${lid ? "length(vMetalPosition.xz)" : "vMetalPosition.y"} * 760.0;
       float machining = sin(toolPath) * (1.0 - smoothstep(.6, 3.0, fwidth(toolPath)));
-      roughnessFactor = clamp(roughnessFactor + machining * .012 + (metalGrain - .5) * .016, .15, .48);
+      roughnessFactor = clamp(roughnessFactor + machining * ${lid ? ".003" : ".012"} + (metalGrain - .5) * ${lid ? ".004" : ".016"}, ${lid ? ".06" : ".15"}, .48);
     `,
     );
   };
   material.customProgramCacheKey = () =>
-    `sqlpage-black-metal-${lid ? "lid" : "shell"}-v3`;
+    `sqlpage-black-metal-${lid ? "lid" : "shell"}-v4`;
 }
 
 export const LIQUID_FLOW_GLSL = `

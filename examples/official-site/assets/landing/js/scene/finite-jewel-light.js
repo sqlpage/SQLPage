@@ -141,7 +141,10 @@ export function createFiniteJewelLight(edges) {
           // dominates at normal viewing sizes; only distant pixels are widened.
           float jewelPixel = max(length(dFdx(jewelRay)), length(dFdy(jewelRay)));
           float jewelAlpha = sqrt(pow(material.roughness, 4.0) + .25 * jewelPixel * jewelPixel);
-          jewelAlpha = clamp(jewelAlpha, .012, 1.0);
+          // Alpha is roughness squared. A .012 floor would turn the
+          // polished .09 cap back into a .11-roughness surface. Retain
+          // its mirror image while the derivative term filters distant pixels.
+          jewelAlpha = clamp(jewelAlpha, .0036, 1.0);
           PhysicalMaterial jewelSurface = material;
           jewelSurface.roughness = sqrt(jewelAlpha);
           vec3 jewelSpecular = vec3(0.0);
@@ -164,7 +167,7 @@ export function createFiniteJewelLight(edges) {
           );
       };
       material.customProgramCacheKey = () =>
-        `${cacheKey}:finite-jewel-${edges.length}-v5`;
+        `${cacheKey}:finite-jewel-${edges.length}-v6`;
       material.needsUpdate = true;
     },
 
