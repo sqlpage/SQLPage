@@ -33,7 +33,12 @@ export function initScrollProgress(section, mount, state) {
     pose.left += (size - pose.size) * center;
     pose.top += ((size - pose.size) * (bounds.top + bounds.bottom)) / 2;
     pose.left += (innerWidth * 0.92 - (pose.left + pose.size * center)) * arc;
-    pose.top -= innerHeight * 0.08 * arc;
+    const centerY = pose.top + (pose.size * (bounds.top + bounds.bottom)) / 2;
+    const corridorY = Math.max(
+      innerHeight * 0.3,
+      Math.min(innerHeight * 0.7, centerY),
+    );
+    pose.top += (corridorY - centerY - innerHeight * 0.08) * arc;
     return pose;
   }
   const viewport = section.querySelector(".viewport");

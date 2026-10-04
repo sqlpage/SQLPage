@@ -46,7 +46,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   let previousTurn = Number(
     await page.locator("canvas").getAttribute("data-scroll-turn"),
   );
-  for (const progress of [0, 0.25, 0.5]) {
+  for (const progress of [0, 0.25, 0.5, 1]) {
     const scroll = Math.round(route[0] + (route[1] - route[0]) * progress);
     await page.evaluate((y) => window.scrollTo(0, y), scroll);
     await expect
@@ -68,7 +68,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   expect(poses[1].turn).toBeGreaterThan(poses[0].turn);
   expect(poses[2].turn).toBeGreaterThan(poses[1].turn);
   expect(Math.abs(poses[1].x - poses[0].x)).toBeGreaterThan(5);
-  expect(Math.abs(poses[1].x - (poses[0].x + poses[2].x) / 2)).toBeGreaterThan(
+  expect(Math.abs(poses[2].x - (poses[0].x + poses[3].x) / 2)).toBeGreaterThan(
     5,
   );
 
