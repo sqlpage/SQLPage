@@ -21,23 +21,25 @@ function tabs(group, attribute, select, signal) {
   group.addEventListener(
     "keydown",
     (event) => {
-      const index = buttons.indexOf(document.activeElement);
+      const visible = buttons.filter((button) => !button.hidden);
+      const index = visible.indexOf(document.activeElement);
       if (index < 0) return;
       let next;
       if (["ArrowRight", "ArrowDown"].includes(event.key))
-        next = (index + 1) % buttons.length;
+        next = (index + 1) % visible.length;
       if (["ArrowLeft", "ArrowUp"].includes(event.key))
-        next = (index + buttons.length - 1) % buttons.length;
+        next = (index + visible.length - 1) % visible.length;
       if (event.key === "Home") next = 0;
-      if (event.key === "End") next = buttons.length - 1;
+      if (event.key === "End") next = visible.length - 1;
       if (next !== undefined) {
         event.preventDefault();
-        activate(buttons[next]);
-        buttons[next].focus();
+        activate(visible[next]);
+        visible[next].focus();
       }
     },
     { signal },
   );
+  return activate;
 }
 
 export function initSections(root) {
@@ -76,6 +78,19 @@ export function initSections(root) {
     },
     { signal },
   );
+  let sourceFiles = { main: source.textContent };
+  const chooseSource = tabs(
+    root.querySelector(".source-tabs"),
+    "aria-selected",
+    (button) => {
+      source.setAttribute("aria-labelledby", button.id);
+      status.textContent = "";
+      void renderSource(
+        sourceFiles[button.dataset.file] || "-- Loading source…",
+      );
+    },
+    signal,
+  );
   let request;
   async function loadSource(component) {
     request?.abort();
@@ -88,7 +103,8 @@ export function initSections(root) {
       );
       if (!response.ok) throw new Error("Source unavailable");
       const data = await response.json();
-      void renderSource(data.source);
+      sourceFiles = { main: data.source, save: data.save_source };
+      chooseSource(root.querySelector('.source-tabs [aria-selected="true"]'));
     } catch (error) {
       if (error.name !== "AbortError") {
         source.textContent =
@@ -102,6 +118,8 @@ export function initSections(root) {
     "aria-selected",
     (button) => {
       const component = button.dataset.demo;
+      panel.dataset.demo = component;
+      root.querySelector('[data-file="save"]').hidden = component !== "form";
       root.querySelector("#demo-filename").textContent = `${component}.sql`;
       panel.setAttribute("aria-labelledby", button.id);
       panel.querySelector("iframe").src =
@@ -109,7 +127,11 @@ export function initSections(root) {
       const link = panel.querySelector(".demo-docs");
       link.href = `/component.sql?component=${component}`;
       link.firstChild.textContent = `Explore the ${component} component `;
-      void loadSource(component);
+      if (component !== "catalog") {
+        sourceFiles = {};
+        chooseSource(root.querySelector("#demo-filename"));
+        void loadSource(component);
+      } else request?.abort();
     },
     signal,
   );

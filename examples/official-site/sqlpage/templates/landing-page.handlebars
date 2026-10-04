@@ -187,13 +187,14 @@
               <button id="tab-table" role="tab" aria-selected="true" aria-controls="demo-panel" data-demo="table">{{icon_img "table"}}<span><strong>table</strong><small>Sortable and searchable</small></span></button>
               <button id="tab-form" role="tab" aria-selected="false" aria-controls="demo-panel" tabindex="-1" data-demo="form">{{icon_img "forms"}}<span><strong>form</strong><small>Fields from rows</small></span></button>
               <button id="tab-big_number" role="tab" aria-selected="false" aria-controls="demo-panel" tabindex="-1" data-demo="big_number">{{icon_img "number-42-small"}}<span><strong>big_number</strong><small>KPIs at a glance</small></span></button>
+              <button id="tab-catalog" role="tab" aria-selected="false" aria-controls="demo-panel" tabindex="-1" data-demo="catalog">{{icon_img "layout-grid"}}<span><strong>{{component_count}} components</strong><small>Explore the whole toolkit</small></span></button>
             </div>
             <div id="demo-panel" role="tabpanel" aria-labelledby="tab-table">
               <iframe title="Live SQLPage component demo" src="/landing-demos/demo.sql?component=table" loading="lazy"></iframe>
               <p class="demo-annotation">Actually rendered by<br />SQLPage, live {{icon_img "arrow-down-left"}}</p>
               <div class="sql-editor">
-                <div class="sql-editor-header"><span id="demo-filename">table.sql</span><button type="button" data-copy-sql aria-label="Copy SQL">{{icon_img "copy"}} <span>Copy</span></button></div>
-                <pre class="code-panel"><code id="demo-source">{{demo_source}}</code></pre>
+                <div class="sql-editor-header"><div class="source-tabs" role="tablist" aria-label="SQL files"><button id="demo-filename" role="tab" aria-selected="true" aria-controls="demo-source" data-file="main">table.sql</button><button id="demo-save-filename" role="tab" aria-selected="false" aria-controls="demo-source" tabindex="-1" data-file="save" hidden>save.sql</button></div><button type="button" data-copy-sql aria-label="Copy SQL">{{icon_img "copy"}} <span>Copy</span></button></div>
+                <pre class="code-panel"><code id="demo-source" role="tabpanel" aria-labelledby="demo-filename">{{demo_source}}</code></pre>
               </div>
               <p class="demo-status" role="status"></p>
               <a class="demo-docs" href="/component.sql?component=table">Explore the table component {{icon_img "arrow-up-right"}}</a>

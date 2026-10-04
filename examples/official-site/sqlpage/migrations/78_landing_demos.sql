@@ -1,4 +1,4 @@
--- Read-only sample data for the landing page's live SQLPage components.
+-- Sample data for the landing page's live SQLPage components.
 CREATE TABLE customers (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,

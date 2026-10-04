@@ -164,23 +164,67 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
     "from customers",
   );
 
-  await page.getByRole("tab", { name: "chart", exact: false }).click();
+  await page
+    .getByRole("tab", { name: "chart A timeline from 3 rows", exact: true })
+    .click();
   await expect(demo.locator(".apexcharts-canvas")).toBeVisible();
   await expect(page.locator("#demo-source")).toContainText("from tickets");
   // Arrow navigation selects the next component and keeps the active tab focusable.
   await page
-    .getByRole("tab", { name: "chart", exact: false })
+    .getByRole("tab", { name: "chart A timeline from 3 rows", exact: true })
     .press("ArrowDown");
   await page.getByRole("tab", { name: "form Fields from rows" }).click();
   await demo.getByLabel("Your name").fill("Ada");
-  await demo.getByLabel("Your team").fill("SQL builders");
-  await demo.getByRole("button", { name: "Submit" }).click();
+  await demo.getByLabel("Your team").fill("Query crew");
+  await demo.getByRole("button", { name: "Save profile" }).click();
   await expect(demo.getByRole("alert")).toContainText("Hello, Ada!");
-  await page.getByRole("tab", { name: "big_number" }).click();
+  await expect(demo.getByLabel("Your team")).toHaveValue("Query crew");
+  await page
+    .locator("iframe")
+    .evaluate((frame) =>
+      (frame as HTMLIFrameElement).contentWindow!.location.reload(),
+    );
+  await expect(demo.getByLabel("Your team")).toHaveValue("Query crew");
+  await page.getByRole("tab", { name: "save.sql", exact: true }).click();
+  await expect(page.locator("#demo-source")).toContainText("update profiles");
+  await expect(page.locator("#demo-source")).toContainText(
+    "sqlpage.request_method()",
+  );
+  await page
+    .getByRole("tab", { name: "save.sql", exact: true })
+    .press("ArrowLeft");
+  await expect(
+    page.getByRole("tab", { name: "form.sql", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#demo-source")).toContainText(
+    "/landing-demos/save.sql",
+  );
+  await page
+    .getByRole("tab", { name: "big_number KPIs at a glance", exact: true })
+    .click();
   await expect(demo.getByText("98%", { exact: true })).toBeVisible();
+  await expect(demo.getByRole("progressbar").last()).toHaveAttribute(
+    "aria-valuenow",
+    /^98(?:\.0)?$/,
+  );
   await expect
     .poll(async () => (await page.locator("iframe").boundingBox())!.height)
-    .toBeLessThan(220);
+    .toBeLessThan(280);
+
+  const catalog = page.getByRole("tab", { name: /^\d+ components/ });
+  const count = Number((await catalog.innerText()).match(/\d+/)![0]);
+  await catalog.click();
+  await expect(demo.locator(".component-catalog a")).toHaveCount(count);
+  await expect(
+    demo.locator(".component-catalog a").first().locator("svg"),
+  ).toHaveCount(2);
+  await expect(
+    demo.getByRole("link", { name: "form", exact: true }),
+  ).toHaveAttribute("href", "/component.sql?component=form");
+  await expect(page.locator(".sql-editor")).toBeHidden();
+  await page
+    .getByRole("tab", { name: "big_number KPIs at a glance", exact: true })
+    .click();
 
   await page
     .getByRole("button", { name: "A SQLPage app", exact: true })

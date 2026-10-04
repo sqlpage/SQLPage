@@ -5,4 +5,5 @@ select 'http_header' as component,
 -- A full document template uses an empty shell rather than the default site chrome.
 select 'shell-empty' as component;
 select 'landing-page' as component,
+    (select count(*) from component) as component_count,
     sqlpage.read_file_as_text('landing-demos/table.sql') as demo_source;

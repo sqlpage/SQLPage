@@ -86,13 +86,19 @@ body contains "Tickets resolved"
 body contains "2026-09-30"
 body not contains "An error occurred"
 
-POST http://localhost:8080/landing-demos/demo.sql?component=form
+POST http://localhost:8080/landing-demos/save.sql
 [FormParams]
 name: Ada
-team: SQL builders
+team: Query crew
+HTTP 302
+[Asserts]
+header "Location" == "/landing-demos/demo.sql?component=form&saved=1"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=form&saved=1
 HTTP 200
 [Asserts]
 body contains "Hello, Ada!"
+body contains "Query crew"
 body not contains "An error occurred"
 
 GET http://localhost:8080/landing-demos/demo.sql?component=big_number
@@ -105,3 +111,30 @@ GET http://localhost:8080/landing-demos/source.sql?component=../../configuration
 HTTP 200
 [Asserts]
 jsonpath "$.source" contains "from customers"
+
+
+GET http://localhost:8080/landing-demos/source.sql?component=form
+HTTP 200
+[Asserts]
+jsonpath "$.save_source" contains "update profiles"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=catalog
+HTTP 200
+[Asserts]
+body contains "component-catalog"
+xpath "string(//a[span='form']/@href)" == "/component.sql?component=form"
+body not contains "An error occurred"
+
+POST http://localhost:8080/landing-demos/save.sql
+[FormParams]
+name:
+team: Rejected input
+HTTP 302
+[Asserts]
+header "Location" == "/landing-demos/demo.sql?component=form&saved=0"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=form
+HTTP 200
+[Asserts]
+body contains "Query crew"
+body not contains "Rejected input"

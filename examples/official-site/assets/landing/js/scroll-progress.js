@@ -137,7 +137,9 @@ export function initScrollProgress(section, mount, state) {
       const a = anchors[index];
       const b = anchors[index + 1];
       const t = clamp((scroll - a.scroll) / (b.scroll - a.scroll));
-      state.frame = state.motion ? travel(a, b, t) : mix(a, b, ease(t));
+      state.frame = state.motion
+        ? travel(a, b, t)
+        : { ...(scroll + 1 >= b.scroll ? b : a) };
       state.frame.top -= scroll;
     }
     Object.assign(preview.style, {
