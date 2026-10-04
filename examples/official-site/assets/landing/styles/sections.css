@@ -69,15 +69,17 @@
 .purpose-section .scene-stop {
   left: 0;
   right: auto;
-  top: 145px;
-  width: 12%;
+  top: 150px;
+  width: 18%;
 }
 .landing-section.purpose-section .section-inner > h2 {
   width: 100%;
 }
 .purpose-section h2 span {
-  width: 80%;
-  margin-left: 20%;
+  width: 76%;
+  margin-left: 24%;
+  font-size: clamp(48px, 5.8vw, 76px);
+  line-height: 1.05;
 }
 .landing-section .deployment-sculpture {
   left: 0;
@@ -86,8 +88,6 @@
   bottom: -110px;
 }
 .landing-section .section-inner > h2,
-.purpose-intro,
-.purpose-grid,
 .deployment-grid > div:not(.scene-stop),
 .database-grid {
   width: 80%;
@@ -300,21 +300,22 @@
 .purpose-section {
   --section-color: #101324;
   background: #101324;
-  padding-bottom: 175px;
+  padding-bottom: 105px;
 }
 .purpose-section h2 {
+  min-height: 330px;
   font-size: clamp(48px, 6.5vw, 89px);
 }
 .purpose-section h2 span {
   display: block;
-  text-align: right;
+  text-align: left;
 }
 .purpose-intro {
   display: grid;
   grid-template-columns: 1.2fr 0.5fr 1fr;
   gap: 45px;
   align-items: center;
-  margin: 70px 0;
+  margin: 40px 0;
 }
 .purpose-intro > p:first-child {
   color: #a6abbb;
@@ -745,8 +746,8 @@ a.chip:hover {
   .purpose-section .scene-stop {
     left: 0;
     right: auto;
-    top: 125px;
-    width: 14%;
+    top: 130px;
+    width: 22%;
   }
   .landing-section .demo-sculpture {
     width: 19%;
@@ -758,7 +759,11 @@ a.chip:hover {
     bottom: -55px;
     left: 0;
   }
+  .purpose-section h2 span {
+    font-size: clamp(28px, 7.5vw, 38px);
+  }
   .purpose-section h2 {
+    min-height: 180px;
     font-size: clamp(35px, 8.5vw, 52px);
   }
   .purpose-intro {

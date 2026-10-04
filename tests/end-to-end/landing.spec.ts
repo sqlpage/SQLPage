@@ -40,7 +40,10 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
     .evaluateAll((stops) =>
       stops
         .slice(1, 3)
-        .map((stop) => stop.closest("section")!.offsetTop - innerHeight * 0.12),
+        .map(
+          (stop) =>
+            stop.getBoundingClientRect().top + scrollY - innerHeight * 0.25,
+        ),
     );
   const poses: { x: number; y: number; turn: number }[] = [];
   let previousTurn = Number(
@@ -70,17 +73,20 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
   expect(poses[2].turn).toBeGreaterThan(poses[1].turn);
   // Reading follows ordinary document scrolling; spin is independent of docking.
   const scrollStep = (route[1] - route[0]) * 0.03;
-  expect(poses[2].y - poses[1].y).toBeCloseTo(-scrollStep, 0);
+  expect(poses[2].y - poses[1].y).toBeLessThan(-scrollStep * 0.6);
   const restingSpin = (poses[2].turn - poses[1].turn) / 0.03;
   const travelingSpin = (poses[4].turn - poses[3].turn) / 0.35;
   expect(restingSpin / travelingSpin).toBeCloseTo(1, 1);
-  expect(Math.abs(poses[1].x - poses[0].x)).toBeLessThan(2);
-  // The transfer stays between its landing positions, with a curved vertical arc.
+  expect(Math.abs(poses[1].x - poses[0].x)).toBeLessThan(12);
+  // The broad passage remains visible and inside the page throughout the transfer.
   for (const pose of poses) {
-    expect(pose.x).toBeGreaterThan(Math.min(poses[0].x, poses[5].x) - 40);
-    expect(pose.x).toBeLessThan(Math.max(poses[0].x, poses[5].x) + 40);
+    expect(pose.x).toBeGreaterThan(0);
+    expect(pose.x).toBeLessThan(page.viewportSize()!.width);
   }
-  expect(poses[3].y).toBeLessThan(poses[0].y - scrollStep * 5);
+  for (const pose of poses) {
+    expect(pose.y).toBeGreaterThan(0);
+    expect(pose.y).toBeLessThan(page.viewportSize()!.height);
+  }
 
   // Reading poses stay clear of real component controls.
   const readingStops = await page.locator("[data-scene-stop]").all();
@@ -100,7 +106,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
       "data-scroll-turn",
       previous!,
     );
-    const overlap = await readingStops[index].evaluate((stop) => {
+    const readingPose = await readingStops[index].evaluate((stop) => {
       const frame = document.querySelector("canvas")!.getBoundingClientRect();
       const body = {
         left: frame.left + frame.width * 0.291366,
@@ -108,7 +114,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
         top: frame.top + frame.height * 0.224284,
         bottom: frame.top + frame.height * 0.803486,
       };
-      return [
+      const overlap = [
         ...stop
           .closest("section")!
           .querySelectorAll(
@@ -123,8 +129,10 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
           body.bottom > rect.top
         );
       });
+      return { overlap, visible: body.bottom > 0 && body.top < innerHeight };
     });
-    expect(overlap).toBe(false);
+    expect(readingPose.overlap).toBe(false);
+    expect(readingPose.visible).toBe(true);
   }
 
   // Keep the real cinematic check above; stop idle animation while exercising UI
@@ -204,7 +212,7 @@ test("landing page: live components, deployment, scrolling sculpture and mobile 
     await stop.evaluate((element) =>
       window.scrollTo(
         0,
-        element.closest("section")!.offsetTop - innerHeight * 0.12,
+        element.getBoundingClientRect().top + scrollY - innerHeight * 0.25,
       ),
     );
     await expect

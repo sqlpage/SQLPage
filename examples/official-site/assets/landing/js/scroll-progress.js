@@ -9,6 +9,7 @@ export function initScrollProgress(section, mount, state) {
   let frame = 0;
   let anchors = [];
   let heroRange = 0;
+  let pageMargin = 0;
   const clamp = (value) => Math.max(0, Math.min(1, value));
   const ease = (value) => {
     const t = clamp(value);
@@ -19,14 +20,27 @@ export function initScrollProgress(section, mount, state) {
     top: a.top + (b.top - a.top) * t,
     size: a.size + (b.size - a.size) * t,
   });
-  function travel(a, b, t, distance) {
-    // Keep the authored pose attached to its section during reading. Transfer
-    // through the space above the content, along a broad, bounded curve.
-    const progress = ease((t - 0.4) / 0.6);
+  function travel(a, b, t) {
+    const progress = ease(t);
     const pose = mix(a, b, progress);
-    const arc = Math.sin(Math.PI * progress) ** 2;
-    pose.left += Math.sin(progress * Math.PI * 2) * innerWidth * 0.025 * arc;
-    pose.top -= arc * distance * 0.65;
+    const bounds = SCULPTURE_FRAME.bounds;
+    const centerX = bounds.left + SCULPTURE_FRAME.bodyWidth / 2;
+    const centerY = (bounds.top + bounds.bottom) / 2;
+    // Leave while visible, using the page margin during reading rather than
+    // crossing live controls. Enter and leave this passage over long scroll ranges.
+    const passage = ease(t / 0.3) * (1 - ease((t - 0.65) / 0.35));
+    const onRight = b.left + b.size * centerX > innerWidth / 2;
+    const width = Math.max(24, Math.min(90, pageMargin - 20));
+    const size = width / SCULPTURE_FRAME.bodyWidth;
+    const corridor = onRight ? innerWidth - width / 2 - 10 : width / 2 + 10;
+    const x = pose.left + pose.size * centerX;
+    const y = pose.top + pose.size * centerY;
+    pose.size += (size - pose.size) * passage;
+    pose.left = x + (corridor - x) * passage - pose.size * centerX;
+    pose.top =
+      y -
+      pose.size * centerY +
+      Math.sin(Math.PI * progress) ** 2 * innerHeight * 0.06;
     return pose;
   }
   const viewport = section.querySelector(".viewport");
@@ -34,6 +48,9 @@ export function initScrollProgress(section, mount, state) {
   const header = section.querySelector(".site-header");
   const ribbon = section.querySelector(".sql-ribbon");
   function measure() {
+    pageMargin = root
+      .querySelector(".section-inner")
+      .getBoundingClientRect().left;
     // Measure the authored hero pose, independent of its current text fade/shift.
     section.style.setProperty("--progress", "0");
     section.style.setProperty("--intro-shift", "0px");
@@ -48,7 +65,7 @@ export function initScrollProgress(section, mount, state) {
       // The visible sculpture occupies these bounds in its square reference frame.
       const size = rect.width / SCULPTURE_FRAME.bodyWidth;
       anchors.push({
-        scroll: stop.closest("section").offsetTop - window.innerHeight * 0.12,
+        scroll: rect.top + window.scrollY - window.innerHeight * 0.25,
         left: rect.left - size * SCULPTURE_FRAME.bounds.left,
         top: rect.top + window.scrollY - size * SCULPTURE_FRAME.bounds.top,
         size,
@@ -101,12 +118,14 @@ export function initScrollProgress(section, mount, state) {
         state.frame.top +=
           Math.cos(t * Math.PI * 2) * innerHeight * 0.025 * arc;
       } else {
-        state.frame = travel(
-          { ...gallery, top: gallery.top + scroll },
+        const t = ease((scroll - end) / (anchors[1].scroll - end));
+        state.frame = mix(
+          { ...gallery, top: gallery.top + end },
           anchors[1],
-          clamp((scroll - end) / (anchors[1].scroll - end)),
-          anchors[1].scroll - end,
+          t,
         );
+        state.frame.left += Math.sin(t * Math.PI) * innerWidth * 0.025;
+        state.frame.top += Math.sin(t * Math.PI) ** 2 * innerHeight * 0.06;
         state.frame.top -= scroll;
       }
     } else {
@@ -116,9 +135,7 @@ export function initScrollProgress(section, mount, state) {
       const a = anchors[index];
       const b = anchors[index + 1];
       const t = clamp((scroll - a.scroll) / (b.scroll - a.scroll));
-      state.frame = state.motion
-        ? travel(a, b, t, b.scroll - a.scroll)
-        : mix(a, b, ease(t));
+      state.frame = state.motion ? travel(a, b, t) : mix(a, b, ease(t));
       state.frame.top -= scroll;
     }
     Object.assign(preview.style, {
