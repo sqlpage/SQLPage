@@ -138,9 +138,10 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
     const availableArtBottom =
       screenHeight - ribbon.offsetHeight - footer.offsetHeight - 80;
     const spareHeight = Math.max(0, availableArtBottom - minimumArtBottom);
-    // Grow the sculpture into the spare height, keeping its right edge fixed.
+    // Grow into spare height without crossing the adjacent introduction column.
+    const availableArtWidth = width * 0.91 - intro.offsetWidth - 16;
     portraitBodyWidth = Math.min(
-      width * 0.68,
+      availableArtWidth,
       portraitBodyWidth + spareHeight * 0.65,
     );
     portraitShoulderY = Math.max(
