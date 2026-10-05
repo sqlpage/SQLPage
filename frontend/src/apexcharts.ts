@@ -27,7 +27,7 @@ type TooltipArgs = {
   w: any;
 };
 
-function formatTooltipX(
+function linkTooltipValue(
   value: string | number | null,
   link: string | undefined,
 ) {
@@ -353,21 +353,31 @@ const sqlpage_chart = (() => {
           formatter:
             has_point_links && text_x_values
               ? (value, args) =>
-                  formatTooltipX(value, args?.w && pointLink(args, points))
+                  linkTooltipValue(value, args?.w && pointLink(args, points))
               : undefined,
         },
         y: {
-          formatter: (value) => {
+          formatter: (value, args) => {
             if (value == null) return "";
+            let formatted: string;
             if (is_timeseries && chart_type === "rangeBar") {
               const d = new Date(value);
-              if (d.getHours() === 0 && d.getMinutes() === 0)
-                return d.toLocaleDateString();
-              return d.toLocaleString();
+              formatted =
+                d.getHours() === 0 && d.getMinutes() === 0
+                  ? d.toLocaleDateString()
+                  : d.toLocaleString();
+            } else {
+              formatted = value.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              });
             }
-            return value.toLocaleString(undefined, {
-              maximumFractionDigits: 2,
-            });
+            const w = args?.w || args;
+            return linkTooltipValue(
+              formatted,
+              w?.config &&
+                args?.seriesIndex !== undefined &&
+                pointLink({ ...args, w }, points),
+            );
           },
         },
       },
@@ -422,9 +432,11 @@ const sqlpage_chart = (() => {
       const formatter = axis === "y" && w.config.tooltip.y.formatter;
       const format = (v) =>
         formatter ? formatter(v, { seriesIndex, dataPointIndex, w }) : v;
-      valueSpan.innerText = Array.isArray(value)
+      const formatted = Array.isArray(value)
         ? value.map(format).join(" - ")
         : format(value);
+      if (axis === "y" && point.link) valueSpan.innerHTML = formatted;
+      else valueSpan.innerText = formatted;
       axisValue.appendChild(valueSpan);
       tooltip.appendChild(axisValue);
     }
