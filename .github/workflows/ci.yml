@@ -19,6 +19,7 @@ on:
       - "README.md"
       - ".github/workflows/release.yml"
       - ".github/workflows/official-site.yml"
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -263,7 +264,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         uses: docker/login-action@v4
         with:
           username: ${{ env.REGISTRY_USERNAME }}
@@ -298,7 +299,7 @@ jobs:
           retention-days: 1
       - name: Build and push by digest
         id: build
-        if: github.event_name != 'pull_request' || !matrix.export
+        if: github.event_name == 'push' || !matrix.export
         uses: docker/build-push-action@v7
         with:
           # Use BuildKit's Git context instead of the mutable runner workspace.
@@ -308,7 +309,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           target: ${{ matrix.variant }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: |
             type=gha,scope=${{ steps.cache-scope.outputs.current }}
@@ -316,14 +317,14 @@ jobs:
             type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ matrix.tag_suffix }}
           cache-to: type=gha,scope=${{ steps.cache-scope.outputs.current }},mode=max
       - name: Export digest
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
       - name: Upload digest
         uses: actions/upload-artifact@v7
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         with:
           name: digests-${{ matrix.variant }}${{ matrix.tag_suffix }}
           path: /tmp/digests/*
@@ -412,7 +413,7 @@ jobs:
 
   docker_push:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push'
     needs:
       - docker_build
     strategy:
