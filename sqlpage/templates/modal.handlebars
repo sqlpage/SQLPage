@@ -2,11 +2,11 @@
     id="{{id}}"
     tabindex="-1"
     aria-hidden="false"
-    aria-labelledby="{{id}}-title">
+    aria-labelledby="{{id}}-title"{{~#if visible}} data-modal-visible{{/if}}>
     <div role="document" class="modal-dialog {{#if small}} modal-sm{{/if}}{{#if large}} modal-lg{{/if}}{{#if scrollable}} modal-dialog-scrollable{{/if}}">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="{{id}}-title">{{title}}</h5>
+            <div class="modal-header{{~#if color}} bg-{{color}} text-{{#if (eq color 'white')}}light{{else}}{{color}}{{/if}}-fg{{/if}}">
+                <h5 class="modal-title{{~#if color}} text-reset{{/if}}" id="{{id}}-title">{{title}}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{default close "close"}}"></button>
             </div>
             <div class="modal-body">

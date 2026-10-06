@@ -20,7 +20,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('height','Height of the embedded content.','INTEGER',TRUE,TRUE),
     ('allow','For embedded content, this attribute specifies the features or permissions that can be used.','TEXT',TRUE,TRUE),
     ('sandbox','For embedded content, this attribute specifies the security restrictions on the loaded content.','TEXT',TRUE,TRUE),
-    ('style','Applies CSS styles to the embedded content.','TEXT',TRUE,TRUE)
+    ('style','Applies CSS styles to the embedded content.','TEXT',TRUE,TRUE),
+    ('color','Optional Tabler color for the modal header. The header uses that background and the same contrasting foreground as a colored toast, with white mapped to the light foreground. The body and footer stay as they are.','COLOR',TRUE,TRUE),
+    ('visible','Opens this modal once on load when true, without an inline script and without changing the URL hash. If several modals set this, only the last one opens. A URL hash that names a different modal takes precedence.','BOOLEAN',TRUE,TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
@@ -76,6 +78,15 @@ INSERT INTO example(component, description, properties) VALUES
             "height":"350"
         },
         {"component": "text", "contents_md": "Open a [modal with a video](#my_embed_video_modal)"}
+        ]')
+    ),
+    ('modal',
+    'A modal with a colored header, opened by a button. The header uses the color and a contrasting foreground; the body stays in the normal text color.',
+    json('[
+        {"component": "modal","id": "colored_modal","title": "Saved","color": "green","close": "Close"},
+        {"contents_md":"The header uses the chosen color."},
+        {"component": "button"},
+        {"title":"Open a colored modal","link":"#colored_modal"}
         ]')
     );
 

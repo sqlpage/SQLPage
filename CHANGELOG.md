@@ -10,6 +10,7 @@
 - `cargo install sqlpage`, and any build from the crates.io tarball, no longer needs internet access. The browser libraries now come from npm and ship inside the published crate. Building from a git checkout needs `npm ci` first. Pre-built binaries and the Docker image are unaffected.
 - The browser libraries are now part of the browser scripts. SQLPage no longer defines the `window.tabler` and `window.bootstrap` globals; custom scripts that reached for them should load their own copy of Bootstrap.
 - The startup message now reports the address the server actually bound instead of the one it was configured with.
+- Modals can set a header `color`, and `visible` opens that dialog once when the page loads. The page address stays unchanged, and closing it does not open it again when later content loads.
 
 ## v0.46.3
 
