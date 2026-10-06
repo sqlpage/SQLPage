@@ -10,7 +10,14 @@ async fn req_with_accept(
     path: &str,
     accept: &str,
 ) -> actix_web::Result<actix_web::dev::ServiceResponse> {
-    let app_data = make_app_data().await;
+    req_with_accept_and_data(path, accept, make_app_data().await).await
+}
+
+async fn req_with_accept_and_data(
+    path: &str,
+    accept: &str,
+    app_data: actix_web::web::Data<sqlpage::AppState>,
+) -> actix_web::Result<actix_web::dev::ServiceResponse> {
     let req = TestRequest::get()
         .uri(path)
         .insert_header((header::ACCEPT, accept))
@@ -19,7 +26,7 @@ async fn req_with_accept(
     main_handler(req).await
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_json_body() -> actix_web::Result<()> {
     let req = get_request_to("/tests/data_formats/json_data.sql")
         .await?
@@ -39,12 +46,12 @@ async fn test_json_body() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_csv_body() -> actix_web::Result<()> {
     let app_data = make_app_data().await;
-    if matches!(
-        app_data.db.info.database_type,
-        sqlpage::webserver::database::SupportedDatabase::Oracle
+    if crate::common::supports_database(
+        &app_data.db,
+        &[sqlpage::webserver::database::SupportedDatabase::Oracle],
     ) {
         return Ok(());
     }
@@ -59,8 +66,7 @@ async fn test_csv_body() -> actix_web::Result<()> {
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
         "text/csv; charset=utf-8"
     );
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert_eq!(
         body_str,
         "id;msg\n0;Hello World !\n1;\"Tu gères ';' et '\"\"' ?\"\n"
@@ -68,7 +74,7 @@ async fn test_csv_body() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_csv_filename_header_injection() -> actix_web::Result<()> {
     use actix_web::http::header::ContentDisposition;
 
@@ -107,22 +113,26 @@ async fn test_csv_filename_header_injection() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_json_columns() {
     let app_data = make_app_data().await;
-    if !matches!(
-        app_data.db.to_string().to_lowercase().as_str(),
-        "postgres" | "sqlite"
+    if !crate::common::supports_database(
+        &app_data.db,
+        &[
+            sqlpage::webserver::database::SupportedDatabase::Postgres,
+            sqlpage::webserver::database::SupportedDatabase::Sqlite,
+        ],
     ) {
         log::info!("Skipping test_json_columns on database {}", app_data.db);
         return;
     }
 
-    let resp_result = crate::common::req_path("/tests/data_formats/json_columns.sql").await;
-    let resp = resp_result.expect("Failed to request /tests/data_formats/json_columns.sql");
+    let resp =
+        crate::common::req_path_with_app_data("/tests/data_formats/json_columns.sql", app_data)
+            .await
+            .expect("Failed to request /tests/data_formats/json_columns.sql");
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     let body_html_escaped = body_str.replace("&quot;", "\"");
     assert!(
         !body_html_escaped.contains("error"),
@@ -140,7 +150,7 @@ async fn test_json_columns() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_accept_json_returns_json_array() -> actix_web::Result<()> {
     let resp = req_with_accept(
         "/tests/sql_test_files/component_rendering/simple.sql",
@@ -161,7 +171,7 @@ async fn test_accept_json_returns_json_array() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_accept_ndjson_returns_jsonlines() -> actix_web::Result<()> {
     let resp = req_with_accept(
         "/tests/sql_test_files/component_rendering/simple.sql",
@@ -173,8 +183,7 @@ async fn test_accept_ndjson_returns_jsonlines() -> actix_web::Result<()> {
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
         "application/x-ndjson"
     );
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     let lines: Vec<&str> = body_str.trim().lines().collect();
     assert!(lines.len() >= 2);
     assert_eq!(
@@ -188,7 +197,7 @@ async fn test_accept_ndjson_returns_jsonlines() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_accept_html_returns_html() -> actix_web::Result<()> {
     let resp = req_with_accept(
         "/tests/sql_test_files/component_rendering/simple.sql",
@@ -205,7 +214,7 @@ async fn test_accept_html_returns_html() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_accept_wildcard_returns_html() -> actix_web::Result<()> {
     let resp = req_with_accept(
         "/tests/sql_test_files/component_rendering/simple.sql",
@@ -220,7 +229,7 @@ async fn test_accept_wildcard_returns_html() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_accept_json_redirect_still_works() -> actix_web::Result<()> {
     let resp =
         req_with_accept("/tests/server_timing/redirect_test.sql", "application/json").await?;
@@ -234,24 +243,22 @@ async fn test_accept_json_redirect_still_works() -> actix_web::Result<()> {
 
 /// Builds an `AppState` running in production mode.
 async fn make_prod_app_data() -> actix_web::web::Data<sqlpage::AppState> {
-    crate::common::init_log();
-    let mut config = crate::common::test_config();
-    config.environment = sqlpage::app_config::DevOrProd::Production;
-    crate::common::make_app_data_from_config(config).await
+    crate::common::make_app_data_with_env(sqlpage::app_config::DevOrProd::Production).await
 }
 
-async fn req_prod_with_accept(path: &str, accept: &str) -> String {
-    let app_data = make_prod_app_data().await;
-    let req = TestRequest::get()
-        .uri(path)
-        .insert_header((header::ACCEPT, accept))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req)
+async fn response_body_with_accept(
+    path: &str,
+    accept: &str,
+    app_data: actix_web::web::Data<sqlpage::AppState>,
+) -> String {
+    let resp = req_with_accept_and_data(path, accept, app_data)
         .await
         .expect("request should not fail at the handler level");
-    let body = test::read_body(resp).await;
-    String::from_utf8(body.to_vec()).unwrap()
+    crate::common::read_body_string(resp).await
+}
+
+async fn req_prod_body(path: &str, accept: &str) -> String {
+    response_body_with_accept(path, accept, make_prod_app_data().await).await
 }
 
 /// In production, a SQL error that happens mid-stream must not leak the SQL
@@ -274,9 +281,9 @@ fn assert_no_sql_leak(body: &str, context: &str) {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_prod_json_error_does_not_leak_sql() {
-    let body = req_prod_with_accept(
+    let body = req_prod_body(
         "/tests/data_formats/json_error_leak.sql",
         "application/json",
     )
@@ -288,23 +295,21 @@ async fn test_prod_json_error_does_not_leak_sql() {
     assert_no_sql_leak(&body, "json error");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_prod_csv_error_does_not_leak_sql() {
     let app_data = make_prod_app_data().await;
-    if matches!(
-        app_data.db.info.database_type,
-        sqlpage::webserver::database::SupportedDatabase::Oracle
+    if crate::common::supports_database(
+        &app_data.db,
+        &[sqlpage::webserver::database::SupportedDatabase::Oracle],
     ) {
         return;
     }
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/csv_error_leak.sql")
-        .insert_header((header::ACCEPT, "text/csv"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await.expect("handler should not fail");
-    let body = test::read_body(resp).await;
-    let body = String::from_utf8(body.to_vec()).unwrap();
+    let body = response_body_with_accept(
+        "/tests/data_formats/csv_error_leak.sql",
+        "text/csv",
+        app_data,
+    )
+    .await;
     assert!(
         body.contains("before the error"),
         "the good row should still be streamed: {body}"
@@ -315,23 +320,21 @@ async fn test_prod_csv_error_does_not_leak_sql() {
 /// A CSV page can hit an error before its first data row (so no header has been
 /// written and `columns` is empty). The generic error message must still be
 /// emitted instead of an empty record.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_prod_csv_error_before_any_row_still_reports() {
     let app_data = make_prod_app_data().await;
-    if matches!(
-        app_data.db.info.database_type,
-        sqlpage::webserver::database::SupportedDatabase::Oracle
+    if crate::common::supports_database(
+        &app_data.db,
+        &[sqlpage::webserver::database::SupportedDatabase::Oracle],
     ) {
         return;
     }
-    let req = TestRequest::get()
-        .uri("/tests/data_formats/csv_error_no_rows.sql")
-        .insert_header((header::ACCEPT, "text/csv"))
-        .app_data(app_data)
-        .to_srv_request();
-    let resp = main_handler(req).await.expect("handler should not fail");
-    let body = test::read_body(resp).await;
-    let body = String::from_utf8(body.to_vec()).unwrap();
+    let body = response_body_with_accept(
+        "/tests/data_formats/csv_error_no_rows.sql",
+        "text/csv",
+        app_data,
+    )
+    .await;
     assert!(
         body.to_lowercase().contains("administrator"),
         "csv error before the first row must still emit the generic error message: {body:?}"
@@ -342,9 +345,9 @@ async fn test_prod_csv_error_before_any_row_still_reports() {
 /// An author may only intend a page to be served as HTML, but a client can
 /// request it with `Accept: application/json` and pick the JSON renderer.
 /// In production that path must not leak SQL text either.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_prod_html_page_requested_as_json_does_not_leak_sql() {
-    let body = req_prod_with_accept(
+    let body = req_prod_body(
         "/tests/data_formats/text_error_leak.sql",
         "application/json",
     )

@@ -19,12 +19,12 @@ async fn assert_sql_response(path: &str, expected_status: StatusCode) {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn mixed_case_sql_file_is_executed() {
     assert_sql_response("/tests/core/mixed_case.%53ql", StatusCode::OK).await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn trailing_space_sql_path_is_forbidden() {
     assert_sql_response("/tests/core/sql_source.sql%20", StatusCode::FORBIDDEN).await;
 }
@@ -38,19 +38,19 @@ async fn assert_windows_alias_response(path: &str, expected_status: StatusCode) 
 }
 
 #[cfg(windows)]
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn windows_mixed_case_sql_alias_is_executed() {
     assert_windows_alias_response("/tests/core/sql_source.SQL", StatusCode::OK).await;
 }
 
 #[cfg(windows)]
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn windows_trailing_dot_sql_alias_is_forbidden() {
     assert_windows_alias_response("/tests/core/sql_source.sql.", StatusCode::FORBIDDEN).await;
 }
 
 #[cfg(windows)]
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn windows_ntfs_stream_sql_alias_is_forbidden() {
     assert_windows_alias_response("/tests/core/sql_source.sql::$DATA", StatusCode::FORBIDDEN).await;
 }

@@ -1,8 +1,8 @@
 use crate::common::{get_request_to, req_path};
-use actix_web::{http::StatusCode, test};
+use actix_web::http::StatusCode;
 use sqlpage::webserver::http::main_handler;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_basic_auth_not_provided() {
     let resp_result = req_path("/tests/errors/basic_auth.sql").await;
     let resp = resp_result.unwrap();
@@ -11,8 +11,7 @@ async fn test_basic_auth_not_provided() {
         resp.headers().get("www-authenticate").unwrap(),
         "Basic realm=\"Authentication required\", charset=\"UTF-8\""
     );
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("Unauthorized"),
         "{body_str}\nexpected to contain Unauthorized"
@@ -23,7 +22,7 @@ async fn test_basic_auth_not_provided() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_basic_auth_with_credentials() {
     let req = get_request_to("/tests/errors/basic_auth.sql")
         .await
@@ -34,8 +33,7 @@ async fn test_basic_auth_with_credentials() {
         .await
         .expect("req with credentials should succeed");
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("Success!"),
         "{body_str}\nexpected to contain Success"

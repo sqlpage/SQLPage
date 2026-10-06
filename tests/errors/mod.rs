@@ -30,7 +30,7 @@ async fn direct_request_status(path: &str, app_data: actix_web::web::Data<AppSta
 /// that same reserved path must still be rejected with 403, even while the cache
 /// entry is fresh. Before the fix, the fresh cache hit short-circuited the
 /// unprivileged path guard and the private SQL was executed and served.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     // Keep cache entries "fresh" so the bug (skipping the path guard on fresh hits) is exercised.
     let mut config = test_config();
@@ -42,7 +42,7 @@ async fn test_private_path_not_accessible_after_privileged_cache_priming() {
         .await
         .expect("priming page should render");
     assert_eq!(prime.status(), StatusCode::OK);
-    let prime_body = String::from_utf8(test::read_body(prime).await.to_vec()).unwrap();
+    let prime_body = crate::common::read_body_string(prime).await;
     assert!(
         prime_body.contains("private cache bypass secret"),
         "priming page should have executed the private file via run_sql, got: {prime_body}"
@@ -63,7 +63,7 @@ async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_privileged_paths_are_not_accessible() {
     let resp_result = req_path("/sqlpage/migrations/0001_init.sql").await;
     assert!(
@@ -81,100 +81,50 @@ async fn test_privileged_paths_are_not_accessible() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_404_fallback() {
+    let app_data = crate::common::make_app_data().await;
     for f in [
         "/tests/errors/does_not_exist.sql",
         "/tests/errors/does_not_exist.html",
         "/tests/errors/does_not_exist/",
     ] {
-        let resp_result = req_path(f).await;
-        let resp = resp_result.unwrap();
+        let resp = req_path_with_app_data(f, app_data.clone()).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK, "{f} isnt 200");
-
-        let body = test::read_body(resp).await;
-        assert!(body.starts_with(b"<!DOCTYPE html>"));
-        let body = String::from_utf8(body.to_vec()).unwrap();
-        assert!(body.contains("But the "));
-        assert!(body.contains("404.sql"));
-        assert!(body.contains("file saved the day!"));
-        assert!(!body.contains("error"));
+        let body = crate::common::read_body_string(resp).await;
+        assert!(body.starts_with("<!DOCTYPE html>"));
+        for marker in ["But the ", "404.sql", "file saved the day!"] {
+            assert!(body.contains(marker), "{f} should contain {marker:?}");
+        }
+        assert!(!body.contains("error"), "{f} should not contain an error");
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_default_404() {
+    let app_data = crate::common::make_app_data().await;
+    let msg = "The page you were looking for does not exist";
     for f in [
         "/i-do-not-exist.html",
         "/i-do-not-exist.sql",
         "/i-do-not-exist/",
+        "/i-do-not-exist",
+        "/tests/it_works.txt/site/wp-includes/wlwmanifest.xml",
     ] {
-        let resp_result = req_path(f).await;
-        let resp = resp_result.unwrap();
+        let resp = req_path_with_app_data(f, app_data.clone()).await.unwrap();
         assert_eq!(
             resp.status(),
             StatusCode::NOT_FOUND,
             "{f} should return 404"
         );
-
-        let body = test::read_body(resp).await;
-        assert!(body.starts_with(b"<!DOCTYPE html>"));
-        let body = String::from_utf8(body.to_vec()).unwrap();
-        let msg = "The page you were looking for does not exist";
-        assert!(
-            body.contains(msg),
-            "{f} should contain '{msg}' but got:\n{body}"
-        );
-        assert!(!body.contains("error"));
+        let body = crate::common::read_body_string(resp).await;
+        assert!(body.starts_with("<!DOCTYPE html>"), "{f} is not HTML");
+        assert!(body.contains(msg), "{f} should contain {msg:?}");
+        assert!(!body.contains("error"), "{f} should not contain an error");
     }
 }
 
-#[actix_web::test]
-async fn test_default_404_with_redirect() {
-    let resp_result = req_path("/i-do-not-exist").await;
-    let resp = resp_result.unwrap();
-    assert_eq!(
-        resp.status(),
-        StatusCode::NOT_FOUND,
-        "/i-do-not-exist should return 404"
-    );
-
-    let resp_result = req_path("/i-do-not-exist/").await;
-    let resp = resp_result.unwrap();
-    assert_eq!(
-        resp.status(),
-        StatusCode::NOT_FOUND,
-        "/i-do-not-exist/ should return 404"
-    );
-
-    let body = test::read_body(resp).await;
-    assert!(body.starts_with(b"<!DOCTYPE html>"));
-    let body = String::from_utf8(body.to_vec()).unwrap();
-    let msg = "The page you were looking for does not exist";
-    assert!(
-        body.contains(msg),
-        "/i-do-not-exist/ should contain '{msg}' but got:\n{body}"
-    );
-    assert!(!body.contains("error"));
-}
-
-#[actix_web::test]
-async fn test_default_404_when_request_path_descends_into_file() {
-    let resp_result = req_path("/tests/it_works.txt/site/wp-includes/wlwmanifest.xml").await;
-    let resp = resp_result.unwrap();
-    assert_eq!(
-        resp.status(),
-        StatusCode::NOT_FOUND,
-        "descending into a file path should behave like a missing resource"
-    );
-
-    let body = test::read_body(resp).await;
-    let body = String::from_utf8(body.to_vec()).unwrap();
-    assert!(body.contains("The page you were looking for does not exist"));
-    assert!(!body.contains("error"));
-}
-
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_requesting_a_directory_is_not_found() {
     let resp_result = req_path("/tests/errors/is_a_directory.d").await;
     let status = match resp_result {

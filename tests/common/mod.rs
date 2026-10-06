@@ -38,13 +38,124 @@ pub(crate) async fn get_request_to(path: &str) -> actix_web::Result<TestRequest>
 }
 
 pub(crate) async fn make_app_data_from_config(config: AppConfig) -> Data<AppState> {
-    let state = AppState::init(&config).await.unwrap();
+    let state = make_app_state_from_config(&config).await.unwrap();
     Data::new(state)
+}
+
+// Pools must be emptied while the test runtime is still running.
+//
+// Each request built with `TestRequest::to_srv_request()` leaks its
+// `Data<AppState>`: actix-web recycles the `HttpRequestInner` allocation into
+// a per-request pool on drop, and that pool is only drained by a real server,
+// never on the test path. The leaked `AppState` pins its database pool (and
+// its pooled connections) until process exit. The ODBC backend prepares and
+// caches a native statement for every distinct parameterized query, and
+// Oracle's ODBC driver deadlocks in its process destructor when connections
+// still hold native statements at exit.
+//
+// Note that `pool.close()` alone is not sufficient: it only closes idle
+// connections, so one still checked out (e.g. by a return-to-pool task
+// finishing the test's last request) would keep its cached statements alive.
+// Acquire every connection and clear its cache first to free those handles.
+thread_local! {
+    static TEST_POOLS: std::cell::RefCell<Vec<sqlx::any::AnyPool>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+pub(crate) struct TestSystem(actix_web::rt::SystemRunner);
+
+impl TestSystem {
+    pub(crate) fn new() -> Self {
+        Self(actix_web::rt::System::new())
+    }
+
+    pub(crate) fn block_on<F: Future>(&self, future: F) -> F::Output {
+        use futures_util::FutureExt as _;
+
+        self.0.block_on(async {
+            let result = std::panic::AssertUnwindSafe(future).catch_unwind().await;
+            // Empty every pool created by the test while the runtime is still
+            // alive, even if the test panicked. Clearing first releases cached
+            // prepared statements on connections that may still be checked out
+            // (which `close()` alone would leave behind); closing then
+            // disconnects each pooled connection. The pool objects themselves
+            // may stay alive (see above), but they are left empty.
+            let pools = TEST_POOLS.with(std::cell::RefCell::take);
+            for pool in pools {
+                use sqlx::connection::Connection as _;
+
+                let mut connections = Vec::new();
+                for _ in 0..pool.size() {
+                    let mut connection = pool.acquire().await.unwrap();
+                    connection.clear_cached_statements().await.unwrap();
+                    connections.push(connection);
+                }
+                drop(connections);
+                pool.close().await;
+            }
+            match result {
+                Ok(output) => output,
+                Err(panic) => std::panic::resume_unwind(panic),
+            }
+        })
+    }
+}
+
+pub(crate) async fn make_app_state_from_config(config: &AppConfig) -> anyhow::Result<AppState> {
+    let state = AppState::init(config).await?;
+    TEST_POOLS.with(|pools| pools.borrow_mut().push(state.db.connection.clone()));
+    Ok(state)
+}
+
+#[test]
+fn test_system_closes_pools_on_success_and_panic() {
+    for panic_in_test in [false, true] {
+        let system = TestSystem::new();
+        let mut pool = None;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            system.block_on(async {
+                let mut config = test_config();
+                config.database_url = "sqlite::memory:".to_owned();
+                let state = make_app_state_from_config(&config).await.unwrap();
+                pool = Some(state.db.connection.clone());
+                assert!(!panic_in_test, "intentional test panic");
+            });
+        }));
+        assert_eq!(result.is_err(), panic_in_test);
+        assert!(pool.unwrap().is_closed());
+    }
+}
+
+/// Reads a whole response body as a UTF-8 string, failing the test otherwise.
+pub(crate) async fn read_body_string<B>(resp: actix_web::dev::ServiceResponse<B>) -> String
+where
+    B: actix_web::body::MessageBody,
+{
+    String::from_utf8(actix_web::test::read_body(resp).await.to_vec()).unwrap()
+}
+
+/// Whether the database engine is one of `kinds`.
+/// Tests that only run on some engines return early otherwise.
+pub(crate) fn supports_database(
+    db: &sqlpage::webserver::database::Database,
+    kinds: &[sqlpage::webserver::database::SupportedDatabase],
+) -> bool {
+    kinds.contains(&db.info.database_type)
 }
 
 pub(crate) async fn make_app_data() -> Data<AppState> {
     init_log();
     let config = test_config();
+    make_app_data_from_config(config).await
+}
+
+/// Creates test application state running in the given environment
+/// (development enables debug helpers like `Server-Timing`).
+pub(crate) async fn make_app_data_with_env(
+    environment: sqlpage::app_config::DevOrProd,
+) -> Data<AppState> {
+    init_log();
+    let mut config = test_config();
+    config.environment = environment;
     make_app_data_from_config(config).await
 }
 
@@ -76,9 +187,9 @@ async fn req_path_with_app_data_and_accept(
     accept: header::Accept,
 ) -> anyhow::Result<actix_web::dev::ServiceResponse> {
     let path = path.as_ref();
-    let req = TestRequest::get()
-        .uri(path)
-        .app_data(app_data)
+    let req = get_request_to_with_data(path, app_data)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to build request for {path}: {e}"))?
         .insert_header(("cookie", "test_cook=123"))
         .insert_header(("authorization", "Basic dGVzdDp0ZXN0"))
         .insert_header(accept)

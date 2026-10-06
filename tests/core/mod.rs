@@ -3,13 +3,48 @@ use sqlpage::{
     AppState,
     webserver::{self, make_placeholder},
 };
-use sqlx::executor::Executor as _;
 
 use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
 
 mod path_aliases;
 
-#[actix_web::test]
+/// Creates the `sqlpage_files` table if needed and stores `contents` at `path`.
+/// Other tests share this database, so the table is never dropped.
+async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
+    use sqlx::executor::Executor as _;
+
+    let create_table_sql =
+        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
+    if state
+        .db
+        .connection
+        .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
+        .await
+        .is_err()
+    {
+        state.db.connection.execute(create_table_sql).await.unwrap();
+    }
+    let delete_sql = format!("DELETE FROM sqlpage_files WHERE path = '{path}'");
+    state
+        .db
+        .connection
+        .execute(delete_sql.as_str())
+        .await
+        .unwrap();
+    let insert_sql = format!(
+        "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
+        make_placeholder(state.db.info.kind, 1),
+        make_placeholder(state.db.info.kind, 2)
+    );
+    sqlx::query::query(&insert_sql)
+        .bind(path)
+        .bind(contents)
+        .execute(&state.db.connection)
+        .await
+        .unwrap();
+}
+
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_concurrent_requests() {
     let components = [
         "table", "form", "card", "datagrid", "hero", "list", "timeline",
@@ -28,12 +63,8 @@ async fn test_concurrent_requests() {
     for result in results {
         let resp = result.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = test::read_body(resp).await;
-        assert!(
-            body.starts_with(b"<!DOCTYPE html>"),
-            "Expected html doctype"
-        );
-        let body = String::from_utf8(body.to_vec()).unwrap();
+        let body = crate::common::read_body_string(resp).await;
+        assert!(body.starts_with("<!DOCTYPE html>"), "Expected html doctype");
         assert!(
             body.contains("It works !"),
             "Expected to contain: It works !, but got: {body}"
@@ -42,13 +73,13 @@ async fn test_concurrent_requests() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_datagrid_description_presence_controls_placeholder() {
     let resp = req_path("/tests/components/datagrid_icon_only.sql")
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = String::from_utf8(test::read_body(resp).await.to_vec()).unwrap();
+    let body = crate::common::read_body_string(resp).await;
     assert!(body.contains("Facebook"), "{body}");
     assert!(body.contains("Empty"), "{body}");
     assert!(body.contains("Missing"), "{body}");
@@ -56,7 +87,7 @@ async fn test_datagrid_description_presence_controls_placeholder() {
     assert_eq!(body.matches('–').count(), 1, "{body}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_routing_with_db_fs() {
     let mut config = test_config();
     if config.database_url.contains("memory") {
@@ -64,52 +95,34 @@ async fn test_routing_with_db_fs() {
     }
 
     config.site_prefix = "/prefix/".to_string();
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
 
-    if matches!(
-        state.db.info.database_type,
-        webserver::database::SupportedDatabase::Oracle
+    if crate::common::supports_database(
+        &state.db,
+        &[webserver::database::SupportedDatabase::Oracle],
     ) {
         return;
     }
 
-    let create_table_sql =
-        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    // Other tests share this database, so never drop a table their initialized state may use.
-    if state
-        .db
-        .connection
-        .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
-        .await
-        .is_err()
-    {
-        state.db.connection.execute(create_table_sql).await.unwrap();
-    }
-    state
-        .db
-        .connection
-        .execute("DELETE FROM sqlpage_files WHERE path = 'on_db.sql'")
-        .await
-        .unwrap();
-    let insert_sql = format!(
-        "INSERT INTO sqlpage_files(path, contents) VALUES ('on_db.sql', {})",
-        make_placeholder(state.db.info.kind, 1)
-    );
-    sqlx::query::query(&insert_sql)
-        .bind("select ''text'' as component, ''Hi from db !'' AS contents;".as_bytes())
-        .execute(&state.db.connection)
-        .await
-        .unwrap();
+    store_file_in_db(
+        &state,
+        "on_db.sql",
+        b"select ''text'' as component, ''Hi from db !'' AS contents;",
+    )
+    .await;
 
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let app_data = actix_web::web::Data::new(state);
 
     let resp = req_path_with_app_data("/prefix/on_db.sql", app_data.clone())
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("Hi from db !"),
         "{body_str}\nexpected to contain: Hi from db !"
@@ -117,7 +130,7 @@ async fn test_routing_with_db_fs() {
 }
 
 #[cfg(unix)]
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let mut config = test_config();
     if !config.database_url.starts_with("sqlite") {
@@ -126,30 +139,15 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     config.database_url =
         "sqlite://file:test_non_unicode_static_path?mode=memory&cache=shared".to_string();
 
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let expected_db_path = "\u{FFFD}.txt";
-    let mut conn = state.db.connection.acquire().await.unwrap();
+    store_file_in_db(&state, expected_db_path, b"file from db fs").await;
 
-    (&mut *conn)
-        .execute(sqlpage::filesystem::DbFsQueries::get_create_table_sql(
-            webserver::database::SupportedDatabase::Sqlite,
-        ))
+    let state = crate::common::make_app_state_from_config(&config)
         .await
         .unwrap();
-    let insert_sql = format!(
-        "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
-        make_placeholder(state.db.info.kind, 1),
-        make_placeholder(state.db.info.kind, 2)
-    );
-    sqlx::query::query(&insert_sql)
-        .bind(expected_db_path)
-        .bind("file from db fs".as_bytes())
-        .execute(&mut *conn)
-        .await
-        .unwrap();
-    drop(conn);
-
-    let state = AppState::init(&config).await.unwrap();
     let app_data = actix_web::web::Data::new(state);
     let req = test::TestRequest::get()
         .uri("/%FF.txt")
@@ -165,11 +163,13 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_routing_with_prefix() {
     let mut config = test_config();
     config.site_prefix = "/prefix/".to_string();
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
 
     let app_data = actix_web::web::Data::new(state);
     let resp = req_path_with_app_data(
@@ -179,8 +179,7 @@ async fn test_routing_with_prefix() {
     .await
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("It works !"),
         "{body_str}\nexpected to contain: It works !"
@@ -193,8 +192,7 @@ async fn test_routing_with_prefix() {
     let resp = req_path_with_app_data("/prefix/nonexistent.sql", app_data.clone())
         .await
         .expect("should handle 404");
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("404"),
         "Response should contain \"404\", but got:\n{body_str}"
@@ -220,7 +218,7 @@ async fn test_routing_with_prefix() {
     assert_eq!(location.to_str().unwrap(), "/prefix/");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_hidden_files() {
     let resp_result = req_path("/tests/core/.hidden.sql").await;
     assert!(
@@ -238,7 +236,7 @@ async fn test_hidden_files() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_official_website_documentation() {
     let app_data = make_app_data_for_official_website().await;
     let resp = req_path_with_app_data("/component.sql?component=button", app_data)
@@ -247,15 +245,14 @@ async fn test_official_website_documentation() {
             panic!("Failed to get response for /component.sql?component=button: {e}")
         });
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains(r#"<button type="submit" form="poem" formaction="?action"#),
         "{body_str}\nexpected to contain a button with formaction"
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_official_website_basic_auth_example() {
     let resp = req_path_with_app_data(
         "/examples/authentication/basic_auth.sql",
@@ -264,8 +261,7 @@ async fn test_official_website_basic_auth_example() {
     .await
     .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("Unauthorized"),
         "{body_str}\nexpected to contain Unauthorized"

@@ -6,18 +6,17 @@ use actix_web::{
 
 use crate::common::req_path;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_index_ok() {
     let resp = req_path("/").await.unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);
-    let body = test::read_body(resp).await;
-    assert!(body.starts_with(b"<!DOCTYPE html>"));
-    let body = String::from_utf8(body.to_vec()).unwrap();
+    let body = crate::common::read_body_string(resp).await;
+    assert!(body.starts_with("<!DOCTYPE html>"));
     assert!(body.contains("It works !"));
     assert!(!body.contains("error"));
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_access_config_forbidden() {
     let resp_result = req_path("/sqlpage/sqlpage.json").await;
     assert!(
@@ -33,7 +32,7 @@ async fn test_access_config_forbidden() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_static_files() {
     let resp = req_path("/tests/it_works.txt").await.unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -41,13 +40,12 @@ async fn test_static_files() {
     assert_eq!(&body, &b"It works !"[..]);
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_spaces_in_file_names() {
     let resp = req_path("/tests/core/spaces%20in%20file%20name.sql")
         .await
         .unwrap();
     assert_eq!(resp.status(), http::StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(body_str.contains("It works !"), "{body_str}");
 }

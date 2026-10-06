@@ -6,8 +6,7 @@ use actix_web::{
     web::{self, Data},
 };
 use base64::Engine;
-use openidconnect::url::Url;
-use serde::{Deserialize, Serialize};
+use openidconnect::{IssuerUrl, url::Url};
 use serde_json::json;
 use sqlpage::webserver::http::create_app;
 use std::collections::HashMap;
@@ -55,47 +54,21 @@ struct ProviderState<'a> {
     discovery_count: usize,
 }
 
-type ProviderStateWithLifetime<'a> = ProviderState<'a>;
-type SharedProviderState = Arc<Mutex<ProviderStateWithLifetime<'static>>>;
-
-#[derive(Serialize, Deserialize)]
-struct DiscoveryResponse {
-    issuer: String,
-    authorization_endpoint: String,
-    token_endpoint: String,
-    jwks_uri: String,
-    response_types_supported: Vec<String>,
-    subject_types_supported: Vec<String>,
-    id_token_signing_alg_values_supported: Vec<String>,
-    end_session_endpoint: String,
-}
-
-#[derive(Serialize)]
-struct JwksResponse {
-    keys: Vec<serde_json::Value>,
-}
-
-#[derive(Serialize)]
-struct TokenResponse {
-    access_token: String,
-    token_type: String,
-    id_token: String,
-    expires_in: i64,
-}
+type SharedProviderState = Arc<Mutex<ProviderState<'static>>>;
 
 async fn discovery_endpoint(state: Data<SharedProviderState>) -> impl Responder {
     let mut state = state.lock().unwrap();
     state.discovery_count += 1;
-    let discovery = DiscoveryResponse {
-        issuer: state.issuer_url.clone(),
-        authorization_endpoint: format!("{}/auth", state.issuer_url),
-        token_endpoint: format!("{}/token", state.issuer_url),
-        jwks_uri: format!("{}/jwks", state.issuer_url),
-        response_types_supported: vec!["code".to_string()],
-        subject_types_supported: vec!["public".to_string()],
-        id_token_signing_alg_values_supported: vec!["HS256".to_string()],
-        end_session_endpoint: format!("{}/logout", state.issuer_url),
-    };
+    let discovery = json!({
+        "issuer": state.issuer_url,
+        "authorization_endpoint": format!("{}/auth", state.issuer_url),
+        "token_endpoint": format!("{}/token", state.issuer_url),
+        "jwks_uri": format!("{}/jwks", state.issuer_url),
+        "response_types_supported": ["code"],
+        "subject_types_supported": ["public"],
+        "id_token_signing_alg_values_supported": ["HS256"],
+        "end_session_endpoint": format!("{}/logout", state.issuer_url),
+    });
     drop(state);
     HttpResponse::Ok()
         .insert_header((header::CONTENT_TYPE, "application/json"))
@@ -104,15 +77,15 @@ async fn discovery_endpoint(state: Data<SharedProviderState>) -> impl Responder 
 
 async fn jwks_endpoint(state: Data<SharedProviderState>) -> impl Responder {
     let state = state.lock().unwrap();
-    let jwks = JwksResponse {
-        keys: vec![json!({
+    let jwks = json!({
+        "keys": [{
             "kty": "oct",
             "kid": "test",
             "use": "sig",
             "alg": "HS256",
             "k": base64url_encode(state.secret.as_bytes())
-        })],
-    };
+        }]
+    });
     HttpResponse::Ok()
         .insert_header((header::CONTENT_TYPE, "application/json"))
         .json(jwks)
@@ -149,12 +122,12 @@ async fn token_endpoint(
     let delay = state.token_endpoint_delay;
     drop(state);
 
-    let response = TokenResponse {
-        access_token: "test_access_token".to_string(),
-        token_type: "Bearer".to_string(),
-        id_token,
-        expires_in: 3600,
-    };
+    let response = json!({
+        "access_token": "test_access_token",
+        "token_type": "Bearer",
+        "id_token": id_token,
+        "expires_in": 3600,
+    });
 
     let json_bytes = serde_json::to_vec(&response).unwrap();
     let body = futures_util::stream::once(async move {
@@ -324,6 +297,97 @@ async fn setup_oidc_test(
     setup_oidc_test_with_paths(provider_mutator, &["/"], &[]).await
 }
 
+/// Builds an OIDC test config on top of [`crate::common::test_config`],
+/// so all tests share the base settings (pool size, timeouts, ...).
+fn oidc_test_config(
+    provider: &FakeOidcProvider,
+    protected_paths: &[&str],
+    public_paths: &[&str],
+) -> sqlpage::app_config::AppConfig {
+    let mut config = crate::common::test_config();
+    config.oidc_issuer_url = Some(IssuerUrl::new(provider.issuer_url.clone()).unwrap());
+    config.oidc_client_id.clone_from(&provider.client_id);
+    config.oidc_client_secret = Some(provider.client_secret.clone());
+    config.oidc_protected_paths = protected_paths.iter().map(ToString::to_string).collect();
+    config.oidc_public_paths = public_paths.iter().map(ToString::to_string).collect();
+    config
+}
+
+/// Result of driving a full OIDC login flow in a test.
+struct OidcLogin<B> {
+    /// The initial redirect to the identity provider.
+    initial_response: actix_web::dev::ServiceResponse<B>,
+    /// The response of following the authorization callback.
+    callback_response: actix_web::dev::ServiceResponse<B>,
+}
+
+/// Runs the first half of the login flow: GET the protected page and build
+/// the authorization callback URI for `code`, storing it at the provider.
+/// `state_override` tampers with the state sent back to the callback.
+async fn begin_login<S, B>(
+    app: &S,
+    provider: &FakeOidcProvider,
+    cookies: &mut Vec<Cookie<'static>>,
+    code: &str,
+    state_override: Option<&str>,
+) -> (actix_web::dev::ServiceResponse<B>, Url, String)
+where
+    S: actix_web::dev::Service<
+            actix_http::Request,
+            Response = actix_web::dev::ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    B: actix_web::body::MessageBody,
+{
+    let initial_response = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
+    assert_eq!(initial_response.status(), StatusCode::SEE_OTHER);
+    let auth_url = Url::parse(
+        initial_response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+    )
+    .unwrap();
+    let state = get_query_param(&auth_url, "state");
+    let nonce = get_query_param(&auth_url, "nonce");
+    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
+    provider.store_auth_code(code.to_string(), nonce);
+    let callback_state = state_override.unwrap_or(&state).to_string();
+    let callback_uri = format!(
+        "{}?code={code}&state={callback_state}",
+        Url::parse(&redirect_uri).unwrap().path(),
+    );
+    (initial_response, auth_url, callback_uri)
+}
+
+/// Performs a full OIDC login with `code` and returns every step.
+async fn complete_login<S, B>(
+    app: &S,
+    provider: &FakeOidcProvider,
+    cookies: &mut Vec<Cookie<'static>>,
+    code: &str,
+    state_override: Option<&str>,
+) -> OidcLogin<B>
+where
+    S: actix_web::dev::Service<
+            actix_http::Request,
+            Response = actix_web::dev::ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    B: actix_web::body::MessageBody,
+{
+    let (initial_response, _, callback_uri) =
+        begin_login(app, provider, cookies, code, state_override).await;
+    let callback_response =
+        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+    OidcLogin {
+        initial_response,
+        callback_response,
+    }
+}
+
 async fn setup_oidc_test_with_paths(
     provider_mutator: impl FnOnce(&mut ProviderState<'_>),
     protected_paths: &[&str],
@@ -336,44 +400,20 @@ async fn setup_oidc_test_with_paths(
     >,
     FakeOidcProvider,
 ) {
-    use sqlpage::{
-        AppState,
-        app_config::{AppConfig, test_database_url},
-    };
     crate::common::init_log();
     let provider = FakeOidcProvider::new();
     provider.with_state_mut(provider_mutator);
-
-    let db_url = test_database_url();
-    let protected_paths = serde_json::to_string(protected_paths).unwrap();
-    let public_paths = serde_json::to_string(public_paths).unwrap();
-    let config_json = format!(
-        r#"{{
-        "database_url": "{db_url}",
-        "max_database_pool_connections": 1,
-        "database_connection_retries": 3,
-        "database_connection_acquire_timeout_seconds": 15,
-        "allow_exec": true,
-        "max_uploaded_file_size": 123456,
-        "listen_on": "127.0.0.1:0",
-        "system_root_ca_certificates": false,
-        "oidc_issuer_url": "{}",
-        "oidc_client_id": "{}",
-        "oidc_client_secret": "{}",
-        "oidc_protected_paths": {protected_paths},
-        "oidc_public_paths": {public_paths},
-        "host": "localhost:1"
-    }}"#,
-        provider.issuer_url, provider.client_id, provider.client_secret
-    );
-
-    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
-    let app_state = AppState::init(&config).await.unwrap();
+    let mut config = oidc_test_config(&provider, protected_paths, public_paths);
+    config.listen_on = Some("127.0.0.1:0".parse().unwrap());
+    config.host = Some("localhost:1".to_string());
+    let app_state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
     (app, provider)
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_public_clean_url_cannot_execute_a_protected_sql_file() {
     let file = "/tests/sql_test_files/data/regex_match_routing.sql";
     let protected_paths = [file];
@@ -390,7 +430,7 @@ async fn test_public_clean_url_cannot_execute_a_protected_sql_file() {
     assert_ne!(public.status(), StatusCode::SEE_OTHER);
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_top_level_builtin_assets_are_accessible_without_login_when_protected() {
     let protected_paths = ["/sqlpage."];
     let (app, _provider) = setup_oidc_test_with_paths(|_| {}, &protected_paths, &[]).await;
@@ -398,7 +438,7 @@ async fn test_top_level_builtin_assets_are_accessible_without_login_when_protect
 
     let homepage = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
     assert_ne!(homepage.status(), StatusCode::SEE_OTHER);
-    let homepage = String::from_utf8(test::read_body(homepage).await.to_vec()).unwrap();
+    let homepage = crate::common::read_body_string(homepage).await;
     let script_src = homepage
         .split_once("src=\"/sqlpage.")
         .and_then(|(_, rest)| rest.split_once('"'))
@@ -413,7 +453,7 @@ async fn test_top_level_builtin_assets_are_accessible_without_login_when_protect
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -421,26 +461,17 @@ async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() 
     // Reproduces https://github.com/sqlpage/SQLPage/issues/1341: Chrome's
     // private cache can replay a cached 303 without reapplying Set-Cookie
     // headers, causing the browser to retry an already-consumed OIDC state.
-    let initial_response = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
-    let initial_auth_url = Url::parse(
-        initial_response
-            .headers()
-            .get(header::LOCATION)
-            .unwrap()
-            .to_str()
-            .unwrap(),
-    )
-    .unwrap();
+    let (initial_response, initial_auth_url, callback_uri) =
+        begin_login(&app, &provider, &mut cookies, "first-code", None).await;
     let cached_authorization_url =
         permits_storage_after_proxy_adds_freshness(initial_response.headers())
             .then_some(initial_auth_url.clone());
 
-    let state = get_query_param(&initial_auth_url, "state");
     let nonce = get_query_param(&initial_auth_url, "nonce");
-    let redirect_uri = get_query_param(&initial_auth_url, "redirect_uri");
-    let callback_path = Url::parse(&redirect_uri).unwrap().path().to_owned();
-    provider.store_auth_code("first-code".to_string(), nonce.clone());
-    let callback_uri = format!("{callback_path}?code=first-code&state={state}");
+    let callback_path = Url::parse(&get_query_param(&initial_auth_url, "redirect_uri"))
+        .unwrap()
+        .path()
+        .to_owned();
     let callback_response =
         request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
     assert_eq!(callback_response.status(), StatusCode::SEE_OTHER);
@@ -475,32 +506,22 @@ async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() 
     assert_eq!(final_response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_happy_path() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
-    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+    let login = complete_login(&app, &provider, &mut cookies, "test_auth_code", None).await;
     assert_eq!(
-        resp.headers().get(header::CACHE_CONTROL).unwrap(),
+        login
+            .initial_response
+            .headers()
+            .get(header::CACHE_CONTROL)
+            .unwrap(),
         "no-store",
         "the authorization redirect contains a one-time state and must not be cached"
     );
-    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
-
-    let state = get_query_param(&auth_url, "state");
-    let nonce = get_query_param(&auth_url, "nonce");
-    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
-    provider.store_auth_code("test_auth_code".to_string(), nonce);
-
-    let callback_uri = format!(
-        "{}?code=test_auth_code&state={}",
-        Url::parse(&redirect_uri).unwrap().path(),
-        state
-    );
-    let callback_resp =
-        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
+    let callback_resp = login.callback_response;
     assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
     assert_eq!(
         callback_resp.headers().get(header::CACHE_CONTROL).unwrap(),
@@ -530,29 +551,20 @@ async fn test_oidc_happy_path() {
 
 async fn assert_oidc_login_fails(
     provider_mutator: impl FnOnce(&mut ProviderState<'_>),
-    state_override: Option<String>,
+    state_override: Option<&str>,
 ) {
     let (app, provider) = setup_oidc_test(provider_mutator).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
-    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
-
-    let state = get_query_param(&auth_url, "state");
-    let nonce = get_query_param(&auth_url, "nonce");
-    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
-    provider.store_auth_code("test_auth_code".to_string(), nonce);
-
-    let callback_state = state_override.unwrap_or(state);
-    let callback_uri = format!(
-        "{}?code=test_auth_code&state={}",
-        Url::parse(&redirect_uri).unwrap().path(),
-        callback_state
-    );
-    let callback_resp =
-        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
-
+    let login = complete_login(
+        &app,
+        &provider,
+        &mut cookies,
+        "test_auth_code",
+        state_override,
+    )
+    .await;
+    let callback_resp = login.callback_response;
     assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
     let location = callback_resp
         .headers()
@@ -588,12 +600,12 @@ async fn assert_oidc_callback_fails_with_bad_jwt(
     .await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_csrf_state_mismatch_is_rejected() {
-    assert_oidc_login_fails(|_| {}, Some("wrong_state".to_string())).await;
+    assert_oidc_login_fails(|_| {}, Some("wrong_state")).await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_nonce_mismatch_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         claims["nonce"] = json!("wrong_nonce");
@@ -601,7 +613,7 @@ async fn test_oidc_nonce_mismatch_is_rejected() {
     .await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_bad_signature_is_rejected() {
     assert_oidc_login_fails(
         |state| {
@@ -612,7 +624,7 @@ async fn test_oidc_bad_signature_is_rejected() {
     .await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_wrong_audience_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         claims["aud"] = json!("wrong_client");
@@ -620,7 +632,7 @@ async fn test_oidc_wrong_audience_is_rejected() {
     .await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_wrong_issuer_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         claims["iss"] = json!("https://wrong-issuer.com");
@@ -628,7 +640,7 @@ async fn test_oidc_wrong_issuer_is_rejected() {
     .await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_expired_token_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         let current_exp = claims["exp"].as_i64().unwrap();
@@ -637,14 +649,12 @@ async fn test_oidc_expired_token_is_rejected() {
     .await;
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_repeatedly_failing_callback_stops_redirecting_to_the_provider() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
-    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
+    let (_, auth_url, _) = begin_login(&app, &provider, &mut cookies, "unused-code", None).await;
     let redirect_uri = get_query_param(&auth_url, "redirect_uri");
     let callback_path = Url::parse(&redirect_uri).unwrap().path().to_owned();
     let failing_callback = format!("{callback_path}?code=x&state=wrong_state");
@@ -700,34 +710,19 @@ async fn setup_oidc_test_with_prefix(
     >,
     FakeOidcProvider,
 ) {
-    use sqlpage::{
-        AppState,
-        app_config::{AppConfig, test_database_url},
-    };
     crate::common::init_log();
     let provider = FakeOidcProvider::new();
     provider.with_state_mut(provider_mutator);
-
-    let db_url = test_database_url();
-    let config_json = format!(
-        r#"{{
-        "database_url": "{db_url}",
-        "oidc_issuer_url": "{}",
-        "oidc_client_id": "{}",
-        "oidc_client_secret": "{}",
-        "oidc_protected_paths": ["/"],
-        "site_prefix": "{site_prefix}"
-    }}"#,
-        provider.issuer_url, provider.client_id, provider.client_secret
-    );
-
-    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
-    let app_state = AppState::init(&config).await.unwrap();
+    let mut config = oidc_test_config(&provider, &["/"], &[]);
+    config.site_prefix = site_prefix.to_string();
+    let app_state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
     (app, provider)
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_with_site_prefix() {
     let (app, _provider) = setup_oidc_test_with_prefix(|_| {}, "/my-app/").await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -745,30 +740,16 @@ async fn test_oidc_with_site_prefix() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_logout_uses_correct_scheme() {
-    use sqlpage::{
-        AppState,
-        app_config::{AppConfig, test_database_url},
-    };
-
     crate::common::init_log();
     let provider = FakeOidcProvider::new();
 
-    let db_url = test_database_url();
-    let config_json = format!(
-        r#"{{
-        "database_url": "{db_url}",
-        "oidc_issuer_url": "{}",
-        "oidc_client_id": "{}",
-        "oidc_client_secret": "{}",
-        "https_domain": "example.com"
-    }}"#,
-        provider.issuer_url, provider.client_id, provider.client_secret
-    );
-
-    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
-    let app_state = AppState::init(&config).await.unwrap();
+    let mut config = oidc_test_config(&provider, &[], &[]);
+    config.https_domain = Some("example.com".to_string());
+    let app_state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let logout_path = app_state
         .oidc_state
         .as_ref()
@@ -794,27 +775,14 @@ async fn test_oidc_logout_uses_correct_scheme() {
 /// An OIDC provider metadata refresh must not block authenticated requests.
 /// The refresh should happen in the background while existing requests are
 /// served using the current (possibly stale) OIDC client.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_slow_discovery_does_not_block_authenticated_requests() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
     // Complete a full login to get auth cookies
-    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
-    let state_param = get_query_param(&auth_url, "state");
-    let nonce = get_query_param(&auth_url, "nonce");
-    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
-    provider.store_auth_code("test_auth_code".to_string(), nonce);
-    let callback_uri = format!(
-        "{}?code=test_auth_code&state={}",
-        Url::parse(&redirect_uri).unwrap().path(),
-        state_param
-    );
-    let callback_resp =
-        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
-    assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
+    let login = complete_login(&app, &provider, &mut cookies, "test_auth_code", None).await;
+    assert_eq!(login.callback_response.status(), StatusCode::SEE_OTHER);
 
     settle_background_refreshes().await;
     let count_before = provider.discovery_count();
@@ -851,26 +819,15 @@ async fn test_slow_discovery_does_not_block_authenticated_requests() {
 
 /// A slow OIDC token endpoint must not freeze the server.
 /// The body-read timeout fires and the request completes with a redirect.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_slow_token_endpoint_does_not_freeze_server() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
 
-    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
-    let state_param = get_query_param(&auth_url, "state");
-    let nonce = get_query_param(&auth_url, "nonce");
-    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
-    provider.store_auth_code("test_auth_code".to_string(), nonce);
+    let (_, _, callback_uri) =
+        begin_login(&app, &provider, &mut cookies, "test_auth_code", None).await;
 
     provider.set_token_endpoint_delay(Duration::from_secs(999));
-
-    let callback_uri = format!(
-        "{}?code=test_auth_code&state={}",
-        Url::parse(&redirect_uri).unwrap().path(),
-        state_param
-    );
 
     let handle = tokio::task::spawn_local(async move {
         let mut req = test::TestRequest::get().uri(&callback_uri);
@@ -897,51 +854,23 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
 /// generated for one session must NOT clear a different browser's auth cookie
 /// (forced-logout CSRF), while the legitimate logout of the issuing session
 /// must keep working.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_oidc_logout_is_session_bound() {
-    use sqlpage::{
-        AppState,
-        app_config::{AppConfig, test_database_url},
-    };
-
     crate::common::init_log();
     let provider = FakeOidcProvider::new();
 
-    let db_url = test_database_url();
-    let config_json = format!(
-        r#"{{
-        "database_url": "{db_url}",
-        "oidc_issuer_url": "{}",
-        "oidc_client_id": "{}",
-        "oidc_client_secret": "{}",
-        "oidc_protected_paths": ["/"],
-        "host": "localhost:1"
-    }}"#,
-        provider.issuer_url, provider.client_id, provider.client_secret
-    );
-
-    let config: AppConfig = serde_json::from_str(&config_json).unwrap();
-    let app_state = AppState::init(&config).await.unwrap();
+    let mut config = oidc_test_config(&provider, &["/"], &[]);
+    config.host = Some("localhost:1".to_string());
+    let app_state = crate::common::make_app_state_from_config(&config)
+        .await
+        .unwrap();
     let oidc_state = app_state.oidc_state.clone().unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
 
     // Complete a full login as the victim.
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
-    let resp = request_with_cookies!(app, test::TestRequest::get().uri("/"), cookies);
-    assert_eq!(resp.status(), StatusCode::SEE_OTHER);
-    let auth_url = Url::parse(resp.headers().get("location").unwrap().to_str().unwrap()).unwrap();
-    let state = get_query_param(&auth_url, "state");
-    let nonce = get_query_param(&auth_url, "nonce");
-    let redirect_uri = get_query_param(&auth_url, "redirect_uri");
-    provider.store_auth_code("test_auth_code".to_string(), nonce);
-    let callback_uri = format!(
-        "{}?code=test_auth_code&state={}",
-        Url::parse(&redirect_uri).unwrap().path(),
-        state
-    );
-    let callback_resp =
-        request_with_cookies!(app, test::TestRequest::get().uri(&callback_uri), cookies);
-    assert_eq!(callback_resp.status(), StatusCode::SEE_OTHER);
+    let login = complete_login(&app, &provider, &mut cookies, "test_auth_code", None).await;
+    assert_eq!(login.callback_response.status(), StatusCode::SEE_OTHER);
 
     let victim_auth = cookies
         .iter()

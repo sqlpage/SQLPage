@@ -99,6 +99,7 @@ jobs:
             container: mssql
             db_url: "mssql://root:Password123!@127.0.0.1/sqlpage"
           - database: oracle
+            test_args: --test-threads=2
             container: oracle
             db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
           - database: duckdb
@@ -142,7 +143,7 @@ jobs:
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: scripts/run-test-binaries.sh
+        run: scripts/run-test-binaries.sh ${{ matrix.test_args }}
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           MALLOC_CHECK_: 3

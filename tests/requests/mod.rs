@@ -2,18 +2,19 @@ use actix_web::{http::StatusCode, test};
 use serde_json::json;
 use sqlpage::webserver::http::main_handler;
 
-use crate::common::get_request_to;
+use crate::common::{get_request_to, get_request_to_with_data};
 
 async fn rendered_page(req: actix_web::dev::ServiceRequest) -> actix_web::Result<String> {
     let resp = main_handler(req).await?;
     assert_eq!(resp.status(), StatusCode::OK);
-    Ok(String::from_utf8(test::read_body(resp).await.to_vec()).unwrap())
+    Ok(crate::common::read_body_string(resp).await)
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_request_body() -> actix_web::Result<()> {
+    let app_data = crate::common::make_app_data().await;
     let page = rendered_page(
-        get_request_to("/tests/requests/request_body_test.sql")
+        get_request_to_with_data("/tests/requests/request_body_test.sql", app_data.clone())
             .await?
             .insert_header(("content-type", "text/plain"))
             .set_payload("Hello, world!")
@@ -26,7 +27,7 @@ async fn test_request_body() -> actix_web::Result<()> {
     );
 
     let page = rendered_page(
-        get_request_to("/tests/requests/request_body_test.sql")
+        get_request_to_with_data("/tests/requests/request_body_test.sql", app_data.clone())
             .await?
             .insert_header(("content-type", "application/x-www-form-urlencoded"))
             .set_payload("key=value")
@@ -36,7 +37,7 @@ async fn test_request_body() -> actix_web::Result<()> {
     assert!(page.contains("NULL"), "{page}\nexpected NULL for form data");
 
     let page = rendered_page(
-        get_request_to("/tests/requests/request_body_test.sql")
+        get_request_to_with_data("/tests/requests/request_body_test.sql", app_data)
             .await?
             .to_srv_request(),
     )
@@ -48,18 +49,22 @@ async fn test_request_body() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_request_body_base64() -> actix_web::Result<()> {
     let binary_data = (0u8..=255u8).collect::<Vec<_>>();
     let expected_base64 =
         base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &binary_data);
+    let app_data = crate::common::make_app_data().await;
 
     let page = rendered_page(
-        get_request_to("/tests/requests/request_body_base64_test.sql")
-            .await?
-            .insert_header(("content-type", "application/octet-stream"))
-            .set_payload(binary_data)
-            .to_srv_request(),
+        get_request_to_with_data(
+            "/tests/requests/request_body_base64_test.sql",
+            app_data.clone(),
+        )
+        .await?
+        .insert_header(("content-type", "application/octet-stream"))
+        .set_payload(binary_data)
+        .to_srv_request(),
     )
     .await?;
     assert!(
@@ -68,17 +73,20 @@ async fn test_request_body_base64() -> actix_web::Result<()> {
     );
 
     let page = rendered_page(
-        get_request_to("/tests/requests/request_body_base64_test.sql")
-            .await?
-            .insert_header(("content-type", "application/x-www-form-urlencoded"))
-            .set_payload("key=value")
-            .to_srv_request(),
+        get_request_to_with_data(
+            "/tests/requests/request_body_base64_test.sql",
+            app_data.clone(),
+        )
+        .await?
+        .insert_header(("content-type", "application/x-www-form-urlencoded"))
+        .set_payload("key=value")
+        .to_srv_request(),
     )
     .await?;
     assert!(page.contains("NULL"), "{page}\nexpected NULL for form data");
 
     let page = rendered_page(
-        get_request_to("/tests/requests/request_body_base64_test.sql")
+        get_request_to_with_data("/tests/requests/request_body_base64_test.sql", app_data)
             .await?
             .to_srv_request(),
     )
@@ -90,7 +98,7 @@ async fn test_request_body_base64() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_download_data_url() -> actix_web::Result<()> {
     let req = get_request_to("/tests/requests/request_download_test.sql")
         .await?
@@ -110,7 +118,7 @@ async fn test_download_data_url() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
     let long_string = "a".repeat(123_454);
     let req = get_request_to("/tests/components/display_form_field.sql")
@@ -120,8 +128,7 @@ async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
         .to_srv_request();
     let resp = main_handler(req).await?;
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         !body_str.contains("error"),
         "{body_str}\nshouldn't have errors"
@@ -133,7 +140,7 @@ async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_variables_function() -> actix_web::Result<()> {
     let url = "/tests/requests/variables.sql?common=get_value&get_only=get_val";
     let req_body = "common=post_value&post_only=post_val";
@@ -200,7 +207,7 @@ async fn test_variables_function() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_invalid_utf8_multipart_text_field_returns_bad_request() -> actix_web::Result<()> {
     let req = get_request_to("/tests/requests/variables.sql")
         .await?
@@ -229,7 +236,7 @@ async fn test_invalid_utf8_multipart_text_field_returns_bad_request() -> actix_w
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_missing_multipart_content_disposition_returns_bad_request() -> actix_web::Result<()> {
     let req = get_request_to("/tests/requests/variables.sql")
         .await?

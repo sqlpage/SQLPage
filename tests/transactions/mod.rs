@@ -1,9 +1,9 @@
-use actix_web::{http::StatusCode, test};
+use actix_web::http::StatusCode;
 use sqlpage::webserver::{database::SupportedDatabase, http::main_handler};
 
 use crate::common::{get_request_to_with_data, make_app_data};
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_transaction_error() -> actix_web::Result<()> {
     let data = make_app_data().await;
     let path = match data.db.info.database_type {
@@ -18,9 +18,8 @@ async fn test_transaction_error() -> actix_web::Result<()> {
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec())
-        .unwrap()
+    let body_str = crate::common::read_body_string(resp)
+        .await
         .to_ascii_lowercase();
     assert!(
         body_str.contains("error") && body_str.contains("null"),
@@ -32,8 +31,7 @@ async fn test_transaction_error() -> actix_web::Result<()> {
         .await?
         .to_srv_request();
     let resp = main_handler(req).await?;
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("1447"),
         "{body_str}\nexpected to contain: 1447"
@@ -41,7 +39,7 @@ async fn test_transaction_error() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     let app_data = make_app_data().await;
     let big_csv = "col1,col2\nval1,val2\n".repeat(1000);
@@ -63,15 +61,14 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     let resp = main_handler(req).await?;
 
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("error"),
         "{body_str}\nexpected to contain error message"
     );
 
     // On postgres, the error message should contain  "The postgres COPY FROM STDIN command failed"
-    if matches!(app_data.db.to_string().to_lowercase().as_str(), "postgres") {
+    if crate::common::supports_database(&app_data.db, &[SupportedDatabase::Postgres]) {
         assert!(
             body_str.contains("The postgres COPY FROM STDIN command failed"),
             "{body_str}\nexpected to contain: The postgres COPY FROM STDIN command failed"
@@ -89,8 +86,7 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
         let resp = main_handler(req).await?;
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = test::read_body(resp).await;
-        let body_str = String::from_utf8(body.to_vec()).unwrap();
+        let body_str = crate::common::read_body_string(resp).await;
         assert!(
             body_str.contains("It works !"),
             "{body_str}\nexpected to contain: It works !"

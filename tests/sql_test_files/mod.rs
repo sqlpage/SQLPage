@@ -5,7 +5,7 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn run_all_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
     run_sql_test_cases(&app_data, get_sql_test_cases()).await;
@@ -14,7 +14,7 @@ async fn run_all_sql_test_files() {
 /// Runs the SQL test files in `database-specific/<current database>/`.
 /// These files use syntax that only works on a single database engine, so they
 /// cannot be part of the generic `run_all_sql_test_files` test.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::common::TestSystem")]
 async fn run_database_specific_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
     let db_type = database_type_name(&app_data);
