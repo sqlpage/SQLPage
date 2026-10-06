@@ -16,19 +16,16 @@ tests_uploads/
 /test-results/
 /playwright-report/
 
-# Environment and secrets
-.env
+# Local environment overrides (never commit secrets here!)
+# .env is tracked with safe defaults; use .env.local for secrets
 .env.local
 .env.*.local
 
 # Apple signing certificates (sensitive - do not commit!)
 *.cer
 *.p12
-*.key
 *.csr
-*.pem
 developerID_application.cer
 sqlpage.key
 sqlpage.p12
 sqlpage_cert.pem
-sqlpage.csr

@@ -2,21 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <!-- Allow loading third-party ODBC drivers (not signed by Apple or our Team ID) -->
+    <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
-    <key>com.apple.security.cs.allow-jit</key>
-    <true/>
+    <!-- Network access for the web server -->
     <key>com.apple.security.network.client</key>
     <true/>
     <key>com.apple.security.network.server</key>
     <true/>
+    <!-- File access for reading SQL files and serving static content -->
     <key>com.apple.security.files.user-selected.read-only</key>
     <true/>
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
     <key>com.apple.security.files.downloads.read-write</key>
-    <true/>
-    <key>com.apple.security.device.usb</key>
     <true/>
 </dict>
 </plist>

@@ -38,38 +38,41 @@ jobs:
       - name: Build
         run: cargo build --profile superoptimized --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
       
-      # macOS signing steps
-      - name: Import Apple signing certificate
+      # macOS: sign, notarize, and staple the binary
+      - name: Sign and notarize macOS binary
         if: matrix.os == 'macos-latest'
-        uses: apple-actions/import-codesign-certs@v3
-        with:
-          p12-file-base64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
-          p12-password: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
-      
-      - name: Sign macOS binary
-        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_NOTARIZATION_APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
+          APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
+          APPLE_NOTARIZATION_TEAM_ID: ${{ secrets.APPLE_NOTARIZATION_TEAM_ID }}
         run: |
-          # Sign the binary with entitlements
-          codesign --force --options runtime --entitlements sqlpage.entitlements --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}" --timestamp target/${{ matrix.target }}/superoptimized/sqlpage
-          
-          # Verify the signature
-          codesign --verify --deep --strict --verbose=2 target/${{ matrix.target }}/superoptimized/sqlpage
-          
-          # Create a zip archive for notarization
-          ditto -c -k --keepParent target/${{ matrix.target }}/superoptimized/sqlpage sqlpage-macos.zip
-      
-      - name: Notarize macOS binary
-        if: matrix.os == 'macos-latest'
-        run: |
-          # Submit for notarization
+          set -euo pipefail
+          BIN=target/${{ matrix.target }}/superoptimized/sqlpage
+          # Import the signing certificate into the keychain
+          echo "${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}" | base64 -d > /tmp/signing.p12
+          security create-keychain -p "" /tmp/signing.keychain
+          security set-keychain-settings -lut 3600 /tmp/signing.keychain
+          security unlock-keychain -p "" /tmp/signing.keychain
+          security import /tmp/signing.p12 -k /tmp/signing.keychain -P "${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" /tmp/signing.keychain > /dev/null
+          security list-keychains -d user -s /tmp/signing.keychain "$(security default-keychain)"
+          # Sign with hardened runtime and entitlements
+          codesign --force --options runtime --entitlements .github/macos/entitlements.plist --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$BIN"
+          codesign --verify --deep --strict --verbose=2 "$BIN"
+          # Package, notarize, and staple (stapler requires a container format, not a bare Mach-O)
+          ditto -c -k --keepParent "$BIN" sqlpage-macos.zip
           xcrun notarytool submit sqlpage-macos.zip \
-            --apple-id "${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}" \
-            --password "${{ secrets.APPLE_NOTARIZATION_PASSWORD }}" \
-            --team-id "${{ secrets.APPLE_NOTARIZATION_TEAM_ID }}" \
+            --apple-id "$APPLE_NOTARIZATION_APPLE_ID" \
+            --password "$APPLE_NOTARIZATION_PASSWORD" \
+            --team-id "$APPLE_NOTARIZATION_TEAM_ID" \
             --wait
-          
-          # Staple the notarization ticket
-          xcrun stapler staple target/${{ matrix.target }}/superoptimized/sqlpage
+          xcrun stapler staple sqlpage-macos.zip
+          rm -rf stapled && mkdir stapled
+          ditto -x -k sqlpage-macos.zip stapled/
+          cp stapled/sqlpage "$BIN"
+          chmod +x "$BIN"
+          codesign --verify --deep --strict "$BIN"
       
       - name: Upload unsigned Windows artifact
         if: matrix.os == 'windows-latest'
@@ -105,6 +108,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload artifact (non-Windows)
+        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v7
         with:
           name: sqlpage ${{ matrix.os }}
