@@ -37,6 +37,40 @@ jobs:
       - uses: ./.github/actions/install-frontend-dependencies
       - name: Build
         run: cargo build --profile superoptimized --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      
+      # macOS signing steps
+      - name: Import Apple signing certificate
+        if: matrix.os == 'macos-latest'
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
+          p12-password: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
+      
+      - name: Sign macOS binary
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Sign the binary with entitlements
+          codesign --force --options runtime --entitlements sqlpage.entitlements --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}" --timestamp target/${{ matrix.target }}/superoptimized/sqlpage
+          
+          # Verify the signature
+          codesign --verify --deep --strict --verbose=2 target/${{ matrix.target }}/superoptimized/sqlpage
+          
+          # Create a zip archive for notarization
+          ditto -c -k --keepParent target/${{ matrix.target }}/superoptimized/sqlpage sqlpage-macos.zip
+      
+      - name: Notarize macOS binary
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Submit for notarization
+          xcrun notarytool submit sqlpage-macos.zip \
+            --apple-id "${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}" \
+            --password "${{ secrets.APPLE_NOTARIZATION_PASSWORD }}" \
+            --team-id "${{ secrets.APPLE_NOTARIZATION_TEAM_ID }}" \
+            --wait
+          
+          # Staple the notarization ticket
+          xcrun stapler staple target/${{ matrix.target }}/superoptimized/sqlpage
+      
       - name: Upload unsigned Windows artifact
         if: matrix.os == 'windows-latest'
         id: upload_unsigned
@@ -71,7 +105,6 @@ jobs:
           if-no-files-found: error
 
       - name: Upload artifact (non-Windows)
-        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v7
         with:
           name: sqlpage ${{ matrix.os }}
