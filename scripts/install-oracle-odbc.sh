@@ -5,33 +5,42 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-# Keep the same client version as the RPM installation, without converting RPMs
-# to Debian packages. CI caches the archives; verify them even on cache hits.
+# Oracle Instant Client 23ai (23.26.x). 21c is an older innovation release;
+# 23ai matches the database server used in CI (gvenzl/oracle-free:23.x)
+# and may have fixed or changed the client cleanup path involved in the
+# finiSqora exit hang. Download the official ZIPs instead of converting
+# RPMs to Debian packages. CI caches the archives; verify them even on
+# cache hits.
+oracle_version="23.26.0.0.0"
+oracle_build="2326000"
+oracle_dir="instantclient_23_26"
+oracle_driver="Oracle 23 ODBC driver"
+oracle_so="libsqora.so.23.1"
 archive_dir="${RUNNER_TEMP:-/tmp}/sqlpage-oracle-instantclient-archives"
 install_dir="${RUNNER_TEMP:-/tmp}/sqlpage-oracle-instantclient"
 mkdir -p "$archive_dir" "$install_dir"
 
 for package in basic odbc; do
-  archive="instantclient-${package}-linux.x64-21.21.0.0.0dbru.zip"
+  archive="instantclient-${package}-linux.x64-${oracle_version}.zip"
   if [[ ! -f "$archive_dir/$archive" ]]; then
     curl --fail --location --remove-on-error --retry 3 --connect-timeout 15 \
-      --max-time 180 --output "$archive_dir/$archive" \
-      "https://download.oracle.com/otn_software/linux/instantclient/2121000/$archive"
+      --max-time 300 --output "$archive_dir/$archive" \
+      "https://download.oracle.com/otn_software/linux/instantclient/${oracle_build}/$archive"
   fi
 done
 
 (
   cd "$archive_dir"
   sha256sum --check <<'CHECKSUMS'
-9cd0d5d5619ddaac43aa2214bab48e84155ca7e057d937634d1909b298125e8a  instantclient-basic-linux.x64-21.21.0.0.0dbru.zip
-37e4326ac14b08d9130d499fe5c1ba58f8ad72e8196f5618c0dc5880a24d6a23  instantclient-odbc-linux.x64-21.21.0.0.0dbru.zip
+d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5  instantclient-basic-linux.x64-23.26.0.0.0.zip
+e4e715d2dbf7f1c6907adceb8a62bea33d3ae2ae4466118df346b6c213af4fb4  instantclient-odbc-linux.x64-23.26.0.0.0.zip
 CHECKSUMS
 )
 
 for package in basic odbc; do
-  unzip -oq "$archive_dir/instantclient-${package}-linux.x64-21.21.0.0.0dbru.zip" -d "$install_dir"
+  unzip -oq "$archive_dir/instantclient-${package}-linux.x64-${oracle_version}.zip" -d "$install_dir"
 done
-client_dir="$install_dir/instantclient_21_21"
+client_dir="$install_dir/$oracle_dir"
 
 # Ubuntu 24.04's libaio package uses a different SONAME from Oracle's client.
 libaio_path="$(ldconfig -p | awk '$1 ~ /^libaio\.so\.1(t64)?$/ { path = $NF } END { print path }')"
@@ -39,9 +48,9 @@ test -n "$libaio_path"
 ln -sf "$libaio_path" "$client_dir/libaio.so.1"
 
 cat > "$install_dir/odbcinst.ini" <<EOF
-[Oracle 21 ODBC driver]
-Description=Oracle ODBC driver for Oracle 21
-Driver=$client_dir/libsqora.so.21.1
+[$oracle_driver]
+Description=Oracle ODBC driver for Oracle 23
+Driver=$client_dir/$oracle_so
 EOF
 
 {

@@ -100,7 +100,7 @@ jobs:
           - database: oracle
             test_args: --test-threads=2
             container: oracle
-            db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
+            db_url: "Driver=Oracle 23 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
           - database: duckdb
             container: ""
             db_url: "Driver=DuckDB;Database=/tmp/sqlpage-test.duckdb"
@@ -128,7 +128,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/sqlpage-oracle-instantclient-archives
-          key: oracle-instantclient-linux-x64-21.21.0.0.0-v1
+          key: oracle-instantclient-linux-x64-23.26.0.0.0-v1
       - name: Install Oracle ODBC driver
         if: matrix.database == 'oracle'
         run: |
