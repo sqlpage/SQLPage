@@ -25,8 +25,9 @@ Source builds require Apple's Command Line Tools, which you can install with `xc
 Homebrew classifies Intel Macs as Tier 3 (limited support); older macOS versions also have restrictions. Check [Homebrew's macOS requirements](https://docs.brew.sh/Installation#macos-requirements) if installation fails.
 
 > **Note**: Advanced users can alternatively install SQLPage using
-> [the precompiled binaries for Apple silicon](https://github.com/sqlpage/SQLPage/releases/latest),
-> [docker](https://hub.docker.com/repository/docker/lovasoa/SQLPage/general),
+> [the precompiled binary for Apple silicon](https://github.com/sqlpage/SQLPage/releases/latest/download/sqlpage-macos.tgz).
+> The download is code-signed and notarized by Apple, so macOS will not show a security warning when you first run it.
+> Other options: [docker](https://hub.docker.com/repository/docker/lovasoa/SQLPage/general),
 > [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage),
 > or [cargo](https://crates.io/crates/sqlpage).
 
