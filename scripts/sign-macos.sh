@@ -84,6 +84,9 @@ echo "Creating zip archive for notarization..."
 ditto -c -k --keepParent "$BINARY_PATH" sqlpage-macos.zip
 
 # Notarize the binary (if credentials are provided)
+# Note: stapler does not support bare Mach-O executables or zip archives.
+# For a standalone binary, notarization alone is sufficient — Gatekeeper
+# checks Apple's notarization servers online when the binary is first run.
 if [[ -n "${APPLE_NOTARIZATION_APPLE_ID:-}" && -n "${APPLE_NOTARIZATION_PASSWORD:-}" && -n "${APPLE_NOTARIZATION_TEAM_ID:-}" ]]; then
     echo "Submitting for notarization..."
     xcrun notarytool submit sqlpage-macos.zip \
@@ -91,17 +94,6 @@ if [[ -n "${APPLE_NOTARIZATION_APPLE_ID:-}" && -n "${APPLE_NOTARIZATION_PASSWORD
         --password "$APPLE_NOTARIZATION_PASSWORD" \
         --team-id "$APPLE_NOTARIZATION_TEAM_ID" \
         --wait
-
-    # Staple the notarization ticket to the zip (stapler requires a container format)
-    echo "Stapling the notarization ticket..."
-    xcrun stapler staple sqlpage-macos.zip
-
-    # Extract the stapled binary
-    echo "Extracting stapled binary..."
-    rm -rf stapled && mkdir stapled
-    ditto -x -k sqlpage-macos.zip stapled/
-    cp stapled/sqlpage "$BINARY_PATH"
-    chmod +x "$BINARY_PATH"
 
     # Final verification including Gatekeeper assessment
     echo "Final verification..."
