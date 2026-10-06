@@ -15,6 +15,11 @@ pub struct Cli {
     #[clap(short = 'c', long)]
     pub config_file: Option<PathBuf>,
 
+    /// Run under the Windows Service Control Manager using this registered service name.
+    #[cfg(windows)]
+    #[clap(long, value_name = "NAME", requires = "web_root")]
+    pub service: Option<String>,
+
     /// Subcommands for additional functionality.
     #[clap(subcommand)]
     pub command: Option<SubCommand>,
@@ -22,6 +27,10 @@ pub struct Cli {
 
 pub fn parse_cli() -> anyhow::Result<Cli> {
     let cli = Cli::parse();
+    #[cfg(windows)]
+    if cli.service.is_some() && cli.command.is_some() {
+        anyhow::bail!("--service cannot be used with a subcommand");
+    }
     Ok(cli)
 }
 

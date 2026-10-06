@@ -188,7 +188,7 @@ Alternatively, you can use a [Hostinger VPS](https://www.hostg.xyz/aff_c?offer_i
 If you prefer to host your website yourself, you can use a cloud provider or a VPS provider. You will need to:
 - Configure domain name resolution to point to your server
 - Open the port you are using (8080 by default) in your server's firewall
-- [Setup docker](https://github.com/sqlpage/SQLPage?tab=readme-ov-file#with-docker) or another process manager such as [systemd](https://github.com/sqlpage/SQLPage/blob/main/sqlpage.service) to start SQLPage automatically when your server boots and to keep it running
+- [Setup docker](https://github.com/sqlpage/SQLPage?tab=readme-ov-file#with-docker) or [run SQLPage as a Windows or systemd service](service.sql) to start SQLPage automatically when your server boots and to keep it running
 - Optionally, [setup a reverse proxy](nginx.sql) to avoid exposing SQLPage directly to the internet
 - Optionally, setup a TLS certificate to enable HTTPS
 - Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage)

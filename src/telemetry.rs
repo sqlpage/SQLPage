@@ -186,6 +186,19 @@ pub fn init_telemetry() -> anyhow::Result<bool> {
     init_telemetry_with_log_layer(logfmt::LogfmtLayer::new())
 }
 
+/// Initializes service logging in the Windows Application event log, with optional OTLP export.
+#[cfg(windows)]
+pub fn init_windows_service_telemetry() -> anyhow::Result<bool> {
+    windows_event_log::init()?;
+    init_telemetry_with_log_layer(logfmt::LogfmtLayer::windows_service())
+}
+
+#[cfg(any(windows, test))]
+mod background_log;
+
+#[cfg(windows)]
+pub mod windows_event_log;
+
 fn init_telemetry_with_log_layer(logfmt_layer: logfmt::LogfmtLayer) -> anyhow::Result<bool> {
     let otel_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
     let otel_active = otel_endpoint.as_deref().is_some_and(|v| !v.is_empty());
@@ -441,6 +454,8 @@ mod logfmt {
     enum OutputMode {
         StdoutAndStderr,
         TestWriter,
+        #[cfg(windows)]
+        WindowsEventLog,
     }
 
     pub(super) struct LogfmtLayer {
@@ -463,6 +478,15 @@ mod logfmt {
                 stdout_colors: false,
                 stderr_colors: false,
                 output_mode: OutputMode::TestWriter,
+            }
+        }
+
+        #[cfg(windows)]
+        pub(super) fn windows_service() -> Self {
+            Self {
+                stdout_colors: false,
+                stderr_colors: false,
+                output_mode: OutputMode::WindowsEventLog,
             }
         }
     }
@@ -527,6 +551,8 @@ mod logfmt {
                 OutputMode::TestWriter => {
                     eprint!("{buf}");
                 }
+                #[cfg(windows)]
+                OutputMode::WindowsEventLog => super::windows_event_log::write(level, buf),
             }
         }
     }

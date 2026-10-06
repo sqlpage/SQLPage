@@ -4,6 +4,12 @@ SQLPage can be configured through either [environment variables](https://en.wiki
 or a [JSON](https://en.wikipedia.org/wiki/JSON) file placed in `sqlpage/sqlpage.json`.
 
 You can find an example configuration file in [`sqlpage/sqlpage.json`](./sqlpage/sqlpage.json).
+For automatic startup, service accounts, logging, and shutdown behavior, see
+[running SQLPage as a Windows or systemd service](examples/official-site/your-first-sql-website/service.md).
+Windows service mode (`--service NAME`) requires an absolute `--web-root`, which also
+sets the working directory before loading `.env` and configuration files. Under
+systemd, set `WorkingDirectory` in the unit file.
+
 Here are the available configuration options and their default values:
 
 | variable                                      | default                                                     | description                                                                                                                                                                                                                                            |
