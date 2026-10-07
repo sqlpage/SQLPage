@@ -101,7 +101,7 @@ jobs:
           - database: oracle
             test_args: --test-threads=2
             container: oracle
-            db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
+            db_url: "Driver=Oracle 23 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
           - database: duckdb
             container: ""
             db_url: "Driver=DuckDB;Database=/tmp/sqlpage-test.duckdb"
@@ -124,17 +124,17 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y unixodbc unzip
           sudo scripts/install-duckdb-odbc.sh
+      - name: Cache Oracle Instant Client archives
+        if: matrix.database == 'oracle'
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/sqlpage-oracle-instantclient-archives
+          key: oracle-instantclient-linux-x64-23.26.0.0.0-v1
       - name: Install Oracle ODBC driver
         if: matrix.database == 'oracle'
         run: |
-          sudo apt-get install -y alien libaio1t64 libodbcinst2 unixodbc
-          sudo rpm --import https://yum.oracle.com/RPM-GPG-KEY-oracle-ol8
-          wget https://yum.oracle.com/repo/OracleLinux/OL8/oracle/instantclient21/x86_64/getPackage/oracle-instantclient-{basic,odbc}-21.21.0.0.0-1.el8.x86_64.rpm
-          sudo alien -i oracle-instantclient-basic-21.21.0.0.0-1.el8.x86_64.rpm
-          sudo alien -i oracle-instantclient-odbc-21.21.0.0.0-1.el8.x86_64.rpm
-          sudo ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/libaio.so.1
-          sudo /usr/lib/oracle/21/client64/bin/odbc_update_ini.sh / /usr/lib/oracle/21/client64/lib
-          echo "LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          sudo apt-get install -y libaio1t64 libodbcinst2 unixodbc unzip
+          scripts/install-oracle-odbc.sh
       - name: Start database container
         if: matrix.container != ''
         run: docker compose up --wait ${{ matrix.container }}
