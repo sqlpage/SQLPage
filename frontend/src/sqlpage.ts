@@ -491,6 +491,28 @@ function sqlpage_modal() {
   for (const modal of document.querySelectorAll("body .page .modal")) {
     document.body.appendChild(modal);
   }
+
+  // `visible` opens the last such dialog once. A hash that already names a
+  // different modal keeps that dialog. Clearing every marker stops a later
+  // pass from opening an earlier dialog or reopening one the user closed.
+  const visible_modals = document.querySelectorAll<HTMLElement>(
+    ".modal[data-modal-visible]",
+  );
+  const modal = visible_modals[visible_modals.length - 1];
+  if (!modal) return;
+  const hash = window.location.hash.substring(1);
+  const hashed = hash ? document.getElementById(hash) : null;
+  const hash_names_other_modal =
+    hashed?.classList.contains("modal") === true && hashed !== modal;
+  if (!hash_names_other_modal) {
+    const bootstrap_modal = page_bootstrap().Modal.getOrCreateInstance(
+      modal,
+    ) as ModalWidget;
+    bootstrap_modal.show();
+  }
+  for (const visible of visible_modals) {
+    visible.removeAttribute("data-modal-visible");
+  }
 }
 
 add_init_fn(sqlpage_table);
