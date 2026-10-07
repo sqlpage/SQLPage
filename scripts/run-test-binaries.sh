@@ -13,6 +13,6 @@ fi
 
 for test_binary in "${test_binaries[@]}"; do
   echo "::group::$(basename "$test_binary")"
-  "$test_binary" --quiet
+  "$test_binary" --quiet "$@"
   echo "::endgroup::"
 done
