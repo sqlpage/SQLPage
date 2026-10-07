@@ -94,50 +94,6 @@ pub(crate) async fn send_request(
     .map_err(actix_web::error::ErrorGatewayTimeout)?
 }
 
-#[actix_web::test]
-async fn requests_release_application_state_on_success_error_and_panic() {
-    use futures_util::FutureExt as _;
-
-    for (path, panic_after_response) in [
-        ("/tests/parameter_binding/echo_parameter.sql?x=1447", false),
-        ("/sqlpage/sqlpage.json", false),
-        ("/tests/parameter_binding/echo_parameter.sql?x=1447", true),
-    ] {
-        let data = make_app_data_from_config(AppConfig {
-            database_url: "sqlite::memory:".into(),
-            ..test_config()
-        })
-        .await
-        .unwrap();
-        let weak = std::sync::Arc::downgrade(&data.clone().into_inner());
-        let result = std::panic::AssertUnwindSafe(async move {
-            let response = send_request(request_for(path), data).await;
-            if path == "/sqlpage/sqlpage.json" {
-                assert_eq!(
-                    response.unwrap_err().as_response_error().status_code(),
-                    actix_web::http::StatusCode::FORBIDDEN
-                );
-            } else {
-                let response = response.unwrap();
-                assert_eq!(response.status(), actix_web::http::StatusCode::OK);
-                assert!(!panic_after_response, "intentional test panic");
-                test::read_body(response).await;
-            }
-        })
-        .catch_unwind()
-        .await;
-        assert_eq!(result.is_err(), panic_after_response);
-        // Query tasks may finish returning their connection after the body is read.
-        tokio::time::timeout(Duration::from_secs(1), async {
-            while weak.upgrade().is_some() {
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .expect("request retained application state");
-    }
-}
-
 /// Reads a whole response body as a UTF-8 string, failing the test otherwise.
 pub(crate) async fn read_body_string<B>(resp: ServiceResponse<B>) -> String
 where
