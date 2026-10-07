@@ -60,6 +60,10 @@ SQLPage also caches the compiled component templates that are used to generate t
 Both [built-in components](/documentation.sql) and [custom components](/custom_components.sql) you write yourself are parsed just once, and
 compiled to an efficient memory representation that can be reused for every request.
 
+SQLPage checks cached SQL files and templates for changes according to
+[`cache_stale_duration_ms`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md).
+Slow filesystem or database freshness checks do not block cache updates for other files.
+
 ## Processing data as fast as your CPU can go
 
 In a traditional web development stack, the code you write in a high-level language has to be interpreted by a runtime
