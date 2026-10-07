@@ -18,9 +18,11 @@ JavaScript where needed.
   to a mutable SQLPage variable and is useful for reusing query results or controlling later statements.
 - **Request variables** (`src/webserver/request_variables.rs`, `src/webserver/http_request_info.rs`,
   `src/webserver/database/syntax_tree.rs`). `?name` refers to a URL/GET parameter, `:name` explicitly refers to a form/POST
-  value, and `$name` is the compatibility shorthand that uses a POST value when present and otherwise a GET
-  value (a SET variable takes precedence where applicable). Values are passed as parameters, not interpolated
-  into SQL. GET and POST variables are request inputs; SET variables are mutable during request execution.
+  value. The current implementation resolves `$name` through SET then GET and `:name` through SET then POST;
+  without a SET value, a matching POST field triggers a `$name` warning, but lookup does not fall back to POST.
+  Explicit SET NULL stops lookup.
+  Values are passed as parameters, not interpolated into SQL. GET and POST variables are request inputs;
+  SET variables are mutable during request execution.
   `sqlpage.variables()` exposes them as JSON, with SET > POST > GET precedence.
 - **SQLPage functions** (`src/webserver/database/sqlpage_functions/`). Calls such as `sqlpage.fetch`, `sqlpage.run_sql`, `sqlpage.set_variable`, file
   readers, hashing/HMAC helpers, request metadata, uploads, headers/cookies, URL helpers, OIDC user info,
@@ -118,7 +120,18 @@ docker compose up --wait mssql # or postgres, mysql, mariadb, oracle
 DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test
 ```
 
+CI checks SQLite, PostgreSQL, MySQL, Microsoft SQL Server, Oracle via ODBC, and DuckDB via ODBC on Linux;
+Windows also checks default SQLite. MariaDB is an optional local target, not a separate CI entry.
+For SQL execution/binding/decoding changes, inspect the affected matrix results, not just local SQLite.
+
 ODBC tests require the database-specific ODBC driver on the host; starting the container is not sufficient. See the Oracle and DuckDB matrix entries in [CI](./.github/workflows/ci.yml) for driver setup and connection strings. On Linux and macOS, `cargo test --features odbc-static` matches CI's static unixODBC linking.
+
+Reuse existing SQL, request, transaction, and browser fixtures and parameterize repeated setup without
+removing assertions or scenarios. Read [SQL regression test guidance](./CONTRIBUTING.md#writing-sql-regression-tests)
+before adding portable SQL expectations: Oracle numeric JSON strings can differ (`1.0` versus `1`), SQLite
+scalar SET queries take the first row where other engines error, SET NULL blocks request fallback, and
+variable lookup differs from merged enumeration. Preserve one-connection tests for nested `run_sql`,
+column ordering, and private-input exclusion. A test summary followed by a hung process is still a CI failure.
 
 For dynamic frontend changes, run the Playwright tests under `tests/end-to-end/` as described in [CONTRIBUTING.md](./CONTRIBUTING.md). Component browser tests belong in `tests/end-to-end/fixtures/<suite>/{index.sql,test.ts}` and must import the shared `fixture.ts` harness. Exercise components through SQL fixtures and normal page initialization; do not inject synthetic component DOM or call private initialization functions. Prefer Playwright locators and web-first assertions. For examples containing `test.hurl`, run `scripts/test-examples-hurl.sh <example-path>`.
 

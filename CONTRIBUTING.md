@@ -84,17 +84,80 @@ Run the backend tests:
 cargo test
 ```
 
-By default, the tests are run against an SQLite in-memory database.
+By default, tests use in-memory SQLite. An exported `DATABASE_URL` overrides this default;
+unset it when returning to SQLite.
 
-If you want to run them against another database,
-start a database server with `docker compose up database_name` (mssql, mysql, mariadb, or postgres)
-and run the tests with the `DATABASE_URL` environment variable pointing to the database:
+The Linux [CI database matrix](./.github/workflows/ci.yml) runs the same Rust test binaries against:
+
+| Database | Connection path | Local server/driver setup |
+| --- | --- | --- |
+| SQLite | Native | In-memory; no server required |
+| PostgreSQL | Native | `docker compose up --wait postgres` |
+| MySQL | Native | `docker compose up --wait mysql` |
+| Microsoft SQL Server | Native | `docker compose up --wait mssql` |
+| Oracle | ODBC | `docker compose up --wait oracle` and an Oracle ODBC driver on the host |
+| DuckDB | ODBC | A DuckDB ODBC driver on the host; no server required |
+
+Windows also runs `cargo test` with the default SQLite database. MariaDB is available in
+`docker-compose.yml` for additional local testing, but is not a separate CI matrix entry.
+
+For example, run the backend tests against SQL Server:
 
 ```bash
-docker compose up mssql # or mysql, mariadb, postgres
-export DATABASE_URL=mssql://root:Password123!@localhost/sqlpage
-cargo test
+docker compose up --wait mssql
+DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test
 ```
+
+On Linux and macOS, `cargo test --features odbc-static` matches CI's static unixODBC linking.
+This bundles the driver manager, **not** the database drivers. Oracle and DuckDB still need their
+own installed drivers. Use the connection strings and driver setup in the CI matrix, including
+Oracle's `LD_LIBRARY_PATH` and `ODBCSYSINI` environment settings. See
+[`scripts/install-oracle-odbc.sh`](./scripts/install-oracle-odbc.sh) and
+[`scripts/install-duckdb-odbc.sh`](./scripts/install-duckdb-odbc.sh) for the CI installation steps.
+
+A SQLite pass does not establish portability. For SQL execution, binding, or result decoding
+changes, check the affected database matrix jobs before considering the change verified.
+Distinguish an assertion failure from a driver/setup error or a timeout after the test summary;
+a passing summary alone does not mean the test process exited successfully.
+
+#### Writing SQL regression tests
+
+Extend existing fixtures and parameterize shared setup before adding a new harness. Keep distinct
+assertions for each behavior and failure mode; consolidate repetition without dropping scenarios.
+Shared SQL fixtures live in [`tests/sql_test_files/`](./tests/sql_test_files/); database-specific
+syntax belongs under `data/database-specific/<database>/`. Reuse the request and transaction suites
+for precedence and rollback checks, and the common one-connection configuration for nested queries.
+
+Keep these differences in mind:
+
+- **Numbers inside JSON strings:** Oracle ODBC can serialize a selected numeric literal as `1.0`
+  while another driver or a JSON constructor produces `1`. A JSON string returned by
+  `sqlpage.run_sql` is compared as a string by the fixture harness, so these differ. Use text
+  markers when testing row order, or an explicit numeric comparison when testing numeric values;
+  do not weaken full-row assertions to substring checks to hide formatting differences.
+- **Scalar `SET` queries:** Zero rows produce NULL. SQLite takes the first row when there are
+  several; other supported engines reject multiple rows. Each returned scalar row must have exactly
+  one output column, even when duplicate names would merge into one JSON property. Zero-row
+  queries return NULL without checking a row's column count. Keep engine-specific
+  cardinality expectations in the existing database-specific fixtures.
+- **Variables:** The current implementation resolves `$name` through SET then GET, and `:name`
+  through SET then POST. With no SET value, a matching POST field triggers a `$name` warning;
+  lookup still does not fall back to POST.
+  An explicitly NULL SET value stops lookup rather than falling through to request inputs.
+  `sqlpage.variables()` has a different merged enumeration policy: SET > POST > GET. Test lookup
+  and enumeration separately, and check that `run_sql` child assignments do not change the parent.
+- **Rows and computed values:** Duplicate physical output names accumulate values in fetched
+  column order; SQLPage-computed columns append afterwards, regardless of SELECT order.
+  For example, `select sqlpage.url_encode(name) as encoded, name as encoded` returns the physical
+  `name` value before the encoded value. Private function-input columns must stay out of response JSON. Nested
+  `run_sql` evaluation must release the active fetch stream before reusing its connection. Keep
+  the one-connection pool setting in regression fixtures so ownership mistakes cannot be hidden
+  by acquiring another connection.
+- **Fixture conventions:** In JSON-mode tests, return `actual` and `expected`; an `expected` array
+  lists acceptable alternatives, not an expected row sequence. Compare a complete JSON string
+  when asserting row sequence. For HTML error fixtures, `error_<message>.sql` supplies the expected
+  message (underscores become spaces). Use `_no<database>` exclusions only for an established
+  backend limitation, with a comment explaining it.
 
 ### End-to-End Tests
 
@@ -230,7 +293,7 @@ git checkout -b feature/your-feature-name
    - Execute all tests across multiple platforms (Linux, Windows)
    - Build Docker images for multiple architectures
    - Run frontend linting, typechecking and unit tests (`npm test`)
-   - Test against multiple databases (SQLite, PostgreSQL, MySQL, MSSQL, Oracle, and ODBC)
+   - Test against SQLite, PostgreSQL, MySQL, Microsoft SQL Server, Oracle via ODBC, and DuckDB via ODBC
 
 ## Release Process
 
