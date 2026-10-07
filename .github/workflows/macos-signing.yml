@@ -23,8 +23,6 @@ concurrency:
 
 jobs:
   sign-macos:
-    # Fork PRs cannot access the Apple credentials. Test them on a repository branch.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -34,7 +32,13 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         env:
           NODE_OPTIONS: --no-deprecation
-      - name: Run the signing helper
+      - name: Test the signing helper on pull requests
+        if: github.event_name == 'pull_request'
+        env:
+          APPLE_SIGNING_IDENTITY: "-" # Ad hoc signing requires no Apple credentials.
+        run: scripts/sign-macos.sh
+      - name: Run the signing helper with Apple credentials
+        if: github.event_name == 'push'
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_NOTARIZATION_APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}

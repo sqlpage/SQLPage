@@ -53,7 +53,7 @@ jobs:
           BIN=target/${{ matrix.target }}/superoptimized/sqlpage
           # Import the signing certificate into a temporary keychain
           umask 077
-          trap 'rm -f /tmp/signing.pem' EXIT
+          trap 'security delete-keychain /tmp/signing.keychain; rm -f /tmp/signing.p12 /tmp/signing.pem' EXIT
           # Use PKCS12 algorithms supported by macOS Keychain.
           printf '%s' "$P12_BASE64" | base64 -d > /tmp/signing.p12
           openssl pkcs12 -in /tmp/signing.p12 -passin env:P12_PASSWORD -nodes -out /tmp/signing.pem

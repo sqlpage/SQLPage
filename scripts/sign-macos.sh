@@ -8,7 +8,7 @@
 #      security import sqlpage.p12 -k ~/Library/Keychains/login.keychain-db -P "<p12-password>" -T /usr/bin/codesign
 #
 # Required environment variables for notarization:
-#   APPLE_SIGNING_IDENTITY          - e.g. "Developer ID Application: Your Name (TEAMID)"
+#   APPLE_SIGNING_IDENTITY          - e.g. "Developer ID Application: Your Name (TEAMID)", or "-" for ad hoc signing
 #   APPLE_NOTARIZATION_APPLE_ID     - Your Apple ID email
 #   APPLE_NOTARIZATION_PASSWORD     - App-specific password
 #   APPLE_NOTARIZATION_TEAM_ID      - Your 10-character Team ID
@@ -24,12 +24,6 @@ fi
 # Check if required tools are available (use xcrun --find as tools may not be on PATH)
 if ! xcrun --find codesign &> /dev/null; then
     echo "codesign not found. Please install Xcode command line tools:"
-    echo "  xcode-select --install"
-    exit 1
-fi
-
-if ! xcrun --find notarytool &> /dev/null; then
-    echo "notarytool not found. Please install Xcode command line tools:"
     echo "  xcode-select --install"
     exit 1
 fi
@@ -67,7 +61,11 @@ fi
 
 # Sign the binary
 echo "Signing the binary..."
-codesign --force --options runtime --entitlements .github/macos/entitlements.plist --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$BINARY_PATH"
+SIGNING_TIMESTAMP_OPTION=--timestamp
+if [[ "$APPLE_SIGNING_IDENTITY" == "-" ]]; then
+    SIGNING_TIMESTAMP_OPTION=--timestamp=none
+fi
+codesign --force --options runtime --entitlements .github/macos/entitlements.plist --sign "$APPLE_SIGNING_IDENTITY" "$SIGNING_TIMESTAMP_OPTION" "$BINARY_PATH"
 
 # Verify the signature
 echo "Verifying the signature..."
@@ -82,6 +80,12 @@ ditto -c -k --keepParent "$BINARY_PATH" sqlpage-macos.zip
 # For a standalone binary, notarization alone is sufficient — Gatekeeper
 # checks Apple's notarization servers online when the binary is first run.
 if [[ -n "${APPLE_NOTARIZATION_APPLE_ID:-}" && -n "${APPLE_NOTARIZATION_PASSWORD:-}" && -n "${APPLE_NOTARIZATION_TEAM_ID:-}" ]]; then
+    if ! xcrun --find notarytool &> /dev/null; then
+        echo "notarytool not found. Please install Xcode command line tools:"
+        echo "  xcode-select --install"
+        exit 1
+    fi
+
     echo "Submitting for notarization..."
     xcrun notarytool submit sqlpage-macos.zip \
         --apple-id "$APPLE_NOTARIZATION_APPLE_ID" \
@@ -94,10 +98,9 @@ if [[ -n "${APPLE_NOTARIZATION_APPLE_ID:-}" && -n "${APPLE_NOTARIZATION_PASSWORD
         exit 1
     fi
 
-    # Final verification including Gatekeeper assessment
+    # Verify the signature and notarization ticket for the standalone binary.
     echo "Final verification..."
-    codesign --verify --deep --strict --verbose=2 "$BINARY_PATH"
-    spctl -a -v "$BINARY_PATH"
+    codesign --verify --deep --strict --verbose=2 --check-notarization -R=notarized "$BINARY_PATH"
 else
     echo "Skipping notarization. Set APPLE_NOTARIZATION_APPLE_ID, APPLE_NOTARIZATION_PASSWORD, and APPLE_NOTARIZATION_TEAM_ID to enable notarization."
     echo "Note: The binary is signed but not notarized. Gatekeeper will still show a warning."
