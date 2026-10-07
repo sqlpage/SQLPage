@@ -22,28 +22,11 @@ pub(super) async fn variables<'a>(
             ));
         }
     } else {
-        use serde::{Serializer, ser::SerializeMap};
-        let mut res = Vec::new();
-        let mut serializer = serde_json::Serializer::new(&mut res);
-        let set_vars = request.set_variables.borrow();
-        let len = request.url_params.len() + request.post_variables.len() + set_vars.len();
-        let mut ser = serializer.serialize_map(Some(len))?;
-        let mut seen_keys = std::collections::HashSet::new();
-        for (k, v) in &*set_vars {
-            seen_keys.insert(k);
-            ser.serialize_entry(k, v)?;
-        }
-        for (k, v) in &request.post_variables {
-            if seen_keys.insert(k) {
-                ser.serialize_entry(k, v)?;
-            }
-        }
-        for (k, v) in &request.url_params {
-            if seen_keys.insert(k) {
-                ser.serialize_entry(k, v)?;
-            }
-        }
-        ser.end()?;
-        String::from_utf8(res)?
+        let variables = crate::webserver::request_variables::VariableAccess::new(
+            &request.url_params,
+            &request.post_variables,
+            &request.set_variables,
+        );
+        serde_json::to_string(&variables)?
     })
 }
