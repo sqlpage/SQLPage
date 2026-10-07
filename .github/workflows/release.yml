@@ -37,7 +37,7 @@ jobs:
       - uses: ./.github/actions/install-frontend-dependencies
       - name: Build
         run: cargo build --profile superoptimized --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
-      
+
       # macOS: sign and notarize the binary
       - name: Sign and notarize macOS binary
         if: matrix.os == 'macos-latest'
@@ -71,9 +71,14 @@ jobs:
             --apple-id "$APPLE_NOTARIZATION_APPLE_ID" \
             --password "$APPLE_NOTARIZATION_PASSWORD" \
             --team-id "$APPLE_NOTARIZATION_TEAM_ID" \
-            --wait
+            --wait --output-format plist > notarization-result.plist
+          if [[ "$(plutil -extract status raw -o - notarization-result.plist)" != "Accepted" ]]; then
+            echo "Notarization was not accepted:" >&2
+            cat notarization-result.plist >&2
+            exit 1
+          fi
           codesign --verify --deep --strict "$BIN"
-      
+
       - name: Upload unsigned Windows artifact
         if: matrix.os == 'windows-latest'
         id: upload_unsigned

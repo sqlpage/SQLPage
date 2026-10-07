@@ -26,7 +26,7 @@ Homebrew classifies Intel Macs as Tier 3 (limited support); older macOS versions
 
 > **Note**: Advanced users can alternatively install SQLPage using
 > [the precompiled binary for Apple silicon](https://github.com/sqlpage/SQLPage/releases/latest/download/sqlpage-macos.tgz).
-> The download is code-signed and notarized by Apple, so macOS will not show a security warning when you first run it.
+> The download is code-signed with a Developer ID certificate and notarized by Apple. macOS may still ask you to confirm opening it the first time.
 > Other options: [docker](https://hub.docker.com/repository/docker/lovasoa/SQLPage/general),
 > [nix](https://search.nixos.org/packages?channel=unstable&show=sqlpage),
 > or [cargo](https://crates.io/crates/sqlpage).

@@ -34,12 +34,6 @@ if ! xcrun --find notarytool &> /dev/null; then
     exit 1
 fi
 
-if ! xcrun --find stapler &> /dev/null; then
-    echo "stapler not found. Please install Xcode command line tools:"
-    echo "  xcode-select --install"
-    exit 1
-fi
-
 # Check that the signing identity is set
 if [[ -z "${APPLE_SIGNING_IDENTITY:-}" ]]; then
     echo "APPLE_SIGNING_IDENTITY is not set."
@@ -57,7 +51,7 @@ fi
 # Install the ARM target if on Intel Mac
 if [[ "$(uname -m)" == "x86_64" ]]; then
     echo "Intel Mac detected, ensuring aarch64-apple-darwin target is installed..."
-    rustup target add aarch64-apple-darwin || true
+    rustup target add aarch64-apple-darwin
 fi
 
 # Build the binary
@@ -93,7 +87,12 @@ if [[ -n "${APPLE_NOTARIZATION_APPLE_ID:-}" && -n "${APPLE_NOTARIZATION_PASSWORD
         --apple-id "$APPLE_NOTARIZATION_APPLE_ID" \
         --password "$APPLE_NOTARIZATION_PASSWORD" \
         --team-id "$APPLE_NOTARIZATION_TEAM_ID" \
-        --wait
+        --wait --output-format plist > notarization-result.plist
+    if [[ "$(plutil -extract status raw -o - notarization-result.plist)" != "Accepted" ]]; then
+        echo "Notarization was not accepted:" >&2
+        cat notarization-result.plist >&2
+        exit 1
+    fi
 
     # Final verification including Gatekeeper assessment
     echo "Final verification..."
