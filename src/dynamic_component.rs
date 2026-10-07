@@ -132,34 +132,16 @@ mod tests {
 
     #[test]
     fn test_dynamic_properties_to_result_vec() {
-        let mut properties = JsonValue::String(r#"{"a": 1}"#.to_string());
-        assert_eq!(
-            dynamic_properties_to_result_vec(properties.clone()).unwrap(),
-            vec![JsonValue::Object(
-                serde_json::from_str(r#"{"a": 1}"#).unwrap()
-            )]
-        );
-
-        properties = JsonValue::Array(vec![JsonValue::String(r#"{"a": 1}"#.to_string())]);
-        assert_eq!(
-            dynamic_properties_to_result_vec(properties.clone()).unwrap(),
-            vec![serde_json::json!({"a": 1})]
-        );
-
-        properties = JsonValue::Object(serde_json::from_str(r#"{"a": 1}"#).unwrap());
-        assert_eq!(
-            dynamic_properties_to_result_vec(properties.clone()).unwrap(),
-            vec![JsonValue::Object(
-                serde_json::from_str(r#"{"a": 1}"#).unwrap()
-            )]
-        );
-
-        properties = JsonValue::Null;
-        assert!(dynamic_properties_to_result_vec(properties).is_err());
-    }
-
-    #[test]
-    fn flattens_nested_arrays_and_json_strings_in_order() {
+        for properties in [
+            serde_json::json!({"a": 1}),
+            serde_json::json!(r#"{"a": 1}"#),
+            serde_json::json!([r#"{"a": 1}"#]),
+        ] {
+            assert_eq!(
+                dynamic_properties_to_result_vec(properties).unwrap(),
+                vec![serde_json::json!({"a": 1})]
+            );
+        }
         let properties = serde_json::json!([
             [],
             [{"first": {"nested": [1, 2]}}, [r#"{"second": 2}"#]],
@@ -167,15 +149,16 @@ mod tests {
             {"fourth": 4}
         ]);
         assert_eq!(
-            dynamic_properties_to_result_vec(properties).unwrap(),
-            vec![
-                serde_json::json!({"first": {"nested": [1, 2]}}),
-                serde_json::json!({"second": 2}),
-                serde_json::json!({"third": 3}),
-                serde_json::json!({"fourth": 4}),
-            ]
+            JsonValue::Array(dynamic_properties_to_result_vec(properties).unwrap()),
+            serde_json::json!([
+                {"first": {"nested": [1, 2]}}, {"second": 2}, {"third": 3}, {"fourth": 4}
+            ])
         );
-        for invalid in [serde_json::json!([{}, [null]]), serde_json::json!(["{"])] {
+        for invalid in [
+            JsonValue::Null,
+            serde_json::json!([{}, [null]]),
+            serde_json::json!(["{"]),
+        ] {
             assert!(dynamic_properties_to_result_vec(invalid).is_err());
         }
     }
