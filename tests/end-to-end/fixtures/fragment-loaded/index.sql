@@ -1,7 +1,5 @@
-SELECT 'form' AS component, 'existing-form' AS id, 'Existing form' AS title, TRUE AS auto_submit;
-SELECT 'existing_value' AS name, 'Existing value' AS label;
-SELECT 'existing_file' AS name, 'Existing file' AS label, 'file' AS type;
-
+SELECT 'dynamic' AS component,
+    sqlpage.run_sql('form/index.sql', '{"fragment":"1","id":"existing-form"}') AS properties;
 SELECT 'card' AS component;
-SELECT 'First fragment' AS title, '/fragment-loaded/widgets.sql?instance=first' AS embed;
-SELECT 'Second fragment' AS title, '/fragment-loaded/widgets.sql?instance=second' AS embed;
+SELECT 'Embedded form' AS title, '/form/?fragment=1&id=first-form' AS embed;
+SELECT 'Embedded chart' AS title, '/chart/' AS embed;

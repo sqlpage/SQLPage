@@ -1,4 +1,14 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
+import { loadFragment } from "./fixture.ts";
+
+async function componentFragment(
+  page: Page,
+  component: string,
+  root: string | null = "main",
+) {
+  await page.goto("/examples/show_variables.sql");
+  await loadFragment(page, `/component.sql?component=${component}`, root);
+}
 
 test("Open documentation", async ({ page }) => {
   await page.goto("/");
@@ -142,7 +152,7 @@ test("map", async ({ page }) => {
 test("toast notifications initialize, stack, dismiss, and render safely", async ({
   page,
 }) => {
-  await page.goto("/documentation.sql?component=toast#component");
+  await componentFragment(page, "toast");
 
   const automatic = page.locator("#toast-auto");
   await expect(automatic).toBeVisible();
@@ -370,11 +380,15 @@ test("Authentication example", async ({ page }) => {
 });
 
 test("table filtering", async ({ page }) => {
-  await page.goto("/documentation.sql?component=table");
+  await componentFragment(page, "table", null);
   const tableSection = page.locator(".card", {
     has: page.getByRole("cell", { name: "Chart", exact: true }),
   });
 
+  await tableSection
+    .locator(".card-body")
+    .dispatchEvent("fragment-loaded", { bubbles: true });
+  await expect(page.locator('[data-pre-init="table"]')).not.toHaveCount(0);
   const searchInput = tableSection.getByPlaceholder("Search…");
   await searchInput.fill("chart");
   const chartCell = tableSection.getByRole("cell", { name: "Chart" });
@@ -387,7 +401,7 @@ test("table filtering", async ({ page }) => {
 });
 
 const sortableTable = async (page: Page) => {
-  await page.goto("/documentation.sql?component=table");
+  await componentFragment(page, "table", "document");
   return page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "31456" }),
   });
@@ -629,7 +643,9 @@ test("form type=select searchable=true", async ({ page }) => {
 });
 
 test("modal", async ({ page }) => {
-  await page.goto("/documentation.sql?component=modal#component");
+  await componentFragment(page, "modal");
+  await expect(page.locator("body > #my_modal")).toBeAttached();
+  await expect(page.locator("body > #my_embed_form_modal")).toBeAttached();
   const openButton = page.getByRole("button", { name: "Open a simple modal" });
   await openButton.click();
 
@@ -727,4 +743,20 @@ test("table action buttons - disabled action", async ({ page }) => {
   const emptyActionButton = actionColumnButtons.last();
   await expect(emptyActionButton).toHaveAttribute("href", "null");
   await expect(emptyActionButton).toHaveAttribute("title", "Action");
+});
+
+test("fragment dropdown keeps one Bootstrap instance after repeated events", async ({
+  page,
+}) => {
+  await componentFragment(page, "facet");
+  await page.evaluate(() =>
+    document.dispatchEvent(new CustomEvent("fragment-loaded")),
+  );
+  const toggle = page
+    .locator('[data-bs-toggle="dropdown"]')
+    .filter({ hasText: "Constitution" });
+  await toggle.click();
+  await expect(page.locator(".dropdown-menu.show")).toBeVisible();
+  await toggle.click();
+  await expect(page.locator(".dropdown-menu.show")).toHaveCount(0);
 });

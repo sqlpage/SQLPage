@@ -1,5 +1,5 @@
 import path from "node:path";
-import { test as base, expect } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 
 const fixturesDirectory = path.resolve(import.meta.dirname, "fixtures");
 
@@ -32,3 +32,32 @@ export const test = base.extend({
 
 export type { Page } from "@playwright/test";
 export { expect };
+
+/** Insert server-rendered SQL output, then announce it like a custom fragment consumer. */
+export async function loadFragment(
+  page: Page,
+  url: string,
+  root: string | null = "main",
+) {
+  await page.evaluate(
+    async ({ url, root }) => {
+      const request = new URL(url, location.href);
+      request.searchParams.set("_sqlpage_embed", "1");
+      const response = await fetch(request);
+      if (!response.ok)
+        throw new Error(`Fragment request failed: ${response.status}`);
+      const fragment = document.createElement("template");
+      fragment.innerHTML = await response.text();
+      document.querySelector("main")?.append(fragment.content);
+      if (root) {
+        const target =
+          root === "document" ? document : document.querySelector(root);
+        if (!target) throw new Error(`Missing fragment root: ${root}`);
+        target.dispatchEvent(
+          new CustomEvent("fragment-loaded", { bubbles: true }),
+        );
+      }
+    },
+    { url, root },
+  );
+}
