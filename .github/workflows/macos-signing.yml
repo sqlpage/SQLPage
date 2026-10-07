@@ -52,12 +52,14 @@ jobs:
           : "${P12_PASSWORD:?Missing APPLE_SIGNING_CERTIFICATE_PASSWORD secret}"
           CERTIFICATE_PATH="$RUNNER_TEMP/signing.p12"
           KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
-          trap 'security delete-keychain "$KEYCHAIN_PATH"; rm -f "$CERTIFICATE_PATH"' EXIT
+          umask 077
+          trap 'security delete-keychain "$KEYCHAIN_PATH"; rm -f "$CERTIFICATE_PATH" "$CERTIFICATE_PATH.pem"' EXIT
           # Use PKCS12 algorithms supported by macOS Keychain.
-          printf '%s' "$P12_BASE64" | base64 -d |
-            openssl pkcs12 -passin env:P12_PASSWORD -nodes |
-            openssl pkcs12 -export -passout env:P12_PASSWORD \
-              -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 -out "$CERTIFICATE_PATH"
+          printf '%s' "$P12_BASE64" | base64 -d > "$CERTIFICATE_PATH"
+          openssl pkcs12 -in "$CERTIFICATE_PATH" -passin env:P12_PASSWORD -nodes -out "$CERTIFICATE_PATH.pem"
+          openssl pkcs12 -export -in "$CERTIFICATE_PATH.pem" -passout env:P12_PASSWORD \
+            -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 -out "$CERTIFICATE_PATH"
+          rm -f "$CERTIFICATE_PATH.pem"
           security create-keychain -p "" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "" "$KEYCHAIN_PATH"
