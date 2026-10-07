@@ -116,7 +116,7 @@ fn dynamic_properties_to_result_vec(
         JsonValue::Array(values) => {
             let mut vec = Vec::with_capacity(values.len());
             for value in values {
-                vec.extend_from_slice(&dynamic_properties_to_result_vec(value)?);
+                vec.extend(dynamic_properties_to_result_vec(value)?);
             }
             Ok(vec)
         }
@@ -156,6 +156,28 @@ mod tests {
 
         properties = JsonValue::Null;
         assert!(dynamic_properties_to_result_vec(properties).is_err());
+    }
+
+    #[test]
+    fn flattens_nested_arrays_and_json_strings_in_order() {
+        let properties = serde_json::json!([
+            [],
+            [{"first": {"nested": [1, 2]}}, [r#"{"second": 2}"#]],
+            r#"[{"third": 3}, []]"#,
+            {"fourth": 4}
+        ]);
+        assert_eq!(
+            dynamic_properties_to_result_vec(properties).unwrap(),
+            vec![
+                serde_json::json!({"first": {"nested": [1, 2]}}),
+                serde_json::json!({"second": 2}),
+                serde_json::json!({"third": 3}),
+                serde_json::json!({"fourth": 4}),
+            ]
+        );
+        for invalid in [serde_json::json!([{}, [null]]), serde_json::json!(["{"])] {
+            assert!(dynamic_properties_to_result_vec(invalid).is_err());
+        }
     }
 
     #[test]
