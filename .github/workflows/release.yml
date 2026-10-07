@@ -52,7 +52,11 @@ jobs:
           set -euo pipefail
           BIN=target/${{ matrix.target }}/superoptimized/sqlpage
           # Import the signing certificate into a temporary keychain
-          printf '%s' "$P12_BASE64" | base64 -d > /tmp/signing.p12
+          # Use PKCS12 algorithms supported by macOS Keychain.
+          printf '%s' "$P12_BASE64" | base64 -d |
+            openssl pkcs12 -passin env:P12_PASSWORD -nodes |
+            openssl pkcs12 -export -passout env:P12_PASSWORD \
+              -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 -out /tmp/signing.p12
           security create-keychain -p "" /tmp/signing.keychain
           security set-keychain-settings -lut 3600 /tmp/signing.keychain
           security unlock-keychain -p "" /tmp/signing.keychain
