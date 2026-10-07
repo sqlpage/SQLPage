@@ -41,13 +41,12 @@ mod dialect;
 mod rewrite;
 mod statement;
 
-#[cfg(test)]
-pub(super) use statement::SourceLocation;
 pub use statement::SqlFile;
 pub(super) use statement::{
-    DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SourceSpan, StaticSimpleSelect,
-    VariableName,
+    DatabaseQuery, FileStatement, Query, QueryBody, SourceSpan, StaticSimpleSelect, VariableName,
 };
+#[cfg(test)]
+pub(super) use statement::{OutputColumn, SourceLocation};
 
 impl SqlFile {
     #[must_use]

@@ -10,10 +10,9 @@ use tracing::Instrument;
 use super::csv_import::run_csv_import;
 use super::error_highlighting::{display_stmt_db_error, display_stmt_error, is_positioned_error};
 use super::sql::{
-    DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SourceSpan, SqlFile,
-    StaticSimpleSelect,
+    DatabaseQuery, FileStatement, Query, QueryBody, SourceSpan, SqlFile, StaticSimpleSelect,
 };
-use super::sqlpage_expr::{NoInputs, RowExpr, RowInputs};
+use super::sqlpage_expr::{NoInputs, RowInputs};
 use crate::dynamic_component::parse_dynamic_rows;
 use crate::utils::add_value_to_map;
 use crate::webserver::ErrorWithStatus;
@@ -35,10 +34,24 @@ use sqlx::value::ValueRef;
 
 pub type DbConn = Option<PoolConnection<Any>>;
 
-/// One database result together with private values reserved for computed
-/// columns and therefore omitted from the user-visible row.
-struct QueryResult {
-    item: DbItem,
+/// Database events before computed columns and dynamic components are evaluated.
+enum QueryEvent {
+    Row(QueryRow),
+    FinishedQuery,
+}
+
+impl QueryEvent {
+    fn into_db_item(self) -> DbItem {
+        match self {
+            Self::Row(row) => DbItem::Row(row.value),
+            Self::FinishedQuery => DbItem::FinishedQuery,
+        }
+    }
+}
+
+/// A decoded row together with private values reserved for computed columns.
+struct QueryRow {
+    value: Value,
     inputs: RowInputs,
     output_column_count: usize,
 }
@@ -224,32 +237,29 @@ pub fn stream_query_results_with_conn<'a>(
                         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                         let mut stream = connection.fetch_many(query);
                         loop {
-                        let start_next = std::time::Instant::now();
-                        let next_elem = stream.next().instrument(query_span.clone()).await;
-                        query_metrics.add_duration(start_next.elapsed());
-                        let Some(elem) = next_elem else { break; };
-
-                        let mut query_result = parse_single_sql_result(source_file, stmt, statement.source_span, elem);
-                        if let DbItem::Error(e) = query_result.item {
-                            error = Some(e);
-                            break;
-                        }
-                        if matches!(query_result.item, DbItem::Row(_)) {
-                            returned_rows += 1;
-                        }
-                        apply_json_columns(&mut query_result.item, &stmt.json_columns);
+                        let Some(result) = next_query_event(
+                            &mut stream, &mut query_metrics, &mut returned_rows,
+                            source_file, stmt, statement.source_span,
+                        ).await else { break; };
+                        let mut query_result = match result {
+                            Ok(event) => event,
+                            Err(e) => {
+                                error = Some(e);
+                                break;
+                            }
+                        };
                         if buffer_rows {
                             deferred_query_results.push(query_result);
                         } else {
                             let mut computed_connection = None;
-                            if let Err(err) = evaluate_computed_columns(request, &stmt.computed_columns, &mut query_result, &mut computed_connection)
+                            if let Err(err) = prepare_query_event(request, stmt, &mut query_result, &mut computed_connection)
                                 .instrument(query_span.clone())
                                 .await
                             {
                                 error = Some(err);
                                 break;
                             }
-                            for db_item in parse_dynamic_rows(query_result.item) {
+                            for db_item in parse_dynamic_rows(query_result.into_db_item()) {
                                 yield db_item;
                             }
                         }
@@ -258,9 +268,9 @@ pub fn stream_query_results_with_conn<'a>(
                     }
                     if error.is_none() && buffer_rows {
                         for mut query_result in deferred_query_results {
-                            if let Err(err) = evaluate_computed_columns(
+                            if let Err(err) = prepare_query_event(
                                 request,
-                                &stmt.computed_columns,
+                                stmt,
                                 &mut query_result,
                                 db_connection,
                             )
@@ -270,7 +280,7 @@ pub fn stream_query_results_with_conn<'a>(
                                 error = Some(err);
                                 break;
                             }
-                            for db_item in parse_dynamic_rows(query_result.item) {
+                            for db_item in parse_dynamic_rows(query_result.into_db_item()) {
                                 yield db_item;
                             }
                         }
@@ -402,7 +412,7 @@ async fn execute_scalar_query<'a>(
         };
         ensure_scalar_column_count(static_select.columns.len())?;
         let row = execute_static_simple_select(static_select, request, db_connection).await?;
-        return scalar_value_from_row(DbItem::Row(row));
+        return scalar_value_from_row(row);
     };
     let query = bind_query(database_query, request, db_connection).await?;
     log::debug!("Executing scalar query: {:?}", query.sql);
@@ -422,17 +432,20 @@ async fn execute_scalar_query<'a>(
         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
         let mut stream = connection.fetch_many(query);
         loop {
-            let start_next = std::time::Instant::now();
-            let next_elem = stream.next().instrument(query_span.clone()).await;
-            query_metrics.add_duration(start_next.elapsed());
-            let Some(elem) = next_elem else { break };
-
-            let result =
-                parse_single_sql_result(source_file, database_query, statement.source_span, elem);
-            let output_column_count = result.output_column_count;
-            match result.item {
-                row @ DbItem::Row(_) => {
-                    returned_rows += 1;
+            let Some(result) = next_query_event(
+                &mut stream,
+                &mut query_metrics,
+                &mut returned_rows,
+                source_file,
+                database_query,
+                statement.source_span,
+            )
+            .await
+            else {
+                break;
+            };
+            match result {
+                Ok(QueryEvent::Row(row)) => {
                     if scalar_row.is_some() {
                         debug_assert_eq!(
                             scalar_subquery_behavior,
@@ -443,17 +456,13 @@ async fn execute_scalar_query<'a>(
                         ));
                         break;
                     }
-                    scalar_row = Some(QueryResult {
-                        item: row,
-                        inputs: result.inputs,
-                        output_column_count,
-                    });
+                    scalar_row = Some(row);
                     if scalar_subquery_behavior == ScalarSubqueryBehavior::FirstRow {
                         break;
                     }
                 }
-                DbItem::FinishedQuery => {}
-                DbItem::Error(err) => {
+                Ok(QueryEvent::FinishedQuery) => {}
+                Err(err) => {
                     error = Some(err);
                     break;
                 }
@@ -469,15 +478,9 @@ async fn execute_scalar_query<'a>(
         );
     } else if let Some(mut row) = scalar_row {
         ensure_scalar_column_count(row.output_column_count)?;
-        apply_json_columns(&mut row.item, &database_query.json_columns);
-        if let Err(error) = evaluate_computed_columns(
-            request,
-            &database_query.computed_columns,
-            &mut row,
-            db_connection,
-        )
-        .instrument(query_span.clone())
-        .await
+        if let Err(error) = prepare_query_row(request, database_query, &mut row, db_connection)
+            .instrument(query_span.clone())
+            .await
         {
             let connection = take_connection(&request.app_state.db, db_connection, request).await?;
             return Err(record_error_and_rollback(
@@ -488,7 +491,7 @@ async fn execute_scalar_query<'a>(
             )
             .await);
         }
-        scalar_value_from_row(row.item)?
+        scalar_value_from_row(row.value)?
     } else {
         None
     };
@@ -508,8 +511,8 @@ async fn record_error_and_rollback(
     error
 }
 
-fn scalar_value_from_row(item: DbItem) -> anyhow::Result<Option<String>> {
-    let DbItem::Row(Value::Object(row)) = item else {
+fn scalar_value_from_row(value: Value) -> anyhow::Result<Option<String>> {
+    let Value::Object(row) = value else {
         anyhow::bail!("SET scalar query did not return a row object");
     };
     ensure_scalar_column_count(row.len())?;
@@ -609,51 +612,57 @@ async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
     }
 }
 
+/// Poll and decode one physical result while measuring only database fetch time.
+async fn next_query_event(
+    stream: &mut (impl Stream<Item = sqlx::error::Result<Either<AnyQueryResult, AnyRow>>> + Unpin),
+    metrics: &mut DbQueryMetricsContext<'_>,
+    returned_rows: &mut i64,
+    source_file: &Path,
+    query: &DatabaseQuery,
+    source_span: SourceSpan,
+) -> Option<anyhow::Result<QueryEvent>> {
+    let start_next = std::time::Instant::now();
+    let next = stream.next().instrument(metrics.span.clone()).await;
+    metrics.add_duration(start_next.elapsed());
+    let result = parse_single_sql_result(source_file, query, source_span, next?);
+    if matches!(result, Ok(QueryEvent::Row(_))) {
+        *returned_rows += 1;
+    }
+    Some(result)
+}
+
 #[inline]
 fn parse_single_sql_result(
     source_file: &Path,
     query: &DatabaseQuery,
     source_span: SourceSpan,
     res: sqlx::error::Result<Either<AnyQueryResult, AnyRow>>,
-) -> QueryResult {
+) -> anyhow::Result<QueryEvent> {
     match res {
         Ok(Either::Right(r)) => {
             if log::log_enabled!(log::Level::Trace) {
                 debug_row(&r);
             }
-            match super::sql_to_json::row_to_json_with_inputs(&r, query.row_input_json.len()) {
-                Ok((row, mut inputs)) => {
-                    decode_json_values(&mut inputs, &query.row_input_json);
-                    QueryResult {
-                        item: DbItem::Row(row),
-                        inputs: RowInputs::new(inputs),
-                        output_column_count: r.columns().len() - query.row_input_json.len()
-                            + query.computed_columns.len(),
-                    }
-                }
-                Err(error) => QueryResult {
-                    item: DbItem::Error(error),
-                    inputs: RowInputs::new(Vec::new()),
-                    output_column_count: 0,
-                },
-            }
+            let (row, mut inputs) =
+                super::sql_to_json::row_to_json_with_inputs(&r, query.row_input_json.len())?;
+            decode_json_values(&mut inputs, &query.row_input_json);
+            Ok(QueryEvent::Row(QueryRow {
+                value: row,
+                inputs: RowInputs::new(inputs),
+                output_column_count: r.columns().len() - query.row_input_json.len()
+                    + query.computed_columns.len(),
+            }))
         }
         Ok(Either::Left(res)) => {
             log::debug!("Finished query with result: {res:?}");
-            QueryResult {
-                item: DbItem::FinishedQuery,
-                inputs: RowInputs::new(Vec::new()),
-                output_column_count: 0,
-            }
+            Ok(QueryEvent::FinishedQuery)
         }
-        Err(err) => {
-            let nice_err = display_stmt_db_error(source_file, &query.sql, source_span, err);
-            QueryResult {
-                item: DbItem::Error(nice_err),
-                inputs: RowInputs::new(Vec::new()),
-                output_column_count: 0,
-            }
-        }
+        Err(err) => Err(display_stmt_db_error(
+            source_file,
+            &query.sql,
+            source_span,
+            err,
+        )),
     }
 }
 
@@ -725,17 +734,30 @@ async fn bind_query<'a>(
     })
 }
 
-async fn evaluate_computed_columns(
+async fn prepare_query_event(
     request: &ExecutionContext,
-    columns: &[OutputColumn<RowExpr>],
-    result: &mut QueryResult,
+    query: &DatabaseQuery,
+    event: &mut QueryEvent,
     db_connection: &mut DbConn,
 ) -> anyhow::Result<()> {
-    if let DbItem::Row(Value::Object(results)) = &mut result.item {
-        for column in columns {
+    match event {
+        QueryEvent::Row(row) => prepare_query_row(request, query, row, db_connection).await,
+        QueryEvent::FinishedQuery => Ok(()),
+    }
+}
+
+async fn prepare_query_row(
+    request: &ExecutionContext,
+    query: &DatabaseQuery,
+    row: &mut QueryRow,
+    db_connection: &mut DbConn,
+) -> anyhow::Result<()> {
+    apply_json_columns(&mut row.value, &query.json_columns);
+    if let Value::Object(results) = &mut row.value {
+        for column in &query.computed_columns {
             let value = column
                 .value
-                .evaluate(request, db_connection, &mut result.inputs)
+                .evaluate(request, db_connection, &mut row.inputs)
                 .await?
                 .into_json();
             let old_results = std::mem::take(results);
@@ -745,8 +767,8 @@ async fn evaluate_computed_columns(
     Ok(())
 }
 
-fn apply_json_columns(item: &mut DbItem, json_columns: &[String]) {
-    if let DbItem::Row(Value::Object(row)) = item {
+fn apply_json_columns(value: &mut Value, json_columns: &[String]) {
+    if let Value::Object(row) = value {
         for column in json_columns {
             if let Some(value) = row.get_mut(column) {
                 if let Value::String(json_str) = value {
@@ -831,13 +853,9 @@ mod tests {
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::registry::LookupSpan;
 
-    fn create_row_item(value: Value) -> DbItem {
-        DbItem::Row(value)
-    }
-
-    fn assert_json_value(item: &DbItem, key: &str, expected: Value) {
-        let DbItem::Row(Value::Object(row)) = item else {
-            panic!("Expected DbItem::Row");
+    fn assert_json_value(item: &Value, key: &str, expected: Value) {
+        let Value::Object(row) = item else {
+            panic!("Expected a row object");
         };
         assert_eq!(row[key], expected);
         drop(expected);
@@ -845,10 +863,10 @@ mod tests {
 
     #[test]
     fn test_basic_json_string_conversion() {
-        let mut item = create_row_item(json!({
+        let mut item = json!({
             "json_col": "{\"key\": \"value\"}",
             "normal_col": "text"
-        }));
+        });
         apply_json_columns(&mut item, &["json_col".to_string()]);
         assert_json_value(&item, "json_col", json!({"key": "value"}));
         assert_json_value(&item, "normal_col", json!("text"));
@@ -856,10 +874,10 @@ mod tests {
 
     #[test]
     fn test_json_array_conversion() {
-        let mut item = create_row_item(json!({
+        let mut item = json!({
             "array_col": ["{\"a\": 1}", "{\"b\": 2}"],
             "normal_array": ["text"]
-        }));
+        });
         apply_json_columns(&mut item, &["array_col".to_string()]);
         assert_json_value(&item, "array_col", json!([{"a": 1}, {"b": 2}]));
         assert_json_value(&item, "normal_array", json!(["text"]));
@@ -867,10 +885,10 @@ mod tests {
 
     #[test]
     fn test_invalid_json_handling() {
-        let mut item = create_row_item(json!({
+        let mut item = json!({
             "invalid_json": "{not valid json}",
             "normal_col": "text"
-        }));
+        });
         apply_json_columns(&mut item, &["invalid_json".to_string()]);
         assert_json_value(&item, "invalid_json", json!("{not valid json}"));
         assert_json_value(&item, "normal_col", json!("text"));
@@ -878,29 +896,256 @@ mod tests {
 
     #[test]
     fn test_missing_column_handling() {
-        let mut item = create_row_item(json!({
+        let mut item = json!({
             "existing_col": "text"
-        }));
+        });
         apply_json_columns(&mut item, &["missing_col".to_string()]);
         assert_json_value(&item, "existing_col", json!("text"));
     }
 
     #[test]
-    fn test_non_row_dbitem_handling() {
-        let mut item = DbItem::FinishedQuery;
+    fn test_non_object_json_handling() {
+        let mut item = Value::Null;
         apply_json_columns(&mut item, &["json_col".to_string()]);
-        assert!(matches!(item, DbItem::FinishedQuery));
+        assert!(item.is_null());
     }
 
     #[test]
     fn test_duplicate_json_column_names() {
-        let mut item = create_row_item(json!({
+        let mut item = json!({
             "json_col": "{\"key\": \"value\"}",
             "normal_col": "text"
-        }));
+        });
         apply_json_columns(&mut item, &["json_col".to_string(), "json_col".to_string()]);
         assert_json_value(&item, "json_col", json!({"key": "value"}));
         assert_json_value(&item, "normal_col", json!("text"));
+    }
+
+    async fn execution_context(web_root: &Path) -> ExecutionContext {
+        let mut config: crate::app_config::AppConfig = serde_json::from_str("{}").unwrap();
+        config.database_url = crate::app_config::test_database_url();
+        config.max_database_pool_connections = Some(1);
+        config.database_connection_acquire_timeout_seconds = 1.0;
+        config.web_root = web_root.to_owned();
+        let state = Arc::new(crate::AppState::init(&config).await.unwrap());
+        let mut request = actix_web::test::TestRequest::get().to_srv_request();
+        crate::webserver::http_request_info::extract_request_info(
+            &mut request,
+            state,
+            crate::webserver::server_timing::ServerTiming::default(),
+        )
+        .await
+        .unwrap()
+    }
+
+    async fn collect_rows(
+        request: &ExecutionContext,
+        connection: &mut DbConn,
+        sql: &str,
+    ) -> anyhow::Result<Vec<Value>> {
+        let file = SqlFile::new(&request.app_state.db, sql, Path::new("execution-test.sql"));
+        let stream = stream_query_results_with_conn(&file, request, connection);
+        futures_util::pin_mut!(stream);
+        let mut rows = Vec::new();
+        while let Some(item) = stream.next().await {
+            match item {
+                DbItem::Row(row) => rows.push(row),
+                DbItem::FinishedQuery => {}
+                DbItem::Error(error) => return Err(error),
+            }
+        }
+        Ok(rows)
+    }
+
+    #[actix_web::test]
+    async fn streaming_rows_keep_private_inputs_out_of_duplicate_outputs() {
+        let request = execution_context(Path::new(".")).await;
+        let rows = collect_rows(
+            &request,
+            &mut None,
+            "SELECT '[1]' AS values_json, '[2]' AS values_json,
+                sqlpage.url_encode(name) AS encoded, name AS encoded
+                FROM (SELECT 'a b' AS name) source_rows",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            rows,
+            [json!({
+                "values_json": ["[1]", "[2]"],
+                "encoded": ["a b", "a%20b"]
+            })]
+        );
+        if request.app_state.db.info.kind == sqlx::any::AnyKind::Sqlite {
+            let rows = collect_rows(
+                &request,
+                &mut None,
+                "SELECT json('[1]') AS values_json, json('[2]') AS values_json,
+                    sqlpage.url_encode(name) AS encoded
+                    FROM (SELECT 'a b' AS name) source_rows",
+            )
+            .await
+            .unwrap();
+            assert_eq!(
+                rows,
+                [json!({"values_json": [[1], [2]], "encoded": "a%20b"})]
+            );
+        }
+    }
+
+    #[actix_web::test]
+    async fn scalar_rows_check_physical_column_count_and_database_row_policy() {
+        let request = execution_context(Path::new(".")).await;
+        let mut connection = None;
+        let rows = collect_rows(
+            &request,
+            &mut connection,
+            "SET empty_value = (SELECT n FROM (SELECT 1 AS n) source_rows WHERE 1 = 0);
+             SET encoded_value = (SELECT sqlpage.url_encode(name) FROM (SELECT 'a b' AS name) source_rows);
+             SELECT $empty_value AS empty_value, $encoded_value AS encoded_value",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            rows,
+            [json!({"empty_value": null, "encoded_value": "a%20b"})]
+        );
+
+        let error = collect_rows(
+            &request,
+            &mut connection,
+            "SET invalid_value = (SELECT n AS duplicate, n AS duplicate FROM (SELECT 1 AS n) source_rows)",
+        )
+        .await
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("more than one column"));
+
+        let result = collect_rows(
+            &request,
+            &mut connection,
+            "SET multiple_value = (SELECT n FROM (SELECT 1 AS n UNION ALL SELECT 2 AS n) source_rows);
+             SELECT $multiple_value AS value",
+        )
+        .await;
+        match request
+            .app_state
+            .db
+            .info
+            .database_type
+            .scalar_subquery_behavior()
+        {
+            ScalarSubqueryBehavior::FirstRow => {
+                assert_eq!(result.unwrap(), [json!({"value": "1"})]);
+            }
+            ScalarSubqueryBehavior::ErrorOnMultipleRows => {
+                assert!(format!("{:#}", result.unwrap_err()).contains("more than one row"));
+            }
+        }
+    }
+
+    #[actix_web::test]
+    async fn buffered_and_scalar_run_sql_reuse_the_only_connection() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join("child.sql"),
+            "SELECT sqlpage.run_sql('grandchild.sql') AS nested FROM (SELECT 1 AS n) source_rows",
+        )
+        .unwrap();
+        std::fs::write(
+            root.path().join("grandchild.sql"),
+            "SELECT 'nested' AS value FROM (SELECT 1 AS n) source_rows",
+        )
+        .unwrap();
+        let request = execution_context(root.path()).await;
+        let mut connection = None;
+        let rows = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            collect_rows(&request, &mut connection,
+                "SELECT n, sqlpage.run_sql(path) AS included
+                 FROM (SELECT 1 AS n, 'child.sql' AS path UNION ALL SELECT 2 AS n, 'child.sql' AS path) source_rows
+                 ORDER BY n;
+                 SET scalar_included = (SELECT sqlpage.run_sql(path) FROM (SELECT 'child.sql' AS path) source_rows);
+                 SELECT $scalar_included AS scalar_included"
+            ),
+        ).await.expect("nested execution should reuse the existing connection").unwrap();
+        let included = r#"[{"nested":"[{\"value\":\"nested\"}]"}]"#;
+        assert_eq!(
+            rows,
+            [
+                json!({"n": 1, "included": included}),
+                json!({"n": 2, "included": included}),
+                json!({"scalar_included": included}),
+            ]
+        );
+    }
+
+    #[actix_web::test]
+    async fn dropping_stream_stops_later_rows_and_releases_connection_borrow() {
+        let request = execution_context(Path::new(".")).await;
+        let file = SqlFile::new(
+            &request.app_state.db,
+            "SELECT n, sqlpage.fetch(url) AS value
+             FROM (SELECT 1 AS n, NULL AS url UNION ALL SELECT 2 AS n, 'invalid URL' AS url) source_rows
+             ORDER BY n;
+             SET after_query = 'unexpected'",
+            Path::new("execution-test.sql"),
+        );
+        let mut connection = None;
+        {
+            let stream = stream_query_results_with_conn(&file, &request, &mut connection);
+            futures_util::pin_mut!(stream);
+            let Some(DbItem::Row(row)) = stream.next().await else {
+                panic!("Expected the first row before the later function error");
+            };
+            assert_eq!(row, json!({"n": 1, "value": null}));
+        }
+        assert!(!request.set_variables.borrow().contains_key("after_query"));
+        assert_eq!(
+            collect_rows(
+                &request,
+                &mut connection,
+                "SELECT n FROM (SELECT 7 AS n) source_rows"
+            )
+            .await
+            .unwrap(),
+            [json!({"n": 7})]
+        );
+    }
+
+    #[actix_web::test]
+    async fn computed_column_failure_rolls_back_and_leaves_connection_usable() {
+        let request = execution_context(Path::new(".")).await;
+        if request.app_state.db.info.kind != sqlx::any::AnyKind::Sqlite {
+            return;
+        }
+        let mut connection = None;
+        collect_rows(
+            &request,
+            &mut connection,
+            "CREATE TEMPORARY TABLE query_event_rollback(value INTEGER)",
+        )
+        .await
+        .unwrap();
+        let error = collect_rows(
+            &request,
+            &mut connection,
+            "BEGIN;
+             INSERT INTO query_event_rollback VALUES (1);
+             SELECT sqlpage.fetch(url) AS value FROM (SELECT 'invalid URL' AS url) source_rows",
+        )
+        .await
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("invalid URL"));
+        assert_eq!(
+            collect_rows(
+                &request,
+                &mut connection,
+                "SELECT COUNT(*) AS count FROM query_event_rollback"
+            )
+            .await
+            .unwrap(),
+            [json!({"count": 0})]
+        );
     }
 
     #[derive(Default)]
