@@ -7,7 +7,7 @@ import {
   type Series,
   xaxis_type_for,
 } from "./chart_series.ts";
-import { add_init_fn } from "./init.ts";
+import { add_init_fn, type InitRoot, select_all } from "./init.ts";
 
 type DataPoint = {
   name: string;
@@ -51,10 +51,8 @@ const numberLabel = (value: string | number) =>
   value == null ? "" : value.toLocaleString?.() || String(value);
 
 const sqlpage_chart = (() => {
-  function sqlpage_chart() {
-    const charts = document.querySelectorAll<HTMLElement>(
-      "[data-pre-init=chart]",
-    );
+  function sqlpage_chart(root: InitRoot) {
+    const charts = select_all<HTMLElement>(root, "[data-pre-init=chart]");
     for (const c of charts) {
       try {
         build_sqlpage_chart(c);
