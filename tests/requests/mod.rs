@@ -135,8 +135,8 @@ async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_variables_function() -> actix_web::Result<()> {
-    let url = "/tests/requests/variables.sql?common=get_value&get_only=get_val";
-    let req_body = "common=post_value&post_only=post_val";
+    let url = "/tests/requests/variables.sql?common=get_value&get_only=get_val&array[]=get_a&array[]=get_b";
+    let req_body = "common=post_value&post_only=post_val&array[]=post_a&array[]=post_b";
     let req = get_request_to(url)
         .await?
         .insert_header(("content-type", "application/x-www-form-urlencoded"))
@@ -152,30 +152,30 @@ async fn test_variables_function() -> actix_web::Result<()> {
         [
             (
                 "all_vars",
-                json!({"get_only": "get_val", "common": "get_value", "post_only": "post_val", "common": "post_value"}),
+                json!({"get_only": "get_val", "common": "post_value", "post_only": "post_val", "array": ["post_a", "post_b"]}),
             ),
             (
                 "get_vars",
-                json!({"get_only": "get_val", "common": "get_value"}),
+                json!({"get_only": "get_val", "common": "get_value", "array": ["get_a", "get_b"]}),
             ),
             (
                 "post_vars",
-                json!({"post_only": "post_val", "common": "post_value"}),
+                json!({"post_only": "post_val", "common": "post_value", "array": ["post_a", "post_b"]}),
             ),
             ("set_vars", json!({})),
         ],
         [
             (
                 "all_vars",
-                json!({"get_only": "get_val", "common": "set_common_value", "post_only": "post_val", "my_set_var": "set_value"}),
+                json!({"get_only": "get_val", "common": "set_common_value", "post_only": "post_val", "my_set_var": "set_value", "array": ["post_a", "post_b"]}),
             ),
             (
                 "get_vars",
-                json!({"get_only": "get_val", "common": "get_value"}),
+                json!({"get_only": "get_val", "common": "get_value", "array": ["get_a", "get_b"]}),
             ),
             (
                 "post_vars",
-                json!({"post_only": "post_val", "common": "post_value"}),
+                json!({"post_only": "post_val", "common": "post_value", "array": ["post_a", "post_b"]}),
             ),
             (
                 "set_vars",
@@ -184,9 +184,17 @@ async fn test_variables_function() -> actix_web::Result<()> {
         ],
     ];
 
+    let mut null_step = expected[1].clone();
+    null_step[0].1["common"] = json!(null);
+    null_step[3].1["common"] = json!(null);
     let actual_array = body_json.as_array().expect("response is nota json array");
-    for (i, expected_step) in expected.into_iter().enumerate() {
+    assert_eq!(actual_array.len(), expected.len() + 1);
+    for (i, expected_step) in expected.into_iter().chain([null_step]).enumerate() {
         let actual = &actual_array[i];
+        assert!(actual["missing"].is_null());
+        assert!(actual["post_only_compat"].is_null());
+        assert_eq!(actual["get_array_lookup"], r#"["get_a","get_b"]"#);
+        assert_eq!(actual["post_array_lookup"], r#"["post_a","post_b"]"#);
         for (key, expected_value) in expected_step {
             let actual_decoded: serde_json::Value =
                 serde_json::from_str(actual[key].as_str().unwrap()).unwrap();

@@ -115,92 +115,43 @@ pub fn param_map<PAIRS: IntoIterator<Item = (String, String)>>(values: PAIRS) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use LookupPolicy::{GetOnly, SetThenGet, SetThenPost};
+    use VariableValue::{Missing, Null, Text};
 
     #[test]
-    fn lookup_preserves_null_and_source_policies() {
-        let get = param_map([
-            ("same".into(), "get".into()),
-            ("array[]".into(), "a".into()),
-            ("array[]".into(), "b".into()),
-        ]);
-        let post = param_map([
-            ("same".into(), "post".into()),
-            ("post_only".into(), "post".into()),
-        ]);
-        let set = RefCell::new(SetVariablesMap::from([("same".into(), None)]));
-        let view = VariableAccess::new(&get, &post, &set);
-        assert!(matches!(
-            view.lookup("absent", LookupPolicy::GetOnly),
-            VariableValue::Missing
-        ));
-        assert!(matches!(
-            view.lookup("same", LookupPolicy::GetOnly),
-            VariableValue::Text(Cow::Borrowed("get"))
-        ));
-        assert!(matches!(
-            view.lookup("same", LookupPolicy::SetThenGet),
-            VariableValue::Null
-        ));
-        assert!(matches!(
-            view.lookup("same", LookupPolicy::SetThenPost),
-            VariableValue::Null
-        ));
-        assert!(matches!(
-            view.lookup("post_only", LookupPolicy::SetThenGet),
-            VariableValue::Missing
-        ));
-        assert!(matches!(
-            view.lookup("post_only", LookupPolicy::SetThenPost),
-            VariableValue::Text(Cow::Borrowed("post"))
-        ));
-        let VariableValue::Text(array) = view.lookup("array", LookupPolicy::GetOnly) else {
-            panic!("missing array")
-        };
-        assert_eq!(array, r#"["a","b"]"#);
-        set.borrow_mut()
-            .insert("same".into(), Some(SingleOrVec::Single("set".into())));
-        let VariableValue::Text(value) = view.lookup("same", LookupPolicy::SetThenGet) else {
-            panic!("missing SET")
-        };
-        set.borrow_mut().clear();
-        assert_eq!(value, "set");
-        assert!(matches!(
-            view.lookup("same", LookupPolicy::SetThenGet),
-            VariableValue::Text(Cow::Borrowed("get"))
-        ));
-        assert!(matches!(
-            view.lookup("same", LookupPolicy::SetThenPost),
-            VariableValue::Text(Cow::Borrowed("post"))
-        ));
-    }
-
-    #[test]
-    fn merged_enumeration_keeps_set_post_get_precedence_and_arrays() {
-        let get = param_map([
-            ("same".into(), "get".into()),
-            ("collision".into(), "get".into()),
-            ("get_only".into(), "get".into()),
-        ]);
-        let post = param_map([
-            ("same".into(), "post".into()),
-            ("collision".into(), "post".into()),
-            ("array[]".into(), "a".into()),
-            ("array[]".into(), "b".into()),
-        ]);
-        let set = RefCell::new(SetVariablesMap::from([
-            ("same".into(), None),
-            ("set_only".into(), Some(SingleOrVec::Single("set".into()))),
-        ]));
-        let view = VariableAccess::new(&get, &post, &set);
-        assert_eq!(
-            serde_json::to_value(&view).unwrap(),
-            serde_json::json!({
-                "same": null,
-                "collision": "post",
-                "get_only": "get",
-                "array": ["a", "b"],
-                "set_only": "set"
-            })
-        );
+    fn lookup_distinguishes_null_missing_and_releases_set_borrows() {
+        let get = param_map([("value".into(), "get".into())]);
+        let post = param_map([("value".into(), "post".into())]);
+        for (policy, fallback) in [(GetOnly, "get"), (SetThenGet, "get"), (SetThenPost, "post")] {
+            let set = RefCell::new(SetVariablesMap::from([("value".into(), None)]));
+            let view = VariableAccess::new(&get, &post, &set);
+            assert!(matches!(view.lookup("absent", policy), Missing));
+            let get_only = matches!(policy, GetOnly);
+            assert_eq!(matches!(view.lookup("value", policy), Null), !get_only);
+            for (value, expected) in [
+                (SingleOrVec::Single("set".into()), "set"),
+                (
+                    SingleOrVec::Vec(vec!["a".into(), "b".into()]),
+                    r#"["a","b"]"#,
+                ),
+            ] {
+                set.borrow_mut().insert("value".into(), Some(value));
+                let Text(actual) = view.lookup("value", policy) else {
+                    panic!("missing SET")
+                };
+                if expected.starts_with('[') {
+                    assert_eq!(
+                        serde_json::to_value(&view).unwrap()["value"],
+                        serde_json::json!(["a", "b"])
+                    );
+                }
+                set.borrow_mut().clear();
+                assert_eq!(matches!(actual, Cow::Borrowed(_)), get_only);
+                assert_eq!(actual, if get_only { "get" } else { expected });
+                assert!(
+                    matches!(view.lookup("value", policy), Text(Cow::Borrowed(value)) if value == fallback)
+                );
+            }
+        }
     }
 }
