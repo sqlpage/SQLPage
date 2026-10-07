@@ -140,42 +140,68 @@ pub(crate) fn get_http_client_from_appdata(
 }
 
 #[cfg(test)]
-pub(crate) mod transport_tests {
+mod transport_tests {
     use super::*;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use openidconnect::http::{Request, Response, header::ToStrError};
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
     use tokio::net::TcpListener;
     use tokio::task::JoinHandle;
 
-    pub(crate) async fn response_server(
+    #[derive(Clone, Copy, Debug)]
+    enum Adapter {
+        Oidc,
+        Otlp,
+    }
+    use Adapter::{Oidc, Otlp};
+
+    impl Adapter {
+        async fn request(
+            self,
+            url: &str,
+            method: &str,
+            header: &[u8],
+        ) -> anyhow::Result<Response<Vec<u8>>> {
+            let request = Request::builder()
+                .uri(url)
+                .method(method)
+                .header("x-request", header)
+                .body(b"request".to_vec())?;
+            let client = awc::Client::default();
+            match self {
+                Oidc => super::super::oidc::execute_oidc_request_with_awc(client, request).await,
+                Otlp => crate::telemetry::execute_otlp_http_request_with_awc(
+                    &client,
+                    request.map(actix_web::web::Bytes::from),
+                )
+                .await
+                .map(|response| response.map(|body| body.to_vec())),
+            }
+        }
+    }
+
+    // Raw responses are needed for invalid header bytes, invalid chunks, and stalled bodies.
+    async fn response_server(
         response: &'static [u8],
         hold_open: bool,
     ) -> (String, JoinHandle<Vec<u8>>) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let url = format!("http://{}/transport", listener.local_addr().unwrap());
         let task = tokio::spawn(async move {
-            let (mut socket, _) = listener.accept().await.unwrap();
+            let (socket, _) = listener.accept().await.unwrap();
+            let mut socket = BufReader::new(socket);
             let mut request = Vec::new();
-            let (header_end, content_length) = loop {
-                let mut buffer = [0; 1024];
-                let count = socket.read(&mut buffer).await.unwrap();
-                assert!(count > 0, "request ended before its headers");
-                request.extend_from_slice(&buffer[..count]);
-                if let Some(end) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") {
-                    let length = String::from_utf8_lossy(&request[..end])
-                        .lines()
-                        .filter_map(|line| line.split_once(':'))
-                        .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
-                        .map_or(0, |(_, value)| value.trim().parse::<usize>().unwrap());
-                    break (end + 4, length);
-                }
-            };
-            while request.len() < header_end + content_length {
-                let mut buffer = [0; 1024];
-                let count = socket.read(&mut buffer).await.unwrap();
-                assert!(count > 0, "request ended before its body");
-                request.extend_from_slice(&buffer[..count]);
+            while !request.ends_with(b"\r\n\r\n") {
+                assert!(socket.read_until(b'\n', &mut request).await.unwrap() > 0);
             }
-            socket.write_all(response).await.unwrap();
+            let length = String::from_utf8_lossy(&request)
+                .lines()
+                .filter_map(|line| line.split_once(':'))
+                .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+                .map_or(0, |(_, value)| value.trim().parse::<usize>().unwrap());
+            let body_start = request.len();
+            request.resize(body_start + length, 0);
+            socket.read_exact(&mut request[body_start..]).await.unwrap();
+            socket.get_mut().write_all(response).await.unwrap();
             if hold_open {
                 std::future::pending::<()>().await;
             }
@@ -184,9 +210,99 @@ pub(crate) mod transport_tests {
         (url, task)
     }
 
-    pub(crate) async fn unavailable_url() -> String {
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        format!("http://{}/transport", listener.local_addr().unwrap())
+    #[actix_web::test]
+    async fn preserves_methods_bodies_status_and_headers() -> anyhow::Result<()> {
+        for adapter in [Oidc, Otlp] {
+            for method in ["GET", "POST", "PATCH", "DELETE"] {
+                let (url, server) = response_server(
+                    b"HTTP/1.1 202 Accepted\r\nContent-Length: 8\r\nX-Result: first\r\nX-Result: second\r\n\r\nresponse", false,
+                ).await;
+                let header = match adapter {
+                    Oidc => b"value".as_slice(),
+                    Otlp => b"\xff".as_slice(),
+                };
+                let response = adapter.request(&url, method, header).await?;
+                assert_eq!(response.status().as_u16(), 202);
+                assert_eq!(response.body(), b"response");
+                assert_eq!(response.headers().get_all("x-result").iter().count(), 2);
+                let sent = server.await?;
+                assert!(sent.starts_with(format!("{method} /transport HTTP/1.1\r\n").as_bytes()));
+                let expected_header = [b"x-request: ".as_slice(), header, b"\r\n"].concat();
+                assert!(
+                    sent.windows(expected_header.len())
+                        .any(|bytes| bytes == expected_header)
+                );
+                assert!(sent.ends_with(b"\r\n\r\nrequest"));
+            }
+        }
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn rejects_non_text_headers_before_reading_body() -> anyhow::Result<()> {
+        let error = Oidc
+            .request("http://127.0.0.1:1/transport", "GET", b"\xff")
+            .await
+            .unwrap_err();
+        assert!(error.downcast_ref::<ToStrError>().is_some());
+        for adapter in [Oidc, Otlp] {
+            let (url, server) = response_server(
+                b"HTTP/1.1 200 OK\r\nX-Invalid: \xff\r\nContent-Length: 100\r\n\r\n",
+                true,
+            )
+            .await;
+            let error = tokio::time::timeout(
+                Duration::from_secs(1),
+                adapter.request(&url, "GET", b"value"),
+            )
+            .await?
+            .unwrap_err();
+            match adapter {
+                Oidc => assert!(
+                    error
+                        .downcast_ref::<awc::http::header::ToStrError>()
+                        .is_some()
+                ),
+                Otlp => assert!(
+                    error
+                        .to_string()
+                        .starts_with("Invalid OTLP response header value for x-invalid:")
+                ),
+            }
+            server.abort();
+        }
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn retains_send_and_body_error_context() -> anyhow::Result<()> {
+        for adapter in [Oidc, Otlp] {
+            let listener = TcpListener::bind("127.0.0.1:0").await?;
+            let unavailable = format!("http://{}/transport", listener.local_addr()?);
+            drop(listener);
+            let error = adapter
+                .request(&unavailable, "GET", b"value")
+                .await
+                .unwrap_err();
+            assert!(error.to_string().starts_with(match adapter {
+                Oidc => "Failed to send request: GET ",
+                Otlp => "Failed to send OTLP HTTP request to ",
+            }));
+            let (url, server) = response_server(
+                b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\ninvalid\r\n",
+                false,
+            )
+            .await;
+            let error = adapter.request(&url, "GET", b"value").await.unwrap_err();
+            match adapter {
+                Oidc => assert_eq!(error.to_string(), format!("Couldnt read from {url}")),
+                Otlp => assert!(error.to_string().starts_with(&format!(
+                    "Failed to read OTLP HTTP response body from {url}:"
+                ))),
+            }
+            server.await?;
+        }
+        Ok(())
     }
 
     #[actix_web::test]

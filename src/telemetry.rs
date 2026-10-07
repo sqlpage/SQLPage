@@ -109,7 +109,7 @@ fn init_otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::Unbounded
     Ok(sender)
 }
 
-async fn execute_otlp_http_request_with_awc(
+pub(crate) async fn execute_otlp_http_request_with_awc(
     awc_client: &awc::Client,
     request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
 ) -> anyhow::Result<opentelemetry_http::Response<opentelemetry_http::Bytes>> {
@@ -184,98 +184,6 @@ impl opentelemetry_http::HttpClient for AwcOtlpHttpClient {
             .await
             .map_err(|_| anyhow::anyhow!("OTLP AWC worker dropped response channel"))?
             .map_err(Into::into)
-    }
-}
-
-#[cfg(test)]
-mod http_transport_tests {
-    use super::*;
-    use crate::webserver::http_client::transport_tests::{response_server, unavailable_url};
-    use std::time::Duration;
-
-    #[actix_web::test]
-    async fn preserves_methods_bodies_status_and_raw_request_headers() -> anyhow::Result<()> {
-        for method in ["GET", "POST", "PATCH", "DELETE"] {
-            let (url, server) = response_server(
-                b"HTTP/1.1 202 Accepted\r\nContent-Length: 8\r\nX-Result: first\r\nX-Result: second\r\n\r\nresponse",
-                false,
-            ).await;
-            let request = opentelemetry_http::Request::builder()
-                .method(method)
-                .uri(url)
-                .header("x-request", b"\xff".as_slice())
-                .body(opentelemetry_http::Bytes::from_static(b"request"))?;
-            let response =
-                execute_otlp_http_request_with_awc(&awc::Client::default(), request).await?;
-            assert_eq!(response.status().as_u16(), 202);
-            assert_eq!(response.body().as_ref(), b"response");
-            assert_eq!(response.headers().get_all("x-result").iter().count(), 2);
-            let sent = server.await?;
-            assert!(sent.starts_with(format!("{method} /transport HTTP/1.1\r\n").as_bytes()));
-            assert!(
-                sent.windows(14)
-                    .any(|bytes| bytes == b"x-request: \xff\r\n")
-            );
-            assert!(sent.ends_with(b"\r\n\r\nrequest"));
-        }
-        Ok(())
-    }
-
-    #[actix_web::test]
-    async fn rejects_non_text_response_headers_before_reading_body() -> anyhow::Result<()> {
-        let (url, server) = response_server(
-            b"HTTP/1.1 200 OK\r\nX-Invalid: \xff\r\nContent-Length: 100\r\n\r\n",
-            true,
-        )
-        .await;
-        let request = opentelemetry_http::Request::builder()
-            .uri(url)
-            .body(opentelemetry_http::Bytes::new())?;
-        let error = tokio::time::timeout(
-            Duration::from_secs(1),
-            execute_otlp_http_request_with_awc(&awc::Client::default(), request),
-        )
-        .await?
-        .unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .starts_with("Invalid OTLP response header value for x-invalid:")
-        );
-        server.abort();
-        Ok(())
-    }
-
-    #[actix_web::test]
-    async fn retains_send_and_body_error_context() -> anyhow::Result<()> {
-        let request = opentelemetry_http::Request::builder()
-            .uri(unavailable_url().await)
-            .body(opentelemetry_http::Bytes::new())?;
-        let error = execute_otlp_http_request_with_awc(&awc::Client::default(), request)
-            .await
-            .unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .starts_with("Failed to send OTLP HTTP request to ")
-        );
-
-        let (url, server) = response_server(
-            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\ninvalid\r\n",
-            false,
-        )
-        .await;
-        let request = opentelemetry_http::Request::builder()
-            .uri(&url)
-            .body(opentelemetry_http::Bytes::new())?;
-        let error = execute_otlp_http_request_with_awc(&awc::Client::default(), request)
-            .await
-            .unwrap_err();
-        assert!(error.to_string().starts_with(&format!(
-            "Failed to read OTLP HTTP response body from {url}:"
-        )));
-        server.await?;
-        Ok(())
     }
 }
 
