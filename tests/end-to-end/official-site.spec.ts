@@ -1,13 +1,34 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { loadFragment } from "./fixture.ts";
 
-async function componentFragment(
+type ComponentMode = "page" | "fragment";
+
+function componentTest(name: string) {
+  return (
+    run: (context: { page: Page; mode: ComponentMode }) => Promise<void>,
+  ) => {
+    for (const mode of ["page", "fragment"] as const) {
+      test(`${name} (${mode})`, async ({ page }) => {
+        await run({ page, mode });
+      });
+    }
+  };
+}
+
+async function openComponent(
   page: Page,
   component: string,
+  mode: ComponentMode,
   root: string | null = "main",
 ) {
-  await page.goto("/examples/show_variables.sql");
-  await loadFragment(page, `/component.sql?component=${component}`, root);
+  if (mode === "page") {
+    await page.goto(
+      `/documentation.sql?component=${component}${component === "table" ? "" : "#component"}`,
+    );
+  } else {
+    await page.goto("/examples/show_variables.sql");
+    await loadFragment(page, `/component.sql?component=${component}`, root);
+  }
 }
 
 test("Open documentation", async ({ page }) => {
@@ -149,10 +170,10 @@ test("map", async ({ page }) => {
   await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible();
 });
 
-test("toast notifications initialize, stack, dismiss, and render safely", async ({
-  page,
-}) => {
-  await componentFragment(page, "toast");
+componentTest(
+  "toast notifications initialize, stack, dismiss, and render safely",
+)(async ({ page, mode }) => {
+  await openComponent(page, "toast", mode);
 
   const automatic = page.locator("#toast-auto");
   await expect(automatic).toBeVisible();
@@ -379,16 +400,18 @@ test("Authentication example", async ({ page }) => {
   await expect(page.getByText("You are logged in as admin")).toBeVisible();
 });
 
-test("table filtering", async ({ page }) => {
-  await componentFragment(page, "table", null);
+componentTest("table filtering")(async ({ page, mode }) => {
+  await openComponent(page, "table", mode, null);
   const tableSection = page.locator(".card", {
     has: page.getByRole("cell", { name: "Chart", exact: true }),
   });
 
-  await tableSection
-    .locator(".card-body")
-    .dispatchEvent("fragment-loaded", { bubbles: true });
-  await expect(page.locator('[data-pre-init="table"]')).not.toHaveCount(0);
+  if (mode === "fragment") {
+    await tableSection
+      .locator(".card-body")
+      .dispatchEvent("fragment-loaded", { bubbles: true });
+    await expect(page.locator('[data-pre-init="table"]')).not.toHaveCount(0);
+  }
   const searchInput = tableSection.getByPlaceholder("Search…");
   await searchInput.fill("chart");
   const chartCell = tableSection.getByRole("cell", { name: "Chart" });
@@ -400,8 +423,8 @@ test("table filtering", async ({ page }) => {
   ).not.toBeVisible();
 });
 
-const sortableTable = async (page: Page) => {
-  await componentFragment(page, "table", "document");
+const sortableTable = async (page: Page, mode: ComponentMode) => {
+  await openComponent(page, "table", mode, "document");
   return page.locator(".table-responsive", {
     has: page.getByRole("cell", { name: "31456" }),
   });
@@ -415,32 +438,36 @@ const numbersInColumn = async (table: Locator, cells: string) => {
 
 const ascending = (values: number[]) => [...values].sort((a, b) => a - b);
 
-test("table sorts a column when its header is clicked", async ({ page }) => {
-  const table = await sortableTable(page);
-  await table.getByRole("button", { name: "id" }).click();
+componentTest("table sorts a column when its header is clicked")(
+  async ({ page, mode }) => {
+    const table = await sortableTable(page, mode);
+    await table.getByRole("button", { name: "id" }).click();
 
-  const ids = await numbersInColumn(table, "td._col_id");
-  expect(ids).toEqual(ascending(ids));
-});
+    const ids = await numbersInColumn(table, "td._col_id");
+    expect(ids).toEqual(ascending(ids));
+  },
+);
 
-test("table reverses the sort when the header is clicked again", async ({
-  page,
-}) => {
-  const table = await sortableTable(page);
-  await table.getByRole("button", { name: "id" }).click();
-  await table.getByRole("button", { name: "id" }).click();
+componentTest("table reverses the sort when the header is clicked again")(
+  async ({ page, mode }) => {
+    const table = await sortableTable(page, mode);
+    await table.getByRole("button", { name: "id" }).click();
+    await table.getByRole("button", { name: "id" }).click();
 
-  const ids = await numbersInColumn(table, "td._col_id");
-  expect(ids).toEqual(ascending(ids).reverse());
-});
+    const ids = await numbersInColumn(table, "td._col_id");
+    expect(ids).toEqual(ascending(ids).reverse());
+  },
+);
 
-test("table sorts a column of formatted numbers by value", async ({ page }) => {
-  const table = await sortableTable(page);
-  await table.getByRole("button", { name: "Amount in stock" }).click();
+componentTest("table sorts a column of formatted numbers by value")(
+  async ({ page, mode }) => {
+    const table = await sortableTable(page, mode);
+    await table.getByRole("button", { name: "Amount in stock" }).click();
 
-  const amounts = await numbersInColumn(table, "td._col_Amount_in_stock");
-  expect(amounts).toEqual(ascending(amounts));
-});
+    const amounts = await numbersInColumn(table, "td._col_Amount_in_stock");
+    expect(amounts).toEqual(ascending(amounts));
+  },
+);
 
 async function checkNoConsoleErrors(page: Page, component: string) {
   const errors: string[] = [];
@@ -642,8 +669,8 @@ test("form type=select searchable=true", async ({ page }) => {
   await expect(page.getByText(":region = SA", { exact: true })).toBeVisible();
 });
 
-test("modal", async ({ page }) => {
-  await componentFragment(page, "modal");
+componentTest("modal")(async ({ page, mode }) => {
+  await openComponent(page, "modal", mode);
   await expect(page.locator("body > #my_modal")).toBeAttached();
   await expect(page.locator("body > #my_embed_form_modal")).toBeAttached();
   const openButton = page.getByRole("button", { name: "Open a simple modal" });
@@ -748,7 +775,7 @@ test("table action buttons - disabled action", async ({ page }) => {
 test("fragment dropdown keeps one Bootstrap instance after repeated events", async ({
   page,
 }) => {
-  await componentFragment(page, "facet");
+  await openComponent(page, "facet", "fragment");
   await page.evaluate(() =>
     document.dispatchEvent(new CustomEvent("fragment-loaded")),
   );
