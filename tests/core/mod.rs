@@ -148,12 +148,10 @@ async fn test_routing_with_prefix() {
     let mut config = test_config();
     config.site_prefix = "/prefix/".to_string();
     let app_data = make_app_data_from_config(config).await.unwrap();
-    let resp = response_with_data(
-        "/prefix/tests/sql_test_files/component_rendering/simple.sql",
-        app_data.clone(),
-    )
-    .await
-    .unwrap();
+    let path = "/tests/sql_test_files/component_rendering/simple.sql";
+    let resp = response_with_data(format!("/prefix{path}"), app_data.clone())
+        .await
+        .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body_str = crate::common::read_body_string(resp).await;
     assert!(
@@ -181,18 +179,13 @@ async fn test_routing_with_prefix() {
         .status_code();
     assert_eq!(resp, StatusCode::FORBIDDEN);
 
-    let resp = response_with_data(
-        "/tests/sql_test_files/component_rendering/simple.sql",
-        app_data,
-    )
-    .await
-    .unwrap();
-    assert_eq!(resp.status(), StatusCode::MOVED_PERMANENTLY);
+    let resp = response_with_data(path, app_data).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::PERMANENT_REDIRECT);
     let location = resp
         .headers()
         .get("location")
         .expect("location header should be present");
-    assert_eq!(location.to_str().unwrap(), "/prefix/");
+    assert_eq!(location.to_str().unwrap(), format!("/prefix{path}"));
 }
 
 #[actix_web::test]

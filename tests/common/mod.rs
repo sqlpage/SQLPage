@@ -14,7 +14,7 @@ use sqlpage::{
     AppState,
     app_config::{AppConfig, test_database_url},
     telemetry,
-    webserver::http::{form_config, main_handler, payload_config},
+    webserver::http::create_app,
 };
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
@@ -71,27 +71,21 @@ pub(crate) async fn response_with_data(
     send_request(request_for(path), data).await
 }
 
-/// Runs a request through an Actix service so its request pool has an owner.
+/// Runs a request through the production app, including its routes and middleware.
 /// Dropping the service disables and drains the pool, including on error or panic.
 /// Standalone `TestRequest::to_srv_request()` would instead leak the application state.
 pub(crate) async fn send_request(
     request: TestRequest,
     data: Data<AppState>,
 ) -> actix_web::Result<ServiceResponse> {
-    let app = test::init_service(
-        App::new()
-            .app_data(payload_config(&data))
-            .app_data(form_config(&data))
-            .app_data(data)
-            .default_service(fn_service(main_handler)),
-    )
-    .await;
+    let app = test::init_service(create_app(data)).await;
     tokio::time::timeout(
         Duration::from_secs(8),
         test::try_call_service(&app, request.to_request()),
     )
     .await
     .map_err(actix_web::error::ErrorGatewayTimeout)?
+    .map(ServiceResponse::map_into_boxed_body)
 }
 
 /// Reads a whole response body as a UTF-8 string, failing the test otherwise.
