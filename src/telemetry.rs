@@ -9,7 +9,7 @@
 use std::env;
 use std::sync::{Once, OnceLock};
 
-use crate::webserver::http_client::{BufferedRequestError, send_buffered_request};
+use crate::webserver::http_client::send_http_request;
 use anyhow::Context as _;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
@@ -91,9 +91,9 @@ fn init_otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::Unbounded
                     };
 
                 while let Some(job) = receiver.recv().await {
-                    let response = execute_otlp_http_request_with_awc(&awc_client, job.request)
+                    let response = send_http_request(&awc_client, job.request, None)
                         .await
-                        .map_err(|error| error.to_string());
+                        .map_err(|error| format!("{error:#}"));
                     let _ = job.response_sender.send(response);
                 }
             });
@@ -107,60 +107,6 @@ fn init_otlp_http_worker_sender() -> anyhow::Result<tokio::sync::mpsc::Unbounded
     }
 
     Ok(sender)
-}
-
-pub(crate) async fn execute_otlp_http_request_with_awc(
-    awc_client: &awc::Client,
-    request: opentelemetry_http::Request<opentelemetry_http::Bytes>,
-) -> anyhow::Result<opentelemetry_http::Response<opentelemetry_http::Bytes>> {
-    let (request_parts, request_body) = request.into_parts();
-
-    let awc_method = awc::http::Method::from_bytes(request_parts.method.as_str().as_bytes())
-        .with_context(|| format!("Invalid OTLP HTTP method: {}", request_parts.method))?;
-    let awc_uri: awc::http::Uri = request_parts
-        .uri
-        .to_string()
-        .parse()
-        .with_context(|| format!("Invalid OTLP collector URI: {}", request_parts.uri))?;
-
-    let mut awc_request = awc_client.request(awc_method, awc_uri.clone());
-    for (header_name, header_value) in &request_parts.headers {
-        let header_name_str = header_name.as_str();
-        let awc_header_name = awc::http::header::HeaderName::from_bytes(header_name_str.as_bytes())
-            .with_context(|| format!("Invalid OTLP header name: {header_name_str}"))?;
-        let awc_header_value = awc::http::header::HeaderValue::from_bytes(header_value.as_bytes())
-            .with_context(|| format!("Invalid OTLP header value for {header_name_str}"))?;
-        awc_request = awc_request.insert_header((awc_header_name, awc_header_value));
-    }
-
-    let (response_builder, response_body) =
-        send_buffered_request(awc_request, request_body, None, |status, headers| {
-            let mut builder = opentelemetry_http::Response::builder().status(status.as_u16());
-            for (header_name, header_value) in headers {
-                let header_value = header_value.to_str().map_err(|error| {
-                    anyhow::anyhow!(
-                        "Invalid OTLP response header value for {}: {error}",
-                        header_name.as_str()
-                    )
-                })?;
-                builder = builder.header(header_name.as_str(), header_value);
-            }
-            Ok(builder)
-        })
-        .await
-        .map_err(|error| match error {
-            BufferedRequestError::Send(error) => {
-                anyhow::anyhow!("Failed to send OTLP HTTP request to {awc_uri}: {error}")
-            }
-            BufferedRequestError::ResponseHead(error) => error,
-            BufferedRequestError::Body(error) => {
-                anyhow::anyhow!("Failed to read OTLP HTTP response body from {awc_uri}: {error}")
-            }
-        })?;
-
-    response_builder
-        .body(response_body)
-        .context("Failed to build OTLP HTTP response")
 }
 
 #[async_trait::async_trait]

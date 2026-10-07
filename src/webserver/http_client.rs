@@ -1,43 +1,53 @@
-use actix_web::dev::ServiceRequest;
+use actix_web::{dev::ServiceRequest, web::Bytes};
 use anyhow::{Context, anyhow};
+use opentelemetry_http::{Request, Response};
 use rustls_native_certs::CertificateResult;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-/// The stage that failed while buffering an outbound HTTP response.
-#[derive(Debug)]
-pub(crate) enum BufferedRequestError {
-    Send(awc::error::SendRequestError),
-    ResponseHead(anyhow::Error),
-    Body(awc::error::PayloadError),
-}
-
-/// Sends a prepared request and validates the response head before reading its body.
-/// Callers retain their header policy, timeout selection, and error context.
-pub(crate) async fn send_buffered_request<B, H>(
-    request: awc::ClientRequest,
-    body: B,
+/// Bridges the HTTP 1.x types used by OIDC and OpenTelemetry to AWC's HTTP 0.2 types.
+/// Validates response headers before buffering the body.
+pub(crate) async fn send_http_request<B>(
+    client: &awc::Client,
+    request: Request<B>,
     body_timeout: Option<Duration>,
-    prepare_response_head: impl FnOnce(
-        awc::http::StatusCode,
-        &awc::http::header::HeaderMap,
-    ) -> anyhow::Result<H>,
-) -> Result<(H, actix_web::web::Bytes), BufferedRequestError>
+) -> anyhow::Result<Response<Bytes>>
 where
     B: actix_web::body::MessageBody + 'static,
 {
-    let response = request
-        .send_body(body)
+    let (head, body) = request.into_parts();
+    let method = awc::http::Method::from_bytes(head.method.as_str().as_bytes())?;
+    let mut request = client.request(method, head.uri.to_string());
+    for (name, value) in &head.headers {
+        request = request.insert_header((name.as_str(), value.as_bytes()));
+    }
+    log::debug!("Executing HTTP request: {} {}", head.method, head.uri);
+    let mut response = request.send_body(body).await.map_err(|error| {
+        anyhow!(
+            "Failed to send HTTP request: {} {}: {error}",
+            head.method,
+            head.uri
+        )
+    })?;
+    log::debug!("Received HTTP response: {}", response.status());
+    let mut builder = Response::builder().status(response.status().as_u16());
+    for (name, value) in response.headers() {
+        builder = builder.header(
+            name.as_str(),
+            value
+                .to_str()
+                .with_context(|| format!("Invalid HTTP response header: {name}"))?,
+        );
+    }
+    if let Some(timeout) = body_timeout {
+        response = response.timeout(timeout);
+    }
+    let body = response
+        .body()
         .await
-        .map_err(BufferedRequestError::Send)?;
-    let head = prepare_response_head(response.status(), response.headers())
-        .map_err(BufferedRequestError::ResponseHead)?;
-    let mut response = match body_timeout {
-        Some(timeout) => response.timeout(timeout),
-        None => response,
-    };
-    let body = response.body().await.map_err(BufferedRequestError::Body)?;
-    Ok((head, body))
+        .with_context(|| format!("Failed to read HTTP response body from {}", head.uri))?;
+    log::debug!("Received HTTP response body: {} bytes", body.len());
+    Ok(builder.body(body)?)
 }
 
 struct NativeCertificates {
@@ -142,7 +152,7 @@ pub(crate) fn get_http_client_from_appdata(
 #[cfg(test)]
 mod transport_tests {
     use super::*;
-    use openidconnect::http::{Request, Response, header::ToStrError};
+    use openidconnect::{AsyncHttpClient, http::HeaderValue};
     use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
     use tokio::net::TcpListener;
     use tokio::task::JoinHandle;
@@ -168,13 +178,13 @@ mod transport_tests {
                 .body(b"request".to_vec())?;
             let client = awc::Client::default();
             match self {
-                Oidc => super::super::oidc::execute_oidc_request_with_awc(client, request).await,
-                Otlp => crate::telemetry::execute_otlp_http_request_with_awc(
-                    &client,
-                    request.map(actix_web::web::Bytes::from),
-                )
-                .await
-                .map(|response| response.map(|body| body.to_vec())),
+                Oidc => super::super::oidc::AwcHttpClient::from_client(&client)
+                    .call(request)
+                    .await
+                    .map_err(anyhow::Error::msg),
+                Otlp => send_http_request(&client, request.map(Bytes::from), None)
+                    .await
+                    .map(|response| response.map(|body| body.to_vec())),
             }
         }
     }
@@ -244,7 +254,13 @@ mod transport_tests {
             .request("http://127.0.0.1:1/transport", "GET", b"\xff")
             .await
             .unwrap_err();
-        assert!(error.downcast_ref::<ToStrError>().is_some());
+        assert_eq!(
+            error.to_string(),
+            HeaderValue::from_bytes(b"\xff")?
+                .to_str()
+                .unwrap_err()
+                .to_string()
+        );
         for adapter in [Oidc, Otlp] {
             let (url, server) = response_server(
                 b"HTTP/1.1 200 OK\r\nX-Invalid: \xff\r\nContent-Length: 100\r\n\r\n",
@@ -257,18 +273,11 @@ mod transport_tests {
             )
             .await?
             .unwrap_err();
-            match adapter {
-                Oidc => assert!(
-                    error
-                        .downcast_ref::<awc::http::header::ToStrError>()
-                        .is_some()
-                ),
-                Otlp => assert!(
-                    error
-                        .to_string()
-                        .starts_with("Invalid OTLP response header value for x-invalid:")
-                ),
-            }
+            assert!(
+                error
+                    .to_string()
+                    .starts_with("Invalid HTTP response header: x-invalid")
+            );
             server.abort();
         }
         Ok(())
@@ -284,22 +293,21 @@ mod transport_tests {
                 .request(&unavailable, "GET", b"value")
                 .await
                 .unwrap_err();
-            assert!(error.to_string().starts_with(match adapter {
-                Oidc => "Failed to send request: GET ",
-                Otlp => "Failed to send OTLP HTTP request to ",
-            }));
+            assert!(
+                error
+                    .to_string()
+                    .starts_with("Failed to send HTTP request: GET ")
+            );
             let (url, server) = response_server(
                 b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\ninvalid\r\n",
                 false,
             )
             .await;
             let error = adapter.request(&url, "GET", b"value").await.unwrap_err();
-            match adapter {
-                Oidc => assert_eq!(error.to_string(), format!("Couldnt read from {url}")),
-                Otlp => assert!(error.to_string().starts_with(&format!(
-                    "Failed to read OTLP HTTP response body from {url}:"
-                ))),
-            }
+            assert_eq!(
+                error.to_string(),
+                format!("Failed to read HTTP response body from {url}")
+            );
             server.await?;
         }
         Ok(())
@@ -309,18 +317,14 @@ mod transport_tests {
     async fn applies_body_timeout_after_validating_headers() {
         let (url, server) =
             response_server(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n", true).await;
-        let error = send_buffered_request(
-            awc::Client::default().get(url),
-            Vec::<u8>::new(),
+        let error = send_http_request(
+            &awc::Client::default(),
+            Request::builder().uri(&url).body(Vec::<u8>::new()).unwrap(),
             Some(Duration::from_millis(20)),
-            |status, _| {
-                assert_eq!(status, awc::http::StatusCode::OK);
-                Ok(())
-            },
         )
         .await
         .unwrap_err();
-        assert!(matches!(error, BufferedRequestError::Body(_)));
+        assert!(error.downcast_ref::<awc::error::PayloadError>().is_some());
         server.abort();
     }
 }
