@@ -1,21 +1,28 @@
 use actix_web::http::StatusCode;
-use sqlpage::webserver::http::main_handler;
+use sqlpage::app_config::{AppConfig, DevOrProd};
 
-use crate::common::{get_request_to, make_app_data_from_config, test_config};
+use crate::common::{response_for, response_with, test_config};
+
+/// Returns the value of the `Server-Timing` response header, failing the test
+/// when the header is missing.
+fn server_timing_header(resp: &actix_web::dev::ServiceResponse) -> &str {
+    resp.headers()
+        .get("Server-Timing")
+        .expect("Server-Timing header should be present")
+        .to_str()
+        .unwrap()
+}
 
 #[actix_web::test]
 async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
-    let mut config = test_config();
-    config.environment = sqlpage::app_config::DevOrProd::Production;
-    let app_data = make_app_data_from_config(config).await;
-
-    let req = crate::common::get_request_to_with_data(
+    let resp = response_with(
         "/tests/sql_test_files/component_rendering/simple.sql",
-        app_data,
+        AppConfig {
+            environment: DevOrProd::Production,
+            ..test_config()
+        },
     )
-    .await?
-    .to_srv_request();
-    let resp = main_handler(req).await?;
+    .await?;
 
     assert_eq!(resp.status(), StatusCode::OK);
     assert!(
@@ -27,59 +34,34 @@ async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
-    let mut config = test_config();
-    config.environment = sqlpage::app_config::DevOrProd::Development;
-    let app_data = make_app_data_from_config(config).await;
-
-    let req = crate::common::get_request_to_with_data(
+    let resp = response_with(
         "/tests/sql_test_files/data/postgres_cast_syntax.sql",
-        app_data,
+        AppConfig {
+            environment: DevOrProd::Development,
+            ..test_config()
+        },
     )
-    .await?
-    .to_srv_request();
-    let resp = main_handler(req).await?;
+    .await?;
 
     assert_eq!(resp.status(), StatusCode::OK);
-    let server_timing_header = resp
-        .headers()
-        .get("Server-Timing")
-        .expect("Server-Timing header should be present in development mode");
-    let header_value = server_timing_header.to_str().unwrap();
+    let header_value = server_timing_header(&resp);
 
-    assert!(
-        header_value.contains("sql_file;dur="),
-        "Should contain sql_file timing: {header_value}"
-    );
-    assert!(
-        header_value.contains("parse_req;dur="),
-        "Should contain parse_req timing: {header_value}"
-    );
-    assert!(
-        header_value.contains("bind_params;dur="),
-        "Should contain bind_params timing: {header_value}"
-    );
-    assert!(
-        header_value.contains("db_conn;dur="),
-        "Should contain db_conn timing: {header_value}"
-    );
-    assert!(
-        header_value.contains("row;dur="),
-        "Should contain row timing: {header_value}"
-    );
+    for token in ["sql_file", "parse_req", "bind_params", "db_conn", "row"] {
+        assert!(
+            header_value.contains(&format!("{token};dur=")),
+            "Should contain {token} timing: {header_value}"
+        );
+    }
 
     Ok(())
 }
 
 #[actix_web::test]
 async fn test_server_timing_format() -> actix_web::Result<()> {
-    let req = get_request_to("/tests/sql_test_files/data/postgres_cast_syntax.sql")
-        .await?
-        .to_srv_request();
-    let resp = main_handler(req).await?;
+    let resp = response_for("/tests/sql_test_files/data/postgres_cast_syntax.sql").await;
 
     assert_eq!(resp.status(), StatusCode::OK);
-    let server_timing_header = resp.headers().get("Server-Timing").unwrap();
-    let header_value = server_timing_header.to_str().unwrap();
+    let header_value = server_timing_header(&resp);
 
     let parts: Vec<&str> = header_value.split(", ").collect();
     assert!(parts.len() >= 5, "Should have at least 5 timing events");
@@ -105,26 +87,21 @@ async fn test_server_timing_format() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_server_timing_in_redirect() -> actix_web::Result<()> {
-    let mut config = test_config();
-    config.environment = sqlpage::app_config::DevOrProd::Development;
-    let app_data = make_app_data_from_config(config).await;
-
-    let req =
-        crate::common::get_request_to_with_data("/tests/server_timing/redirect_test.sql", app_data)
-            .await?
-            .to_srv_request();
-    let resp = main_handler(req).await?;
+    let resp = response_with(
+        "/tests/server_timing/redirect_test.sql",
+        AppConfig {
+            environment: DevOrProd::Development,
+            ..test_config()
+        },
+    )
+    .await?;
 
     assert_eq!(
         resp.status(),
         StatusCode::FOUND,
         "Response should be a redirect"
     );
-    let server_timing_header = resp
-        .headers()
-        .get("Server-Timing")
-        .expect("Server-Timing header should be present in redirect responses");
-    let header_value = server_timing_header.to_str().unwrap();
+    let header_value = server_timing_header(&resp);
 
     assert!(
         !header_value.is_empty(),

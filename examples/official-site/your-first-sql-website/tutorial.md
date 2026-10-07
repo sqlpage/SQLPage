@@ -5,7 +5,7 @@ In the rest of this tutorial, we will call this folder the **root folder** of yo
 
 - On **Windows**, place the `sqlpage.exe` you downloaded above at the root of the folder. Then double-click the `sqlpage.exe` file to start the server.
 - On **Linux**, place `sqlpage.bin` at the root of the folder. Then open a terminal, cd to the root folder of your website, and run `./sqlpage.bin` to start the server.
-- On **Mac OS**, if you installed SQLPage using Homebrew, then you do not need to place anything at the root of the folder. Open Terminal, cd to the root folder of your website, and type `sqlpage` to start the server.
+- On **Mac OS**, if you installed SQLPage using Homebrew, then you do not need to place anything at the root of the folder. Open Terminal, cd to the root folder of your website, and type `sqlpage` to start the server. If you downloaded SQLPage instead, place `sqlpage.bin` in this folder and run `./sqlpage.bin`.
 
 ![screenshot for the sql website setup on linux](first-sql-website-launch.png)
 

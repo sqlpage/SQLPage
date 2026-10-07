@@ -96,6 +96,14 @@ export DATABASE_URL=mssql://root:Password123!@localhost/sqlpage
 cargo test
 ```
 
+Use `common::response_for(path)` for ordinary integration requests and
+`common::response_with(path, config)` for custom configuration. Custom requests use
+`common::response_from(request)`; tests sharing database or cache state use `common::send_request`.
+These helpers use the production `create_app` routes and middleware through an Actix test service,
+whose destructor drains its request pool.
+Keep `#[actix_web::test]`; standalone `TestRequest::to_srv_request()` retains application state.
+When testing Oracle locally, use `cargo test -- --test-threads=2` to avoid overwhelming the listener.
+
 ### End-to-End Tests
 
 We use Playwright for end-to-end testing of dynamic frontend features.
