@@ -5,7 +5,9 @@ use std::time::Duration;
 use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 use tokio::time::Instant;
 
-use crate::webserver::http_client::get_http_client_from_appdata;
+use crate::webserver::http_client::{
+    BufferedRequestError, get_http_client_from_appdata, send_buffered_request,
+};
 use crate::webserver::routing::{
     AppFileStore, CanonicalRequestPath, RoutingAction, canonical_url_path, resolve_route,
 };
@@ -1043,29 +1045,36 @@ async fn execute_oidc_request_with_awc(
         req = req.insert_header((name.as_str(), value.to_str()?));
     }
     let (req_head, body) = request.into_parts();
-    let response = req.send_body(body).await.map_err(|e| {
-        anyhow!(e.to_string()).context(format!(
+    let (resp_builder, body) = send_buffered_request(
+        req,
+        body,
+        Some(OIDC_HTTP_BODY_TIMEOUT),
+        |status, headers| {
+            log::debug!(
+                "Received OIDC response headers: status={}, content_type={:?}",
+                status,
+                headers
+                    .get(header::CONTENT_TYPE)
+                    .and_then(|value| value.to_str().ok())
+            );
+            let mut builder = openidconnect::http::Response::builder().status(status.as_u16());
+            for (name, value) in headers {
+                builder = builder.header(name.as_str(), value.to_str()?);
+            }
+            Ok(builder)
+        },
+    )
+    .await
+    .map_err(|error| match error {
+        BufferedRequestError::Send(error) => anyhow!(error.to_string()).context(format!(
             "Failed to send request: {} {}",
             req_head.method, req_head.uri
-        ))
+        )),
+        BufferedRequestError::ResponseHead(error) => error,
+        BufferedRequestError::Body(error) => {
+            anyhow::Error::new(error).context(format!("Couldnt read from {}", req_head.uri))
+        }
     })?;
-    let head = response.headers();
-    log::debug!(
-        "Received OIDC response headers: status={}, content_type={:?}",
-        response.status(),
-        head.get(header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-    );
-    let mut resp_builder =
-        openidconnect::http::Response::builder().status(response.status().as_u16());
-    for (name, value) in head {
-        resp_builder = resp_builder.header(name.as_str(), value.to_str()?);
-    }
-    let mut response = response.timeout(OIDC_HTTP_BODY_TIMEOUT);
-    let body = response
-        .body()
-        .await
-        .with_context(|| format!("Couldnt read from {}", req_head.uri))?;
     log::debug!("Received OIDC response body_len={} bytes", body.len());
     let resp = resp_builder.body(body.to_vec())?;
     Ok(resp)
@@ -1388,6 +1397,107 @@ fn validate_redirect_url(url: String, redirect_uri: &str) -> String {
     }
     log::warn!("Refusing to redirect to {url}");
     '/'.to_string()
+}
+
+#[cfg(test)]
+mod http_transport_tests {
+    use super::*;
+    use crate::webserver::http_client::transport_tests::{response_server, unavailable_url};
+
+    #[actix_web::test]
+    async fn preserves_methods_bodies_status_and_headers() -> anyhow::Result<()> {
+        for method in ["GET", "POST", "PATCH", "DELETE"] {
+            let (url, server) = response_server(
+                b"HTTP/1.1 202 Accepted\r\nContent-Length: 8\r\nX-Result: first\r\nX-Result: second\r\n\r\nresponse",
+                false,
+            ).await;
+            let request = openidconnect::http::Request::builder()
+                .method(method)
+                .uri(url)
+                .header("x-request", "value")
+                .body(b"request".to_vec())?;
+            let response = execute_oidc_request_with_awc(Client::default(), request).await?;
+            assert_eq!(response.status().as_u16(), 202);
+            assert_eq!(response.body(), b"response");
+            assert_eq!(response.headers().get_all("x-result").iter().count(), 2);
+            let sent = String::from_utf8(server.await?)?;
+            assert!(sent.starts_with(&format!("{method} /transport HTTP/1.1\r\n")));
+            assert!(sent.contains("x-request: value\r\n"));
+            assert!(sent.ends_with("\r\n\r\nrequest"));
+        }
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn rejects_non_text_request_and_response_headers() -> anyhow::Result<()> {
+        let request = openidconnect::http::Request::builder()
+            .uri("http://127.0.0.1:1/transport")
+            .header(
+                "x-invalid",
+                openidconnect::http::HeaderValue::from_bytes(b"\xff")?,
+            )
+            .body(Vec::new())?;
+        let error = execute_oidc_request_with_awc(Client::default(), request)
+            .await
+            .unwrap_err();
+        assert!(
+            error
+                .downcast_ref::<openidconnect::http::header::ToStrError>()
+                .is_some()
+        );
+
+        let (url, server) = response_server(
+            b"HTTP/1.1 200 OK\r\nX-Invalid: \xff\r\nContent-Length: 100\r\n\r\n",
+            true,
+        )
+        .await;
+        let request = openidconnect::http::Request::builder()
+            .uri(url)
+            .body(Vec::new())?;
+        let error = tokio::time::timeout(
+            Duration::from_secs(1),
+            execute_oidc_request_with_awc(Client::default(), request),
+        )
+        .await?
+        .unwrap_err();
+        assert!(
+            error
+                .downcast_ref::<awc::http::header::ToStrError>()
+                .is_some()
+        );
+        server.abort();
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn retains_send_and_body_error_context() -> anyhow::Result<()> {
+        let request = openidconnect::http::Request::builder()
+            .uri(unavailable_url().await)
+            .body(Vec::new())?;
+        let error = execute_oidc_request_with_awc(Client::default(), request)
+            .await
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .starts_with("Failed to send request: GET ")
+        );
+
+        let (url, server) = response_server(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\ninvalid\r\n",
+            false,
+        )
+        .await;
+        let request = openidconnect::http::Request::builder()
+            .uri(&url)
+            .body(Vec::new())?;
+        let error = execute_oidc_request_with_awc(Client::default(), request)
+            .await
+            .unwrap_err();
+        assert_eq!(error.to_string(), format!("Couldnt read from {url}"));
+        server.await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

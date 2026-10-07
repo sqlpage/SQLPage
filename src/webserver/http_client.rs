@@ -2,6 +2,43 @@ use actix_web::dev::ServiceRequest;
 use anyhow::{Context, anyhow};
 use rustls_native_certs::CertificateResult;
 use std::sync::OnceLock;
+use std::time::Duration;
+
+/// The stage that failed while buffering an outbound HTTP response.
+#[derive(Debug)]
+pub(crate) enum BufferedRequestError {
+    Send(awc::error::SendRequestError),
+    ResponseHead(anyhow::Error),
+    Body(awc::error::PayloadError),
+}
+
+/// Sends a prepared request and validates the response head before reading its body.
+/// Callers retain their header policy, timeout selection, and error context.
+pub(crate) async fn send_buffered_request<B, H>(
+    request: awc::ClientRequest,
+    body: B,
+    body_timeout: Option<Duration>,
+    prepare_response_head: impl FnOnce(
+        awc::http::StatusCode,
+        &awc::http::header::HeaderMap,
+    ) -> anyhow::Result<H>,
+) -> Result<(H, actix_web::web::Bytes), BufferedRequestError>
+where
+    B: actix_web::body::MessageBody + 'static,
+{
+    let response = request
+        .send_body(body)
+        .await
+        .map_err(BufferedRequestError::Send)?;
+    let head = prepare_response_head(response.status(), response.headers())
+        .map_err(BufferedRequestError::ResponseHead)?;
+    let mut response = match body_timeout {
+        Some(timeout) => response.timeout(timeout),
+        None => response,
+    };
+    let body = response.body().await.map_err(BufferedRequestError::Body)?;
+    Ok((head, body))
+}
 
 struct NativeCertificates {
     certificates: Vec<rustls::pki_types::CertificateDer<'static>>,
@@ -99,5 +136,75 @@ pub(crate) fn get_http_client_from_appdata(
             .map_err(|e| anyhow!("HTTP client initialization failed: {e}"))
     } else {
         Err(anyhow!("HTTP client not found in app data"))
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod transport_tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+    use tokio::task::JoinHandle;
+
+    pub(crate) async fn response_server(
+        response: &'static [u8],
+        hold_open: bool,
+    ) -> (String, JoinHandle<Vec<u8>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/transport", listener.local_addr().unwrap());
+        let task = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            let (header_end, content_length) = loop {
+                let mut buffer = [0; 1024];
+                let count = socket.read(&mut buffer).await.unwrap();
+                assert!(count > 0, "request ended before its headers");
+                request.extend_from_slice(&buffer[..count]);
+                if let Some(end) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") {
+                    let length = String::from_utf8_lossy(&request[..end])
+                        .lines()
+                        .filter_map(|line| line.split_once(':'))
+                        .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+                        .map_or(0, |(_, value)| value.trim().parse::<usize>().unwrap());
+                    break (end + 4, length);
+                }
+            };
+            while request.len() < header_end + content_length {
+                let mut buffer = [0; 1024];
+                let count = socket.read(&mut buffer).await.unwrap();
+                assert!(count > 0, "request ended before its body");
+                request.extend_from_slice(&buffer[..count]);
+            }
+            socket.write_all(response).await.unwrap();
+            if hold_open {
+                std::future::pending::<()>().await;
+            }
+            request
+        });
+        (url, task)
+    }
+
+    pub(crate) async fn unavailable_url() -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        format!("http://{}/transport", listener.local_addr().unwrap())
+    }
+
+    #[actix_web::test]
+    async fn applies_body_timeout_after_validating_headers() {
+        let (url, server) =
+            response_server(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n", true).await;
+        let error = send_buffered_request(
+            awc::Client::default().get(url),
+            Vec::<u8>::new(),
+            Some(Duration::from_millis(20)),
+            |status, _| {
+                assert_eq!(status, awc::http::StatusCode::OK);
+                Ok(())
+            },
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(error, BufferedRequestError::Body(_)));
+        server.abort();
     }
 }
