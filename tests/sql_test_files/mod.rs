@@ -78,6 +78,10 @@ fn get_sql_test_cases() -> Vec<SqlTestCase> {
         "tests/sql_test_files/data",
         SqlTestFormat::Json,
     ));
+    tests.extend(read_sql_tests_in_dir(
+        "tests/sql_test_files/column_validation",
+        SqlTestFormat::Html,
+    ));
     tests
 }
 

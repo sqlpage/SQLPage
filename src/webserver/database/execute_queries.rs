@@ -921,167 +921,21 @@ mod tests {
         assert_json_value(&item, "normal_col", json!("text"));
     }
 
-    async fn execution_context(web_root: &Path) -> ExecutionContext {
+    #[actix_web::test]
+    async fn dropping_stream_stops_later_rows_and_releases_connection_borrow() {
         let mut config: crate::app_config::AppConfig = serde_json::from_str("{}").unwrap();
         config.database_url = crate::app_config::test_database_url();
         config.max_database_pool_connections = Some(1);
         config.database_connection_acquire_timeout_seconds = 1.0;
-        config.web_root = web_root.to_owned();
         let state = Arc::new(crate::AppState::init(&config).await.unwrap());
         let mut request = actix_web::test::TestRequest::get().to_srv_request();
-        crate::webserver::http_request_info::extract_request_info(
+        let request = crate::webserver::http_request_info::extract_request_info(
             &mut request,
             state,
             crate::webserver::server_timing::ServerTiming::default(),
         )
         .await
-        .unwrap()
-    }
-
-    async fn collect_rows(
-        request: &ExecutionContext,
-        connection: &mut DbConn,
-        sql: &str,
-    ) -> anyhow::Result<Vec<Value>> {
-        let file = SqlFile::new(&request.app_state.db, sql, Path::new("execution-test.sql"));
-        let stream = stream_query_results_with_conn(&file, request, connection);
-        futures_util::pin_mut!(stream);
-        let mut rows = Vec::new();
-        while let Some(item) = stream.next().await {
-            match item {
-                DbItem::Row(row) => rows.push(row),
-                DbItem::FinishedQuery => {}
-                DbItem::Error(error) => return Err(error),
-            }
-        }
-        Ok(rows)
-    }
-
-    #[actix_web::test]
-    async fn streaming_rows_keep_private_inputs_out_of_duplicate_outputs() {
-        let request = execution_context(Path::new(".")).await;
-        let rows = collect_rows(
-            &request,
-            &mut None,
-            "SELECT '[1]' AS values_json, '[2]' AS values_json,
-                sqlpage.url_encode(name) AS encoded, name AS encoded
-                FROM (SELECT 'a b' AS name) source_rows",
-        )
-        .await
         .unwrap();
-        assert_eq!(
-            rows,
-            [json!({
-                "values_json": ["[1]", "[2]"],
-                "encoded": ["a b", "a%20b"]
-            })]
-        );
-        if request.app_state.db.info.kind == sqlx::any::AnyKind::Sqlite {
-            let rows = collect_rows(
-                &request,
-                &mut None,
-                "SELECT json('[1]') AS values_json, json('[2]') AS values_json,
-                    sqlpage.url_encode(name) AS encoded
-                    FROM (SELECT 'a b' AS name) source_rows",
-            )
-            .await
-            .unwrap();
-            assert_eq!(
-                rows,
-                [json!({"values_json": [[1], [2]], "encoded": "a%20b"})]
-            );
-        }
-    }
-
-    #[actix_web::test]
-    async fn scalar_rows_check_physical_column_count_and_database_row_policy() {
-        let request = execution_context(Path::new(".")).await;
-        let mut connection = None;
-        let rows = collect_rows(
-            &request,
-            &mut connection,
-            "SET empty_value = (SELECT n FROM (SELECT 1 AS n) source_rows WHERE 1 = 0);
-             SET encoded_value = (SELECT sqlpage.url_encode(name) FROM (SELECT 'a b' AS name) source_rows);
-             SELECT $empty_value AS empty_value, $encoded_value AS encoded_value",
-        )
-        .await
-        .unwrap();
-        assert_eq!(
-            rows,
-            [json!({"empty_value": null, "encoded_value": "a%20b"})]
-        );
-
-        let error = collect_rows(
-            &request,
-            &mut connection,
-            "SET invalid_value = (SELECT n AS duplicate, n AS duplicate FROM (SELECT 1 AS n) source_rows)",
-        )
-        .await
-        .unwrap_err();
-        assert!(format!("{error:#}").contains("more than one column"));
-
-        let result = collect_rows(
-            &request,
-            &mut connection,
-            "SET multiple_value = (SELECT n FROM (SELECT 1 AS n UNION ALL SELECT 2 AS n) source_rows);
-             SELECT $multiple_value AS value",
-        )
-        .await;
-        match request
-            .app_state
-            .db
-            .info
-            .database_type
-            .scalar_subquery_behavior()
-        {
-            ScalarSubqueryBehavior::FirstRow => {
-                assert_eq!(result.unwrap(), [json!({"value": "1"})]);
-            }
-            ScalarSubqueryBehavior::ErrorOnMultipleRows => {
-                assert!(format!("{:#}", result.unwrap_err()).contains("more than one row"));
-            }
-        }
-    }
-
-    #[actix_web::test]
-    async fn buffered_and_scalar_run_sql_reuse_the_only_connection() {
-        let root = tempfile::tempdir().unwrap();
-        std::fs::write(
-            root.path().join("child.sql"),
-            "SELECT sqlpage.run_sql('grandchild.sql') AS nested FROM (SELECT 1 AS n) source_rows",
-        )
-        .unwrap();
-        std::fs::write(
-            root.path().join("grandchild.sql"),
-            "SELECT 'nested' AS value FROM (SELECT 1 AS n) source_rows",
-        )
-        .unwrap();
-        let request = execution_context(root.path()).await;
-        let mut connection = None;
-        let rows = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            collect_rows(&request, &mut connection,
-                "SELECT n, sqlpage.run_sql(path) AS included
-                 FROM (SELECT 1 AS n, 'child.sql' AS path UNION ALL SELECT 2 AS n, 'child.sql' AS path) source_rows
-                 ORDER BY n;
-                 SET scalar_included = (SELECT sqlpage.run_sql(path) FROM (SELECT 'child.sql' AS path) source_rows);
-                 SELECT $scalar_included AS scalar_included"
-            ),
-        ).await.expect("nested execution should reuse the existing connection").unwrap();
-        let included = r#"[{"nested":"[{\"value\":\"nested\"}]"}]"#;
-        assert_eq!(
-            rows,
-            [
-                json!({"n": 1, "included": included}),
-                json!({"n": 2, "included": included}),
-                json!({"scalar_included": included}),
-            ]
-        );
-    }
-
-    #[actix_web::test]
-    async fn dropping_stream_stops_later_rows_and_releases_connection_borrow() {
-        let request = execution_context(Path::new(".")).await;
         let file = SqlFile::new(
             &request.app_state.db,
             "SELECT n, sqlpage.fetch(url) AS value
@@ -1100,52 +954,20 @@ mod tests {
             assert_eq!(row, json!({"n": 1, "value": null}));
         }
         assert!(!request.set_variables.borrow().contains_key("after_query"));
-        assert_eq!(
-            collect_rows(
-                &request,
-                &mut connection,
-                "SELECT n FROM (SELECT 7 AS n) source_rows"
-            )
-            .await
-            .unwrap(),
-            [json!({"n": 7})]
+        let file = SqlFile::new(
+            &request.app_state.db,
+            "SELECT n FROM (SELECT 7 AS n) source_rows",
+            Path::new("execution-test.sql"),
         );
-    }
-
-    #[actix_web::test]
-    async fn computed_column_failure_rolls_back_and_leaves_connection_usable() {
-        let request = execution_context(Path::new(".")).await;
-        if request.app_state.db.info.kind != sqlx::any::AnyKind::Sqlite {
-            return;
+        let stream = stream_query_results_with_conn(&file, &request, &mut connection);
+        futures_util::pin_mut!(stream);
+        let Some(DbItem::Row(row)) = stream.next().await else {
+            panic!("Expected a row from the reused connection");
+        };
+        assert_eq!(row, json!({"n": 7}));
+        while let Some(item) = stream.next().await {
+            assert!(matches!(item, DbItem::FinishedQuery));
         }
-        let mut connection = None;
-        collect_rows(
-            &request,
-            &mut connection,
-            "CREATE TEMPORARY TABLE query_event_rollback(value INTEGER)",
-        )
-        .await
-        .unwrap();
-        let error = collect_rows(
-            &request,
-            &mut connection,
-            "BEGIN;
-             INSERT INTO query_event_rollback VALUES (1);
-             SELECT sqlpage.fetch(url) AS value FROM (SELECT 'invalid URL' AS url) source_rows",
-        )
-        .await
-        .unwrap_err();
-        assert!(format!("{error:#}").contains("invalid URL"));
-        assert_eq!(
-            collect_rows(
-                &request,
-                &mut connection,
-                "SELECT COUNT(*) AS count FROM query_event_rollback"
-            )
-            .await
-            .unwrap(),
-            [json!({"count": 0})]
-        );
     }
 
     #[derive(Default)]

@@ -1,5 +1,6 @@
 use actix_web::{http::StatusCode, test};
 use sqlpage::webserver::{database::SupportedDatabase, http::main_handler};
+use sqlx::row::Row as _;
 
 use crate::common::{get_request_to_with_data, make_app_data};
 
@@ -26,6 +27,21 @@ async fn test_transaction_error() -> actix_web::Result<()> {
         body_str.contains("error") && body_str.contains("null"),
         "{body_str}\nexpected to contain: constraint failed"
     );
+    if data.db.info.database_type == SupportedDatabase::Sqlite {
+        let req = get_request_to_with_data(
+            "/tests/transactions/failed_computed_column.sql",
+            data.clone(),
+        )
+        .await?
+        .to_srv_request();
+        let body = test::read_body(main_handler(req).await?).await;
+        assert!(String::from_utf8_lossy(&body).contains("invalid URL"));
+        let row = sqlx::query::query("SELECT COUNT(*) AS count FROM query_event_rollback")
+            .fetch_one(&data.db.connection)
+            .await
+            .unwrap();
+        assert_eq!(row.try_get::<i64, _>("count").unwrap(), 0);
+    }
     // Now query again, with ?x=1447
     let path_with_param = path.to_string() + "?x=1447";
     let req = get_request_to_with_data(&path_with_param, data.clone())
