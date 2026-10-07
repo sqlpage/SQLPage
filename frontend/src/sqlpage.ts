@@ -1,6 +1,11 @@
 import { bootstrap as bundled_bootstrap } from "@tabler/core";
 import type * as Leaflet from "leaflet";
-import { add_init_fn } from "./init.ts";
+import {
+  add_init_fn,
+  type InitRoot,
+  type InitScript,
+  select_all,
+} from "./init.ts";
 
 // A page may load its own Bootstrap; prefer it over the bundled copy.
 const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
@@ -14,8 +19,8 @@ type ModalWidget = InstanceType<typeof bundled_bootstrap.Modal>;
 
 const nonce = (document.currentScript as HTMLScriptElement).nonce;
 
-function sqlpage_card() {
-  const cards = document.querySelectorAll<HTMLElement>("[data-pre-init=card]");
+function sqlpage_card(root: InitRoot) {
+  const cards = select_all<HTMLElement>(root, "[data-pre-init=card]");
   for (const c of cards) {
     c.removeAttribute("data-pre-init");
     if (!c.dataset.embed) continue;
@@ -173,10 +178,8 @@ function setup_sort_behavior(
   });
 }
 
-function sqlpage_table() {
-  const tables = document.querySelectorAll<HTMLElement>(
-    "[data-pre-init=table]",
-  );
+function sqlpage_table(root: InitRoot) {
+  const tables = select_all<HTMLElement>(root, "[data-pre-init=table]");
   for (const r of tables) {
     r.removeAttribute("data-pre-init");
     try {
@@ -198,9 +201,14 @@ type MarkerStyle = Leaflet.MarkerOptions &
 
 let is_leaflet_injected = false;
 let is_leaflet_loaded = false;
+const pending_maps = new Set<HTMLElement>();
 
-function sqlpage_map() {
-  const first_map = document.querySelector("[data-pre-init=map]");
+function sqlpage_map(root: InitRoot) {
+  const maps = select_all<HTMLElement>(root, "[data-pre-init=map]");
+  const first_map = maps[0];
+  if (!is_leaflet_loaded) {
+    for (const map of maps) pending_maps.add(map);
+  }
   const leaflet_base_url = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4";
   if (first_map && !is_leaflet_injected) {
     // Add the leaflet js and css to the page
@@ -217,12 +225,19 @@ function sqlpage_map() {
       "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
     leaflet_js.crossOrigin = "anonymous";
     leaflet_js.nonce = nonce;
-    leaflet_js.onload = onLeafletLoad;
+    // Preserve each announced map, including maps arriving during loading.
+    leaflet_js.onload = () => {
+      is_leaflet_loaded = true;
+      for (const map of pending_maps) {
+        if (map.isConnected) onLeafletLoad(map);
+      }
+      pending_maps.clear();
+    };
     document.head.appendChild(leaflet_js);
     is_leaflet_injected = true;
   }
   if (first_map && is_leaflet_loaded) {
-    onLeafletLoad();
+    onLeafletLoad(root);
   }
   function parseCoords(
     coords: string | undefined,
@@ -237,9 +252,9 @@ function sqlpage_map() {
     }
     return [parsed[0], parsed[1]];
   }
-  function onLeafletLoad() {
+  function onLeafletLoad(map_root: InitRoot) {
     is_leaflet_loaded = true;
-    const maps = document.querySelectorAll<HTMLElement>("[data-pre-init=map]");
+    const maps = select_all<HTMLElement>(map_root, "[data-pre-init=map]");
     for (const m of maps) {
       const tile_source = m.dataset.tile_source;
       const maxZoom = Number(m.dataset.max_zoom);
@@ -344,11 +359,17 @@ function sqlpage_map() {
   }
 }
 
-function sqlpage_form() {
-  const file_inputs = document.querySelectorAll<HTMLInputElement>(
+const initialized_file_inputs = new WeakSet<HTMLInputElement>();
+const initialized_auto_submit_forms = new WeakSet<HTMLFormElement>();
+
+function sqlpage_form(root: InitRoot) {
+  const file_inputs = select_all<HTMLInputElement>(
+    root,
     "input[type=file][data-max-size]",
   );
   for (const input of file_inputs) {
+    if (initialized_file_inputs.has(input)) continue;
+    initialized_file_inputs.add(input);
     const max_size = Number(input.dataset.maxSize);
     input.addEventListener("change", () => {
       input.classList.remove("is-invalid");
@@ -364,10 +385,13 @@ function sqlpage_form() {
     });
   }
 
-  const auto_submit_forms = document.querySelectorAll<HTMLFormElement>(
+  const auto_submit_forms = select_all<HTMLFormElement>(
+    root,
     "form[data-auto-submit]",
   );
   for (const form of auto_submit_forms) {
+    if (initialized_auto_submit_forms.has(form)) continue;
+    initialized_auto_submit_forms.add(form);
     form.addEventListener("change", () => form.submit());
   }
 }
@@ -378,17 +402,22 @@ function get_tabler_color(name: string) {
   );
 }
 
-function load_scripts() {
-  const addjs = document.querySelectorAll<HTMLElement>("[data-sqlpage-js]");
-  const existing_scripts = new Set(
-    [...document.querySelectorAll("script")].map((s) => s.src),
+function load_scripts(root: InitRoot) {
+  const addjs = select_all<HTMLElement>(root, "[data-sqlpage-js]");
+  const existing_scripts = new Map(
+    [...document.querySelectorAll<InitScript>("script")].map((s) => [s.src, s]),
   );
   for (const el of addjs) {
     if (!el.dataset.sqlpageJs) continue;
     const js = new URL(el.dataset.sqlpageJs, window.location.href).href;
-    if (existing_scripts.has(js)) continue;
-    existing_scripts.add(js);
-    const script = document.createElement("script");
+    const existing = existing_scripts.get(js);
+    if (existing) {
+      existing.sqlpage_init_roots?.add(el);
+      continue;
+    }
+    const script: InitScript = document.createElement("script");
+    script.sqlpage_init_roots = new Set([el]);
+    existing_scripts.set(js, script);
     script.src = js;
     document.head.appendChild(script);
   }
@@ -429,13 +458,11 @@ function restore_focus_after_toast(toast: HTMLElement, container: HTMLElement) {
   main.focus({ preventScroll: true });
 }
 
-function sqlpage_toast() {
+function sqlpage_toast(root: InitRoot) {
   const Toast = page_bootstrap().Toast;
 
   const initialized_toasts: HTMLElement[] = [];
-  const toasts = document.querySelectorAll<HTMLElement>(
-    '[data-pre-init="toast"]',
-  );
+  const toasts = select_all<HTMLElement>(root, '[data-pre-init="toast"]');
   for (const toast of toasts) {
     const source_container = toast.parentElement;
     if (!source_container) continue;
@@ -479,7 +506,7 @@ function sqlpage_toast() {
   open_toasts_for_hash(initialized_toasts);
 }
 
-function sqlpage_modal() {
+function sqlpage_modal(root: InitRoot) {
   // Bootstrap modals use position: fixed and are documented to live as
   // direct children of <body>
   // (https://getbootstrap.com/docs/5.3/components/modal/#how-it-works).
@@ -488,8 +515,11 @@ function sqlpage_modal() {
   // .page instead of the viewport. The modal then scrolls with the page
   // content and ends up behind its own backdrop, so its buttons cannot be
   // clicked. Moving modals to <body> keeps them viewport-fixed.
-  for (const modal of document.querySelectorAll("body .page .modal")) {
+  for (const modal of select_all<HTMLElement>(root, "body .page .modal")) {
     document.body.appendChild(modal);
+    // The modal leaves the original root; announce its subtree separately so
+    // every initializer, including later-loaded bundles, can still see it.
+    modal.dispatchEvent(new CustomEvent("fragment-loaded", { bubbles: true }));
   }
 }
 
@@ -506,34 +536,32 @@ window.addEventListener("hashchange", () =>
   ),
 );
 
-function init_bootstrap_components(fragment: Element | Document) {
+function init_bootstrap_components(root: InitRoot) {
   const bootstrap = page_bootstrap();
-  for (const el of fragment.querySelectorAll<HTMLElement>(
+  for (const el of select_all<HTMLElement>(
+    root,
     '[data-bs-toggle="tooltip"]',
   )) {
-    new bootstrap.Tooltip(el);
+    bootstrap.Tooltip.getOrCreateInstance(el);
   }
-  for (const el of fragment.querySelectorAll<HTMLElement>(
+  for (const el of select_all<HTMLElement>(
+    root,
     '[data-bs-toggle="popover"]',
   )) {
-    new bootstrap.Popover(el);
+    bootstrap.Popover.getOrCreateInstance(el);
   }
-  for (const el of fragment.querySelectorAll<HTMLElement>(
+  for (const el of select_all<HTMLElement>(
+    root,
     '[data-bs-toggle="dropdown"]',
   )) {
-    new bootstrap.Dropdown(el);
+    bootstrap.Dropdown.getOrCreateInstance(el);
   }
-  for (const el of fragment.querySelectorAll<HTMLElement>(
-    '[data-bs-ride="carousel"]',
-  )) {
-    new bootstrap.Carousel(el);
+  for (const el of select_all<HTMLElement>(root, '[data-bs-ride="carousel"]')) {
+    bootstrap.Carousel.getOrCreateInstance(el);
   }
 }
 
-document.addEventListener("fragment-loaded", ({ target }) => {
-  if (target instanceof Element || target instanceof Document)
-    init_bootstrap_components(target);
-});
+add_init_fn(init_bootstrap_components);
 
 function open_modal_for_hash() {
   const hash = window.location.hash.substring(1);
