@@ -35,8 +35,9 @@ for (const root of ["document", "main", "#added"]) {
     page,
   }) => {
     await loadFragment(page, "/fragment-loaded/tooltip.sql", root);
-    await announceDocument(page);
     await page.locator("#added").hover();
+    await expect(page.locator(".tooltip")).toHaveText("injected hint");
+    await announceDocument(page);
     await expect(page.locator(".tooltip")).toHaveText("injected hint");
     await page.getByRole("heading", { name: "Embedded form" }).hover();
     await expect(page.locator(".tooltip")).toHaveCount(0);
@@ -125,6 +126,8 @@ test("map roots initialize before and after their shared dependency loads", asyn
     await dependencyReady;
     await route.continue();
   });
+  await loadFragment(page, "/map/", null);
+  const pending = page.locator("main > .card > .card-body > .leaflet").first();
   const root = "main > .card:last-child .leaflet";
   try {
     for (let i = 0; i < 2; i++) await loadFragment(page, "/map/", root);
@@ -132,8 +135,89 @@ test("map roots initialize before and after their shared dependency loads", asyn
     releaseLeaflet();
   }
   await expect(page.locator(".leaflet-map-pane")).toHaveCount(2);
+  await expect(pending).toHaveAttribute("data-pre-init", "map");
   await loadFragment(page, "/map/", root);
   await expect(page.locator(".leaflet-map-pane")).toHaveCount(3);
   await page.locator(root).dispatchEvent("fragment-loaded", { bubbles: true });
   await expect(page.locator(".leaflet-map-pane")).toHaveCount(3);
+  await expect(pending).toHaveAttribute("data-pre-init", "map");
+  await pending.dispatchEvent("fragment-loaded", { bubbles: true });
+  await expect(page.locator(".leaflet-map-pane")).toHaveCount(4);
 });
+
+for (const bundle of ["apexcharts", "tomselect"]) {
+  test(`${bundle} initializes only announced roots while its bundle loads`, async ({
+    page,
+  }) => {
+    await page.goto("/fragment-loaded/?lazy=1");
+    const select = bundle === "tomselect";
+    const url = select ? "/form/?fragment=1" : "/chart/";
+    const component = select ? "form" : "[data-sqlpage-js]";
+    const ready = select ? ".ts-wrapper" : ".apexcharts-canvas";
+    await loadFragment(page, url, null);
+    const pending = page.locator(`main > ${component}`).first();
+    let releaseBundle = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releaseBundle = resolve;
+    });
+    await page.route(`**/${bundle}.*.js`, async (route) => {
+      await gate;
+      await route.continue();
+    });
+    try {
+      for (let i = 0; i < 2; i++)
+        await loadFragment(page, url, `main > ${component}:last-child`);
+    } finally {
+      releaseBundle();
+    }
+    await expect(page.locator(ready)).toHaveCount(2);
+    await expect(select ? pending.locator("select") : pending).toHaveAttribute(
+      "data-pre-init",
+      select ? "select-dropdown" : "chart",
+    );
+    await pending.dispatchEvent("fragment-loaded", { bubbles: true });
+    await expect(page.locator(ready)).toHaveCount(3);
+  });
+}
+
+for (const lazy of [false, true]) {
+  test(`relocated modals initialize their contents with ${lazy ? "lazy" : "loaded"} bundles`, async ({
+    page,
+  }) => {
+    if (lazy) await page.goto("/fragment-loaded/?lazy=1");
+    await loadFragment(page, "/fragment-loaded/modal.sql", null);
+    const parent = "#nested-modal .modal-body";
+    for (const url of [
+      rootForm,
+      "/chart/",
+      "/fragment-loaded/tooltip.sql",
+      "/facet/",
+      "/fragment-loaded/modal.sql?notification=1",
+    ]) {
+      await loadFragment(page, url, null, parent);
+    }
+    await page
+      .locator("main")
+      .dispatchEvent("fragment-loaded", { bubbles: true });
+    await expect(page.locator("body > #nested-modal")).toBeAttached();
+    await expect(page.locator("#nested-modal .ts-wrapper")).toBeAttached();
+    await expect(
+      page.locator("#nested-modal .apexcharts-canvas"),
+    ).toBeAttached();
+    await expect(page.locator("#nested-toast")).toBeVisible();
+    await page.evaluate(() => {
+      window.location.hash = "nested-modal";
+    });
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.locator("#added").hover();
+    await expect(page.locator(".tooltip")).toHaveText("injected hint");
+    await page
+      .getByRole("button", { name: "Constitution", exact: true })
+      .click();
+    await expect(page.locator(".dropdown-menu.show")).toBeVisible();
+    await page
+      .getByRole("button", { name: "Constitution", exact: true })
+      .click();
+    await expect(page.locator(".dropdown-menu.show")).toHaveCount(0);
+  });
+}

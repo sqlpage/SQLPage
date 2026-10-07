@@ -38,9 +38,10 @@ export async function loadFragment(
   page: Page,
   url: string,
   root: string | null = "main",
+  parent = "main",
 ) {
   await page.evaluate(
-    async ({ url, root }) => {
+    async ({ url, root, parent }) => {
       const request = new URL(url, location.href);
       request.searchParams.set("_sqlpage_embed", "1");
       const response = await fetch(request);
@@ -48,7 +49,10 @@ export async function loadFragment(
         throw new Error(`Fragment request failed: ${response.status}`);
       const fragment = document.createElement("template");
       fragment.innerHTML = await response.text();
-      document.querySelector("main")?.append(fragment.content);
+      const destination = document.querySelector(parent);
+      if (!destination)
+        throw new Error(`Missing fragment destination: ${parent}`);
+      destination.append(fragment.content);
       if (root) {
         const target =
           root === "document" ? document : document.querySelector(root);
@@ -58,6 +62,6 @@ export async function loadFragment(
         );
       }
     },
-    { url, root },
+    { url, root, parent },
   );
 }

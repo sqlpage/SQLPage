@@ -1,6 +1,11 @@
 import { bootstrap as bundled_bootstrap } from "@tabler/core";
 import type * as Leaflet from "leaflet";
-import { add_init_fn, type InitRoot, select_all } from "./init.ts";
+import {
+  add_init_fn,
+  type InitRoot,
+  type InitScript,
+  select_all,
+} from "./init.ts";
 
 // A page may load its own Bootstrap; prefer it over the bundled copy.
 const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
@@ -196,9 +201,14 @@ type MarkerStyle = Leaflet.MarkerOptions &
 
 let is_leaflet_injected = false;
 let is_leaflet_loaded = false;
+const pending_maps = new Set<HTMLElement>();
 
 function sqlpage_map(root: InitRoot) {
-  const first_map = select_all<HTMLElement>(root, "[data-pre-init=map]")[0];
+  const maps = select_all<HTMLElement>(root, "[data-pre-init=map]");
+  const first_map = maps[0];
+  if (!is_leaflet_loaded) {
+    for (const map of maps) pending_maps.add(map);
+  }
   const leaflet_base_url = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4";
   if (first_map && !is_leaflet_injected) {
     // Add the leaflet js and css to the page
@@ -215,9 +225,14 @@ function sqlpage_map(root: InitRoot) {
       "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
     leaflet_js.crossOrigin = "anonymous";
     leaflet_js.nonce = nonce;
-    // More fragments may arrive while Leaflet is loading. Initialize all
-    // pending maps when the shared dependency first becomes available.
-    leaflet_js.onload = () => onLeafletLoad(document);
+    // Preserve each announced map, including maps arriving during loading.
+    leaflet_js.onload = () => {
+      is_leaflet_loaded = true;
+      for (const map of pending_maps) {
+        if (map.isConnected) onLeafletLoad(map);
+      }
+      pending_maps.clear();
+    };
     document.head.appendChild(leaflet_js);
     is_leaflet_injected = true;
   }
@@ -389,15 +404,20 @@ function get_tabler_color(name: string) {
 
 function load_scripts(root: InitRoot) {
   const addjs = select_all<HTMLElement>(root, "[data-sqlpage-js]");
-  const existing_scripts = new Set(
-    [...document.querySelectorAll("script")].map((s) => s.src),
+  const existing_scripts = new Map(
+    [...document.querySelectorAll<InitScript>("script")].map((s) => [s.src, s]),
   );
   for (const el of addjs) {
     if (!el.dataset.sqlpageJs) continue;
     const js = new URL(el.dataset.sqlpageJs, window.location.href).href;
-    if (existing_scripts.has(js)) continue;
-    existing_scripts.add(js);
-    const script = document.createElement("script");
+    const existing = existing_scripts.get(js);
+    if (existing) {
+      existing.sqlpage_init_roots?.add(el);
+      continue;
+    }
+    const script: InitScript = document.createElement("script");
+    script.sqlpage_init_roots = new Set([el]);
+    existing_scripts.set(js, script);
     script.src = js;
     document.head.appendChild(script);
   }
@@ -497,6 +517,9 @@ function sqlpage_modal(root: InitRoot) {
   // clicked. Moving modals to <body> keeps them viewport-fixed.
   for (const modal of select_all<HTMLElement>(root, "body .page .modal")) {
     document.body.appendChild(modal);
+    // The modal leaves the original root; announce its subtree separately so
+    // every initializer, including later-loaded bundles, can still see it.
+    modal.dispatchEvent(new CustomEvent("fragment-loaded", { bubbles: true }));
   }
 }
 

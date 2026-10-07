@@ -771,19 +771,3 @@ test("table action buttons - disabled action", async ({ page }) => {
   await expect(emptyActionButton).toHaveAttribute("href", "null");
   await expect(emptyActionButton).toHaveAttribute("title", "Action");
 });
-
-test("fragment dropdown keeps one Bootstrap instance after repeated events", async ({
-  page,
-}) => {
-  await openComponent(page, "facet", "fragment");
-  await page.evaluate(() =>
-    document.dispatchEvent(new CustomEvent("fragment-loaded")),
-  );
-  const toggle = page
-    .locator('[data-bs-toggle="dropdown"]')
-    .filter({ hasText: "Constitution" });
-  await toggle.click();
-  await expect(page.locator(".dropdown-menu.show")).toBeVisible();
-  await toggle.click();
-  await expect(page.locator(".dropdown-menu.show")).toHaveCount(0);
-});
