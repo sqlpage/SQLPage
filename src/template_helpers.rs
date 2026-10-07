@@ -278,11 +278,22 @@ pub fn render_markdown_to_html(
     config: &impl MarkdownConfig,
     markdown_src: &str,
 ) -> Result<String, String> {
-    let mut options = markdown::Options::gfm();
-    options.compile.allow_dangerous_html = config.allow_dangerous_html();
-    options.compile.allow_dangerous_protocol = config.allow_dangerous_protocol();
-    options.compile.allow_any_img_src = true;
+    let options = markdown_options(
+        config.allow_dangerous_html(),
+        config.allow_dangerous_protocol(),
+    );
     markdown::to_html_with_options(markdown_src, &options).map_err(|e| e.to_string())
+}
+
+fn markdown_options(
+    allow_dangerous_html: bool,
+    allow_dangerous_protocol: bool,
+) -> markdown::Options {
+    let mut options = markdown::Options::gfm();
+    options.compile.allow_dangerous_html = allow_dangerous_html;
+    options.compile.allow_dangerous_protocol = allow_dangerous_protocol;
+    options.compile.allow_any_img_src = true;
+    options
 }
 
 /// Helper to render markdown with configurable options
@@ -301,10 +312,8 @@ impl MarkdownHelper {
     }
 
     fn get_preset_options(&self, preset_name: &str) -> Result<markdown::Options, String> {
-        let mut options = markdown::Options::gfm();
-        options.compile.allow_dangerous_html = self.allow_dangerous_html;
-        options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
-        options.compile.allow_any_img_src = true;
+        let mut options =
+            markdown_options(self.allow_dangerous_html, self.allow_dangerous_protocol);
 
         match preset_name {
             "default" => {}
@@ -638,6 +647,49 @@ mod tests {
         assert_eq!(Some("<h1>Heading</h1>"), actual.as_str());
     }
 
+    #[test]
+    fn markdown_policy_matches_function_and_helper_for_all_settings() {
+        use crate::template_helpers::render_markdown_to_html;
+        for html in [false, true] {
+            for protocol in [false, true] {
+                let mut config = crate::app_config::tests::test_config();
+                config.markdown_allow_dangerous_html = html;
+                config.markdown_allow_dangerous_protocol = protocol;
+                let helper = MarkdownHelper::new(&config);
+                for source in [
+                    "<table><tr><td>",
+                    "[click](javascript:alert(1))",
+                    "![image](data:image/png;base64,aGVsbG8=)",
+                    "~~struck~~",
+                ] {
+                    let content = Value::String(source.into());
+                    let rendered = render_markdown_to_html(&config, source).unwrap();
+                    assert_eq!(helper.call(&as_args(&content)).unwrap(), rendered);
+                    let unsafe_preset = Value::String("allow_unsafe".into());
+                    let unsafe_rendered = helper
+                        .call(&as_args_with_unsafe(&content, &unsafe_preset))
+                        .unwrap();
+                    config.markdown_allow_dangerous_html = true;
+                    config.markdown_allow_dangerous_protocol = true;
+                    assert_eq!(
+                        unsafe_rendered,
+                        render_markdown_to_html(&config, source).unwrap()
+                    );
+                    config.markdown_allow_dangerous_html = html;
+                    config.markdown_allow_dangerous_protocol = protocol;
+                }
+                let content = Value::String("text".into());
+                let unknown = Value::String("unknown".into());
+                assert_eq!(
+                    helper
+                        .call(&as_args_with_unsafe(&content, &unknown))
+                        .unwrap_err(),
+                    "unknown markdown preset: unknown"
+                );
+            }
+        }
+    }
+
     // Optionally allow potentially unsafe html blocks
     // See https://spec.commonmark.org/0.31.2/#html-blocks
     mod markdown_html_blocks {
@@ -709,19 +761,19 @@ mod tests {
             }
         }
 
-        fn as_args_with_unsafe<'a>(
-            contents: &'a Value,
-            allow_unsafe: &'a Value,
-        ) -> [PathAndJson<'a>; 2] {
-            [
-                as_helper_arg(CONTENT_KEY, contents),
-                as_helper_arg("allow_unsafe", allow_unsafe),
-            ]
-        }
-
         fn contents() -> Value {
             Value::String(UNSAFE_MARKUP.to_string())
         }
+    }
+
+    fn as_args_with_unsafe<'a>(
+        contents: &'a Value,
+        allow_unsafe: &'a Value,
+    ) -> [PathAndJson<'a>; 2] {
+        [
+            as_helper_arg(CONTENT_KEY, contents),
+            as_helper_arg("allow_unsafe", allow_unsafe),
+        ]
     }
 
     fn as_args(contents: &Value) -> [PathAndJson<'_>; 1] {
