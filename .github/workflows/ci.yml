@@ -333,22 +333,81 @@ jobs:
           retention-days: 1
   hurl_examples:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+      DIFF_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
     outputs:
       examples: ${{ steps.examples.outputs.examples }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: paths
+        name: Match changed paths to Hurl suites
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: ${{ github.ref_type != 'tag' && env.DIFF_BASE != '' && !startsWith(env.DIFF_BASE, '0000000') }}
+        continue-on-error: true
+        with:
+          base: ${{ env.DIFF_BASE }}
+          ref: ${{ env.DIFF_HEAD }}
+          filters: |
+            all_examples:
+              - 'examples/**'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'build.rs'
+              - '.cargo/**'
+              - 'scripts/**'
+              - '.github/workflows/ci.yml'
+            telemetry:
+              - 'src/telemetry.rs'
+              - 'src/main.rs'
+              - 'src/webserver/http.rs'
+              - 'src/webserver/database/execute_queries.rs'
+            smtp:
+              - 'src/app_config.rs'
+              - 'src/webserver/database/sqlpage_functions/functions/send_mail.rs'
       - id: examples
+        name: Select relevant Hurl examples
+        shell: bash
         run: |
-          examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print | sed 's#/test.hurl$##' | sort | jq -R -s -c 'split("\n")[:-1]')"
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == tag \
+             || "${{ steps.paths.outcome }}" != success \
+             || "${{ steps.paths.outputs.all_examples }}" == true ]]; then
+            examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print \
+              | sed 's#/test.hurl$##' \
+              | sort \
+              | jq -R -s -c 'split("\n")[:-1]')"
+          else
+            examples="$(jq -nc \
+              --arg telemetry "${{ steps.paths.outputs.telemetry }}" \
+              --arg smtp "${{ steps.paths.outputs.smtp }}" \
+              '[
+                (if $telemetry == "true" then "examples/telemetry" else empty end),
+                (if $smtp == "true" then "examples/sending emails" else empty end)
+              ]')"
+          fi
           echo "examples=$examples" >> "$GITHUB_OUTPUT"
+          if [[ "$examples" == '[]' ]]; then
+            echo 'No Hurl examples match these changes; Rust and Playwright checks still run.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Selected Hurl examples: $examples" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Restore Hurl archive
         id: hurl-cache
+        if: steps.examples.outputs.examples != '[]'
         uses: actions/cache@v6
         with:
           path: .cache/hurl
           key: hurl-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ env.HURL_VERSION }}
       - name: Download Hurl archive
-        if: steps.hurl-cache.outputs.cache-hit != 'true'
+        if: steps.examples.outputs.examples != '[]' && steps.hurl-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           archive="hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
@@ -363,6 +422,7 @@ jobs:
             test "$expected_sha" = "$actual_sha"
           )
       - name: Upload Hurl archive
+        if: steps.examples.outputs.examples != '[]'
         uses: actions/upload-artifact@v7
         with:
           name: hurl-${{ env.HURL_VERSION }}-x86_64-unknown-linux-gnu
@@ -373,6 +433,7 @@ jobs:
   hurl:
     name: hurl (${{ matrix.example }})
     runs-on: ubuntu-latest
+    if: ${{ needs.hurl_examples.outputs.examples != '[]' }}
     timeout-minutes: 15
     needs:
       - docker_build
