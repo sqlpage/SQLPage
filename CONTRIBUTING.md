@@ -96,12 +96,11 @@ export DATABASE_URL=mssql://root:Password123!@localhost/sqlpage
 cargo test
 ```
 
-Integration tests that create application state should use `common::make_app_state_from_config` or
-`common::make_app_data_from_config` and `#[actix_web::rt::test(system = "crate::common::TestSystem")]`.
-The shared test runtime clears prepared statements and closes database pools before shutdown,
-including after a panic. This is required because actix-web's test request utilities pin each
-request's application state until process exit, which would otherwise leave native database
-handles open and hang Oracle's ODBC driver at process exit.
+Use `common::response_for(path)` for ordinary integration requests and
+`common::response_with(path, config)` for custom configuration. Custom requests use
+`common::response_from(request)`; tests sharing database or cache state use `common::send_request`.
+These helpers dispatch through an Actix test service whose destructor drains its request pool.
+Keep `#[actix_web::test]`; standalone `TestRequest::to_srv_request()` retains application state.
 When testing Oracle locally, use `cargo test -- --test-threads=2` to avoid overwhelming the listener.
 
 ### End-to-End Tests

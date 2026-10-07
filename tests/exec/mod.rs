@@ -1,16 +1,12 @@
-use actix_web::{http::header, test::TestRequest};
-use sqlpage::webserver::http::main_handler;
+use actix_web::http::header;
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_exec() {
-    let app_data = crate::common::make_app_data().await;
-    let req = TestRequest::get()
-        .uri(exec_test_uri())
-        .app_data(app_data)
-        .insert_header(header::Accept::json())
-        .to_srv_request();
-
-    let resp = main_handler(req).await.unwrap();
+    let resp = crate::common::response_from(
+        crate::common::request_for(exec_test_uri()).insert_header(header::Accept::json()),
+    )
+    .await
+    .unwrap();
     let body = actix_web::test::read_body(resp).await;
     let rows: Vec<serde_json::Value> = serde_json::from_slice(&body).unwrap();
     let actual = rows[0]["actual"].as_str().unwrap();

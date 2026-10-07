@@ -1,10 +1,12 @@
-use actix_web::{http::StatusCode, test};
+use actix_web::http::StatusCode;
 use sqlpage::{
     AppState,
     webserver::{self, make_placeholder},
 };
 
-use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
+use crate::common::{
+    make_app_data_from_config, response_for, response_with, response_with_data, test_config,
+};
 
 mod path_aliases;
 
@@ -44,16 +46,16 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
         .unwrap();
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_concurrent_requests() {
     let components = [
         "table", "form", "card", "datagrid", "hero", "list", "timeline",
     ];
-    let app_data = make_app_data_from_config(test_config()).await;
+    let app_data = crate::common::make_app_data().await;
     let reqs = (0..64)
         .map(|i| {
             let component = components[i % components.len()];
-            req_path_with_app_data(
+            response_with_data(
                 format!("/tests/components/any_component.sql?component={component}"),
                 app_data.clone(),
             )
@@ -73,11 +75,9 @@ async fn test_concurrent_requests() {
     }
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_datagrid_description_presence_controls_placeholder() {
-    let resp = req_path("/tests/components/datagrid_icon_only.sql")
-        .await
-        .unwrap();
+    let resp = response_for("/tests/components/datagrid_icon_only.sql").await;
     assert_eq!(resp.status(), StatusCode::OK);
     let body = crate::common::read_body_string(resp).await;
     assert!(body.contains("Facebook"), "{body}");
@@ -87,7 +87,7 @@ async fn test_datagrid_description_presence_controls_placeholder() {
     assert_eq!(body.matches('–').count(), 1, "{body}");
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_routing_with_db_fs() {
     let mut config = test_config();
     if config.database_url.contains("memory") {
@@ -95,9 +95,7 @@ async fn test_routing_with_db_fs() {
     }
 
     config.site_prefix = "/prefix/".to_string();
-    let state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
+    let state = AppState::init(&config).await.unwrap();
 
     if crate::common::supports_database(
         &state.db,
@@ -113,14 +111,7 @@ async fn test_routing_with_db_fs() {
     )
     .await;
 
-    let state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
-    let app_data = actix_web::web::Data::new(state);
-
-    let resp = req_path_with_app_data("/prefix/on_db.sql", app_data.clone())
-        .await
-        .unwrap();
+    let resp = response_with("/prefix/on_db.sql", config).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body_str = crate::common::read_body_string(resp).await;
     assert!(
@@ -130,7 +121,7 @@ async fn test_routing_with_db_fs() {
 }
 
 #[cfg(unix)]
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let mut config = test_config();
     if !config.database_url.starts_with("sqlite") {
@@ -139,22 +130,11 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     config.database_url =
         "sqlite://file:test_non_unicode_static_path?mode=memory&cache=shared".to_string();
 
-    let state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
+    let state = AppState::init(&config).await.unwrap();
     let expected_db_path = "\u{FFFD}.txt";
     store_file_in_db(&state, expected_db_path, b"file from db fs").await;
 
-    let state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
-    let app_data = actix_web::web::Data::new(state);
-    let req = test::TestRequest::get()
-        .uri("/%FF.txt")
-        .app_data(app_data)
-        .to_srv_request();
-
-    let err = webserver::http::main_handler(req)
+    let err = response_with("/%FF.txt", config)
         .await
         .expect_err("non-unicode path should not panic and must return bad request");
     assert_eq!(
@@ -163,16 +143,12 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_routing_with_prefix() {
     let mut config = test_config();
     config.site_prefix = "/prefix/".to_string();
-    let state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
-
-    let app_data = actix_web::web::Data::new(state);
-    let resp = req_path_with_app_data(
+    let app_data = make_app_data_from_config(config).await.unwrap();
+    let resp = response_with_data(
         "/prefix/tests/sql_test_files/component_rendering/simple.sql",
         app_data.clone(),
     )
@@ -189,7 +165,7 @@ async fn test_routing_with_prefix() {
         "{body_str}\nexpected to contain links with site prefix"
     );
 
-    let resp = req_path_with_app_data("/prefix/nonexistent.sql", app_data.clone())
+    let resp = response_with_data("/prefix/nonexistent.sql", app_data.clone())
         .await
         .expect("should handle 404");
     let body_str = crate::common::read_body_string(resp).await;
@@ -198,13 +174,14 @@ async fn test_routing_with_prefix() {
         "Response should contain \"404\", but got:\n{body_str}"
     );
 
-    let resp = req_path_with_app_data("/prefix/sqlpage/migrations/0001_init.sql", app_data.clone())
+    let resp = response_with_data("/prefix/sqlpage/migrations/0001_init.sql", app_data.clone())
         .await
         .expect_err("Expected forbidden error")
-        .to_string();
-    assert!(resp.to_lowercase().contains("forbidden"), "{resp}");
+        .as_response_error()
+        .status_code();
+    assert_eq!(resp, StatusCode::FORBIDDEN);
 
-    let resp = req_path_with_app_data(
+    let resp = response_with_data(
         "/tests/sql_test_files/component_rendering/simple.sql",
         app_data,
     )
@@ -218,17 +195,16 @@ async fn test_routing_with_prefix() {
     assert_eq!(location.to_str().unwrap(), "/prefix/");
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_hidden_files() {
-    let resp_result = req_path("/tests/core/.hidden.sql").await;
+    let resp_result = response_with("/tests/core/.hidden.sql", test_config()).await;
     assert!(
         resp_result.is_err(),
         "Accessing a hidden file should be forbidden, but received success: {resp_result:?}"
     );
     let resp = resp_result.unwrap_err().error_response();
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
-    let srv_resp = test::TestRequest::default().to_srv_response(resp);
-    let body = test::read_body(srv_resp).await;
+    let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
     assert!(
         String::from_utf8_lossy(&body)
             .to_lowercase()
@@ -236,10 +212,10 @@ async fn test_hidden_files() {
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_official_website_documentation() {
     let app_data = make_app_data_for_official_website().await;
-    let resp = req_path_with_app_data("/component.sql?component=button", app_data)
+    let resp = response_with_data("/component.sql?component=button", app_data)
         .await
         .unwrap_or_else(|e| {
             panic!("Failed to get response for /component.sql?component=button: {e}")
@@ -252,9 +228,9 @@ async fn test_official_website_documentation() {
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_official_website_basic_auth_example() {
-    let resp = req_path_with_app_data(
+    let resp = response_with_data(
         "/examples/authentication/basic_auth.sql",
         make_app_data_for_official_website().await,
     )
@@ -274,7 +250,7 @@ async fn make_app_data_for_official_website() -> actix_web::web::Data<AppState> 
     let mut app_config = sqlpage::app_config::load_from_directory(config_path).unwrap();
     app_config.web_root = std::path::PathBuf::from("examples/official-site");
     app_config.database_url = "sqlite::memory:".to_string();
-    let app_state = make_app_data_from_config(app_config.clone()).await;
+    let app_state = make_app_data_from_config(app_config.clone()).await.unwrap();
     webserver::database::migrations::apply(&app_config, &app_state.db)
         .await
         .unwrap();

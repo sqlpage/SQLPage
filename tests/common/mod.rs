@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use actix_web::{
     App, HttpResponse, HttpServer,
-    dev::{ServiceRequest, fn_service},
+    dev::{ServiceRequest, ServiceResponse, fn_service},
     http::header,
     http::header::ContentType,
-    test::TestRequest,
+    test::{self, TestRequest},
     web,
     web::Data,
 };
@@ -19,118 +19,131 @@ use sqlpage::{
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
-pub(crate) async fn get_request_to_with_data(
-    path: &str,
-    data: Data<AppState>,
-) -> actix_web::Result<TestRequest> {
-    Ok(TestRequest::get()
-        .uri(path)
+/// Builds a GET request with the defaults used by the SQL fixtures.
+pub(crate) fn request_for(path: impl AsRef<str>) -> TestRequest {
+    TestRequest::get()
+        .uri(path.as_ref())
         .insert_header(ContentType::plaintext())
         .insert_header(header::Accept::html())
-        .app_data(payload_config(&data))
-        .app_data(form_config(&data))
-        .app_data(data))
 }
 
-pub(crate) async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
-    let data = make_app_data().await;
-    get_request_to_with_data(path, data).await
+pub(crate) fn multipart_request(path: &str, body: impl Into<web::Bytes>) -> TestRequest {
+    request_for(path)
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(body)
 }
 
-pub(crate) async fn make_app_data_from_config(config: AppConfig) -> Data<AppState> {
-    let state = make_app_state_from_config(&config).await.unwrap();
-    Data::new(state)
+pub(crate) async fn make_app_data_from_config(
+    config: AppConfig,
+) -> actix_web::Result<Data<AppState>> {
+    init_log();
+    AppState::init(&config)
+        .await
+        .map(Data::new)
+        .map_err(actix_web::error::ErrorInternalServerError)
 }
 
-// Pools must be emptied while the test runtime is still running.
-//
-// Each request built with `TestRequest::to_srv_request()` leaks its
-// `Data<AppState>`: actix-web recycles the `HttpRequestInner` allocation into
-// a per-request pool on drop, and that pool is only drained by a real server,
-// never on the test path. The leaked `AppState` pins its database pool (and
-// its pooled connections) until process exit. The ODBC backend prepares and
-// caches a native statement for every distinct parameterized query, and
-// Oracle's ODBC driver deadlocks in its process destructor when connections
-// still hold native statements at exit.
-//
-// Note that `pool.close()` alone is not sufficient: it only closes idle
-// connections, so one still checked out (e.g. by a return-to-pool task
-// finishing the test's last request) would keep its cached statements alive.
-// Acquire every connection and clear its cache first to free those handles.
-thread_local! {
-    static TEST_POOLS: std::cell::RefCell<Vec<sqlx::any::AnyPool>> = const { std::cell::RefCell::new(Vec::new()) };
+/// Sends a GET request with the default test configuration, failing the test on error.
+pub(crate) async fn response_for(path: impl AsRef<str>) -> ServiceResponse {
+    response_with(path.as_ref(), test_config())
+        .await
+        .unwrap_or_else(|err| panic!("Request to {} failed: {err:#}", path.as_ref()))
 }
 
-pub(crate) struct TestSystem(actix_web::rt::SystemRunner);
+/// Sends a GET request with custom application configuration.
+pub(crate) async fn response_with(
+    path: impl AsRef<str>,
+    config: AppConfig,
+) -> actix_web::Result<ServiceResponse> {
+    send_request(request_for(path), make_app_data_from_config(config).await?).await
+}
 
-impl TestSystem {
-    pub(crate) fn new() -> Self {
-        Self(actix_web::rt::System::new())
-    }
+/// Sends a custom request with the default test configuration.
+pub(crate) async fn response_from(request: TestRequest) -> actix_web::Result<ServiceResponse> {
+    send_request(request, make_app_data_from_config(test_config()).await?).await
+}
 
-    pub(crate) fn block_on<F: Future>(&self, future: F) -> F::Output {
-        use futures_util::FutureExt as _;
+/// Sends a GET request using existing state, for tests that share a database or cache.
+pub(crate) async fn response_with_data(
+    path: impl AsRef<str>,
+    data: Data<AppState>,
+) -> actix_web::Result<ServiceResponse> {
+    send_request(request_for(path), data).await
+}
 
-        self.0.block_on(async {
-            let result = std::panic::AssertUnwindSafe(future).catch_unwind().await;
-            // Empty every pool created by the test while the runtime is still
-            // alive, even if the test panicked. Clearing first releases cached
-            // prepared statements on connections that may still be checked out
-            // (which `close()` alone would leave behind); closing then
-            // disconnects each pooled connection. The pool objects themselves
-            // may stay alive (see above), but they are left empty.
-            let pools = TEST_POOLS.with(std::cell::RefCell::take);
-            for pool in pools {
-                use sqlx::connection::Connection as _;
+/// Runs a request through an Actix service so its request pool has an owner.
+/// Dropping the service disables and drains the pool, including on error or panic.
+/// Standalone `TestRequest::to_srv_request()` would instead leak the application state.
+pub(crate) async fn send_request(
+    request: TestRequest,
+    data: Data<AppState>,
+) -> actix_web::Result<ServiceResponse> {
+    let app = test::init_service(
+        App::new()
+            .app_data(payload_config(&data))
+            .app_data(form_config(&data))
+            .app_data(data)
+            .default_service(fn_service(main_handler)),
+    )
+    .await;
+    tokio::time::timeout(
+        Duration::from_secs(8),
+        test::try_call_service(&app, request.to_request()),
+    )
+    .await
+    .map_err(actix_web::error::ErrorGatewayTimeout)?
+}
 
-                let mut connections = Vec::new();
-                for _ in 0..pool.size() {
-                    let mut connection = pool.acquire().await.unwrap();
-                    connection.clear_cached_statements().await.unwrap();
-                    connections.push(connection);
-                }
-                drop(connections);
-                pool.close().await;
-            }
-            match result {
-                Ok(output) => output,
-                Err(panic) => std::panic::resume_unwind(panic),
+#[actix_web::test]
+async fn requests_release_application_state_on_success_error_and_panic() {
+    use futures_util::FutureExt as _;
+
+    for (path, panic_after_response) in [
+        ("/tests/parameter_binding/echo_parameter.sql?x=1447", false),
+        ("/sqlpage/sqlpage.json", false),
+        ("/tests/parameter_binding/echo_parameter.sql?x=1447", true),
+    ] {
+        let data = make_app_data_from_config(AppConfig {
+            database_url: "sqlite::memory:".into(),
+            ..test_config()
+        })
+        .await
+        .unwrap();
+        let weak = std::sync::Arc::downgrade(&data.clone().into_inner());
+        let result = std::panic::AssertUnwindSafe(async move {
+            let response = send_request(request_for(path), data).await;
+            if path == "/sqlpage/sqlpage.json" {
+                assert_eq!(
+                    response.unwrap_err().as_response_error().status_code(),
+                    actix_web::http::StatusCode::FORBIDDEN
+                );
+            } else {
+                let response = response.unwrap();
+                assert_eq!(response.status(), actix_web::http::StatusCode::OK);
+                assert!(!panic_after_response, "intentional test panic");
+                test::read_body(response).await;
             }
         })
-    }
-}
-
-pub(crate) async fn make_app_state_from_config(config: &AppConfig) -> anyhow::Result<AppState> {
-    let state = AppState::init(config).await?;
-    TEST_POOLS.with(|pools| pools.borrow_mut().push(state.db.connection.clone()));
-    Ok(state)
-}
-
-#[test]
-fn test_system_closes_pools_on_success_and_panic() {
-    for panic_in_test in [false, true] {
-        let system = TestSystem::new();
-        let mut pool = None;
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            system.block_on(async {
-                let mut config = test_config();
-                config.database_url = "sqlite::memory:".to_owned();
-                let state = make_app_state_from_config(&config).await.unwrap();
-                pool = Some(state.db.connection.clone());
-                assert!(!panic_in_test, "intentional test panic");
-            });
-        }));
-        assert_eq!(result.is_err(), panic_in_test);
-        assert!(pool.unwrap().is_closed());
+        .catch_unwind()
+        .await;
+        assert_eq!(result.is_err(), panic_after_response);
+        // Query tasks may finish returning their connection after the body is read.
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while weak.upgrade().is_some() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("request retained application state");
     }
 }
 
 /// Reads a whole response body as a UTF-8 string, failing the test otherwise.
-pub(crate) async fn read_body_string<B>(resp: actix_web::dev::ServiceResponse<B>) -> String
+pub(crate) async fn read_body_string<B>(resp: ServiceResponse<B>) -> String
 where
     B: actix_web::body::MessageBody,
 {
-    String::from_utf8(actix_web::test::read_body(resp).await.to_vec()).unwrap()
+    String::from_utf8(test::read_body(resp).await.to_vec()).unwrap()
 }
 
 /// Whether the database engine is one of `kinds`.
@@ -143,83 +156,20 @@ pub(crate) fn supports_database(
 }
 
 pub(crate) async fn make_app_data() -> Data<AppState> {
-    init_log();
-    let config = test_config();
-    make_app_data_from_config(config).await
-}
-
-/// Creates test application state running in the given environment
-/// (development enables debug helpers like `Server-Timing`).
-pub(crate) async fn make_app_data_with_env(
-    environment: sqlpage::app_config::DevOrProd,
-) -> Data<AppState> {
-    init_log();
-    let mut config = test_config();
-    config.environment = environment;
-    make_app_data_from_config(config).await
-}
-
-pub(crate) async fn req_path(
-    path: impl AsRef<str>,
-) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
-    let req = get_request_to(path.as_ref()).await?.to_srv_request();
-    main_handler(req).await
-}
-
-const REQ_TIMEOUT: Duration = Duration::from_secs(8);
-pub(crate) async fn req_path_with_app_data(
-    path: impl AsRef<str>,
-    app_data: Data<AppState>,
-) -> anyhow::Result<actix_web::dev::ServiceResponse> {
-    req_path_with_app_data_and_accept(path, app_data, header::Accept::html()).await
-}
-
-pub(crate) async fn req_path_with_app_data_json(
-    path: impl AsRef<str>,
-    app_data: Data<AppState>,
-) -> anyhow::Result<actix_web::dev::ServiceResponse> {
-    req_path_with_app_data_and_accept(path, app_data, header::Accept::json()).await
-}
-
-async fn req_path_with_app_data_and_accept(
-    path: impl AsRef<str>,
-    app_data: Data<AppState>,
-    accept: header::Accept,
-) -> anyhow::Result<actix_web::dev::ServiceResponse> {
-    let path = path.as_ref();
-    let req = get_request_to_with_data(path, app_data)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to build request for {path}: {e}"))?
-        .insert_header(("cookie", "test_cook=123"))
-        .insert_header(("authorization", "Basic dGVzdDp0ZXN0"))
-        .insert_header(accept)
-        .to_srv_request();
-    let resp = tokio::time::timeout(REQ_TIMEOUT, main_handler(req))
-        .await
-        .map_err(|e| anyhow::anyhow!("Request to {path} timed out: {e}"))?
-        .map_err(|e| {
-            anyhow::anyhow!(
-                "Request to {path} failed with status {}: {e:#}",
-                e.as_response_error().status_code()
-            )
-        })?;
-    Ok(resp)
+    make_app_data_from_config(test_config()).await.unwrap()
 }
 
 pub(crate) fn test_config() -> AppConfig {
-    let db_url = test_database_url();
-    serde_json::from_str::<AppConfig>(&format!(
-        r#"{{
-        "database_url": "{db_url}",
+    serde_json::from_value(serde_json::json!({
+        "database_url": test_database_url(),
         "max_database_pool_connections": 1,
         "database_connection_retries": 3,
         "database_connection_acquire_timeout_seconds": 15,
         "allow_exec": true,
-        "max_uploaded_file_size": 123456,
+        "max_uploaded_file_size": 123_456,
         "listen_on": "111.111.111.111:1",
-        "system_root_ca_certificates" : false
-    }}"#
-    ))
+        "system_root_ca_certificates": false
+    }))
     .unwrap()
 }
 

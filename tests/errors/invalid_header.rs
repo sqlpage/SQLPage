@@ -1,4 +1,4 @@
-use crate::common::req_path;
+use crate::common::response_for;
 use actix_web::http::StatusCode;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde_json::{Value, json};
@@ -13,12 +13,7 @@ async fn assert_invalid_header_response(case: &InvalidHeaderCase) {
     let properties = utf8_percent_encode(&properties, NON_ALPHANUMERIC).to_string();
     let path = format!("/tests/errors/invalid_header.sql?properties={properties}");
 
-    let resp = req_path(&path).await.unwrap_or_else(|err| {
-        panic!(
-            "{} should return an error response instead of failing the request: {err:#}",
-            case.name
-        )
-    });
+    let resp = response_for(&path).await;
 
     assert_eq!(
         resp.status(),
@@ -35,7 +30,7 @@ async fn assert_invalid_header_response(case: &InvalidHeaderCase) {
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_invalid_header_components_return_an_error_response() {
     let cases = vec![
         InvalidHeaderCase {

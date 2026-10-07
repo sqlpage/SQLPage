@@ -5,7 +5,7 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn run_all_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
     run_sql_test_cases(&app_data, get_sql_test_cases()).await;
@@ -14,7 +14,7 @@ async fn run_all_sql_test_files() {
 /// Runs the SQL test files in `database-specific/<current database>/`.
 /// These files use syntax that only works on a single database engine, so they
 /// cannot be part of the generic `run_all_sql_test_files` test.
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn run_database_specific_sql_test_files() {
     let app_data = crate::common::make_app_data().await;
     let db_type = database_type_name(&app_data);
@@ -131,13 +131,21 @@ async fn run_sql_test(
 
     let use_json = matches!(test_case.format, SqlTestFormat::Json);
 
-    let resp = tokio::time::timeout(Duration::from_secs(5), async {
-        if use_json {
-            crate::common::req_path_with_app_data_json(&req_str, app_data.clone()).await
-        } else {
-            crate::common::req_path_with_app_data(&req_str, app_data.clone()).await
-        }
-    })
+    let request = crate::common::request_for(&req_str)
+        .insert_header(("cookie", "test_cook=123"))
+        .insert_header(("authorization", "Basic dGVzdDp0ZXN0"))
+        .insert_header((
+            "accept",
+            if use_json {
+                "application/json"
+            } else {
+                "text/html"
+            },
+        ));
+    let resp = tokio::time::timeout(
+        Duration::from_secs(5),
+        crate::common::send_request(request, app_data.clone()),
+    )
     .await
     .unwrap_or_else(|_| panic!("Test timeout: {}", test_file.display()))
     .unwrap_or_else(|e| panic!("Request failed: {}: {}", test_file.display(), e));

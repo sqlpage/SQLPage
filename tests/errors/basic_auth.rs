@@ -1,11 +1,9 @@
-use crate::common::{get_request_to, req_path};
+use crate::common::{request_for, response_for, response_from};
 use actix_web::http::StatusCode;
-use sqlpage::webserver::http::main_handler;
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_basic_auth_not_provided() {
-    let resp_result = req_path("/tests/errors/basic_auth.sql").await;
-    let resp = resp_result.unwrap();
+    let resp = response_for("/tests/errors/basic_auth.sql").await;
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
     assert_eq!(
         resp.headers().get("www-authenticate").unwrap(),
@@ -22,14 +20,11 @@ async fn test_basic_auth_not_provided() {
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_basic_auth_with_credentials() {
-    let req = get_request_to("/tests/errors/basic_auth.sql")
-        .await
-        .unwrap() // log in with credentials "user:password"
-        .append_header(("Authorization", "Basic dXNlcjpwYXNzd29yZA=="))
-        .to_srv_request();
-    let resp = main_handler(req)
+    let req = request_for("/tests/errors/basic_auth.sql") // log in with credentials "user:password"
+        .append_header(("Authorization", "Basic dXNlcjpwYXNzd29yZA=="));
+    let resp = response_from(req)
         .await
         .expect("req with credentials should succeed");
     assert_eq!(resp.status(), StatusCode::OK);

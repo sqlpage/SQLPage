@@ -2,11 +2,9 @@ use actix_web::http::StatusCode;
 use sqlx::any::AnyKind;
 use sqlx::connection::Connection as _;
 
-use sqlpage::webserver::http::main_handler;
+use crate::common::{make_app_data, response_with_data};
 
-use crate::common::{get_request_to_with_data, make_app_data};
-
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> actix_web::Result<()>
 {
     let data = make_app_data().await;
@@ -15,13 +13,11 @@ async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> a
     }
 
     for _ in 0..3 {
-        let req = get_request_to_with_data(
+        let resp = response_with_data(
             "/tests/parameter_binding/echo_parameter.sql?x=1447",
             data.clone(),
         )
-        .await?
-        .to_srv_request();
-        let resp = main_handler(req).await?;
+        .await?;
         assert_eq!(resp.status(), StatusCode::OK);
         let page = crate::common::read_body_string(resp).await;
         assert!(

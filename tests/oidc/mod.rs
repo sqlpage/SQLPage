@@ -406,14 +406,12 @@ async fn setup_oidc_test_with_paths(
     let mut config = oidc_test_config(&provider, protected_paths, public_paths);
     config.listen_on = Some("127.0.0.1:0".parse().unwrap());
     config.host = Some("localhost:1".to_string());
-    let app_state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
+    let app_state = sqlpage::AppState::init(&config).await.unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
     (app, provider)
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_public_clean_url_cannot_execute_a_protected_sql_file() {
     let file = "/tests/sql_test_files/data/regex_match_routing.sql";
     let protected_paths = [file];
@@ -430,7 +428,7 @@ async fn test_public_clean_url_cannot_execute_a_protected_sql_file() {
     assert_ne!(public.status(), StatusCode::SEE_OTHER);
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_top_level_builtin_assets_are_accessible_without_login_when_protected() {
     let protected_paths = ["/sqlpage."];
     let (app, _provider) = setup_oidc_test_with_paths(|_| {}, &protected_paths, &[]).await;
@@ -453,7 +451,7 @@ async fn test_top_level_builtin_assets_are_accessible_without_login_when_protect
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -506,7 +504,7 @@ async fn test_oidc_cached_authorization_redirect_cannot_replay_consumed_state() 
     assert_eq!(final_response.status(), StatusCode::OK);
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_happy_path() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -600,12 +598,12 @@ async fn assert_oidc_callback_fails_with_bad_jwt(
     .await;
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_csrf_state_mismatch_is_rejected() {
     assert_oidc_login_fails(|_| {}, Some("wrong_state")).await;
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_nonce_mismatch_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         claims["nonce"] = json!("wrong_nonce");
@@ -613,7 +611,7 @@ async fn test_oidc_nonce_mismatch_is_rejected() {
     .await;
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_bad_signature_is_rejected() {
     assert_oidc_login_fails(
         |state| {
@@ -624,7 +622,7 @@ async fn test_oidc_bad_signature_is_rejected() {
     .await;
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_wrong_audience_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         claims["aud"] = json!("wrong_client");
@@ -632,7 +630,7 @@ async fn test_oidc_wrong_audience_is_rejected() {
     .await;
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_wrong_issuer_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         claims["iss"] = json!("https://wrong-issuer.com");
@@ -640,7 +638,7 @@ async fn test_oidc_wrong_issuer_is_rejected() {
     .await;
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_expired_token_is_rejected() {
     assert_oidc_callback_fails_with_bad_jwt(|claims| {
         let current_exp = claims["exp"].as_i64().unwrap();
@@ -649,7 +647,7 @@ async fn test_oidc_expired_token_is_rejected() {
     .await;
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_repeatedly_failing_callback_stops_redirecting_to_the_provider() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -715,14 +713,12 @@ async fn setup_oidc_test_with_prefix(
     provider.with_state_mut(provider_mutator);
     let mut config = oidc_test_config(&provider, &["/"], &[]);
     config.site_prefix = site_prefix.to_string();
-    let app_state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
+    let app_state = sqlpage::AppState::init(&config).await.unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
     (app, provider)
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_with_site_prefix() {
     let (app, _provider) = setup_oidc_test_with_prefix(|_| {}, "/my-app/").await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -740,16 +736,14 @@ async fn test_oidc_with_site_prefix() {
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_logout_uses_correct_scheme() {
     crate::common::init_log();
     let provider = FakeOidcProvider::new();
 
     let mut config = oidc_test_config(&provider, &[], &[]);
     config.https_domain = Some("example.com".to_string());
-    let app_state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
+    let app_state = sqlpage::AppState::init(&config).await.unwrap();
     let logout_path = app_state
         .oidc_state
         .as_ref()
@@ -775,7 +769,7 @@ async fn test_oidc_logout_uses_correct_scheme() {
 /// An OIDC provider metadata refresh must not block authenticated requests.
 /// The refresh should happen in the background while existing requests are
 /// served using the current (possibly stale) OIDC client.
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_slow_discovery_does_not_block_authenticated_requests() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -819,7 +813,7 @@ async fn test_slow_discovery_does_not_block_authenticated_requests() {
 
 /// A slow OIDC token endpoint must not freeze the server.
 /// The body-read timeout fires and the request completes with a redirect.
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_slow_token_endpoint_does_not_freeze_server() {
     let (app, provider) = setup_oidc_test(|_| {}).await;
     let mut cookies: Vec<Cookie<'static>> = Vec::new();
@@ -854,16 +848,14 @@ async fn test_slow_token_endpoint_does_not_freeze_server() {
 /// generated for one session must NOT clear a different browser's auth cookie
 /// (forced-logout CSRF), while the legitimate logout of the issuing session
 /// must keep working.
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_oidc_logout_is_session_bound() {
     crate::common::init_log();
     let provider = FakeOidcProvider::new();
 
     let mut config = oidc_test_config(&provider, &["/"], &[]);
     config.host = Some("localhost:1".to_string());
-    let app_state = crate::common::make_app_state_from_config(&config)
-        .await
-        .unwrap();
+    let app_state = sqlpage::AppState::init(&config).await.unwrap();
     let oidc_state = app_state.oidc_state.clone().unwrap();
     let app = test::init_service(create_app(Data::new(app_state))).await;
 

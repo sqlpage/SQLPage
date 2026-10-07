@@ -1,9 +1,9 @@
 use actix_web::http::StatusCode;
-use sqlpage::webserver::{database::SupportedDatabase, http::main_handler};
+use sqlpage::webserver::database::SupportedDatabase;
 
-use crate::common::{get_request_to_with_data, make_app_data};
+use crate::common::{make_app_data, multipart_request, response_with_data, send_request};
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_transaction_error() -> actix_web::Result<()> {
     let data = make_app_data().await;
     let path = match data.db.info.database_type {
@@ -14,10 +14,7 @@ async fn test_transaction_error() -> actix_web::Result<()> {
         }
         _ => "/tests/transactions/failed_transaction.sql",
     };
-    let req = get_request_to_with_data(path, data.clone())
-        .await?
-        .to_srv_request();
-    let resp = main_handler(req).await?;
+    let resp = response_with_data(path, data.clone()).await?;
     let body_str = crate::common::read_body_string(resp)
         .await
         .to_ascii_lowercase();
@@ -27,10 +24,7 @@ async fn test_transaction_error() -> actix_web::Result<()> {
     );
     // Now query again, with ?x=1447
     let path_with_param = path.to_string() + "?x=1447";
-    let req = get_request_to_with_data(&path_with_param, data.clone())
-        .await?
-        .to_srv_request();
-    let resp = main_handler(req).await?;
+    let resp = response_with_data(&path_with_param, data.clone()).await?;
     let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.contains("1447"),
@@ -39,26 +33,22 @@ async fn test_transaction_error() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
     let app_data = make_app_data().await;
     let big_csv = "col1,col2\nval1,val2\n".repeat(1000);
-    let req = get_request_to_with_data(
+    let req = multipart_request(
         "/tests/sql_test_files/component_rendering/error_failed_to_import_the_csv.sql",
-        app_data.clone(),
-    )
-    .await?
-        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
-        .set_payload(format!(
+        format!(
             "--1234567890\r\n\
             Content-Disposition: form-data; name=\"recon_csv_file_input\"; filename=\"data.csv\"\r\n\
             Content-Type: text/csv\r\n\
             \r\n\
             {big_csv}\r\n\
             --1234567890--\r\n"
-        ))
-        .to_srv_request();
-    let resp = main_handler(req).await?;
+        ),
+    );
+    let resp = send_request(req, app_data.clone()).await?;
 
     assert_eq!(resp.status(), StatusCode::OK);
     let body_str = crate::common::read_body_string(resp).await;
@@ -80,10 +70,7 @@ async fn test_failed_copy_followed_by_query() -> actix_web::Result<()> {
         "/tests/sql_test_files/component_rendering/text_markdown.sql",
         "/tests/sql_test_files/component_rendering/text_unsafe_markdown.sql",
     ] {
-        let req = get_request_to_with_data(path, app_data.clone())
-            .await?
-            .to_srv_request();
-        let resp = main_handler(req).await?;
+        let resp = response_with_data(path, app_data.clone()).await?;
 
         assert_eq!(resp.status(), StatusCode::OK);
         let body_str = crate::common::read_body_string(resp).await;

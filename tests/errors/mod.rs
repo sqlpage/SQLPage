@@ -1,26 +1,8 @@
-use actix_web::{
-    http::{self, StatusCode},
-    test,
-};
-use sqlpage::{AppState, webserver::http::main_handler};
+use actix_web::http::StatusCode;
 
-use crate::common::{make_app_data_from_config, req_path, req_path_with_app_data, test_config};
+use crate::common::{make_app_data_from_config, response_with, response_with_data, test_config};
 mod basic_auth;
 mod invalid_header;
-
-/// Sends a direct unprivileged GET request through the main handler and returns the
-/// resulting HTTP status, whether the handler returned an `Ok` response or an `Err`.
-async fn direct_request_status(path: &str, app_data: actix_web::web::Data<AppState>) -> StatusCode {
-    let req = test::TestRequest::get()
-        .uri(path)
-        .app_data(app_data)
-        .insert_header(http::header::Accept::html())
-        .to_srv_request();
-    match main_handler(req).await {
-        Ok(resp) => resp.status(),
-        Err(e) => e.error_response().status(),
-    }
-}
 
 /// Regression test for a cache privilege-escalation bug.
 ///
@@ -30,15 +12,15 @@ async fn direct_request_status(path: &str, app_data: actix_web::web::Data<AppSta
 /// that same reserved path must still be rejected with 403, even while the cache
 /// entry is fresh. Before the fix, the fresh cache hit short-circuited the
 /// unprivileged path guard and the private SQL was executed and served.
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     // Keep cache entries "fresh" so the bug (skipping the path guard on fresh hits) is exercised.
     let mut config = test_config();
     config.cache_stale_duration_ms = Some(60_000);
-    let app_data = make_app_data_from_config(config).await;
+    let app_data = make_app_data_from_config(config).await.unwrap();
 
     // 1. A trusted page primes the cache by loading the reserved file with privilege.
-    let prime = req_path_with_app_data("/tests/errors/prime_private_cache.sql", app_data.clone())
+    let prime = response_with_data("/tests/errors/prime_private_cache.sql", app_data.clone())
         .await
         .expect("priming page should render");
     assert_eq!(prime.status(), StatusCode::OK);
@@ -54,7 +36,11 @@ async fn test_private_path_not_accessible_after_privileged_cache_priming() {
         // Extensionless alias: routing appends .sql and finds the fresh cache entry.
         "/sqlpage/private_cache_bypass_test",
     ] {
-        let status = direct_request_status(path, app_data.clone()).await;
+        let status = response_with_data(path, app_data.clone())
+            .await
+            .unwrap_err()
+            .as_response_error()
+            .status_code();
         assert_eq!(
             status,
             StatusCode::FORBIDDEN,
@@ -63,17 +49,16 @@ async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     }
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_privileged_paths_are_not_accessible() {
-    let resp_result = req_path("/sqlpage/migrations/0001_init.sql").await;
+    let resp_result = response_with("/sqlpage/migrations/0001_init.sql", test_config()).await;
     assert!(
         resp_result.is_err(),
         "Accessing a migration file should be forbidden, but received success: {resp_result:?}"
     );
     let resp = resp_result.unwrap_err().error_response();
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
-    let srv_resp = test::TestRequest::default().to_srv_response(resp);
-    let body = test::read_body(srv_resp).await;
+    let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
     assert!(
         String::from_utf8_lossy(&body)
             .to_lowercase()
@@ -81,7 +66,7 @@ async fn test_privileged_paths_are_not_accessible() {
     );
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_404_fallback() {
     let app_data = crate::common::make_app_data().await;
     for f in [
@@ -89,7 +74,7 @@ async fn test_404_fallback() {
         "/tests/errors/does_not_exist.html",
         "/tests/errors/does_not_exist/",
     ] {
-        let resp = req_path_with_app_data(f, app_data.clone()).await.unwrap();
+        let resp = response_with_data(f, app_data.clone()).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK, "{f} isnt 200");
         let body = crate::common::read_body_string(resp).await;
         assert!(body.starts_with("<!DOCTYPE html>"));
@@ -100,7 +85,7 @@ async fn test_404_fallback() {
     }
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_default_404() {
     let app_data = crate::common::make_app_data().await;
     let msg = "The page you were looking for does not exist";
@@ -111,7 +96,7 @@ async fn test_default_404() {
         "/i-do-not-exist",
         "/tests/it_works.txt/site/wp-includes/wlwmanifest.xml",
     ] {
-        let resp = req_path_with_app_data(f, app_data.clone()).await.unwrap();
+        let resp = response_with_data(f, app_data.clone()).await.unwrap();
         assert_eq!(
             resp.status(),
             StatusCode::NOT_FOUND,
@@ -124,9 +109,9 @@ async fn test_default_404() {
     }
 }
 
-#[actix_web::rt::test(system = "crate::common::TestSystem")]
+#[actix_web::test]
 async fn test_requesting_a_directory_is_not_found() {
-    let resp_result = req_path("/tests/errors/is_a_directory.d").await;
+    let resp_result = response_with("/tests/errors/is_a_directory.d", test_config()).await;
     let status = match resp_result {
         Ok(resp) => resp.status(),
         Err(e) => e.as_response_error().status_code(),
