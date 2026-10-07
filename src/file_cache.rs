@@ -222,31 +222,23 @@ pub trait AsyncFromStrWithState: Sized {
 mod tests {
     use super::*;
     use crate::filesystem::DbFsQueries;
+    use crate::templates::{SplitTemplate, split_template};
     use crate::webserver::Database;
+    use handlebars::{Template, template::TemplateElement};
     use sqlx::executor::Executor;
     use std::time::Duration;
-    use tempfile::TempDir;
 
-    #[async_trait(?Send)]
-    impl AsyncFromStrWithState for String {
-        async fn from_str_with_state(
-            _app_state: &AppState,
-            source: &str,
-            _source_path: &Path,
-        ) -> anyhow::Result<Self> {
-            anyhow::ensure!(source != "invalid", "invalid cached content");
-            Ok(source.to_owned())
-        }
+    fn template(source: &str) -> SplitTemplate {
+        split_template(Template::compile(source).unwrap())
     }
 
-    async fn state_in(dir: &TempDir, database_files: bool) -> anyhow::Result<AppState> {
+    async fn state_in(dir: &Path, database_files: bool) -> anyhow::Result<AppState> {
         let mut config = crate::app_config::tests::test_config();
-        // These tests deliberately use an isolated one-connection pool to control I/O.
         config.database_url = "sqlite::memory:".to_owned();
         config.max_database_pool_connections = Some(1);
         config.cache_stale_duration_ms = Some(1000);
-        config.web_root = dir.path().to_owned();
-        config.configuration_directory = dir.path().join("sqlpage");
+        config.web_root = dir.to_owned();
+        config.configuration_directory = dir.join("sqlpage");
         let db = Database::init(&config).await?;
         if database_files {
             db.connection
@@ -256,7 +248,7 @@ mod tests {
         AppState::init_with_db(&config, db).await
     }
 
-    async fn mark_stale(cache: &FileCache<String>, path: &Path) {
+    async fn mark_stale(cache: &FileCache<SplitTemplate>, path: &Path) {
         cache.cache.read().await[path]
             .last_checked_at
             .store(0, Release);
@@ -265,52 +257,40 @@ mod tests {
     #[actix_web::test]
     async fn pending_metadata_check_allows_writes_without_restoring_old_entries()
     -> anyhow::Result<()> {
-        let dir = TempDir::new()?;
-        let state = state_in(&dir, true).await?;
-        let path = Path::new("cached.txt");
-        let unrelated = Path::new("unrelated.txt");
+        let dir = tempfile::tempdir()?;
+        let state = state_in(dir.path(), true).await?;
+        let path = Path::new("cached.handlebars");
         for replace in [false, true] {
-            let cache = FileCache::<String>::new();
-            let snapshot = Arc::new(Cached::new("original".to_owned()));
+            let cache = FileCache::new();
+            let snapshot = Arc::new(Cached::new(template("original")));
             snapshot.last_checked_at.store(0, Release);
             cache
                 .cache
                 .write()
                 .await
                 .insert(path.to_owned(), Arc::clone(&snapshot));
-
-            // No local file exists: metadata must wait for this database connection.
+            // Missing local metadata must await the held database connection.
             let connection = state.db.connection.acquire().await?;
             let lookup = cache.get(&state, FileAccess::unprivileged(path)?);
             tokio::pin!(lookup);
-            assert!(
-                tokio::time::timeout(Duration::from_millis(50), &mut lookup)
-                    .await
-                    .is_err(),
-                "metadata lookup should wait for the held connection"
-            );
-
-            let replacement = Arc::new(Cached::new("replacement".to_owned()));
+            assert!(futures_util::poll!(&mut lookup).is_pending());
+            let replacement = Arc::new(Cached::new(template("replacement")));
             let replacement_checked_at = replacement.last_checked_at.load(Acquire);
             {
-                let mut entries = tokio::time::timeout(Duration::from_secs(1), cache.cache.write())
-                    .await
-                    .expect("pending metadata must not block cache writes");
-                entries.insert(
-                    unrelated.to_owned(),
-                    Arc::new(Cached::new("unrelated".to_owned())),
-                );
-                entries.remove(unrelated);
+                let mut entries =
+                    tokio::time::timeout(Duration::from_secs(1), cache.cache.write()).await?;
+                let unrelated = PathBuf::from("unrelated.handlebars");
+                entries.insert(unrelated.clone(), Arc::clone(&replacement));
+                entries.remove(&unrelated);
                 if replace {
                     entries.insert(path.to_owned(), Arc::clone(&replacement));
                 } else {
                     entries.remove(path);
                 }
             }
-
             drop(connection);
             let result = tokio::time::timeout(Duration::from_secs(1), &mut lookup).await??;
-            assert_eq!(*result, "original");
+            assert!(Arc::ptr_eq(&result, &snapshot.content));
             assert!(snapshot.last_checked_at.load(Acquire) > 0);
             let entries = cache.cache.read().await;
             if replace {
@@ -330,121 +310,100 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn refreshes_changed_files_and_falls_back_to_static_content() -> anyhow::Result<()> {
-        let dir = TempDir::new()?;
-        let state = state_in(&dir, false).await?;
-        let mut cache = FileCache::<String>::new();
-        let path = Path::new("file.txt");
+    async fn refreshes_local_database_and_static_templates_in_order() -> anyhow::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let mut state = state_in(dir.path(), true).await?;
+        let mut cache = FileCache::new();
+        let path = Path::new("file.handlebars");
+        let access = FileAccess::unprivileged(path)?;
         let local_path = dir.path().join(path);
-        cache.add_static(path.to_owned(), "static".to_owned());
-        tokio::fs::write(&local_path, "first").await?;
-
-        let initial = cache.get(&state, FileAccess::unprivileged(path)?).await?;
-        assert_eq!(*initial, "first");
-        let unchanged = cache.get(&state, FileAccess::unprivileged(path)?).await?;
-        assert!(Arc::ptr_eq(&initial, &unchanged));
-
-        tokio::fs::write(&local_path, "changed").await?;
-        mark_stale(&cache, path).await;
-        let changed = cache.get(&state, FileAccess::unprivileged(path)?).await?;
-        assert_eq!(*changed, "changed");
-        assert!(!Arc::ptr_eq(&initial, &changed));
-
-        tokio::fs::remove_file(&local_path).await?;
-        mark_stale(&cache, path).await;
-        let fallback = cache.get(&state, FileAccess::unprivileged(path)?).await?;
-        assert_eq!(*fallback, "static");
-        assert!(Arc::ptr_eq(&fallback, &cache.get_static(path)?));
-        Ok(())
-    }
-
-    #[actix_web::test]
-    async fn local_files_take_precedence_over_database_and_static_files() -> anyhow::Result<()> {
-        let dir = TempDir::new()?;
-        let state = state_in(&dir, true).await?;
-        let mut cache = FileCache::<String>::new();
-        let path = Path::new("file.txt");
-        cache.add_static(path.to_owned(), "static".to_owned());
+        cache.add_static(path.to_owned(), template("static"));
         sqlx::query::query("INSERT INTO sqlpage_files(path, contents) VALUES (?, ?)")
-            .bind("file.txt")
+            .bind(path.to_str())
             .bind(b"database".as_slice())
             .execute(&state.db.connection)
             .await?;
-        let local_path = dir.path().join(path);
-        tokio::fs::write(&local_path, "local").await?;
-
-        let local = cache.get(&state, FileAccess::unprivileged(path)?).await?;
-        assert_eq!(*local, "local");
-        tokio::fs::remove_file(&local_path).await?;
-        mark_stale(&cache, path).await;
-        let database = cache.get(&state, FileAccess::unprivileged(path)?).await?;
-        assert_eq!(*database, "database");
+        let mut previous = None;
+        for source in ["first", "changed", "database", "static"] {
+            match source {
+                "database" => tokio::fs::remove_file(&local_path).await?,
+                "static" => {
+                    state
+                        .db
+                        .connection
+                        .execute("DROP TABLE sqlpage_files")
+                        .await?;
+                    state.file_system =
+                        crate::filesystem::FileSystem::init(dir.path(), &state.db).await;
+                }
+                _ => tokio::fs::write(&local_path, source).await?,
+            }
+            if previous.is_some() {
+                mark_stale(&cache, path).await;
+            }
+            let loaded = cache.get(&state, access).await?;
+            if let Some(old) = &previous {
+                assert!(!Arc::ptr_eq(old, &loaded));
+            }
+            assert_eq!(
+                loaded.before_list.elements,
+                [TemplateElement::RawString(source.into())]
+            );
+            assert!(Arc::ptr_eq(&loaded, &cache.get(&state, access).await?));
+            previous = Some(loaded);
+        }
+        assert!(Arc::ptr_eq(&previous.unwrap(), &cache.get_static(path)?));
         Ok(())
     }
 
     #[actix_web::test]
-    async fn missing_files_evict_entries_and_parse_errors_preserve_them() -> anyhow::Result<()> {
-        let dir = TempDir::new()?;
-        let state = state_in(&dir, false).await?;
-        let cache = FileCache::<String>::new();
-        let path = Path::new("file.txt");
+    async fn parse_errors_retain_entries_and_io_errors_evict_them() -> anyhow::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let state = state_in(dir.path(), false).await?;
+        let path = Path::new("file.handlebars");
+        let access = FileAccess::unprivileged(path)?;
         let local_path = dir.path().join(path);
-        tokio::fs::write(&local_path, "valid").await?;
-        let initial = cache.get(&state, FileAccess::unprivileged(path)?).await?;
-
-        tokio::fs::write(&local_path, "invalid").await?;
-        mark_stale(&cache, path).await;
-        let error = cache
-            .get(&state, FileAccess::unprivileged(path)?)
-            .await
-            .unwrap_err();
-        assert_eq!(error.to_string(), "invalid cached content");
-        assert!(Arc::ptr_eq(
-            &cache.cache.read().await[path].content,
-            &initial
-        ));
-
-        tokio::fs::remove_file(&local_path).await?;
-        let error = cache
-            .get(&state, FileAccess::unprivileged(path)?)
-            .await
-            .unwrap_err();
-        assert_eq!(
-            error.downcast_ref::<ErrorWithStatus>(),
-            Some(&ErrorWithStatus {
-                status: StatusCode::NOT_FOUND
-            })
-        );
-        assert!(!cache.cache.read().await.contains_key(path));
-        Ok(())
-    }
-
-    #[cfg(unix)]
-    #[actix_web::test]
-    async fn metadata_and_read_errors_do_not_use_static_fallback() -> anyhow::Result<()> {
-        let dir = TempDir::new()?;
-        let state = state_in(&dir, false).await?;
-        let mut cache = FileCache::<String>::new();
-        let path = Path::new("file.txt");
-        let local_path = dir.path().join(path);
-        cache.add_static(path.to_owned(), "static".to_owned());
-        tokio::fs::write(&local_path, "valid").await?;
-        cache.get(&state, FileAccess::unprivileged(path)?).await?;
-        tokio::fs::remove_file(&local_path).await?;
-        std::os::unix::fs::symlink(path, &local_path)?;
-        mark_stale(&cache, path).await;
-
-        let error = cache
-            .get(&state, FileAccess::unprivileged(path)?)
-            .await
-            .unwrap_err();
-        assert_eq!(
-            error.downcast_ref::<ErrorWithStatus>(),
-            Some(&ErrorWithStatus {
-                status: StatusCode::INTERNAL_SERVER_ERROR
-            })
-        );
-        assert!(!cache.cache.read().await.contains_key(path));
+        for (failure, status, retain) in [
+            ("parse", None, true),
+            ("missing", Some(StatusCode::NOT_FOUND), false),
+            ("metadata", Some(StatusCode::INTERNAL_SERVER_ERROR), false),
+        ] {
+            let mut cache = FileCache::new();
+            if failure != "missing" {
+                cache.add_static(path.to_owned(), template("static"));
+            }
+            tokio::fs::write(&local_path, "valid").await?;
+            let initial = cache.get(&state, access).await?;
+            mark_stale(&cache, path).await;
+            match failure {
+                "parse" => tokio::fs::write(&local_path, "{{#if missing}}").await?,
+                "missing" => tokio::fs::remove_file(&local_path).await?,
+                _ => {
+                    tokio::fs::remove_file(&local_path).await?;
+                    #[cfg(unix)]
+                    std::os::unix::fs::symlink(path, &local_path)?;
+                    #[cfg(not(unix))]
+                    continue;
+                }
+            }
+            let error = cache
+                .get(&state, access)
+                .await
+                .err()
+                .expect("expected load failure");
+            assert_eq!(
+                error
+                    .downcast_ref::<ErrorWithStatus>()
+                    .map(|error| error.status),
+                status
+            );
+            let entries = cache.cache.read().await;
+            assert_eq!(entries.contains_key(path), retain, "{failure}");
+            if retain {
+                assert!(error.downcast_ref::<handlebars::TemplateError>().is_some());
+                assert!(Arc::ptr_eq(&entries[path].content, &initial));
+            }
+        }
         Ok(())
     }
 
