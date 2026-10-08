@@ -17,7 +17,8 @@
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "types": [],
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+    "exactOptionalPropertyTypes": true
   },
   "include": ["frontend/src"]
 }

@@ -64,7 +64,9 @@ cargo clippy --all-targets --all-features -- -D warnings
 ### Frontend
 
 We use Biome for linting and formatting of the frontend code, and TypeScript
-to typecheck it.
+to typecheck it. TypeScript checks optional properties exactly: omit an unset option so library defaults
+remain intact; use an explicit `| undefined` only when the property contract supports a present,
+undefined value.
 
 ```bash
 npm install # once

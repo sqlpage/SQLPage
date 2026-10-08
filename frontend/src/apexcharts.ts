@@ -1,4 +1,10 @@
-import type { ApexChart, ApexOptions } from "apexcharts";
+import type {
+  ApexChart,
+  ApexOptions,
+  ApexTooltip,
+  ApexXAxis,
+  ApexYAxis,
+} from "apexcharts";
 import ApexCharts from "apexcharts";
 import { type ReferenceLine, read_chart_data } from "./chart_data.ts";
 import {
@@ -225,12 +231,13 @@ const sqlpage_chart = (() => {
           y = y.map((value) => new Date(value ?? 0).getTime());
         else x = new Date(x ?? 0);
       }
+      const fillColor = named_color(color);
       point_series.data.push({
         x,
         y,
-        z,
-        link,
-        fillColor: named_color(color),
+        ...(z === undefined ? {} : { z }),
+        ...(link === undefined ? {} : { link }),
+        ...(fillColor === undefined ? {} : { fillColor }),
       });
     }
 
@@ -297,6 +304,53 @@ const sqlpage_chart = (() => {
       ? ({ seriesIndex }: PointIndex) => points[seriesIndex]?.link
       : ({ seriesIndex, dataPointIndex }: PointIndex) =>
           aligned_series[seriesIndex]?.data[dataPointIndex]?.link;
+    // Unlike absent options, these two explicit undefined values disable
+    // ApexCharts defaults. Its types do not describe that runtime contract.
+    const xaxis: Omit<ApexXAxis, "type"> & { type: ApexXAxis["type"] } = {
+      type: xaxis_type,
+      tooltip: { enabled: false },
+      labels: { datetimeUTC: false },
+    };
+    if (data.xmin !== undefined) xaxis.min = data.xmin;
+    if (data.xmax !== undefined) xaxis.max = data.xmax;
+    if (axis_titles.x !== undefined) xaxis.title = { text: axis_titles.x };
+    // Numeric axes count intervals; category and time axes use tickAmount
+    // as a target for label density. Zero leaves the library's default.
+    if (data.xticks) xaxis.tickAmount = data.xticks;
+
+    const yaxis: ApexYAxis = { logarithmic: data.logarithmic };
+    if (data.ymin !== undefined) yaxis.min = data.ymin;
+    if (data.ymax !== undefined) yaxis.max = data.ymax;
+    if (data.ystep !== undefined) yaxis.stepSize = data.ystep;
+    if (data.yticks !== undefined) yaxis.tickAmount = data.yticks;
+    if (axis_titles.y !== undefined) yaxis.title = { text: axis_titles.y };
+
+    const tooltip: Omit<ApexTooltip, "custom"> & {
+      custom: ApexTooltip["custom"];
+    } = {
+      fillSeriesColor: false,
+      interactive: has_point_links,
+      // A rangeBar's default custom tooltip would replace our linked title.
+      custom:
+        chart_type === "bubble" || chart_type === "scatter"
+          ? axisTooltip(aligned_series, axis_titles, formatValue)
+          : undefined,
+      ...(has_point_links && text_x_values
+        ? {
+            x: {
+              formatter: (value, args) =>
+                linkTooltipValue(value, args && pointLink(args)),
+            },
+          }
+        : {}),
+      y: {
+        formatter: (value, args) =>
+          linkTooltipValue(
+            formatValue(value),
+            args?.seriesIndex !== undefined ? pointLink(args) : undefined,
+          ),
+      },
+    };
     const options: ApexOptions = {
       annotations: {
         [`${value_axis}axis`]: reference_lines(
@@ -315,7 +369,7 @@ const sqlpage_chart = (() => {
       chart: {
         // The query may name any type ApexCharts draws, not only the ones
         // the component documents.
-        type: chart_type as ApexChart["type"],
+        type: chart_type as NonNullable<ApexChart["type"]>,
         fontFamily: "inherit",
         background: "transparent",
         parentHeightOffset: 0,
@@ -364,33 +418,8 @@ const sqlpage_chart = (() => {
         lineCap: "round",
         curve: "smooth",
       },
-      xaxis: {
-        tooltip: {
-          enabled: false,
-        },
-        min: data.xmin,
-        max: data.xmax,
-        title: {
-          text: axis_titles.x,
-        },
-        type: xaxis_type,
-        labels: {
-          datetimeUTC: false,
-        },
-        // Numeric axes count intervals; category and time axes use tickAmount
-        // as a target for label density.
-        tickAmount: data.xticks || undefined,
-      },
-      yaxis: {
-        logarithmic: data.logarithmic,
-        min: data.ymin,
-        max: data.ymax,
-        stepSize: data.ystep,
-        tickAmount: data.yticks,
-        title: {
-          text: axis_titles.y,
-        },
-      },
+      xaxis: xaxis as ApexXAxis,
+      yaxis,
       markers: {
         size: data.marker ?? 0,
         strokeWidth: 0,
@@ -398,28 +427,7 @@ const sqlpage_chart = (() => {
           sizeOffset: 5,
         },
       },
-      tooltip: {
-        fillSeriesColor: false,
-        interactive: has_point_links,
-        custom:
-          chart_type === "bubble" || chart_type === "scatter"
-            ? axisTooltip(aligned_series, axis_titles, formatValue)
-            : undefined,
-        x: {
-          formatter:
-            has_point_links && text_x_values
-              ? (value, args) =>
-                  linkTooltipValue(value, args && pointLink(args))
-              : undefined,
-        },
-        y: {
-          formatter: (value, args) =>
-            linkTooltipValue(
-              formatValue(value),
-              args?.seriesIndex !== undefined ? pointLink(args) : undefined,
-            ),
-        },
-      },
+      tooltip: tooltip as ApexTooltip,
       plotOptions: {
         bar: {
           horizontal: data.horizontal || chart_type === "rangeBar",
@@ -429,7 +437,7 @@ const sqlpage_chart = (() => {
       },
       colors,
       // ApexCharts draws a numeric series name but declares only a string.
-      series: series as ApexOptions["series"],
+      series: series as NonNullable<ApexOptions["series"]>,
     };
     if (is_pie) options.labels = pie_labels;
     const chart = new ApexCharts(chartContainer, options) as RenderedChart;

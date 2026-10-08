@@ -22,8 +22,9 @@ function sqlpage_select_dropdown_individual(s: HTMLSelectElement) {
   // This is a workaround to fix that
   const is_focused = s === document.activeElement;
 
+  const load = sqlpage_load_options_source(s.dataset.options_source);
   const tom = new TomSelect(s, {
-    load: sqlpage_load_options_source(s.dataset.options_source),
+    ...(load ? { load } : {}),
     valueField: "value",
     labelField: "label",
     searchField: ["label"],
