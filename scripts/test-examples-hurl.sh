@@ -56,8 +56,8 @@ while IFS= read -r -d "" test_file; do
     --error-format long
   )
 
-  # Each suite starts with a safe GET, except the idempotent Mailpit cleanup
-  # DELETE in the email example. Retry only this readiness entry so a failure
+  # Each suite starts with a safe GET served by SQLPage, including through
+  # reverse proxies. Retry only this readiness entry so a failure
   # in a later POST is reported once instead of replaying the request.
   if ! hurl "${hurl_args[@]}" \
     --retry 60 \
