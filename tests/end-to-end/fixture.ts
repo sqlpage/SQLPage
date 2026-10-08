@@ -30,7 +30,7 @@ export const test = base.extend({
   },
 });
 
-export type { Page } from "@playwright/test";
+export type { ConsoleMessage, Page } from "@playwright/test";
 export { expect };
 
 /** Insert server-rendered SQL output, then announce it like a custom fragment consumer. */

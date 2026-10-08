@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   align_series,
   align_series_for,
+  type ChartPoint,
+  type ChartSeries,
   merged_x_values,
   xaxis_type_for,
 } from "../../frontend/src/chart_series.ts";
@@ -12,17 +14,11 @@ const LEAVES_A_GAP = null;
 const STACKED = true;
 const UNSTACKED = false;
 
-type XValue = number | string | Date;
-type Point = {
-  x: XValue;
-  y: number | string | null | number[];
-  z?: number;
-  fillColor?: string;
-};
-type Series = { name: string; data: Point[] };
-
-const series = (name: string, ...data: Point[]): Series => ({ name, data });
-const xs = (s: Series) => s.data.map((p) => p.x);
+const series = (name: string, ...data: ChartPoint[]): ChartSeries => ({
+  name,
+  data,
+});
+const xs = (s: ChartSeries) => s.data.map((p) => p.x);
 
 test("uses a continuous axis for numeric Cartesian x values", () => {
   const numeric = [series("a", { x: 1, y: 1 }, { x: 12, y: 12 })];
