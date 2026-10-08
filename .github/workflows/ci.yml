@@ -191,6 +191,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/install-frontend-dependencies
+        with:
+          build-frontend: 'false'
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - run: npx playwright install --with-deps --only-shell chromium
       # The browser tests exercise the official site, but they do not need a
