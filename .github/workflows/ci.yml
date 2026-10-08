@@ -191,6 +191,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/install-frontend-dependencies
+        with:
+          build-frontend: 'false'
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - run: npx playwright install --with-deps --only-shell chromium
       # The browser tests exercise the official site, but they do not need a
@@ -313,6 +315,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: |
+            type=gha,scope=${{ steps.cache-scope.outputs.artifact }}
             type=gha,scope=${{ steps.cache-scope.outputs.current }}
             type=gha,scope=${{ steps.cache-scope.outputs.main }}
             type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ matrix.tag_suffix }}
@@ -333,22 +336,42 @@ jobs:
           retention-days: 1
   hurl_examples:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
     outputs:
       examples: ${{ steps.examples.outputs.examples }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: paths
+        name: Match changed paths to Hurl suites
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: ${{ github.ref_type != 'tag' && env.DIFF_BASE != '' && !startsWith(env.DIFF_BASE, '0000000') }}
+        continue-on-error: true
+        with:
+          base: ${{ env.DIFF_BASE }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          filters: .github/hurl-examples.yml
       - id: examples
-        run: |
-          examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print | sed 's#/test.hurl$##' | sort | jq -R -s -c 'split("\n")[:-1]')"
-          echo "examples=$examples" >> "$GITHUB_OUTPUT"
+        name: Select relevant Hurl examples
+        run: scripts/select-hurl-examples.sh
+        env:
+          PATHS_OUTCOME: ${{ steps.paths.outcome }}
+          ALL_EXAMPLES: ${{ steps.paths.outputs.all_examples }}
+          MATCHED_EXAMPLES: ${{ steps.paths.outputs.changes }}
       - name: Restore Hurl archive
         id: hurl-cache
+        if: steps.examples.outputs.examples != '[]'
         uses: actions/cache@v6
         with:
           path: .cache/hurl
           key: hurl-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ env.HURL_VERSION }}
       - name: Download Hurl archive
-        if: steps.hurl-cache.outputs.cache-hit != 'true'
+        if: steps.examples.outputs.examples != '[]' && steps.hurl-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           archive="hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
@@ -363,6 +386,7 @@ jobs:
             test "$expected_sha" = "$actual_sha"
           )
       - name: Upload Hurl archive
+        if: steps.examples.outputs.examples != '[]'
         uses: actions/upload-artifact@v7
         with:
           name: hurl-${{ env.HURL_VERSION }}-x86_64-unknown-linux-gnu
@@ -373,6 +397,7 @@ jobs:
   hurl:
     name: hurl (${{ matrix.example }})
     runs-on: ubuntu-latest
+    if: ${{ needs.hurl_examples.outputs.examples != '[]' }}
     timeout-minutes: 15
     needs:
       - docker_build
