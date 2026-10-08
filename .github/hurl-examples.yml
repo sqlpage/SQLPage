@@ -1,0 +1,22 @@
+# Shared changes run every examples/*/test.hurl, including newly added examples.
+all_examples:
+  - 'examples/**'
+  - 'Dockerfile'
+  - '.dockerignore'
+  - 'Cargo.toml'
+  - 'Cargo.lock'
+  - 'build.rs'
+  - '.cargo/**'
+  - 'scripts/**'
+  - '.github/workflows/ci.yml'
+  - '.github/hurl-examples.yml'
+
+# Keys are example folders; add one glob per line to associate more files.
+'examples/telemetry':
+  - 'src/telemetry.rs'
+  - 'src/main.rs'
+  - 'src/webserver/http.rs'
+  - 'src/webserver/database/execute_queries.rs'
+'examples/sending emails':
+  - 'src/app_config.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/send_mail.rs'

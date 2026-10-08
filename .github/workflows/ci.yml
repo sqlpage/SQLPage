@@ -338,7 +338,6 @@ jobs:
       pull-requests: read
     env:
       DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
-      DIFF_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
     outputs:
       examples: ${{ steps.examples.outputs.examples }}
     steps:
@@ -352,53 +351,15 @@ jobs:
         continue-on-error: true
         with:
           base: ${{ env.DIFF_BASE }}
-          ref: ${{ env.DIFF_HEAD }}
-          filters: |
-            all_examples:
-              - 'examples/**'
-              - 'Dockerfile'
-              - '.dockerignore'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - 'build.rs'
-              - '.cargo/**'
-              - 'scripts/**'
-              - '.github/workflows/ci.yml'
-            telemetry:
-              - 'src/telemetry.rs'
-              - 'src/main.rs'
-              - 'src/webserver/http.rs'
-              - 'src/webserver/database/execute_queries.rs'
-            smtp:
-              - 'src/app_config.rs'
-              - 'src/webserver/database/sqlpage_functions/functions/send_mail.rs'
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          filters: .github/hurl-examples.yml
       - id: examples
         name: Select relevant Hurl examples
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "$GITHUB_REF_TYPE" == tag \
-             || "${{ steps.paths.outcome }}" != success \
-             || "${{ steps.paths.outputs.all_examples }}" == true ]]; then
-            examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print \
-              | sed 's#/test.hurl$##' \
-              | sort \
-              | jq -R -s -c 'split("\n")[:-1]')"
-          else
-            examples="$(jq -nc \
-              --arg telemetry "${{ steps.paths.outputs.telemetry }}" \
-              --arg smtp "${{ steps.paths.outputs.smtp }}" \
-              '[
-                (if $telemetry == "true" then "examples/telemetry" else empty end),
-                (if $smtp == "true" then "examples/sending emails" else empty end)
-              ]')"
-          fi
-          echo "examples=$examples" >> "$GITHUB_OUTPUT"
-          if [[ "$examples" == '[]' ]]; then
-            echo 'No Hurl examples match these changes; Rust and Playwright checks still run.' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Selected Hurl examples: $examples" >> "$GITHUB_STEP_SUMMARY"
-          fi
+        run: scripts/select-hurl-examples.sh
+        env:
+          PATHS_OUTCOME: ${{ steps.paths.outcome }}
+          ALL_EXAMPLES: ${{ steps.paths.outputs.all_examples }}
+          MATCHED_EXAMPLES: ${{ steps.paths.outputs.changes }}
       - name: Restore Hurl archive
         id: hurl-cache
         if: steps.examples.outputs.examples != '[]'
