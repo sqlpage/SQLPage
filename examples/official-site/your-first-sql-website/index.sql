@@ -43,7 +43,7 @@ Let''s create a simple website with a database from scratch, to learn SQLPage ba
         ELSE 'https://github.com/sqlpage/SQLPage/releases'
     END AS link,
     CASE $os
-        WHEN 'macos' THEN CONCAT('Install SQLPage ', $sqlpage_version, ' using Homebrew')
+        WHEN 'macos' THEN CONCAT('Install SQLPage ', $sqlpage_version, ' for macOS')
         WHEN 'windows' THEN CONCAT('Download SQLPage ', $sqlpage_version, ' for Windows')
         WHEN 'linux' THEN CONCAT('Download SQLPage ', $sqlpage_version, ' for Linux')
         ELSE CONCAT('Download SQLPage ', $sqlpage_version)

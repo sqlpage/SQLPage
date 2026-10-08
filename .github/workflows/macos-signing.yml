@@ -1,0 +1,75 @@
+name: macOS signing
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/sign-macos.sh
+      - .github/macos/entitlements.plist
+      - .github/workflows/macos-signing.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/sign-macos.sh
+      - .github/macos/entitlements.plist
+      - .github/workflows/macos-signing.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sign-macos:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/install-frontend-dependencies
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        env:
+          NODE_OPTIONS: --no-deprecation
+      - name: Test the signing helper on pull requests
+        if: github.event_name == 'pull_request'
+        env:
+          APPLE_SIGNING_IDENTITY: "-" # Ad hoc signing requires no Apple credentials.
+        run: scripts/sign-macos.sh
+      - name: Run the signing helper with Apple credentials
+        if: github.event_name == 'push'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_NOTARIZATION_APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
+          APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
+          APPLE_NOTARIZATION_TEAM_ID: ${{ secrets.APPLE_NOTARIZATION_TEAM_ID }}
+          P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${APPLE_SIGNING_IDENTITY:?Missing APPLE_SIGNING_IDENTITY secret}"
+          : "${APPLE_NOTARIZATION_APPLE_ID:?Missing APPLE_NOTARIZATION_APPLE_ID secret}"
+          : "${APPLE_NOTARIZATION_PASSWORD:?Missing APPLE_NOTARIZATION_PASSWORD secret}"
+          : "${APPLE_NOTARIZATION_TEAM_ID:?Missing APPLE_NOTARIZATION_TEAM_ID secret}"
+          : "${P12_BASE64:?Missing APPLE_SIGNING_CERTIFICATE_P12_BASE64 secret}"
+          : "${P12_PASSWORD:?Missing APPLE_SIGNING_CERTIFICATE_PASSWORD secret}"
+          CERTIFICATE_PATH="$RUNNER_TEMP/signing.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          umask 077
+          trap 'security delete-keychain "$KEYCHAIN_PATH"; rm -f "$CERTIFICATE_PATH" "$CERTIFICATE_PATH.pem"' EXIT
+          # Use PKCS12 algorithms supported by macOS Keychain.
+          printf '%s' "$P12_BASE64" | base64 -d > "$CERTIFICATE_PATH"
+          openssl pkcs12 -in "$CERTIFICATE_PATH" -passin env:P12_PASSWORD -nodes -out "$CERTIFICATE_PATH.pem"
+          openssl pkcs12 -export -in "$CERTIFICATE_PATH.pem" -passout env:P12_PASSWORD \
+            -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 -out "$CERTIFICATE_PATH"
+          rm -f "$CERTIFICATE_PATH.pem"
+          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -k "$KEYCHAIN_PATH" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN_PATH" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          scripts/sign-macos.sh
+      - name: Run the signed binary
+        run: target/aarch64-apple-darwin/superoptimized/sqlpage --version

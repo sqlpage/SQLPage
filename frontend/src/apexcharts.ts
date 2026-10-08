@@ -9,7 +9,7 @@ import {
   type XValue,
   xaxis_type_for,
 } from "./chart_series.ts";
-import { add_init_fn } from "./init.ts";
+import { add_init_fn, type InitRoot, select_all } from "./init.ts";
 
 type AxisTitles = Record<"x" | "y" | "z", string | undefined>;
 
@@ -31,7 +31,7 @@ export type RenderedChart = ApexCharts & {
   };
 };
 
-function formatTooltipX(
+function linkTooltipValue(
   value: string | number | null,
   link: string | undefined,
 ) {
@@ -101,9 +101,12 @@ const axisTooltip =
       axisValue.appendChild(labelSpan);
       const valueSpan = document.createElement("span");
       valueSpan.className = "apexcharts-tooltip-text-y-value";
-      valueSpan.innerText = Array.isArray(measured)
+      const formatted = Array.isArray(measured)
         ? measured.map(format).join(" - ")
         : format(measured);
+      if (axis === "y" && point.link)
+        valueSpan.innerHTML = linkTooltipValue(formatted, point.link);
+      else valueSpan.innerText = formatted;
       axisValue.appendChild(valueSpan);
       tooltip.appendChild(axisValue);
     }
@@ -111,10 +114,8 @@ const axisTooltip =
   };
 
 const sqlpage_chart = (() => {
-  function sqlpage_chart() {
-    const charts = document.querySelectorAll<HTMLElement>(
-      "[data-pre-init=chart]",
-    );
+  function sqlpage_chart(root: InitRoot) {
+    const charts = select_all<HTMLElement>(root, "[data-pre-init=chart]");
     for (const c of charts) {
       try {
         build_sqlpage_chart(c);
@@ -407,11 +408,16 @@ const sqlpage_chart = (() => {
         x: {
           formatter:
             has_point_links && text_x_values
-              ? (value, args) => formatTooltipX(value, args && pointLink(args))
+              ? (value, args) =>
+                  linkTooltipValue(value, args && pointLink(args))
               : undefined,
         },
         y: {
-          formatter: formatValue,
+          formatter: (value, args) =>
+            linkTooltipValue(
+              formatValue(value),
+              args?.seriesIndex !== undefined ? pointLink(args) : undefined,
+            ),
         },
       },
       plotOptions: {

@@ -685,7 +685,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('x', 'The value of the point on the horizontal axis. Numeric values use continuous, proportionate positioning; text values are evenly spaced categories. Set the top-level time property for dates and timestamps.', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
-    ('link', 'A URL to open when the data point is clicked. When the tooltip has a text x value as its title, that title also links to the point.', 'URL', FALSE, TRUE),
+    ('link', 'A URL to open when the data point is clicked. The tooltip value also links to the point, as does a text x value when shown as the tooltip title.', 'URL', FALSE, TRUE),
     ('label', 'An alias for parameter "x". On a row that draws a reference line, the text to display next to the line.', 'TEXT', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
