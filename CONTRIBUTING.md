@@ -74,6 +74,11 @@ npm test # the check CI runs: biome, typecheck, and the frontend unit tests
 
 `npm test` checks the entire frontend codebase (html, css, js, ts).
 
+TypeScript checks array and dictionary lookups with `noUncheckedIndexedAccess`,
+including in tests. Prefer iterating over values or checking whether a lookup is
+missing before using it. Use fixed tuples for known shapes; avoid non-null
+assertions that hide unchecked indices.
+
 ## Testing
 
 ### Rust Tests

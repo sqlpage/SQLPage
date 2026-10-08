@@ -103,10 +103,9 @@ function apply_number_formatting(table_el: HTMLElement) {
 
   for (const tr_el of table_el.querySelectorAll("tbody tr, tfoot tr")) {
     const cells = tr_el.getElementsByTagName("td");
-    for (let idx = 0; idx < cells.length; idx++) {
+    for (const [idx, cell_el] of [...cells].entries()) {
       const column_type = col_types[idx];
       const is_raw_number = col_rawnums[idx];
-      const cell_el = cells[idx];
       const text = cell_el.textContent;
 
       if (column_type === "number" && !is_raw_number && text) {
@@ -166,6 +165,8 @@ function setup_sort_behavior(
       items.sort((a, b) => {
         const a_key = a.sort_keys[button_index];
         const b_key = b.sort_keys[button_index];
+        if (!a_key || !b_key)
+          throw new Error("Table row is missing the selected column sort key");
         return (
           multiplier *
           (Number.isNaN(a_key.num) || Number.isNaN(b_key.num)
@@ -243,14 +244,21 @@ function sqlpage_map(root: InitRoot) {
     coords: string | undefined,
   ): Leaflet.LatLngTuple | undefined {
     if (!coords) return undefined;
-    const parsed = coords.split(",", 2).map((c) => Number.parseFloat(c));
-    if (parsed.length !== 2 || !parsed.every(Number.isFinite)) {
+    const [latitude, longitude] = coords
+      .split(",", 2)
+      .map((c) => Number.parseFloat(c));
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
       console.error(
         `Invalid map coordinates: ${JSON.stringify(coords)}. Expected a "latitude,longitude" pair of numbers.`,
       );
       return undefined;
     }
-    return [parsed[0], parsed[1]];
+    return [latitude, longitude];
   }
   function onLeafletLoad(map_root: InitRoot) {
     is_leaflet_loaded = true;

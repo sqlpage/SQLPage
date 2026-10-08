@@ -52,14 +52,21 @@ export function xaxis_type_for(
  * ascending order where they diverge
  */
 export function merged_x_values(series: ChartSeries[]): XValue[] {
-  const unread = series.map(({ data }) => data.map(({ x }) => x));
+  const unread = series.map(({ data }) => {
+    const iterator = data.values();
+    return { iterator, next: iterator.next() };
+  });
   const merged = new Map<PlotValue, XValue>();
-  while (unread.some((xs) => xs.length > 0)) {
-    const with_lowest_x = unread
-      .filter((xs) => xs.length > 0)
-      .reduce((a, b) => (is_lower(b[0], a[0]) ? b : a));
-    const x = with_lowest_x.shift() as XValue;
-    merged.set(x_key(x), x);
+  while (true) {
+    let lowest: { stream: (typeof unread)[number]; x: XValue } | undefined;
+    for (const stream of unread) {
+      if (stream.next.done) continue;
+      const x = stream.next.value.x;
+      if (!lowest || is_lower(x, lowest.x)) lowest = { stream, x };
+    }
+    if (!lowest) break;
+    merged.set(x_key(lowest.x), lowest.x);
+    lowest.stream.next = lowest.stream.iterator.next();
   }
   return [...merged.values()];
 }
