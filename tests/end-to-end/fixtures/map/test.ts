@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "../../fixture.ts";
+import { type ConsoleMessage, expect, type Page, test } from "../../fixture.ts";
 
 const PARIS_WITHOUT_ITS_LONGITUDE = "48.85,";
 const NOT_COORDINATES = "somewhere nice";
@@ -7,7 +7,7 @@ async function renderMap(page: Page, fixture: string, markerCount = 0) {
   const errors: string[] = [];
   const logged: string[] = [];
   const recordPageError = (error: Error) => errors.push(error.message);
-  const recordConsoleError = (message: { type(): string; text(): string }) => {
+  const recordConsoleError = (message: ConsoleMessage) => {
     if (message.type() === "error") logged.push(message.text());
   };
   page.on("pageerror", recordPageError);

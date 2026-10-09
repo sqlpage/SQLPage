@@ -1,11 +1,15 @@
-DELETE http://127.0.0.1:8025/api/v1/messages
-HTTP 200
-
+# Probe SQLPage before clearing Mailpit or sending any messages.
 GET http://127.0.0.1:8080/
 HTTP 200
 [Asserts]
 xpath "string(//a[contains(., 'Simple email')]/@href)" == "simple.sql"
 xpath "string(//a[contains(., 'Advanced email')]/@href)" == "advanced.sql"
+
+DELETE http://127.0.0.1:8025/api/v1/messages
+[Options]
+retry: 60
+retry-interval: 1s
+HTTP 200
 
 GET http://127.0.0.1:8080/simple.sql
 HTTP 200

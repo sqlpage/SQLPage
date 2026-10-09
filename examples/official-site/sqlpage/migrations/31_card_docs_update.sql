@@ -39,7 +39,12 @@ INSERT INTO parameter(component, name, description_md, type, top_level, optional
     ('embed', 'A url whose contents will be fetched and injected into the body of this card.
         This can be used to inject arbitrary html content, but is especially useful for injecting
         the output of other sql files rendered by SQLPage. For the latter case you can pass the
-        `?_sqlpage_embed` query parameter, which will skip the shell layout', 'TEXT', FALSE, TRUE),
+        `?_sqlpage_embed` query parameter, which will skip the shell layout.
+        Components inside the fetched content initialize automatically. Custom scripts that insert
+        SQLPage fragments should dispatch a bubbling `fragment-loaded` event on the element containing
+        the new content. Initialization includes that element and its descendants; dispatching the
+        event on `document` initializes pending components throughout the page. Repeated events
+        preserve existing form and widget handlers', 'TEXT', FALSE, TRUE),
     ('embed_mode', 'Set to ''iframe'' to embed the target (specified through embed property) in an iframe.
         Unless this is explicitly set, the embed target is fetched and injected within the parent page. If embed_mode is set to iframe,
         You can also set height and width parameters to configure the appearance and the sandbox and allow parameters to configure

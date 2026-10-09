@@ -37,6 +37,55 @@ jobs:
       - uses: ./.github/actions/install-frontend-dependencies
       - name: Build
         run: cargo build --profile superoptimized --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+
+      # macOS: sign and notarize the binary
+      - name: Sign and notarize macOS binary
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_NOTARIZATION_APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
+          APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
+          APPLE_NOTARIZATION_TEAM_ID: ${{ secrets.APPLE_NOTARIZATION_TEAM_ID }}
+          P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BIN=target/${{ matrix.target }}/superoptimized/sqlpage
+          # Import the signing certificate into a temporary keychain
+          umask 077
+          trap 'security delete-keychain /tmp/signing.keychain; rm -f /tmp/signing.p12 /tmp/signing.pem' EXIT
+          # Use PKCS12 algorithms supported by macOS Keychain.
+          printf '%s' "$P12_BASE64" | base64 -d > /tmp/signing.p12
+          openssl pkcs12 -in /tmp/signing.p12 -passin env:P12_PASSWORD -nodes -out /tmp/signing.pem
+          openssl pkcs12 -export -in /tmp/signing.pem -passout env:P12_PASSWORD \
+            -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 -out /tmp/signing.p12
+          rm -f /tmp/signing.pem
+          security create-keychain -p "" /tmp/signing.keychain
+          security set-keychain-settings -lut 3600 /tmp/signing.keychain
+          security unlock-keychain -p "" /tmp/signing.keychain
+          security import /tmp/signing.p12 -k /tmp/signing.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" /tmp/signing.keychain > /dev/null
+          security list-keychains -d user -s /tmp/signing.keychain "$(security default-keychain)"
+          # Sign with hardened runtime and entitlements
+          codesign --force --options runtime --entitlements .github/macos/entitlements.plist --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$BIN"
+          codesign --verify --deep --strict --verbose=2 "$BIN"
+          # Package in a zip and submit for notarization.
+          # Note: stapler only supports .app bundles, disk images, and flat packages —
+          # not bare Mach-O executables or zip archives. For a standalone binary,
+          # notarization alone is sufficient: Gatekeeper checks Apple's servers online.
+          ditto -c -k --keepParent "$BIN" sqlpage-macos.zip
+          xcrun notarytool submit sqlpage-macos.zip \
+            --apple-id "$APPLE_NOTARIZATION_APPLE_ID" \
+            --password "$APPLE_NOTARIZATION_PASSWORD" \
+            --team-id "$APPLE_NOTARIZATION_TEAM_ID" \
+            --wait --output-format plist > notarization-result.plist
+          if [[ "$(plutil -extract status raw -o - notarization-result.plist)" != "Accepted" ]]; then
+            echo "Notarization was not accepted:" >&2
+            cat notarization-result.plist >&2
+            exit 1
+          fi
+          codesign --verify --deep --strict "$BIN"
+
       - name: Upload unsigned Windows artifact
         if: matrix.os == 'windows-latest'
         id: upload_unsigned

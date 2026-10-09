@@ -73,6 +73,13 @@ npm test # the check CI runs: biome, typecheck, and the frontend unit tests
 ```
 
 `npm test` checks the entire frontend codebase (html, css, js, ts).
+Biome also rejects promise-valued conditions and synchronous callbacks that discard
+promises (`noMisusedPromises`), awaiting synchronous values (`useAwaitThenable`),
+and runtime import cycles (`noImportCycles`). Type-only imports may form cycles.
+Keep async Playwright assertions and actions awaited or returned;
+`noPlaywrightMissingAwait` checks these even when TypeScript inference cannot
+follow the shared fixture's types. The promise and Playwright rules are in
+Biome's nursery group, so review their diagnostics when upgrading Biome.
 
 ## Testing
 
@@ -95,6 +102,14 @@ docker compose up mssql # or mysql, mariadb, postgres
 export DATABASE_URL=mssql://root:Password123!@localhost/sqlpage
 cargo test
 ```
+
+Use `common::response_for(path)` for ordinary integration requests and
+`common::response_with(path, config)` for custom configuration. Custom requests use
+`common::response_from(request)`; tests sharing database or cache state use `common::send_request`.
+These helpers use the production `create_app` routes and middleware through an Actix test service,
+whose destructor drains its request pool.
+Keep `#[actix_web::test]`; standalone `TestRequest::to_srv_request()` retains application state.
+When testing Oracle locally, use `cargo test -- --test-threads=2` to avoid overwhelming the listener.
 
 ### End-to-End Tests
 
