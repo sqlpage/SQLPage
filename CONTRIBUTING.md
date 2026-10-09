@@ -73,6 +73,13 @@ npm test # the check CI runs: biome, typecheck, and the frontend unit tests
 ```
 
 `npm test` checks the entire frontend codebase (html, css, js, ts).
+Biome also rejects promise-valued conditions and synchronous callbacks that discard
+promises (`noMisusedPromises`), awaiting synchronous values (`useAwaitThenable`),
+and runtime import cycles (`noImportCycles`). Type-only imports may form cycles.
+Keep async Playwright assertions and actions awaited or returned;
+`noPlaywrightMissingAwait` checks these even when TypeScript inference cannot
+follow the shared fixture's types. The promise and Playwright rules are in
+Biome's nursery group, so review their diagnostics when upgrading Biome.
 
 ## Testing
 
