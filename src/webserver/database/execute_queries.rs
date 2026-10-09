@@ -938,8 +938,9 @@ mod tests {
         .unwrap();
         let file = SqlFile::new(
             &request.app_state.db,
+            // Text markers keep this ordering test independent of driver numeric representations.
             "SELECT n, sqlpage.fetch(url) AS value
-             FROM (SELECT 1 AS n, NULL AS url UNION ALL SELECT 2 AS n, 'invalid URL' AS url) source_rows
+             FROM (SELECT 'row1' AS n, NULL AS url UNION ALL SELECT 'row2' AS n, 'invalid URL' AS url) source_rows
              ORDER BY n;
              SET after_query = 'unexpected'",
             Path::new("execution-test.sql"),
@@ -951,12 +952,12 @@ mod tests {
             let Some(DbItem::Row(row)) = stream.next().await else {
                 panic!("Expected the first row before the later function error");
             };
-            assert_eq!(row, json!({"n": 1, "value": null}));
+            assert_eq!(row, json!({"n": "row1", "value": null}));
         }
         assert!(!request.set_variables.borrow().contains_key("after_query"));
         let file = SqlFile::new(
             &request.app_state.db,
-            "SELECT n FROM (SELECT 7 AS n) source_rows",
+            "SELECT n FROM (SELECT 'reused' AS n) source_rows",
             Path::new("execution-test.sql"),
         );
         let stream = stream_query_results_with_conn(&file, &request, &mut connection);
@@ -964,7 +965,7 @@ mod tests {
         let Some(DbItem::Row(row)) = stream.next().await else {
             panic!("Expected a row from the reused connection");
         };
-        assert_eq!(row, json!({"n": 7}));
+        assert_eq!(row, json!({"n": "reused"}));
         while let Some(item) = stream.next().await {
             assert!(matches!(item, DbItem::FinishedQuery));
         }
