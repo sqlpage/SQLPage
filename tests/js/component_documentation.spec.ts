@@ -144,6 +144,7 @@ function properties_of_template(source: string): TemplateProperties {
   const contexts: Context[] = ["top"];
 
   for (const [, raw_body] of source.matchAll(/\{\{([^}]*)\}\}/g)) {
+    assert.ok(raw_body !== undefined);
     let body = raw_body
       .replace(/^[{~]+/, "")
       .replace(/[~}]+$/, "")
@@ -203,7 +204,7 @@ function properties_of_template(source: string): TemplateProperties {
         continue;
       if (name.startsWith("this.")) name = name.slice(5);
       if (name === "this" || name === "") continue;
-      name = name.split(/[.[]/)[0]; // `a.b` and `a.[0]` are reads of `a`
+      name = name.split(/[.[]/)[0] ?? ""; // `a.b` and `a.[0]` are reads of `a`
       if (!/^[A-Za-z_][A-Za-z_0-9]*$/.test(name)) continue;
       if (LITERALS.has(name)) continue;
       if (parents === 0 && in_callee_position && HELPERS.has(name)) continue;

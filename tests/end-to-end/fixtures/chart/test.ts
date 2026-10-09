@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { type ConsoleMessage, expect, type Page, test } from "../../fixture.ts";
 
 const MARKS =
@@ -219,8 +220,11 @@ test("positions complete numeric bar series on an explicit numeric axis (#733)",
   expect(chart.axisLabels.map(({ text }) => Number(text))).toEqual(xs);
   expect(chart.dataLabels.map(Number)).toEqual([...xs, ...xs]);
   expect(chart.barGroups).toHaveLength(xs.length);
-  for (const [index, label] of chart.axisLabels.entries())
-    expect(Math.abs(label.center - chart.barGroups[index])).toBeLessThan(1);
+  for (const [index, label] of chart.axisLabels.entries()) {
+    const barCenter = chart.barGroups[index];
+    assert.ok(barCenter !== undefined, `Bar group ${index} was drawn`);
+    expect(Math.abs(label.center - barCenter)).toBeLessThan(1);
+  }
 });
 
 test("keeps irregular numeric x values proportionately spaced", async ({
@@ -237,9 +241,9 @@ test("keeps irregular numeric x values proportionately spaced", async ({
     "3.0",
   ]);
   expect(chart.axisLabels.map(({ text }) => text)).not.toContain("2");
-  expect(chart.barGroups[2] - chart.barGroups[1]).toBeGreaterThan(
-    5 * (chart.barGroups[1] - chart.barGroups[0]),
-  );
+  const [first, second, third] = chart.barGroups;
+  assert.ok(first !== undefined && second !== undefined && third !== undefined);
+  expect(third - second).toBeGreaterThan(5 * (second - first));
 });
 
 test("keeps an explicit x interval count", async ({ page }) => {
@@ -299,7 +303,7 @@ test("gives a stacked series a zero at every x it did not measure", async ({
 
   expect(chart.failures).toEqual([]);
   expect(chart.series.map((s) => s.name)).toEqual(["CPU", "GPU"]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["2024-01-01T00:00:00.000Z", 0],
     ["2024-01-01T00:01:00.000Z", 50],
     ["2024-01-01T00:02:00.000Z", 50],
@@ -310,10 +314,13 @@ test("gives a stacked series a zero at every x it did not measure", async ({
 test("stacks a series above the one it shares an x with", async ({ page }) => {
   const chart = await renderChart(page, "stacked-time-series");
   const [cpu, gpu] = chart.drawnPerSeries;
+  assert.ok(cpu && gpu, "Both series were drawn");
 
   expect(gpu.heights).toHaveLength(4);
   expect(gpu.heights[0]).toBe(cpu.heights[0]);
-  expect(gpu.heights[1]).toBeLessThan(cpu.heights[1]);
+  const cpuHeight = cpu.heights[1];
+  assert.ok(cpuHeight !== undefined, "CPU has a second point");
+  expect(gpu.heights[1]).toBeLessThan(cpuHeight);
 });
 
 test("keeps a lone series in the order the query returned it (#930)", async ({
@@ -322,7 +329,7 @@ test("keeps a lone series in the order the query returned it (#930)", async ({
   const chart = await renderChart(page, "out-of-order");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[0].points).toEqual([
+  expect(chart.series[0]?.points).toEqual([
     ["Q3", 3],
     ["Q1", 1],
     ["Q2", 2],
@@ -335,12 +342,12 @@ test("orders by name the categories two bar series do not share (#951)", async (
   const chart = await renderChart(page, "disjoint-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[0].points).toEqual([
+  expect(chart.series[0]?.points).toEqual([
     ["X1", 0],
     ["X2", 10],
     ["X3", 30],
   ]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["X1", 25],
     ["X2", 20],
     ["X3", 0],
@@ -353,7 +360,7 @@ test("leaves the points of a chart that does not stack alone", async ({
   const chart = await renderChart(page, "unstacked-time-series");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["2024-01-01T00:01:00.000Z", 50],
     ["2024-01-01T00:02:00.000Z", 50],
     ["2024-01-01T00:03:00.000Z", 50],
@@ -364,7 +371,7 @@ test("stacks a bar series on the categories it skipped", async ({ page }) => {
   const chart = await renderChart(page, "stacked-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", 0],
     ["Q2", 20],
     ["Q3", 30],
@@ -377,7 +384,7 @@ test("lines an unstacked series up with the categories it skipped", async ({
   const chart = await renderChart(page, "line-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", null],
     ["Q2", 20],
     ["Q3", 30],
@@ -389,6 +396,7 @@ test("draws nothing where an unstacked series has no value", async ({
 }) => {
   const chart = await renderChart(page, "line-categories");
   const [a, b] = chart.drawnPerSeries;
+  assert.ok(a && b, "Both series were drawn");
 
   expect(a.lefts).toHaveLength(3);
   expect(b.lefts).toEqual(a.lefts.slice(1));
@@ -397,8 +405,9 @@ test("draws nothing where an unstacked series has no value", async ({
 test("keeps a measured zero apart from a missing value", async ({ page }) => {
   const chart = await renderChart(page, "zero-and-missing");
   const [a, b] = chart.drawnPerSeries;
+  assert.ok(a && b, "Both series were drawn");
 
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", null],
     ["Q2", 0],
     ["Q3", 30],
@@ -413,7 +422,11 @@ for (const type of ["area", "scatter", "heatmap"]) {
     const chart = await renderChart(page, `${type}-categories`);
 
     expect(chart.failures).toEqual([]);
-    expect(chart.series[1].points.map((p) => p[0])).toEqual(["Q1", "Q2", "Q3"]);
+    expect(chart.series[1]?.points.map((p) => p[0])).toEqual([
+      "Q1",
+      "Q2",
+      "Q3",
+    ]);
   });
 }
 
@@ -431,7 +444,7 @@ test("keeps the bubble size of the points it lined up", async ({ page }) => {
   const chart = await renderChart(page, "bubble-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", null],
     ["Q2", 5],
   ]);

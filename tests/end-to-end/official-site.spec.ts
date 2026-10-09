@@ -77,7 +77,7 @@ test("stacked chart raises a series only where it has a value", async ({
   const gpu = await drawnPoints(powerChart, "GPU");
 
   expect([gpu[0], gpu[3]]).toEqual([cpu[0], cpu[3]]);
-  expect(Number(gpu[1].y)).toBeLessThan(Number(cpu[1].y));
+  expect(Number(gpu[1]?.y)).toBeLessThan(Number(cpu[1]?.y));
 });
 
 test("chart draws a yline as a line and a yline_end as a band", async ({

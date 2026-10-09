@@ -104,7 +104,7 @@ const axisTooltip =
       const formatted = Array.isArray(measured)
         ? measured.map(format).join(" - ")
         : format(measured);
-      if (axis === "y" && point.link)
+      if (axis === "y" && point?.link)
         valueSpan.innerHTML = linkTooltipValue(formatted, point.link);
       else valueSpan.innerText = formatted;
       axisValue.appendChild(valueSpan);
@@ -141,7 +141,7 @@ const sqlpage_chart = (() => {
     ["gray", "#495057", "#adb5bd"],
     ["black", "#000000", "#000000"],
     ["white", "#ffffff", "#f8f9fa"],
-  ];
+  ] as const;
   const colorNames = new Map(
     tblrColors.flatMap(([name, dark, light]): [string, string][] => [
       [name, dark],
@@ -200,8 +200,10 @@ const sqlpage_chart = (() => {
 
   function build_sqlpage_chart(c: HTMLElement) {
     const [data_element] = c.getElementsByTagName("data");
+    const chartContainer = c.querySelector<HTMLElement>(".chart");
+    if (!data_element || !chartContainer)
+      throw new Error("Chart component is missing its data or container");
     const data = read_chart_data(data_element.textContent);
-    const chartContainer = c.querySelector(".chart") as HTMLElement;
     chartContainer.innerHTML = "";
     const is_timeseries = data.time;
     const chart_type =
@@ -260,7 +262,10 @@ const sqlpage_chart = (() => {
       : aligned_series;
     const colors = is_pie
       ? points.map(
-          ({ color }, i) => named_color(color) || palette[i % palette.length],
+          ({ color }, i) =>
+            named_color(color) ??
+            palette[i % palette.length] ??
+            tblrColors[0][isDarkTheme ? 1 : 2],
         )
       : palette;
 
