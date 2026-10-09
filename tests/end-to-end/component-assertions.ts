@@ -20,7 +20,8 @@ export async function checkToastNotifications(page: Page) {
   await expect(stackOne).toBeHidden();
   await page.evaluate(() => {
     document.addEventListener("shown.bs.toast", (event) => {
-      const toast = event.target as HTMLElement;
+      const toast = event.target;
+      if (!(toast instanceof HTMLElement)) throw new Error("Missing toast");
       toast.dataset.shownCount = String(
         Number(toast.dataset.shownCount ?? 0) + 1,
       );
@@ -91,9 +92,9 @@ export async function checkToastNotifications(page: Page) {
   await expect(closeButton).toBeVisible();
   const closeStyle = await closeButton.evaluate((button) => {
     const style = getComputedStyle(button);
-    const toastStyle = getComputedStyle(
-      button.closest(".toast") as HTMLElement,
-    );
+    const toast = button.closest(".toast");
+    if (!toast) throw new Error("Missing toast");
+    const toastStyle = getComputedStyle(toast);
     return {
       backgroundColor: style.backgroundColor,
       color: style.color,
@@ -130,13 +131,15 @@ export async function checkToastNotifications(page: Page) {
     "href",
     "https://example.com/releases",
   );
-  const linkStyle = await page
-    .locator("#toast-markdown a")
-    .evaluate((link) => ({
-      color: getComputedStyle(link).color,
-      parentColor: getComputedStyle(link.parentElement as HTMLElement).color,
-      textDecorationLine: getComputedStyle(link).textDecorationLine,
-    }));
+  const linkStyle = await page.locator("#toast-markdown a").evaluate((link) => {
+    if (!link.parentElement) throw new Error("Missing toast link parent");
+    const style = getComputedStyle(link);
+    return {
+      color: style.color,
+      parentColor: getComputedStyle(link.parentElement).color,
+      textDecorationLine: style.textDecorationLine,
+    };
+  });
   expect(linkStyle.color).toBe(linkStyle.parentColor);
   expect(linkStyle.textDecorationLine).toBe("underline");
   await expect(page.locator("#toast-plain strong")).toHaveCount(0);
@@ -144,25 +147,27 @@ export async function checkToastNotifications(page: Page) {
     "<strong>Plain text stays escaped</strong>",
   );
   const whiteToast = page.locator("#toast-plain");
-  const whiteToastStyle = await whiteToast.evaluate((toast) => {
-    const style = getComputedStyle(toast);
-    const closeStyle = getComputedStyle(
-      toast.querySelector(".btn-close") as HTMLElement,
-    );
-    const rgba = (color: string) => {
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Canvas 2D context is unavailable");
-      context.fillStyle = color;
-      context.fillRect(0, 0, 1, 1);
-      return Array.from(context.getImageData(0, 0, 1, 1).data);
-    };
-    return {
-      backgroundColor: rgba(style.backgroundColor),
-      closeColor: rgba(closeStyle.backgroundColor),
-      color: rgba(style.color),
-    };
-  });
+  const whiteToastStyle = await whiteToast
+    .locator(".btn-close")
+    .evaluate((close) => {
+      const toast = close.closest(".toast");
+      if (!toast) throw new Error("Missing toast");
+      const style = getComputedStyle(toast);
+      const closeStyle = getComputedStyle(close);
+      const rgba = (color: string) => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Canvas 2D context is unavailable");
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data);
+      };
+      return {
+        backgroundColor: rgba(style.backgroundColor),
+        closeColor: rgba(closeStyle.backgroundColor),
+        color: rgba(style.color),
+      };
+    });
   expect(whiteToastStyle.backgroundColor).toEqual([255, 255, 255, 255]);
   expect(whiteToastStyle.color).toEqual([31, 41, 55, 255]);
   expect(whiteToastStyle.closeColor).toEqual(whiteToastStyle.color);

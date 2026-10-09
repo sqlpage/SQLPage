@@ -1,27 +1,26 @@
 export type InitRoot = Element | Document;
 
-// The script element carries roots across independently bundled initializers.
-export type InitScript = HTMLScriptElement & {
-  sqlpage_init_roots?: Set<InitRoot>;
-};
-
 /** Select matching descendants, including the fragment root itself. */
 export function select_all<T extends Element>(
   root: InitRoot,
   selector: string,
+  element_type: new () => T,
 ): T[] {
-  const descendants = [...root.querySelectorAll<T>(selector)];
-  if (root instanceof Element && root.matches(selector)) {
-    descendants.unshift(root as T);
+  const descendants = [...root.querySelectorAll(selector)].filter(
+    (element): element is T => element instanceof element_type,
+  );
+  if (root instanceof element_type && root.matches(selector)) {
+    descendants.unshift(root);
   }
   return descendants;
 }
 
 export function add_init_fn(f: (root: InitRoot) => void) {
-  const script = document.currentScript as InitScript | null;
-  const pending_roots = script?.sqlpage_init_roots;
+  const script = document.currentScript;
+  const pending_roots =
+    script instanceof HTMLScriptElement ? script.sqlpage_init_roots : undefined;
   const initialize = () => {
-    if (script) delete script.sqlpage_init_roots;
+    if (script instanceof HTMLScriptElement) delete script.sqlpage_init_roots;
     for (const root of pending_roots ?? [document]) {
       if (root instanceof Document || root.isConnected) f(root);
     }

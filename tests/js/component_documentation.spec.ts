@@ -250,8 +250,10 @@ function read_documentation(): Map<string, TemplateProperties> {
   const documented = new Map<string, TemplateProperties>();
   const rows = db
     .prepare("select component, name, top_level from parameter")
-    .all() as { component: string; name: string; top_level: number }[];
+    .all();
   for (const { component, name, top_level } of rows) {
+    assert.ok(typeof component === "string" && typeof name === "string");
+    assert.equal(typeof top_level, "number");
     let entry = documented.get(component);
     if (!entry) {
       entry = { top: new Set(), row: new Set() };

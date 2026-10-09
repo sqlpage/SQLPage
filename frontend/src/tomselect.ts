@@ -2,9 +2,10 @@ import TomSelect from "tom-select/popular";
 import { add_init_fn, type InitRoot, select_all } from "./init.ts";
 
 function sqlpage_select_dropdown(root: InitRoot) {
-  const selects = select_all<HTMLSelectElement>(
+  const selects = select_all(
     root,
     "[data-pre-init=select-dropdown]",
+    HTMLSelectElement,
   );
   for (const s of selects) {
     try {
