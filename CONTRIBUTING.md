@@ -1,261 +1,84 @@
 # Contributing to SQLPage
 
-Thank you for your interest in contributing to SQLPage! This document will guide you through the contribution process.
+## Setup and build
 
-## Development Setup
-
-1. Install Rust and Cargo (latest stable version): https://www.rust-lang.org/tools/install
-2. Install Node.js: https://nodejs.org/en/download/
-3. Clone the repository
-
-```bash
-git clone https://github.com/sqlpage/sqlpage
-cd sqlpage
-```
-
-## Building the project
-
-The first time you build the project, Cargo and npm download their
-dependencies, so you will need internet access, and the build may take a while.
-
-Run this command from the root of a checkout to install the locked npm dependencies, build the browser assets, and build SQLPage in development mode:
+Install stable Rust and Node.js (see [CI](./.github/actions/install-frontend-dependencies/action.yml)
+for the Node version), then run this command from a checkout:
 
 ```bash
 npm run build:rust
 ```
 
-After the browser assets have been built, you can run `cargo build` directly for Rust-only changes. Run `npm run build` again after changing frontend sources. Builds from the published crate use its included browser assets and do not need Node.js.
+This installs locked npm dependencies, builds browser assets, and creates
+`target/debug/sqlpage`. Afterwards, use `cargo build` for Rust changes and
+`npm run build` for frontend changes. Add `-- --release` to `npm run build:rust`
+for a release build.
 
-The resulting executable will be in `target/debug/sqlpage`.
+Default builds require a system ODBC driver manager. On Linux and macOS,
+`--features odbc-static` bundles unixODBC, but database-specific drivers must still
+be installed separately. Windows uses its system ODBC driver manager. Published
+crates include browser assets and do not require Node.js.
 
-### Release mode
+## Validation
 
-To build the project in release mode:
-
-```bash
-npm run build:rust -- --release
-```
-
-The resulting executable will be in `target/release/sqlpage`.
-
-### ODBC build modes
-
-SQLPage can either be built with an integrated odbc driver manager (static linking),
-or depend on having one already installed on the system where it is running (dynamic linking).
-
-- Dynamic ODBC (default): `npm run build:rust`
-- Static ODBC (Linux and MacOS only): `npm run build:rust -- --features odbc-static`
-
-Windows comes with ODBC pre-installed; SQLPage cannot statically link to the unixODBC driver manager on windows.
-
-## Code Style and Linting
-
-### Rust
-
-- Use `cargo fmt --all` to format your Rust code
-- Run `cargo clippy` to catch common mistakes and improve code quality
-- All code must pass the following checks:
+For Rust changes:
 
 ```bash
-cargo fmt --all -- --check
+cargo fmt --all
 cargo clippy --all-targets --all-features -- -D warnings
-```
-
-### Frontend
-
-We use Biome for linting and formatting of the frontend code, and TypeScript
-to typecheck it.
-
-```bash
-npm install # once
-npm run format # apply formatting
-npm test # the check CI runs: biome, typecheck, and the frontend unit tests
-```
-
-`npm test` checks the entire frontend codebase (html, css, js, ts).
-Biome also rejects promise-valued conditions and synchronous callbacks that discard
-promises (`noMisusedPromises`), awaiting synchronous values (`useAwaitThenable`),
-and runtime import cycles (`noImportCycles`). Type-only imports may form cycles.
-Keep async Playwright assertions and actions awaited or returned;
-`noPlaywrightMissingAwait` checks these even when TypeScript inference cannot
-follow the shared fixture's types. The promise and Playwright rules are in
-Biome's nursery group, so review their diagnostics when upgrading Biome.
-
-## Testing
-
-### Rust Tests
-
-Run the backend tests:
-
-```bash
 cargo test
 ```
 
-By default, the tests are run against an SQLite in-memory database.
-
-If you want to run them against another database,
-start a database server with `docker compose up database_name` (mssql, mysql, mariadb, or postgres)
-and run the tests with the `DATABASE_URL` environment variable pointing to the database:
+For frontend changes:
 
 ```bash
-docker compose up mssql # or mysql, mariadb, postgres
-export DATABASE_URL=mssql://root:Password123!@localhost/sqlpage
-cargo test
+npm run format
+npm test
+npm run build
 ```
 
-Use `common::response_for(path)` for ordinary integration requests and
-`common::response_with(path, config)` for custom configuration. Custom requests use
-`common::response_from(request)`; tests sharing database or cache state use `common::send_request`.
-These helpers use the production `create_app` routes and middleware through an Actix test service,
-whose destructor drains its request pool.
-Keep `#[actix_web::test]`; standalone `TestRequest::to_srv_request()` retains application state.
-When testing Oracle locally, use `cargo test -- --test-threads=2` to avoid overwhelming the listener.
-
-### End-to-End Tests
-
-We use Playwright for end-to-end testing of dynamic frontend features.
-Tests are located in [`tests/end-to-end/`](./tests/end-to-end/). Key areas covered include:
-
-Component tests use deterministic SQL applications under `tests/end-to-end/fixtures/<suite>/`.
-Each suite contains an `index.sql` page and a `test.ts` file. Import `test` and `expect` from
-`../../fixture`; the shared fixture opens the matching SQL page before every test and waits for
-all SQLPage components to initialize. Prefer role, label, and text locators over CSS selectors
-when the assertion does not specifically concern generated markup.
-
-Keep official-site smoke and integration tests in root-level `*.spec.ts` files. Component behavior
-tests should render real components through their SQL fixture; do not inject component markup or
-invoke SQLPage's JavaScript initialization functions directly. Parameterized fixtures may accept
-request variables when several tests need the same component with different data.
-
-#### Run the tests
+Keep formatting scoped to changed files. `npm test` checks formatting, lint,
+types, and frontend unit tests. Dynamic frontend changes also need Playwright:
 
 ```bash
-npm install
 cd tests/end-to-end
-npx playwright install chromium
-npm run test
+npx playwright install --with-deps --only-shell chromium
+npm test
 ```
 
-Playwright starts both servers itself on a free port. Set `SQLPAGE_BINARY` to run the servers from an already compiled binary instead of `cargo run`.
+Playwright starts its servers on free ports. Set `SQLPAGE_BINARY` to use an already
+built executable. Component suites use `fixtures/<suite>/{index.sql,test.ts}` and
+import the shared `fixture.ts` harness; root-level `*.spec.ts` files cover the
+official site. For examples with `test.hurl`, run
+`scripts/test-examples-hurl.sh '<example-path>'` from the repository root.
 
-## Documentation
+Integration tests use the shared request helpers in [tests/common](./tests/common/mod.rs)
+to exercise production routes and middleware and drain request pools.
 
-### Component Documentation
-
-When adding new components, comprehensive documentation is required. Example from a component documentation:
-
-```sql
-INSERT INTO component(name, icon, description, introduced_in_version) VALUES
-    ('component_name', 'icon_name', 'Description of the component', 'version');
-
--- Document all parameters
-INSERT INTO parameter(component, name, description, type, top_level, optional)
-VALUES ('component_name', 'param_name', 'param_description', 'TEXT|BOOLEAN|INTEGER|JSON|ICON|COLOR|HTML|REAL|TIMESTAMP|URL', false, true);
-
--- Use description_md instead of description when the text contains markdown
-INSERT INTO parameter(component, name, description_md, type, top_level, optional)
-VALUES ('component_name', 'other_param', 'Set to `true` to see [the docs](/documentation.sql).', 'BOOLEAN', true, true);
-
--- Include usage examples
-INSERT INTO example(component, description, properties) VALUES
-    ('component_name', 'Example description in markdown', JSON('[
-{"component": "new_component_name", "top_level_property_1": "value1", "top_level_property_2": "value2"},
-{"row_level_property_1": "value1", "row_level_property_2": "value2"}
-]'));
-```
-
-Component documentation is stored in [`./examples/official-site/sqlpage/migrations/`](./examples/official-site/sqlpage/migrations/).
-
-If you are editing an existing component, edit the existing sql documentation file directly.
-If you are adding a new component, add a new sql file in the folder, and add the appropriate insert statements above.
-
-### SQLPage Function Documentation
-
-When adding new SQLPage functions, document them using a SQL migrations. Example structure:
-
-```sql
--- Function Definition
-INSERT INTO sqlpage_functions (
-    "name",
-    "introduced_in_version",
-    "icon",
-    "description_md"
-)
-VALUES (
-    'your_function_name',
-    '1.0.0',
-    'function-icon-name',
-    'Description of what the function does.
-
-### Example
-
-    select ''text'' as component, sqlpage.your_function_name(''parameter'') as result;
-
-Additional markdown documentation, usage notes, and examples go here.
-');
-
--- Function Parameters
-INSERT INTO sqlpage_function_parameters (
-    "function",
-    "index",
-    "name",
-    "description_md",
-    "type"
-)
-VALUES (
-    'your_function_name',
-    1,
-    'parameter_name',
-    'Description of what this parameter does and how to use it.',
-    'TEXT|BOOLEAN|INTEGER|JSON'
-);
-```
-
-Key elements to include in function documentation:
-
-- Clear description of the function's purpose
-- Version number where the function was introduced
-- Appropriate icon
-- Markdown-formatted documentation with examples
-- All parameters documented with clear descriptions and types
-- Security considerations if applicable
-- Example usage scenarios
-
-## Pull Request Process
-
-1. Create a new branch for your feature/fix:
+Rust tests default to in-memory SQLite; `DATABASE_URL` selects another database.
+For example:
 
 ```bash
-git checkout -b feature/your-feature-name
+docker compose up --wait mssql
+DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test
 ```
 
-2. Make your changes, ensuring:
+Use the [CI matrix](./.github/workflows/ci.yml) for supported backends, connection
+strings, and driver setup. On Linux and macOS, `cargo test --features odbc-static`
+matches CI's driver-manager linking. Oracle and DuckDB need host ODBC drivers even
+when the database runs in a container. For local Oracle runs, add
+`-- --test-threads=2` to avoid overwhelming the listener. Check affected matrix results for SQL
+execution changes; SQLite alone cannot establish portability.
 
-- All tests pass
-- Code is properly formatted
-- New features are documented
-- tests cover new functionality
-- `CHANGELOG.md` has an entry for any user-visible change
+## Submitting a change
 
-3. Push your changes and create a Pull Request
+Follow nearby code and tests, add regression coverage, and describe the resulting
+behavior and validation in the pull request. Keep changes and formatting focused.
+Architectural constraints and documentation maintenance rules are in
+[AGENTS.md](./AGENTS.md).
 
-4. CI Checks
-   Our CI pipeline will automatically:
-   - Run Rust formatting and clippy checks
-   - Execute all tests across multiple platforms (Linux, Windows)
-   - Build Docker images for multiple architectures
-   - Run frontend linting, typechecking and unit tests (`npm test`)
-   - Test against multiple databases (SQLite, PostgreSQL, MySQL, MSSQL, Oracle, and ODBC)
-
-## Release Process
-
-Releases are automated when pushing tags that match the pattern `v*` (e.g., `v1.0.0`). The CI pipeline will:
-
-- Build and test the code
-- Create Docker images for multiple architectures
-- Push images to Docker Hub
-- Create GitHub releases
-
-## Questions?
-
-If you have any questions, feel free to open an issue or discussion on GitHub.
+User documentation lives in [the official-site SQL pages and migrations](./examples/official-site/).
+Edit existing documentation in place: deployment recreates the site database.
+Use nearby entries as examples rather than copying schemas into this guide. Update
+[configuration.md](./configuration.md) for configuration changes and
+[CHANGELOG.md](./CHANGELOG.md) for user-visible changes in an unreleased version.
