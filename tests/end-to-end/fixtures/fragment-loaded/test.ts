@@ -8,7 +8,8 @@ const announceDocument = (page: Page) =>
 
 async function trackHandlers(page: Page, selector: string) {
   await page.locator(selector).evaluate((element) => {
-    const form = element as HTMLFormElement;
+    if (!(element instanceof HTMLFormElement)) throw new Error("Missing form");
+    const form = element;
     form.dataset.submissions = "0";
     form.submit = () => {
       form.dataset.submissions = String(Number(form.dataset.submissions) + 1);

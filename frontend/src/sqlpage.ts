@@ -1,26 +1,17 @@
 import { bootstrap as bundled_bootstrap } from "@tabler/core";
 import type * as Leaflet from "leaflet";
-import {
-  add_init_fn,
-  type InitRoot,
-  type InitScript,
-  select_all,
-} from "./init.ts";
+import { add_init_fn, type InitRoot, select_all } from "./init.ts";
 
 // A page may load its own Bootstrap; prefer it over the bundled copy.
 const page_bootstrap = () => window.bootstrap ?? bundled_bootstrap;
 
-/**
- * Bootstrap declares getOrCreateInstance on the base class, which returns a
- * BaseComponent and so loses show().
- */
-type ToastWidget = InstanceType<typeof bundled_bootstrap.Toast>;
-type ModalWidget = InstanceType<typeof bundled_bootstrap.Modal>;
-
-const nonce = (document.currentScript as HTMLScriptElement).nonce;
+const nonce =
+  document.currentScript instanceof HTMLScriptElement
+    ? document.currentScript.nonce
+    : "";
 
 function sqlpage_card(root: InitRoot) {
-  const cards = select_all<HTMLElement>(root, "[data-pre-init=card]");
+  const cards = select_all(root, "[data-pre-init=card]", HTMLElement);
   for (const c of cards) {
     c.removeAttribute("data-pre-init");
     if (!c.dataset.embed) continue;
@@ -180,7 +171,7 @@ function setup_sort_behavior(
 }
 
 function sqlpage_table(root: InitRoot) {
-  const tables = select_all<HTMLElement>(root, "[data-pre-init=table]");
+  const tables = select_all(root, "[data-pre-init=table]", HTMLElement);
   for (const r of tables) {
     r.removeAttribute("data-pre-init");
     try {
@@ -205,7 +196,7 @@ let is_leaflet_loaded = false;
 const pending_maps = new Set<HTMLElement>();
 
 function sqlpage_map(root: InitRoot) {
-  const maps = select_all<HTMLElement>(root, "[data-pre-init=map]");
+  const maps = select_all(root, "[data-pre-init=map]", HTMLElement);
   const first_map = maps[0];
   if (!is_leaflet_loaded) {
     for (const map of maps) pending_maps.add(map);
@@ -262,7 +253,7 @@ function sqlpage_map(root: InitRoot) {
   }
   function onLeafletLoad(map_root: InitRoot) {
     is_leaflet_loaded = true;
-    const maps = select_all<HTMLElement>(map_root, "[data-pre-init=map]");
+    const maps = select_all(map_root, "[data-pre-init=map]", HTMLElement);
     for (const m of maps) {
       const tile_source = m.dataset.tile_source;
       const maxZoom = Number(m.dataset.max_zoom);
@@ -371,9 +362,10 @@ const initialized_file_inputs = new WeakSet<HTMLInputElement>();
 const initialized_auto_submit_forms = new WeakSet<HTMLFormElement>();
 
 function sqlpage_form(root: InitRoot) {
-  const file_inputs = select_all<HTMLInputElement>(
+  const file_inputs = select_all(
     root,
     "input[type=file][data-max-size]",
+    HTMLInputElement,
   );
   for (const input of file_inputs) {
     if (initialized_file_inputs.has(input)) continue;
@@ -393,9 +385,10 @@ function sqlpage_form(root: InitRoot) {
     });
   }
 
-  const auto_submit_forms = select_all<HTMLFormElement>(
+  const auto_submit_forms = select_all(
     root,
     "form[data-auto-submit]",
+    HTMLFormElement,
   );
   for (const form of auto_submit_forms) {
     if (initialized_auto_submit_forms.has(form)) continue;
@@ -411,9 +404,9 @@ function get_tabler_color(name: string) {
 }
 
 function load_scripts(root: InitRoot) {
-  const addjs = select_all<HTMLElement>(root, "[data-sqlpage-js]");
+  const addjs = select_all(root, "[data-sqlpage-js]", HTMLElement);
   const existing_scripts = new Map(
-    [...document.querySelectorAll<InitScript>("script")].map((s) => [s.src, s]),
+    [...document.querySelectorAll("script")].map((s) => [s.src, s]),
   );
   for (const el of addjs) {
     if (!el.dataset.sqlpageJs) continue;
@@ -423,7 +416,7 @@ function load_scripts(root: InitRoot) {
       existing.sqlpage_init_roots?.add(el);
       continue;
     }
-    const script: InitScript = document.createElement("script");
+    const script = document.createElement("script");
     script.sqlpage_init_roots = new Set([el]);
     existing_scripts.set(js, script);
     script.src = js;
@@ -446,7 +439,10 @@ function open_toasts_for_hash(toasts: Iterable<HTMLElement>) {
   if (!hash) return;
   for (const toast of toasts) {
     if (normalize_hash(toast.dataset.toastTrigger) === hash) {
-      (Toast.getOrCreateInstance(toast) as ToastWidget).show();
+      const instance = Toast.getOrCreateInstance(toast);
+      if (!(instance instanceof Toast))
+        throw new Error("Invalid toast instance");
+      instance.show();
     }
   }
 }
@@ -470,7 +466,7 @@ function sqlpage_toast(root: InitRoot) {
   const Toast = page_bootstrap().Toast;
 
   const initialized_toasts: HTMLElement[] = [];
-  const toasts = select_all<HTMLElement>(root, '[data-pre-init="toast"]');
+  const toasts = select_all(root, '[data-pre-init="toast"]', HTMLElement);
   for (const toast of toasts) {
     const source_container = toast.parentElement;
     if (!source_container) continue;
@@ -488,7 +484,8 @@ function sqlpage_toast(root: InitRoot) {
     }
 
     toast.removeAttribute("data-pre-init");
-    const instance = Toast.getOrCreateInstance(toast) as ToastWidget;
+    const instance = Toast.getOrCreateInstance(toast);
+    if (!(instance instanceof Toast)) throw new Error("Invalid toast instance");
     initialized_toasts.push(toast);
     toast.addEventListener("hidden.bs.toast", () => {
       restore_focus_after_toast(toast, container);
@@ -523,7 +520,7 @@ function sqlpage_modal(root: InitRoot) {
   // .page instead of the viewport. The modal then scrolls with the page
   // content and ends up behind its own backdrop, so its buttons cannot be
   // clicked. Moving modals to <body> keeps them viewport-fixed.
-  for (const modal of select_all<HTMLElement>(root, "body .page .modal")) {
+  for (const modal of select_all(root, "body .page .modal", HTMLElement)) {
     document.body.appendChild(modal);
     // The modal leaves the original root; announce its subtree separately so
     // every initializer, including later-loaded bundles, can still see it.
@@ -546,26 +543,15 @@ window.addEventListener("hashchange", () =>
 
 function init_bootstrap_components(root: InitRoot) {
   const bootstrap = page_bootstrap();
-  for (const el of select_all<HTMLElement>(
-    root,
-    '[data-bs-toggle="tooltip"]',
-  )) {
-    bootstrap.Tooltip.getOrCreateInstance(el);
-  }
-  for (const el of select_all<HTMLElement>(
-    root,
-    '[data-bs-toggle="popover"]',
-  )) {
-    bootstrap.Popover.getOrCreateInstance(el);
-  }
-  for (const el of select_all<HTMLElement>(
-    root,
-    '[data-bs-toggle="dropdown"]',
-  )) {
-    bootstrap.Dropdown.getOrCreateInstance(el);
-  }
-  for (const el of select_all<HTMLElement>(root, '[data-bs-ride="carousel"]')) {
-    bootstrap.Carousel.getOrCreateInstance(el);
+  for (const [selector, Component] of [
+    ['[data-bs-toggle="tooltip"]', bootstrap.Tooltip],
+    ['[data-bs-toggle="popover"]', bootstrap.Popover],
+    ['[data-bs-toggle="dropdown"]', bootstrap.Dropdown],
+    ['[data-bs-ride="carousel"]', bootstrap.Carousel],
+  ] as const) {
+    for (const el of select_all(root, selector, HTMLElement)) {
+      Component.getOrCreateInstance(el);
+    }
   }
 }
 
@@ -576,9 +562,10 @@ function open_modal_for_hash() {
   if (!hash) return;
   const modal = document.getElementById(hash);
   if (!modal?.classList.contains("modal")) return;
-  const bootstrap_modal = page_bootstrap().Modal.getOrCreateInstance(
-    modal,
-  ) as ModalWidget;
+  const Modal = page_bootstrap().Modal;
+  const bootstrap_modal = Modal.getOrCreateInstance(modal);
+  if (!(bootstrap_modal instanceof Modal))
+    throw new Error("Invalid modal instance");
   bootstrap_modal.show();
   modal.addEventListener(
     "hidden.bs.modal",

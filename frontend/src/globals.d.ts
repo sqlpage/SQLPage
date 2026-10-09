@@ -12,3 +12,8 @@ interface HTMLElement {
   /** Attached by sqlpage_select_dropdown to every select it takes over. */
   tomselect?: import("tom-select/popular").default;
 }
+
+interface HTMLScriptElement {
+  /** Roots queued while an independently bundled initializer loads. */
+  sqlpage_init_roots?: Set<import("./init.ts").InitRoot>;
+}

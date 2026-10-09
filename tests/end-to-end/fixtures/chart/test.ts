@@ -480,10 +480,13 @@ test("gives the tooltip title the color of the tooltip around it", async ({
 
   const title = page.locator("#test-chart .apexcharts-tooltip-title");
   await expect(title).toHaveText("Tue");
-  const colors = await title.evaluate((el) => ({
-    title: getComputedStyle(el).color,
-    tooltip: getComputedStyle(el.parentElement as HTMLElement).color,
-  }));
+  const colors = await title.evaluate((el) => {
+    if (!el.parentElement) throw new Error("Missing tooltip");
+    return {
+      title: getComputedStyle(el).color,
+      tooltip: getComputedStyle(el.parentElement).color,
+    };
+  });
 
   expect(colors.title).toBe(colors.tooltip);
 });
