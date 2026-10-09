@@ -52,6 +52,9 @@ import the shared `fixture.ts` harness; root-level `*.spec.ts` files cover the
 official site. For examples with `test.hurl`, run
 `scripts/test-examples-hurl.sh '<example-path>'` from the repository root.
 
+Integration tests use the shared request helpers in [tests/common](./tests/common/mod.rs)
+to exercise production routes and middleware and drain request pools.
+
 Rust tests default to in-memory SQLite; `DATABASE_URL` selects another database.
 For example:
 
@@ -63,7 +66,8 @@ DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test
 Use the [CI matrix](./.github/workflows/ci.yml) for supported backends, connection
 strings, and driver setup. On Linux and macOS, `cargo test --features odbc-static`
 matches CI's driver-manager linking. Oracle and DuckDB need host ODBC drivers even
-when the database runs in a container. Check affected matrix results for SQL
+when the database runs in a container. For local Oracle runs, add
+`-- --test-threads=2` to avoid overwhelming the listener. Check affected matrix results for SQL
 execution changes; SQLite alone cannot establish portability.
 
 ## Submitting a change
