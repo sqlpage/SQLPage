@@ -88,7 +88,14 @@ pattern for the relevant area.
 - Document other user-visible behavior—SQL syntax extensions, variables, control flow, errors, uploads,
   rendering, HTTP endpoints, performance, or deployment—in the corresponding official-site SQL page or
   migration. Follow nearby migrations and keep examples executable and database-portable where possible.
-- Update `CHANGELOG.md` for user-visible changes only (new features, bug fixes, breaking changes, deprecations). Keep the entry concise and not too technical, focusing on the impact for users. Don't update the entry for a version that was already released (tagged).
+- Include a change in `CHANGELOG.md` only when it has a significant impact on users. Omit internal
+  refactors, maintenance work, and insignificant performance changes.
+  Write for nontechnical users who know nothing about SQLPage internals: clearly explain who is
+  affected, what they will experience, and how that differs from before. Use plain language and keep
+  entries concise; leave implementation details and internal terminology in the pull request.
+  Back performance claims with measurements showing a noticeable improvement, and describe the
+  conditions under which users benefit without implying that every site will become faster.
+  Don't update the entry for a version that was already released (tagged).
 
 ## Validation
 
