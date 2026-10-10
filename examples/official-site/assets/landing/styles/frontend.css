@@ -1,4 +1,4 @@
-/* The four frontend views share one footprint, so switching never moves the page. */
+/* Four frontend views pair concise copy with diagrams and deployment links. */
 .deployment-section {
   --section-color: #2bc5cf;
   /* Match the solid wave at the edge, then retain the section's diagonal gradient. */
@@ -439,22 +439,14 @@
     font-size: 10px;
   }
   .frontend-panels {
-    display: grid;
-    padding: 25px 20px;
+    padding: 24px 20px;
     border-radius: 16px;
   }
   .frontend-panel {
-    grid-area: 1 / 1;
     min-height: 0;
     align-content: start;
-  }
-  /* All views size the shared grid, keeping the page still when a tab changes. */
-  .frontend-panel[hidden] {
-    /* biome-ignore lint/complexity/noImportantStyles: override the shared native hidden rule only for grid sizing. */
-    display: grid !important;
-    visibility: hidden;
-    pointer-events: none;
-    animation: none;
+    align-items: start;
+    gap: 20px;
   }
   .frontend-copy h3 {
     font-size: 29px;
@@ -492,6 +484,9 @@
     grid-column: 1 / -1;
     font-size: 18px;
   }
+  .customize-diagram .feature-result br {
+    display: none;
+  }
   .feature-node {
     font-size: 14px;
     padding: 12px;
@@ -500,8 +495,16 @@
     font-size: 11px;
   }
   .ship-diagram {
-    flex-wrap: wrap;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .ship-diagram > .feature-node,
+  .ship-diagram > b {
+    justify-self: center;
+  }
+  .ship-diagram > b {
+    rotate: 90deg;
   }
   .ship-options {
     width: 100%;

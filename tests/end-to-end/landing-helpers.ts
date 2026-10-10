@@ -29,3 +29,22 @@ export async function settleLandingPreview(page: Page) {
     .toBeLessThan(1);
   await page.evaluate(() => window.scrollTo(0, 0));
 }
+
+/** Wait for the real scroll event before advancing controlled animation frames. */
+export async function scrollLanding(page: Page, top: number) {
+  await page.evaluate(
+    (top) =>
+      new Promise<void>((resolve) => {
+        const done = () => {
+          window.removeEventListener("scroll", done);
+          resolve();
+        };
+        window.addEventListener("scroll", done, { once: true });
+        const before = scrollY;
+        window.scrollTo({ top, behavior: "instant" });
+        if (scrollY === before) done();
+      }),
+    top,
+  );
+  await page.clock.runFor(32);
+}

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { settleLandingPreview } from "./landing-helpers.ts";
+import { scrollLanding, settleLandingPreview } from "./landing-helpers.ts";
 
 for (const viewport of [
   { width: 1280, height: 720 },
@@ -30,12 +30,14 @@ for (const viewport of [
 
     // The pinned introduction fades around a full-screen sculpture before docking.
     const initialSize = (await page.locator("canvas").boundingBox())!.height;
-    await page.evaluate(() => {
-      const hero = document.querySelector<HTMLElement>(".experience")!;
-      const viewport = hero.querySelector<HTMLElement>(".viewport")!;
-      window.scrollTo(0, (hero.offsetHeight - viewport.offsetHeight) * 0.76);
-    });
-    await page.clock.runFor(64);
+    await scrollLanding(
+      page,
+      await page.evaluate(() => {
+        const hero = document.querySelector<HTMLElement>(".experience")!;
+        const viewport = hero.querySelector<HTMLElement>(".viewport")!;
+        return (hero.offsetHeight - viewport.offsetHeight) * 0.76;
+      }),
+    );
     await expect
       .poll(async () => (await page.locator("canvas").boundingBox())!.height)
       .toBeGreaterThan(initialSize * 1.2);
@@ -51,10 +53,7 @@ for (const viewport of [
     // After the opening flight, each section holds a fixed page position and size while
     // scrolling rotates the sculpture. Handoffs hide relocation between anchors.
     async function sample(scroll: number) {
-      await page.evaluate((target) => {
-        window.scrollTo(0, Math.round(target));
-      }, scroll);
-      await page.clock.runFor(64);
+      await scrollLanding(page, Math.round(scroll));
       await expect
         .poll(() =>
           page
@@ -396,8 +395,6 @@ test("landing page: live components, deployment and mobile navigation", async ({
   for (const width of [320, 390, 768, 827, 1000]) {
     await page.setViewportSize({ width, height: 844 });
     await page.locator(".frontend-tabs").scrollIntoViewIfNeeded();
-    const panelHeight = (await page.locator(".frontend-panels").boundingBox())!
-      .height;
     for (const name of [
       "Make it yours",
       "Ship it anywhere",
@@ -418,11 +415,6 @@ test("landing page: live components, deployment and mobile navigation", async ({
           });
         }),
       ).toBe(true);
-      if (width === 390) {
-        expect(
-          (await page.locator(".frontend-panels").boundingBox())!.height,
-        ).toBeCloseTo(panelHeight, 0);
-      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

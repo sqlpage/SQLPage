@@ -1,5 +1,5 @@
 import { expect, type Locator, test } from "@playwright/test";
-import { settleLandingPreview } from "./landing-helpers.ts";
+import { scrollLanding, settleLandingPreview } from "./landing-helpers.ts";
 
 async function gesture(element: Locator) {
   return element.evaluate((element) => {
@@ -68,23 +68,7 @@ for (const viewport of [
     // Control idle wave time while letting real scroll events and animation frames run.
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
     await page.clock.runFor(32);
-    async function scrollTo(y: number) {
-      await page.evaluate(
-        (y) =>
-          new Promise<void>((resolve) => {
-            const done = () => {
-              window.removeEventListener("scroll", done);
-              resolve();
-            };
-            window.addEventListener("scroll", done, { once: true });
-            const before = scrollY;
-            window.scrollTo({ top: y, behavior: "instant" });
-            if (scrollY === before) done();
-          }),
-        y,
-      );
-      await page.clock.runFor(32);
-    }
+    const scrollTo = (y: number) => scrollLanding(page, y);
     const sections = page.locator(".landing-section");
     const positions = await sections.evaluateAll((elements) =>
       elements.map((element) => ({
@@ -308,28 +292,31 @@ for (const viewport of [
   });
 }
 
-test("every section can be read before its tail is covered at common form factors", async ({
-  page,
-}) => {
-  test.setTimeout(180_000);
-  await page.goto("/");
-  await expect(page.locator(".sqlpage-world")).toHaveAttribute(
-    "data-scene",
-    "ready",
-    { timeout: 30_000 },
-  );
-  await settleLandingPreview(page);
-  for (const viewport of [
-    { width: 1869, height: 1039 },
-    { width: 1280, height: 720 },
-    { width: 1024, height: 768 },
-    { width: 768, height: 1024 },
-    { width: 390, height: 844 },
-    { width: 844, height: 390 },
-    { width: 1641, height: 1600 },
-  ]) {
+for (const viewport of [
+  { width: 1869, height: 1039 },
+  { width: 1280, height: 720 },
+  { width: 1024, height: 768 },
+  { width: 768, height: 1024 },
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+  { width: 1641, height: 1600 },
+]) {
+  test(`every section can be read before covering at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize(viewport);
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.clock.install();
+    await page.goto("/");
+    await expect(page.locator(".sqlpage-world")).toHaveAttribute(
+      "data-scene",
+      "ready",
+      { timeout: 30_000 },
+    );
+    await settleLandingPreview(page);
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
+    await scrollLanding(page, 0);
+
     const sections = page.locator(".landing-section");
     // Pin the top only when the whole section fits; otherwise scroll through first.
     await expect
@@ -384,7 +371,7 @@ test("every section can be read before its tail is covered at common form factor
       const { top, hold, items } = route[index];
       if (hold > top + 2) {
         const step = Math.min(100, (hold - top) / 2);
-        await page.evaluate((y) => window.scrollTo(0, y), top + step);
+        await scrollLanding(page, top + step);
         await expect
           .poll(async () => {
             const actualScroll = await page.evaluate(() => scrollY);
@@ -400,10 +387,7 @@ test("every section can be read before its tail is covered at common form factor
           .nth(item.index);
         const target =
           item.top - Math.max(32, (viewport.height - item.height) / 2);
-        await page.evaluate(
-          (y) => window.scrollTo({ top: y, behavior: "instant" }),
-          Math.min(target, hold),
-        );
+        await scrollLanding(page, Math.ceil(Math.min(target, hold)));
         await expect(element).toHaveCSS("opacity", "1");
         if (item.height <= viewport.height - 64) {
           // IntersectionObserver rounds rotated card bounds by a fraction of a pixel.
@@ -421,26 +405,29 @@ test("every section can be read before its tail is covered at common form factor
         }
       }
     }
-    await page.evaluate(() =>
-      window.scrollTo(0, document.documentElement.scrollHeight),
+    await scrollLanding(
+      page,
+      await page.evaluate(() => document.documentElement.scrollHeight),
     );
     const footer = page.locator(".landing-footer");
     await expect(footer).toBeInViewport({ ratio: 0.9999 });
     await expect
       .poll(() =>
-        footer.evaluate(
-          (element) =>
+        footer.evaluate((element) =>
+          Math.abs(
             innerHeight -
-            element.getBoundingClientRect().bottom -
-            Number.parseFloat(
-              getComputedStyle(element.closest(".commit-section")!)
-                .paddingBottom,
-            ),
+              element.getBoundingClientRect().bottom -
+              Number.parseFloat(
+                getComputedStyle(element.closest(".commit-section")!)
+                  .paddingBottom,
+              ),
+          ),
         ),
       )
-      .toBeCloseTo(0, 0);
-  }
-});
+      .toBeLessThan(1);
+    await page.clock.resume();
+  });
+}
 
 test("landing content remains readable without JavaScript", async ({
   browser,

@@ -1,7 +1,7 @@
 # CHANGELOG.md
 
 ## v0.47.0 (unreleased)
-- Improved the homepage on phones with balanced margins, readable cards and diagrams, and larger touch controls.
+- Improved the homepage on phones with balanced margins, compact cards that fit their content, readable diagrams, and larger touch controls.
 - The official homepage now animates the difference between sequential app loading and SQLPage streaming HTML.
 - The homepage sculpture now lets mobile visitors scroll with vertical swipes and rotate with sideways swipes.
 - Smoothed transitions between the official homepage’s live examples, keeping previews and SQL in sync while the next example loads.
