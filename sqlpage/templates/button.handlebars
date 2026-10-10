@@ -1,7 +1,7 @@
 <div class="btn-list mb-2 {{#if justify}}justify-content-{{justify}}{{/if}} {{class}}">
 {{#each_row}}
     {{#if form}}
-    <button type="submit" form="{{form}}" {{#if link}}formaction="{{link}}"{{/if}} 
+    <button type="submit" form="{{form}}" {{#if link}}formaction="{{link}}"{{/if}}
     {{else}}
     <a href="{{link}}"
     {{/if}}
@@ -38,6 +38,11 @@
     {{#if form}}
     </button>
     {{else}}
+        {{~#if badge~}}
+            {{~#with (parse_json badge)~}}
+            <span class="badge ms-2 {{#if color}} bg-{{this.color}} text-{{this.color}}-fg{{/if}}{{#if this.notification}} badge-notification{{/if}}{{#if this.blink}} badge-blink{{/if}}">{{this.title}}</span>
+            {{~/with~}}
+        {{~/if~}}
     </a>
     {{/if}}
 {{/each_row}}
