@@ -1,6 +1,13 @@
 import { expect, type Locator, test } from "@playwright/test";
 import { scrollLanding, settleLandingPreview } from "./landing-helpers.ts";
 
+// These assertions exercise DOM/SVG motion. Renderer behavior has dedicated suites.
+test.beforeEach(async ({ page }) => {
+  await page.route("**/assets/landing/js/scene/database-scene.js", (route) =>
+    route.abort(),
+  );
+});
+
 function requireValue<T>(value: T | null | undefined, label: string): T {
   if (value === null || value === undefined)
     throw new Error(`Missing ${label} in landing-motion test`);
@@ -69,8 +76,8 @@ for (const viewport of [
     await page.clock.install();
     await page.goto("/");
     await expect(page.locator(".sqlpage-world")).toHaveAttribute(
-      "data-scene",
-      "ready",
+      "data-frame-ready",
+      "",
       { timeout: 30_000 },
     );
     await settleLandingPreview(page);
@@ -325,8 +332,8 @@ for (const viewport of [
     await page.clock.install();
     await page.goto("/");
     await expect(page.locator(".sqlpage-world")).toHaveAttribute(
-      "data-scene",
-      "ready",
+      "data-frame-ready",
+      "",
       { timeout: 30_000 },
     );
     await settleLandingPreview(page);
