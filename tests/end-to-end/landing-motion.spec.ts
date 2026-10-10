@@ -410,7 +410,12 @@ for (const viewport of [
         const target =
           item.top - Math.max(32, (viewport.height - item.height) / 2);
         await scrollLanding(page, Math.ceil(Math.min(target, hold)));
-        await expect(element).toHaveCSS("opacity", "1");
+        // Fractional scroll geometry can leave a visually imperceptible easing tail.
+        await expect
+          .poll(() =>
+            element.evaluate((node) => Number(getComputedStyle(node).opacity)),
+          )
+          .toBeGreaterThan(0.9999);
         if (item.height <= viewport.height - 64) {
           // IntersectionObserver rounds rotated card bounds by a fraction of a pixel.
           await expect(element).toBeInViewport({ ratio: 0.9999 });

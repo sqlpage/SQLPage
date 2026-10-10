@@ -27,7 +27,24 @@ export async function settleLandingPreview(page: Page) {
       ),
     )
     .toBeLessThan(1);
-  await page.evaluate(() => window.scrollTo(0, 0));
+  // Native panel resizing must finish before taking authored geometry snapshots.
+  await page
+    .locator("#demo-panel")
+    .evaluate((panel) =>
+      Promise.all(
+        panel
+          .getAnimations()
+          .map((animation) => animation.finished.catch(() => {})),
+      ),
+    );
+  // Iframe sizing queues parent ResizeObservers; settle them before geometry snapshots.
+  await page.evaluate(async () => {
+    window.scrollTo(0, 0);
+    await document.fonts.ready;
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+  });
 }
 
 /** Wait for the real scroll event before advancing controlled animation frames. */
