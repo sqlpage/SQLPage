@@ -347,3 +347,21 @@ form.mt-3 {
     font-size: 10px;
   }
 }
+
+/* Avoid iOS focus zoom and keep all embedded demo controls comfortable to tap. */
+@media (max-width: 600px) {
+  input.form-control,
+  #landing-profile .form-control {
+    /* biome-ignore lint/complexity/noImportantStyles: native search uses an important font-size utility. */
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+  #landing-profile .btn,
+  .component-catalog a {
+    min-height: 44px;
+  }
+  .component-catalog a {
+    overflow-wrap: anywhere;
+    font-size: 11px;
+  }
+}

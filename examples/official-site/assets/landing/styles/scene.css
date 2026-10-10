@@ -1,11 +1,10 @@
 .sqlpage-world {
+  position: relative;
   overflow-x: clip;
   background: var(--ink);
 }
 .experience {
   position: relative;
-  height: 245svh;
-  min-height: 1640px;
   --composition-width: min(100vw, 195svh);
   --composition-left: max(0px, calc((100vw - 195svh) / 2));
   --progress: 0;
@@ -13,15 +12,34 @@
   --intro-shift: 0px;
   --ribbon-opacity: 1;
 }
+/* Scene loading, reduced motion, and the ordinary first frame share one height. */
+.sqlpage-world[data-scene] .experience {
+  height: var(--stage-height, 100svh);
+  min-height: 560px;
+}
 .viewport {
   height: 100svh;
   min-height: 560px;
-  position: sticky;
+  position: relative;
   top: 0;
   overflow: hidden;
   isolation: isolate;
   background:
     radial-gradient(ellipse at 79% 26%, #183d4755, transparent 57%), #080e11;
+}
+/* One sculpture follows the authored section anchors. */
+.scene-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.sqlpage-world:not([data-enhanced]) .scene-layer {
+  position: absolute;
+  height: 100svh;
+}
+.scene-layer .model-interaction[data-ready="true"] {
+  pointer-events: auto;
 }
 .scene-canvas {
   position: absolute;
@@ -78,11 +96,19 @@
 }
 
 /* The landing page remains usable without a working WebGL scene. */
-.sqlpage-world:not([data-scene="ready"]) .experience {
-  height: var(--stage-height, 100svh);
-  min-height: 560px;
-}
 .sqlpage-world:not([data-scene="ready"]) .viewport {
-  position: relative;
   top: 0;
+}
+
+/* A pinned opening gives the sculpture time to leave the typography and breathe. */
+.sqlpage-world[data-scene="ready"][data-motion="on"] .experience {
+  height: calc(var(--stage-height, 100svh) + 165svh);
+}
+.sqlpage-world[data-scene="ready"][data-motion="on"] .viewport {
+  position: sticky;
+  top: var(--sticky-top, 0px);
+}
+.site-header,
+.viewport-footer {
+  opacity: var(--intro-opacity);
 }

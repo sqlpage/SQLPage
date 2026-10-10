@@ -5,7 +5,8 @@
   top: 25%;
   height: 55%;
   z-index: 8;
-  touch-action: none;
+  /* Vertical swipes scroll; a sideways start rotates. Keep native page zoom. */
+  touch-action: pan-y pinch-zoom;
   cursor: grab;
   border-radius: 35%;
   outline-offset: -10px;

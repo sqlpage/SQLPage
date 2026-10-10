@@ -35,12 +35,9 @@ export function createSculptureControls({
   let angularVelocity = 0,
     lastMove = 0;
   const pointers = new Map();
-  let pinchStart = 0,
-    pinchZoom = 0;
-  const pinchDistance = () => {
-    const p = [...pointers.values()];
-    return p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0;
-  };
+  let touchGesture = "pending";
+  let touchStartX = 0,
+    touchStartY = 0;
   const pointInParent = (x, y, out) => {
     out.copy(trackballVector(x, y, hitArea.getBoundingClientRect()));
     // Screen-space gestures are transformed into the rotating parent's coordinates.
@@ -56,25 +53,30 @@ export function createSculptureControls({
     hitArea.setPointerCapture(event.pointerId);
     angularVelocity = 0;
     lastMove = performance.now();
-    if (pointers.size === 1)
+    if (pointers.size === 1) {
       pointInParent(event.clientX, event.clientY, previousPoint);
-    if (pointers.size === 2) {
-      pinchStart = pinchDistance();
-      pinchZoom = userZoom;
+      touchStartX = event.clientX;
+      touchStartY = event.clientY;
+      touchGesture = "pending";
+    } else {
+      // Multi-touch belongs to native page zoom, never the trackball.
+      touchGesture = "scroll";
     }
   };
   const onPointerMove = (event) => {
     if (!pointers.has(event.pointerId)) return;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    if (pointers.size > 1) {
-      const distance = pinchDistance();
-      if (pinchStart > 0 && distance > 0)
-        userZoom = clamp(
-          pinchZoom + Math.log(pinchStart / distance),
-          -0.42,
-          0.4,
-        );
-      return;
+    if (pointers.size > 1) return;
+    if (event.pointerType === "touch") {
+      if (touchGesture === "pending") {
+        const dx = Math.abs(event.clientX - touchStartX);
+        const dy = Math.abs(event.clientY - touchStartY);
+        // Leave taps and vertical intent alone. The browser takes over vertical
+        // scrolling with pointercancel; a sideways start unlocks free rotation.
+        if (Math.max(dx, dy) < 10) return;
+        touchGesture = dx > dy * 1.25 ? "rotate" : "scroll";
+      }
+      if (touchGesture !== "rotate") return;
     }
     pointInParent(event.clientX, event.clientY, currentPoint);
     deltaQuaternion.setFromUnitVectors(previousPoint, currentPoint);
@@ -99,10 +101,10 @@ export function createSculptureControls({
     lastMove = now;
   };
   const onPointerUp = (event) => {
-    pointers.delete(event.pointerId);
+    if (!pointers.delete(event.pointerId)) return;
     if (hitArea.hasPointerCapture(event.pointerId))
       hitArea.releasePointerCapture(event.pointerId);
-    if (performance.now() - lastMove > 100 || event.type === "pointercancel")
+    if (performance.now() - lastMove > 100 || event.type !== "pointerup")
       angularVelocity = 0;
     if (pointers.size === 1) {
       const p = [...pointers.values()][0];
@@ -167,6 +169,7 @@ export function createSculptureControls({
   hitArea.addEventListener("pointermove", onPointerMove);
   hitArea.addEventListener("pointerup", onPointerUp);
   hitArea.addEventListener("pointercancel", onPointerUp);
+  hitArea.addEventListener("lostpointercapture", onPointerUp);
   hitArea.addEventListener("keydown", onKey);
   window.addEventListener("pointermove", onParallax, { passive: true });
   document.documentElement.addEventListener("pointerleave", leave);
@@ -175,6 +178,7 @@ export function createSculptureControls({
     hitArea.removeEventListener("pointermove", onPointerMove);
     hitArea.removeEventListener("pointerup", onPointerUp);
     hitArea.removeEventListener("pointercancel", onPointerUp);
+    hitArea.removeEventListener("lostpointercapture", onPointerUp);
     hitArea.removeEventListener("keydown", onKey);
     window.removeEventListener("pointermove", onParallax);
     document.documentElement.removeEventListener("pointerleave", leave);

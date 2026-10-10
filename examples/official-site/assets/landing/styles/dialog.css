@@ -37,6 +37,8 @@
   color: var(--cyan);
 }
 .dialog-close {
+  min-width: 44px;
+  min-height: 44px;
   position: absolute;
   right: 16px;
   top: 16px;

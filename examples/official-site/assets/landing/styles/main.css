@@ -1,4 +1,4 @@
-/* Keep cascade order explicit. Feature styles precede responsive overrides. */
+/* Opening styles and their responsive overrides precede the section styles. */
 @import url("./base.css");
 @import url("./icons.css");
 @import url("./scene.css");
@@ -8,8 +8,7 @@
 @import url("./ribbon.css");
 @import url("./dialog.css");
 @import url("./responsive.css");
-
 @import url("./sections.css");
-
 @import url("./waves.css");
 @import url("./frontend.css");
+@import url("./section-motion.css");

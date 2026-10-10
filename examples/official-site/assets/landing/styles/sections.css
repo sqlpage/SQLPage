@@ -1,37 +1,3 @@
-.sqlpage-world {
-  position: relative;
-}
-.sqlpage-world:not([data-enhanced]) .scene-layer {
-  position: absolute;
-  height: 100svh;
-}
-/* The shared sculpture is positioned by section anchors, never duplicated. */
-.scene-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  pointer-events: none;
-}
-.scene-layer .scene-canvas {
-  opacity: 0;
-}
-[data-scene="ready"] .scene-layer .scene-canvas {
-  opacity: 1;
-}
-.scene-layer .scene-preview {
-  position: absolute;
-}
-.scene-layer .model-interaction[data-ready="true"] {
-  pointer-events: auto;
-}
-.experience,
-.sqlpage-world[data-scene="ready"] .experience {
-  height: var(--stage-height, 100svh);
-  min-height: 560px;
-}
-.viewport {
-  position: relative;
-}
 .landing-section {
   --section-color: #080d19;
   position: relative;
@@ -97,6 +63,7 @@
   color: #0b1020;
   padding-bottom: 85px;
   color-scheme: light;
+  overflow-anchor: none;
 }
 .demo-section h2 {
   font-size: clamp(60px, 7.7vw, 106px);
@@ -217,6 +184,9 @@
   height: 28px;
   flex: 0 0 28px;
 }
+.component-picker button > span {
+  min-width: 0;
+}
 .component-picker strong {
   font: bold 18px var(--mono);
   display: block;
@@ -260,15 +230,24 @@
   height: 36px;
   margin-left: 18px;
 }
+.demo-preview {
+  position: relative;
+  height: 280px;
+}
 #demo-panel iframe {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: 280px;
-  transition: height 220ms ease;
+  height: 100%;
   border: 1px solid #2b344c;
   border-radius: 18px;
   background: #0d1224;
   box-shadow: 0 18px 30px #07111d18;
+}
+#demo-panel iframe[aria-hidden="true"] {
+  visibility: hidden;
+  pointer-events: none;
 }
 .code-panel {
   background: #080e1b;
@@ -540,6 +519,13 @@ a.chip:hover {
 }
 .commit-section {
   background: #080d19;
+  display: flex;
+}
+/* Keep the footer at the end of the final cover, even on tall screens. */
+.commit-section .section-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .commit-section h2 {
   color: #2fc7d4;
@@ -570,6 +556,7 @@ a.chip:hover {
   box-shadow: 0 6px 28px #2acddb44;
 }
 .landing-footer {
+  margin-top: auto;
   border-top: 1px solid #202739;
   padding-top: 38px;
   display: flex;
@@ -641,11 +628,11 @@ a.chip:hover {
   .purpose-intro,
   .purpose-grid,
   .database-grid {
-    width: 91%;
-    max-width: 91%;
+    width: 100%;
+    max-width: 100%;
   }
   .landing-section {
-    padding: 65px 6% 65px;
+    padding: 65px clamp(20px, 6vw, 32px);
   }
   .landing-section h2 {
     font-size: clamp(43px, 10.5vw, 63px);
@@ -671,7 +658,11 @@ a.chip:hover {
     overflow-wrap: anywhere;
   }
   .sql-editor-header button {
+    min-height: 44px;
     padding-inline: 12px;
+  }
+  .demo-docs {
+    min-height: 44px;
   }
   .demo-layout {
     grid-template-columns: 1fr;
@@ -679,11 +670,18 @@ a.chip:hover {
   }
   .component-picker {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
   .component-picker button {
+    min-height: 64px;
     padding: 12px 8px;
+  }
+  .component-picker button:last-child {
+    grid-column: 1 / -1;
+  }
+  .component-picker strong {
+    font-size: 13px;
   }
   .component-picker button > svg {
     width: 22px;
@@ -723,28 +721,38 @@ a.chip:hover {
   .yak {
     width: 140px;
   }
+  .segmented {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .segmented button {
+    min-height: 44px;
+    padding: 12px 8px;
+  }
   .benefit-grid {
-    gap: 10px;
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
   .benefit {
-    padding: 16px;
-    border-radius: 10px;
+    padding: 22px;
+    border-radius: 12px;
   }
   .benefit h3 {
-    font-size: 24px;
+    font-size: 27px;
   }
   .benefit p {
-    font-size: 13px;
+    font-size: 15px;
+    line-height: 1.5;
   }
   .benefit .chip {
-    font-size: 9px;
+    font-size: 11px;
   }
   .purpose-section {
     padding-bottom: 115px;
   }
   .databases-section h2 {
-    max-width: 75%;
-    font-size: 43px;
+    max-width: 88%;
+    font-size: clamp(36px, 10vw, 43px);
   }
   .databases-section > .section-inner > p .chip {
     font-size: 9px;
@@ -754,12 +762,18 @@ a.chip:hover {
     margin-top: 60px;
   }
   .database-grid a {
-    font-size: 18px;
+    min-width: 0;
+    min-height: 92px;
+    font-size: clamp(15px, 4vw, 18px);
     padding: 20px 14px;
+    transform: none;
+  }
+  .database-grid a:nth-child(even) {
+    transform: none;
   }
   .commit-section h2 {
-    font-size: 43px;
-    max-width: 80%;
+    font-size: clamp(36px, 10vw, 43px);
+    max-width: 100%;
   }
   .commit-action {
     flex-direction: column;
@@ -768,16 +782,32 @@ a.chip:hover {
     margin: 30px 0 65px;
   }
   .primary-button {
-    font-size: 18px;
-    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+    font-size: 24px;
+    padding: 20px 22px;
+  }
+  .primary-button span {
+    font-size: 15px;
   }
   .landing-footer {
     flex-direction: column;
     gap: 25px;
   }
   .landing-footer nav {
-    gap: 16px;
-    font-size: 11px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 4px 20px;
+    font-size: 13px;
+  }
+  .landing-footer nav a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -789,18 +819,6 @@ a.chip:hover {
   }
 }
 
-/* A pinned opening gives the sculpture time to leave the typography and breathe. */
-.sqlpage-world[data-scene="ready"][data-motion="on"] .experience {
-  height: calc(var(--stage-height, 100svh) + 165svh);
-}
-.sqlpage-world[data-scene="ready"][data-motion="on"] .viewport {
-  position: sticky;
-  top: var(--sticky-top, 0px);
-}
-.site-header,
-.viewport-footer {
-  opacity: var(--intro-opacity);
-}
 #demo-source .hljs-keyword,
 #demo-source .hljs-literal {
   color: #b5a4f5;

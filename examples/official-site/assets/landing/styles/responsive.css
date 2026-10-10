@@ -149,8 +149,6 @@
 
 @media (max-width: 899px) and (orientation: portrait) {
   .experience {
-    height: calc(var(--stage-height, 100svh) + 140svh);
-    min-height: 0;
     --composition-width: 100vw;
     --composition-left: 0px;
   }
@@ -334,8 +332,6 @@
     top: var(--sticky-top, 0px);
   }
   .experience {
-    height: calc(var(--stage-height, 640px) + 140svh);
-    min-height: 0;
     --composition-width: min(100vw, calc(var(--stage-height, 640px) * 1.95));
     --composition-left: max(0px, calc((100vw - var(--composition-width)) / 2));
   }

@@ -1,4 +1,4 @@
-import { initSqlHighlight } from "./sql-highlight.js";
+import { initComponentDemos } from "./component-demos.js";
 
 /** Accessible tab groups share selection and keyboard behavior. */
 function tabs(group, attribute, select, signal) {
@@ -45,96 +45,7 @@ function tabs(group, attribute, select, signal) {
 export function initSections(root) {
   const events = new AbortController();
   const { signal } = events;
-  const panel = root.querySelector("#demo-panel");
-  const source = root.querySelector("#demo-source");
-  const status = root.querySelector(".demo-status");
-  const renderSource = initSqlHighlight(source, signal);
-  const preview = panel.querySelector("iframe");
-  let resizePreview;
-  function fitPreview() {
-    resizePreview?.disconnect();
-    const content = preview.contentDocument?.querySelector(
-      "#sqlpage_main_wrapper",
-    );
-    if (!content) return;
-    const fit = () => {
-      preview.style.height = `${Math.ceil(content.getBoundingClientRect().height) + 2}px`;
-    };
-    resizePreview = new ResizeObserver(fit);
-    resizePreview.observe(content);
-    fit();
-  }
-  preview.addEventListener("load", fitPreview, { signal });
-  fitPreview();
-  root.querySelector("[data-copy-sql]").addEventListener(
-    "click",
-    async () => {
-      try {
-        await navigator.clipboard.writeText(source.textContent);
-        status.textContent = "SQL copied.";
-      } catch {
-        status.textContent = "Copy unavailable. Select the SQL below.";
-      }
-    },
-    { signal },
-  );
-  let sourceFiles = { main: source.textContent };
-  const chooseSource = tabs(
-    root.querySelector(".source-tabs"),
-    "aria-selected",
-    (button) => {
-      source.setAttribute("aria-labelledby", button.id);
-      status.textContent = "";
-      void renderSource(
-        sourceFiles[button.dataset.file] || "-- Loading source…",
-      );
-    },
-    signal,
-  );
-  let request;
-  async function loadSource(component) {
-    request?.abort();
-    request = new AbortController();
-    status.textContent = "";
-    try {
-      const response = await fetch(
-        `/landing-demos/source.sql?component=${component}`,
-        { signal: request.signal },
-      );
-      if (!response.ok) throw new Error("Source unavailable");
-      const data = await response.json();
-      sourceFiles = { main: data.source, save: data.save_source };
-      chooseSource(root.querySelector('.source-tabs [aria-selected="true"]'));
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        source.textContent =
-          "-- Source unavailable. Open the component documentation below.";
-        status.textContent = "The demo source could not load.";
-      }
-    }
-  }
-  tabs(
-    root.querySelector(".component-picker"),
-    "aria-selected",
-    (button) => {
-      const component = button.dataset.demo;
-      panel.dataset.demo = component;
-      root.querySelector('[data-file="save"]').hidden = component !== "form";
-      root.querySelector("#demo-filename").textContent = `${component}.sql`;
-      panel.setAttribute("aria-labelledby", button.id);
-      panel.querySelector("iframe").src =
-        `/landing-demos/demo.sql?component=${component}`;
-      const link = panel.querySelector(".demo-docs");
-      link.href = `/component.sql?component=${component}`;
-      link.firstChild.textContent = `Explore the ${component} component `;
-      if (component !== "catalog") {
-        sourceFiles = {};
-        chooseSource(root.querySelector("#demo-filename"));
-        void loadSource(component);
-      } else request?.abort();
-    },
-    signal,
-  );
+  const cleanupDemos = initComponentDemos(root, tabs, signal);
   tabs(
     root.querySelector('[aria-label="Application stack"]'),
     "aria-pressed",
@@ -165,7 +76,6 @@ export function initSections(root) {
   );
   return () => {
     events.abort();
-    request?.abort();
-    resizePreview?.disconnect();
+    cleanupDemos();
   };
 }

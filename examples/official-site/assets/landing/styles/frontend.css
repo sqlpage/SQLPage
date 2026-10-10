@@ -1,7 +1,10 @@
 /* The four frontend views share one footprint, so switching never moves the page. */
 .deployment-section {
   --section-color: #2bc5cf;
-  background: linear-gradient(125deg, #29d6df, #2ba4b4);
+  /* Match the solid wave at the edge, then retain the section's diagonal gradient. */
+  background:
+    linear-gradient(180deg, var(--section-color), transparent 180px),
+    linear-gradient(125deg, #29d6df, #2ba4b4);
   color: #071322;
   padding-top: 65px;
   padding-bottom: 150px;
@@ -187,6 +190,7 @@
   grid-column: 1 / -1;
 }
 .instant-diagram {
+  position: relative;
   font: 14px / 1.5 var(--mono);
   color: #889bbd;
 }
@@ -201,28 +205,104 @@
   overflow: hidden;
   border-radius: 7px;
 }
-.render-timeline span {
-  background: #27314b;
+.render-timeline > span {
+  --stage-color: #27314b;
+  position: relative;
+  background: var(--stage-color);
   padding: 10px 0;
   text-align: center;
   color: #b2bbd0;
 }
-.render-timeline span:nth-child(2) {
-  background: #314e64;
+.render-timeline > span:nth-child(2) {
+  --stage-color: #314e64;
 }
-.render-timeline span:nth-child(3) {
-  background: #3c4863;
+.render-timeline > span:nth-child(3) {
+  --stage-color: #3c4863;
 }
-.render-timeline span:nth-child(4) {
-  background: #4a4e5e;
+.render-timeline > span:nth-child(4) {
+  --stage-color: #4a4e5e;
+}
+.render-timeline > span > span,
+.stream-timeline > span {
+  position: relative;
+  z-index: 1;
+}
+.timeline-fill,
+.stream-fill,
+.stream-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.timeline-fill {
+  background: var(--stage-color);
 }
 .stream-timeline {
+  position: relative;
   width: 20%;
+  min-width: min(145px, 100%);
   height: 38px;
   border-radius: 7px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #081b2b;
+  font-size: 13px;
+  white-space: nowrap;
+  background: linear-gradient(90deg, #408fa2, #6c9ec3);
+}
+.stream-fill {
   background: linear-gradient(90deg, #39abc0, #79b6e8);
-  transform-origin: left;
-  animation: frontend-stream 900ms ease-out both;
+}
+.stream-sheen {
+  width: 35%;
+  background: linear-gradient(90deg, transparent, #ffffff50, transparent);
+  opacity: 0;
+}
+.instant-diagram[data-stream-motion] .render-timeline > span {
+  background: color-mix(in srgb, var(--stage-color) 30%, transparent);
+}
+.timeline-toggle {
+  position: absolute;
+  top: -3px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #ffffff24;
+  border-radius: 50%;
+  background: transparent;
+  color: #889bbd;
+  cursor: pointer;
+}
+.timeline-toggle[hidden] {
+  display: none;
+}
+.timeline-toggle:hover {
+  color: #eef1f7;
+  border-color: #79b6e8;
+}
+.timeline-toggle:focus-visible {
+  outline: 2px solid #79b6e8;
+  outline-offset: 3px;
+}
+.timeline-toggle svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.timeline-toggle .timeline-play,
+.timeline-toggle[data-paused="true"] .timeline-pause {
+  display: none;
+}
+.timeline-toggle[data-paused="true"] .timeline-play {
+  display: block;
 }
 .render-labels {
   display: flex;
@@ -279,14 +359,6 @@
     transform: translateY(0);
   }
 }
-@keyframes frontend-stream {
-  from {
-    transform: scaleX(0.05);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
 @media (max-width: 1000px) {
   .frontend-tabs {
     gap: 10px;
@@ -335,8 +407,8 @@
     gap: 20px;
   }
   .deployment-section h2 {
-    font-size: clamp(44px, 12vw, 68px);
-    max-width: 80%;
+    font-size: clamp(36px, 10.8vw, 52px);
+    max-width: 100%;
   }
   .landing-section .deployment-sculpture {
     width: 19%;
@@ -367,12 +439,22 @@
     font-size: 10px;
   }
   .frontend-panels {
+    display: grid;
     padding: 25px 20px;
     border-radius: 16px;
   }
   .frontend-panel {
-    min-height: 425px;
+    grid-area: 1 / 1;
+    min-height: 0;
     align-content: start;
+  }
+  /* All views size the shared grid, keeping the page still when a tab changes. */
+  .frontend-panel[hidden] {
+    /* biome-ignore lint/complexity/noImportantStyles: override the shared native hidden rule only for grid sizing. */
+    display: grid !important;
+    visibility: hidden;
+    pointer-events: none;
+    animation: none;
   }
   .frontend-copy h3 {
     font-size: 29px;
@@ -381,14 +463,36 @@
     font-size: 15px;
   }
   .frontend-copy a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
     font-size: 12px;
   }
   .customize-diagram {
-    flex-wrap: wrap;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) 8px minmax(0, 1fr) 8px minmax(
+        0,
+        0.8fr
+      );
+    gap: 8px 6px;
+    text-align: center;
   }
-  .feature-node,
   .customize-diagram .feature-node {
+    min-width: 0;
+    padding: 12px 8px;
+    font-size: clamp(12px, 3.4vw, 14px);
+  }
+  .customize-diagram b:last-of-type {
+    grid-column: 1 / -1;
+    justify-self: center;
+    rotate: 90deg;
+  }
+  .customize-diagram .feature-result {
+    grid-column: 1 / -1;
+    font-size: 18px;
+  }
+  .feature-node {
     font-size: 14px;
     padding: 12px;
   }
@@ -401,6 +505,18 @@
   }
   .ship-options {
     width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .instant-diagram > p:first-child {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 52px;
+  }
+  .timeline-toggle {
+    top: 0;
+    width: 44px;
+    height: 44px;
   }
   .render-labels {
     gap: 8px;
@@ -421,15 +537,17 @@
     gap: 7px;
     font-size: 10px;
   }
+  .attack-list {
+    min-width: 0;
+  }
   .attack-list .feature-node {
-    width: 105px;
+    width: clamp(92px, 26vw, 105px);
     font-size: 11px;
     padding: 10px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .frontend-panel,
-  .stream-timeline {
+  .frontend-panel {
     animation: none;
   }
   .frontend-tabs button,
