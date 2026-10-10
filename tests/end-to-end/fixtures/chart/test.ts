@@ -1,28 +1,5 @@
-import { expect, type Page, test } from "../../fixture.ts";
-
-type ChartPoint = { x: string | number | Date; y: number | null };
-
-declare global {
-  interface Window {
-    charts?: {
-      w: {
-        config: {
-          chart: { type: string; stacked: boolean };
-          xaxis: { type?: string; tickAmount?: number };
-          series: { name: string | number; data?: ChartPoint[] }[];
-          tooltip: {
-            custom?: (args: {
-              seriesIndex: number;
-              dataPointIndex: number;
-              w: unknown;
-            }) => string;
-          };
-        };
-        globals: { labels: (string | number)[] };
-      };
-    }[];
-  }
-}
+import assert from "node:assert/strict";
+import { type ConsoleMessage, expect, type Page, test } from "../../fixture.ts";
 
 const MARKS =
   ".apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-treemap-rect, .apexcharts-pie-area, .apexcharts-heatmap-rect, .apexcharts-series .apexcharts-marker";
@@ -32,7 +9,7 @@ const ORANGE = "#f76707";
 const GREEN = "#37b24d";
 async function renderChart(page: Page, fixture: string) {
   const failures: string[] = [];
-  const recordError = (message: { type(): string; text(): string }) => {
+  const recordError = (message: ConsoleMessage) => {
     if (message.type() === "error") failures.push(message.text());
   };
   page.on("console", recordError);
@@ -46,13 +23,15 @@ async function renderChart(page: Page, fixture: string) {
       const container = document.getElementById("test-chart");
       if (!container) throw new Error("Chart fixture did not render");
       const rendered = window.charts?.[0];
-      const series = (rendered?.w.config.series ?? []).map((s) => ({
-        name: s.name,
-        points: (s.data ?? []).map((p) => [
-          p.x instanceof Date ? p.x.toISOString() : p.x,
-          p.y,
-        ]),
-      }));
+      const series = (rendered?.w.config.series ?? [])
+        .filter((s) => typeof s !== "number")
+        .map((s) => ({
+          name: s.name,
+          points: s.data.map((p) => [
+            p.x instanceof Date ? p.x.toISOString() : p.x,
+            p.y,
+          ]),
+        }));
       const drawnPerSeries = series.map(({ name }) => {
         const markers = [
           ...container.querySelectorAll<SVGGraphicsElement>(
@@ -122,9 +101,12 @@ async function renderChart(page: Page, fixture: string) {
           tickAmount: rendered?.w.config.xaxis.tickAmount ?? null,
         },
         generatedLabels: rendered?.w.globals.labels ?? [],
+        threeDimensional: rendered?.w.globals.isDataXYZ ?? null,
         axisLabels,
         dataLabels: [
-          ...container.querySelectorAll(".apexcharts-datalabel"),
+          ...container.querySelectorAll(
+            ".apexcharts-datalabel, .apexcharts-pie-label",
+          ),
         ].map((label) => label.textContent),
         barGroups,
         series,
@@ -179,7 +161,10 @@ test("linked text x labels keep the native bar tooltip", async ({ page }) => {
   await expect(
     tooltip.locator(".apexcharts-tooltip-series-group.apexcharts-active"),
   ).toHaveCount(1);
-  await tooltip.locator("a").click();
+  await expect(
+    tooltip.locator(".apexcharts-tooltip-text-y-value a"),
+  ).toHaveAttribute("href", "/linked.sql");
+  await tooltip.locator(".apexcharts-tooltip-title a").click();
   await expect(page).toHaveURL(/\/linked\.sql$/);
 });
 
@@ -189,12 +174,38 @@ test("linked date x values retain ApexCharts' native date formatting", async ({
   await renderChart(page, "link-time");
   await page
     .locator("#test-chart .apexcharts-marker")
-    .first()
-    .hover({ force: true });
+    .nth(1) // the center marker: '2024-03-02' AS x, 15 AS y
+    .hover({ force: true }); // apexcharts displays other elements on top of the marker, we just want to hover at its position
   const title = page.locator("#test-chart .apexcharts-tooltip-title");
   await expect(title).toBeVisible();
   await expect(title).not.toContainText(/\d{13}/);
   await expect(title.locator("a")).toHaveCount(0);
+  await expect(
+    page.locator("#test-chart .apexcharts-tooltip-text-y-value a"),
+  ).toHaveAttribute("href", "/linked.sql");
+});
+
+test("pie values link to their respective points", async ({ page }) => {
+  await renderChart(page, "link-pie");
+  const slices = page.locator("#test-chart .apexcharts-pie-area");
+  const link = page.locator(
+    "#test-chart .apexcharts-tooltip-series-group.apexcharts-active .apexcharts-tooltip-text-y-value a",
+  );
+  await slices.nth(0).hover();
+  await expect(link).toHaveAttribute("href", "/linked.sql");
+  await slices.nth(1).hover();
+  await expect(link).toHaveAttribute("href", "/linked-too.sql");
+});
+
+test("the custom scatter tooltip renders a linked value", async ({ page }) => {
+  await renderChart(page, "link-scatter");
+  await page
+    .locator("#test-chart .apexcharts-marker")
+    .first()
+    .hover({ force: true });
+  await expect(
+    page.locator("#test-chart .apexcharts-tooltip-text-y-value a"),
+  ).toHaveAttribute("href", "/linked.sql");
 });
 
 test("positions complete numeric bar series on an explicit numeric axis (#733)", async ({
@@ -209,8 +220,11 @@ test("positions complete numeric bar series on an explicit numeric axis (#733)",
   expect(chart.axisLabels.map(({ text }) => Number(text))).toEqual(xs);
   expect(chart.dataLabels.map(Number)).toEqual([...xs, ...xs]);
   expect(chart.barGroups).toHaveLength(xs.length);
-  for (const [index, label] of chart.axisLabels.entries())
-    expect(Math.abs(label.center - chart.barGroups[index])).toBeLessThan(1);
+  for (const [index, label] of chart.axisLabels.entries()) {
+    const barCenter = chart.barGroups[index];
+    assert.ok(barCenter !== undefined, `Bar group ${index} was drawn`);
+    expect(Math.abs(label.center - barCenter)).toBeLessThan(1);
+  }
 });
 
 test("keeps irregular numeric x values proportionately spaced", async ({
@@ -227,9 +241,9 @@ test("keeps irregular numeric x values proportionately spaced", async ({
     "3.0",
   ]);
   expect(chart.axisLabels.map(({ text }) => text)).not.toContain("2");
-  expect(chart.barGroups[2] - chart.barGroups[1]).toBeGreaterThan(
-    5 * (chart.barGroups[1] - chart.barGroups[0]),
-  );
+  const [first, second, third] = chart.barGroups;
+  assert.ok(first !== undefined && second !== undefined && third !== undefined);
+  expect(third - second).toBeGreaterThan(5 * (second - first));
 });
 
 test("keeps an explicit x interval count", async ({ page }) => {
@@ -289,7 +303,7 @@ test("gives a stacked series a zero at every x it did not measure", async ({
 
   expect(chart.failures).toEqual([]);
   expect(chart.series.map((s) => s.name)).toEqual(["CPU", "GPU"]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["2024-01-01T00:00:00.000Z", 0],
     ["2024-01-01T00:01:00.000Z", 50],
     ["2024-01-01T00:02:00.000Z", 50],
@@ -300,10 +314,13 @@ test("gives a stacked series a zero at every x it did not measure", async ({
 test("stacks a series above the one it shares an x with", async ({ page }) => {
   const chart = await renderChart(page, "stacked-time-series");
   const [cpu, gpu] = chart.drawnPerSeries;
+  assert.ok(cpu && gpu, "Both series were drawn");
 
   expect(gpu.heights).toHaveLength(4);
   expect(gpu.heights[0]).toBe(cpu.heights[0]);
-  expect(gpu.heights[1]).toBeLessThan(cpu.heights[1]);
+  const cpuHeight = cpu.heights[1];
+  assert.ok(cpuHeight !== undefined, "CPU has a second point");
+  expect(gpu.heights[1]).toBeLessThan(cpuHeight);
 });
 
 test("keeps a lone series in the order the query returned it (#930)", async ({
@@ -312,7 +329,7 @@ test("keeps a lone series in the order the query returned it (#930)", async ({
   const chart = await renderChart(page, "out-of-order");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[0].points).toEqual([
+  expect(chart.series[0]?.points).toEqual([
     ["Q3", 3],
     ["Q1", 1],
     ["Q2", 2],
@@ -325,12 +342,12 @@ test("orders by name the categories two bar series do not share (#951)", async (
   const chart = await renderChart(page, "disjoint-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[0].points).toEqual([
+  expect(chart.series[0]?.points).toEqual([
     ["X1", 0],
     ["X2", 10],
     ["X3", 30],
   ]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["X1", 25],
     ["X2", 20],
     ["X3", 0],
@@ -343,7 +360,7 @@ test("leaves the points of a chart that does not stack alone", async ({
   const chart = await renderChart(page, "unstacked-time-series");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["2024-01-01T00:01:00.000Z", 50],
     ["2024-01-01T00:02:00.000Z", 50],
     ["2024-01-01T00:03:00.000Z", 50],
@@ -354,7 +371,7 @@ test("stacks a bar series on the categories it skipped", async ({ page }) => {
   const chart = await renderChart(page, "stacked-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", 0],
     ["Q2", 20],
     ["Q3", 30],
@@ -367,7 +384,7 @@ test("lines an unstacked series up with the categories it skipped", async ({
   const chart = await renderChart(page, "line-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", null],
     ["Q2", 20],
     ["Q3", 30],
@@ -379,6 +396,7 @@ test("draws nothing where an unstacked series has no value", async ({
 }) => {
   const chart = await renderChart(page, "line-categories");
   const [a, b] = chart.drawnPerSeries;
+  assert.ok(a && b, "Both series were drawn");
 
   expect(a.lefts).toHaveLength(3);
   expect(b.lefts).toEqual(a.lefts.slice(1));
@@ -387,8 +405,9 @@ test("draws nothing where an unstacked series has no value", async ({
 test("keeps a measured zero apart from a missing value", async ({ page }) => {
   const chart = await renderChart(page, "zero-and-missing");
   const [a, b] = chart.drawnPerSeries;
+  assert.ok(a && b, "Both series were drawn");
 
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", null],
     ["Q2", 0],
     ["Q3", 30],
@@ -403,15 +422,29 @@ for (const type of ["area", "scatter", "heatmap"]) {
     const chart = await renderChart(page, `${type}-categories`);
 
     expect(chart.failures).toEqual([]);
-    expect(chart.series[1].points.map((p) => p[0])).toEqual(["Q1", "Q2", "Q3"]);
+    expect(chart.series[1]?.points.map((p) => p[0])).toEqual([
+      "Q1",
+      "Q2",
+      "Q3",
+    ]);
   });
 }
+
+test("counts a third dimension only where the rows carried one", async ({
+  page,
+}) => {
+  const flat = await renderChart(page, "index");
+  const bubbles = await renderChart(page, "bubble-categories");
+
+  expect(flat.threeDimensional).toBe(false);
+  expect(bubbles.threeDimensional).toBe(true);
+});
 
 test("keeps the bubble size of the points it lined up", async ({ page }) => {
   const chart = await renderChart(page, "bubble-categories");
 
   expect(chart.failures).toEqual([]);
-  expect(chart.series[1].points).toEqual([
+  expect(chart.series[1]?.points).toEqual([
     ["Q1", null],
     ["Q2", 5],
   ]);
@@ -447,12 +480,31 @@ test("gives the tooltip title the color of the tooltip around it", async ({
 
   const title = page.locator("#test-chart .apexcharts-tooltip-title");
   await expect(title).toHaveText("Tue");
-  const colors = await title.evaluate((el) => ({
-    title: getComputedStyle(el).color,
-    tooltip: getComputedStyle(el.parentElement as HTMLElement).color,
-  }));
+  const colors = await title.evaluate((el) => {
+    if (!el.parentElement) throw new Error("Missing tooltip");
+    return {
+      title: getComputedStyle(el).color,
+      tooltip: getComputedStyle(el.parentElement).color,
+    };
+  });
 
   expect(colors.title).toBe(colors.tooltip);
+});
+
+test("names the series of every bar of a range bar chart", async ({ page }) => {
+  const chart = await renderChart(page, "labeled-range-bar");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.dataLabels).toEqual(["Design", "Build"]);
+});
+
+test("gives every slice of a pie chart its label and its share", async ({
+  page,
+}) => {
+  const chart = await renderChart(page, "labeled-pie");
+
+  expect(chart.failures).toEqual([]);
+  expect(chart.dataLabels).toEqual(["Yes: 65%", "No: 35%"]);
 });
 
 test("draws a reference line that carries no label", async ({ page }) => {
@@ -601,11 +653,7 @@ test("labels each axis of a bubble tooltip with its own title", async ({
     const custom = chart.w.config.tooltip.custom;
     if (!custom) throw new Error("A bubble chart needs the custom tooltip");
     const holder = document.createElement("div");
-    holder.innerHTML = custom({
-      seriesIndex: 0,
-      dataPointIndex: 1,
-      w: chart.w,
-    });
+    holder.innerHTML = custom({ seriesIndex: 0, dataPointIndex: 1 });
     const values = holder.querySelectorAll(".apexcharts-tooltip-text-y-value");
     return [...holder.querySelectorAll(".apexcharts-tooltip-text-y-label")].map(
       (label, i): [string, string] => [

@@ -1,5 +1,10 @@
 name: Install and build the frontend
-description: Set up Node.js, install the frontend workspace dependencies and bundle the browser assets
+description: Set up Node.js, install frontend dependencies and optionally build browser assets
+inputs:
+  build-frontend:
+    description: Whether to bundle the browser assets after installing dependencies
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -9,5 +14,6 @@ runs:
         cache: npm
     - run: npm ci --ignore-scripts
       shell: bash
-    - run: npm run build
+    - if: inputs.build-frontend == 'true'
+      run: npm run build
       shell: bash

@@ -1,13 +1,14 @@
-export type XValue = number | string | Date;
+export type PlotValue = string | number | null;
+export type XValue = PlotValue | Date;
 export type ChartPoint = {
   x: XValue;
-  y: number | string | number[] | null;
-  z?: number;
+  y: PlotValue | PlotValue[];
+  z?: PlotValue;
   fillColor?: string;
   link?: string;
 };
-export type ChartSeries = { name: string; data: ChartPoint[] };
-export type Series = Map<string, ChartSeries>;
+export type ChartSeries = { name: string | number; data: ChartPoint[] };
+export type Series = Map<ChartSeries["name"], ChartSeries>;
 
 const NUMERIC_X_CHART_TYPES = ["line", "area", "bar", "scatter", "bubble"];
 
@@ -21,8 +22,10 @@ const Y_WHEN_A_SERIES_SKIPS_A_LABEL = new Map<string, number | null>([
 ]);
 
 /** equal x values share a key */
-const x_key = (x: XValue): number | string =>
-  x instanceof Date ? x.getTime() : x;
+const x_key = (x: XValue): PlotValue => (x instanceof Date ? x.getTime() : x);
+
+/** A missing x sorts as zero, which is how JavaScript compares it. */
+const is_lower = (x: XValue, than: XValue) => (x ?? 0) < (than ?? 0);
 
 const x_is_text = (series: ChartSeries[]) =>
   typeof series[0]?.data?.[0]?.x === "string";
@@ -49,14 +52,21 @@ export function xaxis_type_for(
  * ascending order where they diverge
  */
 export function merged_x_values(series: ChartSeries[]): XValue[] {
-  const unread = series.map(({ data }) => data.map(({ x }) => x));
-  const merged = new Map();
-  while (unread.some((xs) => xs.length > 0)) {
-    const with_lowest_x = unread
-      .filter((xs) => xs.length > 0)
-      .reduce((a, b) => (b[0] < a[0] ? b : a));
-    const x = with_lowest_x.shift() as XValue;
-    merged.set(x_key(x), x);
+  const unread = series.map(({ data }) => {
+    const iterator = data.values();
+    return { iterator, next: iterator.next() };
+  });
+  const merged = new Map<PlotValue, XValue>();
+  while (true) {
+    let lowest: { stream: (typeof unread)[number]; x: XValue } | undefined;
+    for (const stream of unread) {
+      if (stream.next.done) continue;
+      const x = stream.next.value.x;
+      if (!lowest || is_lower(x, lowest.x)) lowest = { stream, x };
+    }
+    if (!lowest) break;
+    merged.set(x_key(lowest.x), lowest.x);
+    lowest.stream.next = lowest.stream.iterator.next();
   }
   return [...merged.values()];
 }
