@@ -1585,7 +1585,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
     ('shell', '
 This example shows how to set menu items as active in the navigation, so that they are highlighted in the nav bar.
 
-In this example you can see that two menu items are created, "Home" and "About" and the "Home" tab is marked as active.
+In this example you can see that two menu items are created, "Home" and "About" and the "Home" tab is marked as active. These items are separated by a divider.
 ',
      json('[{
             "component": "shell",
@@ -1594,6 +1594,7 @@ In this example you can see that two menu items are created, "Home" and "About" 
             "link": "/",
             "menu_item": [
                 {"title": "Home", "active": true},
+                {"divider": true},
                 {"title": "About"}
             ]
         }]')),

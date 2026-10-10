@@ -124,7 +124,9 @@
                             {{~#if this.submenu~}}
                                 <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
                                     {{~#each this.submenu~}}
-                                        {{#if (or (or this.title this.icon) this.image)}}
+                                        {{~#if this.divider}}
+                                            <hr class="dropdown-divider" />
+                                        {{~else if (or (or this.title this.icon) this.image)}}
                                             <a class="dropdown-item{{#if this.active}} active{{/if}}" href="{{this.link}}" {{#if this.target}}target="{{this.target}}"{{/if}}>
                                                 {{~#if this.image~}}
                                                     <span {{~#if this.title}} class="me-1"{{/if}}>
