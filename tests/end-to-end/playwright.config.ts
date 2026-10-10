@@ -27,7 +27,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  // Keep live progress when CI times out, alongside the downloadable HTML report.
+  reporter: process.env.CI ? [["line"], ["html"]] : "html",
   use: {
     trace: "on-first-retry",
   },

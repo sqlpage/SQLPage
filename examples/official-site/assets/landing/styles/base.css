@@ -1,0 +1,150 @@
+/* Shared tokens and native element defaults. */
+:root {
+  --foreground: #ebeceb;
+  --cyan: #58cce0;
+  --ink: #080e11;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+[hidden] {
+  display: none !important;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: #345a62 #080e11;
+}
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 6px;
+}
+::selection {
+  background: #5bcce1;
+  color: #081015;
+}
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 20px;
+  transform: translateY(-180%);
+  z-index: 100;
+  background: var(--cyan);
+  padding: 12px 16px;
+  color: var(--ink);
+}
+.skip-link:focus {
+  transform: none;
+}
+
+/* Keep navigation available on phones with JavaScript disabled. */
+@media (max-width: 759px) {
+  .sqlpage-world:not([data-enhanced]) .site-header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 120px;
+    padding-block: 12px;
+    gap: 10px;
+  }
+  .sqlpage-world:not([data-enhanced]) .desktop-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sqlpage-world:not([data-enhanced]) .desktop-nav .glass-button {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+/* On small screens the unenhanced page uses ordinary document flow, so
+   navigation, artwork captions, and calls to action cannot overlap. */
+@media (max-width: 759px) {
+  .sqlpage-world:not([data-enhanced]) .experience {
+    height: auto;
+    min-height: 100svh;
+  }
+  .sqlpage-world:not([data-enhanced]) .viewport {
+    height: auto;
+    min-height: 100svh;
+    padding-bottom: 24px;
+  }
+  .sqlpage-world:not([data-enhanced]) .engraved-comment {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 88%;
+    margin: 16px 6% 0;
+  }
+  .sqlpage-world:not([data-enhanced]) .hero-copy {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 89%;
+    margin: 36px 5.5% 0;
+  }
+  .sqlpage-world:not([data-enhanced]) .intro-row {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 88%;
+    max-width: 88%;
+    margin: 32px 6% 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 17px;
+  }
+  .sqlpage-world:not([data-enhanced]) .sql-ribbon {
+    position: relative;
+    top: auto;
+    bottom: auto;
+    margin-top: 48px;
+  }
+  .sqlpage-world:not([data-enhanced]) .viewport-footer {
+    position: relative;
+    top: auto;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    margin: 48px 6% 0;
+  }
+}

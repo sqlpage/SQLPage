@@ -1,0 +1,367 @@
+/* Standalone SQLPage demos: content-sized shells and compact native components. */
+:root {
+  --tblr-body-bg: #0d1224;
+  --tblr-bg-surface: #0d1224;
+  --tblr-border-color: #273149;
+  --tblr-primary: #28c8d6;
+  --tblr-body-color: #dbe0ec;
+}
+html,
+body,
+.page,
+.page-wrapper {
+  min-height: 0 !important;
+  height: auto !important;
+}
+body {
+  font-size: 13px;
+  background: #0d1224;
+}
+.page,
+.page-wrapper {
+  display: block;
+}
+#sqlpage_header,
+#sqlpage_footer {
+  display: none;
+}
+#sqlpage_main_wrapper {
+  flex: none !important;
+  padding: 24px !important;
+  margin: 0 !important;
+  max-width: none;
+}
+.card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  margin: 0 !important;
+}
+.card-body {
+  padding: 10px;
+}
+.card-title {
+  font-size: 17px;
+  font-weight: 500;
+}
+/* The native table search and its SQLPage text title share one header row. */
+#sqlpage_main_wrapper:has(#landing-customers) {
+  position: relative;
+}
+#sqlpage_main_wrapper:has(#landing-customers) > h1 {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0 !important;
+}
+#sqlpage_main_wrapper:has(#landing-customers) > p {
+  display: none;
+}
+#landing-customers .card-body > .p-3 {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 0 16px !important;
+}
+.table {
+  font-size: 14px;
+  --tblr-table-border-color: #1b2337;
+}
+.table td,
+.table th {
+  padding: 13px 12px;
+}
+.table th {
+  font-size: 11px;
+  color: #9caac4;
+  background: transparent;
+}
+#landing-customers .table th {
+  background: transparent;
+}
+.table-responsive {
+  border-radius: 8px;
+}
+.table-sort {
+  color: #94a3bb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.table td._col_name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.table td._col_status p {
+  display: inline-block;
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 5px;
+  background: #123737;
+  color: #5ed4b6;
+  font-size: 11px;
+  font-weight: 600;
+}
+.table tr.trial td._col_status p {
+  background: #123459;
+  color: #8bbcf5;
+}
+.table tr.late td._col_status p {
+  background: #4b3526;
+  color: #ecb56b;
+}
+input.form-control {
+  min-height: 38px;
+  background: #090e1d;
+  border-color: #273149;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.search {
+  max-width: 190px;
+}
+form.mt-3 {
+  margin: 0 !important;
+}
+.form-fieldset {
+  padding: 0;
+  margin: 0 !important;
+  border: 0;
+  background: transparent;
+}
+.form-fieldset h2 {
+  text-align: left !important;
+  margin-bottom: 20px !important;
+  font-size: 18px;
+  font-weight: 500;
+}
+.form-label {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 7px;
+  color: #bac5d6;
+}
+.form-fieldset .mb-3 {
+  margin-bottom: 16px !important;
+}
+.btn-primary {
+  font-size: 13px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  box-shadow: 0 3px 14px #20c8d518;
+  background: #27c4d2;
+  border-color: #27c4d2;
+  color: #06121b;
+}
+.apexcharts-tooltip {
+  color: #0d1224;
+}
+#landing-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 !important;
+  height: auto !important;
+}
+#landing-kpis > .col {
+  width: auto;
+  min-width: 0 !important;
+  padding: 0;
+  margin: 0;
+}
+#landing-kpis .card {
+  height: 100%;
+  border: 1px solid #294055;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #17263a, #0d1729);
+  overflow: hidden;
+}
+#landing-kpis .bg-cyan-lt {
+  background: linear-gradient(120deg, #0d2a36, #122333) !important;
+}
+#landing-kpis .card-body {
+  gap: 8px;
+  padding: 26px;
+}
+#landing-kpis .subheader {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #9badc5;
+}
+#landing-kpis .h1 {
+  font-size: clamp(38px, 6vw, 56px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  margin: 6px 0 !important;
+}
+#landing-kpis .d-flex.flex-wrap {
+  margin: 0 !important;
+  font-size: 12px;
+  color: #a9bacf;
+}
+#landing-kpis .text-truncate {
+  white-space: normal;
+}
+#landing-kpis .text-cyan {
+  color: #43ccd7 !important;
+}
+@media (max-width: 480px) {
+  #sqlpage_main_wrapper {
+    padding: 16px !important;
+  }
+  #sqlpage_main_wrapper:has(#landing-customers) > h1 {
+    left: 16px;
+    top: 16px;
+    font-size: 16px;
+  }
+  .search {
+    max-width: 135px;
+  }
+  .table {
+    font-size: 11px;
+  }
+  .table td,
+  .table th {
+    padding: 10px 5px;
+  }
+  .table td._col_status p {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+  #landing-kpis .card-body {
+    padding: 18px 12px;
+  }
+  #landing-kpis .h1 {
+    font-size: 36px;
+  }
+}
+/* Native form controls retain validation, icons, and accessible labels. */
+#landing-profile {
+  padding: 22px;
+  border: 1px solid #26344b;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #152339, #0d1224 65%);
+}
+#landing-profile h2 {
+  font-size: 23px;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+#landing-profile .input-group-text {
+  background: #111c2e;
+  border-color: #273149;
+  color: #73a4b7;
+}
+#landing-profile .input-group-text svg {
+  width: 17px;
+  height: 17px;
+}
+#landing-profile .form-control {
+  min-height: 44px;
+  font-size: 13px;
+  transition:
+    border-color 180ms,
+    box-shadow 180ms;
+}
+#landing-profile .form-control:focus {
+  border-color: #28c8d6;
+  box-shadow: 0 0 0 3px #28c8d61a;
+}
+#landing-profile .form-hint {
+  font-size: 11px;
+  color: #8597b0;
+  line-height: 1.5;
+}
+#landing-profile .btn {
+  margin-top: 6px;
+  font-weight: 600;
+}
+.alert {
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+#landing-kpis .bg-teal-lt {
+  background: linear-gradient(145deg, #102e30, #0d1b29) !important;
+}
+#landing-kpis .progress {
+  height: 4px;
+  margin-top: 10px;
+  background: #ffffff0d;
+}
+.component-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 10px;
+}
+.component-catalog a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+  border: 1px solid #26344b;
+  border-radius: 9px;
+  color: #dbe0ec;
+  text-decoration: none;
+  font-size: 12px;
+  transition:
+    color 180ms,
+    border-color 180ms,
+    background 180ms;
+}
+.component-catalog a:hover,
+.component-catalog a:focus-visible {
+  color: #5ddddf;
+  background: #122636;
+  border-color: #28c8d6;
+}
+.component-catalog svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  color: #67b9c7;
+}
+.component-catalog svg:last-child {
+  margin-left: auto;
+  width: 13px;
+  height: 13px;
+  opacity: 0.5;
+}
+@media (max-width: 480px) {
+  #landing-profile {
+    padding: 16px;
+  }
+  .component-catalog {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .component-catalog a {
+    padding: 12px 8px;
+    gap: 6px;
+    font-size: 10px;
+  }
+}
+
+/* Avoid iOS focus zoom and keep all embedded demo controls comfortable to tap. */
+@media (max-width: 600px) {
+  input.form-control,
+  #landing-profile .form-control {
+    /* biome-ignore lint/complexity/noImportantStyles: native search uses an important font-size utility. */
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+  #landing-profile .btn,
+  .component-catalog a {
+    min-height: 44px;
+  }
+  .component-catalog a {
+    overflow-wrap: anywhere;
+    font-size: 11px;
+  }
+}
