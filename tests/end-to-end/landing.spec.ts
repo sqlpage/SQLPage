@@ -456,3 +456,78 @@ test("landing shader failure keeps the static page usable and retries cleanly", 
   await expect(page.locator("canvas")).toHaveCount(1);
   expect(errors).toEqual([]);
 });
+
+// Search engines and visitors without scripts receive the same authored document.
+test("landing metadata and navigation remain indexable without JavaScript", async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({
+    baseURL,
+    javaScriptEnabled: false,
+  });
+  try {
+    const page = await context.newPage();
+    const response = await page.goto("/");
+    expect(response?.status()).toBe(200);
+    expect(response?.headers().link).toBe(
+      '<https://sql-page.com/>; rel="canonical"',
+    );
+    expect(response?.headers()["x-robots-tag"] ?? "").not.toMatch(
+      /noindex|nofollow/i,
+    );
+    await expect(page).toHaveTitle("SQLPage - SQL websites");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://sql-page.com/",
+    );
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      /SQLPage.*open source.*forms, tables, charts, maps, and dashboards/,
+    );
+    await expect(
+      page.locator(
+        'meta[name="robots"][content*="noindex"], meta[name="robots"][content*="nofollow"]',
+      ),
+    ).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { name: "Keep your database. Add the app." }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Documentation", exact: true }).first(),
+    ).toHaveAttribute("href", "/documentation.sql");
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+      "content",
+      "https://sql-page.com/sqlpage_social_preview.webp",
+    );
+    await page
+      .getByRole("link", { name: "Documentation", exact: true })
+      .first()
+      .click();
+    await expect
+      .poll(() =>
+        page
+          .locator("a[href]")
+          .evaluateAll((links) =>
+            links.map((link) =>
+              new URL(
+                link.getAttribute("href") ?? "",
+                document.baseURI,
+              ).searchParams.get("component"),
+            ),
+          ),
+      )
+      .toEqual(
+        expect.arrayContaining([
+          "map",
+          "form",
+          "big_number",
+          "authentication",
+          "json",
+        ]),
+      );
+  } finally {
+    await context.close();
+  }
+});
