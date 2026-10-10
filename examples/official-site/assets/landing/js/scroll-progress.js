@@ -104,6 +104,7 @@ export function initScrollProgress(section, mount, state) {
     }
     root.removeAttribute("data-measuring-layout");
     update();
+    root.setAttribute("data-frame-ready", "");
   }
   function update() {
     frame = 0;
@@ -219,5 +220,6 @@ export function initScrollProgress(section, mount, state) {
     events.abort();
     observer.disconnect();
     cancelAnimationFrame(frame);
+    root.removeAttribute("data-frame-ready");
   };
 }

@@ -531,3 +531,86 @@ test("landing metadata and navigation remain indexable without JavaScript", asyn
     await context.close();
   }
 });
+
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 390, height: 844 },
+]) {
+  test(`landing reserves its opening layout before 3D loads at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize(viewport);
+    await page.addInitScript(() => {
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (
+            "hadRecentInput" in entry &&
+            !entry.hadRecentInput &&
+            "value" in entry &&
+            typeof entry.value === "number"
+          )
+            performance.mark("landing:layout-shift", { detail: entry.value });
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(
+      "**/assets/landing/js/scene/database-scene.js",
+      async (route) => {
+        await held;
+        await route.continue();
+      },
+    );
+    try {
+      await page.goto("/");
+      await page.waitForFunction(() =>
+        performance
+          .getEntriesByType("paint")
+          .some((entry) => entry.name === "first-contentful-paint"),
+      );
+      await expect(page.locator(".scene-preview")).toBeVisible();
+      const opening = page.locator(".experience");
+      const before = await opening.boundingBox();
+      if (!before) throw new Error("Missing opening layout");
+      expect(before.height).toBeGreaterThan(viewport.height * 2.6);
+      release();
+      await expect(page.locator(".sqlpage-world")).toHaveAttribute(
+        "data-scene",
+        "ready",
+        { timeout: 30_000 },
+      );
+      // Give paint and its PerformanceObserver two frames to report the handoff.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
+      const after = await opening.boundingBox();
+      expect(after?.height).toBeCloseTo(before.height, 1);
+      const shift = await page.evaluate(() =>
+        performance
+          .getEntriesByName("landing:layout-shift")
+          .reduce(
+            (sum, entry) =>
+              entry instanceof PerformanceMark &&
+              typeof entry.detail === "number"
+                ? sum + entry.detail
+                : sum,
+            0,
+          ),
+      );
+      expect(shift).toBeLessThan(0.1);
+      await expect(page.locator(".model-interaction")).toHaveCSS(
+        "visibility",
+        "visible",
+      );
+    } finally {
+      release();
+    }
+  });
+}

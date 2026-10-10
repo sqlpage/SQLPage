@@ -1,6 +1,8 @@
 /* Sculpture input target and recoverable WebGL error state. */
 .model-interaction {
   position: absolute;
+  /* The measured hit target appears with the first rendered sculpture frame. */
+  visibility: hidden;
   left: 55%;
   width: 40%;
   top: 25%;
@@ -11,6 +13,9 @@
   cursor: grab;
   border-radius: 35%;
   outline-offset: -10px;
+}
+.model-interaction[data-ready="true"] {
+  visibility: visible;
 }
 .model-interaction[data-ready="false"] {
   pointer-events: none;

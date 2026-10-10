@@ -16,6 +16,11 @@ Its styles, ES modules, model, lighting map, and static preview are under
 `assets/landing/`; no separate HTML entry point or frontend build is required.
 Internal navigation uses site-relative URLs so it also works in local previews.
 
+A small nonce-protected marker in the template reserves the animated opening
+before first paint; it does not run when JavaScript is disabled. The static
+preview appears once its page anchor is measured, and WebGL readiness changes
+only the renderer, so slow or failed 3D loading does not shift the page.
+
 The landing page runs as native ES modules. `main.js` starts independent
 navigation, selectors, streaming timeline, section transitions, waves, and scene
 controllers; each returns its cleanup function. `sections.js` shares keyboard tab

@@ -62,6 +62,11 @@
 [data-scene="ready"] .scene-preview {
   visibility: hidden;
 }
+/* Avoid painting the approximate fallback position before its letter anchor is measured. */
+.sqlpage-world[data-enhanced]:not([data-frame-ready]) .scene-preview {
+  visibility: hidden;
+}
+
 [data-scene="ready"] .scene-canvas {
   opacity: 1;
 }
@@ -96,16 +101,12 @@
   mix-blend-mode: screen;
 }
 
-/* The landing page remains usable without a working WebGL scene. */
-.sqlpage-world:not([data-scene="ready"]) .viewport {
-  top: 0;
-}
-
-/* A pinned opening gives the sculpture time to leave the typography and breathe. */
-.sqlpage-world[data-scene="ready"][data-motion="on"] .experience {
+/* Reserve the opening flight before first paint. The static preview follows the
+   same anchors while WebGL loads or fails, so readiness never shifts the page. */
+.sqlpage-world[data-enhanced][data-motion="on"] .experience {
   height: calc(var(--stage-height, 100svh) + 165svh);
 }
-.sqlpage-world[data-scene="ready"][data-motion="on"] .viewport {
+.sqlpage-world[data-enhanced][data-motion="on"] .viewport {
   position: sticky;
   top: var(--sticky-top, 0px);
 }

@@ -13,7 +13,6 @@ const copy = sequence.cloneNode(true);
 copy.setAttribute("aria-hidden", "true");
 for (const link of copy.querySelectorAll("a")) link.tabIndex = -1;
 sequence.after(copy);
-root.dataset.enhanced = "true";
 const cleanups = [
   initNavigation(root),
   initSections(root),

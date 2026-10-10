@@ -29,6 +29,14 @@
   {{/inline}}
   <body>
     <main class="sqlpage-world" data-motion="off" data-scene="idle">
+      <!-- Reserve the flight's layout before first paint; no-JS keeps ordinary flow. -->
+      <script nonce="{{@csp_nonce}}">
+        {
+          const landingRoot = document.currentScript.parentElement;
+          landingRoot.dataset.enhanced = "true";
+          landingRoot.dataset.motion = matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on";
+        }
+      </script>
       <a class="skip-link" href="/your-first-sql-website/"
         >Start building with SQLPage</a
       >
