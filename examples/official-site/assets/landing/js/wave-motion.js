@@ -1,3 +1,4 @@
+/** Deform shared SVG section edges with travelling swells and damped scroll impulses. */
 const TAU = Math.PI * 2;
 const WIDTH = 1200;
 const STEP = 100;

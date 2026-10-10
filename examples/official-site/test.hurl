@@ -94,16 +94,19 @@ POST http://localhost:8080/landing-demos/save.sql
 [FormParams]
 name: Ada
 team: Query crew
-HTTP 302
-[Asserts]
-header "Location" == "/landing-demos/demo.sql?component=form&saved=1"
-
-GET http://localhost:8080/landing-demos/demo.sql?component=form&saved=1
 HTTP 200
 [Asserts]
 body contains "Hello, Ada!"
 body contains "Query crew"
+body contains "This preview is private to your submission."
 body not contains "An error occurred"
+
+# A fresh visitor always sees the seeded profile, never another submission.
+GET http://localhost:8080/landing-demos/demo.sql?component=form
+HTTP 200
+[Asserts]
+body contains "SQL builders"
+body not contains "Query crew"
 
 GET http://localhost:8080/landing-demos/demo.sql?component=big_number
 HTTP 200
@@ -120,7 +123,8 @@ jsonpath "$.source" contains "from customers"
 GET http://localhost:8080/landing-demos/source.sql?component=form
 HTTP 200
 [Asserts]
-jsonpath "$.save_source" contains "update profiles"
+jsonpath "$.save_source" contains "sqlpage.run_sql"
+jsonpath "$.save_source" not contains "update profiles"
 
 GET http://localhost:8080/landing-demos/demo.sql?component=catalog
 HTTP 200
@@ -133,12 +137,13 @@ POST http://localhost:8080/landing-demos/save.sql
 [FormParams]
 name:
 team: Rejected input
-HTTP 302
+HTTP 200
 [Asserts]
-header "Location" == "/landing-demos/demo.sql?component=form&saved=0"
+body contains "Please check your profile"
+body not contains "Hello,"
 
 GET http://localhost:8080/landing-demos/demo.sql?component=form
 HTTP 200
 [Asserts]
-body contains "Query crew"
+body contains "SQL builders"
 body not contains "Rejected input"

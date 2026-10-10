@@ -1,3 +1,4 @@
+/* Opening composition overrides; subsequent section layouts respond in their own modules. */
 @keyframes ribbon-travel {
   to {
     transform: translateX(-50%);
@@ -31,7 +32,6 @@
     width: 60px;
   }
   .engraved-comment {
-    top: 16%;
     width: 248px;
   }
   .metal-recess {
@@ -70,7 +70,6 @@
   }
   .desktop-nav .glass-button {
     padding: 9px 13px;
-    font-size: 14px;
   }
   .brand {
     font-size: 25px;
@@ -85,14 +84,12 @@
     font-size: 13vw;
   }
   .engraved-comment {
-    top: 16%;
     width: 235px;
   }
   .metal-recess {
     padding: 15px 18px 16px;
   }
   .metal-recess code {
-    font-size: 13px;
     gap: 4px;
   }
   .intro-row {
@@ -128,8 +125,6 @@
   }
   a,
   button,
-  .hero-copy,
-  .scene-canvas,
   .run-orbit,
   .run-orbit > span,
   .run-orbit > i {

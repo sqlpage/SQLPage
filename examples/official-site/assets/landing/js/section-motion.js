@@ -1,3 +1,4 @@
+/** Geometry-driven section covers and element reveals; CSS owns the visual poses. */
 /** Scroll through long sections before holding their read tail beneath the next cover. */
 export function initSectionMotion(root) {
   const sections = [...root.querySelectorAll(".landing-section")];

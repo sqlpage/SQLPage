@@ -1,3 +1,4 @@
+/** Synchronize the illustrative streaming timelines and suspend invisible animation. */
 // Both timelines share an illustrative clock; these are not benchmark timings.
 const DURATION = 7000;
 

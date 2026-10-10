@@ -1,3 +1,4 @@
+/** Boot the progressively enhanced landing page; each module owns its cleanup. */
 import { initExperience } from "./experience.js";
 import { initInstantMotion } from "./instant-motion.js";
 import { initNavigation } from "./navigation.js";

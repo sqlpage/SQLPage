@@ -82,16 +82,24 @@ for (const settings of [
     const frames = await samples;
     expect(frames.some((frame) => frame.loading)).toBe(false);
     const heights = frames.map((frame) => frame.height);
+    const firstHeight = heights[0];
+    const lastHeight = heights.at(-1);
+    if (firstHeight === undefined || lastHeight === undefined)
+      throw new Error("The preview transition produced no layout samples");
+    expect(heights.length).toBeGreaterThan(1);
     expect(Math.min(...heights)).toBeGreaterThanOrEqual(
-      Math.min(heights[0], heights.at(-1)!) - 2,
+      Math.min(firstHeight, lastHeight) - 2,
     );
     const scrolls = frames.map((frame) => frame.scroll);
     expect(Math.max(...scrolls) - Math.min(...scrolls)).toBeLessThan(2);
     if (settings.reducedMotion === "no-preference") {
-      const distance = Math.abs(heights.at(-1)! - heights[0]);
-      const steps = heights
-        .slice(1)
-        .map((height, index) => Math.abs(height - heights[index]));
+      const distance = Math.abs(lastHeight - firstHeight);
+      let previous = firstHeight;
+      const steps = heights.slice(1).map((height) => {
+        const step = Math.abs(height - previous);
+        previous = height;
+        return step;
+      });
       expect(Math.max(...steps)).toBeLessThan(Math.max(12, distance * 0.75));
     }
 
@@ -172,4 +180,52 @@ test("a failed landing example keeps the current preview and SQL", async ({
     "true",
   );
   await expect(page.locator("#demo-panel iframe")).toHaveCount(1);
+});
+
+test("anonymous form submissions stay private and validate on the server", async ({
+  browser,
+  baseURL,
+}) => {
+  const author = await browser.newContext({ baseURL });
+  const visitor = await browser.newContext({ baseURL });
+  try {
+    const submitted = await author.request.post("/landing-demos/save.sql", {
+      form: { name: "Private Ada", team: "Only my submission" },
+    });
+    expect(submitted.status()).toBe(200);
+    expect(submitted.url()).not.toContain("Private");
+    const content = await submitted.text();
+    expect(content).toContain("Hello, Private Ada!");
+    expect(content).toContain("Only my submission");
+    expect(content).toContain("This preview is private to your submission.");
+
+    // Independent clients and fresh visits by the author keep seeded defaults.
+    for (const context of [visitor, author]) {
+      const page = await context.newPage();
+      await page.goto("/landing-demos/demo.sql?component=form");
+      await expect(page.getByLabel("Your name")).toHaveValue("Ada");
+      await expect(page.getByLabel("Your team")).toHaveValue("SQL builders");
+      await expect(page.getByRole("alert")).toHaveCount(0);
+    }
+    for (const form of [
+      { name: "   ", team: "Rejected" },
+      { name: "a".repeat(81), team: "Rejected" },
+      { name: "Ada", team: "x".repeat(161) },
+    ]) {
+      const response = await author.request.post("/landing-demos/save.sql", {
+        form,
+      });
+      expect(response.status()).toBe(200);
+      expect(await response.text()).toContain("Please check your profile");
+      expect(await response.text()).not.toContain("Hello,");
+    }
+    const forged = await author.request.get(
+      "/landing-demos/save.sql?name=Forged&team=Public",
+    );
+    expect(await forged.text()).toContain("Please check your profile");
+    expect(await forged.text()).not.toContain("Hello, Forged");
+  } finally {
+    await author.close();
+    await visitor.close();
+  }
 });

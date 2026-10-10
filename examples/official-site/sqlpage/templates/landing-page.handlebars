@@ -99,7 +99,7 @@
               aria-expanded="false"
               hidden
             >
-              <span class="icon icon-menu" aria-hidden="true">{{icon_img "menu-2"}}</span>
+              <span class="icon" aria-hidden="true">{{icon_img "menu-2"}}</span>
             </button>
           </header>
           <aside class="engraved-comment" aria-label="SQL comment">
@@ -280,12 +280,12 @@
           </header>
           <p class="eyebrow deployment-notes" data-section-reveal="detail">-- read, edit, and act.<br />-- forms, tables, charts, and navigation.<br />-- Tables with manners. CRUD, but polite.</p>
           <div class="frontend-tabs" role="tablist" aria-label="Frontend features">
-            <button data-section-reveal="control" id="customize-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="customize-panel" data-feature="customize">{{icon_img "pencil"}}<span><strong>Make it yours</strong><small>templates, css, js</small></span></button>
-            <button data-section-reveal="control" id="ship-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="ship-panel" data-feature="ship">{{icon_img "cube"}}<span><strong>Ship it anywhere</strong><small>files, docker, nix</small></span></button>
-            <button data-section-reveal="control" id="instant-tab" role="tab" aria-selected="true" aria-controls="instant-panel" data-feature="instant">{{icon_img "bolt"}}<span><strong>Instant</strong><small>server-rendered</small></span></button>
-            <button data-section-reveal="control" id="safe-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="safe-panel" data-feature="safe">{{icon_img "shield-check"}}<span><strong>Safe by default</strong><small>SQLi, XSS, CSRF</small></span></button>
+            <button data-section-reveal="control" id="customize-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="customize-panel">{{icon_img "pencil"}}<span><strong>Make it yours</strong><small>templates, css, js</small></span></button>
+            <button data-section-reveal="control" id="ship-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="ship-panel">{{icon_img "cube"}}<span><strong>Ship it anywhere</strong><small>files, docker, nix</small></span></button>
+            <button data-section-reveal="control" id="instant-tab" role="tab" aria-selected="true" aria-controls="instant-panel">{{icon_img "bolt"}}<span><strong>Instant</strong><small>server-rendered</small></span></button>
+            <button data-section-reveal="control" id="safe-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="safe-panel">{{icon_img "shield-check"}}<span><strong>Safe by default</strong><small>SQLi, XSS, CSRF</small></span></button>
           </div>
-          <div class="deployment-example frontend-panels" data-section-reveal="reading">
+          <div class="frontend-panels" data-section-reveal="reading">
             <div id="customize-panel" class="frontend-panel" role="tabpanel" aria-labelledby="customize-tab" hidden>
               <div class="frontend-copy"><h3>Override any component.</h3><p>The default frontend is fully customizable.</p><a href="/custom_components.sql">Make it yours {{icon_img "arrow-up-right"}}</a></div>
               <div class="customize-diagram" aria-label="Handlebars, CSS and JavaScript make your component"><span class="feature-node">.handlebars</span><b>+</b><span class="feature-node">.css</span><b>+</b><span class="feature-node">.js</span><b>→</b><span class="feature-node feature-result">your <br />component</span></div>
@@ -332,7 +332,7 @@
           <p class="eyebrow" data-section-reveal="detail">SELECT * FROM your_database;</p>
           <h2 data-section-reveal="heading" id="databases-title">Keep your<br />database. <em>Add<br />the app.</em></h2>
           <p data-section-reveal="detail"><span class="chip">We're seeing other databases.</span> <span class="chip">A healthy relationship model.</span></p>
-          <div class="scene-stop database-sculpture" data-scene-stop aria-hidden="true"></div>
+          <div class="scene-stop" data-scene-stop aria-hidden="true"></div>
           <div class="database-grid">
             <a data-section-reveal="card" href="/your-first-sql-website/">SQLite<small>-- built in</small></a>
             <a data-section-reveal="card" href="/your-first-sql-website/#connect-to-a-custom-database">PostgreSQL<small>-- native driver</small></a>
@@ -354,7 +354,7 @@
         <div class="section-inner">
           <p class="eyebrow" data-section-reveal="detail">-- A tool for them. Not a second job for you.</p>
           <h2 data-section-reveal="heading" id="commit-title">Small team.<br />Serious tools;</h2>
-          <div class="scene-stop commit-sculpture" data-scene-stop aria-hidden="true"></div>
+          <div class="scene-stop" data-scene-stop aria-hidden="true"></div>
           <div class="commit-action">
             <a data-section-reveal="control" class="primary-button" href="/your-first-sql-website/">COMMIT; <span>start with a query</span></a>
             <p class="eyebrow" data-section-reveal="detail">DELETE busy;<br />-- NULL drama.</p>
@@ -379,7 +379,7 @@
       >
         <form method="dialog">
           <button class="dialog-close" aria-label="Close navigation">
-            <span class="icon icon-close" aria-hidden="true">{{icon_img "x"}}</span>
+            <span class="icon" aria-hidden="true">{{icon_img "x"}}</span>
           </button>
         </form>
         <h2 id="navigation-title">SQLPage</h2>

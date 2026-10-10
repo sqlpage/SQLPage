@@ -1,9 +1,10 @@
+/** Trackball input is isolated from scene animation; vertical touch gestures stay native. */
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
 
 const clamp = THREE.MathUtils.clamp;
 
 // A virtual trackball has no pole or Euler-angle limits; successive drags compose quaternions.
-export function trackballVector(x, y, rect) {
+function trackballVector(x, y, rect) {
   const scale = Math.max(1, Math.min(rect.width, rect.height));
   const v = new THREE.Vector3(
     (2 * (x - rect.left) - rect.width) / scale,

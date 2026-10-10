@@ -1,9 +1,14 @@
+/**
+ * Owns one square renderer and its resource lifetime. Scroll supplies placement;
+ * controls supply local rotation. Materials, decoration and glow stay independent.
+ */
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/loaders/GLTFLoader.js/+esm";
 import { createFiniteJewelLight } from "./finite-jewel-light.js";
 import { JEWEL_EDGES } from "./jewel-edges.js";
 import { MODEL_URL } from "./sculpture-assets.js";
 import { createSculptureControls } from "./sculpture-controls.js";
+import { createSculptureDecoration } from "./sculpture-decoration.js";
 import {
   CAMERA_DISTANCE,
   cameraForSculpture,
@@ -15,6 +20,7 @@ import {
   loadMetalEnvironment,
 } from "./sculpture-materials.js";
 import { createSelectiveGlow } from "./selective-glow.js";
+import { loadSculptureShaders } from "./shader-sources.js";
 
 const clamp = THREE.MathUtils.clamp;
 /**
@@ -57,8 +63,7 @@ export function createDatabaseScene({
     readySent = false;
   let canvasLeft = 0,
     canvasTop = 0,
-    canvasWidth = 1000,
-    canvasHeight = 1000;
+    canvasWidth = 1000;
   let lastFrame = "";
   const pointer = new THREE.Vector2();
   const parallax = new THREE.Vector2();
@@ -98,8 +103,8 @@ export function createDatabaseScene({
     });
   };
 
-  // Both URLs are preloaded by the HTML. Start consuming them together before
-  // any scene setup; neither download waits for the other or a lighting bake.
+  // Fetch the model, baked environment and shader sources in parallel. Any
+  // asset failure returns the experience to its static preview.
   let environment;
   const assets = Promise.all([
     new GLTFLoader().loadAsync(MODEL_URL).then((gltf) => {
@@ -108,6 +113,7 @@ export function createDatabaseScene({
       else trackResources(gltf.scene);
       return gltf;
     }),
+    loadSculptureShaders(),
     loadMetalEnvironment().then((texture) => {
       environment = texture;
       if (disposed) texture.dispose();
@@ -135,22 +141,12 @@ export function createDatabaseScene({
   const interiorLight = new THREE.PointLight(0x72c8de, 0.6, 2.1, 2);
   interiorLight.name = "Soft interior database light";
   const interiorScale = new THREE.Vector3();
-  const glow = createSelectiveGlow(
-    renderer,
-    scene,
-    camera,
-    liquidClock,
-    interior,
-  );
-  glow.setSize(1000, 1000, 1);
-  const jewelReflection = createFiniteJewelLight(JEWEL_EDGES);
+  let glow, jewelReflection;
   const key = new THREE.DirectionalLight(0xe5edf1, 1.7);
   key.position.set(-3.5, 5, 5);
-  key.layers.enable(1);
   scene.add(key);
   const rim = new THREE.DirectionalLight(0xa1bac7, 0.8);
   rim.position.set(4, 2, -2);
-  rim.layers.enable(1);
   scene.add(rim);
   const fill = new THREE.DirectionalLight(0x5c7987, 0.22);
   fill.position.set(-5, -0.5, -2);
@@ -164,98 +160,27 @@ export function createDatabaseScene({
   parallaxPivot.add(scrollPivot);
   const dragPivot = new THREE.Group();
   scrollPivot.add(dragPivot);
-  const decoration = new THREE.Group();
-  parallaxPivot.add(decoration);
   let diamond;
   let model;
   let wireMaterial;
   const modelCenter = new THREE.Vector3();
-  const orbitalNodes = [];
-  const orbMaterial = new THREE.MeshBasicMaterial({ color: 0x377e94 });
-  const orbGeometry = new THREE.SphereGeometry(0.015, 10, 8);
-  for (let i = 0; i < 4; i++) {
-    const rx = 1.65 + i * 0.46,
-      rz = 1.24 + i * 0.22,
-      y = -1.3 - i * 0.18;
-    const points = Array.from({ length: 192 }, (_, j) => {
-      const a = (j / 192) * Math.PI * 2;
-      return new THREE.Vector3(
-        Math.cos(a) * rx,
-        y + Math.sin(a) * (0.07 + i * 0.07),
-        Math.sin(a) * rz,
-      );
-    });
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({
-      color: i === 1 ? 0x3e7f90 : 0x22424f,
-      transparent: true,
-      opacity: i === 1 ? 0.24 : 0.14,
-      depthWrite: false,
-    });
-    decoration.add(new THREE.LineLoop(geometry, material));
-    for (let j = 0; j < 2; j++) {
-      const orb = new THREE.Mesh(orbGeometry, orbMaterial);
-      orb.scale.setScalar(j === 0 ? 1 : 0.66);
-      decoration.add(orb);
-      orbitalNodes.push({
-        object: orb,
-        rx,
-        rz,
-        y,
-        phase: i * 1.34 + j * Math.PI,
-        speed: 0.09 + i * 0.013,
-      });
-    }
-  }
-
-  const starsGeometry = new THREE.BufferGeometry();
-  const positions = [],
-    sizes = [],
-    phases = [];
-  let seed = 7331;
-  const random = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  for (let i = 0; i < 65; i++) {
-    positions.push(
-      (random() - 0.5) * 8,
-      (random() - 0.42) * 5.6,
-      (random() - 0.5) * 5.5,
-    );
-    sizes.push(i % 11 === 0 ? 3 : 1 + random() * 1.4);
-    phases.push(random() * Math.PI * 2);
-  }
-  starsGeometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(positions, 3),
-  );
-  starsGeometry.setAttribute(
-    "pointSize",
-    new THREE.Float32BufferAttribute(sizes, 1),
-  );
-  starsGeometry.setAttribute(
-    "phase",
-    new THREE.Float32BufferAttribute(phases, 1),
-  );
-  const starsMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 },
-      uRatio: { value: renderer.getPixelRatio() },
-    },
-    vertexShader: `attribute float pointSize; attribute float phase; varying float brightness; uniform float uTime; uniform float uRatio;
-      void main(){ vec3 p=position; p.y+=sin(uTime*.12+phase)*.06; vec4 mv=modelViewMatrix*vec4(p,1.0); gl_Position=projectionMatrix*mv; gl_PointSize=clamp(pointSize*uRatio*(7.0/-mv.z),1.0,12.0); brightness=.5+.35*sin(phase+uTime*.35); }`,
-    fragmentShader: `varying float brightness; void main(){ float r=length(gl_PointCoord-.5); if(r>.5)discard; float a=pow(1.0-r*2.0,2.0)*brightness*.45; gl_FragColor=vec4(vec3(.13,.39,.48),a); }`,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  const stars = new THREE.Points(starsGeometry, starsMaterial);
-  decoration.add(stars);
-  trackResources(decoration);
+  let decoration;
   assets
-    .then(async ([gltf, studio]) => {
+    .then(async ([gltf, shaders, studio]) => {
       if (disposed) return;
+      glow = createSelectiveGlow(
+        renderer,
+        scene,
+        camera,
+        liquidClock,
+        interior,
+        shaders,
+      );
+      glow.setSize(1000, 1000, 1);
+      jewelReflection = createFiniteJewelLight(JEWEL_EDGES, shaders);
+      decoration = createSculptureDecoration(shaders);
+      parallaxPivot.add(decoration.group);
+      trackResources(decoration.group);
       performance.mark("sqlpage:assets-ready");
       const bounds = new THREE.Box3().setFromObject(gltf.scene);
       bounds.getCenter(modelCenter);
@@ -275,11 +200,11 @@ export function createDatabaseScene({
             material.name.includes("Black") ||
             material.name.includes("Gunmetal")
           )
-            finishMetal(material, studio);
+            finishMetal(material, studio, shaders);
           if (material.name.includes("Mirror Top"))
             jewelReflection.apply(material);
           if (material.name.includes("Separator"))
-            finishLiquid(material, liquidClock, studio, interior);
+            finishLiquid(material, liquidClock, studio, interior, shaders);
           if (material.name.includes("Jewel Wire")) {
             material.emissiveIntensity = 1.05;
             wireMaterial = material;
@@ -375,8 +300,8 @@ export function createDatabaseScene({
     if (pointers.size) return;
     left = canvasLeft + (left / renderer.domElement.width) * canvasWidth;
     right = canvasLeft + (right / renderer.domElement.width) * canvasWidth;
-    top = canvasTop + (top / renderer.domElement.height) * canvasHeight;
-    bottom = canvasTop + (bottom / renderer.domElement.height) * canvasHeight;
+    top = canvasTop + (top / renderer.domElement.height) * canvasWidth;
+    bottom = canvasTop + (bottom / renderer.domElement.height) * canvasWidth;
     left = clamp(left - 12, 0, width);
     right = clamp(right + 12, 0, width);
     top = clamp(top - 12, 90, height);
@@ -413,7 +338,7 @@ export function createDatabaseScene({
     const position = state.frame;
     canvasLeft = position.left;
     canvasTop = position.top;
-    canvasWidth = canvasHeight = position.size;
+    canvasWidth = position.size;
     const frameKey = `${canvasLeft},${canvasTop},${canvasWidth},${state.turn}`;
     if (frameKey !== lastFrame) needsRender = true;
     lastFrame = frameKey;
@@ -423,21 +348,10 @@ export function createDatabaseScene({
       left: `${canvasLeft}px`,
       top: `${canvasTop}px`,
       width: `${canvasWidth}px`,
-      height: `${canvasHeight}px`,
+      height: `${canvasWidth}px`,
     });
-    camera.aspect = 1;
-    camera.updateProjectionMatrix();
-    decoration.rotation.y = state.motion ? time * 0.014 : decoration.rotation.y;
-    starsMaterial.uniforms.uTime.value = time;
+    decoration?.update(time, state.motion);
     liquidClock.value = time;
-    for (const orb of orbitalNodes) {
-      const a = orb.phase + time * orb.speed;
-      orb.object.position.set(
-        Math.cos(a) * orb.rx,
-        orb.y + Math.sin(a) * 0.07,
-        Math.sin(a) * orb.rz,
-      );
-    }
     if (diamond) {
       diamond.position.y = Math.sin(time * 0.62) * 0.012;
       diamond.rotation.y = Math.sin(time * 0.12) * 0.055;
@@ -457,8 +371,8 @@ export function createDatabaseScene({
       parallax.lengthSq() > 0.000001;
     const inView =
       state.opacity > 0.05 &&
-      canvasTop + canvasHeight * 0.81 > 0 &&
-      canvasTop + canvasHeight * 0.22 < window.innerHeight;
+      canvasTop + canvasWidth * 0.81 > 0 &&
+      canvasTop + canvasWidth * 0.22 < window.innerHeight;
     if (readySent) {
       hitArea.inert = !inView;
       hitArea.tabIndex = inView ? 0 : -1;
@@ -476,7 +390,7 @@ export function createDatabaseScene({
       if (diamond && wireMaterial)
         jewelReflection.update(diamond, camera, wireMaterial);
       renderer.render(scene, camera);
-      glow.render(model, [decoration], screenBounds);
+      glow.render(model, [decoration.group], screenBounds);
       needsRender = false;
       lastOrientation.copy(dragQuaternion);
       if (!readySent) {
@@ -518,7 +432,7 @@ export function createDatabaseScene({
       for (const material of materials) material.dispose();
       if (environment) textures.delete(environment);
       for (const texture of textures) texture.dispose();
-      glow.dispose();
+      glow?.dispose();
       environment?.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

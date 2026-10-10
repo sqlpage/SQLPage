@@ -1,3 +1,4 @@
+/** Measure authored sculpture anchors, then update flight, fading handoffs and hero text. */
 import { layoutLandingFrame, SCULPTURE_FRAME } from "./scene/landing-frame.js";
 
 /** One sculpture: an opening flight, then page anchors with fading handoffs. */

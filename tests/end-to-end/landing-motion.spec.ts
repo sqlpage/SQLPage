@@ -1,10 +1,16 @@
 import { expect, type Locator, test } from "@playwright/test";
 import { scrollLanding, settleLandingPreview } from "./landing-helpers.ts";
 
+function requireValue<T>(value: T | null | undefined, label: string): T {
+  if (value === null || value === undefined)
+    throw new Error(`Missing ${label} in landing-motion test`);
+  return value;
+}
+
 async function gesture(element: Locator) {
   return element.evaluate((element) => {
     const style = getComputedStyle(element);
-    const [x, y = "0"] = style.translate.split(" ");
+    const [x = "0", y = "0"] = style.translate.split(" ");
     return {
       opacity: Number(style.opacity),
       x: parseFloat(x) || 0,
@@ -42,8 +48,11 @@ async function surface(wave: Locator) {
 
 function difference(a: number[], b: number[]) {
   return (
-    a.reduce((sum, value, index) => sum + Math.abs(value - b[index]), 0) /
-    a.length
+    a.reduce(
+      (sum, value, index) =>
+        sum + Math.abs(value - requireValue(b[index], `wave sample ${index}`)),
+      0,
+    ) / a.length
   );
 }
 
@@ -82,9 +91,10 @@ for (const viewport of [
     for (let index = 0; index < positions.length; index++)
       await expect(sections.nth(index)).toHaveCSS("position", "sticky");
     async function expectedTop(index: number) {
+      const position = requireValue(positions[index], `section ${index}`);
       return Math.max(
-        positions[index].stickyTop,
-        positions[index].top - (await page.evaluate(() => scrollY)),
+        position.stickyTop,
+        position.top - (await page.evaluate(() => scrollY)),
       );
     }
     async function surfaceMotion(wave: Locator) {
@@ -105,10 +115,11 @@ for (const viewport of [
     const controlBounds = await authoredBounds(control);
     const cardBounds = await authoredBounds(card);
     const trailingCardBounds = await authoredBounds(trailingCard);
-    for (let index = 1; index < positions.length; index++) {
+    for (const [index, position] of positions.entries()) {
+      if (index === 0) continue;
       const previous = sections.nth(index - 1);
       const incoming = sections.nth(index);
-      const boundary = positions[index].top;
+      const boundary = position.top;
       await scrollTo(boundary - viewport.height * 0.85);
       expect((await previous.boundingBox())!.y).toBeCloseTo(
         await expectedTop(index - 1),
@@ -211,7 +222,10 @@ for (const viewport of [
     }
 
     // Even the last card gets a fully readable interval before the next wave arrives.
-    const readingScroll = positions[1].top - positions[1].stickyTop;
+    const purpose = requireValue(positions[1], "purpose section");
+    const deployment = requireValue(positions[2], "deployment section");
+    const closing = requireValue(positions[4], "closing section");
+    const readingScroll = purpose.top - purpose.stickyTop;
     await scrollTo(Math.ceil(readingScroll));
     await expect(trailingCard).toHaveCSS("opacity", "1");
     const readableCard = (await trailingCard.boundingBox())!;
@@ -222,9 +236,9 @@ for (const viewport of [
 
     // Once the fully read tail holds, the next wave gives it an outro.
     const tailBottom =
-      positions[1].stickyTop +
+      purpose.stickyTop +
       trailingCardBounds.top -
-      positions[1].top +
+      purpose.top +
       trailingCardBounds.height;
     const waveHeight = await sections
       .nth(2)
@@ -232,7 +246,7 @@ for (const viewport of [
         parseFloat(getComputedStyle(element).getPropertyValue("--wave-height")),
       );
     await scrollTo(
-      positions[2].top -
+      deployment.top -
         (tailBottom + waveHeight * 0.75 - 20 - trailingCardBounds.height * 0.2),
     );
     const leaving = await gesture(trailingCard);
@@ -245,7 +259,7 @@ for (const viewport of [
     await expect(trailingCard).toHaveCSS("opacity", "1");
 
     // Keyboard focus must uncover a control on an earlier, covered section.
-    await scrollTo(positions[4].top);
+    await scrollTo(closing.top);
     const stackToggle = page.getByRole("button", {
       name: "A SQLPage app",
       exact: true,
@@ -277,9 +291,11 @@ for (const viewport of [
       await sections.evaluateAll((elements) =>
         elements.every((element, index) => {
           if (!index) return true;
+          const previous = elements[index - 1];
           return (
+            previous !== undefined &&
             element.getBoundingClientRect().top >=
-            elements[index - 1].getBoundingClientRect().bottom - 2
+              previous.getBoundingClientRect().bottom - 2
           );
         }),
       ),
@@ -366,9 +382,8 @@ for (const viewport of [
         };
       }),
     );
-    for (let index = 0; index < route.length; index++) {
+    for (const [index, { top, hold, items }] of route.entries()) {
       const section = sections.nth(index);
-      const { top, hold, items } = route[index];
       if (hold > top + 2) {
         const step = Math.min(100, (hold - top) / 2);
         await scrollLanding(page, top + step);

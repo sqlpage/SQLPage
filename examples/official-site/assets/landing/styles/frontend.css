@@ -102,9 +102,6 @@
   min-height: 245px;
   animation: frontend-enter 350ms ease-out;
 }
-.frontend-panel[hidden] {
-  display: none;
-}
 .frontend-copy h3 {
   margin: 0 0 18px;
   font-size: clamp(28px, 3vw, 38px);
@@ -277,9 +274,6 @@
   color: #889bbd;
   cursor: pointer;
 }
-.timeline-toggle[hidden] {
-  display: none;
-}
 .timeline-toggle:hover {
   color: #eef1f7;
   border-color: #79b6e8;
@@ -388,9 +382,6 @@
   .customize-diagram {
     justify-content: flex-start;
   }
-  .ship-diagram {
-    flex-wrap: wrap;
-  }
 }
 @media (max-width: 850px) {
   .frontend-tabs {
@@ -420,7 +411,6 @@
     margin: 0;
   }
   .frontend-tabs {
-    grid-template-columns: 1fr 1fr;
     margin-top: 0;
   }
   .frontend-tabs button {
@@ -547,14 +537,5 @@
     width: clamp(92px, 26vw, 105px);
     font-size: 11px;
     padding: 10px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .frontend-panel {
-    animation: none;
-  }
-  .frontend-tabs button,
-  .ship-options a {
-    transition: none;
   }
 }

@@ -4,10 +4,10 @@ set demo = (select case $component when 'chart' then 'chart' when 'form' then 'f
 select 'shell' as component, 'Live SQLPage demo' as title,
     'dark' as theme, '' as footer, 'fluid' as layout,
     '/assets/landing/styles/demo.css' as css;
-select 'alert' as component, 'Profile saved' as title,
-    'Hello, ' || name || '! Your changes are saved in the database.' as description,
+select 'alert' as component, 'Profile previewed' as title,
+    'Hello, ' || trim(:name) || '! This preview is private to your submission.' as description,
     'circle-check' as icon, 'cyan' as color
-from profiles where id = 1 and $demo = 'form' and $saved = '1';
+where $demo = 'form' and $saved = '1' and sqlpage.request_method() = 'POST';
 select 'alert' as component, 'Please check your profile' as title,
     'Enter a name up to 80 characters and a team up to 160 characters.' as description,
     'alert-circle' as icon, 'orange' as color

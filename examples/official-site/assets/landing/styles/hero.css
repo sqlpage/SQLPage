@@ -1,3 +1,4 @@
+/* Opening typography and its call to action; responsive.css owns viewport overrides. */
 .engraved-comment {
   position: absolute;
   right: calc(var(--composition-left) + var(--composition-width) * 0.045);
@@ -103,9 +104,6 @@
 .hero-copy .title-from {
   align-self: flex-end;
   margin-right: calc(var(--composition-width) * 0.045);
-}
-.anchor-letter {
-  display: inline;
 }
 .title-select,
 .title-from {

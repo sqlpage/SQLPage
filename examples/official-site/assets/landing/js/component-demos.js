@@ -1,7 +1,8 @@
 import { initSqlHighlight } from "./sql-highlight.js";
+import { initTabs, selectTab } from "./tabs.js";
 
 /** Prepare the next live example before changing the visible preview and SQL. */
-export function initComponentDemos(root, tabs, signal) {
+export function initComponentDemos(root, signal) {
   const panel = root.querySelector("#demo-panel");
   const viewport = panel.querySelector(".demo-preview");
   const source = root.querySelector("#demo-source");
@@ -17,6 +18,8 @@ export function initComponentDemos(root, tabs, signal) {
   let animation;
   let fade;
   let resizePreview;
+  const previewHeight = (content) =>
+    `${Math.ceil(content.getBoundingClientRect().height) + 2}px`;
 
   function resizePanel(change, entering = false) {
     const before = panel.getBoundingClientRect().height;
@@ -41,7 +44,7 @@ export function initComponentDemos(root, tabs, signal) {
     );
     if (!content) return;
     const fit = () => {
-      const height = `${Math.ceil(content.getBoundingClientRect().height) + 2}px`;
+      const height = previewHeight(content);
       if (viewport.style.height !== height)
         resizePanel(() => {
           viewport.style.height = height;
@@ -66,7 +69,7 @@ export function initComponentDemos(root, tabs, signal) {
     },
     { signal },
   );
-  tabs(
+  initTabs(
     root.querySelector(".source-tabs"),
     "aria-selected",
     (button) => {
@@ -166,7 +169,9 @@ export function initComponentDemos(root, tabs, signal) {
         incoming.title = "Live SQLPage component demo";
         incoming.removeAttribute("aria-hidden");
         incoming.inert = false;
-        viewport.style.height = `${Math.ceil(incoming.contentDocument.querySelector("#sqlpage_main_wrapper").getBoundingClientRect().height) + 2}px`;
+        viewport.style.height = previewHeight(
+          incoming.contentDocument.querySelector("#sqlpage_main_wrapper"),
+        );
         panel.dataset.demo = next;
         panel.setAttribute("aria-labelledby", button.id);
         root.querySelector('[data-file="save"]').hidden = next !== "form";
@@ -178,10 +183,7 @@ export function initComponentDemos(root, tabs, signal) {
           sourceFiles = { main: files.source, save: files.save_source };
           // Avoid an intermediate one-line loading state or a nested resize.
           const main = root.querySelector("#demo-filename");
-          for (const tab of root.querySelectorAll(".source-tabs button")) {
-            tab.setAttribute("aria-selected", String(tab === main));
-            tab.tabIndex = tab === main ? 0 : -1;
-          }
+          selectTab(root.querySelector(".source-tabs"), main);
           source.setAttribute("aria-labelledby", main.id);
           void renderSource(sourceFiles.main);
         }
@@ -195,15 +197,16 @@ export function initComponentDemos(root, tabs, signal) {
       incoming.remove();
       fade?.cancel();
       panel.removeAttribute("aria-busy");
-      for (const tab of picker.querySelectorAll("button")) {
-        const selected = tab.dataset.demo === component;
-        tab.setAttribute("aria-selected", String(selected));
-        tab.tabIndex = selected ? 0 : -1;
-      }
+      selectTab(picker, picker.querySelector(`[data-demo="${component}"]`));
       status.textContent = "The demo could not load. Please try again.";
     }
   }
-  tabs(picker, "aria-selected", (button) => void selectDemo(button), signal);
+  initTabs(
+    picker,
+    "aria-selected",
+    (button) => void selectDemo(button),
+    signal,
+  );
   media.addEventListener(
     "change",
     () => {

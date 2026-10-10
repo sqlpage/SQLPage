@@ -1,3 +1,4 @@
+/* Sculpture input target and recoverable WebGL error state. */
 .model-interaction {
   position: absolute;
   left: 55%;
@@ -29,8 +30,6 @@
   color: #9fb6be;
   font: 12px var(--mono);
   max-width: 290px;
-}
-.scene-error {
   padding: 20px;
   background: #080f14ed;
   border: 1px solid #26444e;

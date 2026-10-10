@@ -135,12 +135,12 @@ for (const viewport of [
             };
           }),
         );
-      for (let index = 0; index < route.length; index++) {
-        const target = route[index];
+      for (const [index, target] of route.entries()) {
         const anchor = await sample(target.top - height * 0.25 + 1);
         await expectAtPageAnchor(anchor, index);
         expect(anchor.opacity).toBe(1);
-        if (index === route.length - 1) continue;
+        const next = route[index + 1];
+        if (!next) continue;
         // Reaching the top is not a reason to remove an otherwise visible model.
         // This was the regression that left a large empty space beside headings.
         const reading = await sample(target.top - height * 0.04);
@@ -155,7 +155,7 @@ for (const viewport of [
         // only its last visible sliver fades, with exactly reversible behavior.
         if (
           target.heldTop + target.height <= 0 &&
-          route[index + 1].top - height > target.top + target.height
+          next.top - height > target.top + target.height
         ) {
           const leavingAt = target.top + target.height * 0.88;
           const outgoing = await sample(leavingAt);
@@ -182,7 +182,7 @@ for (const viewport of [
           expectSamePageFrame(reverse, outgoing);
           expect(reverse.opacity).toBeCloseTo(outgoing.opacity, 2);
         }
-        const arrived = await sample(route[index + 1].top - height * 0.75);
+        const arrived = await sample(next.top - height * 0.75);
         await expectAtPageAnchor(arrived, index + 1);
         expect(arrived.opacity).toBe(1);
         const reverse = await sample(target.top - height * 0.04);
@@ -260,12 +260,17 @@ test("landing page: live components, deployment and mobile navigation", async ({
   await expect(demo.getByLabel("Your team")).toHaveValue("Query crew");
   await page
     .locator("iframe")
-    .evaluate((frame) =>
-      (frame as HTMLIFrameElement).contentWindow!.location.reload(),
+    .evaluate(
+      (frame) =>
+        ((frame as HTMLIFrameElement).src =
+          "/landing-demos/demo.sql?component=form"),
     );
-  await expect(demo.getByLabel("Your team")).toHaveValue("Query crew");
+  await expect(demo.getByLabel("Your team")).toHaveValue("SQL builders");
   await page.getByRole("tab", { name: "save.sql", exact: true }).click();
-  await expect(page.locator("#demo-source")).toContainText("update profiles");
+  await expect(page.locator("#demo-source")).toContainText("sqlpage.run_sql");
+  await expect(page.locator("#demo-source")).not.toContainText(
+    "update profiles",
+  );
   await expect(page.locator("#demo-source")).toContainText(
     "sqlpage.request_method()",
   );
@@ -422,5 +427,32 @@ test("landing page: live components, deployment and mobile navigation", async ({
       ).toBe(true);
     }
   }
+  expect(errors).toEqual([]);
+});
+
+// GLSL is served beside native ES modules; a failed fetch must remain recoverable.
+test("landing shader failure keeps the static page usable and retries cleanly", async ({
+  page,
+}) => {
+  const shaderRoute = "**/assets/landing/js/scene/shaders/*.glsl";
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route(shaderRoute, (route) =>
+    route.fulfill({ status: 503, body: "Unavailable" }),
+  );
+  await page.goto("/");
+  const root = page.locator(".sqlpage-world");
+  await expect(root).toHaveAttribute("data-scene", "error", {
+    timeout: 30_000,
+  });
+  await expect(page.locator(".scene-preview")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.locator(".model-interaction")).toHaveAttribute("inert", "");
+  await page.unroute(shaderRoute);
+  await page.locator("[data-retry]").click();
+  await expect(root).toHaveAttribute("data-scene", "ready", {
+    timeout: 30_000,
+  });
+  await expect(page.locator("canvas")).toHaveCount(1);
   expect(errors).toEqual([]);
 });

@@ -1,16 +1,17 @@
+/** Cropped emission mask → two blur scales → alpha composite over the PBR scene. */
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
 import { FullScreenQuad } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/Pass.js/+esm";
-import {
-  INTERIOR_LIGHT_GLSL,
-  LIQUID_FLOW_GLSL,
-} from "./sculpture-materials.js";
-
-const vertex = `varying vec2 vUv;
-  void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 
 // Only luminous geometry enters this cropped buffer. Two blur scales retain
 // a crisp core and a quiet halo, without full-viewport bloom or runtime mips.
-export function createSelectiveGlow(renderer, scene, camera, clock, interior) {
+export function createSelectiveGlow(
+  renderer,
+  scene,
+  camera,
+  clock,
+  interior,
+  shaders,
+) {
   const source = new THREE.WebGLRenderTarget(1, 1, {
     type: THREE.HalfFloatType,
     depthBuffer: true,
@@ -53,15 +54,12 @@ export function createSelectiveGlow(renderer, scene, camera, clock, interior) {
         uLiquid: { value: liquid ? 1 : 0 },
         uLiquidTime: clock,
       },
-      vertexShader: `varying vec3 vPosition; varying vec3 vInteriorPosition;
-        void main() { vPosition = position; vInteriorPosition = (modelMatrix * vec4(position, 1.0)).xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `uniform vec3 uEmission; uniform float uLiquid; uniform float uLiquidTime; varying vec3 vPosition;
-        ${LIQUID_FLOW_GLSL}
-        ${INTERIOR_LIGHT_GLSL}
-        void main() {
-          float flow = uLiquid > .5 ? (.42 + liquidFlow(vPosition, uLiquidTime) * .58) * interiorLight() : 1.0;
-          gl_FragColor = vec4(uEmission * flow, 1.0);
-        }`,
+      vertexShader: shaders.emissionVertex,
+      fragmentShader: [
+        shaders.liquidFlow,
+        shaders.interiorLight,
+        shaders.emissionFragment,
+      ].join("\n"),
       toneMapped: false,
       side: original.side,
     });
@@ -75,19 +73,8 @@ export function createSelectiveGlow(renderer, scene, camera, clock, interior) {
       uStep: { value: new THREE.Vector2() },
       uExtract: { value: 0 },
     },
-    vertexShader: vertex,
-    fragmentShader: `uniform sampler2D tSource; uniform vec2 uStep; uniform float uExtract; varying vec2 vUv;
-      vec3 sampleLight(vec2 uv) {
-        vec3 c = texture2D(tSource, uv).rgb;
-        float luminance = dot(c, vec3(.2126, .7152, .0722));
-        return c * mix(1.0, smoothstep(.045, .065, luminance), uExtract);
-      }
-      void main() {
-        vec3 light = sampleLight(vUv) * .2270270270;
-        light += (sampleLight(vUv + uStep * 1.3846153846) + sampleLight(vUv - uStep * 1.3846153846)) * .3162162162;
-        light += (sampleLight(vUv + uStep * 3.2307692308) + sampleLight(vUv - uStep * 3.2307692308)) * .0702702703;
-        gl_FragColor = vec4(light, 1.0);
-      }`,
+    vertexShader: shaders.fullscreenVertex,
+    fragmentShader: shaders.blurFragment,
     depthTest: false,
     depthWrite: false,
     toneMapped: false,
@@ -98,19 +85,8 @@ export function createSelectiveGlow(renderer, scene, camera, clock, interior) {
       tWide: { value: wideV.texture },
       uRect: { value: new THREE.Vector4(0, 0, 1, 1) },
     },
-    vertexShader: `varying vec2 vUv; uniform vec4 uRect;
-      void main() { vUv = uv; gl_Position = vec4((uRect.xy + uv * uRect.zw) * 2.0 - 1.0, 0.0, 1.0); }`,
-    fragmentShader: `uniform sampler2D tNarrow; uniform sampler2D tWide; varying vec2 vUv;
-      void main() {
-        if (any(lessThan(vUv, vec2(0.0))) || any(greaterThan(vUv, vec2(1.0)))) discard;
-        vec3 halo = texture2D(tNarrow, vUv).rgb * .64 + texture2D(tWide, vUv).rgb * .16;
-        gl_FragColor = vec4(max(halo, vec3(0.0)), 1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-        vec3 light = clamp(gl_FragColor.rgb * .72, 0.0, 1.0);
-        float coverage = max(light.r, max(light.g, light.b));
-        gl_FragColor = vec4(light, coverage);
-      }`,
+    vertexShader: shaders.compositeVertex,
+    fragmentShader: shaders.compositeFragment,
     transparent: true,
     premultipliedAlpha: true,
     blending: THREE.NormalBlending,
@@ -189,8 +165,8 @@ export function createSelectiveGlow(renderer, scene, camera, clock, interior) {
       wideV.setSize(Math.ceil(w / 4), Math.ceil(h / 4));
       maskCamera.copy(camera, false);
       maskCamera.setViewOffset(width, height, left, top, cropWidth, cropHeight);
-      // The canvas expands from the square landing raster into the viewport.
-      // Preserve its displayed aspect while cropping the emission pass.
+      // Preserve the reference camera aspect: cropping the emission buffer
+      // must not stretch the sculpture projection to the crop dimensions.
       maskCamera.aspect = camera.aspect;
       maskCamera.updateProjectionMatrix();
       composite.uniforms.uRect.value.set(
