@@ -55,6 +55,12 @@ impl<T> Cached<T> {
             .saturating_add(stale_cache_duration_ms)
             < Self::now_millis()
     }
+    fn snapshot(&self) -> Self {
+        Self {
+            last_checked_at: AtomicU64::new(self.last_checked_at.load(Acquire)),
+            content: Arc::clone(&self.content),
+        }
+    }
     /// Creates a new cached entry with the same content but a new check time set to now
     fn make_fresh(&self) -> Self {
         Self {
@@ -65,7 +71,7 @@ impl<T> Cached<T> {
 }
 
 pub struct FileCache<T: AsyncFromStrWithState> {
-    cache: Arc<RwLock<HashMap<PathBuf, Cached<T>>>>,
+    cache: RwLock<HashMap<PathBuf, Cached<T>>>,
     /// Files that are loaded at the beginning of the program,
     /// and used as fallback when there is no match for the request in the file system
     static_files: HashMap<PathBuf, Cached<T>>,
@@ -88,7 +94,7 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            cache: Arc::default(),
+            cache: RwLock::default(),
             static_files: HashMap::new(),
         }
     }
@@ -115,13 +121,15 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
         let path = access.path();
 
         log::trace!("Attempting to get from cache {}", path.display());
-        if let Some(cached) = self.cache.read().await.get(path) {
+        // Keep a snapshot so metadata I/O cannot block cache insertions or evictions.
+        let cached = self.cache.read().await.get(path).map(Cached::snapshot);
+        if let Some(cached) = cached {
             if !cached.needs_check(app_state.config.cache_stale_duration_ms()) {
                 log::trace!(
                     "Cache answer without filesystem lookup for {}",
                     path.display()
                 );
-                return Ok(Arc::clone(&cached.content));
+                return Ok(cached.content);
             }
             match app_state
                 .file_system
@@ -133,8 +141,12 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                         "Cache answer with filesystem metadata read for {}",
                         path.display()
                     );
-                    cached.update_check_time();
-                    return Ok(Arc::clone(&cached.content));
+                    if let Some(current) = self.cache.read().await.get(path)
+                        && Arc::ptr_eq(&current.content, &cached.content)
+                    {
+                        current.update_check_time();
+                    }
+                    return Ok(cached.content);
                 }
                 Ok(true) => log::trace!("{} was changed, updating cache...", path.display()),
                 Err(e) => log::trace!(
@@ -144,7 +156,6 @@ impl<T: AsyncFromStrWithState> FileCache<T> {
                 ),
             }
         }
-        // Read lock is released
         log::trace!("Loading and parsing {}", path.display());
         let file_contents = app_state
             .file_system
@@ -217,6 +228,18 @@ pub trait AsyncFromStrWithState: Sized {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app_config::tests::test_config;
+
+    #[actix_web::test]
+    async fn metadata_check_releases_cache_lock() {
+        let state = AppState::init(&test_config()).await.unwrap();
+        let c = &state.sql_file_cache;
+        let path = FileAccess::privileged(Path::new("x"));
+        c.cache.write().await.insert("x".into(), Cached::default());
+        let mut lookup = Box::pin(c.get(&state, path));
+        assert!(futures_util::poll!(&mut lookup).is_pending());
+        assert!(c.cache.try_write().is_ok());
+    }
 
     #[tokio::test]
     async fn test_cache_duration() {
