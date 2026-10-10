@@ -57,7 +57,7 @@ function frameAt(width, height, anchor, portrait, bodyWidth = width * 0.48) {
 
 // This small module runs before Three.js downloads, so even the loading layout
 // uses the same measured letter, portrait flow, and projection as the live scene.
-export function layoutLandingFrame(mount, anchor, progress = 0) {
+export function layoutLandingFrame(mount, anchor) {
   const width = Math.max(1, mount.clientWidth);
   const screenHeight = window.innerHeight;
   const portrait = width < 900 && screenHeight >= width;
@@ -108,7 +108,6 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
       x:
         rect.left -
         surface.left +
-        progress * 90 +
         (ink.actualBoundingBoxRight || rect.width) -
         fontSize * 0.045,
       y:
@@ -173,18 +172,7 @@ export function layoutLandingFrame(mount, anchor, progress = 0) {
     const rect = heading.getBoundingClientRect();
     const surface = viewport.getBoundingClientRect();
     intro.style.top = `${Math.max(0, Math.min(rect.bottom - surface.top + 32, height * 0.87 - intro.offsetHeight - 20))}px`;
-    intro.style.left = `${rect.left - surface.left + progress * 90}px`;
+    intro.style.left = `${rect.left - surface.left}px`;
   }
-  const frame = {
-    ...frameAt(width, height, measureLetter(), portrait, portraitBodyWidth),
-    width,
-    height,
-  };
-  const preview = mount
-    .closest(".sqlpage-world")
-    .querySelector(".scene-preview");
-  preview.style.width = preview.style.height = `${frame.size}px`;
-  preview.style.left = `${frame.left}px`;
-  preview.style.top = `${frame.top}px`;
-  return frame;
+  return frameAt(width, height, measureLetter(), portrait, portraitBodyWidth);
 }

@@ -5,7 +5,6 @@ export function initExperience(root) {
   const section = root.querySelector(".experience");
   const mount = root.querySelector(".scene-canvas");
   const hitArea = root.querySelector(".model-interaction");
-  const anchor = root.querySelector(".anchor-letter");
   const error = root.querySelector(".scene-error");
   const media = matchMedia("(prefers-reduced-motion: reduce)");
   const state = { motion: !media.matches };
@@ -21,8 +20,11 @@ export function initExperience(root) {
     root.dataset.scene = status;
     error.hidden = status !== "error";
     hitArea.dataset.ready = String(status === "ready");
-    hitArea.inert = status !== "ready";
-    hitArea.tabIndex = status === "ready" ? 0 : -1;
+    // The renderer enables input only while the loaded sculpture is visible.
+    if (status !== "ready") {
+      hitArea.inert = true;
+      hitArea.tabIndex = -1;
+    }
   }
   function stopScene() {
     controller?.dispose();
@@ -38,7 +40,6 @@ export function initExperience(root) {
       controller = createDatabaseScene({
         mount,
         hitArea,
-        anchor,
         getState: () => state,
         onReady() {
           if (disposed || attempt !== generation) return;

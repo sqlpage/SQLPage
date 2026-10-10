@@ -1,15 +1,17 @@
 import { layoutLandingFrame, SCULPTURE_FRAME } from "./scene/landing-frame.js";
 
-/** One sculpture, measured document anchors, and ordinary page scrolling. */
+/** One sculpture: an opening flight, then page anchors with fading handoffs. */
 export function initScrollProgress(section, mount, state) {
   const root = section.closest(".sqlpage-world");
   const preview = root.querySelector(".scene-preview");
+  const layer = root.querySelector(".scene-layer");
   const stops = [...root.querySelectorAll("[data-scene-stop]")];
   const events = new AbortController();
   let frame = 0;
+  let heroFrame;
   let anchors = [];
   let heroRange = 0;
-  let pageMargin = 0;
+  let heroDockScroll = 0;
   const clamp = (value) => Math.max(0, Math.min(1, value));
   const ease = (value) => {
     const t = clamp(value);
@@ -20,59 +22,86 @@ export function initScrollProgress(section, mount, state) {
     top: a.top + (b.top - a.top) * t,
     size: a.size + (b.size - a.size) * t,
   });
-  function travel(a, b, t) {
-    const progress = ease(t);
-    const pose = mix(a, b, progress);
-    const bounds = SCULPTURE_FRAME.bounds;
-    const centerX = bounds.left + SCULPTURE_FRAME.bodyWidth / 2;
-    const centerY = (bounds.top + bounds.bottom) / 2;
-    // Leave while visible, using the page margin during reading rather than
-    // crossing live controls. Enter and leave this passage over long scroll ranges.
-    const passage = ease(t / 0.3) * (1 - ease((t - 0.65) / 0.35));
-    const onRight = b.left + b.size * centerX > innerWidth / 2;
-    const width = Math.max(24, Math.min(90, pageMargin - 20));
-    const size = width / SCULPTURE_FRAME.bodyWidth;
-    const corridor = onRight ? innerWidth - width / 2 - 10 : width / 2 + 10;
-    const x = pose.left + pose.size * centerX;
-    const y = pose.top + pose.size * centerY;
-    const scalePassage = ease(t / 0.18) * (1 - ease((t - 0.65) / 0.35));
-    pose.size += (size - pose.size) * scalePassage;
-    pose.left = x + (corridor - x) * passage - pose.size * centerX;
-    pose.top =
-      y -
-      pose.size * centerY +
-      Math.sin(Math.PI * progress) ** 2 * innerHeight * 0.06 -
-      Math.sin(Math.PI * clamp(t / 0.3)) ** 2 * innerHeight * 0.08;
-    return pose;
-  }
   const viewport = section.querySelector(".viewport");
   const intro = section.querySelector(".intro-row");
   const header = section.querySelector(".site-header");
   const ribbon = section.querySelector(".sql-ribbon");
   function measure() {
-    pageMargin = root
-      .querySelector(".section-inner")
-      .getBoundingClientRect().left;
+    // Read authored page positions even when earlier sections are held under a cover.
+    root.setAttribute("data-measuring-layout", "");
     // Measure the authored hero pose, independent of its current text fade/shift.
     section.style.setProperty("--progress", "0");
     section.style.setProperty("--intro-shift", "0px");
-    const hero = layoutLandingFrame(
-      mount,
-      root.querySelector(".anchor-letter"),
-    );
-    anchors = [{ scroll: 0, ...hero }];
+    heroFrame = layoutLandingFrame(mount, root.querySelector(".anchor-letter"));
+    anchors = [];
     heroRange = Math.max(0, section.offsetHeight - viewport.offsetHeight);
+    const maxScroll = Math.max(
+      0,
+      document.documentElement.scrollHeight - innerHeight,
+    );
     for (const stop of stops) {
       const rect = stop.getBoundingClientRect();
-      // The visible sculpture occupies these bounds in its square reference frame.
+      const sheet = stop.closest(".landing-section");
+      const sheetRect = sheet.getBoundingClientRect();
+      const nextSheet = sheet.nextElementSibling;
+      // Measure the visible model, not its much larger square canvas.
       const size = rect.width / SCULPTURE_FRAME.bodyWidth;
+      const bodyHeight =
+        size * (SCULPTURE_FRAME.bounds.bottom - SCULPTURE_FRAME.bounds.top);
+      const bodyTop = rect.top + scrollY;
+      const fadeDistance = Math.min(innerHeight * 0.12, bodyHeight * 0.45);
+      const heldTop = root.hasAttribute("data-section-motion")
+        ? rect.top -
+          sheetRect.top +
+          (parseFloat(sheet.style.getPropertyValue("--section-stick-top")) || 0)
+        : -Infinity;
+      // A held section can leave part of its sculpture on screen. In that case
+      // its lifetime ends when the next wave covers it, not at its authored Y.
+      let exitScroll =
+        heldTop + bodyHeight > 0 ? Infinity : bodyTop + bodyHeight;
+      if (nextSheet?.matches(".landing-section")) {
+        const waveHeight = parseFloat(
+          getComputedStyle(nextSheet).getPropertyValue("--wave-height"),
+        );
+        const coverScroll =
+          nextSheet.getBoundingClientRect().top +
+          scrollY -
+          waveHeight * 0.75 -
+          (heldTop + bodyHeight * 0.5);
+        exitScroll = Math.min(exitScroll, coverScroll);
+      }
       anchors.push({
-        scroll: rect.top + window.scrollY - window.innerHeight * 0.25,
+        element: stop,
+        enterScroll: Math.min(bodyTop - innerHeight, maxScroll - fadeDistance),
+        exitScroll,
+        fadeDistance,
+        bodyHeight,
+        bodyTop,
         left: rect.left - size * SCULPTURE_FRAME.bounds.left,
-        top: rect.top + window.scrollY - size * SCULPTURE_FRAME.bounds.top,
+        top: bodyTop - size * SCULPTURE_FRAME.bounds.top,
         size,
       });
     }
+    heroDockScroll = Math.min(
+      maxScroll,
+      anchors[0].bodyTop - innerHeight * 0.25,
+    );
+    anchors[0].enterScroll = -Infinity; // The opening flight supplies its entrance.
+    anchors.at(-1).exitScroll = Infinity; // Keep the closing composition visible.
+    for (let index = 1; index < anchors.length; index++) {
+      const previous = anchors[index - 1];
+      const next = anchors[index];
+      // When both anchors fit on screen, hand over as the new sculpture gains
+      // room at the bottom edge. Otherwise keep the old one until it leaves.
+      // The two short fades meet at zero, hiding the change of page position.
+      previous.exitScroll = Math.min(
+        previous.exitScroll,
+        next.enterScroll + next.fadeDistance,
+        maxScroll - next.fadeDistance,
+      );
+      next.enterScroll = Math.max(next.enterScroll, previous.exitScroll);
+    }
+    root.removeAttribute("data-measuring-layout");
     update();
   }
   function update() {
@@ -92,8 +121,15 @@ export function initScrollProgress(section, mount, state) {
     intro.inert = header.inert = opacity < 0.05;
     ribbon.inert = p > 0.5;
     // Unwrapped rotation is continuous across every section and reverses naturally.
-    state.turn = state.motion ? (scroll / innerHeight) * Math.PI * 0.8 : 0;
-    if (heroRange && scroll <= anchors[1].scroll) {
+    state.turn = state.motion ? (scroll / innerHeight) * Math.PI * 2 : 0;
+    let sceneOpacity = 1;
+    if (!heroRange && scroll < heroDockScroll) {
+      // Reduced motion keeps the opening sculpture attached to the hero layout.
+      state.frame = {
+        ...heroFrame,
+        top: heroFrame.top + viewport.getBoundingClientRect().top,
+      };
+    } else if (heroRange && scroll <= heroDockScroll) {
       const bounds = SCULPTURE_FRAME.bounds;
       const size = Math.min(
         (innerWidth * 0.9) / SCULPTURE_FRAME.bodyWidth,
@@ -109,8 +145,8 @@ export function initScrollProgress(section, mount, state) {
       if (scroll <= end) {
         const t = ease(p);
         const origin = {
-          ...anchors[0],
-          top: anchors[0].top + viewport.getBoundingClientRect().top,
+          ...heroFrame,
+          top: heroFrame.top + viewport.getBoundingClientRect().top,
         };
         state.frame = mix(origin, gallery, t);
         // The position describes a gentle spiral while rotation follows scroll.
@@ -120,10 +156,10 @@ export function initScrollProgress(section, mount, state) {
         state.frame.top +=
           Math.cos(t * Math.PI * 2) * innerHeight * 0.025 * arc;
       } else {
-        const t = ease((scroll - end) / (anchors[1].scroll - end));
+        const t = ease((scroll - end) / (heroDockScroll - end));
         state.frame = mix(
           { ...gallery, top: gallery.top + end },
-          anchors[1],
+          anchors[0],
           t,
         );
         state.frame.left += Math.sin(t * Math.PI) * innerWidth * 0.025;
@@ -132,16 +168,33 @@ export function initScrollProgress(section, mount, state) {
       }
     } else {
       let index = 0;
-      while (index < anchors.length - 2 && scroll > anchors[index + 1].scroll)
+      while (
+        index < anchors.length - 1 &&
+        scroll >= anchors[index + 1].enterScroll
+      )
         index++;
-      const a = anchors[index];
-      const b = anchors[index + 1];
-      const t = clamp((scroll - a.scroll) / (b.scroll - a.scroll));
-      state.frame = state.motion
-        ? travel(a, b, t)
-        : { ...(scroll + 1 >= b.scroll ? b : a) };
-      state.frame.top -= scroll;
+      const anchor = anchors[index];
+      // Follow the actual page anchor, including its section holding beneath the
+      // next cover. Only the opening flight interpolates position or size.
+      const rect = anchor.element.getBoundingClientRect();
+      if (state.motion) {
+        sceneOpacity = Math.min(
+          ease((scroll - anchor.enterScroll) / anchor.fadeDistance),
+          ease((anchor.exitScroll - scroll) / anchor.fadeDistance),
+          // Fade only the last part leaving the top, rather than fading the
+          // entire model as soon as its jewel approaches the viewport edge.
+          ease((rect.top + anchor.bodyHeight) / anchor.fadeDistance),
+          ease((innerHeight - rect.top) / anchor.fadeDistance),
+        );
+      }
+      state.frame = {
+        left: rect.left - anchor.size * SCULPTURE_FRAME.bounds.left,
+        top: rect.top - anchor.size * SCULPTURE_FRAME.bounds.top,
+        size: anchor.size,
+      };
     }
+    state.opacity = sceneOpacity;
+    layer.style.opacity = String(sceneOpacity);
     Object.assign(preview.style, {
       left: `${state.frame.left}px`,
       top: `${state.frame.top}px`,

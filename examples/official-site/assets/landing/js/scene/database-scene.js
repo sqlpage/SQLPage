@@ -2,7 +2,6 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/loaders/GLTFLoader.js/+esm";
 import { createFiniteJewelLight } from "./finite-jewel-light.js";
 import { JEWEL_EDGES } from "./jewel-edges.js";
-import { layoutLandingFrame } from "./landing-frame.js";
 import { MODEL_URL } from "./sculpture-assets.js";
 import { createSculptureControls } from "./sculpture-controls.js";
 import {
@@ -19,16 +18,15 @@ import { createSelectiveGlow } from "./selective-glow.js";
 
 const clamp = THREE.MathUtils.clamp;
 /**
- * @typedef {{ motion: boolean, turn?: number, frame?: {left: number, top: number, size: number} }} SceneState
+ * @typedef {{ motion: boolean, opacity: number, turn?: number, frame: {left: number, top: number, size: number} }} SceneState
  * @typedef {{ zoom(amount: number): void, reset(): void, dispose(): void }} SceneController
- * @param {{ mount: HTMLElement, hitArea: HTMLElement, anchor: HTMLElement|null,
+ * @param {{ mount: HTMLElement, hitArea: HTMLElement,
  *   getState: () => SceneState, onReady: () => void, onError: () => void }} options
  * @returns {SceneController}
  */
 export function createDatabaseScene({
   mount,
   hitArea,
-  anchor,
   getState,
   onReady,
   onError,
@@ -117,9 +115,9 @@ export function createDatabaseScene({
     }),
   ]);
 
-  renderer.setPixelRatio(
-    Math.min(window.devicePixelRatio || 1, window.innerWidth < 680 ? 1.4 : 1.7),
-  );
+  // Match the preview raster; CSS positions and scales this one square canvas.
+  renderer.setPixelRatio(1);
+  renderer.setSize(1000, 1000, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.95;
@@ -144,6 +142,7 @@ export function createDatabaseScene({
     liquidClock,
     interior,
   );
+  glow.setSize(1000, 1000, 1);
   const jewelReflection = createFiniteJewelLight(JEWEL_EDGES);
   const key = new THREE.DirectionalLight(0xe5edf1, 1.7);
   key.position.set(-3.5, 5, 5);
@@ -171,7 +170,6 @@ export function createDatabaseScene({
   let model;
   let wireMaterial;
   const modelCenter = new THREE.Vector3();
-  let landing;
   const orbitalNodes = [];
   const orbMaterial = new THREE.MeshBasicMaterial({ color: 0x377e94 });
   const orbGeometry = new THREE.SphereGeometry(0.015, 10, 8);
@@ -326,17 +324,8 @@ export function createDatabaseScene({
 
   const resize = () => {
     width = Math.max(1, mount.clientWidth);
-    landing = layoutLandingFrame(mount, anchor);
-    height = landing.height;
-
-    // Render the landing frame at the WebP's exact raster resolution. Both
-    // surfaces then receive the same browser scaling, including on high-DPI phones.
-    renderer.setPixelRatio(1);
-    renderer.setSize(1000, 1000, false);
-    glow.setSize(1000, 1000, 1);
-    starsMaterial.uniforms.uRatio.value = 1;
+    height = Math.max(1, mount.clientHeight);
     needsRender = true;
-    window.dispatchEvent(new Event("sqlpage:layout"));
   };
   const observer = new ResizeObserver(resize);
   observer.observe(mount);
@@ -346,9 +335,6 @@ export function createDatabaseScene({
   cleanup.push(() => {
     window.removeEventListener("resize", resize);
     window.visualViewport?.removeEventListener("resize", resize);
-  });
-  document.fonts.ready.then(() => {
-    if (!disposed) resize();
   });
   const onLost = (event) => {
     event.preventDefault();
@@ -424,7 +410,7 @@ export function createDatabaseScene({
     cameraForSculpture(camera, distance, parallax.x * 0.11, parallax.y * 0.075);
     // One square renderer follows measured section anchors. The model, lighting,
     // camera and materials stay the same throughout the page.
-    const position = state.frame ?? landing;
+    const position = state.frame;
     canvasLeft = position.left;
     canvasTop = position.top;
     canvasWidth = canvasHeight = position.size;
@@ -470,6 +456,7 @@ export function createDatabaseScene({
       !lastOrientation.equals(dragQuaternion) ||
       parallax.lengthSq() > 0.000001;
     const inView =
+      state.opacity > 0.05 &&
       canvasTop + canvasHeight * 0.81 > 0 &&
       canvasTop + canvasHeight * 0.22 < window.innerHeight;
     if (readySent) {
