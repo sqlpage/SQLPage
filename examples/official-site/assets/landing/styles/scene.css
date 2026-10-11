@@ -114,3 +114,20 @@
 .viewport-footer {
   opacity: var(--intro-opacity);
 }
+
+/* Motion hides tiny shading differences. Reuse the finished sculpture, retain
+   gradients/borders, and restore the full CSS finish as soon as scrolling rests. */
+.sqlpage-world[data-renderer="baked"][data-scrolling] *,
+.sqlpage-world[data-renderer="baked"][data-scrolling] *::before,
+.sqlpage-world[data-renderer="baked"][data-scrolling] *::after {
+  filter: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  mix-blend-mode: normal;
+}
+
+[data-renderer="baked"] .navigation-dialog,
+[data-renderer="baked"] .navigation-dialog::backdrop {
+  backdrop-filter: none;
+}

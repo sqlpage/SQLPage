@@ -24,6 +24,7 @@ export function createSculptureControls({
   scrollPivot,
   pointer,
   isLoaded,
+  yawOnly = () => false,
 }) {
   let userZoom = 0;
   const dragQuaternion = new THREE.Quaternion();
@@ -40,6 +41,7 @@ export function createSculptureControls({
   let touchStartX = 0,
     touchStartY = 0;
   const pointInParent = (x, y, out) => {
+    if (yawOnly()) return out.set(Math.sin(x * 0.012), 0, Math.cos(x * 0.012));
     out.copy(trackballVector(x, y, hitArea.getBoundingClientRect()));
     // Screen-space gestures are transformed into the rotating parent's coordinates.
     out.applyQuaternion(camera.quaternion);
@@ -124,30 +126,23 @@ export function createSculptureControls({
     pointer.set(0, 0);
   };
   const onKey = (event) => {
-    const axis = new THREE.Vector3();
-    let angle = 0.17;
-    if (event.key === "Home") {
-      event.preventDefault();
-      reset();
-      return;
+    const key = event.key;
+    if (key === "Home") reset();
+    else if (["+", "=", "-", "_"].includes(key))
+      zoom(key === "-" || key === "_" ? 0.1 : -0.1);
+    else {
+      const horizontal = ["ArrowLeft", "ArrowRight"].includes(key);
+      const vertical = ["ArrowUp", "ArrowDown"].includes(key);
+      if ((!horizontal && !vertical) || (vertical && yawOnly())) return;
+      const roll = horizontal && event.shiftKey && !yawOnly();
+      const axis = new THREE.Vector3(+vertical, +(horizontal && !roll), +roll);
+      const angle = key === "ArrowLeft" || key === "ArrowUp" ? -0.17 : 0.17;
+      angularVelocity = 0;
+      dragQuaternion
+        .premultiply(localQuaternion.setFromAxisAngle(axis, angle))
+        .normalize();
     }
-    if (["+", "=", "-", "_"].includes(event.key)) {
-      event.preventDefault();
-      zoom(event.key === "-" || event.key === "_" ? 0.1 : -0.1);
-      return;
-    }
-    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      axis.set(0, event.shiftKey ? 0 : 1, event.shiftKey ? 1 : 0);
-      if (event.key === "ArrowLeft") angle = -angle;
-    } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      axis.set(1, 0, 0);
-      if (event.key === "ArrowUp") angle = -angle;
-    } else return;
     event.preventDefault();
-    angularVelocity = 0;
-    dragQuaternion
-      .premultiply(localQuaternion.setFromAxisAngle(axis, angle))
-      .normalize();
   };
   const onParallax = (event) => {
     if (event.pointerType !== "mouse" || pointers.size) return;
@@ -166,24 +161,23 @@ export function createSculptureControls({
     );
   };
   const leave = () => pointer.set(0, 0);
-  hitArea.addEventListener("pointerdown", onPointerDown);
-  hitArea.addEventListener("pointermove", onPointerMove);
-  hitArea.addEventListener("pointerup", onPointerUp);
-  hitArea.addEventListener("pointercancel", onPointerUp);
-  hitArea.addEventListener("lostpointercapture", onPointerUp);
-  hitArea.addEventListener("keydown", onKey);
-  window.addEventListener("pointermove", onParallax, { passive: true });
-  document.documentElement.addEventListener("pointerleave", leave);
-  const dispose = () => {
-    hitArea.removeEventListener("pointerdown", onPointerDown);
-    hitArea.removeEventListener("pointermove", onPointerMove);
-    hitArea.removeEventListener("pointerup", onPointerUp);
-    hitArea.removeEventListener("pointercancel", onPointerUp);
-    hitArea.removeEventListener("lostpointercapture", onPointerUp);
-    hitArea.removeEventListener("keydown", onKey);
-    window.removeEventListener("pointermove", onParallax);
-    document.documentElement.removeEventListener("pointerleave", leave);
-  };
+  const events = new AbortController();
+  for (const [type, handler] of Object.entries({
+    pointerdown: onPointerDown,
+    pointermove: onPointerMove,
+    pointerup: onPointerUp,
+    pointercancel: onPointerUp,
+    lostpointercapture: onPointerUp,
+    keydown: onKey,
+  }))
+    hitArea.addEventListener(type, handler, { signal: events.signal });
+  window.addEventListener("pointermove", onParallax, {
+    passive: true,
+    signal: events.signal,
+  });
+  document.documentElement.addEventListener("pointerleave", leave, {
+    signal: events.signal,
+  });
 
   return {
     pointers,
@@ -211,7 +205,7 @@ export function createSculptureControls({
         if (hitArea.hasPointerCapture(id)) hitArea.releasePointerCapture(id);
       }
       pointers.clear();
-      dispose();
+      events.abort();
     },
   };
 }

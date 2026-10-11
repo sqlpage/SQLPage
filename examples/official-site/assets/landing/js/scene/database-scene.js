@@ -55,8 +55,6 @@ export function createDatabaseScene({
     last = 0,
     time = 0;
   let renderedZoom = 0,
-    width = 1,
-    height = 1,
     visible = document.visibilityState !== "hidden",
     loaded = false,
     needsRender = true,
@@ -69,50 +67,12 @@ export function createDatabaseScene({
   const parallax = new THREE.Vector2();
   const zeroPointer = new THREE.Vector2();
   const lastOrientation = new THREE.Quaternion();
-  const cleanup = [];
-  const materials = new Set();
-  const geometries = new Set();
-  const textures = new Set();
-  const trackResources = (object) => {
-    object.traverse((child) => {
-      if (
-        child instanceof THREE.Mesh ||
-        child instanceof THREE.Line ||
-        child instanceof THREE.Points
-      ) {
-        geometries.add(child.geometry);
-        for (const material of Array.isArray(child.material)
-          ? child.material
-          : [child.material]) {
-          materials.add(material);
-          for (const value of Object.values(material))
-            if (value instanceof THREE.Texture) textures.add(value);
-        }
-      }
-    });
-  };
-  const disposeObject = (object) => {
-    object.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        child.geometry.dispose();
-        for (const material of Array.isArray(child.material)
-          ? child.material
-          : [child.material])
-          material.dispose();
-      }
-    });
-  };
 
   // Fetch the model, baked environment and shader sources in parallel. Any
   // asset failure returns the experience to its static preview.
   let environment;
   const assets = Promise.all([
-    new GLTFLoader().loadAsync(MODEL_URL).then((gltf) => {
-      // Track successful geometry even if the parallel lighting load fails.
-      if (disposed) disposeObject(gltf.scene);
-      else trackResources(gltf.scene);
-      return gltf;
-    }),
+    new GLTFLoader().loadAsync(MODEL_URL),
     loadSculptureShaders(),
     loadMetalEnvironment().then((texture) => {
       environment = texture;
@@ -128,7 +88,92 @@ export function createDatabaseScene({
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.95;
   renderer.setClearColor(0x000000, 0);
-  mount.appendChild(renderer.domElement);
+  let canvas = renderer.domElement;
+  const canvasStyle =
+    "position:absolute;left:0;top:0;width:1000px;height:1000px;transform-origin:0 0";
+  canvas.style.cssText = canvasStyle;
+  mount.appendChild(canvas);
+  const root = mount.closest(".sqlpage-world");
+  delete root.dataset.renderer;
+  const instructions = hitArea.querySelector("#view-instructions");
+  const originalInstructions = instructions?.textContent;
+  const gl = renderer.getContext();
+  let fence,
+    submittedAt = 0,
+    samples = 0,
+    slowFrames = 0,
+    cpuBusyUntil = 0;
+  let baked, context, lastTurn;
+  const resetBudget = () => {
+    if (fence) gl.deleteSync(fence);
+    fence = undefined;
+    samples = slowFrames = 0;
+  };
+  let timing;
+  try {
+    timing = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries())
+        if (
+          entry.scripts.reduce((total, script) => total + script.duration, 0) >=
+          50
+        )
+          cpuBusyUntil = entry.startTime + entry.duration;
+    });
+    timing.observe({ type: "long-animation-frame" });
+  } catch {
+    /* Optional. */
+  }
+  const releaseGraphics = () => {
+    renderer.domElement.removeEventListener("webglcontextlost", onLost);
+    resetBudget();
+    glow?.dispose();
+    environment?.dispose();
+    renderer.dispose();
+    // This scene owns the context; losing it releases all its GPU allocations.
+    renderer.forceContextLoss();
+  };
+  const useBakedViews = () => {
+    releaseGraphics();
+    baked = new Image();
+    const replacement = document.createElement("canvas");
+    replacement.width = 320;
+    replacement.height = 400;
+    context = replacement.getContext("2d");
+    if (!context) {
+      onError();
+      return;
+    }
+    canvas.replaceWith(replacement);
+    canvas = replacement;
+    canvas.style.cssText = canvasStyle;
+    // Keep the square layout while rasterizing only the cropped sculpture.
+    Object.assign(canvas.style, {
+      boxSizing: "content-box",
+      width: "700px",
+      height: "850px",
+      padding: "75px 150px",
+    });
+    root.dataset.renderer = "baked";
+    root.dataset.scene = "loading";
+    loaded = readySent = false;
+    hitArea.inert = true;
+    if (instructions)
+      instructions.textContent =
+        "Drag sideways or use left/right arrows to rotate. Use plus/minus to zoom and Home to reset. Swipe vertically or pinch to scroll or zoom the page.";
+    baked.src = new URL(
+      "../../assets/sculpture-turns.avif",
+      import.meta.url,
+    ).href;
+    baked.decode().then(
+      () => {
+        loaded = !disposed;
+        needsRender = true;
+      },
+      () => {
+        if (!disposed) onError();
+      },
+    );
+  };
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 70);
   cameraForSculpture(camera, CAMERA_DISTANCE);
@@ -152,10 +197,8 @@ export function createDatabaseScene({
   fill.position.set(-5, -0.5, -2);
   scene.add(fill);
 
-  const placement = new THREE.Group();
-  scene.add(placement);
   const parallaxPivot = new THREE.Group();
-  placement.add(parallaxPivot);
+  scene.add(parallaxPivot);
   const scrollPivot = new THREE.Group();
   parallaxPivot.add(scrollPivot);
   const dragPivot = new THREE.Group();
@@ -180,7 +223,6 @@ export function createDatabaseScene({
       jewelReflection = createFiniteJewelLight(JEWEL_EDGES, shaders);
       decoration = createSculptureDecoration(shaders);
       parallaxPivot.add(decoration.group);
-      trackResources(decoration.group);
       performance.mark("sqlpage:assets-ready");
       const bounds = new THREE.Box3().setFromObject(gltf.scene);
       bounds.getCenter(modelCenter);
@@ -214,7 +256,6 @@ export function createDatabaseScene({
           if (material.transparent) material.depthWrite = false;
         }
       });
-      trackResources(gltf.scene);
       const jewelLight = new THREE.PointLight(0x72c8de, 0.09, 2.4, 2);
       jewelLight.position.set(0, 1.35, 0);
       gltf.scene.add(jewelLight);
@@ -224,7 +265,6 @@ export function createDatabaseScene({
       dragPivot.add(gltf.scene);
       await document.fonts.ready;
       if (disposed) return;
-      resize();
       // Use parallel shader compilation when supported. The loading state ends
       // only after a frame containing the sculpture and its glow is submitted.
       await renderer.compileAsync(scene, camera);
@@ -243,24 +283,9 @@ export function createDatabaseScene({
     scrollPivot,
     pointer,
     isLoaded: () => loaded,
+    yawOnly: () => !!baked,
   });
   const { pointers, dragQuaternion, zoom, reset } = controls;
-  cleanup.push(() => controls.dispose());
-
-  const resize = () => {
-    width = Math.max(1, mount.clientWidth);
-    height = Math.max(1, mount.clientHeight);
-    needsRender = true;
-  };
-  const observer = new ResizeObserver(resize);
-  observer.observe(mount);
-  resize();
-  window.addEventListener("resize", resize);
-  window.visualViewport?.addEventListener("resize", resize);
-  cleanup.push(() => {
-    window.removeEventListener("resize", resize);
-    window.visualViewport?.removeEventListener("resize", resize);
-  });
   const onLost = (event) => {
     event.preventDefault();
     contextLost = true;
@@ -269,48 +294,42 @@ export function createDatabaseScene({
   };
   renderer.domElement.addEventListener("webglcontextlost", onLost);
   const modelBounds = new THREE.Box3(),
-    projectedCorner = new THREE.Vector3();
+    projection = new THREE.Matrix4();
   const screenBounds = { left: 0, right: 1, top: 0, bottom: 1 };
   const syncHitArea = () => {
     if (!model) return;
-    modelBounds.setFromObject(model);
-    let left = Infinity,
-      right = -Infinity,
-      top = Infinity,
-      bottom = -Infinity;
-    for (let i = 0; i < 8; i++) {
-      projectedCorner
-        .set(
-          i & 1 ? modelBounds.max.x : modelBounds.min.x,
-          i & 2 ? modelBounds.max.y : modelBounds.min.y,
-          i & 4 ? modelBounds.max.z : modelBounds.min.z,
-        )
-        .project(camera);
-      const x = ((projectedCorner.x + 1) * renderer.domElement.width) / 2,
-        y = ((1 - projectedCorner.y) * renderer.domElement.height) / 2;
-      left = Math.min(left, x);
-      right = Math.max(right, x);
-      top = Math.min(top, y);
-      bottom = Math.max(bottom, y);
+    // Box3 projects the same eight corners; avoid duplicating its min/max loop.
+    if (baked) {
+      modelBounds.min.set(-0.44, -0.62, 0);
+      modelBounds.max.set(0.42, 0.56, 0);
+    } else {
+      modelBounds
+        .setFromObject(model)
+        .applyMatrix4(
+          projection.multiplyMatrices(
+            camera.projectionMatrix,
+            camera.matrixWorldInverse,
+          ),
+        );
     }
-    screenBounds.left = left;
-    screenBounds.right = right;
-    screenBounds.top = top;
-    screenBounds.bottom = bottom;
+    const { min, max } = modelBounds;
+    screenBounds.left = (min.x + 1) * 500;
+    screenBounds.right = (max.x + 1) * 500;
+    screenBounds.top = (1 - max.y) * 500;
+    screenBounds.bottom = (1 - min.y) * 500;
     if (pointers.size) return;
-    left = canvasLeft + (left / renderer.domElement.width) * canvasWidth;
-    right = canvasLeft + (right / renderer.domElement.width) * canvasWidth;
-    top = canvasTop + (top / renderer.domElement.height) * canvasWidth;
-    bottom = canvasTop + (bottom / renderer.domElement.height) * canvasWidth;
-    left = clamp(left - 12, 0, width);
-    right = clamp(right + 12, 0, width);
-    top = clamp(top - 12, 90, height);
-    bottom = clamp(bottom + 12, top, height);
+    const scale = canvasWidth / 1000;
+    let { left, right, top, bottom } = screenBounds;
+    left = clamp(canvasLeft + left * scale - 12, 0, innerWidth);
+    right = clamp(canvasLeft + right * scale + 12, left, innerWidth);
+    top = clamp(canvasTop + top * scale - 12, 90, innerHeight);
+    bottom = clamp(canvasTop + bottom * scale + 12, top, innerHeight);
     hitArea.style.left = `${left}px`;
     hitArea.style.top = `${top}px`;
     hitArea.style.width = `${right - left}px`;
     hitArea.style.height = `${bottom - top}px`;
   };
+  const yaw = new THREE.Euler(0, 0, 0, "YXZ");
   const upAxis = new THREE.Vector3(0, 1, 0);
   const update = (timestamp) => {
     if (disposed || contextLost || !visible) return;
@@ -320,9 +339,9 @@ export function createDatabaseScene({
     const ease = 1 - Math.exp(-dt * 8);
     renderedZoom = THREE.MathUtils.lerp(renderedZoom, controls.userZoom, ease);
     // Loading time and pointer movement must not advance the reference frame.
-    if (loaded && readySent && state.motion) time += dt;
+    if (!baked && loaded && readySent && state.motion) time += dt;
     parallax.lerp(
-      readySent && state.motion ? pointer : zeroPointer,
+      !baked && readySent && state.motion ? pointer : zeroPointer,
       1 - Math.exp(-dt * 3.7),
     );
     controls.update(dt, readySent && state.motion);
@@ -333,37 +352,16 @@ export function createDatabaseScene({
     parallaxPivot.rotation.set(parallax.y * 0.035, parallax.x * 0.055, 0);
     const distance = clamp(CAMERA_DISTANCE * Math.exp(renderedZoom), 5.9, 17);
     cameraForSculpture(camera, distance, parallax.x * 0.11, parallax.y * 0.075);
-    // One square renderer follows measured section anchors. The model, lighting,
-    // camera and materials stay the same throughout the page.
+    // Both paths follow the same square frame and section anchors.
     const position = state.frame;
-    canvasLeft = position.left;
-    canvasTop = position.top;
-    canvasWidth = position.size;
+    canvasWidth = position.size * (baked ? Math.exp(-renderedZoom) : 1);
+    canvasLeft = position.left + (position.size - canvasWidth) / 2;
+    canvasTop = position.top + (position.size - canvasWidth) / 2;
     const frameKey = `${canvasLeft},${canvasTop},${canvasWidth},${state.turn}`;
     if (frameKey !== lastFrame) needsRender = true;
     lastFrame = frameKey;
-    renderer.domElement.dataset.scrollTurn = String(state.turn ?? 0);
-    Object.assign(renderer.domElement.style, {
-      position: "absolute",
-      left: `${canvasLeft}px`,
-      top: `${canvasTop}px`,
-      width: `${canvasWidth}px`,
-      height: `${canvasWidth}px`,
-    });
-    decoration?.update(time, state.motion);
-    liquidClock.value = time;
-    if (diamond) {
-      diamond.position.y = Math.sin(time * 0.62) * 0.012;
-      diamond.rotation.y = Math.sin(time * 0.12) * 0.055;
-    }
-    interiorLight.position.set(
-      Math.cos(time * ((Math.PI * 2) / 6)) * 0.4,
-      -0.45 + Math.sin(time * ((Math.PI * 2) / 4)) * 0.28,
-      Math.sin(time * ((Math.PI * 2) / 6)) * 0.4,
-    );
-    const pulse = 14 + Math.sin(time * ((Math.PI * 2) / 3)) * 6;
-    interior.uInteriorPulse.value = pulse;
-    interiorLight.intensity = (0.6 * pulse) / 14;
+    canvas.dataset.scrollTurn = String(state.turn ?? 0);
+    canvas.style.transform = `translate3d(${canvasLeft}px,${canvasTop}px,0) scale(${canvasWidth / 1000})`;
     const changing =
       Math.abs(renderedZoom - controls.userZoom) > 0.0001 ||
       pointers.size > 0 ||
@@ -373,24 +371,93 @@ export function createDatabaseScene({
       state.opacity > 0.05 &&
       canvasTop + canvasWidth * 0.81 > 0 &&
       canvasTop + canvasWidth * 0.22 < window.innerHeight;
+    if (!inView) resetBudget();
     if (readySent) {
       hitArea.inert = !inView;
       hitArea.tabIndex = inView ? 0 : -1;
+    }
+    // Poll even when no redraw is needed: idle time is not graphics latency.
+    if (!baked && fence) {
+      const pending = gl.clientWaitSync(fence, 0, 0) === gl.TIMEOUT_EXPIRED;
+      const elapsed = performance.now() - submittedAt;
+      if (pending && elapsed <= 1000) {
+        frame = requestAnimationFrame(update);
+        return;
+      }
+      gl.deleteSync(fence);
+      fence = undefined;
+      if (samples++ >= 2)
+        slowFrames =
+          elapsed > 34 && cpuBusyUntil < submittedAt ? slowFrames + 1 : 0;
+      if (pending || slowFrames >= 4) {
+        useBakedViews();
+        frame = requestAnimationFrame(update);
+        return;
+      }
     }
     if (
       loaded &&
       (inView || !readySent) &&
       (state.motion || needsRender || changing)
     ) {
-      scene.updateMatrixWorld(true);
-      interiorLight.getWorldPosition(interior.uInteriorPosition.value);
-      interiorLight.getWorldScale(interiorScale);
-      interior.uInteriorRadius.value = Math.abs(interiorScale.x) * 1.15;
-      syncHitArea();
-      if (diamond && wireMaterial)
-        jewelReflection.update(diamond, camera, wireMaterial);
-      renderer.render(scene, camera);
-      glow.render(model, [decoration.group], screenBounds);
+      if (baked) {
+        syncHitArea();
+        // 64 full-material/glow views, cropped from the original 1000px square.
+        const turn =
+          (((state.turn ?? 0) +
+            yaw.setFromQuaternion(dragQuaternion, "YXZ").y) /
+            (2 * Math.PI)) *
+          64;
+        if (turn !== lastTurn) {
+          const whole = Math.floor(turn),
+            blend = turn - whole;
+          context.clearRect(0, 0, 320, 400);
+          for (let i = 0; i < 2; i++) {
+            const index = (((whole + i) % 64) + 64) % 64;
+            context.globalAlpha = i ? blend : 1 - blend;
+            context.globalCompositeOperation = i ? "lighter" : "source-over";
+            context.drawImage(
+              baked,
+              (index % 8) * 320,
+              Math.floor(index / 8) * 400,
+              320,
+              400,
+              0,
+              0,
+              320,
+              400,
+            );
+          }
+          lastTurn = turn;
+        }
+      } else {
+        // Prepare GPU-only animation only when a new live frame can be drawn.
+        decoration?.update(time, state.motion);
+        liquidClock.value = time;
+        if (diamond) {
+          diamond.position.y = Math.sin(time * 0.62) * 0.012;
+          diamond.rotation.y = Math.sin(time * 0.12) * 0.055;
+        }
+        interiorLight.position.set(
+          Math.cos(time * ((Math.PI * 2) / 6)) * 0.4,
+          -0.45 + Math.sin(time * ((Math.PI * 2) / 4)) * 0.28,
+          Math.sin(time * ((Math.PI * 2) / 6)) * 0.4,
+        );
+        const pulse = 14 + Math.sin(time * ((Math.PI * 2) / 3)) * 6;
+        interior.uInteriorPulse.value = pulse;
+        interiorLight.intensity = (0.6 * pulse) / 14;
+        scene.updateMatrixWorld(true);
+        interiorLight.getWorldPosition(interior.uInteriorPosition.value);
+        interiorLight.getWorldScale(interiorScale);
+        interior.uInteriorRadius.value = Math.abs(interiorScale.x) * 1.15;
+        if (diamond && wireMaterial)
+          jewelReflection.update(diamond, camera, wireMaterial);
+        syncHitArea();
+        renderer.render(scene, camera);
+        glow.render(model, [decoration.group]);
+        fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+        submittedAt = performance.now();
+      }
       needsRender = false;
       lastOrientation.copy(dragQuaternion);
       if (!readySent) {
@@ -408,6 +475,7 @@ export function createDatabaseScene({
   };
   const onVisibility = () => {
     visible = document.visibilityState !== "hidden";
+    resetBudget();
     if (visible && !disposed && !contextLost) {
       last = performance.now();
       cancelAnimationFrame(frame);
@@ -424,19 +492,13 @@ export function createDatabaseScene({
       if (disposed) return;
       disposed = true;
       cancelAnimationFrame(frame);
-      observer.disconnect();
-      for (const fn of cleanup) fn();
+      controls.dispose();
       document.removeEventListener("visibilitychange", onVisibility);
-      renderer.domElement.removeEventListener("webglcontextlost", onLost);
-      for (const geometry of geometries) geometry.dispose();
-      for (const material of materials) material.dispose();
-      if (environment) textures.delete(environment);
-      for (const texture of textures) texture.dispose();
-      glow?.dispose();
-      environment?.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();
-      renderer.domElement.remove();
+      timing?.disconnect();
+      if (instructions) instructions.textContent = originalInstructions;
+      if (baked) baked.src = "";
+      if (!baked) releaseGraphics();
+      canvas.remove();
     },
   };
 }
