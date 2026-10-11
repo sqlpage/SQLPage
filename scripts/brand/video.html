@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>SQLPage customer demo</title>
+    <style>
+      @font-face { font-family: Outfit; src: url('/__brand-assets/Outfit.woff2') format('woff2'); font-weight: 100 900; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; }
+      body { background: #080e11; color: #f4f7f8; font-family: Outfit, sans-serif; }
+      .wordmark { position: absolute; left: 84px; top: 62px; width: 264px; z-index: 5; }
+      #label { position: absolute; left: 440px; top: 53px; margin: 0; font-size: 66px; font-weight: 500; letter-spacing: -.025em; line-height: 1.1; }
+      #app-stage { position: absolute; left: 84px; top: 160px; width: 1752px; height: 840px; overflow: hidden; background: #f4f7f8; border-radius: 16px; }
+      #app-frame { display: block; width: 100%; height: 100%; border: 0; background: #f4f7f8; }
+      #code-stage { position: absolute; left: 84px; top: 196px; width: 750px; height: 755px; overflow: hidden; }
+      #code-stage, #label, #file-connector { pointer-events: none; }
+      .filename { color: #9caeb5; font: 40px/1.2 'Liberation Mono', monospace; }
+      #filename { margin-bottom: 64px; }
+      .snippet { position: absolute; left: 0; top: 138px; width: 750px; }
+      .line { position: relative; display: block; height: 92px; padding-left: 16px; font: 54px/1.45 'Liberation Mono', monospace; white-space: pre; color: #f4f7f8; }
+      .line.small { font-size: 44px; }
+      .kw { color: #58cce0; }
+      .column-token { position: relative; display: inline-block; }
+      .column-token::after { content: ''; position: absolute; left: 0; right: 0; bottom: -5px; height: 3px; background: #58cce0; transform: scaleX(var(--underline, 0)); transform-origin: left; }
+      .punct { color: #9caeb5; }
+      .line::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; bottom: 15px; z-index: -1; background: #18262d; opacity: var(--emphasis, 0); border-left: 4px solid #58cce0; }
+      #code-stage::after { content: ''; position: absolute; left: 0; top: 557px; height: 3px; width: 100%; background: #58cce0; transform: scaleX(var(--rule, 0)); transform-origin: left; }
+      #file-connector { position: absolute; left: 0; top: 1008px; width: 1920px; text-align: center; font: 40px/1.2 'Liberation Mono', monospace; color: #9caeb5; }
+      #file-connector .arrow { display: inline-block; color: #58cce0; margin: 0 25px; }
+      #pointer { position: absolute; width: 39px; height: 49px; left: 0; top: 0; z-index: 10; pointer-events: none; opacity: 0; filter: drop-shadow(0 3px 5px #080e1166); }
+      #click-ring { position: absolute; width: 90px; height: 90px; margin-left: -45px; margin-top: -45px; border: 4px solid #58cce0; border-radius: 50%; pointer-events: none; z-index: 9; opacity: 0; }
+      #ending { position: absolute; inset: 0; background: #080e11; opacity: 0; pointer-events: none; overflow: hidden; z-index: 3; }
+      #end-mascot { position: absolute; left: 866px; top: 3px; width: 1080px; height: 1080px; object-fit: contain; }
+      #end-title { position: absolute; left: 84px; top: 270px; width: 945px; margin: 0; font-size: 112px; font-weight: 600; letter-spacing: -.025em; line-height: 1.05; }
+      #end-action { position: absolute; left: 84px; top: 720px; margin: 0; font-size: 54px; font-weight: 500; color: #58cce0; }
+      #end-url { position: absolute; left: 84px; top: 809px; margin: 0; font-size: 42px; color: #9caeb5; }
+    </style>
+  </head>
+  <body>
+    <img class="wordmark" src="/__brand-assets/logo.svg" alt="SQLPage">
+    <h1 id="label">Your customers.</h1>
+    <div id="app-stage"><iframe id="app-frame" title="Real SQLPage customer app" src="/brand-demo/?reset=1"></iframe></div>
+    <div id="code-stage">
+      <div id="filename" class="filename">customers.sql</div>
+      <div id="declaration" class="snippet"><span class="line"><span class="kw">select</span> 'table'</span><span class="line">  <span class="kw">as</span> component<span class="punct">,</span></span><span class="line">  true <span class="kw">as</span> search<span class="punct">,</span></span><span class="line">  true <span class="kw">as</span> sort<span class="punct">;</span></span></div>
+      <div id="columns" class="snippet"><span class="line"><span class="kw">select</span> <span id="column-name" class="column-token">name</span><span class="punct">,</span> <span id="column-plan" class="column-token">plan</span><span class="punct">,</span></span><span class="line">  <span class="punct">status,</span> <span id="column-seats" class="column-token">seats</span></span><span class="line"><span class="kw">from</span></span><span class="line small">brand_demo_customers<span class="punct">;</span></span></div>
+    </div>
+    <div id="file-connector"><span id="form-file">new_customer.sql</span><span class="arrow">→</span><span id="save-file">save_customer.sql</span></div>
+    <div id="click-ring"></div>
+    <svg id="pointer" viewBox="0 0 39 49" aria-hidden="true"><path d="M3 3v35l9-9 8 17 8-4-8-16h14z" fill="#080e11" stroke="#f4f7f8" stroke-width="3" stroke-linejoin="round"/></svg>
+    <div id="ending"><img id="end-mascot" src="/__brand-assets/mascot.png" alt=""><h2 id="end-title">Turn your data<br>into an app.</h2><p id="end-action">Build your first app</p><p id="end-url">sql-page.com</p></div>
+    <script src="/__video-timeline.js"></script>
+  </body>
+</html>

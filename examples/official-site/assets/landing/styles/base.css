@@ -1,6 +1,6 @@
 /* Shared tokens and native element defaults. */
 :root {
-  --foreground: #ebeceb;
+  --foreground: #f4f7f8;
   --cyan: #58cce0;
   --ink: #080e11;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -31,7 +31,7 @@ body {
   margin: 0;
   background: var(--ink);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--brand-font);
   -webkit-font-smoothing: antialiased;
 }
 button,

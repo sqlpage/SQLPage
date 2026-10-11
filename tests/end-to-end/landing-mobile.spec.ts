@@ -1,4 +1,5 @@
 import { expect, type Locator, test } from "@playwright/test";
+import { scrollLanding, settleLandingPreview } from "./landing-helpers.ts";
 
 async function bounds(element: Locator) {
   const rect = await element.boundingBox();
@@ -224,5 +225,60 @@ test("small phones can use navigation and every live component preview", async (
           .evaluate((root) => root.scrollWidth - root.clientWidth),
       )
       .toBeLessThanOrEqual(0);
+  }
+});
+
+test("purpose copy clears the rotating sculpture on phones and tablets", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 1024 });
+  await page.clock.install();
+  await page.goto("/");
+  await expect(page.locator(".sqlpage-world")).toHaveAttribute(
+    "data-scene",
+    "ready",
+    { timeout: 30_000 },
+  );
+  await settleLandingPreview(page);
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
+
+  for (const width of [390, 507, 600, 768, 900]) {
+    await page.setViewportSize({ width, height: 1024 });
+    await page.clock.runFor(64);
+    await scrollLanding(page, 0);
+    const top = await page.locator(".purpose-section").evaluate((section) => {
+      let top = 0;
+      for (
+        let element: HTMLElement | null = section as HTMLElement;
+        element;
+        element = element.offsetParent as HTMLElement | null
+      )
+        top += element.offsetTop;
+      return top;
+    });
+    await scrollLanding(page, top);
+    await expect(page.locator(".scene-layer")).toHaveCSS("opacity", "1");
+
+    // The complete canvas contains every rotated pose, so text below its
+    // bottom stays readable throughout rotation rather than at one angle.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const paragraph = document.querySelector(
+            ".purpose-intro > p:first-child",
+          )!;
+          const canvas = document.querySelector("canvas")!;
+          return (
+            paragraph.getBoundingClientRect().top -
+            canvas.getBoundingClientRect().bottom
+          );
+        }),
+      )
+      .toBeGreaterThanOrEqual(16);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+      `page fits at ${width}px`,
+    ).toBe(width);
   }
 });

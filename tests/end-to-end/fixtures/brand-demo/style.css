@@ -1,0 +1,235 @@
+@font-face {
+  font-family: Outfit;
+  src: url("./Outfit.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --tblr-font-sans-serif: Outfit, system-ui, sans-serif;
+  --tblr-body-bg: #f4f7f8;
+  --tblr-body-color: #080e11;
+  --tblr-primary: #146575;
+  --tblr-primary-rgb: 20, 101, 117;
+  --tblr-link-color: #146575;
+  --demo-data-size: 48px;
+  --demo-control-size: 40px;
+  --demo-heading-size: 72px;
+}
+html {
+  scrollbar-gutter: auto;
+}
+html,
+body {
+  margin: 0;
+  background: #f4f7f8;
+}
+body.layout-boxed {
+  padding: 0;
+}
+body {
+  font-family: Outfit, system-ui, sans-serif;
+  font-size: var(--demo-data-size);
+}
+/* The composition supplies the frame; the real app supplies its components. */
+body.layout-boxed .page,
+.page-wrapper {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  background: #f4f7f8;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.page > header {
+  display: none;
+}
+#sqlpage_main_wrapper {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-content: start;
+  align-items: center;
+  gap: 24px 20px;
+  width: 100%;
+  max-width: none;
+  padding: 48px !important;
+  margin: 0 !important;
+}
+#sqlpage_main_wrapper > .btn-list {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0 !important;
+}
+#sqlpage_main_wrapper > h1 {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0 !important;
+  font-size: var(--demo-heading-size);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+#sqlpage_main_wrapper > p {
+  display: none;
+}
+.card,
+#sqlpage_main_wrapper > form {
+  grid-column: 1 / -1;
+  margin: 0 !important;
+}
+.card {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #c4d0d5;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.card-body > .p-3 {
+  padding: 16px 20px !important;
+}
+.table {
+  width: 100%;
+  table-layout: fixed;
+  margin: 0;
+  font-size: var(--demo-data-size);
+  line-height: 1.25;
+}
+.table td,
+.table th {
+  padding: 14px 24px;
+  white-space: nowrap;
+}
+.table ._col_name {
+  width: 52%;
+}
+.table ._col_plan {
+  width: 28%;
+}
+.table ._col_seats {
+  width: 20%;
+}
+/* Keep the three useful columns legible at README embed size. */
+.table ._col_status {
+  display: none;
+}
+.table thead {
+  background: #edf2f4;
+}
+.table-sort {
+  font-size: 40px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #146575;
+}
+.form-control,
+.form-select,
+.form-control.fs-6 {
+  font-family: inherit;
+  font-size: var(--demo-control-size) !important;
+  min-height: 80px;
+  border-color: #bdcbd1;
+  border-radius: 8px;
+}
+.form-control-rounded {
+  border-radius: 8px !important;
+}
+.form-label {
+  font-size: 40px;
+  line-height: 1.2;
+}
+.form-fieldset {
+  max-width: 1100px;
+  margin: 0 auto !important;
+  padding: 32px;
+  background: #fff;
+  border-color: #c4d0d5;
+  border-radius: 12px;
+}
+.form-fieldset h2 {
+  margin-bottom: 24px !important;
+  font-size: 54px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.form-fieldset .form-control {
+  margin-top: 10px;
+  font-size: 48px !important;
+  min-height: 76px;
+}
+.form-fieldset .form-label {
+  margin-bottom: 20px !important;
+}
+.btn {
+  font-size: var(--demo-control-size);
+  font-weight: 500;
+  padding: 14px 24px;
+  border: 1px solid #bdcbd1;
+  border-radius: 8px;
+  line-height: 1.2;
+  color: #146575;
+}
+.btn-primary {
+  background: #146575;
+  color: #fff;
+  border-color: #146575;
+}
+.btn-primary:hover {
+  background: #18262d;
+  border-color: #18262d;
+}
+@media (max-width: 1100px) {
+  :root {
+    --demo-data-size: 42px;
+    --demo-control-size: 36px;
+    --demo-heading-size: 60px;
+  }
+  .table td,
+  .table th {
+    padding: 14px 20px;
+  }
+  .table ._col_name {
+    width: 53%;
+  }
+  .table ._col_plan {
+    width: 27%;
+  }
+  .table-sort {
+    font-size: 36px;
+  }
+  .form-control,
+  .form-select {
+    min-height: 72px;
+  }
+}
+@media (max-width: 700px) {
+  :root {
+    --demo-data-size: 24px;
+    --demo-control-size: 22px;
+    --demo-heading-size: 38px;
+  }
+  #sqlpage_main_wrapper {
+    padding: 24px !important;
+    gap: 20px 12px;
+  }
+  .table td,
+  .table th {
+    padding: 12px;
+  }
+  .table-sort {
+    font-size: 22px;
+  }
+  .btn {
+    padding: 12px;
+  }
+  .form-label {
+    font-size: 28px;
+  }
+  .form-fieldset {
+    padding: 24px;
+  }
+  .form-fieldset .form-control {
+    font-size: 28px !important;
+  }
+}

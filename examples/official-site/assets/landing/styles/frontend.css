@@ -142,10 +142,7 @@
 .feature-result {
   background: linear-gradient(120deg, #29d6df, #2ba4b4);
   color: #071322;
-  font:
-    700 20px / 1.2 Arial,
-    Helvetica,
-    sans-serif;
+  font: 700 20px / 1.2 var(--brand-font);
 }
 .customize-diagram,
 .ship-diagram {
