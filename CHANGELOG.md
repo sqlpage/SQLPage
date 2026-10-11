@@ -1,7 +1,9 @@
 # CHANGELOG.md
 
 ## v0.47.0 (unreleased)
-- Redesigned the official website homepage with live SQLPage examples, an interactive database sculpture, flowing section transitions, responsive layouts, and direct links to documentation and deployment guides.
+- Improved homepage headline spacing and kept the rotating sculpture clear of nearby text on phones and tablets.
+- Polished SQLPage’s existing visual identity with Outfit typography, coherent sculpture and favicon artwork, brand downloads, and an animated README demonstration of a real customer app.
+- Redesigned the official website homepage with live SQLPage examples, an interactive database sculpture, a curved section transition, responsive layouts, and direct links to documentation and deployment guides.
 - Loading embedded card content no longer adds duplicate form submission or file validation handlers to existing fields. Fragment initialization also includes the element announcing the fragment.
 - **Mac users:** the downloadable `sqlpage-macos.tgz` is now code-signed with a Developer ID certificate and notarized by Apple. macOS may still ask you to confirm opening it the first time. The binary can still load third-party ODBC database drivers.
 - **Mac users:** the downloadable `sqlpage-macos.tgz` now runs natively on Apple silicon (M-series Macs) and no longer runs on Intel Macs. Homebrew remains the recommended and easiest installation method. On an Intel Mac, [install Homebrew](https://brew.sh/) if needed, then run `brew install sqlpage` (or `brew update` followed by `brew upgrade sqlpage` if you already installed it with Homebrew). Open Terminal in your existing website folder and run `sqlpage` instead of `./sqlpage.bin`; keep your SQL files, database, and `sqlpage` configuration folder in place. Intel installations may build from source and take longer; see the [macOS installation guide](https://sql-page.com/your-first-sql-website/?os=macos#download) for setup and older macOS requirements.

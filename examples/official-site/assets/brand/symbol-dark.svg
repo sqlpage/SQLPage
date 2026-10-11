@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 96 120" width="96" height="120"><g fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <g stroke="#146575" stroke-width="3">
+        <path d="M24 9 33 3h30l9 6-24 24Z"/>
+        <path d="m24 9 24 5 24-5M33 3l15 11L63 3M48 14v19" stroke-width="1.5"/>
+      </g>
+      <g transform="translate(-3.2 26) scale(.1)" stroke="#080e11" stroke-width="60">
+        <path d="M171 264v489a341 122 0 0 0 682 0V264"/>
+        <ellipse cx="512" cy="264" rx="341" ry="122"/>
+        <path d="M171 427a341 122 0 0 0 682 0M171 591a341 122 0 0 0 682 0" stroke="#146575" stroke-width="70"/>
+      </g>
+    </g></svg>

@@ -1,12 +1,12 @@
-<h1 align="center">
-SQLpage
-</h1>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/brand/logo-horizontal-light.svg"><img src="./docs/brand/logo-horizontal-dark.svg" width="280" alt="SQLPage" /></picture></p>
 
-[![A short video explaining the concept of sqlpage](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
+[![A real SQLPage customer app: inspect its SQL, search the table, and save a customer](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
+
+**Turn your data into an app.** Tables, forms and charts, written in SQL.
 
 [SQLPage](https://sql-page.com) is an **SQL**-only webapp builder.
 It allows building powerful data-centric user interfaces quickly,
-by tranforming simple database queries into interactive websites.
+by transforming simple database queries into interactive websites.
 
 With SQLPage, you write simple `.sql` files containing queries to your database
 to select, group, update, insert, and delete your data, and you get good-looking clean webpages
