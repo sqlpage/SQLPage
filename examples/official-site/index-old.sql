@@ -11,7 +11,7 @@ SELECT 'hero' as component,
 
 It's free, [open-source](https://github.com/sqlpage/SQLPage), lightweight, and easy to use.
     ' as description_md,
-    'sqlpage_social_preview.webp' as image,
+    'sqlpage_cover_image.webp' as image,
     TRUE as rounded,
     'your-first-sql-website/' as link,
     'Build your first SQL website !' as link_text;
@@ -46,7 +46,7 @@ SELECT 'hero' as component,
     'SQLPage handles HTTP requests, database connections, streaming rendering, styling, [security](safety.sql), and [performance](performance.sql) for you.
 
 Focus only on your data, and how you want to present it. We''ve tamed the tech, you tame the data.' as description_md,
-    'assets/icon.webp' as image;
+    'sqlpage_illustration_alien.webp' as image;
 
 -- Quick feature overview
 SELECT 'card' as component,

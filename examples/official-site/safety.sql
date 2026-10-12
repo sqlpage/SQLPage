@@ -10,7 +10,7 @@ FROM example WHERE component = 'shell' LIMIT 1;
 select 'hero' as component,
     'SQLPage''s security guarantees' as title,
     'SQLPage prevents common web vulnerabilities such as SQL injections and XSS attacks by default.' as description,
-    '/assets/icon.webp' as image;
+    'safety.webp' as image;
 
 select 'text' as component,
     '

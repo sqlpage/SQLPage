@@ -14,7 +14,7 @@ The landing sculpture is the reference mascot. Use its existing model, faceted j
 select 'html' as component, '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:32px;margin-block:32px"><img src="/assets/brand/logo-horizontal-light.svg" alt="SQLPage horizontal wordmark" width="320" style="max-width:100%"><img src="/assets/icon.webp" alt="The reference SQLPage sculpture" width="340" style="max-width:100%"></div>' as html;
 
 select 'text' as component, 'Wordmark and symbol' as title, '
-The outlined wordmark uses Outfit 600, with optical spacing and natural letter widths. Official-site navigation pairs the landing sculpture artwork with its Outfit wordmark. The dedicated favicon preserves the familiar broad cylinder and a crisp cyan band at tiny sizes.
+The outlined wordmark uses Outfit 600, with optical spacing and natural letter widths. Official-site navigation pairs the landing sculpture artwork with its Outfit wordmark. The favicon retains the familiar illuminated cylinder on its deep-blue background.
 
 Leave at least half the symbol width clear on every side. Minimum horizontal lockup width: 150px. At 16px, use the favicon. Choose the light artwork on metal black or graphite, and dark artwork on porcelain.
 

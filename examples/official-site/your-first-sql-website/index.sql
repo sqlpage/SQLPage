@@ -30,7 +30,12 @@ SELECT 'hero' as component,
     '[SQLPage](/) is a free tool for building data-driven apps quickly.
 
 Let''s create a simple website with a database from scratch, to learn SQLPage basics.' as description_md,
-    '/assets/icon.webp' as image,
+    case $os
+        when 'linux' then 'get_started_linux.webp'
+        when 'macos' then 'get_started_macos.webp'
+        when 'windows' then 'get_started_windows.webp'
+        else 'get_started.webp'
+    end as image,
     CASE $os
         WHEN 'macos' THEN '#download'
         WHEN 'windows' THEN 'https://github.com/sqlpage/SQLPage/releases/latest/download/sqlpage-windows.zip'
