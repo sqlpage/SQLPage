@@ -1,0 +1,28 @@
+/* Size the site’s existing SVG icons without a separate landing icon library. */
+/* SQLPage's icon_img helper renders the built-in Tabler icons inline. */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--icon-size, 24px);
+  height: var(--icon-size, 24px);
+  vertical-align: middle;
+}
+
+.icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.icon-play {
+  --icon-size: 23px;
+}
+
+.icon-list,
+.icon-chart,
+.icon-table,
+.icon-code {
+  --icon-size: 22px;
+}

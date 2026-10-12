@@ -1,0 +1,155 @@
+/* Short sections hold at the top. Long sections scroll through before their tail holds. */
+.sqlpage-world[data-section-motion] .landing-section {
+  position: sticky;
+  top: var(--section-stick-top, 0px);
+  z-index: var(--section-layer, 1);
+  min-height: 100svh;
+}
+
+/* Reserve reading room and an outro before the incoming wave reaches the tail. */
+.sqlpage-world[data-section-motion] .landing-section:not(:last-of-type) {
+  padding-bottom: calc(var(--wave-height, 132px) + max(80px, 12svh));
+}
+
+.sqlpage-world[data-section-motion] .landing-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #030817;
+  opacity: calc(var(--section-cover, 0) * 0.16);
+  pointer-events: none;
+}
+
+/* Roles own appearance; JavaScript supplies only entrance and exit progress. */
+[data-section-reveal] {
+  --reveal-enter-x: 0px;
+  --reveal-exit-x: 0px;
+  --reveal-enter-y: 0px;
+  --reveal-exit-y: 0px;
+  --reveal-enter-scale: 1;
+  --reveal-exit-scale: 1;
+  --reveal-enter-rotate: 0deg;
+  --reveal-exit-rotate: 0deg;
+}
+[data-section-reveal="heading"] {
+  --reveal-enter-y: 88px;
+  --reveal-exit-y: -54px;
+  --reveal-enter-scale: 0.97;
+  --reveal-exit-scale: 0.96;
+}
+[data-section-reveal="reading"] {
+  --reveal-enter-y: 50px;
+  --reveal-exit-y: -32px;
+  --reveal-exit-scale: 0.98;
+}
+[data-section-reveal="control"] {
+  --reveal-enter-x: -42px;
+  --reveal-exit-x: -34px;
+  --reveal-enter-y: 16px;
+  --reveal-exit-y: -12px;
+  --reveal-enter-scale: 0.98;
+  --reveal-exit-scale: 0.97;
+}
+[data-section-reveal="card"] {
+  --reveal-enter-x: 24px;
+  --reveal-exit-x: 32px;
+  --reveal-enter-y: 70px;
+  --reveal-exit-y: -44px;
+  --reveal-enter-scale: 0.91;
+  --reveal-exit-scale: 0.89;
+  --reveal-enter-rotate: 3deg;
+  --reveal-exit-rotate: -3deg;
+}
+[data-section-reveal="detail"] {
+  --reveal-enter-x: 20px;
+  --reveal-exit-x: 32px;
+  --reveal-enter-y: 30px;
+  --reveal-exit-y: -24px;
+}
+.sqlpage-world[data-section-motion] [data-section-reveal] {
+  --entering: calc(1 - var(--reveal-enter, 1));
+  --exiting: calc(1 - var(--reveal-exit, 1));
+  /* Scroll drives these poses; they must not become a scroll anchor themselves. */
+  overflow-anchor: none;
+  opacity: calc(var(--reveal-enter, 1) * var(--reveal-exit, 1));
+  translate: calc(
+      (
+        var(--entering) *
+        var(--reveal-enter-x) +
+        var(--exiting) *
+        var(--reveal-exit-x)
+      ) *
+      var(--reveal-direction, 1)
+    )
+    calc(
+      var(--entering) *
+      var(--reveal-enter-y) +
+      var(--exiting) *
+      var(--reveal-exit-y)
+    );
+  scale: calc(
+    1 +
+    var(--entering) *
+    (var(--reveal-enter-scale) - 1) +
+    var(--exiting) *
+    (var(--reveal-exit-scale) - 1)
+  );
+  rotate: calc(
+    (
+      var(--entering) *
+      var(--reveal-enter-rotate) +
+      var(--exiting) *
+      var(--reveal-exit-rotate)
+    ) *
+    var(--reveal-direction, 1)
+  );
+}
+
+/* Focus is always visible, including when jumping directly to an unseen group. */
+.sqlpage-world[data-section-motion] [data-section-reveal]:focus-within {
+  opacity: 1;
+  translate: none;
+  scale: none;
+  rotate: none;
+}
+
+.sqlpage-world[data-measuring-layout] [data-section-reveal] {
+  translate: none;
+  scale: none;
+  rotate: none;
+}
+
+.sqlpage-world[data-measuring-layout] .landing-section {
+  position: relative;
+  top: auto;
+}
+
+/* Phone content keeps its full width while fading and moving vertically. */
+@media (max-width: 600px) {
+  [data-section-reveal] {
+    --reveal-enter-x: 0px;
+    --reveal-exit-x: 0px;
+    --reveal-enter-scale: 1;
+    --reveal-exit-scale: 1;
+    --reveal-enter-rotate: 0deg;
+    --reveal-exit-rotate: 0deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sqlpage-world[data-section-motion] .landing-section {
+    position: relative;
+    top: auto;
+    min-height: 0;
+  }
+  .sqlpage-world[data-section-motion] .landing-section::after {
+    display: none;
+  }
+  .sqlpage-world[data-section-motion] [data-section-reveal] {
+    opacity: 1;
+    translate: none;
+    scale: none;
+    rotate: none;
+  }
+}

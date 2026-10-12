@@ -1,0 +1,116 @@
+/* One fixed sculpture layer, static fallback, and the opening stage’s pinned lifetime. */
+.sqlpage-world {
+  position: relative;
+  overflow-x: clip;
+  background: var(--ink);
+}
+.experience {
+  position: relative;
+  --composition-width: min(100vw, 195svh);
+  --composition-left: max(0px, calc((100vw - 195svh) / 2));
+  --progress: 0;
+  --intro-opacity: 1;
+  --intro-shift: 0px;
+  --ribbon-opacity: 1;
+}
+/* Scene loading, reduced motion, and the ordinary first frame share one height. */
+.sqlpage-world[data-scene] .experience {
+  height: var(--stage-height, 100svh);
+  min-height: 560px;
+}
+.viewport {
+  height: 100svh;
+  min-height: 560px;
+  position: relative;
+  top: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 79% 26%, #183d4755, transparent 57%), #080e11;
+}
+/* One sculpture follows the authored section anchors. */
+.scene-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.sqlpage-world:not([data-enhanced]) .scene-layer {
+  position: absolute;
+  height: 100svh;
+}
+.scene-layer .model-interaction[data-ready="true"] {
+  pointer-events: auto;
+}
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+}
+.scene-preview {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  max-width: none;
+  width: min(85vw, 140svh);
+  height: auto;
+  left: 32%;
+  top: 8%;
+}
+[data-scene="ready"] .scene-preview {
+  visibility: hidden;
+}
+/* Avoid painting the approximate fallback position before its letter anchor is measured. */
+.sqlpage-world[data-enhanced]:not([data-frame-ready]) .scene-preview {
+  visibility: hidden;
+}
+
+[data-scene="ready"] .scene-canvas {
+  opacity: 1;
+}
+.scene-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cinematic-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, #05090da6, transparent 66%),
+    radial-gradient(ellipse at 53% 49%, transparent 39%, #04070b66 100%);
+  opacity: calc(0.9 - var(--progress) * 0.3);
+}
+.surface-finish {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.2;
+  background: repeating-linear-gradient(
+    0deg,
+    #a9ccd203 0,
+    #a9ccd203 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: screen;
+}
+
+/* Reserve the opening flight before first paint. The static preview follows the
+   same anchors while WebGL loads or fails, so readiness never shifts the page. */
+.sqlpage-world[data-enhanced][data-motion="on"] .experience {
+  height: calc(var(--stage-height, 100svh) + 165svh);
+}
+.sqlpage-world[data-enhanced][data-motion="on"] .viewport {
+  position: sticky;
+  top: var(--sticky-top, 0px);
+}
+.site-header,
+.viewport-footer {
+  opacity: var(--intro-opacity);
+}

@@ -1,0 +1,32 @@
+/* The incoming section's crest reaches over the surface beneath it. */
+.landing-section {
+  --wave-height: 160px;
+}
+.section-wave {
+  position: absolute;
+  top: calc(-1 * var(--wave-height));
+  left: 0;
+  width: 100%;
+  height: calc(var(--wave-height) + 2px);
+  overflow: hidden;
+  pointer-events: none;
+  fill: var(--section-color);
+}
+.wave-front {
+  stroke: #39d3e5;
+  stroke-width: 0.7;
+}
+.wave-back {
+  opacity: 0.24;
+  fill: #39d3e5;
+}
+@media (max-width: 900px) {
+  .landing-section {
+    --wave-height: 124px;
+  }
+}
+@media (max-width: 600px) {
+  .landing-section {
+    --wave-height: 96px;
+  }
+}

@@ -1,0 +1,57 @@
+/* Sculpture input target and recoverable WebGL error state. */
+.model-interaction {
+  position: absolute;
+  /* The measured hit target appears with the first rendered sculpture frame. */
+  visibility: hidden;
+  left: 55%;
+  width: 40%;
+  top: 25%;
+  height: 55%;
+  z-index: 8;
+  /* Vertical swipes scroll; a sideways start rotates. Keep native page zoom. */
+  touch-action: pan-y pinch-zoom;
+  cursor: grab;
+  border-radius: 35%;
+  outline-offset: -10px;
+}
+.model-interaction[data-ready="true"] {
+  visibility: visible;
+}
+.model-interaction[data-ready="false"] {
+  pointer-events: none;
+}
+.model-interaction:active {
+  cursor: grabbing;
+}
+.model-interaction:focus-visible {
+  outline: 1px dashed #5ed7df77;
+}
+.scene-error {
+  position: absolute;
+  right: 12%;
+  top: 53%;
+  z-index: 16;
+  text-align: center;
+  color: #9fb6be;
+  font: 12px var(--mono);
+  max-width: 290px;
+  padding: 20px;
+  background: #080f14ed;
+  border: 1px solid #26444e;
+  border-radius: 8px;
+  line-height: 1.6;
+}
+.scene-error p {
+  margin: 0 0 12px;
+}
+.scene-error p:first-child {
+  font-size: 16px;
+  color: #deecee;
+}
+.scene-error button {
+  border: 1px solid #458897;
+  color: #70c8da;
+  background: #15313c;
+  padding: 8px 17px;
+  border-radius: 50px;
+}
