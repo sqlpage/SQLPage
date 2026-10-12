@@ -28,6 +28,12 @@ export function initComponentDemos(root, signal) {
     change();
     const after = panel.getBoundingClientRect().height;
     if (media.matches) return;
+    if (root.dataset.renderer === "baked") {
+      // Retain the entrance fade without relaying every animated height through
+      // the page's section and sculpture ResizeObservers.
+      if (entering) fade = panel.animate([{ opacity: 0 }, { opacity: 1 }], 180);
+      return;
+    }
     animation = panel.animate(
       [
         { height: `${before}px`, opacity: entering ? 0 : 1 },

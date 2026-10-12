@@ -10,9 +10,62 @@ for (const viewport of [
   }) => {
     test.setTimeout(90_000);
     await page.setViewportSize(viewport);
+    // Pose tests use a virtual clock. Exercise slow graphics on the phone;
+    // give desktop fence completion a zero elapsed time instead of GPU timing.
+    await page.addInitScript((slow) => {
+      const gl = WebGL2RenderingContext.prototype;
+      const draw = gl.drawElementsInstanced;
+      gl.drawElementsInstanced = function (
+        mode,
+        count,
+        type,
+        offset,
+        instances,
+      ) {
+        document.documentElement.dataset.testOrbInstances = String(instances);
+        return draw.call(this, mode, count, type, offset, instances);
+      };
+      const viewport = gl.viewport;
+      gl.viewport = function (x, y, width, height) {
+        if (width > 500 && height > 500 && width < 1000 && height < 1000)
+          document.documentElement.dataset.testGlowPixels = String(
+            width * height,
+          );
+        return viewport.call(this, x, y, width, height);
+      };
+      const submit = gl.fenceSync;
+      gl.fenceSync = function (condition, flags) {
+        document.documentElement.dataset.testGpuPending = "true";
+        return submit.call(this, condition, flags);
+      };
+      gl.clientWaitSync = function () {
+        document.documentElement.dataset.testGpuPending = "false";
+        return slow ? this.TIMEOUT_EXPIRED : this.ALREADY_SIGNALED;
+      };
+    }, viewport.width === 390);
+    if (viewport.width === 1280) {
+      await page.route(
+        "**/assets/landing/js/scene/database-scene.js",
+        async (route) => {
+          const response = await route.fetch();
+          await route.fulfill({
+            response,
+            body: (await response.text()).replace(
+              "const elapsed = performance.now() - submittedAt;",
+              "const elapsed = 0;",
+            ),
+          });
+        },
+      );
+    }
     await page.clock.install();
     const errors: string[] = [];
+    const atlasRequests: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    page.on("request", (request) => {
+      if (request.url().includes("/sculpture-turns."))
+        atlasRequests.push(request.url());
+    });
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "SELECT",
@@ -26,7 +79,42 @@ for (const viewport of [
     await settleLandingPreview(page);
     // Render each sampled pose without spending software GPU time on idle frames.
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
-    await page.clock.runFor(64);
+    await page.clock.runFor(viewport.width === 390 ? 1100 : 64);
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(32);
+        return page.locator(".sqlpage-world").getAttribute("data-scene");
+      })
+      .toBe("ready");
+    const canvas = page.locator("canvas");
+    await expect(canvas).toHaveJSProperty(
+      "width",
+      viewport.width === 390 ? 320 : 1000,
+    );
+    if (viewport.width === 390) {
+      await expect(page.locator(".sqlpage-world")).toHaveAttribute(
+        "data-renderer",
+        "baked",
+      );
+      expect(atlasRequests).toEqual([
+        expect.stringMatching(/\/sculpture-turns\.avif$/),
+      ]);
+    } else {
+      // Keep the full raster while batching nodes and cropping only empty glow.
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-test-orb-instances",
+        "8",
+      );
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-test-glow-pixels",
+        /\d+/,
+      );
+      expect(
+        Number(
+          await page.locator("html").getAttribute("data-test-glow-pixels"),
+        ),
+      ).toBeLessThanOrEqual(512_000);
+    }
 
     // The pinned introduction fades around a full-screen sculpture before docking.
     const initialSize = (await page.locator("canvas").boundingBox())!.height;
@@ -66,13 +154,14 @@ for (const viewport of [
             ),
         )
         .toBeLessThan(0.005);
-      return page.locator("canvas").evaluate((canvas) => {
+      return page.locator("canvas").evaluate((canvas: HTMLCanvasElement) => {
         const rect = canvas.getBoundingClientRect();
         return {
           x: rect.x + scrollX,
           y: rect.y + scrollY,
           size: rect.width,
           turn: Number(canvas.dataset.scrollTurn),
+          pixels: canvas.width === 320 ? canvas.toDataURL() : null,
           opacity: Number(
             getComputedStyle(canvas.closest(".scene-layer")!).opacity,
           ),
@@ -147,6 +236,8 @@ for (const viewport of [
         expectSamePageFrame(reading, anchor);
         expect(reading.opacity).toBe(1);
         expect(reading.turn).toBeGreaterThan(anchor.turn);
+        if (viewport.width === 390)
+          expect(reading.pixels).not.toBe(anchor.pixels);
         const atTop = await sample(target.top + 1);
         await expectAtPageAnchor(atTop, index);
         expect(atTop.opacity).toBe(1);
@@ -189,6 +280,7 @@ for (const viewport of [
         expectSamePageFrame(reverse, reading);
         expect(reverse.opacity).toBe(1);
         expect(reverse.turn).toBeLessThan(arrived.turn);
+        expect(reverse.pixels).toBe(reading.pixels);
       }
       // The closing sculpture must finish its entrance before the page runs out.
       const bottom = await sample(
@@ -200,6 +292,22 @@ for (const viewport of [
       expect(bottom.opacity).toBe(1);
     }
     await checkAnchors();
+    if (viewport.width === 390) {
+      const initial = await sample(0);
+      await page.locator(".model-interaction").press("ArrowRight");
+      expect((await sample(0)).pixels).not.toBe(initial.pixels);
+      await page.locator(".model-interaction").press("Home");
+      expect((await sample(0)).pixels).toBe(initial.pixels);
+    }
+    if (viewport.width === 1280) {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await scrollLanding(page, 0);
+      await page.clock.runFor(64);
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-test-gpu-pending",
+        "false",
+      );
+    }
     await page.clock.resume();
 
     expect(errors).toEqual([]);
@@ -434,6 +542,10 @@ test("landing page: live components, deployment and mobile navigation", async ({
 test("landing shader failure keeps the static page usable and retries cleanly", async ({
   page,
 }) => {
+  // Timing is optional; failed assets must still clean up and retry without it.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "PerformanceObserver", { value: undefined });
+  });
   const shaderRoute = "**/assets/landing/js/scene/shaders/*.glsl";
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -446,6 +558,7 @@ test("landing shader failure keeps the static page usable and retries cleanly", 
     timeout: 30_000,
   });
   await expect(page.locator(".scene-preview")).toBeVisible();
+  await expect(page.locator("canvas")).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.locator(".model-interaction")).toHaveAttribute("inert", "");
   await page.unroute(shaderRoute);
