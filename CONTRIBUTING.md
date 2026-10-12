@@ -21,7 +21,7 @@ crates include browser assets and do not require Node.js.
 
 ### Optional: Nix dev shell
 
-If you have [Nix](https://nixos.org/download/) with flakes enabled, `nix develop` provides the tools above at the versions CI uses. With [direnv](https://direnv.net/), `direnv allow` enters the shell automatically when you enter the directory.
+If you have [Nix](https://nixos.org/download/) with flakes enabled, `nix develop` provides the tools above at the versions CI uses. With [direnv](https://direnv.net/), `direnv allow` enters the shell automatically when you enter the directory. When Nix is not installed, direnv leaves your environment unchanged.
 
 | Command | What it runs |
 | --- | --- |
