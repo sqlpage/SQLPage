@@ -1571,7 +1571,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "preview_image": "https://sql-page.com/sqlpage_social_preview.webp",
             "theme": "dark",
             "image": "/assets/icon.webp",
-            "favicon": "/assets/brand/favicon.svg",
+            "favicon": "/favicon.ico",
             "navbar_title": "SQLPage",
             "javascript": [
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",

@@ -1,6 +1,6 @@
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/brand/logo-horizontal-light.svg"><img src="./docs/brand/logo-horizontal-dark.svg" width="280" alt="SQLPage" /></picture></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="./examples/official-site/assets/brand/logo-horizontal-light.svg"><img src="./examples/official-site/assets/brand/logo-horizontal-dark.svg" width="280" alt="SQLPage" /></picture></p>
 
-[![A real SQLPage customer app: inspect its SQL, search the table, and save a customer](./docs/sqlpage.gif)](./docs/sqlpage.mp4)
+[![A real SQLPage customer app: inspect its SQL, search the table, and save a customer](./docs/sqlpage.gif)](./examples/official-site/sqlpage_introduction_video.mp4)
 
 **Turn your data into an app.** Tables, forms and charts, written in SQL.
 

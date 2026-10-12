@@ -9,24 +9,18 @@ select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json
 select 'text' as component, 'SQLPage visual identity' as title, '
 SQLPage turns data into useful applications. Its identity pairs the round geometry of **Outfit** with the landing sculpture: three stacked metal sections, two luminous bands, and a detached jewel.
 
-The sculpture is the reference mascot. Use the supplied render or reproduce it from the existing model, materials, lighting, and camera. Do not substitute a generic database illustration.
+The landing sculpture is the reference mascot. Use its existing model, faceted jewel, metal stack, and luminous bands for all 3D artwork. The navigation icon is a static render of this same model, with studio fill lighting to keep its cylinder readable at small sizes.
 ' as contents_md;
-select 'html' as component, '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:32px;margin-block:32px"><img src="/assets/brand/logo-horizontal-light.svg" alt="SQLPage horizontal wordmark" width="320" style="max-width:100%"><img src="/assets/brand/mascot-dark.webp" alt="The reference SQLPage sculpture" width="340" style="max-width:100%"></div>' as html;
+select 'html' as component, '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:32px;margin-block:32px"><img src="/assets/brand/logo-horizontal-light.svg" alt="SQLPage horizontal wordmark" width="320" style="max-width:100%"><img src="/assets/icon.webp" alt="The reference SQLPage sculpture" width="340" style="max-width:100%"></div>' as html;
 
 select 'text' as component, 'Wordmark and symbol' as title, '
-The outlined wordmark uses Outfit 600, with optical spacing and natural letter widths. Use the horizontal lockup in broad placements and the stacked lockup where space is square. Official-site navigation pairs the shaded sculpture artwork with its Outfit wordmark. The full symbol follows the broad sculpture silhouette and its detached jewel. The dedicated favicon preserves the familiar broad cylinder and a crisp cyan band at tiny sizes.
+The outlined wordmark uses Outfit 600, with optical spacing and natural letter widths. Official-site navigation pairs the landing sculpture artwork with its Outfit wordmark. The dedicated favicon preserves the familiar broad cylinder and a crisp cyan band at tiny sizes.
 
-Leave at least half the symbol width clear on every side. Minimum horizontal lockup width: 150px; minimum standalone symbol height: 32px. At 16px, use the favicon. Choose the light artwork on metal black or graphite, and dark artwork on porcelain. Monochrome variants are provided for single-color reproduction.
+Leave at least half the symbol width clear on every side. Minimum horizontal lockup width: 150px. At 16px, use the favicon. Choose the light artwork on metal black or graphite, and dark artwork on porcelain.
 
-[Horizontal SVG — light](/assets/brand/logo-horizontal-light.svg) · [dark](/assets/brand/logo-horizontal-dark.svg) · [PNG](/assets/brand/logo-horizontal-light.png)
+[Horizontal SVG — light](/assets/brand/logo-horizontal-light.svg) · [dark](/assets/brand/logo-horizontal-dark.svg)
 
-[Stacked SVG — light](/assets/brand/logo-stacked-light.svg) · [dark](/assets/brand/logo-stacked-dark.svg) · [PNG](/assets/brand/logo-stacked-light.png)
-
-[Symbol SVG — light](/assets/brand/symbol-light.svg) · [dark](/assets/brand/symbol-dark.svg) · [monochrome light](/assets/brand/symbol-mono-light.svg) · [monochrome dark](/assets/brand/symbol-mono-dark.svg)
-
-[Monochrome horizontal — light](/assets/brand/logo-horizontal-mono-light.svg) · [dark](/assets/brand/logo-horizontal-mono-dark.svg)
-
-[Favicon SVG](/assets/brand/favicon.svg) · [ICO](/favicon.ico) · [Apple touch icon](/assets/brand/apple-touch-icon.png)
+[Favicon ICO](/favicon.ico) · [Shaded sculpture icon](/assets/icon.webp)
 ' as contents_md;
 
 select 'text' as component, 'Six core colors' as title;
@@ -45,7 +39,7 @@ Brand headlines: 600, normal width, tracking −0.025em, line height 1.05. The h
 
 Brand copy: 400, 18px/1.6, about 68 characters per line. Use Outfit for site copy and controls while preserving the existing homepage layout, metal finishes, and navigation.
 
-[Font WOFF2](/assets/brand/fonts/Outfit.woff2) · [Source TTF](/assets/brand/fonts/Outfit.ttf) · [SIL Open Font License](/assets/brand/fonts/OFL.txt) · [Google Fonts source](https://github.com/google/fonts/tree/main/ofl/outfit)
+[Font WOFF2](/assets/brand/fonts/Outfit.woff2) · [SIL Open Font License](/assets/brand/fonts/OFL.txt) · [Google Fonts source](https://github.com/google/fonts/tree/main/ofl/outfit)
 ' as contents_md;
 select 'typography_sample' as component;
 select 'Headlines' as title, 'Outfit, system-ui, sans-serif' as font_family, '48px' as font_size,
@@ -65,24 +59,14 @@ Allow direct sculpture manipulation and preserve keyboard and touch controls. Re
 ' as contents_md;
 
 select 'text' as component, 'Mascot and social artwork' as title, '
-[Transparent PNG](/assets/brand/mascot-transparent.png) · [Transparent WebP](/assets/brand/mascot-transparent.webp) · [Dark composition](/assets/brand/mascot-dark.webp) · [Light composition](/assets/brand/mascot-light.webp)
+Use the static landing sculpture render for small static placements. The navigation icon and social preview use the same model as the interactive homepage. Keep its faceted jewel, tilted metal stack, and luminous bands together.
 
-Social artwork keeps the jewel and both bands visible alongside the wordmark and “Turn your data into an app.” Platform crops have different layouts; use their dedicated files.
-
-[Open Graph — 1200×630](/assets/brand/social-og.png) · [editable SVG](/assets/brand/social-og.svg)
-
-[GitHub — 1280×640](/assets/brand/social-github.png) · [editable SVG](/assets/brand/social-github.svg)
-
-[X — 1500×500](/assets/brand/social-x.png) · [editable SVG](/assets/brand/social-x.svg)
-
-[YouTube — 2560×1440](/assets/brand/social-youtube.png) · [editable SVG](/assets/brand/social-youtube.svg)
-
-[Square avatar — 512×512](/assets/brand/avatar.png)
+[Shaded sculpture icon](/assets/icon.webp) · [Social preview](/sqlpage_social_preview.webp)
 ' as contents_md;
-select 'text' as component, 'Demonstration and reproducible sources' as title, '
-The silent 30-second README demo records an isolated SQLPage customer application with real search, sorting, forms, and database persistence. The repository README contains its media.
+select 'text' as component, 'README demonstration' as title, '
+The silent 30-second README demo shows a SQLPage customer application with search, sorting, forms, and database persistence.
 
-[README video MP4](https://github.com/sqlpage/SQLPage/blob/main/docs/sqlpage.mp4) · [WebM](https://github.com/sqlpage/SQLPage/blob/main/docs/sqlpage.webm) · [Poster](https://github.com/sqlpage/SQLPage/blob/main/docs/sqlpage-poster.png)
+[README video MP4](/sqlpage_introduction_video.mp4) · [Animated preview](https://github.com/sqlpage/SQLPage/blob/main/docs/sqlpage.gif)
 
-The repository includes the original model, sculpture export script, outlined vector generator, editable social compositions, Playwright recorder, and FFmpeg encoding commands in [scripts/brand](https://github.com/sqlpage/SQLPage/tree/main/scripts/brand). Outfit retains its font license.
+The horizontal SVGs and licensed WOFF2 font in the official-site assets are the canonical identity files, shared by the site and repository README.
 ' as contents_md;
