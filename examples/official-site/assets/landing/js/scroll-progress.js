@@ -9,6 +9,7 @@ export function initScrollProgress(section, mount, state) {
   const stops = [...root.querySelectorAll("[data-scene-stop]")];
   const events = new AbortController();
   let frame = 0;
+  let scrollRest;
   let heroFrame;
   let anchors = [];
   let heroRange = 0;
@@ -205,6 +206,15 @@ export function initScrollProgress(section, mount, state) {
     });
   }
   const schedule = () => {
+    if (root.dataset.renderer === "baked") {
+      if (!root.hasAttribute("data-scrolling"))
+        root.setAttribute("data-scrolling", "");
+      clearTimeout(scrollRest);
+      scrollRest = setTimeout(
+        () => root.removeAttribute("data-scrolling"),
+        150,
+      );
+    }
     if (!frame) frame = requestAnimationFrame(update);
   };
   window.addEventListener("scroll", schedule, {
@@ -220,6 +230,8 @@ export function initScrollProgress(section, mount, state) {
     events.abort();
     observer.disconnect();
     cancelAnimationFrame(frame);
+    clearTimeout(scrollRest);
+    root.removeAttribute("data-scrolling");
     root.removeAttribute("data-frame-ready");
   };
 }

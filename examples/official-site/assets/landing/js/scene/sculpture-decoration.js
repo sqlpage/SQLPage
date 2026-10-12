@@ -3,9 +3,14 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
 
 export function createSculptureDecoration(shaders) {
   const decoration = new THREE.Group();
-  const orbitalNodes = [];
   const orbMaterial = new THREE.MeshBasicMaterial({ color: 0x377e94 });
   const orbGeometry = new THREE.SphereGeometry(0.015, 10, 8);
+  const orbs = new THREE.InstancedMesh(orbGeometry, orbMaterial, 8);
+  orbs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // All eight moving nodes stay inside the orbital tracks.
+  orbs.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 4);
+  decoration.add(orbs);
+  const transform = new THREE.Object3D();
   for (let i = 0; i < 4; i++) {
     const rx = 1.65 + i * 0.46,
       rz = 1.24 + i * 0.22,
@@ -26,19 +31,6 @@ export function createSculptureDecoration(shaders) {
       depthWrite: false,
     });
     decoration.add(new THREE.LineLoop(geometry, material));
-    for (let j = 0; j < 2; j++) {
-      const orb = new THREE.Mesh(orbGeometry, orbMaterial);
-      orb.scale.setScalar(j === 0 ? 1 : 0.66);
-      decoration.add(orb);
-      orbitalNodes.push({
-        object: orb,
-        rx,
-        rz,
-        y,
-        phase: i * 1.34 + j * Math.PI,
-        speed: 0.09 + i * 0.013,
-      });
-    }
   }
 
   const starsGeometry = new THREE.BufferGeometry();
@@ -88,14 +80,20 @@ export function createSculptureDecoration(shaders) {
     update(time, motion) {
       if (motion) decoration.rotation.y = time * 0.014;
       starsMaterial.uniforms.uTime.value = time;
-      for (const orb of orbitalNodes) {
-        const a = orb.phase + time * orb.speed;
-        orb.object.position.set(
-          Math.cos(a) * orb.rx,
-          orb.y + Math.sin(a) * 0.07,
-          Math.sin(a) * orb.rz,
+      for (let i = 0; i < 8; i++) {
+        const ring = Math.floor(i / 2);
+        const a =
+          ring * 1.34 + (i % 2) * Math.PI + time * (0.09 + ring * 0.013);
+        transform.scale.setScalar(i % 2 === 0 ? 1 : 0.66);
+        transform.position.set(
+          Math.cos(a) * (1.65 + ring * 0.46),
+          -1.3 - ring * 0.18 + Math.sin(a) * 0.07,
+          Math.sin(a) * (1.24 + ring * 0.22),
         );
+        transform.updateMatrix();
+        orbs.setMatrixAt(i, transform.matrix);
       }
+      orbs.instanceMatrix.needsUpdate = true;
     },
   };
 }

@@ -67,6 +67,12 @@ export function createSelectiveGlow(
     return material;
   };
 
+  const meshes = [];
+  const lightBounds = new THREE.Box3(),
+    projected = new THREE.Box3();
+  const projection = new THREE.Matrix4(),
+    transform = new THREE.Matrix4();
+  let cachedModel;
   const blur = new THREE.ShaderMaterial({
     uniforms: {
       tSource: { value: source.texture },
@@ -126,8 +132,50 @@ export function createSelectiveGlow(
       height = h;
       ratio = Math.min(pixelRatio, 1.25);
     },
-    render(model, exclude, bounds) {
+    render(model, exclude) {
       if (disposed || !model) return;
+      // The asset's materials are fixed after setup. Cache the mask once;
+      // crop around emitters, while retaining every opaque occluder in the pass.
+      if (cachedModel !== model) {
+        cachedModel = model;
+        meshes.length = 0;
+        model.traverse((mesh) => {
+          if (!mesh.isMesh) return;
+          const material = mesh.material;
+          const mask = Array.isArray(material)
+            ? material.map(glowMaterial)
+            : glowMaterial(material);
+          meshes.push({
+            mesh,
+            material,
+            mask,
+            luminous: [].concat(mask).some((m) => m !== black && m !== omitted),
+          });
+        });
+      }
+      projection.multiplyMatrices(
+        camera.projectionMatrix,
+        camera.matrixWorldInverse,
+      );
+      lightBounds.makeEmpty();
+      for (const { mesh, luminous } of meshes) {
+        if (!luminous || !mesh.visible) continue;
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        lightBounds.union(
+          projected
+            .copy(mesh.geometry.boundingBox)
+            .applyMatrix4(
+              transform.multiplyMatrices(projection, mesh.matrixWorld),
+            ),
+        );
+      }
+      if (lightBounds.isEmpty()) return;
+      const bounds = {
+        left: ((lightBounds.min.x + 1) * width) / 2,
+        right: ((lightBounds.max.x + 1) * width) / 2,
+        top: ((1 - lightBounds.max.y) * height) / 2,
+        bottom: ((1 - lightBounds.min.y) * height) / 2,
+      };
       // The mesh keeps its full resolution. Only its soft halo is capped;
       // enlarge the guard band to accommodate blur at any effective ratio.
       const minimumRatio = Math.min(ratio, 1152 / Math.max(width, height));
@@ -142,13 +190,14 @@ export function createSelectiveGlow(
         height,
         cropHeight,
       );
+      // Keep both downsampled blur grids stable as the crop moves.
       const left = THREE.MathUtils.clamp(
-        Math.round((bounds.left + bounds.right - cropWidth) * 0.5),
+        Math.floor((bounds.left + bounds.right - cropWidth) / 8) * 4,
         0,
         width - cropWidth,
       );
       const top = THREE.MathUtils.clamp(
-        Math.round((bounds.top + bounds.bottom - cropHeight) * 0.5),
+        Math.floor((bounds.top + bounds.bottom - cropHeight) / 8) * 4,
         0,
         height - cropHeight,
       );
@@ -182,22 +231,17 @@ export function createSelectiveGlow(
       const hidden = exclude
         .filter((object) => !!object)
         .map((object) => ({ object, visible: object.visible }));
-      const meshes = [];
       try {
         hidden.forEach(({ object }) => {
           object.visible = false;
         });
-        model.traverse((object) => {
-          if (!(object instanceof THREE.Mesh) || !object.visible) return;
-          meshes.push({ mesh: object, material: object.material });
-          object.material = Array.isArray(object.material)
-            ? object.material.map(glowMaterial)
-            : glowMaterial(object.material);
-        });
+        for (const { mesh, mask } of meshes) mesh.material = mask;
         renderer.autoClear = true;
         renderer.setClearColor(0x000000, 0);
         renderer.setRenderTarget(source);
         renderer.render(scene, maskCamera);
+        // Opaque fullscreen quads overwrite every pixel; clearing is redundant.
+        renderer.autoClear = false;
         blurInto(source, narrowH, 2, 0, 1);
         blurInto(narrowH, narrowV, 0, 1);
         blurInto(narrowV, wideH, 2, 0);
