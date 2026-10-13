@@ -339,6 +339,200 @@
           </div>
         </div>
       </section>
+      <section class="landing-section comparison-section" id="compare" aria-labelledby="comparison-title">
+        {{> landing-wave}}
+        <div class="section-inner">
+          <p class="eyebrow" data-section-reveal="detail">-- one refunds tool, six ways to build it, on day 100</p>
+          <div class="section-heading">
+            <h2 id="comparison-title" data-section-reveal="heading">Low Effort.<br /><em>Low Drama.</em></h2>
+            <p class="comparison-intro" data-section-reveal="reading">Building got cheap.<br />Owning what got built is still expensive.</p>
+            <div class="scene-stop" data-scene-stop></div>
+          </div>
+          <div class="comparison-layout">
+            <article class="comparison-card comparison-sqlpage" data-section-reveal="reading" aria-labelledby="compare-sqlpage">
+              <header class="comparison-card-heading">
+                <img src="/assets/icon.webp" width="24" height="27" alt="" loading="lazy" />
+                <div>
+                  <h3 id="compare-sqlpage">SQLPage</h3>
+                  <p>SQL files + your database</p>
+                </div>
+              </header>
+              <div class="comparison-window comparison-code">
+                <div class="comparison-window-bar">
+                  <span>{{icon_img "git-branch"}} refunds-page</span>
+                  <span>#42</span>
+                </div>
+                <div class="comparison-window-body">
+                  <h4>Add refunds page</h4>
+                  <p class="comparison-diff">3 files changed <span class="comparison-added">+26</span> <span class="comparison-removed">−2</span><i aria-hidden="true"></i></p>
+                  <ul class="comparison-files">
+                    <li><span>{{icon_img "file"}} refunds.sql</span><span class="comparison-added">+14</span></li>
+                    <li><span>{{icon_img "file"}} index.sql</span><span><b class="comparison-added">+4</b> <b class="comparison-removed">−2</b></span></li>
+                    <li><span>{{icon_img "file"}} sqlpage/migrations/0007_refunds.sql</span><span class="comparison-added">+8</span></li>
+                  </ul>
+                  <p class="comparison-deploy">{{icon_img "circle-check"}} git push <span>→ live</span></p>
+                </div>
+              </div>
+              <h4 class="comparison-verdict">Day 100: still a few files you can read.</h4>
+              <p class="comparison-description">SQL files in git. One stateless binary. The common attacks handled by default.</p>
+              <p class="eyebrow comparison-aside">-- boring on purpose.</p>
+            </article>
+            <span class="comparison-versus" aria-hidden="true">vs</span>
+            <div class="comparison-alternatives" data-section-reveal="reading">
+              <p id="comparison-instructions" class="sr-only">Scroll horizontally to explore five illustrative alternatives. Use the left and right arrow keys when this region is focused.</p>
+              <div class="comparison-track" id="comparison-alternatives" role="region" aria-label="Alternative ways to build a refunds tool" aria-describedby="comparison-instructions" tabindex="0">
+                <article class="comparison-card" aria-labelledby="compare-agent">
+                  <header class="comparison-card-heading">
+                    {{icon_img "sparkles"}}
+                    <div>
+                      <h3 id="compare-agent">Agent-built app</h3>
+                      <p>An AI agent writes the full stack</p>
+                    </div>
+                  </header>
+                  <div class="comparison-window comparison-code">
+                    <div class="comparison-window-bar">
+                      <span>{{icon_img "git-branch"}} refunds-page</span>
+                      <span>#318</span>
+                    </div>
+                    <div class="comparison-window-body">
+                      <h4>Add refunds page</h4>
+                      <p class="comparison-diff">214 files <span class="comparison-added">+8,402</span> <span class="comparison-removed">−1,317</span><i aria-hidden="true"></i></p>
+                      <ul class="comparison-files">
+                        <li><span>{{icon_img "file"}} package-lock.json</span><span class="comparison-added">+6,120</span></li>
+                        <li><span>{{icon_img "file"}} src/components/RefundTable.tsx</span><span class="comparison-added">+212</span></li>
+                        <li><span>{{icon_img "file"}} src/api/refunds.ts</span><span class="comparison-added">+148</span></li>
+                        <li><span>{{icon_img "file"}} prisma/schema.prisma</span><span class="comparison-added">+31</span></li>
+                      </ul>
+                      <p class="comparison-more">… and 209 more files</p>
+                      <div class="comparison-checks">
+                        <p>{{icon_img "alert-triangle"}} 2 dependency alerts</p>
+                        <p>{{icon_img "check"}} 1 approval: LGTM</p>
+                      </div>
+                    </div>
+                  </div>
+                  <h4 class="comparison-verdict">The vibe debt comes due.</h4>
+                  <p class="eyebrow comparison-aside">-- LGTM (nobody read it)</p>
+                </article>
+                <article class="comparison-card" aria-labelledby="compare-spreadsheet">
+                  <header class="comparison-card-heading">
+                    {{icon_img "table"}}
+                    <div>
+                      <h3 id="compare-spreadsheet">Spreadsheet</h3>
+                      <p>Excel, Google Sheets</p>
+                    </div>
+                  </header>
+                  <div class="comparison-window comparison-sheet">
+                    <div class="comparison-window-bar">
+                      <span>Refunds</span>
+                      <span>5 items</span>
+                    </div>
+                    <div class="comparison-window-body">
+                      <div class="comparison-sheet-labels"><span>Name</span><span>Modified ↓</span></div>
+                      <ul class="comparison-sheet-files">
+                        <li><span><b>X</b> refunds.xlsx</span><small>Mar 3</small></li>
+                        <li><span><b>X</b> refunds_final.xlsx</span><small>Mar 9</small></li>
+                        <li><span><b>X</b> refunds_final_v2.xlsx</span><small>Mar 9</small></li>
+                        <li><span><b>X</b> refunds_FINAL_real.xlsx</span><small>Apr 2</small></li>
+                        <li><span><b>X</b> refunds (1).xlsx</span><small>Jun 1</small></li>
+                      </ul>
+                      <p class="comparison-lock">{{icon_img "lock"}} Locked for editing by dave</p>
+                    </div>
+                  </div>
+                  <h4 class="comparison-verdict">Great until the data drifts.</h4>
+                  <p class="eyebrow comparison-aside">-- which one is real?</p>
+                </article>
+                <article class="comparison-card" aria-labelledby="compare-scripts">
+                  <header class="comparison-card-heading">
+                    {{icon_img "terminal-2"}}
+                    <div>
+                      <h3 id="compare-scripts">Custom scripts</h3>
+                      <p>Python, shell, cron</p>
+                    </div>
+                  </header>
+                  <div class="comparison-window comparison-code">
+                    <div class="comparison-window-bar">
+                      <span>zsh</span>
+                      <span>~/reports</span>
+                    </div>
+                    <div class="comparison-window-body comparison-terminal">
+                      <p><span>$</span> crontab -l</p>
+                      <p>0 6 * * * python3 ~/dave/refunds.py</p>
+                      <p><span>$</span> tail -n3 refunds.log</p>
+                      <p class="comparison-more">05-14 06:00&nbsp; ok<br />05-15 06:00&nbsp; ok</p>
+                      <p class="comparison-removed">05-16 06:00&nbsp; ConnectionError</p>
+                      <p><span>$</span> git log -1 --format=%an</p>
+                      <p>dave <span class="comparison-more">(left in March)</span></p>
+                      <p><span>$</span> <i class="comparison-cursor" aria-hidden="true"></i></p>
+                    </div>
+                  </div>
+                  <h4 class="comparison-verdict">Works. Until the author leaves.</h4>
+                  <p class="eyebrow comparison-aside">-- cron says it ran</p>
+                </article>
+                <article class="comparison-card" aria-labelledby="compare-bi">
+                  <header class="comparison-card-heading">
+                    {{icon_img "chart-bar"}}
+                    <div>
+                      <h3 id="compare-bi">BI dashboard</h3>
+                      <p>Charts on top of your data</p>
+                    </div>
+                  </header>
+                  <div class="comparison-window comparison-dashboard">
+                    <div class="comparison-window-bar">Refunds · dashboard</div>
+                    <div class="comparison-window-body">
+                      <div class="comparison-metric">
+                        <div><strong>€12.4k</strong><small>refunded, last 30 days</small></div>
+                        <span class="comparison-view-only">Edit <small>View-only access</small></span>
+                      </div>
+                      <div class="comparison-bars" role="img" aria-label="Bar chart showing refunded amounts"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                      <p class="comparison-chat"><b>S</b><span>Can we add a button?<small>Not in this tool.</small></span></p>
+                    </div>
+                  </div>
+                  <h4 class="comparison-verdict">Great for charts. Not for actions.</h4>
+                  <p class="eyebrow comparison-aside">-- look, but don't touch</p>
+                </article>
+                <article class="comparison-card" aria-labelledby="compare-lowcode">
+                  <header class="comparison-card-heading">
+                    {{icon_img "apps"}}
+                    <div>
+                      <h3 id="compare-lowcode">Low-code platform</h3>
+                      <p>Drag-and-drop app builders</p>
+                    </div>
+                  </header>
+                  <div class="comparison-window comparison-lowcode">
+                    <div class="comparison-window-bar">Refunds app · editor</div>
+                    <div class="comparison-window-body">
+                      <table aria-label="Illustrative refunds table">
+                        <thead><tr><th>Order</th><th>Customer</th><th>Amount</th></tr></thead>
+                        <tbody>
+                          <tr><td>#1042</td><td>Ada L.</td><td>€48.00</td></tr>
+                          <tr><td>#1043</td><td>Grace H.</td><td>€12.50</td></tr>
+                          <tr><td>#1044</td><td>Linus T.</td><td>€76.00</td></tr>
+                          <tr><td>#1045</td><td>Margaret H.</td><td>€24.00</td></tr>
+                        </tbody>
+                      </table>
+                      <div class="comparison-upgrade">
+                        <strong>Export is a Business feature</strong>
+                        <p>Upgrade to export refunds as CSV.</p>
+                        <div><span>Not now</span><span>See plans</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <h4 class="comparison-verdict">It lives on their terms.</h4>
+                  <p class="eyebrow comparison-aside">-- 14 seats, billed monthly</p>
+                </article>
+              </div>
+            </div>
+          </div>
+          <div class="comparison-footer">
+            <p class="eyebrow" data-section-reveal="detail">-- not universal. SQLPage is for data-driven tools; some apps fit other frameworks better.<br />-- illustrative scenarios. Your stack may vary.</p>
+            <div class="comparison-controls" data-section-reveal="control" role="group" aria-label="Browse alternatives" hidden>
+              <p data-comparison-status role="status" aria-atomic="true"></p>
+              <button type="button" data-comparison-previous aria-label="Previous alternative" aria-controls="comparison-alternatives">{{icon_img "chevron-left"}}</button>
+              <button type="button" data-comparison-next aria-label="Next alternative" aria-controls="comparison-alternatives">{{icon_img "chevron-right"}}</button>
+            </div>
+          </div>
+        </div>
+      </section>
       <section class="landing-section databases-section" aria-labelledby="databases-title">
         {{> landing-wave}}
         <div class="section-inner">

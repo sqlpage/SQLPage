@@ -170,7 +170,7 @@ test("a failed landing example keeps the current preview and SQL", async ({
   await page
     .getByRole("tab", { name: "chart A timeline from 3 rows", exact: true })
     .click();
-  await expect(page.getByRole("status")).toHaveText(
+  await expect(page.locator("#demo-panel").getByRole("status")).toHaveText(
     "The demo could not load. Please try again.",
   );
   await expect(demo.getByRole("cell", { name: "Acme Corp" })).toBeVisible();

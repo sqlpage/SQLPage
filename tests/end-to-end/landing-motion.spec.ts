@@ -231,7 +231,7 @@ for (const viewport of [
     // Even the last card gets a fully readable interval before the next wave arrives.
     const purpose = requireValue(positions[1], "purpose section");
     const deployment = requireValue(positions[2], "deployment section");
-    const closing = requireValue(positions[4], "closing section");
+    const closing = requireValue(positions.at(-1), "closing section");
     const readingScroll = purpose.top - purpose.stickyTop;
     await scrollTo(Math.ceil(readingScroll));
     await expect(trailingCard).toHaveCSS("opacity", "1");
