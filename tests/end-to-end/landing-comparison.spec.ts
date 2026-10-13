@@ -13,17 +13,7 @@ for (const settings of [
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto("/");
-    expect(
-      await page.locator(".landing-section").evaluateAll((sections) => {
-        const comparison = sections.findIndex(
-          (section) => section.id === "compare",
-        );
-        const databases = sections.findIndex((section) =>
-          section.classList.contains("databases-section"),
-        );
-        return comparison + 1 === databases;
-      }),
-    ).toBe(true);
+    await expect(page.locator("#compare + .databases-section")).toHaveCount(1);
     const section = page.locator("#compare");
     const track = section.getByRole("region");
     const previous = section.getByRole("button", {
@@ -67,18 +57,18 @@ for (const settings of [
       initialHeight,
     );
     await track.focus();
-    await track.press("Home");
-    await expect(previous).toBeDisabled();
-    await track.press("ArrowLeft");
-    await expect(previous).toBeDisabled();
-    await track.press("ArrowRight");
-    await expect(previous).toBeEnabled();
-    await track.press("End");
-    await expect(next).toBeDisabled();
-    await track.press("ArrowRight");
-    await expect(next).toBeDisabled();
-    await track.press("ArrowLeft");
-    await expect(next).toBeEnabled();
+    for (const [key, button, disabled] of [
+      ["Home", previous, true],
+      ["ArrowLeft", previous, true],
+      ["ArrowRight", previous, false],
+      ["End", next, true],
+      ["ArrowRight", next, true],
+      ["ArrowLeft", next, false],
+    ] as const) {
+      await track.press(key);
+      if (disabled) await expect(button).toBeDisabled();
+      else await expect(button).toBeEnabled();
+    }
     await previous.click();
     await expect(next).toBeEnabled();
     // Resize the same page after browsing; scroll bounds and controls update together.

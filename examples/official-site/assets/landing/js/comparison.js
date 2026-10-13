@@ -8,14 +8,8 @@ export function initComparison(root, signal) {
   const status = section.querySelector("[data-comparison-status]");
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
 
-  function positions() {
-    // Layout offsets stay accurate while section reveals scale the painted track.
-    const origin = cards[0].offsetLeft;
-    return cards.map((card) => card.offsetLeft - origin);
-  }
-
   function update() {
-    const offsets = positions();
+    const offsets = cards.map((card) => card.offsetLeft);
     const first = offsets.findIndex(
       (left, index) => left + cards[index].offsetWidth > track.scrollLeft + 2,
     );
@@ -40,38 +34,30 @@ export function initComparison(root, signal) {
   }
 
   function move(direction) {
-    const offsets = positions();
-    const target =
+    // Equal-width grid columns snap one card at a time; native scrolling clamps the ends.
+    const step = cards[1].offsetLeft;
+    const index =
       direction > 0
-        ? offsets.find((left) => left > track.scrollLeft + 2)
-        : offsets.findLast((left) => left < track.scrollLeft - 2);
-    goTo(target ?? (direction > 0 ? track.scrollWidth : 0));
+        ? Math.floor((track.scrollLeft + 2) / step) + 1
+        : Math.ceil((track.scrollLeft - 2) / step) - 1;
+    goTo(index * step);
   }
 
   previous.addEventListener("click", () => move(-1), { signal });
   next.addEventListener("click", () => move(1), { signal });
   track.addEventListener("scroll", update, { passive: true, signal });
+  const keys = {
+    ArrowLeft: () => move(-1),
+    ArrowRight: () => move(1),
+    Home: () => goTo(0),
+    End: () => goTo(track.scrollWidth),
+  };
   track.addEventListener(
     "keydown",
     (event) => {
-      if (event.target !== track) return;
-      switch (event.key) {
-        case "ArrowLeft":
-          move(-1);
-          break;
-        case "ArrowRight":
-          move(1);
-          break;
-        case "Home":
-          goTo(0);
-          break;
-        case "End":
-          goTo(track.scrollWidth);
-          break;
-        default:
-          return;
-      }
+      if (event.target !== track || !keys[event.key]) return;
       event.preventDefault();
+      keys[event.key]();
     },
     { signal },
   );
