@@ -75,9 +75,9 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  font-size: clamp(88px, min(13.3vw, 19.5svh), 320px);
+  font-size: clamp(88px, min(11.9vw, 17.5svh), 288px);
   line-height: 0.94;
-  letter-spacing: -0.075em;
+  letter-spacing: 0;
   font-weight: 800;
 }
 .hero-copy h1 > span {
@@ -88,7 +88,7 @@
   opacity: var(--intro-opacity);
   transform: translate3d(var(--intro-shift), 0, 0);
   will-change: transform, opacity;
-  /* Negative tracking needs a painted gutter for the final glyph. */
+  /* Leave a painted gutter around the final glyph. */
   padding-inline-end: 0.105em;
   overflow: visible;
 }
@@ -116,7 +116,7 @@
 }
 .title-website {
   font-size: 0.985em;
-  letter-spacing: -0.071em;
+  letter-spacing: 0;
   padding: 4px 0 9px;
   background: linear-gradient(180deg, #83deea 0%, #58c8da 48%, #39adc4 100%);
   background-clip: text;
@@ -146,7 +146,7 @@
   font-size: clamp(17px, 1.5vw, 27px);
   line-height: 1.35;
   font-weight: 550;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.01em;
   margin: 0;
   flex: 1;
   color: #d5d7d9;
@@ -161,7 +161,7 @@
   font-size: clamp(20px, 1.8vw, 29px);
   white-space: nowrap;
   transition: color 0.25s;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.01em;
 }
 .run-orbit {
   width: 70px;

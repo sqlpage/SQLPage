@@ -1,3 +1,5 @@
+@import url("../../brand/brand.css");
+
 /* Standalone SQLPage demos: content-sized shells and compact native components. */
 :root {
   --tblr-body-bg: #0d1224;
@@ -364,4 +366,12 @@ form.mt-3 {
     overflow-wrap: anywhere;
     font-size: 11px;
   }
+}
+
+/* Match the official-site typeface without changing the demo composition. */
+:root {
+  --tblr-font-sans-serif: var(--brand-font);
+}
+body {
+  font-family: var(--brand-font);
 }

@@ -12,9 +12,9 @@
   z-index: 30;
 }
 .brand {
-  font-weight: 750;
+  font-weight: 600;
   font-size: clamp(25px, 2.6vw, 43px);
-  letter-spacing: -1.4px;
+  letter-spacing: -0.015em;
   display: flex;
   align-items: center;
   gap: 12px;

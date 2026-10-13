@@ -1,0 +1,18 @@
+@font-face {
+  font-family: Outfit;
+  src: url("./fonts/Outfit.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --brand-ink: #080e11;
+  --brand-graphite: #18262d;
+  --brand-paper: #f4f7f8;
+  --brand-cyan: #58cce0;
+  --brand-teal: #146575;
+  --brand-steel: #9caeb5;
+  --brand-font: Outfit, system-ui, sans-serif;
+  --brand-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --tblr-font-sans-serif: var(--brand-font);
+}

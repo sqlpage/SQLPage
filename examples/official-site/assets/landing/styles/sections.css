@@ -15,7 +15,7 @@
   font-size: clamp(64px, 8.4vw, 116px);
   font-weight: 800;
   line-height: 0.92;
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
 }
 .landing-section h2 em {
   font-style: normal;
@@ -223,7 +223,7 @@
   margin: 0 0 15px;
   font-size: 30px;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 .benefit p {
   font-size: 16px;
@@ -374,8 +374,12 @@ a.chip:hover {
   .landing-section {
     padding: 80px 6% 70px;
   }
+  .purpose-section .scene-stop {
+    width: 14%;
+  }
   .purpose-intro {
     gap: 20px;
+    margin-top: -90px;
   }
   .purpose-intro > p:first-child {
     font-size: 17px;
@@ -433,11 +437,13 @@ a.chip:hover {
     top: 0;
   }
   .purpose-section h2 span {
-    font-size: clamp(28px, 7.5vw, 38px);
+    font-size: clamp(28px, 7.1vw, 36px);
   }
   .purpose-section h2 {
-    min-height: 180px;
-    font-size: clamp(35px, 8.5vw, 52px);
+    /* Reserve space below the rotating sculpture before the full-width copy. */
+    min-height: max(180px, calc(58px + 38vw));
+    font-size: clamp(33px, 8.2vw, 50px);
+    text-wrap: balance;
   }
   .purpose-intro {
     padding-left: 0;

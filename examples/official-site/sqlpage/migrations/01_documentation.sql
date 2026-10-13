@@ -1533,7 +1533,6 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
      json('[{
             "component": "shell",
             "title": "SQLPage: SQL websites",
-            "icon": "database",
             "link": "/",
             "menu_item": [
                 {"title": "About", "submenu": [
@@ -1571,7 +1570,9 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "description": "Go from SQL queries to web applications in an instant.",
             "preview_image": "https://sql-page.com/sqlpage_social_preview.webp",
             "theme": "dark",
-            "font": "Poppins",
+            "font_size": 19,
+            "image": "/assets/icon.webp",
+            "favicon": "/favicon.ico",
             "javascript": [
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/sql.min.js",
