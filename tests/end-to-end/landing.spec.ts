@@ -229,6 +229,26 @@ for (const viewport of [
         await expectAtPageAnchor(anchor, index);
         expect(anchor.opacity).toBe(1);
         if (index === 0) {
+          const docking = Math.floor(target.top - height * 0.25);
+          await sample(docking - 1);
+          const beforeDock = (await canvas.boundingBox())!;
+          await canvas.evaluate((canvas) => {
+            const layer = canvas.closest(".scene-layer")!;
+            // Observe the move before the renderer's next frame can conceal a blink.
+            const observer = new MutationObserver(() => {
+              if (!layer.parentElement?.matches("[data-scene-stop]")) return;
+              const rect = canvas.getBoundingClientRect();
+              canvas.dataset.dockPosition = JSON.stringify([rect.x, rect.y]);
+              observer.disconnect();
+            });
+            observer.observe(layer.parentElement!, { childList: true });
+          });
+          await sample(docking + 1);
+          const dockPosition = JSON.parse(
+            (await canvas.getAttribute("data-dock-position"))!,
+          ) as [number, number];
+          expect(Math.abs(dockPosition[0] - beforeDock.x)).toBeLessThan(3);
+          expect(Math.abs(dockPosition[1] - beforeDock.y)).toBeLessThan(3);
           // Animation callbacks are paused. Native scrolling must move both the
           // last painted canvas and its input target with the section anyway.
           const movement = await page.evaluate(() => {

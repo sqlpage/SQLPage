@@ -30,6 +30,7 @@ export function initScrollProgress(section, state) {
   const ribbon = section.querySelector(".sql-ribbon");
   function dock(host) {
     if (layer.parentElement === host) return;
+    const before = layer.getBoundingClientRect();
     // Keep focus and pointer capture when supported; older browsers retain focus
     // explicitly while moving the same canvas and controls, without a new scene.
     if (host.moveBefore) host.moveBefore(layer, null);
@@ -41,6 +42,20 @@ export function initScrollProgress(section, state) {
       focused?.focus({ preventScroll: true });
     }
     layer.toggleAttribute("data-docked", host !== root);
+    // Preserve the painted frame until the renderer applies the new local pose.
+    const after = layer.getBoundingClientRect();
+    const dx = before.left - after.left;
+    const dy = before.top - after.top;
+    const canvas = layer.querySelector("canvas");
+    if (canvas) {
+      const pose = new DOMMatrix(canvas.style.transform || undefined);
+      pose.e += dx;
+      pose.f += dy;
+      canvas.style.transform = pose.toString();
+      const input = layer.querySelector(".model-interaction");
+      input.style.left = `${parseFloat(input.style.left || "0") + dx}px`;
+      input.style.top = `${parseFloat(input.style.top || "0") + dy}px`;
+    }
   }
   function measure() {
     // Read authored page positions even when earlier sections are held under a cover.
