@@ -1,6 +1,7 @@
 # CHANGELOG.md
 
 ## v0.47.0 (unreleased)
+- The official homepage's database sculpture now scrolls natively with its section after the opening flight, and section layouts reserve its space with CSS grid.
 - For sites that store their pages in a database, checking for page updates no longer makes other pages wait when the database is busy. In a test, another page loaded in under 1 ms instead of about 250 ms.
 - Redesigned the official website homepage with live SQLPage examples, an interactive database sculpture, flowing section transitions, responsive layouts, and direct links to documentation and deployment guides.
 - Loading embedded card content no longer adds duplicate form submission or file validation handlers to existing fields. Fragment initialization also includes the element announcing the fragment.

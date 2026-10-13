@@ -25,39 +25,36 @@
   font: 13px / 1.65 var(--mono);
   color: #5b9ba9;
 }
+.section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.2fr);
+  gap: clamp(16px, 3vw, 36px);
+  align-items: start;
+  margin: 25px 0 40px;
+}
+.section-heading h2 {
+  margin: 0;
+}
 .scene-stop {
-  position: absolute;
-  top: 20px;
-  right: 0;
-  width: 14%;
+  position: relative;
+  width: 100%;
   aspect-ratio: 0.68;
-  pointer-events: none;
+}
+.purpose-section .section-heading {
+  grid-template-columns: minmax(0, 0.28fr) minmax(0, 1fr);
 }
 .purpose-section .scene-stop {
-  left: 0;
-  right: auto;
-  top: 130px;
-  width: 18%;
-}
-.landing-section.purpose-section .section-inner > h2 {
-  width: 100%;
+  align-self: end;
+  /* Reserve the full square camera below the visible jewel for every drag pose. */
+  aspect-ratio: 0.5;
 }
 .purpose-section h2 span {
   display: block;
-  text-align: left;
-  width: 76%;
-  margin-left: 24%;
   font-size: clamp(48px, 5.8vw, 76px);
   line-height: 1.05;
 }
-.landing-section .section-inner > h2,
-.database-grid {
-  width: 80%;
-}
-
-.landing-section .demo-sculpture {
-  top: -50px;
-  width: 18%;
+.demo-section .section-heading {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.24fr);
 }
 .demo-section {
   padding-top: 70px;
@@ -83,7 +80,6 @@
   padding-bottom: 105px;
 }
 .purpose-section h2 {
-  min-height: 355px;
   font-size: clamp(48px, 6.5vw, 89px);
 }
 .purpose-intro {
@@ -91,8 +87,7 @@
   grid-template-columns: 1.2fr 0.5fr 1fr;
   gap: 45px;
   align-items: center;
-  padding-left: 24%;
-  margin: -100px 0 40px;
+  margin: 0 0 40px;
 }
 .purpose-intro > p:first-child {
   color: #a6abbb;
@@ -374,12 +369,8 @@ a.chip:hover {
   .landing-section {
     padding: 80px 6% 70px;
   }
-  .purpose-section .scene-stop {
-    width: 14%;
-  }
   .purpose-intro {
     gap: 20px;
-    margin-top: -90px;
   }
   .purpose-intro > p:first-child {
     font-size: 17px;
@@ -399,18 +390,9 @@ a.chip:hover {
   }
 }
 @media (max-width: 600px) {
-  .landing-section .scene-stop,
-  .purpose-section .scene-stop {
-    width: 8%;
-    right: -3%;
-    top: 35px;
-  }
-  .landing-section .section-inner > h2,
-  .purpose-intro,
-  .purpose-grid,
-  .database-grid {
-    width: 100%;
-    max-width: 100%;
+  .section-heading {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.1fr);
+    margin-top: 20px;
   }
   .landing-section {
     padding: 65px clamp(20px, 6vw, 32px);
@@ -422,31 +404,14 @@ a.chip:hover {
   .eyebrow {
     font-size: 10px;
   }
-  .demo-section h2 {
-    max-width: 78%;
-  }
-  .purpose-section .scene-stop {
-    left: 0;
-    right: auto;
-    top: 130px;
-    width: 22%;
-  }
-  .landing-section .demo-sculpture {
-    width: 19%;
-    right: 0;
-    top: 0;
-  }
   .purpose-section h2 span {
     font-size: clamp(28px, 7.1vw, 36px);
   }
   .purpose-section h2 {
-    /* Reserve space below the rotating sculpture before the full-width copy. */
-    min-height: max(180px, calc(58px + 38vw));
     font-size: clamp(33px, 8.2vw, 50px);
     text-wrap: balance;
   }
   .purpose-intro {
-    padding-left: 0;
     grid-template-columns: 1fr 1fr;
     margin: 35px 0;
   }
@@ -486,7 +451,6 @@ a.chip:hover {
     padding-bottom: 115px;
   }
   .databases-section h2 {
-    max-width: 88%;
     font-size: clamp(36px, 10vw, 43px);
   }
   .databases-section > .section-inner > p .chip {

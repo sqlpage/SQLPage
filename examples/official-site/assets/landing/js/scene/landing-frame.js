@@ -57,12 +57,11 @@ function frameAt(width, height, anchor, portrait, bodyWidth = width * 0.48) {
 
 // This small module runs before Three.js downloads, so even the loading layout
 // uses the same measured letter, portrait flow, and projection as the live scene.
-export function layoutLandingFrame(mount, anchor) {
-  const width = Math.max(1, mount.clientWidth);
+export function layoutLandingFrame(viewport, anchor) {
+  const width = Math.max(1, viewport.clientWidth);
   const screenHeight = window.innerHeight;
   const portrait = width < 900 && screenHeight >= width;
   const shortLandscape = !portrait && screenHeight < 560;
-  const viewport = mount.closest(".sqlpage-world").querySelector(".viewport");
   const section = viewport.parentElement;
   const heading = anchor?.closest(".hero-copy")?.querySelector(".title-from");
   const intro = viewport.querySelector(".intro-row");
@@ -80,7 +79,7 @@ export function layoutLandingFrame(mount, anchor) {
       `${-Math.max(0, value - screenHeight)}px`,
     );
     height =
-      portrait || shortLandscape ? value : Math.max(1, mount.clientHeight);
+      portrait || shortLandscape ? value : Math.max(1, viewport.clientHeight);
   };
   const measureLetter = () => {
     if (portrait && heading) {

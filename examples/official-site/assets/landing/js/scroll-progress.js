@@ -2,7 +2,7 @@
 import { layoutLandingFrame, SCULPTURE_FRAME } from "./scene/landing-frame.js";
 
 /** One sculpture: an opening flight, then page anchors with fading handoffs. */
-export function initScrollProgress(section, mount, state) {
+export function initScrollProgress(section, state) {
   const root = section.closest(".sqlpage-world");
   const preview = root.querySelector(".scene-preview");
   const layer = root.querySelector(".scene-layer");
@@ -28,13 +28,30 @@ export function initScrollProgress(section, mount, state) {
   const intro = section.querySelector(".intro-row");
   const header = section.querySelector(".site-header");
   const ribbon = section.querySelector(".sql-ribbon");
+  function dock(host) {
+    if (layer.parentElement === host) return;
+    // Keep focus and pointer capture when supported; older browsers retain focus
+    // explicitly while moving the same canvas and controls, without a new scene.
+    if (host.moveBefore) host.moveBefore(layer, null);
+    else {
+      const focused = layer.contains(document.activeElement)
+        ? document.activeElement
+        : null;
+      host.append(layer);
+      focused?.focus({ preventScroll: true });
+    }
+    layer.toggleAttribute("data-docked", host !== root);
+  }
   function measure() {
     // Read authored page positions even when earlier sections are held under a cover.
     root.setAttribute("data-measuring-layout", "");
     // Measure the authored hero pose, independent of its current text fade/shift.
     section.style.setProperty("--progress", "0");
     section.style.setProperty("--intro-shift", "0px");
-    heroFrame = layoutLandingFrame(mount, root.querySelector(".anchor-letter"));
+    heroFrame = layoutLandingFrame(
+      viewport,
+      root.querySelector(".anchor-letter"),
+    );
     anchors = [];
     heroRange = Math.max(0, section.offsetHeight - viewport.offsetHeight);
     const maxScroll = Math.max(
@@ -43,39 +60,17 @@ export function initScrollProgress(section, mount, state) {
     );
     for (const stop of stops) {
       const rect = stop.getBoundingClientRect();
-      const sheet = stop.closest(".landing-section");
-      const sheetRect = sheet.getBoundingClientRect();
-      const nextSheet = sheet.nextElementSibling;
       // Measure the visible model, not its much larger square canvas.
       const size = rect.width / SCULPTURE_FRAME.bodyWidth;
       const bodyHeight =
         size * (SCULPTURE_FRAME.bounds.bottom - SCULPTURE_FRAME.bounds.top);
       const bodyTop = rect.top + scrollY;
       const fadeDistance = Math.min(innerHeight * 0.12, bodyHeight * 0.45);
-      const heldTop = root.hasAttribute("data-section-motion")
-        ? rect.top -
-          sheetRect.top +
-          (parseFloat(sheet.style.getPropertyValue("--section-stick-top")) || 0)
-        : -Infinity;
-      // A held section can leave part of its sculpture on screen. In that case
-      // its lifetime ends when the next wave covers it, not at its authored Y.
-      let exitScroll =
-        heldTop + bodyHeight > 0 ? Infinity : bodyTop + bodyHeight;
-      if (nextSheet?.matches(".landing-section")) {
-        const waveHeight = parseFloat(
-          getComputedStyle(nextSheet).getPropertyValue("--wave-height"),
-        );
-        const coverScroll =
-          nextSheet.getBoundingClientRect().top +
-          scrollY -
-          waveHeight * 0.75 -
-          (heldTop + bodyHeight * 0.5);
-        exitScroll = Math.min(exitScroll, coverScroll);
-      }
       anchors.push({
         element: stop,
         enterScroll: Math.min(bodyTop - innerHeight, maxScroll - fadeDistance),
-        exitScroll,
+        // The next section naturally covers a docked sculpture in its own layer.
+        exitScroll: Infinity,
         fadeDistance,
         bodyHeight,
         bodyTop,
@@ -86,7 +81,7 @@ export function initScrollProgress(section, mount, state) {
     }
     heroDockScroll = Math.min(
       maxScroll,
-      anchors[0].bodyTop - innerHeight * 0.25,
+      Math.floor(anchors[0].bodyTop - innerHeight * 0.25),
     );
     anchors[0].enterScroll = -Infinity; // The opening flight supplies its entrance.
     anchors.at(-1).exitScroll = Infinity; // Keep the closing composition visible.
@@ -128,11 +123,10 @@ export function initScrollProgress(section, mount, state) {
     let sceneOpacity = 1;
     if (!heroRange && scroll < heroDockScroll) {
       // Reduced motion keeps the opening sculpture attached to the hero layout.
-      state.frame = {
-        ...heroFrame,
-        top: heroFrame.top + viewport.getBoundingClientRect().top,
-      };
+      dock(viewport);
+      state.frame = heroFrame;
     } else if (heroRange && scroll <= heroDockScroll) {
+      dock(root);
       const bounds = SCULPTURE_FRAME.bounds;
       const size = Math.min(
         (innerWidth * 0.9) / SCULPTURE_FRAME.bodyWidth,
@@ -177,8 +171,9 @@ export function initScrollProgress(section, mount, state) {
       )
         index++;
       const anchor = anchors[index];
-      // Follow the actual page anchor, including its section holding beneath the
-      // next cover. Only the opening flight interpolates position or size.
+      dock(anchor.element);
+      // Native scrolling and section stickiness own placement. Geometry here
+      // controls fading only; the canvas and input bounds stay local to the host.
       const rect = anchor.element.getBoundingClientRect();
       if (state.motion) {
         sceneOpacity = Math.min(
@@ -191,8 +186,8 @@ export function initScrollProgress(section, mount, state) {
         );
       }
       state.frame = {
-        left: rect.left - anchor.size * SCULPTURE_FRAME.bounds.left,
-        top: rect.top - anchor.size * SCULPTURE_FRAME.bounds.top,
+        left: -anchor.size * SCULPTURE_FRAME.bounds.left,
+        top: -anchor.size * SCULPTURE_FRAME.bounds.top,
         size: anchor.size,
       };
     }

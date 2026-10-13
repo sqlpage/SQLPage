@@ -228,6 +228,32 @@ for (const viewport of [
         const anchor = await sample(target.top - height * 0.25 + 1);
         await expectAtPageAnchor(anchor, index);
         expect(anchor.opacity).toBe(1);
+        if (index === 0) {
+          // Animation callbacks are paused. Native scrolling must move both the
+          // last painted canvas and its input target with the section anyway.
+          const movement = await page.evaluate(() => {
+            const stop = document.querySelector("[data-scene-stop]")!;
+            const canvas = stop.querySelector<HTMLCanvasElement>("canvas")!;
+            const input = stop.querySelector(".model-interaction")!;
+            const before = [stop, canvas, input].map(
+              (element) => element.getBoundingClientRect().top,
+            );
+            const transform = canvas.style.transform;
+            window.scrollBy({ top: 32, behavior: "instant" });
+            return {
+              deltas: [stop, canvas, input].map(
+                (element, index) =>
+                  element.getBoundingClientRect().top - before[index]!,
+              ),
+              unchanged: canvas.style.transform === transform,
+            };
+          });
+          expect(movement.deltas[0]).toBeCloseTo(-32, 1);
+          expect(movement.deltas[1]).toBeCloseTo(movement.deltas[0]!, 1);
+          expect(movement.deltas[2]).toBeCloseTo(movement.deltas[0]!, 1);
+          expect(movement.unchanged).toBe(true);
+          await sample(target.top - height * 0.25 + 1);
+        }
         const next = route[index + 1];
         if (!next) continue;
         // Reaching the top is not a reason to remove an otherwise visible model.

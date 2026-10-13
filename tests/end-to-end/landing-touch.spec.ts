@@ -69,9 +69,20 @@ test.describe("landing sculpture touch gestures", () => {
     expect(await page.evaluate(() => scrollY)).toBe(0);
     expect((await canvas.screenshot()).equals(initial)).toBe(false);
 
+    const scrollFinished = page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          document.addEventListener("scrollend", () => resolve(), {
+            once: true,
+          });
+        }),
+    );
     await swipe(30, -220);
     await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(100);
     await expect(sculpture).toHaveAttribute("data-cancelled", "true");
+    // Native placement catches up immediately. Finish the fling before resetting
+    // scroll, so momentum from the previous gesture cannot move the recovery drag.
+    await scrollFinished;
 
     // A cancelled scroll must release the trackball and allow the next drag.
     await page.evaluate(() => window.scrollTo(0, 0));

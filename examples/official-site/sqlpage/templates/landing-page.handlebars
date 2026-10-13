@@ -191,8 +191,10 @@
         {{> landing-wave}}
         <div class="section-inner">
           <p class="eyebrow" data-section-reveal="detail">-- real SQLPage components, a few lines each</p>
-          <h2 id="demo-title" data-section-reveal="heading">Data,<br />but clickable</h2>
-          <div class="scene-stop demo-sculpture" data-scene-stop aria-hidden="true"></div>
+          <div class="section-heading">
+            <h2 id="demo-title" data-section-reveal="heading">Data,<br />but clickable</h2>
+            <div class="scene-stop" data-scene-stop></div>
+          </div>
           <p class="eyebrow picker-caption" data-section-reveal="detail">-- pick a component</p>
           <div class="demo-layout">
             <div class="component-picker" role="tablist" aria-label="SQLPage components" aria-orientation="vertical">
@@ -220,13 +222,15 @@
         {{> landing-wave}}
         <div class="section-inner">
           <p class="eyebrow" data-section-reveal="detail">-- Low maintenance, on purpose.</p>
-          <h2 data-section-reveal="heading" id="purpose-title"><em>A useful tool for them.</em><br /><span>A manageable<br />application for you.</span></h2>
+          <div class="section-heading">
+            <div class="scene-stop" data-scene-stop></div>
+            <h2 data-section-reveal="heading" id="purpose-title"><em>A useful tool for them.</em><br /><span>A manageable<br />application for you.</span></h2>
+          </div>
           <div class="purpose-intro">
             <p data-section-reveal="reading">You need a webapp,<br />but you don't want to maintain a webapp. Build it, or let your coding agent do it. Don't maintain 1000 lines of code.</p>
             <img data-section-reveal="detail" class="yak" src="/assets/landing/assets/yak.svg" alt="An unshaved yak" width="420" height="380" loading="lazy" />
             <p class="eyebrow" data-section-reveal="detail">-- The yak stays unshaved.<br />-- App maintenance is not a hobby.</p>
           </div>
-          <div class="scene-stop purpose-sculpture" data-scene-stop aria-hidden="true"></div>
           <div class="purpose-grid">
             <div class="stack-comparison" data-stack="typical">
               <p class="eyebrow" data-section-reveal="detail">-- What do you have to maintain?</p>
@@ -287,6 +291,7 @@
             <p class="eyebrow" data-section-reveal="detail">-- Your files. Your deployment.</p>
             <h2 data-section-reveal="heading" id="deployment-title">No frontend<br />to build.</h2>
           </header>
+          <div class="scene-stop" data-scene-stop></div>
           <p class="eyebrow deployment-notes" data-section-reveal="detail">-- read, edit, and act.<br />-- forms, tables, charts, and navigation.<br />-- Tables with manners. CRUD, but polite.</p>
           <div class="frontend-tabs" role="tablist" aria-label="Frontend features">
             <button data-section-reveal="control" id="customize-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="customize-panel">{{icon_img "pencil"}}<span><strong>Make it yours</strong><small>templates, css, js</small></span></button>
@@ -332,16 +337,17 @@
               <div class="safety-diagram"><div class="attack-list"><div><span class="feature-node">SQL injection</span><i></i><span>blocked ×</span></div><div><span class="feature-node">XSS</span><i></i><span>blocked ×</span></div><div><span class="feature-node">CSRF</span><i></i><span>blocked ×</span></div></div>{{icon_img "shield-check"}}</div>
             </div>
           </div>
-          <div class="scene-stop deployment-sculpture" data-scene-stop aria-hidden="true"></div>
         </div>
       </section>
       <section class="landing-section databases-section" aria-labelledby="databases-title">
         {{> landing-wave}}
         <div class="section-inner">
           <p class="eyebrow" data-section-reveal="detail">SELECT * FROM your_database;</p>
-          <h2 data-section-reveal="heading" id="databases-title">Keep your<br />database. <em>Add<br />the app.</em></h2>
+          <div class="section-heading">
+            <h2 data-section-reveal="heading" id="databases-title">Keep your<br />database. <em>Add<br />the app.</em></h2>
+            <div class="scene-stop" data-scene-stop></div>
+          </div>
           <p data-section-reveal="detail"><span class="chip">We're seeing other databases.</span> <span class="chip">A healthy relationship model.</span></p>
-          <div class="scene-stop" data-scene-stop aria-hidden="true"></div>
           <div class="database-grid">
             <a data-section-reveal="card" href="/your-first-sql-website/">SQLite<small>-- built in</small></a>
             <a data-section-reveal="card" href="/your-first-sql-website/#connect-to-a-custom-database">PostgreSQL<small>-- native driver</small></a>
@@ -362,8 +368,10 @@
         {{> landing-wave}}
         <div class="section-inner">
           <p class="eyebrow" data-section-reveal="detail">-- A tool for them. Not a second job for you.</p>
-          <h2 data-section-reveal="heading" id="commit-title">Small team.<br />Serious tools;</h2>
-          <div class="scene-stop" data-scene-stop aria-hidden="true"></div>
+          <div class="section-heading">
+            <h2 data-section-reveal="heading" id="commit-title">Small team.<br />Serious tools;</h2>
+            <div class="scene-stop" data-scene-stop></div>
+          </div>
           <div class="commit-action">
             <a data-section-reveal="control" class="primary-button" href="/your-first-sql-website/">COMMIT; <span>start with a query</span></a>
             <p class="eyebrow" data-section-reveal="detail">DELETE busy;<br />-- NULL drama.</p>
