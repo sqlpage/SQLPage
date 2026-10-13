@@ -87,26 +87,30 @@
                         {{~#if value includeZero=true}}{{value}}{{/if~}}
                         </textarea>
                     {{~else~}}{{#if (eq type 'select')~}}
-                        <select name="{{name}}" 
-                            class="form-select {{class}}"
-                        {{~#if id}} id="{{id}}" {{/if~}}
-                        {{~#if required}} required="required" {{/if~}}
-                        {{~#if autofocus}} autofocus {{/if~}}
-                        {{~#if disabled}}disabled {{/if~}}
-                        {{~#if multiple}} multiple {{/if~}}
-                        {{~#if (or dropdown searchable options_source)}} 
-                            data-pre-init="select-dropdown"
-                            data-sqlpage-js="{{static_path 'tomselect.js'}}"
-                        {{/if~}}
-                        {{~#if options_source}} data-options_source="{{options_source}}" {{/if~}}
-                        {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
-                        {{~#if create_new}} data-create_new={{create_new}} {{/if~}}
-                        >
-                        {{#if empty_option}}<option value="">{{empty_option}}</option>{{/if}}
-                        {{#each (parse_json options)}}
-                            <option value="{{value}}" {{#if (or (loose_eq ../value value) selected)}}selected{{/if}}>{{label}}</option>
-                        {{/each}}
-                        </select>
+                        <div class="input-group">
+                            {{#if prefix_icon}}<span class="input-group-text">{{icon_img prefix_icon}}</span>{{/if}}
+                            {{#if prefix}}<span class="input-group-text">{{prefix}}</span>{{/if}}
+                            <select name="{{name}}"  class="form-select {{class}}"
+                                {{~#if id}} id="{{id}}" {{/if~}}
+                                {{~#if required}} required="required" {{/if~}}
+                                {{~#if autofocus}} autofocus {{/if~}}
+                                {{~#if disabled}}disabled {{/if~}}
+                                {{~#if multiple}} multiple {{/if~}}
+                                {{~#if (or dropdown searchable options_source)}} 
+                                    data-pre-init="select-dropdown"
+                                    data-sqlpage-js="{{static_path 'tomselect.js'}}"
+                                {{/if~}}
+                                {{~#if options_source}} data-options_source="{{options_source}}" {{/if~}}
+                                {{~#if placeholder}} placeholder="{{placeholder}}" {{/if~}}
+                                {{~#if create_new}} data-create_new={{create_new}} {{/if~}}
+                                >
+                                {{#if empty_option}}<option value="">{{empty_option}}</option>{{/if}}
+                                {{#each (parse_json options)}}
+                                    <option value="{{value}}" {{#if (or (loose_eq ../value value) selected)}}selected{{/if}}>{{label}}</option>
+                                {{/each}}
+                            </select>
+                            {{#if suffix}}<span class="input-group-text">{{suffix}}</span>{{/if}}
+                        </div>
                     {{else}}
                         <div class="input-group">
                             {{#if prefix_icon}}<span class="input-group-text">{{icon_img prefix_icon}}</span>{{/if}}
