@@ -386,6 +386,7 @@ In SQLite, the query would look like
 SELECT 
     ''select'' as type,
     ''Select a fruit...'' as empty_option,
+    ''cherry'' as prefix_icon,
     json_group_array(json_object(
         ''label'', name,
         ''value'', id
