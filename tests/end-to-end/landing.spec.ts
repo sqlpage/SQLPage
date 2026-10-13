@@ -228,6 +228,52 @@ for (const viewport of [
         const anchor = await sample(target.top - height * 0.25 + 1);
         await expectAtPageAnchor(anchor, index);
         expect(anchor.opacity).toBe(1);
+        if (index === 0) {
+          const docking = Math.floor(target.top - height * 0.25);
+          await sample(docking - 1);
+          const beforeDock = (await canvas.boundingBox())!;
+          await canvas.evaluate((canvas) => {
+            const layer = canvas.closest(".scene-layer")!;
+            // Observe the move before the renderer's next frame can conceal a blink.
+            const observer = new MutationObserver(() => {
+              if (!layer.parentElement?.matches("[data-scene-stop]")) return;
+              const rect = canvas.getBoundingClientRect();
+              canvas.dataset.dockPosition = JSON.stringify([rect.x, rect.y]);
+              observer.disconnect();
+            });
+            observer.observe(layer.parentElement!, { childList: true });
+          });
+          await sample(docking + 1);
+          const dockPosition = JSON.parse(
+            (await canvas.getAttribute("data-dock-position"))!,
+          ) as [number, number];
+          expect(Math.abs(dockPosition[0] - beforeDock.x)).toBeLessThan(3);
+          expect(Math.abs(dockPosition[1] - beforeDock.y)).toBeLessThan(3);
+          // Animation callbacks are paused. Native scrolling must move both the
+          // last painted canvas and its input target with the section anyway.
+          const movement = await page.evaluate(() => {
+            const stop = document.querySelector("[data-scene-stop]")!;
+            const canvas = stop.querySelector<HTMLCanvasElement>("canvas")!;
+            const input = stop.querySelector(".model-interaction")!;
+            const before = [stop, canvas, input].map(
+              (element) => element.getBoundingClientRect().top,
+            );
+            const transform = canvas.style.transform;
+            window.scrollBy({ top: 32, behavior: "instant" });
+            return {
+              deltas: [stop, canvas, input].map(
+                (element, index) =>
+                  element.getBoundingClientRect().top - before[index]!,
+              ),
+              unchanged: canvas.style.transform === transform,
+            };
+          });
+          expect(movement.deltas[0]).toBeCloseTo(-32, 1);
+          expect(movement.deltas[1]).toBeCloseTo(movement.deltas[0]!, 1);
+          expect(movement.deltas[2]).toBeCloseTo(movement.deltas[0]!, 1);
+          expect(movement.unchanged).toBe(true);
+          await sample(target.top - height * 0.25 + 1);
+        }
         const next = route[index + 1];
         if (!next) continue;
         // Reaching the top is not a reason to remove an otherwise visible model.

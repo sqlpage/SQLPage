@@ -1,4 +1,4 @@
-/* One fixed sculpture layer, static fallback, and the opening stage’s pinned lifetime. */
+/* One sculpture: a fixed opening flight, then native scrolling in section hosts. */
 .sqlpage-world {
   position: relative;
   overflow-x: clip;
@@ -38,6 +38,10 @@
 .sqlpage-world:not([data-enhanced]) .scene-layer {
   position: absolute;
   height: 100svh;
+}
+.scene-layer[data-docked] {
+  position: absolute;
+  height: auto;
 }
 .scene-layer .model-interaction[data-ready="true"] {
   pointer-events: auto;

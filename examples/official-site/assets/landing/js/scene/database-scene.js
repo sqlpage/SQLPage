@@ -320,10 +320,17 @@ export function createDatabaseScene({
     if (pointers.size) return;
     const scale = canvasWidth / 1000;
     let { left, right, top, bottom } = screenBounds;
-    left = clamp(canvasLeft + left * scale - 12, 0, innerWidth);
-    right = clamp(canvasLeft + right * scale + 12, left, innerWidth);
-    top = clamp(canvasTop + top * scale - 12, 90, innerHeight);
-    bottom = clamp(canvasTop + bottom * scale + 12, top, innerHeight);
+    left = canvasLeft + left * scale - 12;
+    right = canvasLeft + right * scale + 12;
+    top = canvasTop + top * scale - 12;
+    bottom = canvasTop + bottom * scale + 12;
+    // Clip in viewport space, then keep the target in the canvas host's local
+    // coordinates. Rotation can otherwise put gesture centers off the screen.
+    const origin = mount.getBoundingClientRect();
+    left = clamp(left, -origin.left, innerWidth - origin.left);
+    right = clamp(right, left, innerWidth - origin.left);
+    top = clamp(top, 90 - origin.top, innerHeight - origin.top);
+    bottom = clamp(bottom, top, innerHeight - origin.top);
     hitArea.style.left = `${left}px`;
     hitArea.style.top = `${top}px`;
     hitArea.style.width = `${right - left}px`;
@@ -367,10 +374,11 @@ export function createDatabaseScene({
       pointers.size > 0 ||
       !lastOrientation.equals(dragQuaternion) ||
       parallax.lengthSq() > 0.000001;
+    const viewportTop = mount.getBoundingClientRect().top + canvasTop;
     const inView =
       state.opacity > 0.05 &&
-      canvasTop + canvasWidth * 0.81 > 0 &&
-      canvasTop + canvasWidth * 0.22 < window.innerHeight;
+      viewportTop + canvasWidth * 0.81 > 0 &&
+      viewportTop + canvasWidth * 0.22 < window.innerHeight;
     if (!inView) resetBudget();
     if (readySent) {
       hitArea.inert = !inView;

@@ -3,6 +3,8 @@ select 'http_header' as component,
     '<https://sql-page.com/>; rel="canonical"' as "Link";
 
 -- A full document template uses an empty shell rather than the default site chrome.
+-- Section grids host the shared sculpture after its opening flight so it scrolls
+-- with the page even when rendering or JavaScript updates fall behind.
 select 'shell-empty' as component;
 select 'landing-page' as component,
     (select count(*) from component) as component_count,

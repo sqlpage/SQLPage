@@ -11,7 +11,7 @@
 }
 .deployment-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.2fr);
   gap: 25px;
 }
 .deployment-section .eyebrow {
@@ -22,14 +22,10 @@
   margin-bottom: 20px;
 }
 .deployment-notes {
+  grid-column: 1 / -1;
   align-self: end;
   text-align: right;
   margin: 0 0 20px;
-}
-.landing-section .deployment-sculpture {
-  top: -85px;
-  right: 5%;
-  width: 17%;
 }
 .frontend-tabs,
 .frontend-panels {
@@ -391,17 +387,12 @@
     padding-bottom: 100px;
   }
   .deployment-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.24fr);
     gap: 20px;
   }
   .deployment-section h2 {
     font-size: clamp(36px, 10.8vw, 52px);
     max-width: 100%;
-  }
-  .landing-section .deployment-sculpture {
-    width: 19%;
-    top: -10px;
-    right: -2%;
   }
   .deployment-notes {
     text-align: left;

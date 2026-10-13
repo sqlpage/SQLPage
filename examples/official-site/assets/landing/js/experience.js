@@ -61,7 +61,7 @@ export function initExperience(root) {
       setStatus("error");
     }
   }
-  stopScroll = initScrollProgress(section, mount, state);
+  stopScroll = initScrollProgress(section, state);
   syncMotion();
   media.addEventListener("change", syncMotion, { signal: events.signal });
   root
