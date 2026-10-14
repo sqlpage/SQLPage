@@ -1,4 +1,6 @@
 /** Wire section controls; motion and live-preview loading live in separate modules. */
+
+import { initComparison } from "./comparison.js";
 import { initComponentDemos } from "./component-demos.js";
 import { initTabs } from "./tabs.js";
 
@@ -6,6 +8,7 @@ export function initSections(root) {
   const events = new AbortController();
   const { signal } = events;
   const cleanupDemos = initComponentDemos(root, signal);
+  const cleanupComparison = initComparison(root, signal);
   initTabs(
     root.querySelector('[aria-label="Application stack"]'),
     "aria-pressed",
@@ -36,5 +39,6 @@ export function initSections(root) {
   return () => {
     events.abort();
     cleanupDemos();
+    cleanupComparison();
   };
 }
