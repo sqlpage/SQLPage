@@ -11,14 +11,10 @@ on:
       - "README.md"
       - ".github/workflows/release.yml"
       - ".github/workflows/official-site.yml"
+  # Required checks must be reported for every PR, including docs-only changes.
   pull_request:
     branches:
       - "main"
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-      - ".github/workflows/release.yml"
-      - ".github/workflows/official-site.yml"
   merge_group:
 
 concurrency:
@@ -32,7 +28,31 @@ env:
   REGISTRY_IMAGE: lovasoa/sqlpage
 
 jobs:
+  ci_selection:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      # Only a confirmed excluded-files-only PR may skip the core jobs.
+      full: ${{ github.event_name != 'pull_request' || steps.paths.outputs.full != 'false' }}
+    steps:
+      - id: paths
+        name: Select test jobs
+        # The PR files API is limited to 3000 files; larger PRs select core jobs.
+        if: github.event_name == 'pull_request' && github.event.pull_request.changed_files <= 3000
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          predicate-quantifier: every
+          filters: |
+            full:
+              - '!docs/**'
+              - '!README.md'
+              - '!.github/workflows/release.yml'
+              - '!.github/workflows/official-site.yml'
+
   compile_and_lint:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -66,6 +86,8 @@ jobs:
           path: "target/debug/sqlpage"
 
   published_crate:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -150,6 +172,8 @@ jobs:
           MALLOC_PERTURB_: 10
 
   windows_test:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -214,6 +238,8 @@ jobs:
           retention-days: 30
 
   docker_build:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     name: docker_build (${{ matrix.platform }}, ${{ matrix.variant }})
     runs-on: ubuntu-latest
     strategy:
@@ -335,6 +361,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   hurl_examples:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -397,7 +425,7 @@ jobs:
   hurl:
     name: hurl (${{ matrix.example }})
     runs-on: ubuntu-latest
-    if: ${{ needs.hurl_examples.outputs.examples != '[]' }}
+    if: ${{ needs.hurl_examples.result == 'success' && needs.hurl_examples.outputs.examples != '[]' }}
     timeout-minutes: 15
     needs:
       - docker_build
@@ -436,6 +464,31 @@ jobs:
           docker tag "${{ env.REGISTRY_IMAGE }}:main" "${{ env.REGISTRY_IMAGE }}:latest"
       - name: Run example Hurl test
         run: scripts/test-examples-hurl.sh "${{ matrix.example }}"
+
+  # Require this single check in branch protection instead of individual jobs.
+  ci_gate:
+    name: CI gate
+    if: always()
+    needs:
+      - ci_selection
+      - compile_and_lint
+      - published_crate
+      - test
+      - windows_test
+      - playwright
+      - docker_build
+      - hurl_examples
+      - hurl
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check selected job results
+        run: node scripts/check-ci-results.mjs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
 
   docker_push:
     runs-on: ubuntu-latest
