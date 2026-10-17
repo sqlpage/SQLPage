@@ -11,14 +11,10 @@ on:
       - "README.md"
       - ".github/workflows/release.yml"
       - ".github/workflows/official-site.yml"
+  # Required checks must be reported for every PR, including docs-only changes.
   pull_request:
     branches:
       - "main"
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-      - ".github/workflows/release.yml"
-      - ".github/workflows/official-site.yml"
   merge_group:
 
 concurrency:
