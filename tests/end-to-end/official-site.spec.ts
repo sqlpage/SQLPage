@@ -20,14 +20,22 @@ test("Open documentation", async ({ page }) => {
   }
 });
 
-test("chart", async ({ page }) => {
+async function openChartDocumentation(page: Page) {
   await page.goto("/documentation.sql?component=chart#component");
+  // This page initializes every documented chart, which can take several seconds.
+  await expect(page.locator('[data-pre-init="chart"]')).toHaveCount(0, {
+    timeout: 15_000,
+  });
+}
+
+test("chart", async ({ page }) => {
+  await openChartDocumentation(page);
   await expect(page.getByText("Loading...")).toHaveCount(0);
   await expect(page.locator(".apexcharts-canvas").first()).toBeVisible();
 });
 
 test("chart supports hiding legend", async ({ page }) => {
-  await page.goto("/documentation.sql?component=chart#component");
+  await openChartDocumentation(page);
 
   const expensesChart = page.locator(".card", {
     has: page.getByRole("heading", { name: "Expenses" }),
@@ -55,7 +63,7 @@ const drawnPoints = (card: Locator, series: string) =>
 test("stacked chart draws every series at every x of the chart", async ({
   page,
 }) => {
-  await page.goto("/documentation.sql?component=chart#component");
+  await openChartDocumentation(page);
   const powerChart = chartCard(page, "Power draw");
   await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
 
@@ -69,7 +77,7 @@ test("stacked chart draws every series at every x of the chart", async ({
 test("stacked chart raises a series only where it has a value", async ({
   page,
 }) => {
-  await page.goto("/documentation.sql?component=chart#component");
+  await openChartDocumentation(page);
   const powerChart = chartCard(page, "Power draw");
   await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
 
@@ -83,7 +91,7 @@ test("stacked chart raises a series only where it has a value", async ({
 test("chart draws a yline as a line and a yline_end as a band", async ({
   page,
 }) => {
-  await page.goto("/documentation.sql?component=chart#component");
+  await openChartDocumentation(page);
 
   const temperature = page.locator(".card", {
     has: page.getByRole("heading", { name: "CPU temperature" }),
@@ -103,7 +111,7 @@ test("chart draws a yline as a line and a yline_end as a band", async ({
 test("chart draws an xline as a line and an xline_end as a band", async ({
   page,
 }) => {
-  await page.goto("/documentation.sql?component=chart#component");
+  await openChartDocumentation(page);
 
   const latency = page.locator(".card", {
     has: page.getByRole("heading", { name: "Request latency" }),
@@ -123,7 +131,7 @@ test("chart draws an xline as a line and an xline_end as a band", async ({
 test("horizontal chart draws a yline down it and an xline across it", async ({
   page,
 }) => {
-  await page.goto("/documentation.sql?component=chart#component");
+  await openChartDocumentation(page);
 
   const disks = page.locator(".card", {
     has: page.getByRole("heading", { name: "Disk usage" }),
