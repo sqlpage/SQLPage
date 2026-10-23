@@ -28,6 +28,7 @@ if (full === "true") {
   for (const name of [
     "compile_and_lint",
     "published_crate",
+    "fuzz_smoke",
     "test",
     "windows_test",
     "playwright",
