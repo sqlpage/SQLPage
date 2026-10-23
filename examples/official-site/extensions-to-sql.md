@@ -149,13 +149,6 @@ On PostgreSQL, the variable is passed as text, and comparing it to a non-text co
 On MySQL, Microsoft SQL Server, and DuckDB, the database converts the variable to the type expected by the surrounding expression.
 On databases with a strict type system, such as PostgreSQL, if you need a number, you will need to cast your variables: `SELECT * FROM post WHERE id = $id::int`.
 
-Within one statement, native SQL Server, PostgreSQL, and SQLite connections reuse
-the same prepared parameter for repeated references to the same variable. This
-lets you repeat expressions such as `n % CAST($bucket_size AS INT)` in both
-`SELECT` and `GROUP BY`. References with different lookup rules, such as `$name`
-and `:name`, remain separate. MySQL and ODBC connections bind each occurrence
-separately because their placeholders are positional.
-
 Complex structures can be stored as json strings.
 
 For larger temporary results, prefer temporary tables on your database; do not send them to SQLPage at all.
