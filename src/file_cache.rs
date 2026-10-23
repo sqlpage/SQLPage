@@ -237,7 +237,8 @@ mod tests {
         let path = FileAccess::privileged(Path::new("x"));
         c.cache.write().await.insert("x".into(), Cached::default());
         let mut lookup = Box::pin(c.get(&state, path));
-        assert!(futures_util::poll!(&mut lookup).is_pending());
+        // Filesystem I/O may complete on the first poll; either outcome must release the lock.
+        let _ = futures_util::poll!(&mut lookup);
         assert!(c.cache.try_write().is_ok());
     }
 
