@@ -51,13 +51,19 @@ pub(super) use statement::{OutputColumn, SourceLocation};
 impl SqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> Self {
-        let dialect = dialect::parser_dialect(db.info.database_type);
+        Self::from_db_info(&db.info, sql, source_path)
+    }
+
+    /// Parses and rewrites a SQL file without opening a database connection.
+    #[must_use]
+    pub fn from_db_info(database: &DbInfo, sql: &str, source_path: &Path) -> Self {
+        let dialect = dialect::parser_dialect(database.database_type);
         log::debug!(
             "Parsing SQL file {} using dialect {:?}",
             source_path.display(),
             dialect
         );
-        let statements = match parse_sql(&db.info, dialect.as_ref(), sql) {
+        let statements = match parse_sql(database, dialect.as_ref(), sql) {
             Ok(statements) => statements.collect::<Vec<_>>().into_boxed_slice(),
             Err(error) => {
                 return Self::from_error(error, source_path);
