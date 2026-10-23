@@ -22,7 +22,7 @@ test("Open documentation", async ({ page }) => {
 
 test("chart", async ({ page }) => {
   await page.goto("/documentation.sql?component=chart#component");
-  await expect(page.getByText("Loading...")).not.toBeVisible();
+  await expect(page.getByText("Loading...")).toHaveCount(0);
   await expect(page.locator(".apexcharts-canvas").first()).toBeVisible();
 });
 
