@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   checkModal,
   checkTableFiltering,
@@ -20,131 +20,38 @@ test("Open documentation", async ({ page }) => {
   }
 });
 
-async function openChartDocumentation(page: Page) {
-  await page.goto("/documentation.sql?component=chart#component");
-  // This page initializes every documented chart, which can take several seconds.
-  await expect(page.locator('[data-pre-init="chart"]')).toHaveCount(0, {
-    timeout: 15_000,
-  });
-}
-
-test("chart", async ({ page }) => {
-  await openChartDocumentation(page);
-  await expect(page.getByText("Loading...")).toHaveCount(0);
-  await expect(page.locator(".apexcharts-canvas").first()).toBeVisible();
-});
-
-test("chart supports hiding legend", async ({ page }) => {
-  await openChartDocumentation(page);
-
-  const expensesChart = page.locator(".card", {
-    has: page.getByRole("heading", { name: "Expenses" }),
+test("chart documentation renders its examples without browser errors", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
   });
 
-  await expect(expensesChart.locator(".apexcharts-canvas")).toBeVisible();
-  await expect(expensesChart.locator(".apexcharts-legend")).toBeHidden();
-});
+  await test.step("Open the chart reference", async () => {
+    await page.goto("/documentation.sql?component=chart#component");
+    await expect(
+      page.getByRole("heading", { name: "The chart component", exact: true }),
+    ).toBeVisible();
+  });
 
-const DATA_POINT_MARKERS = ".apexcharts-series-markers > .apexcharts-marker";
-
-const chartCard = (page: Page, title: string) =>
-  page.locator(".card", { has: page.getByRole("heading", { name: title }) });
-
-const drawnPoints = (card: Locator, series: string) =>
-  card
-    .locator(`.apexcharts-series[seriesName='${series}'] ${DATA_POINT_MARKERS}`)
-    .evaluateAll((markers) =>
-      markers.map((m) => ({
-        x: m.getAttribute("cx"),
-        y: m.getAttribute("cy"),
-      })),
+  await test.step("Render every inline and embedded example", async () => {
+    // Work around Chromium's slow :has() invalidation on this many-chart page.
+    // https://issues.chromium.org/issues/576187899
+    await expect(page.getByText("Loading...")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    await expect(page.locator('[data-pre-init="chart"]')).toHaveCount(0);
+    const examples = page.locator(
+      '[data-sqlpage-js*="apexcharts."], [data-embed]',
     );
-
-test("stacked chart draws every series at every x of the chart", async ({
-  page,
-}) => {
-  await openChartDocumentation(page);
-  const powerChart = chartCard(page, "Power draw");
-  await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
-
-  const cpu = await drawnPoints(powerChart, "CPU");
-  const gpu = await drawnPoints(powerChart, "GPU");
-
-  expect(cpu).toHaveLength(4);
-  expect(gpu.map((p) => p.x)).toEqual(cpu.map((p) => p.x));
-});
-
-test("stacked chart raises a series only where it has a value", async ({
-  page,
-}) => {
-  await openChartDocumentation(page);
-  const powerChart = chartCard(page, "Power draw");
-  await expect(powerChart.locator(".apexcharts-canvas")).toBeVisible();
-
-  const cpu = await drawnPoints(powerChart, "CPU");
-  const gpu = await drawnPoints(powerChart, "GPU");
-
-  expect([gpu[0], gpu[3]]).toEqual([cpu[0], cpu[3]]);
-  expect(Number(gpu[1]?.y)).toBeLessThan(Number(cpu[1]?.y));
-});
-
-test("chart draws a yline as a line and a yline_end as a band", async ({
-  page,
-}) => {
-  await openChartDocumentation(page);
-
-  const temperature = page.locator(".card", {
-    has: page.getByRole("heading", { name: "CPU temperature" }),
+    await expect(examples.first()).toBeVisible();
+    for (const example of await examples.all()) {
+      await expect(example.locator(".apexcharts-canvas")).toBeVisible();
+    }
+    expect(errors).toEqual([]);
   });
-  await expect(temperature.locator(".apexcharts-canvas")).toBeVisible();
-
-  const annotations = temperature.locator(".apexcharts-yaxis-annotations");
-  const lines = annotations.locator("line");
-  const bands = annotations.locator(".apexcharts-annotation-rect");
-
-  await expect(lines).toHaveCount(1);
-  await expect(bands).toHaveCount(1);
-  await expect(annotations.getByText("target")).toBeVisible();
-  await expect(annotations.getByText("throttling")).toBeVisible();
-});
-
-test("chart draws an xline as a line and an xline_end as a band", async ({
-  page,
-}) => {
-  await openChartDocumentation(page);
-
-  const latency = page.locator(".card", {
-    has: page.getByRole("heading", { name: "Request latency" }),
-  });
-  await expect(latency.locator(".apexcharts-canvas")).toBeVisible();
-
-  const annotations = latency.locator(".apexcharts-xaxis-annotations");
-  const lines = annotations.locator("line");
-  const bands = annotations.locator(".apexcharts-annotation-rect");
-
-  await expect(lines).toHaveCount(1);
-  await expect(bands).toHaveCount(1);
-  await expect(annotations.getByText("deploy")).toBeVisible();
-  await expect(annotations.getByText("incident")).toBeVisible();
-});
-
-test("horizontal chart draws a yline down it and an xline across it", async ({
-  page,
-}) => {
-  await openChartDocumentation(page);
-
-  const disks = page.locator(".card", {
-    has: page.getByRole("heading", { name: "Disk usage" }),
-  });
-  await expect(disks.locator(".apexcharts-canvas")).toBeVisible();
-
-  const down = disks.locator(".apexcharts-xaxis-annotations");
-  const across = disks.locator(".apexcharts-yaxis-annotations");
-
-  await expect(down.locator("line")).toHaveCount(1);
-  await expect(down.getByText("full")).toBeVisible();
-  await expect(across.locator("line")).toHaveCount(1);
-  await expect(across.getByText("watched")).toBeVisible();
 });
 
 test("map", async ({ page }) => {
@@ -252,10 +159,6 @@ async function checkNoConsoleErrors(page: Page, component: string) {
 
 test("no console errors on table page", async ({ page }) => {
   await checkNoConsoleErrors(page, "table");
-});
-
-test("no console errors on chart page", async ({ page }) => {
-  await checkNoConsoleErrors(page, "chart");
 });
 
 test("no console errors on map page", async ({ page }) => {

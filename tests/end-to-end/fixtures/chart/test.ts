@@ -308,6 +308,7 @@ test("gives a stacked series a zero at every x it did not measure", async ({
     ["2024-01-01T00:01:00.000Z", 50],
     ["2024-01-01T00:02:00.000Z", 50],
     ["2024-01-01T00:03:00.000Z", 50],
+    ["2024-01-01T00:04:00.000Z", 0],
   ]);
 });
 
@@ -316,8 +317,13 @@ test("stacks a series above the one it shares an x with", async ({ page }) => {
   const [cpu, gpu] = chart.drawnPerSeries;
   assert.ok(cpu && gpu, "Both series were drawn");
 
-  expect(gpu.heights).toHaveLength(4);
-  expect(gpu.heights[0]).toBe(cpu.heights[0]);
+  expect(cpu.lefts).toHaveLength(5);
+  expect(gpu.lefts).toEqual(cpu.lefts);
+  expect(gpu.heights).toHaveLength(5);
+  expect([gpu.heights[0], gpu.heights[4]]).toEqual([
+    cpu.heights[0],
+    cpu.heights[4],
+  ]);
   const cpuHeight = cpu.heights[1];
   assert.ok(cpuHeight !== undefined, "CPU has a second point");
   expect(gpu.heights[1]).toBeLessThan(cpuHeight);
@@ -505,6 +511,53 @@ test("gives every slice of a pie chart its label and its share", async ({
 
   expect(chart.failures).toEqual([]);
   expect(chart.dataLabels).toEqual(["Yes: 65%", "No: 35%"]);
+});
+
+test("shows series legends by default and hides them when requested", async ({
+  page,
+}) => {
+  await renderChart(page, "stacked-time-series");
+  await expect(page.locator("#test-chart .apexcharts-legend-text")).toHaveText([
+    "CPU",
+    "GPU",
+  ]);
+
+  await renderChart(page, "hidden-legend");
+  await expect(page.locator("#test-chart .apexcharts-legend")).toBeHidden();
+});
+
+for (const { axis, fixture, labels } of [
+  { axis: "y", fixture: "y-reference-band", labels: ["target", "throttling"] },
+  { axis: "x", fixture: "x-reference-band", labels: ["deploy", "incident"] },
+]) {
+  test(`draws a ${axis} reference line and band with their labels`, async ({
+    page,
+  }) => {
+    await renderChart(page, fixture);
+    const annotations = page.locator(
+      `#test-chart .apexcharts-${axis}axis-annotations`,
+    );
+    await expect(annotations.locator("line")).toHaveCount(1);
+    await expect(
+      annotations.locator(".apexcharts-annotation-rect"),
+    ).toHaveCount(1);
+    for (const label of labels) {
+      await expect(annotations.getByText(label, { exact: true })).toBeVisible();
+    }
+  });
+}
+
+test("horizontal bars keep reference lines on their data axes", async ({
+  page,
+}) => {
+  await renderChart(page, "horizontal-reference-lines");
+  const down = page.locator("#test-chart .apexcharts-xaxis-annotations");
+  const across = page.locator("#test-chart .apexcharts-yaxis-annotations");
+
+  await expect(down.locator("line")).toHaveCount(1);
+  await expect(down.getByText("full", { exact: true })).toBeVisible();
+  await expect(across.locator("line")).toHaveCount(1);
+  await expect(across.getByText("watched", { exact: true })).toBeVisible();
 });
 
 test("draws a reference line that carries no label", async ({ page }) => {
