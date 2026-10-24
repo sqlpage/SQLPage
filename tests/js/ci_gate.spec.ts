@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 const coreJobs = [
   "compile_and_lint",
   "published_crate",
-  "fuzz_smoke",
+  "fuzz_sql_regression_fixtures",
   "test",
   "windows_test",
   "playwright",

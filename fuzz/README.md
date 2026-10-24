@@ -33,8 +33,8 @@ The 16 KiB limit is a starting point for efficient mutation, not a parser limit.
 The harness also accepts larger inputs. The same cargo-fuzz target is used by
 OSS-Fuzz and by OSS Verify's static RISC-V adapter.
 
-For the bounded, deterministic smoke run used by CI:
+To run the bounded, deterministic SQL fixture fuzz test used by CI:
 
 ```sh
-scripts/run-fuzz-smoke.sh
+scripts/test-sql-fixture-fuzz.sh
 ```

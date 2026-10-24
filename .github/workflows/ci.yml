@@ -102,7 +102,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - run: cargo package --locked --allow-dirty
 
-  fuzz_smoke:
+  fuzz_sql_regression_fixtures:
     needs: ci_selection
     if: needs.ci_selection.outputs.full == 'true'
     runs-on: ubuntu-latest
@@ -120,7 +120,8 @@ jobs:
           workspaces: fuzz -> target
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo install cargo-fuzz --locked --version 0.13.2
-      - run: scripts/run-fuzz-smoke.sh
+      - name: Fuzz SQL regression fixtures across database selectors
+        run: scripts/test-sql-fixture-fuzz.sh
 
   test:
     runs-on: ubuntu-latest
@@ -493,7 +494,7 @@ jobs:
       - ci_selection
       - compile_and_lint
       - published_crate
-      - fuzz_smoke
+      - fuzz_sql_regression_fixtures
       - test
       - windows_test
       - playwright

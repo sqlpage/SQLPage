@@ -6,6 +6,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 corpus_dir="$(mktemp -d)"
 trap 'rm -rf "$corpus_dir"' EXIT
 
+# Seed every database selector with each SQL regression fixture.
 python3 - "$corpus_dir" <<'PY'
 import sys
 from pathlib import Path
