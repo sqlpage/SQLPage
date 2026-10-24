@@ -28,6 +28,7 @@ if (full === "true") {
   for (const name of [
     "compile_and_lint",
     "published_crate",
+    "fuzz_sql_regression_fixtures",
     "test",
     "windows_test",
     "playwright",
