@@ -5,8 +5,8 @@
   max-height: 85svh;
   overflow: auto;
   color: var(--tblr-body-color);
-  background: color-mix(in srgb, var(--tblr-dark) 92.55%, transparent);
-  border: 1px solid var(--tblr-dark);
+  background: color-mix(in srgb, var(--tblr-body-bg) 92.55%, transparent);
+  border: 1px solid var(--tblr-body-bg);
   border-radius: 12px;
   padding: 30px;
   backdrop-filter: blur(24px);
@@ -35,7 +35,8 @@
 .navigation-dialog nav a {
   font-size: 20px;
   padding: 17px 0;
-  border-top: 1px solid color-mix(in srgb, var(--tblr-dark) 26.67%, transparent);
+  border-top: 1px solid
+    color-mix(in srgb, var(--tblr-body-bg) 26.67%, transparent);
 }
 .navigation-dialog nav a:hover {
   color: var(--tblr-primary);

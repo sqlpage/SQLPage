@@ -129,7 +129,7 @@
 }
 .comparison-code {
   border-color: var(--tblr-bg-surface-tertiary);
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   color: var(--tblr-light);
 }
 .comparison-window-bar {
@@ -179,7 +179,7 @@
     repeating-linear-gradient(
       90deg,
       transparent 0 7px,
-      var(--tblr-dark) 7px 9px
+      var(--tblr-body-bg) 7px 9px
     ),
     linear-gradient(
       90deg,

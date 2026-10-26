@@ -1,6 +1,6 @@
 /* Section composition and shared content primitives; section-motion.css owns scroll poses. */
 .landing-section {
-  --section-color: var(--tblr-dark);
+  --section-color: var(--tblr-body-bg);
   position: relative;
   margin-top: -1px;
   padding: 110px 5.5% 100px;
@@ -114,7 +114,7 @@
 .segmented button {
   border: 0;
   border-radius: 7px;
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   color: var(--tblr-body-color);
   padding: 12px 16px;
   font-weight: 600;
@@ -205,7 +205,7 @@
   border: 1px solid var(--tblr-border-color);
   border-radius: 15px;
   padding: 24px;
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   transition:
     border-color 0.2s,
     transform 0.2s;
@@ -271,7 +271,7 @@ a.chip:hover {
 .database-grid a {
   border: 1px solid var(--tblr-blue);
   border-radius: 12px;
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   color: var(--tblr-blue);
   padding: 28px 22px;
   font: 24px var(--tblr-font-monospace);
@@ -308,7 +308,7 @@ a.chip:hover {
   height: 12px;
 }
 .commit-section {
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   display: flex;
 }
 /* Keep the footer at the end of the final cover, even on tall screens. */

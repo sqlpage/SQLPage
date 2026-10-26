@@ -60,9 +60,9 @@
   background: color-mix(in srgb, var(--tblr-bg-surface) 8.63%, transparent);
 }
 .frontend-tabs button[aria-selected="true"] {
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   color: var(--tblr-light);
-  border-color: var(--tblr-dark);
+  border-color: var(--tblr-body-bg);
   box-shadow: 0 12px 25px
     color-mix(in srgb, var(--tblr-bg-surface) 14.51%, transparent);
 }
@@ -88,7 +88,7 @@
 .frontend-panels {
   border-radius: 20px;
   padding: 55px 45px;
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   color: var(--tblr-light);
   box-shadow: 0 25px 45px
     color-mix(in srgb, var(--tblr-bg-surface) 12.55%, transparent);
@@ -201,7 +201,7 @@
 .render-timeline > span {
   --stage-color: var(--tblr-primary);
   position: relative;
-  background: color-mix(in srgb, var(--stage-color) 45%, var(--tblr-dark));
+  background: color-mix(in srgb, var(--stage-color) 45%, var(--tblr-body-bg));
   padding: 10px 0;
   text-align: center;
   color: var(--tblr-secondary-color);
@@ -228,7 +228,7 @@
   pointer-events: none;
 }
 .timeline-fill {
-  background: color-mix(in srgb, var(--stage-color) 45%, var(--tblr-dark));
+  background: color-mix(in srgb, var(--stage-color) 45%, var(--tblr-body-bg));
 }
 .stream-timeline {
   position: relative;

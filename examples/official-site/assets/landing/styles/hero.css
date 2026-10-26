@@ -26,8 +26,8 @@
     linear-gradient(
       135deg,
       color-mix(in srgb, var(--tblr-body-bg), var(--tblr-black) 70%),
-      var(--tblr-dark) 72%,
-      var(--tblr-dark)
+      var(--tblr-body-bg) 72%,
+      var(--tblr-body-bg)
     );
   box-shadow:
     inset 0 5px 9px color-mix(in srgb, var(--tblr-black) 73.33%, transparent),

@@ -15,8 +15,8 @@
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--tblr-bg-surface-secondary) 78.04%, transparent),
-    color-mix(in srgb, var(--tblr-dark) 92.94%, transparent) 45%,
-    color-mix(in srgb, var(--tblr-dark) 96.08%, transparent)
+    color-mix(in srgb, var(--tblr-body-bg) 92.94%, transparent) 45%,
+    color-mix(in srgb, var(--tblr-body-bg) 96.08%, transparent)
   );
   opacity: var(--ribbon-opacity);
   overflow: hidden;

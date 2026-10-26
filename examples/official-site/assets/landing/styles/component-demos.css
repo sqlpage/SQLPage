@@ -7,9 +7,9 @@
   margin-top: 18px;
   border: 1px solid var(--tblr-bg-surface-tertiary);
   border-radius: 12px;
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   box-shadow: 0 14px 28px
-    color-mix(in srgb, var(--tblr-dark) 12.55%, transparent);
+    color-mix(in srgb, var(--tblr-body-bg) 12.55%, transparent);
   overflow: hidden;
 }
 .sql-editor-header {
@@ -134,12 +134,12 @@
   background: color-mix(in srgb, var(--tblr-blue) 6.27%, transparent);
 }
 .component-picker button[aria-selected="true"] {
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   color: white;
   border-color: var(--tblr-bg-surface-tertiary);
   border-left: 3px solid var(--tblr-primary);
   box-shadow: 0 12px 28px
-    color-mix(in srgb, var(--tblr-dark) 18.82%, transparent);
+    color-mix(in srgb, var(--tblr-body-bg) 18.82%, transparent);
 }
 .component-picker button[aria-selected="true"] svg {
   color: var(--tblr-blue);
@@ -178,14 +178,14 @@
   border-radius: 18px;
   background: var(--tblr-bg-surface);
   box-shadow: 0 18px 30px
-    color-mix(in srgb, var(--tblr-dark) 9.41%, transparent);
+    color-mix(in srgb, var(--tblr-body-bg) 9.41%, transparent);
 }
 #demo-panel iframe[aria-hidden="true"] {
   visibility: hidden;
   pointer-events: none;
 }
 .code-panel {
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   color: var(--tblr-secondary-color);
   font: 13px / 1.8 var(--tblr-font-monospace);
   border: 1px solid var(--tblr-blue);

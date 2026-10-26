@@ -290,7 +290,7 @@
     background: linear-gradient(
       150deg,
       color-mix(in srgb, var(--tblr-link-hover-color) 7.84%, transparent),
-      color-mix(in srgb, var(--tblr-dark) 33.33%, transparent)
+      color-mix(in srgb, var(--tblr-body-bg) 33.33%, transparent)
     );
     box-shadow:
       inset 0 1px 1px color-mix(in srgb, var(--tblr-light) 12.94%, transparent),

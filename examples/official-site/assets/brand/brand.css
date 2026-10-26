@@ -13,11 +13,13 @@
   --tblr-font-sans-serif: Outfit, system-ui, sans-serif;
   --tblr-font-monospace:
     "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  /* Native Tabler utility colors also serve component foregrounds. Keep their
+     defaults; use the surface properties below for dark page backgrounds. */
   --tblr-black: #000;
   --tblr-white: #fff;
-  --tblr-light: #f4f7f8;
-  --tblr-dark: #080d19;
-  --tblr-gray-300: #dadfe5;
+  --tblr-light: #f9fafb;
+  --tblr-dark: #1f2937;
+  --tblr-gray-300: #d1d5db;
   --tblr-primary-fg: var(--tblr-white);
 
   /* Core colors refined for better contrast */

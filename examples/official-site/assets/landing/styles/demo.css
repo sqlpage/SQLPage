@@ -99,7 +99,7 @@ body {
   border-radius: 5px;
   background: var(
     --tblr-success-lt,
-    color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-dark))
+    color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-body-bg))
   );
   color: var(--hljs-cosmic-string);
   font-size: 11px;
@@ -112,13 +112,13 @@ body {
 .table tr.late td._col_status p {
   background: var(
     --tblr-warning-lt,
-    color-mix(in srgb, var(--tblr-warning) 20%, var(--tblr-dark))
+    color-mix(in srgb, var(--tblr-warning) 20%, var(--tblr-body-bg))
   );
   color: color-mix(in srgb, var(--tblr-warning), var(--tblr-white) 30%);
 }
 input.form-control {
   min-height: 38px;
-  background: var(--tblr-dark);
+  background: var(--tblr-body-bg);
   border-color: var(--tblr-bg-surface-tertiary);
   font-size: 12px;
   border-radius: 8px;
@@ -192,7 +192,7 @@ form.mt-3 {
     120deg,
     var(
       --tblr-success-lt,
-      color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-dark))
+      color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-body-bg))
     ),
     var(--tblr-bg-surface-secondary)
   ) !important;
@@ -309,7 +309,7 @@ form.mt-3 {
     145deg,
     var(
       --tblr-success-lt,
-      color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-dark))
+      color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-body-bg))
     ),
     var(--tblr-bg-surface-secondary)
   ) !important;
