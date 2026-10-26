@@ -24,7 +24,8 @@
   cursor: grabbing;
 }
 .model-interaction:focus-visible {
-  outline: 1px dashed #5e9edf77;
+  outline: 1px dashed
+    color-mix(in srgb, var(--brand-accent-strong) 46.67%, transparent);
 }
 .scene-error {
   position: absolute;
@@ -32,12 +33,12 @@
   top: 53%;
   z-index: 16;
   text-align: center;
-  color: #9fb6be;
+  color: var(--brand-steel);
   font: 12px var(--mono);
   max-width: 290px;
   padding: 20px;
-  background: #080f14ed;
-  border: 1px solid #26444e;
+  background: color-mix(in srgb, var(--brand-ink) 92.94%, transparent);
+  border: 1px solid var(--brand-border);
   border-radius: 8px;
   line-height: 1.6;
 }
@@ -46,12 +47,12 @@
 }
 .scene-error p:first-child {
   font-size: 16px;
-  color: #deecee;
+  color: var(--brand-text);
 }
 .scene-error button {
-  border: 1px solid #456e97;
-  color: #70a5da;
-  background: #15313c;
+  border: 1px solid var(--brand-accent-deep);
+  color: var(--brand-accent-strong);
+  background: var(--brand-success-surface);
   padding: 8px 17px;
   border-radius: 50px;
 }

@@ -5,14 +5,18 @@
   max-height: 85svh;
   overflow: auto;
   color: var(--foreground);
-  background: #0b141bec;
-  border: 1px solid #355766;
+  background: color-mix(in srgb, var(--brand-surface-deep) 92.55%, transparent);
+  border: 1px solid var(--brand-text-on-light);
   border-radius: 12px;
   padding: 30px;
   backdrop-filter: blur(24px);
 }
 .navigation-dialog::backdrop {
-  background: #02090de0;
+  background: color-mix(
+    in srgb,
+    var(--brand-surface-recess) 87.84%,
+    transparent
+  );
   backdrop-filter: blur(10px);
 }
 .navigation-dialog h2 {
@@ -21,7 +25,7 @@
   letter-spacing: -1px;
 }
 .navigation-dialog p {
-  color: #8b9fa5;
+  color: var(--brand-text-subtle);
 }
 .navigation-dialog nav {
   display: flex;
@@ -31,7 +35,8 @@
 .navigation-dialog nav a {
   font-size: 20px;
   padding: 17px 0;
-  border-top: 1px solid #43626a44;
+  border-top: 1px solid
+    color-mix(in srgb, var(--brand-text-on-light) 26.67%, transparent);
 }
 .navigation-dialog nav a:hover {
   color: var(--cyan);

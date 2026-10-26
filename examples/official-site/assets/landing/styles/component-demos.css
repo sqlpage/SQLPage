@@ -5,19 +5,20 @@
 }
 .sql-editor {
   margin-top: 18px;
-  border: 1px solid #293246;
+  border: 1px solid var(--brand-surface-slate);
   border-radius: 12px;
-  background: #080e1b;
-  box-shadow: 0 14px 28px #07111d20;
+  background: var(--brand-surface-deep);
+  box-shadow: 0 14px 28px
+    color-mix(in srgb, var(--brand-surface-deep) 12.55%, transparent);
   overflow: hidden;
 }
 .sql-editor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #1c2537;
+  border-bottom: 1px solid var(--brand-surface-panel);
   font: 12px var(--mono);
-  color: #c3cbd9;
+  color: var(--brand-border-light);
 }
 .sql-editor-header button {
   display: inline-flex;
@@ -26,11 +27,11 @@
   padding: 8px 16px;
   border: 0;
   background: transparent;
-  color: #94a9be;
+  color: var(--brand-steel);
   font: inherit;
 }
 .sql-editor-header button:hover {
-  color: #64a2df;
+  color: var(--brand-accent-strong);
 }
 .source-tabs {
   display: flex;
@@ -39,17 +40,17 @@
 .sql-editor-header .source-tabs button {
   border-radius: 0;
   border: 0;
-  border-right: 1px solid #1b2337;
+  border-right: 1px solid var(--brand-surface-panel);
   padding: 12px 18px;
   background: transparent;
-  color: #8898b2;
+  color: var(--brand-text-subtle);
   font: 12px var(--mono);
   box-shadow: inset 0 2px transparent;
 }
 .sql-editor-header .source-tabs button[aria-selected="true"] {
-  color: #dbe0ec;
-  background: #111a2b;
-  box-shadow: inset 0 2px #7aaef0;
+  color: var(--brand-text);
+  background: var(--brand-surface-raised);
+  box-shadow: inset 0 2px var(--brand-accent);
 }
 .sql-editor-header svg {
   width: 15px;
@@ -63,7 +64,7 @@
   overflow-x: auto;
 }
 #demo-source {
-  color: #bac9d9;
+  color: var(--brand-metal-shadow);
   display: block;
   white-space: normal;
   counter-reset: sql-line;
@@ -80,7 +81,7 @@
   position: absolute;
   left: 0;
   width: 1.4em;
-  color: #4c5e78;
+  color: var(--brand-accent-deep);
   text-align: right;
   user-select: none;
 }
@@ -130,17 +131,18 @@
 }
 .component-picker button:hover {
   transform: translateX(3px);
-  background: #5a99d710;
+  background: color-mix(in srgb, var(--brand-accent-strong) 6.27%, transparent);
 }
 .component-picker button[aria-selected="true"] {
-  background: #07111d;
+  background: var(--brand-surface-deep);
   color: white;
-  border-color: #202c3e;
-  border-left: 3px solid #74b6e9;
-  box-shadow: 0 12px 28px #07111d30;
+  border-color: var(--brand-surface-panel);
+  border-left: 3px solid var(--brand-accent);
+  box-shadow: 0 12px 28px
+    color-mix(in srgb, var(--brand-surface-deep) 18.82%, transparent);
 }
 .component-picker button[aria-selected="true"] svg {
-  color: #5a99d7;
+  color: var(--brand-accent-strong);
 }
 #demo-panel {
   position: relative;
@@ -151,7 +153,7 @@
   top: -86px;
   left: 48%;
   margin: 0;
-  color: #52737d;
+  color: var(--brand-text-muted-on-light);
   font: italic 17px / 1.35 cursive;
   transform: rotate(-6deg);
   pointer-events: none;
@@ -172,20 +174,21 @@
   display: block;
   width: 100%;
   height: 100%;
-  border: 1px solid #2b344c;
+  border: 1px solid var(--brand-surface-slate);
   border-radius: 18px;
-  background: #0d1224;
-  box-shadow: 0 18px 30px #07111d18;
+  background: var(--brand-surface);
+  box-shadow: 0 18px 30px
+    color-mix(in srgb, var(--brand-surface-deep) 9.41%, transparent);
 }
 #demo-panel iframe[aria-hidden="true"] {
   visibility: hidden;
   pointer-events: none;
 }
 .code-panel {
-  background: #080e1b;
-  color: #b3c5d4;
+  background: var(--brand-surface-deep);
+  color: var(--brand-metal-shadow);
   font: 13px / 1.8 var(--mono);
-  border: 1px solid #5a98d6;
+  border: 1px solid var(--brand-accent-strong);
   border-radius: 12px;
   padding: 22px;
   white-space: pre-wrap;
@@ -200,7 +203,7 @@
   align-items: center;
   gap: 6px;
   font: 12px var(--mono);
-  color: #3a628a;
+  color: var(--brand-accent-deep);
 }
 .demo-docs:hover {
   text-decoration: underline;
@@ -274,20 +277,20 @@
 
 #demo-source .hljs-keyword,
 #demo-source .hljs-literal {
-  color: #b5a4f5;
+  color: var(--brand-code-purple);
 }
 #demo-source .hljs-string {
-  color: #64d5bf;
+  color: var(--brand-code-green);
 }
 #demo-source .hljs-number {
-  color: #efc58c;
+  color: var(--brand-code-gold);
 }
 #demo-source .hljs-comment {
-  color: #708598;
+  color: var(--brand-text-dim);
 }
 #demo-source .hljs-built_in,
 #demo-source .hljs-type {
-  color: #6caae8;
+  color: var(--brand-accent-strong);
 }
 #demo-panel[data-demo="catalog"] .sql-editor,
 #demo-panel[data-demo="catalog"] .demo-annotation,

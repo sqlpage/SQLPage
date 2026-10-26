@@ -13,22 +13,28 @@
   position: relative;
   overflow: hidden;
   padding: 19px 24px 20px;
-  border: 1px solid #8bb8e833;
+  border: 1px solid color-mix(in srgb, var(--brand-accent) 20.00%, transparent);
   border-radius: 6px;
   background:
     repeating-linear-gradient(
       0deg,
-      #b7d0da01 0,
-      #b7d0da01 1px,
+      color-mix(in srgb, var(--brand-border-light) 0.39%, transparent) 0,
+      color-mix(in srgb, var(--brand-border-light) 0.39%, transparent) 1px,
       transparent 1px,
       transparent 3px
     ),
-    linear-gradient(135deg, #020609, #0a1217 72%, #0b1419);
+    linear-gradient(
+      135deg,
+      var(--brand-surface-recess),
+      var(--brand-surface-deep) 72%,
+      var(--brand-surface-deep)
+    );
   box-shadow:
-    inset 0 5px 9px #000b,
-    inset 3px 0 6px #0007,
-    inset -1px -1px 1px #93b0be15,
-    0 1px 0 #7895a51b;
+    inset 0 5px 9px color-mix(in srgb, var(--brand-black) 73.33%, transparent),
+    inset 3px 0 6px color-mix(in srgb, var(--brand-black) 46.67%, transparent),
+    inset -1px -1px 1px
+    color-mix(in srgb, var(--brand-steel) 8.24%, transparent),
+    0 1px 0 color-mix(in srgb, var(--brand-text-dim) 10.59%, transparent);
 }
 .metal-recess:before {
   content: "";
@@ -36,8 +42,9 @@
   inset: 0;
   border-radius: inherit;
   box-shadow:
-    inset 0 1px 1px #000,
-    inset 0 -1px 0 #afc8d313;
+    inset 0 1px 1px var(--brand-black),
+    inset 0 -1px 0
+    color-mix(in srgb, var(--brand-metal-shadow) 7.45%, transparent);
   pointer-events: none;
 }
 .metal-recess:after {
@@ -45,24 +52,26 @@
   position: absolute;
   inset: 2px;
   border-radius: 2px;
-  border-top: 1px solid #0007;
-  border-left: 1px solid #0003;
+  border-top: 1px solid
+    color-mix(in srgb, var(--brand-black) 46.67%, transparent);
+  border-left: 1px solid
+    color-mix(in srgb, var(--brand-black) 20.00%, transparent);
   pointer-events: none;
 }
 .metal-recess code {
   position: relative;
   display: grid;
   gap: 6px;
-  color: #83969f;
+  color: var(--brand-text-dim);
   font: clamp(13px, 0.82vw, 16px) / 1.65 var(--mono);
   letter-spacing: -0.025em;
   text-shadow:
-    0 -1px 1px #000,
-    0 1px 0 #bfd7e01b;
+    0 -1px 1px var(--brand-black),
+    0 1px 0 color-mix(in srgb, var(--brand-border-light) 10.59%, transparent);
 }
 .metal-recess code b {
   font-weight: 400;
-  color: #607781;
+  color: var(--brand-text-muted-on-light);
 }
 .hero-copy {
   position: absolute;
@@ -107,9 +116,14 @@
 }
 .title-select,
 .title-from {
-  color: #e9e8e7;
+  color: var(--brand-metal-highlight);
   text-shadow: none;
-  background: linear-gradient(180deg, #fafafa 0%, #eceeef 42%, #bfc5c8 100%);
+  background: linear-gradient(
+    180deg,
+    var(--brand-paper) 0%,
+    var(--brand-metal-highlight) 42%,
+    var(--brand-metal-shadow) 100%
+  );
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -118,11 +132,18 @@
   font-size: 0.985em;
   letter-spacing: 0;
   padding: 4px 0 9px;
-  background: linear-gradient(180deg, #a3c7ed 0%, #8bb8e8 48%, #78a4d3 100%);
+  background: linear-gradient(
+    180deg,
+    var(--brand-accent-light) 0%,
+    var(--brand-accent) 48%,
+    var(--brand-text-subtle) 100%
+  );
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 2px #030a0f8c);
+  filter: drop-shadow(
+    0 2px 2px color-mix(in srgb, var(--brand-ink) 54.90%, transparent)
+  );
 }
 .title-from {
   font-size: 0.985em;
@@ -149,9 +170,10 @@
   letter-spacing: -0.01em;
   margin: 0;
   flex: 1;
-  color: #a9b9c9;
+  color: var(--brand-text-muted);
   white-space: nowrap;
-  text-shadow: 0 2px 4px #0009;
+  text-shadow: 0 2px 4px
+    color-mix(in srgb, var(--brand-black) 60.00%, transparent);
 }
 .run-link {
   display: inline-flex;
@@ -159,17 +181,18 @@
   justify-content: center;
   gap: 16px;
   padding: 16px 24px;
-  border: 1px solid #a3c7ed55;
+  border: 1px solid
+    color-mix(in srgb, var(--brand-accent-light) 33.33%, transparent);
   border-radius: 6px;
   background: var(--brand-accent);
-  color: #0b1724;
+  color: var(--brand-surface);
   font-size: clamp(18px, 1.4vw, 23px);
   font-weight: 600;
   white-space: nowrap;
   transition: background-color 0.2s;
 }
 .run-link:hover {
-  background: #a3c7ed;
+  background: var(--brand-accent-light);
 }
 .run-link .icon {
   --icon-size: 22px;

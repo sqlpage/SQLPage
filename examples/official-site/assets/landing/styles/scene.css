@@ -26,7 +26,12 @@
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(ellipse at 79% 26%, #233b5555, transparent 57%), #080e11;
+    radial-gradient(
+      ellipse at 79% 26%,
+      color-mix(in srgb, var(--brand-border) 33.33%, transparent),
+      transparent 57%
+    ),
+    var(--brand-ink);
 }
 /* One sculpture follows the authored section anchors. */
 .scene-layer {
@@ -85,8 +90,16 @@
   z-index: -2;
   pointer-events: none;
   background:
-    linear-gradient(90deg, #05090da6, transparent 66%),
-    radial-gradient(ellipse at 53% 49%, transparent 39%, #04070b66 100%);
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--brand-surface-recess) 65.10%, transparent),
+      transparent 66%
+    ),
+    radial-gradient(
+      ellipse at 53% 49%,
+      transparent 39%,
+      color-mix(in srgb, var(--brand-surface-recess) 40.00%, transparent) 100%
+    );
   opacity: calc(0.9 - var(--progress) * 0.3);
 }
 .surface-finish {
@@ -97,8 +110,8 @@
   opacity: 0.2;
   background: repeating-linear-gradient(
     0deg,
-    #a9ccd203 0,
-    #a9ccd203 1px,
+    color-mix(in srgb, var(--brand-metal-shadow) 1.18%, transparent) 0,
+    color-mix(in srgb, var(--brand-metal-shadow) 1.18%, transparent) 1px,
     transparent 1px,
     transparent 3px
   );

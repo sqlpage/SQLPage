@@ -18,14 +18,17 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  text-shadow: 0 2px 3px #0009;
+  text-shadow: 0 2px 3px
+    color-mix(in srgb, var(--brand-black) 60.00%, transparent);
 }
 .brand-symbol {
   display: block;
   width: 72px;
   height: auto;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 10px #64aaef1a);
+  filter: drop-shadow(
+    0 0 10px color-mix(in srgb, var(--brand-accent-strong) 10.20%, transparent)
+  );
 }
 /* Quiet navigation leaves the sculpture as the page's reflective surface. */
 .desktop-nav {
@@ -41,7 +44,7 @@
   padding: 12px 22px;
   border-radius: 6px;
   font-size: clamp(14px, 1.32vw, 21px);
-  color: #c3cfdb;
+  color: var(--brand-border-light);
   transition:
     color 0.2s,
     background-color 0.2s;
@@ -49,12 +52,12 @@
 .desktop-nav .glass-button:hover,
 .desktop-nav .glass-button:focus-visible {
   color: var(--foreground);
-  background: #8bb8e810;
+  background: color-mix(in srgb, var(--brand-accent) 6.27%, transparent);
 }
 .mobile-menu {
   display: none;
   background: none;
   border: 0;
-  color: #d3e3e6;
+  color: var(--brand-text);
   padding: 10px;
 }

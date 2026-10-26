@@ -1,8 +1,8 @@
 /* Shared tokens and native element defaults. */
 :root {
-  --foreground: #f4f7f8;
+  --foreground: var(--brand-paper);
   --cyan: var(--brand-accent);
-  --ink: #080e11;
+  --ink: var(--brand-ink);
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 [hidden] {
@@ -25,7 +25,7 @@
 html {
   color-scheme: dark;
   scrollbar-width: thin;
-  scrollbar-color: #345a62 #080e11;
+  scrollbar-color: var(--brand-text-on-light) var(--brand-ink);
 }
 body {
   margin: 0;
@@ -59,7 +59,7 @@ button:focus-visible,
 }
 ::selection {
   background: var(--brand-accent);
-  color: #081015;
+  color: var(--brand-ink);
 }
 .skip-link {
   position: fixed;

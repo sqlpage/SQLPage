@@ -1,11 +1,15 @@
 /* Four frontend views pair concise copy with diagrams and deployment links. */
 .deployment-section {
-  --section-color: #5793cf;
+  --section-color: var(--brand-accent-strong);
   /* Match the solid wave at the edge, then retain the section's diagonal gradient. */
   background:
     linear-gradient(180deg, var(--section-color), transparent 180px),
-    linear-gradient(125deg, #5e9edf, #4c80b4);
-  color: #071322;
+    linear-gradient(
+      125deg,
+      var(--brand-accent-strong),
+      var(--brand-accent-muted)
+    );
+  color: var(--brand-surface);
   padding-top: 65px;
   padding-bottom: 150px;
 }
@@ -15,7 +19,7 @@
   gap: 25px;
 }
 .deployment-section .eyebrow {
-  color: #104759;
+  color: var(--brand-surface-slate);
 }
 .deployment-section h2 {
   font-size: clamp(70px, 9vw, 125px);
@@ -43,8 +47,9 @@
   gap: 16px;
   padding: 25px;
   color: inherit;
-  background: #07132208;
-  border: 1px solid #10475966;
+  background: color-mix(in srgb, var(--brand-surface) 3.14%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--brand-surface-slate) 40.00%, transparent);
   border-radius: 15px;
   text-align: left;
   cursor: pointer;
@@ -56,13 +61,14 @@
 }
 .frontend-tabs button:hover {
   transform: translateY(-3px);
-  background: #07132216;
+  background: color-mix(in srgb, var(--brand-surface) 8.63%, transparent);
 }
 .frontend-tabs button[aria-selected="true"] {
-  background: #080d19;
-  color: #f6f8fa;
-  border-color: #080d19;
-  box-shadow: 0 12px 25px #07132225;
+  background: var(--brand-surface-deep);
+  color: var(--brand-paper);
+  border-color: var(--brand-surface-deep);
+  box-shadow: 0 12px 25px
+    color-mix(in srgb, var(--brand-surface) 14.51%, transparent);
 }
 .frontend-tabs svg {
   width: 24px;
@@ -86,9 +92,10 @@
 .frontend-panels {
   border-radius: 20px;
   padding: 55px 45px;
-  background: #080d19;
-  color: #eef1f7;
-  box-shadow: 0 25px 45px #07132220;
+  background: var(--brand-surface-deep);
+  color: var(--brand-paper);
+  box-shadow: 0 25px 45px
+    color-mix(in srgb, var(--brand-surface) 12.55%, transparent);
 }
 .frontend-panel {
   display: grid;
@@ -107,11 +114,11 @@
 .frontend-copy p {
   font-size: 17px;
   line-height: 1.5;
-  color: #a6afc3;
+  color: var(--brand-text-muted);
   margin: 0 0 18px;
 }
 .frontend-copy a {
-  color: #79b6e8;
+  color: var(--brand-accent);
   font: 14px / 1.5 var(--mono);
   text-underline-offset: 5px;
 }
@@ -122,22 +129,26 @@
 }
 .feature-node {
   padding: 18px 20px;
-  background: #101524;
-  border: 1px solid #ffffff24;
+  background: var(--brand-surface);
+  border: 1px solid color-mix(in srgb, var(--brand-white) 14.12%, transparent);
   border-radius: 12px;
   font: 19px / 1.35 var(--mono);
-  color: #dce1ef;
+  color: var(--brand-text);
   text-decoration: none;
 }
 .feature-node small {
   display: block;
-  color: #889bbd;
+  color: var(--brand-text-subtle);
   font-size: 14px;
   margin-top: 7px;
 }
 .feature-result {
-  background: linear-gradient(120deg, #5e9edf, #4c80b4);
-  color: #071322;
+  background: linear-gradient(
+    120deg,
+    var(--brand-accent-strong),
+    var(--brand-accent-muted)
+  );
+  color: var(--brand-surface);
   font: 700 20px / 1.2 var(--brand-font);
 }
 .customize-diagram,
@@ -150,7 +161,7 @@
 }
 .customize-diagram b,
 .ship-diagram b {
-  color: #889bbd;
+  color: var(--brand-text-subtle);
   font: 16px var(--mono);
 }
 .customize-diagram .feature-node {
@@ -168,11 +179,11 @@
 }
 .ship-options a:hover,
 .ship-options a:focus-visible {
-  border-color: #79b6e8;
-  background: #79b6e810;
+  border-color: var(--brand-accent);
+  background: color-mix(in srgb, var(--brand-accent) 6.27%, transparent);
 }
 .frontend-panel .frontend-footnote {
-  color: #889bbd;
+  color: var(--brand-text-subtle);
   font: 13px / 1.5 var(--mono);
   margin: 10px 0 0;
 }
@@ -182,7 +193,7 @@
 .instant-diagram {
   position: relative;
   font: 14px / 1.5 var(--mono);
-  color: #889bbd;
+  color: var(--brand-text-subtle);
 }
 .instant-diagram p {
   margin: 0 0 12px;
@@ -196,21 +207,21 @@
   border-radius: 7px;
 }
 .render-timeline > span {
-  --stage-color: #27314b;
+  --stage-color: var(--brand-surface-slate);
   position: relative;
   background: var(--stage-color);
   padding: 10px 0;
   text-align: center;
-  color: #b2bbd0;
+  color: var(--brand-text-muted);
 }
 .render-timeline > span:nth-child(2) {
-  --stage-color: #314e64;
+  --stage-color: var(--brand-text-on-light);
 }
 .render-timeline > span:nth-child(3) {
-  --stage-color: #3c4863;
+  --stage-color: var(--brand-text-on-light);
 }
 .render-timeline > span:nth-child(4) {
-  --stage-color: #4a4e5e;
+  --stage-color: var(--brand-text-on-light);
 }
 .render-timeline > span > span,
 .stream-timeline > span {
@@ -236,17 +247,30 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  color: #081b2b;
+  color: var(--brand-surface-raised);
   font-size: 13px;
   white-space: nowrap;
-  background: linear-gradient(90deg, #4473a2, #6c9ec3);
+  background: linear-gradient(
+    90deg,
+    var(--brand-accent-muted),
+    var(--brand-accent-strong)
+  );
 }
 .stream-fill {
-  background: linear-gradient(90deg, #5188c0, #79b6e8);
+  background: linear-gradient(
+    90deg,
+    var(--brand-accent-muted),
+    var(--brand-accent)
+  );
 }
 .stream-sheen {
   width: 35%;
-  background: linear-gradient(90deg, transparent, #ffffff50, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--brand-white) 31.37%, transparent),
+    transparent
+  );
   opacity: 0;
 }
 .instant-diagram[data-stream-motion] .render-timeline > span {
@@ -261,18 +285,18 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid #ffffff24;
+  border: 1px solid color-mix(in srgb, var(--brand-white) 14.12%, transparent);
   border-radius: 50%;
   background: transparent;
-  color: #889bbd;
+  color: var(--brand-text-subtle);
   cursor: pointer;
 }
 .timeline-toggle:hover {
-  color: #eef1f7;
-  border-color: #79b6e8;
+  color: var(--brand-paper);
+  border-color: var(--brand-accent);
 }
 .timeline-toggle:focus-visible {
-  outline: 2px solid #79b6e8;
+  outline: 2px solid var(--brand-accent);
   outline-offset: 3px;
 }
 .timeline-toggle svg {
@@ -298,10 +322,10 @@
   margin-top: 24px;
 }
 .render-labels span {
-  border: 1px solid #ffffff24;
+  border: 1px solid color-mix(in srgb, var(--brand-white) 14.12%, transparent);
   border-radius: 12px;
   padding: 10px 14px;
-  color: #dce1ef;
+  color: var(--brand-text);
   font-size: 12px;
 }
 .safety-diagram {
@@ -319,7 +343,7 @@
   align-items: center;
   gap: 14px;
   font: 14px var(--mono);
-  color: #4fd2b0;
+  color: var(--brand-code-green);
 }
 .attack-list .feature-node {
   width: 160px;
@@ -329,12 +353,13 @@
 .attack-list i {
   flex: 1;
   min-width: 15px;
-  border-top: 2px dashed #ffffff40;
+  border-top: 2px dashed
+    color-mix(in srgb, var(--brand-white) 25.10%, transparent);
 }
 .safety-diagram > svg {
   width: 105px;
   height: 130px;
-  color: #79b6e8;
+  color: var(--brand-accent);
 }
 @keyframes frontend-enter {
   from {

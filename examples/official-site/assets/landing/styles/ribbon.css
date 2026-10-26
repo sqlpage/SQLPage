@@ -10,9 +10,14 @@
   align-items: center;
   transform: none;
   transform-origin: center;
-  border: 1px solid #8bb8e830;
+  border: 1px solid color-mix(in srgb, var(--brand-accent) 18.82%, transparent);
   border-radius: 8px;
-  background: linear-gradient(180deg, #15252cc7, #091118ed 45%, #0a1117f5);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-graphite) 78.04%, transparent),
+    color-mix(in srgb, var(--brand-surface-deep) 92.94%, transparent) 45%,
+    color-mix(in srgb, var(--brand-surface-deep) 96.08%, transparent)
+  );
   opacity: var(--ribbon-opacity);
   overflow: hidden;
 }
@@ -31,10 +36,10 @@
   align-items: center;
   gap: 15px;
   padding: 16px 0 16px 38px;
-  color: #8b9eaa;
+  color: var(--brand-text-subtle);
   text-shadow:
-    0 -1px 2px #000,
-    0 1px 0 #dfedf51a;
+    0 -1px 2px var(--brand-black),
+    0 1px 0 color-mix(in srgb, var(--brand-metal-highlight) 10.20%, transparent);
   transition: color 0.3s;
   white-space: nowrap;
 }
@@ -45,10 +50,10 @@
 .ribbon-dot {
   margin: 0 0 0 33px;
   font-size: 20px;
-  color: #89bac7;
+  color: var(--brand-steel);
 }
 .ribbon-sequence a:hover {
-  color: #87b8e8;
+  color: var(--brand-accent);
 }
 .viewport-footer {
   position: absolute;
@@ -61,7 +66,7 @@
   justify-content: space-between;
   gap: 20px;
   font: 12px var(--mono);
-  color: #809da7;
+  color: var(--brand-text-subtle);
 }
 .viewport-footer > a:hover {
   color: var(--cyan);

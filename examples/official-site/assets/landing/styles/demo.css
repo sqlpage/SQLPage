@@ -2,11 +2,11 @@
 
 /* Standalone SQLPage demos: content-sized shells and compact native components. */
 :root {
-  --tblr-body-bg: #0d1224;
-  --tblr-bg-surface: #0d1224;
-  --tblr-border-color: #273149;
-  --tblr-primary: #5a98d6;
-  --tblr-body-color: #dbe0ec;
+  --tblr-body-bg: var(--brand-surface);
+  --tblr-bg-surface: var(--brand-surface);
+  --tblr-border-color: var(--brand-surface-slate);
+  --tblr-primary: var(--brand-accent-strong);
+  --tblr-body-color: var(--brand-text);
 }
 html,
 body,
@@ -17,7 +17,7 @@ body,
 }
 body {
   font-size: 13px;
-  background: #0d1224;
+  background: var(--brand-surface);
 }
 .page,
 .page-wrapper {
@@ -71,7 +71,7 @@ body {
 }
 .table {
   font-size: 14px;
-  --tblr-table-border-color: #1b2337;
+  --tblr-table-border-color: var(--brand-surface-panel);
 }
 .table td,
 .table th {
@@ -79,7 +79,7 @@ body {
 }
 .table th {
   font-size: 11px;
-  color: #9caac4;
+  color: var(--brand-steel);
   background: transparent;
 }
 #landing-customers .table th {
@@ -89,7 +89,7 @@ body {
   border-radius: 8px;
 }
 .table-sort {
-  color: #94a3bb;
+  color: var(--brand-text-subtle);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -103,23 +103,23 @@ body {
   margin: 0;
   padding: 3px 10px;
   border-radius: 5px;
-  background: #123737;
-  color: #5ed4b6;
+  background: var(--brand-success-surface);
+  color: var(--brand-code-green);
   font-size: 11px;
   font-weight: 600;
 }
 .table tr.trial td._col_status p {
-  background: #123459;
-  color: #8bbcf5;
+  background: var(--brand-surface-slate);
+  color: var(--brand-accent);
 }
 .table tr.late td._col_status p {
-  background: #4b3526;
-  color: #ecb56b;
+  background: var(--brand-warning-surface);
+  color: var(--brand-warning);
 }
 input.form-control {
   min-height: 38px;
-  background: #090e1d;
-  border-color: #273149;
+  background: var(--brand-surface-deep);
+  border-color: var(--brand-surface-slate);
   font-size: 12px;
   border-radius: 8px;
   padding: 8px 12px;
@@ -146,7 +146,7 @@ form.mt-3 {
   font-size: 12px;
   font-weight: 500;
   margin-bottom: 7px;
-  color: #bac5d6;
+  color: var(--brand-metal-shadow);
 }
 .form-fieldset .mb-3 {
   margin-bottom: 16px !important;
@@ -155,13 +155,14 @@ form.mt-3 {
   font-size: 13px;
   padding: 9px 18px;
   border-radius: 8px;
-  box-shadow: 0 3px 14px #5997d518;
-  background: #5895d2;
-  border-color: #5895d2;
-  color: #06121b;
+  box-shadow: 0 3px 14px
+    color-mix(in srgb, var(--brand-accent-strong) 9.41%, transparent);
+  background: var(--brand-accent-strong);
+  border-color: var(--brand-accent-strong);
+  color: var(--brand-surface-deep);
 }
 .apexcharts-tooltip {
-  color: #0d1224;
+  color: var(--brand-surface);
 }
 #landing-kpis {
   display: grid;
@@ -178,13 +179,21 @@ form.mt-3 {
 }
 #landing-kpis .card {
   height: 100%;
-  border: 1px solid #294055;
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
-  background: linear-gradient(145deg, #17263a, #0d1729);
+  background: linear-gradient(
+    145deg,
+    var(--brand-surface-panel),
+    var(--brand-surface-raised)
+  );
   overflow: hidden;
 }
 #landing-kpis .bg-cyan-lt {
-  background: linear-gradient(120deg, #0d2a36, #122333) !important;
+  background: linear-gradient(
+    120deg,
+    var(--brand-success-surface),
+    var(--brand-graphite)
+  ) !important;
 }
 #landing-kpis .card-body {
   gap: 8px;
@@ -193,7 +202,7 @@ form.mt-3 {
 #landing-kpis .subheader {
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: #9badc5;
+  color: var(--brand-steel);
 }
 #landing-kpis .h1 {
   font-size: clamp(38px, 6vw, 56px);
@@ -205,13 +214,13 @@ form.mt-3 {
 #landing-kpis .d-flex.flex-wrap {
   margin: 0 !important;
   font-size: 12px;
-  color: #a9bacf;
+  color: var(--brand-text-muted);
 }
 #landing-kpis .text-truncate {
   white-space: normal;
 }
 #landing-kpis .text-cyan {
-  color: #5a99d7 !important;
+  color: var(--brand-accent-strong) !important;
 }
 @media (max-width: 480px) {
   #sqlpage_main_wrapper {
@@ -246,9 +255,13 @@ form.mt-3 {
 /* Native form controls retain validation, icons, and accessible labels. */
 #landing-profile {
   padding: 22px;
-  border: 1px solid #26344b;
+  border: 1px solid var(--brand-surface-slate);
   border-radius: 14px;
-  background: linear-gradient(135deg, #152339, #0d1224 65%);
+  background: linear-gradient(
+    135deg,
+    var(--brand-surface-panel),
+    var(--brand-surface) 65%
+  );
 }
 #landing-profile h2 {
   font-size: 23px;
@@ -256,9 +269,9 @@ form.mt-3 {
   font-weight: 600;
 }
 #landing-profile .input-group-text {
-  background: #111c2e;
-  border-color: #273149;
-  color: #7395b7;
+  background: var(--brand-surface-raised);
+  border-color: var(--brand-surface-slate);
+  color: var(--brand-text-subtle);
 }
 #landing-profile .input-group-text svg {
   width: 17px;
@@ -272,12 +285,13 @@ form.mt-3 {
     box-shadow 180ms;
 }
 #landing-profile .form-control:focus {
-  border-color: #5a98d6;
-  box-shadow: 0 0 0 3px #5a98d61a;
+  border-color: var(--brand-accent-strong);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--brand-accent-strong) 10.20%, transparent);
 }
 #landing-profile .form-hint {
   font-size: 11px;
-  color: #8597b0;
+  color: var(--brand-text-subtle);
   line-height: 1.5;
 }
 #landing-profile .btn {
@@ -290,12 +304,16 @@ form.mt-3 {
   font-size: 13px;
 }
 #landing-kpis .bg-teal-lt {
-  background: linear-gradient(145deg, #102e30, #0d1b29) !important;
+  background: linear-gradient(
+    145deg,
+    var(--brand-success-surface),
+    var(--brand-surface-raised)
+  ) !important;
 }
 #landing-kpis .progress {
   height: 4px;
   margin-top: 10px;
-  background: #ffffff0d;
+  background: color-mix(in srgb, var(--brand-white) 5.10%, transparent);
 }
 .component-catalog {
   display: grid;
@@ -307,9 +325,9 @@ form.mt-3 {
   align-items: center;
   gap: 10px;
   padding: 16px 12px;
-  border: 1px solid #26344b;
+  border: 1px solid var(--brand-surface-slate);
   border-radius: 9px;
-  color: #dbe0ec;
+  color: var(--brand-text);
   text-decoration: none;
   font-size: 12px;
   transition:
@@ -319,15 +337,15 @@ form.mt-3 {
 }
 .component-catalog a:hover,
 .component-catalog a:focus-visible {
-  color: #5e9edf;
-  background: #122636;
-  border-color: #5a98d6;
+  color: var(--brand-accent-strong);
+  background: var(--brand-surface-panel);
+  border-color: var(--brand-accent-strong);
 }
 .component-catalog svg {
   width: 19px;
   height: 19px;
   flex: none;
-  color: #6797c7;
+  color: var(--brand-accent-strong);
 }
 .component-catalog svg:last-child {
   margin-left: auto;
