@@ -445,7 +445,8 @@ jobs:
 
   hurl:
     name: hurl (${{ matrix.example }})
-    runs-on: ubuntu-latest
+    # The prebuilt Hurl archive needs libxml2.so.2, absent on Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     if: ${{ needs.hurl_examples.result == 'success' && needs.hurl_examples.outputs.examples != '[]' }}
     timeout-minutes: 15
     needs:
