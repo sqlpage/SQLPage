@@ -1,15 +1,11 @@
 /* Four frontend views pair concise copy with diagrams and deployment links. */
 .deployment-section {
-  --section-color: var(--brand-accent-strong);
+  --section-color: var(--tblr-blue);
   /* Match the solid wave at the edge, then retain the section's diagonal gradient. */
   background:
     linear-gradient(180deg, var(--section-color), transparent 180px),
-    linear-gradient(
-      125deg,
-      var(--brand-accent-strong),
-      var(--brand-accent-muted)
-    );
-  color: var(--brand-surface);
+    linear-gradient(125deg, var(--tblr-blue), var(--tblr-primary));
+  color: var(--tblr-bg-surface);
   padding-top: 65px;
   padding-bottom: 150px;
 }
@@ -19,7 +15,7 @@
   gap: 25px;
 }
 .deployment-section .eyebrow {
-  color: var(--brand-surface-slate);
+  color: var(--tblr-bg-surface-tertiary);
 }
 .deployment-section h2 {
   font-size: clamp(70px, 9vw, 125px);
@@ -47,9 +43,9 @@
   gap: 16px;
   padding: 25px;
   color: inherit;
-  background: color-mix(in srgb, var(--brand-surface) 3.14%, transparent);
+  background: color-mix(in srgb, var(--tblr-bg-surface) 3.14%, transparent);
   border: 1px solid
-    color-mix(in srgb, var(--brand-surface-slate) 40.00%, transparent);
+    color-mix(in srgb, var(--tblr-bg-surface-tertiary) 40.00%, transparent);
   border-radius: 15px;
   text-align: left;
   cursor: pointer;
@@ -61,14 +57,14 @@
 }
 .frontend-tabs button:hover {
   transform: translateY(-3px);
-  background: color-mix(in srgb, var(--brand-surface) 8.63%, transparent);
+  background: color-mix(in srgb, var(--tblr-bg-surface) 8.63%, transparent);
 }
 .frontend-tabs button[aria-selected="true"] {
-  background: var(--brand-surface-deep);
-  color: var(--brand-paper);
-  border-color: var(--brand-surface-deep);
+  background: var(--tblr-dark);
+  color: var(--tblr-light);
+  border-color: var(--tblr-dark);
   box-shadow: 0 12px 25px
-    color-mix(in srgb, var(--brand-surface) 14.51%, transparent);
+    color-mix(in srgb, var(--tblr-bg-surface) 14.51%, transparent);
 }
 .frontend-tabs svg {
   width: 24px;
@@ -86,16 +82,16 @@
 .frontend-tabs small {
   display: block;
   margin-top: 5px;
-  font: 13px / 1.4 var(--mono);
+  font: 13px / 1.4 var(--tblr-font-monospace);
   opacity: 0.75;
 }
 .frontend-panels {
   border-radius: 20px;
   padding: 55px 45px;
-  background: var(--brand-surface-deep);
-  color: var(--brand-paper);
+  background: var(--tblr-dark);
+  color: var(--tblr-light);
   box-shadow: 0 25px 45px
-    color-mix(in srgb, var(--brand-surface) 12.55%, transparent);
+    color-mix(in srgb, var(--tblr-bg-surface) 12.55%, transparent);
 }
 .frontend-panel {
   display: grid;
@@ -114,12 +110,12 @@
 .frontend-copy p {
   font-size: 17px;
   line-height: 1.5;
-  color: var(--brand-text-muted);
+  color: var(--tblr-secondary-color);
   margin: 0 0 18px;
 }
 .frontend-copy a {
-  color: var(--brand-accent);
-  font: 14px / 1.5 var(--mono);
+  color: var(--tblr-primary);
+  font: 14px / 1.5 var(--tblr-font-monospace);
   text-underline-offset: 5px;
 }
 .frontend-copy a svg {
@@ -129,27 +125,23 @@
 }
 .feature-node {
   padding: 18px 20px;
-  background: var(--brand-surface);
-  border: 1px solid color-mix(in srgb, var(--brand-white) 14.12%, transparent);
+  background: var(--tblr-bg-surface);
+  border: 1px solid color-mix(in srgb, var(--tblr-white) 14.12%, transparent);
   border-radius: 12px;
-  font: 19px / 1.35 var(--mono);
-  color: var(--brand-text);
+  font: 19px / 1.35 var(--tblr-font-monospace);
+  color: var(--tblr-body-color);
   text-decoration: none;
 }
 .feature-node small {
   display: block;
-  color: var(--brand-text-subtle);
+  color: var(--tblr-muted-color);
   font-size: 14px;
   margin-top: 7px;
 }
 .feature-result {
-  background: linear-gradient(
-    120deg,
-    var(--brand-accent-strong),
-    var(--brand-accent-muted)
-  );
-  color: var(--brand-surface);
-  font: 700 20px / 1.2 var(--brand-font);
+  background: linear-gradient(120deg, var(--tblr-blue), var(--tblr-primary));
+  color: var(--tblr-bg-surface);
+  font: 700 20px / 1.2 var(--tblr-font-sans-serif);
 }
 .customize-diagram,
 .ship-diagram {
@@ -161,8 +153,8 @@
 }
 .customize-diagram b,
 .ship-diagram b {
-  color: var(--brand-text-subtle);
-  font: 16px var(--mono);
+  color: var(--tblr-muted-color);
+  font: 16px var(--tblr-font-monospace);
 }
 .customize-diagram .feature-node {
   padding: 18px 16px;
@@ -179,12 +171,12 @@
 }
 .ship-options a:hover,
 .ship-options a:focus-visible {
-  border-color: var(--brand-accent);
-  background: color-mix(in srgb, var(--brand-accent) 6.27%, transparent);
+  border-color: var(--tblr-primary);
+  background: color-mix(in srgb, var(--tblr-primary) 6.27%, transparent);
 }
 .frontend-panel .frontend-footnote {
-  color: var(--brand-text-subtle);
-  font: 13px / 1.5 var(--mono);
+  color: var(--tblr-muted-color);
+  font: 13px / 1.5 var(--tblr-font-monospace);
   margin: 10px 0 0;
 }
 #ship-panel > .frontend-footnote {
@@ -192,8 +184,8 @@
 }
 .instant-diagram {
   position: relative;
-  font: 14px / 1.5 var(--mono);
-  color: var(--brand-text-subtle);
+  font: 14px / 1.5 var(--tblr-font-monospace);
+  color: var(--tblr-muted-color);
 }
 .instant-diagram p {
   margin: 0 0 12px;
@@ -207,21 +199,21 @@
   border-radius: 7px;
 }
 .render-timeline > span {
-  --stage-color: var(--brand-surface-slate);
+  --stage-color: var(--tblr-bg-surface-tertiary);
   position: relative;
   background: var(--stage-color);
   padding: 10px 0;
   text-align: center;
-  color: var(--brand-text-muted);
+  color: var(--tblr-secondary-color);
 }
 .render-timeline > span:nth-child(2) {
-  --stage-color: var(--brand-text-on-light);
+  --stage-color: var(--tblr-dark);
 }
 .render-timeline > span:nth-child(3) {
-  --stage-color: var(--brand-text-on-light);
+  --stage-color: var(--tblr-dark);
 }
 .render-timeline > span:nth-child(4) {
-  --stage-color: var(--brand-text-on-light);
+  --stage-color: var(--tblr-dark);
 }
 .render-timeline > span > span,
 .stream-timeline > span {
@@ -247,28 +239,20 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  color: var(--brand-surface-raised);
+  color: var(--tblr-bg-surface-secondary);
   font-size: 13px;
   white-space: nowrap;
-  background: linear-gradient(
-    90deg,
-    var(--brand-accent-muted),
-    var(--brand-accent-strong)
-  );
+  background: linear-gradient(90deg, var(--tblr-primary), var(--tblr-blue));
 }
 .stream-fill {
-  background: linear-gradient(
-    90deg,
-    var(--brand-accent-muted),
-    var(--brand-accent)
-  );
+  background: linear-gradient(90deg, var(--tblr-primary), var(--tblr-primary));
 }
 .stream-sheen {
   width: 35%;
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--brand-white) 31.37%, transparent),
+    color-mix(in srgb, var(--tblr-white) 31.37%, transparent),
     transparent
   );
   opacity: 0;
@@ -285,18 +269,18 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--brand-white) 14.12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tblr-white) 14.12%, transparent);
   border-radius: 50%;
   background: transparent;
-  color: var(--brand-text-subtle);
+  color: var(--tblr-muted-color);
   cursor: pointer;
 }
 .timeline-toggle:hover {
-  color: var(--brand-paper);
-  border-color: var(--brand-accent);
+  color: var(--tblr-light);
+  border-color: var(--tblr-primary);
 }
 .timeline-toggle:focus-visible {
-  outline: 2px solid var(--brand-accent);
+  outline: 2px solid var(--tblr-primary);
   outline-offset: 3px;
 }
 .timeline-toggle svg {
@@ -322,10 +306,10 @@
   margin-top: 24px;
 }
 .render-labels span {
-  border: 1px solid color-mix(in srgb, var(--brand-white) 14.12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tblr-white) 14.12%, transparent);
   border-radius: 12px;
   padding: 10px 14px;
-  color: var(--brand-text);
+  color: var(--tblr-body-color);
   font-size: 12px;
 }
 .safety-diagram {
@@ -342,8 +326,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  font: 14px var(--mono);
-  color: var(--brand-code-green);
+  font: 14px var(--tblr-font-monospace);
+  color: var(--hljs-cosmic-string);
 }
 .attack-list .feature-node {
   width: 160px;
@@ -354,12 +338,12 @@
   flex: 1;
   min-width: 15px;
   border-top: 2px dashed
-    color-mix(in srgb, var(--brand-white) 25.10%, transparent);
+    color-mix(in srgb, var(--tblr-white) 25.10%, transparent);
 }
 .safety-diagram > svg {
   width: 105px;
   height: 130px;
-  color: var(--brand-accent);
+  color: var(--tblr-primary);
 }
 @keyframes frontend-enter {
   from {

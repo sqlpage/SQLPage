@@ -1,6 +1,6 @@
 /* Section composition and shared content primitives; section-motion.css owns scroll poses. */
 .landing-section {
-  --section-color: var(--brand-surface-deep);
+  --section-color: var(--tblr-dark);
   position: relative;
   margin-top: -1px;
   padding: 110px 5.5% 100px;
@@ -19,11 +19,11 @@
 }
 .landing-section h2 em {
   font-style: normal;
-  color: var(--brand-accent-strong);
+  color: var(--tblr-blue);
 }
 .eyebrow {
-  font: 13px / 1.65 var(--mono);
-  color: var(--brand-accent-muted);
+  font: 13px / 1.65 var(--tblr-font-monospace);
+  color: var(--tblr-primary);
 }
 .section-heading {
   display: grid;
@@ -58,15 +58,15 @@
 }
 .demo-section {
   padding-top: 70px;
-  --section-color: var(--brand-paper);
-  background: var(--brand-paper);
-  color: var(--brand-surface);
+  --section-color: var(--tblr-light);
+  background: var(--tblr-light);
+  color: var(--tblr-bg-surface);
   padding-bottom: 85px;
   color-scheme: light;
   overflow-anchor: none;
 }
 .demo-section .eyebrow {
-  color: var(--brand-accent-deep);
+  color: var(--tblr-blue);
 }
 .demo-section h2 {
   font-size: clamp(60px, 7.7vw, 106px);
@@ -75,8 +75,8 @@
   margin-top: 30px;
 }
 .purpose-section {
-  --section-color: var(--brand-surface);
-  background: var(--brand-surface);
+  --section-color: var(--tblr-bg-surface);
+  background: var(--tblr-bg-surface);
   padding-bottom: 105px;
 }
 .purpose-section h2 {
@@ -90,7 +90,7 @@
   margin: 0 0 40px;
 }
 .purpose-intro > p:first-child {
-  color: var(--brand-steel);
+  color: var(--tblr-muted-color);
   font-size: 21px;
   line-height: 1.45;
 }
@@ -114,8 +114,8 @@
 .segmented button {
   border: 0;
   border-radius: 7px;
-  background: var(--brand-surface-deep);
-  color: var(--brand-text);
+  background: var(--tblr-dark);
+  color: var(--tblr-body-color);
   padding: 12px 16px;
   font-weight: 600;
   font-size: 13px;
@@ -125,8 +125,8 @@
 }
 .segmented button[aria-pressed="true"],
 .segmented button[aria-selected="true"] {
-  background: var(--brand-accent-strong);
-  color: var(--brand-surface-deep);
+  background: var(--tblr-blue);
+  color: var(--tblr-dark);
 }
 .stack-list {
   list-style: none;
@@ -141,7 +141,7 @@
   gap: 10px;
   padding: 20px 16px;
   border: 1px solid transparent;
-  background: var(--brand-surface-slate);
+  background: var(--tblr-bg-surface-tertiary);
   border-radius: 8px;
   font-size: 15px;
   transition:
@@ -149,12 +149,12 @@
     background 0.4s;
 }
 .stack-list small {
-  font: 11px var(--mono);
-  color: var(--brand-text-muted);
+  font: 11px var(--tblr-font-monospace);
+  color: var(--tblr-secondary-color);
 }
 .stack-list .database-layer {
-  border-color: var(--brand-accent-strong);
-  background: var(--brand-surface);
+  border-color: var(--tblr-blue);
+  background: var(--tblr-bg-surface);
 }
 .stack-list .stack-detail {
   display: grid;
@@ -173,7 +173,7 @@
 .stack-detail [data-stack-copy="sqlpage"] {
   opacity: 0;
   transform: translateY(8px);
-  color: var(--brand-accent-strong);
+  color: var(--tblr-blue);
 }
 .stack-list li:nth-child(2) {
   --stack-delay: 45ms;
@@ -185,12 +185,8 @@
   --stack-delay: 135ms;
 }
 .stack-comparison[data-stack="sqlpage"] [data-stack-layer] {
-  border-color: color-mix(
-    in srgb,
-    var(--brand-accent-strong) 31.37%,
-    transparent
-  );
-  background: var(--brand-graphite);
+  border-color: color-mix(in srgb, var(--tblr-blue) 31.37%, transparent);
+  background: var(--tblr-bg-surface-secondary);
 }
 .stack-comparison[data-stack="sqlpage"] [data-stack-copy="typical"] {
   opacity: 0;
@@ -206,16 +202,16 @@
   gap: 18px;
 }
 .benefit {
-  border: 1px solid var(--brand-border);
+  border: 1px solid var(--tblr-border-color);
   border-radius: 15px;
   padding: 24px;
-  background: var(--brand-surface-deep);
+  background: var(--tblr-dark);
   transition:
     border-color 0.2s,
     transform 0.2s;
 }
 .benefit:hover {
-  border-color: var(--brand-accent-strong);
+  border-color: var(--tblr-blue);
   transform: translateY(-3px);
 }
 .benefit h3 {
@@ -227,45 +223,44 @@
 .benefit p {
   font-size: 16px;
   line-height: 1.45;
-  color: var(--brand-text-muted);
+  color: var(--tblr-secondary-color);
 }
 .benefit small {
-  font: bold 12px var(--mono);
+  font: bold 12px var(--tblr-font-monospace);
 }
 .benefit.featured {
-  background: linear-gradient(
-    120deg,
-    var(--brand-accent-strong),
-    var(--brand-accent-muted)
-  );
-  color: var(--brand-surface);
+  background: linear-gradient(120deg, var(--tblr-blue), var(--tblr-primary));
+  color: var(--tblr-bg-surface);
   border-color: transparent;
 }
 .benefit.featured p {
-  color: var(--brand-success-surface);
+  color: var(
+    --tblr-success-lt,
+    color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-dark))
+  );
 }
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--brand-accent-deep);
+  border: 1px solid var(--tblr-blue);
   padding: 5px 9px;
   margin: 3px 0;
   border-radius: 999px;
-  font: 11px / 1.3 var(--mono);
-  color: var(--brand-accent-strong);
+  font: 11px / 1.3 var(--tblr-font-monospace);
+  color: var(--tblr-blue);
 }
 a.chip:hover {
-  background: var(--brand-accent-strong);
-  color: var(--brand-surface-deep);
+  background: var(--tblr-blue);
+  color: var(--tblr-dark);
 }
 .chip svg {
   width: 14px;
   height: 14px;
 }
 .databases-section {
-  --section-color: var(--brand-surface-slate);
-  background: var(--brand-surface-slate);
+  --section-color: var(--tblr-bg-surface-tertiary);
+  background: var(--tblr-bg-surface-tertiary);
 }
 .database-grid {
   display: grid;
@@ -274,12 +269,12 @@ a.chip:hover {
   margin-top: 120px;
 }
 .database-grid a {
-  border: 1px solid var(--brand-accent-strong);
+  border: 1px solid var(--tblr-blue);
   border-radius: 12px;
-  background: var(--brand-surface-deep);
-  color: var(--brand-accent-strong);
+  background: var(--tblr-dark);
+  color: var(--tblr-blue);
   padding: 28px 22px;
-  font: 24px var(--mono);
+  font: 24px var(--tblr-font-monospace);
   transform: rotate(-2deg);
   transition:
     transform 0.2s,
@@ -292,15 +287,15 @@ a.chip:hover {
 .database-grid a:hover,
 .database-grid a:focus-visible {
   transform: rotate(0) translateY(-5px);
-  background: var(--brand-surface-panel);
+  background: var(--tblr-bg-surface-tertiary);
   box-shadow: 0 5px 25px
-    color-mix(in srgb, var(--brand-accent-strong) 13.33%, transparent);
+    color-mix(in srgb, var(--tblr-blue) 13.33%, transparent);
 }
 .database-grid small {
   display: block;
   margin-top: 9px;
   font-size: 11px;
-  color: var(--brand-accent-muted);
+  color: var(--tblr-primary);
 }
 .emoji {
   font-family:
@@ -313,7 +308,7 @@ a.chip:hover {
   height: 12px;
 }
 .commit-section {
-  background: var(--brand-surface-deep);
+  background: var(--tblr-dark);
   display: flex;
 }
 /* Keep the footer at the end of the final cover, even on tall screens. */
@@ -323,7 +318,7 @@ a.chip:hover {
   flex-direction: column;
 }
 .commit-section h2 {
-  color: var(--brand-accent-strong);
+  color: var(--tblr-blue);
 }
 .commit-action {
   display: flex;
@@ -333,12 +328,8 @@ a.chip:hover {
 }
 .primary-button {
   display: inline-block;
-  background: linear-gradient(
-    110deg,
-    var(--brand-accent-strong),
-    var(--brand-accent-muted)
-  );
-  color: var(--brand-surface);
+  background: linear-gradient(110deg, var(--tblr-blue), var(--tblr-primary));
+  color: var(--tblr-bg-surface);
   border-radius: 8px;
   padding: 22px 36px;
   font-size: 24px;
@@ -353,11 +344,11 @@ a.chip:hover {
 .primary-button:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 28px
-    color-mix(in srgb, var(--brand-accent-strong) 26.67%, transparent);
+    color-mix(in srgb, var(--tblr-blue) 26.67%, transparent);
 }
 .landing-footer {
   margin-top: auto;
-  border-top: 1px solid var(--brand-surface-panel);
+  border-top: 1px solid var(--tblr-bg-surface-tertiary);
   padding-top: 38px;
   display: flex;
   justify-content: space-between;
@@ -373,10 +364,10 @@ a.chip:hover {
   flex-wrap: wrap;
   gap: 22px;
   font-size: 12px;
-  color: var(--brand-text-subtle);
+  color: var(--tblr-muted-color);
 }
 .landing-footer nav a:hover {
-  color: var(--brand-accent-strong);
+  color: var(--tblr-blue);
   text-decoration: underline;
 }
 @media (max-width: 900px) {

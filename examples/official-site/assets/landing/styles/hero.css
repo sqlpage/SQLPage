@@ -13,28 +13,28 @@
   position: relative;
   overflow: hidden;
   padding: 19px 24px 20px;
-  border: 1px solid color-mix(in srgb, var(--brand-accent) 20.00%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tblr-primary) 20.00%, transparent);
   border-radius: 6px;
   background:
     repeating-linear-gradient(
       0deg,
-      color-mix(in srgb, var(--brand-border-light) 0.39%, transparent) 0,
-      color-mix(in srgb, var(--brand-border-light) 0.39%, transparent) 1px,
+      color-mix(in srgb, var(--tblr-gray-300) 0.39%, transparent) 0,
+      color-mix(in srgb, var(--tblr-gray-300) 0.39%, transparent) 1px,
       transparent 1px,
       transparent 3px
     ),
     linear-gradient(
       135deg,
-      var(--brand-surface-recess),
-      var(--brand-surface-deep) 72%,
-      var(--brand-surface-deep)
+      color-mix(in srgb, var(--tblr-body-bg), var(--tblr-black) 70%),
+      var(--tblr-dark) 72%,
+      var(--tblr-dark)
     );
   box-shadow:
-    inset 0 5px 9px color-mix(in srgb, var(--brand-black) 73.33%, transparent),
-    inset 3px 0 6px color-mix(in srgb, var(--brand-black) 46.67%, transparent),
+    inset 0 5px 9px color-mix(in srgb, var(--tblr-black) 73.33%, transparent),
+    inset 3px 0 6px color-mix(in srgb, var(--tblr-black) 46.67%, transparent),
     inset -1px -1px 1px
-    color-mix(in srgb, var(--brand-steel) 8.24%, transparent),
-    0 1px 0 color-mix(in srgb, var(--brand-text-dim) 10.59%, transparent);
+    color-mix(in srgb, var(--tblr-muted-color) 8.24%, transparent),
+    0 1px 0 color-mix(in srgb, var(--tblr-muted-color) 10.59%, transparent);
 }
 .metal-recess:before {
   content: "";
@@ -42,9 +42,9 @@
   inset: 0;
   border-radius: inherit;
   box-shadow:
-    inset 0 1px 1px var(--brand-black),
+    inset 0 1px 1px var(--tblr-black),
     inset 0 -1px 0
-    color-mix(in srgb, var(--brand-metal-shadow) 7.45%, transparent);
+    color-mix(in srgb, var(--tblr-secondary-color) 7.45%, transparent);
   pointer-events: none;
 }
 .metal-recess:after {
@@ -53,25 +53,25 @@
   inset: 2px;
   border-radius: 2px;
   border-top: 1px solid
-    color-mix(in srgb, var(--brand-black) 46.67%, transparent);
+    color-mix(in srgb, var(--tblr-black) 46.67%, transparent);
   border-left: 1px solid
-    color-mix(in srgb, var(--brand-black) 20.00%, transparent);
+    color-mix(in srgb, var(--tblr-black) 20.00%, transparent);
   pointer-events: none;
 }
 .metal-recess code {
   position: relative;
   display: grid;
   gap: 6px;
-  color: var(--brand-text-dim);
-  font: clamp(13px, 0.82vw, 16px) / 1.65 var(--mono);
+  color: var(--tblr-muted-color);
+  font: clamp(13px, 0.82vw, 16px) / 1.65 var(--tblr-font-monospace);
   letter-spacing: -0.025em;
   text-shadow:
-    0 -1px 1px var(--brand-black),
-    0 1px 0 color-mix(in srgb, var(--brand-border-light) 10.59%, transparent);
+    0 -1px 1px var(--tblr-black),
+    0 1px 0 color-mix(in srgb, var(--tblr-gray-300) 10.59%, transparent);
 }
 .metal-recess code b {
   font-weight: 400;
-  color: var(--brand-text-muted-on-light);
+  color: color-mix(in srgb, var(--tblr-dark), var(--tblr-white) 40%);
 }
 .hero-copy {
   position: absolute;
@@ -116,13 +116,13 @@
 }
 .title-select,
 .title-from {
-  color: var(--brand-metal-highlight);
+  color: var(--tblr-light);
   text-shadow: none;
   background: linear-gradient(
     180deg,
-    var(--brand-paper) 0%,
-    var(--brand-metal-highlight) 42%,
-    var(--brand-metal-shadow) 100%
+    var(--tblr-light) 0%,
+    var(--tblr-light) 42%,
+    var(--tblr-secondary-color) 100%
   );
   background-clip: text;
   -webkit-background-clip: text;
@@ -134,15 +134,15 @@
   padding: 4px 0 9px;
   background: linear-gradient(
     180deg,
-    var(--brand-accent-light) 0%,
-    var(--brand-accent) 48%,
-    var(--brand-text-subtle) 100%
+    var(--tblr-link-hover-color) 0%,
+    var(--tblr-primary) 48%,
+    var(--tblr-muted-color) 100%
   );
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(
-    0 2px 2px color-mix(in srgb, var(--brand-ink) 54.90%, transparent)
+    0 2px 2px color-mix(in srgb, var(--tblr-body-bg) 54.90%, transparent)
   );
 }
 .title-from {
@@ -170,10 +170,10 @@
   letter-spacing: -0.01em;
   margin: 0;
   flex: 1;
-  color: var(--brand-text-muted);
+  color: var(--tblr-secondary-color);
   white-space: nowrap;
   text-shadow: 0 2px 4px
-    color-mix(in srgb, var(--brand-black) 60.00%, transparent);
+    color-mix(in srgb, var(--tblr-black) 60.00%, transparent);
 }
 .run-link {
   display: inline-flex;
@@ -182,17 +182,17 @@
   gap: 16px;
   padding: 16px 24px;
   border: 1px solid
-    color-mix(in srgb, var(--brand-accent-light) 33.33%, transparent);
+    color-mix(in srgb, var(--tblr-link-hover-color) 33.33%, transparent);
   border-radius: 6px;
-  background: var(--brand-accent);
-  color: var(--brand-surface);
+  background: var(--tblr-primary);
+  color: var(--tblr-bg-surface);
   font-size: clamp(18px, 1.4vw, 23px);
   font-weight: 600;
   white-space: nowrap;
   transition: background-color 0.2s;
 }
 .run-link:hover {
-  background: var(--brand-accent-light);
+  background: var(--tblr-link-hover-color);
 }
 .run-link .icon {
   --icon-size: 22px;

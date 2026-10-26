@@ -24,8 +24,7 @@
   cursor: grabbing;
 }
 .model-interaction:focus-visible {
-  outline: 1px dashed
-    color-mix(in srgb, var(--brand-accent-strong) 46.67%, transparent);
+  outline: 1px dashed color-mix(in srgb, var(--tblr-blue) 46.67%, transparent);
 }
 .scene-error {
   position: absolute;
@@ -33,12 +32,12 @@
   top: 53%;
   z-index: 16;
   text-align: center;
-  color: var(--brand-steel);
-  font: 12px var(--mono);
+  color: var(--tblr-muted-color);
+  font: 12px var(--tblr-font-monospace);
   max-width: 290px;
   padding: 20px;
-  background: color-mix(in srgb, var(--brand-ink) 92.94%, transparent);
-  border: 1px solid var(--brand-border);
+  background: color-mix(in srgb, var(--tblr-body-bg) 92.94%, transparent);
+  border: 1px solid var(--tblr-border-color);
   border-radius: 8px;
   line-height: 1.6;
 }
@@ -47,12 +46,15 @@
 }
 .scene-error p:first-child {
   font-size: 16px;
-  color: var(--brand-text);
+  color: var(--tblr-body-color);
 }
 .scene-error button {
-  border: 1px solid var(--brand-accent-deep);
-  color: var(--brand-accent-strong);
-  background: var(--brand-success-surface);
+  border: 1px solid var(--tblr-blue);
+  color: var(--tblr-blue);
+  background: var(
+    --tblr-success-lt,
+    color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-dark))
+  );
   padding: 8px 17px;
   border-radius: 50px;
 }

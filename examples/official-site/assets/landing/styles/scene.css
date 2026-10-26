@@ -2,7 +2,7 @@
 .sqlpage-world {
   position: relative;
   overflow-x: clip;
-  background: var(--ink);
+  background: var(--tblr-body-bg);
 }
 .experience {
   position: relative;
@@ -28,10 +28,10 @@
   background:
     radial-gradient(
       ellipse at 79% 26%,
-      color-mix(in srgb, var(--brand-border) 33.33%, transparent),
+      color-mix(in srgb, var(--tblr-border-color) 33.33%, transparent),
       transparent 57%
     ),
-    var(--brand-ink);
+    var(--tblr-body-bg);
 }
 /* One sculpture follows the authored section anchors. */
 .scene-layer {
@@ -92,13 +92,22 @@
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--brand-surface-recess) 65.10%, transparent),
+      color-mix(
+        in srgb,
+        color-mix(in srgb, var(--tblr-body-bg), var(--tblr-black) 70%) 65.10%,
+        transparent
+      ),
       transparent 66%
     ),
     radial-gradient(
       ellipse at 53% 49%,
       transparent 39%,
-      color-mix(in srgb, var(--brand-surface-recess) 40.00%, transparent) 100%
+      color-mix(
+          in srgb,
+          color-mix(in srgb, var(--tblr-body-bg), var(--tblr-black) 70%) 40.00%,
+          transparent
+        )
+        100%
     );
   opacity: calc(0.9 - var(--progress) * 0.3);
 }
@@ -110,8 +119,8 @@
   opacity: 0.2;
   background: repeating-linear-gradient(
     0deg,
-    color-mix(in srgb, var(--brand-metal-shadow) 1.18%, transparent) 0,
-    color-mix(in srgb, var(--brand-metal-shadow) 1.18%, transparent) 1px,
+    color-mix(in srgb, var(--tblr-secondary-color) 1.18%, transparent) 0,
+    color-mix(in srgb, var(--tblr-secondary-color) 1.18%, transparent) 1px,
     transparent 1px,
     transparent 3px
   );

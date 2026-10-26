@@ -4,9 +4,9 @@
   width: min(90vw, 440px);
   max-height: 85svh;
   overflow: auto;
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--brand-surface-deep) 92.55%, transparent);
-  border: 1px solid var(--brand-text-on-light);
+  color: var(--tblr-body-color);
+  background: color-mix(in srgb, var(--tblr-dark) 92.55%, transparent);
+  border: 1px solid var(--tblr-dark);
   border-radius: 12px;
   padding: 30px;
   backdrop-filter: blur(24px);
@@ -14,7 +14,7 @@
 .navigation-dialog::backdrop {
   background: color-mix(
     in srgb,
-    var(--brand-surface-recess) 87.84%,
+    color-mix(in srgb, var(--tblr-body-bg), var(--tblr-black) 70%) 87.84%,
     transparent
   );
   backdrop-filter: blur(10px);
@@ -25,7 +25,7 @@
   letter-spacing: -1px;
 }
 .navigation-dialog p {
-  color: var(--brand-text-subtle);
+  color: var(--tblr-muted-color);
 }
 .navigation-dialog nav {
   display: flex;
@@ -35,11 +35,10 @@
 .navigation-dialog nav a {
   font-size: 20px;
   padding: 17px 0;
-  border-top: 1px solid
-    color-mix(in srgb, var(--brand-text-on-light) 26.67%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--tblr-dark) 26.67%, transparent);
 }
 .navigation-dialog nav a:hover {
-  color: var(--cyan);
+  color: var(--tblr-primary);
 }
 .dialog-close {
   min-width: 44px;

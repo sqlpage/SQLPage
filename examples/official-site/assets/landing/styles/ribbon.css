@@ -10,13 +10,13 @@
   align-items: center;
   transform: none;
   transform-origin: center;
-  border: 1px solid color-mix(in srgb, var(--brand-accent) 18.82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tblr-primary) 18.82%, transparent);
   border-radius: 8px;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--brand-graphite) 78.04%, transparent),
-    color-mix(in srgb, var(--brand-surface-deep) 92.94%, transparent) 45%,
-    color-mix(in srgb, var(--brand-surface-deep) 96.08%, transparent)
+    color-mix(in srgb, var(--tblr-bg-surface-secondary) 78.04%, transparent),
+    color-mix(in srgb, var(--tblr-dark) 92.94%, transparent) 45%,
+    color-mix(in srgb, var(--tblr-dark) 96.08%, transparent)
   );
   opacity: var(--ribbon-opacity);
   overflow: hidden;
@@ -36,24 +36,24 @@
   align-items: center;
   gap: 15px;
   padding: 16px 0 16px 38px;
-  color: var(--brand-text-subtle);
+  color: var(--tblr-muted-color);
   text-shadow:
-    0 -1px 2px var(--brand-black),
-    0 1px 0 color-mix(in srgb, var(--brand-metal-highlight) 10.20%, transparent);
+    0 -1px 2px var(--tblr-black),
+    0 1px 0 color-mix(in srgb, var(--tblr-light) 10.20%, transparent);
   transition: color 0.3s;
   white-space: nowrap;
 }
 .ribbon-sequence code {
-  font: 600 clamp(15px, 1.37vw, 22px) var(--mono);
+  font: 600 clamp(15px, 1.37vw, 22px) var(--tblr-font-monospace);
   letter-spacing: -0.5px;
 }
 .ribbon-dot {
   margin: 0 0 0 33px;
   font-size: 20px;
-  color: var(--brand-steel);
+  color: var(--tblr-muted-color);
 }
 .ribbon-sequence a:hover {
-  color: var(--brand-accent);
+  color: var(--tblr-primary);
 }
 .viewport-footer {
   position: absolute;
@@ -65,11 +65,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  font: 12px var(--mono);
-  color: var(--brand-text-subtle);
+  font: 12px var(--tblr-font-monospace);
+  color: var(--tblr-muted-color);
 }
 .viewport-footer > a:hover {
-  color: var(--cyan);
+  color: var(--tblr-primary);
 }
 [data-enhanced] .ribbon-track {
   animation: ribbon-travel 44s linear infinite;

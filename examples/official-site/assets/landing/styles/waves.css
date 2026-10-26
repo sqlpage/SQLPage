@@ -13,12 +13,12 @@
   fill: var(--section-color);
 }
 .wave-front {
-  stroke: var(--brand-accent-strong);
+  stroke: var(--tblr-blue);
   stroke-width: 0.7;
 }
 .wave-back {
   opacity: 0.24;
-  fill: var(--brand-accent-strong);
+  fill: var(--tblr-blue);
 }
 @media (max-width: 900px) {
   .landing-section {

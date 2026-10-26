@@ -19,7 +19,7 @@
   align-items: center;
   gap: 12px;
   text-shadow: 0 2px 3px
-    color-mix(in srgb, var(--brand-black) 60.00%, transparent);
+    color-mix(in srgb, var(--tblr-black) 60.00%, transparent);
 }
 .brand-symbol {
   display: block;
@@ -27,7 +27,7 @@
   height: auto;
   flex-shrink: 0;
   filter: drop-shadow(
-    0 0 10px color-mix(in srgb, var(--brand-accent-strong) 10.20%, transparent)
+    0 0 10px color-mix(in srgb, var(--tblr-blue) 10.20%, transparent)
   );
 }
 /* Quiet navigation leaves the sculpture as the page's reflective surface. */
@@ -44,20 +44,20 @@
   padding: 12px 22px;
   border-radius: 6px;
   font-size: clamp(14px, 1.32vw, 21px);
-  color: var(--brand-border-light);
+  color: var(--tblr-gray-300);
   transition:
     color 0.2s,
     background-color 0.2s;
 }
 .desktop-nav .glass-button:hover,
 .desktop-nav .glass-button:focus-visible {
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--brand-accent) 6.27%, transparent);
+  color: var(--tblr-body-color);
+  background: color-mix(in srgb, var(--tblr-primary) 6.27%, transparent);
 }
 .mobile-menu {
   display: none;
   background: none;
   border: 0;
-  color: var(--brand-text);
+  color: var(--tblr-body-color);
   padding: 10px;
 }

@@ -1,91 +1,6 @@
 @charset "utf-8";
 @import url("./brand/brand.css");
 
-:root,
-.layout-boxed[data-bs-theme="dark"] {
-  color-scheme: dark;
-
-  /* Core colors refined for better contrast */
-  --tblr-body-color: hsl(225deg 35% 86%);
-  --tblr-secondary-color: hsl(225, 15%, 80%);
-  --tblr-muted-color: hsla(225, 15%, 75%, 0.8);
-
-  /* Background system */
-  --tblr-body-bg: hsl(225deg 44% 9%);
-  --tblr-bg-surface: hsl(225, 47%, 10%);
-  --tblr-bg-surface-secondary: hsl(225, 47%, 12%);
-  --tblr-bg-surface-tertiary: hsl(225, 47%, 14%);
-
-  /* Border colors */
-  --tblr-border-color: hsl(225deg, 26%, 19%);
-  --tblr-border-color-translucent: hsla(225deg 27% 19% / 0.7);
-
-  /* Text secondary RGB */
-  --tblr-text-secondary-rgb:
-    204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */
-
-  /* Code colors */
-  --tblr-code-color: hsl(
-    225deg 45.4% 76.93%
-  ); /* Light code text for dark theme */
-  --tblr-code-bg: hsla(225, 47%, 15%, 0.5); /* Subtle dark background */
-  --tblr-active-bg: var(--tblr-code-bg);
-
-  /* Ethereal accent colors */
-  --tblr-blue-rgb: 84, 151, 213;
-  --tblr-blue: rgb(var(--tblr-blue-rgb));
-  --tblr-blue-lt-rgb: 21, 31, 53;
-  --tblr-blue-lt: rgb(var(--tblr-blue-lt-rgb));
-  --tblr-primary-rgb: 95, 132, 169;
-  --tblr-primary: rgb(var(--tblr-primary-rgb));
-  --tblr-secondary: hsla(247, 60%, 94%, 0.7); /* Nebula purple */
-
-  /* Status + accent colors aligned with the brand palette */
-  --tblr-success-rgb: 16, 132, 86; /* Deep green for white text */
-  --tblr-success: rgb(var(--tblr-success-rgb));
-  --tblr-warning-rgb: 197, 124, 0; /* Deep amber */
-  --tblr-warning: rgb(var(--tblr-warning-rgb));
-  --tblr-danger-rgb: 196, 68, 68; /* Deep crimson */
-  --tblr-danger: rgb(var(--tblr-danger-rgb));
-  --tblr-purple-rgb: 118, 82, 200; /* Deep violet */
-  --tblr-purple: rgb(var(--tblr-purple-rgb));
-  --tblr-cyan-rgb: 0, 149, 168; /* Deep cyan */
-  --tblr-cyan: rgb(var(--tblr-cyan-rgb));
-  --tblr-indigo-rgb: 96, 113, 215; /* Deep indigo */
-  --tblr-indigo: rgb(var(--tblr-indigo-rgb));
-  --tblr-teal: #267d63;
-  --tblr-teal-fg: #20050b;
-
-  --tblr-green: var(--tblr-success);
-  --tblr-yellow: var(--tblr-warning);
-  --tblr-red: var(--tblr-danger);
-
-  /* Luminous links */
-  --tblr-link-color: hsl(212, 70%, 75%); /* Star glow */
-  --tblr-link-hover-color: hsl(212, 70%, 85%); /* Supernova */
-  --tblr-carousel-caption-color: var(--tblr-muted-color);
-
-  /* Ethereal shadows */
-  --tblr-box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px rgba(66, 153, 225, 0.15);
-  --tblr-box-shadow-dropdown:
-    0px 8px 24px rgba(0, 0, 0, 0.25), 1px 9px 20px rgba(174, 62, 201, 0.15);
-
-  /* Pure white emphasis */
-  --tblr-emphasis-color: #ffffff;
-  --tblr-heading-color: #ffffff;
-
-  /* Syntax highlighting colors */
-  --hljs-cosmic-comment: hsl(290, 10%, 60%); /* Distant star */
-  --hljs-cosmic-punctuation: hsl(60, 40%, 85%); /* Stardust */
-  --hljs-cosmic-property: hsl(340, 60%, 65%); /* Red giant */
-  --hljs-cosmic-number: hsl(0, 50%, 75%); /* Solar flare */
-  --hljs-cosmic-boolean: hsl(270, 100%, 75%); /* Purple nebula */
-  --hljs-cosmic-string: hsl(120, 40%, 75%); /* Green aurora */
-  --hljs-cosmic-operator: hsl(0, 0%, 95%); /* White dwarf */
-  --hljs-cosmic-keyword: hsl(210, 100%, 75%); /* Blue giant */
-}
-
 .btn-primary {
   --tblr-btn-border-color: var(--tblr-secondary);
   --tblr-btn-active-border-color: transparent;
@@ -249,11 +164,8 @@ pre:has(code) {
 }
 
 /* Self-hosted official-site typography; retain the established documentation theme. */
-:root {
-  --tblr-font-sans-serif: var(--brand-font);
-}
 .layout-boxed {
-  font-family: var(--brand-font);
+  font-family: var(--tblr-font-sans-serif);
 }
 .navbar-brand {
   font-weight: 600;

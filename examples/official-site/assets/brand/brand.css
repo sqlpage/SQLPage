@@ -5,52 +5,98 @@
   font-weight: 100 900;
   font-display: swap;
 }
-:root {
-  /* Shared palette: components derive translucent finishes with color-mix. */
-  --brand-ink: #080e11;
-  --brand-graphite: #18262d;
-  --brand-paper: #f4f7f8;
-  --brand-accent: #8bb8e8;
-  --brand-accent-light: #a3c7ed;
-  --brand-accent-strong: #5a99d7;
-  --brand-accent-deep: #365b82;
-  --brand-teal: var(--brand-accent-deep);
-  --brand-steel: #9caeb5;
-  --brand-black: #000000;
-  --brand-white: #ffffff;
-  --brand-surface-recess: #020609;
-  --brand-surface-deep: #080d19;
-  --brand-surface: #0d1224;
-  --brand-surface-raised: #101b2b;
-  --brand-surface-panel: #1b2337;
-  --brand-surface-slate: #27314b;
-  --brand-border: #303950;
-  --brand-border-light: #cbd4da;
-  --brand-text: #dbe0ec;
-  --brand-text-muted: #a9b5c7;
-  --brand-text-subtle: #889bbd;
-  --brand-text-dim: #708598;
-  --brand-text-on-light: #49545f;
-  --brand-text-muted-on-light: #626f7c;
-  --brand-accent-muted: #5b82a9;
-  --brand-metal-highlight: #eceeef;
-  --brand-metal-shadow: #bfc5c8;
-  --brand-code-purple: #b5a4f5;
-  --brand-code-green: #64d5bf;
-  --brand-code-gold: #efc58c;
-  --brand-success: #5cde93;
-  --brand-success-surface: #123737;
-  --brand-success-on-light: #217747;
-  --brand-danger: #ff797e;
-  --brand-danger-strong: #f15b62;
-  --brand-warning: #f5c457;
-  --brand-warning-surface: #4b3526;
-  --brand-warning-on-light: #795100;
-  --brand-warning-paper: #fbf5e9;
-  --brand-link: #326cff;
-  --brand-purple-strong: #6844df;
-  --brand-cyan: var(--brand-accent);
-  --brand-font: Outfit, system-ui, sans-serif;
-  --brand-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --tblr-font-sans-serif: var(--brand-font);
+/* Official-site overrides use Tabler's existing theme properties directly.
+   Both the standalone landing page and documentation import this file. */
+:root,
+.layout-boxed[data-bs-theme="dark"] {
+  color-scheme: dark;
+  --tblr-font-sans-serif: Outfit, system-ui, sans-serif;
+  --tblr-font-monospace:
+    "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --tblr-black: #000;
+  --tblr-white: #fff;
+  --tblr-light: #f4f7f8;
+  --tblr-dark: #080d19;
+  --tblr-gray-300: #dadfe5;
+  --tblr-primary-fg: var(--tblr-white);
+
+  /* Core colors refined for better contrast */
+  --tblr-body-color: hsl(225deg 35% 86%);
+  --tblr-secondary-color: hsl(225, 15%, 80%);
+  --tblr-muted-color: hsla(225, 15%, 75%, 0.8);
+
+  /* Background system */
+  --tblr-body-bg: hsl(225deg 44% 9%);
+  --tblr-bg-surface: hsl(225, 47%, 10%);
+  --tblr-bg-surface-secondary: hsl(225, 47%, 12%);
+  --tblr-bg-surface-tertiary: hsl(225, 47%, 14%);
+
+  /* Border colors */
+  --tblr-border-color: hsl(225deg, 26%, 19%);
+  --tblr-border-color-translucent: hsla(225deg 27% 19% / 0.7);
+
+  /* Text secondary RGB */
+  --tblr-text-secondary-rgb:
+    204, 209, 217; /* RGB equivalent of hsl(225, 15%, 80%) */
+
+  /* Code colors */
+  --tblr-code-color: hsl(
+    225deg 45.4% 76.93%
+  ); /* Light code text for dark theme */
+  --tblr-code-bg: hsla(225, 47%, 15%, 0.5); /* Subtle dark background */
+  --tblr-active-bg: var(--tblr-code-bg);
+
+  /* Ethereal accent colors */
+  --tblr-blue-rgb: 84, 151, 213;
+  --tblr-blue: rgb(var(--tblr-blue-rgb));
+  --tblr-blue-lt-rgb: 21, 31, 53;
+  --tblr-blue-lt: rgb(var(--tblr-blue-lt-rgb));
+  --tblr-primary-rgb: 139, 184, 232;
+  --tblr-primary: rgb(var(--tblr-primary-rgb));
+  --tblr-secondary: hsla(247, 60%, 94%, 0.7); /* Nebula purple */
+
+  /* Status + accent colors aligned with the brand palette */
+  --tblr-success-rgb: 16, 132, 86; /* Deep green for white text */
+  --tblr-success: rgb(var(--tblr-success-rgb));
+  --tblr-warning-rgb: 197, 124, 0; /* Deep amber */
+  --tblr-warning: rgb(var(--tblr-warning-rgb));
+  --tblr-danger-rgb: 196, 68, 68; /* Deep crimson */
+  --tblr-danger: rgb(var(--tblr-danger-rgb));
+  --tblr-purple-rgb: 118, 82, 200; /* Deep violet */
+  --tblr-purple: rgb(var(--tblr-purple-rgb));
+  --tblr-cyan-rgb: 0, 149, 168; /* Deep cyan */
+  --tblr-cyan: rgb(var(--tblr-cyan-rgb));
+  --tblr-indigo-rgb: 96, 113, 215; /* Deep indigo */
+  --tblr-indigo: rgb(var(--tblr-indigo-rgb));
+  --tblr-teal: #267d63;
+  --tblr-teal-fg: #20050b;
+
+  --tblr-green: var(--tblr-success);
+  --tblr-yellow: var(--tblr-warning);
+  --tblr-red: var(--tblr-danger);
+
+  /* Luminous links */
+  --tblr-link-color: hsl(212, 70%, 75%); /* Star glow */
+  --tblr-link-hover-color: hsl(212, 70%, 85%); /* Supernova */
+  --tblr-carousel-caption-color: var(--tblr-muted-color);
+
+  /* Ethereal shadows */
+  --tblr-box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px rgba(66, 153, 225, 0.15);
+  --tblr-box-shadow-dropdown:
+    0px 8px 24px rgba(0, 0, 0, 0.25), 1px 9px 20px rgba(174, 62, 201, 0.15);
+
+  /* Pure white emphasis */
+  --tblr-emphasis-color: #ffffff;
+  --tblr-heading-color: #ffffff;
+
+  /* Syntax highlighting colors */
+  --hljs-cosmic-comment: hsl(290, 10%, 60%); /* Distant star */
+  --hljs-cosmic-punctuation: hsl(60, 40%, 85%); /* Stardust */
+  --hljs-cosmic-property: hsl(340, 60%, 65%); /* Red giant */
+  --hljs-cosmic-number: hsl(0, 50%, 75%); /* Solar flare */
+  --hljs-cosmic-boolean: hsl(270, 100%, 75%); /* Purple nebula */
+  --hljs-cosmic-string: hsl(120, 40%, 75%); /* Green aurora */
+  --hljs-cosmic-operator: hsl(0, 0%, 95%); /* White dwarf */
+  --hljs-cosmic-keyword: hsl(210, 100%, 75%); /* Blue giant */
 }
