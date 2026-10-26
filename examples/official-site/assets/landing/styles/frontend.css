@@ -199,21 +199,21 @@
   border-radius: 7px;
 }
 .render-timeline > span {
-  --stage-color: var(--tblr-bg-surface-tertiary);
+  --stage-color: var(--tblr-primary);
   position: relative;
-  background: var(--stage-color);
+  background: color-mix(in srgb, var(--stage-color) 45%, var(--tblr-dark));
   padding: 10px 0;
   text-align: center;
   color: var(--tblr-secondary-color);
 }
 .render-timeline > span:nth-child(2) {
-  --stage-color: var(--tblr-dark);
+  --stage-color: var(--tblr-blue);
 }
 .render-timeline > span:nth-child(3) {
-  --stage-color: var(--tblr-dark);
+  --stage-color: var(--tblr-indigo);
 }
 .render-timeline > span:nth-child(4) {
-  --stage-color: var(--tblr-dark);
+  --stage-color: var(--tblr-primary);
 }
 .render-timeline > span > span,
 .stream-timeline > span {
@@ -228,7 +228,7 @@
   pointer-events: none;
 }
 .timeline-fill {
-  background: var(--stage-color);
+  background: color-mix(in srgb, var(--stage-color) 45%, var(--tblr-dark));
 }
 .stream-timeline {
   position: relative;
@@ -258,7 +258,11 @@
   opacity: 0;
 }
 .instant-diagram[data-stream-motion] .render-timeline > span {
-  background: color-mix(in srgb, var(--stage-color) 30%, transparent);
+  background: var(--tblr-bg-surface-tertiary);
+}
+/* Keep the rail distinct from its fill; labels remain readable at every stage. */
+.instant-diagram[data-stream-motion] .stream-timeline {
+  background: color-mix(in srgb, var(--tblr-primary) 35%, var(--tblr-light));
 }
 .timeline-toggle {
   position: absolute;

@@ -229,7 +229,7 @@
   .ribbon-sequence .icon {
     --icon-size: 17px;
   }
-  .ribbon-dot {
+  .ribbon-separator {
     margin-left: 23px;
   }
   .viewport-footer {

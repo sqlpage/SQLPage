@@ -3,7 +3,7 @@
   position: absolute;
   right: calc(var(--composition-left) + var(--composition-width) * 0.045);
   top: 16%;
-  z-index: 15;
+  z-index: 21;
   width: clamp(248px, 18vw, 330px);
   opacity: var(--intro-opacity);
   transform: translateX(calc(var(--progress) * 30px));
@@ -74,6 +74,7 @@
   color: color-mix(in srgb, var(--tblr-dark), var(--tblr-white) 40%);
 }
 .hero-copy {
+  z-index: 21;
   position: absolute;
   top: 13%;
   left: calc(var(--composition-left) + var(--composition-width) * 0.042);
@@ -155,7 +156,7 @@
   top: 72%;
   width: fit-content;
   max-width: calc(var(--composition-width) * 0.5);
-  z-index: 10;
+  z-index: 21;
   display: flex;
   align-items: center;
   gap: clamp(28px, 3vw, 60px);

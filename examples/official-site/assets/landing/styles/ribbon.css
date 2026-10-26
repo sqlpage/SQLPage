@@ -4,7 +4,7 @@
   bottom: 4.5%;
   left: 4%;
   width: 92%;
-  z-index: 12;
+  z-index: 21;
   height: clamp(54px, 5.6svh, 76px);
   display: flex;
   align-items: center;
@@ -47,10 +47,12 @@
   font: 600 clamp(15px, 1.37vw, 22px) var(--tblr-font-monospace);
   letter-spacing: -0.5px;
 }
-.ribbon-dot {
+.ribbon-separator {
   margin: 0 0 0 33px;
-  font-size: 20px;
-  color: var(--tblr-muted-color);
+  width: 1px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--tblr-border-color);
 }
 .ribbon-sequence a:hover {
   color: var(--tblr-primary);
