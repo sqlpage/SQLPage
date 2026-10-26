@@ -8,10 +8,6 @@
   .viewport-footer {
     bottom: 30px;
   }
-  .run-orbit {
-    height: 82px;
-    width: 82px;
-  }
 }
 @media (max-width: 1150px) {
   .site-header {
@@ -49,16 +45,6 @@
   .run-link {
     font-size: 22px;
     gap: 12px;
-  }
-  .run-orbit {
-    width: 57px;
-    height: 57px;
-  }
-  .run-orbit > span {
-    border-width: 4px;
-  }
-  .run-orbit > span .icon {
-    --icon-size: 18px;
   }
   .ribbon-sequence code {
     font-size: 17px;
@@ -106,14 +92,6 @@
     font-size: 20px;
     gap: 11px;
   }
-  .run-orbit {
-    width: 50px;
-    height: 50px;
-  }
-  .run-orbit > span {
-    inset: 5px;
-    border-width: 3px;
-  }
   .scene-error {
     right: 6%;
     font-size: 12px;
@@ -124,10 +102,7 @@
     animation: none;
   }
   a,
-  button,
-  .run-orbit,
-  .run-orbit > span,
-  .run-orbit > i {
+  button {
     transition: none;
   }
 }
@@ -176,8 +151,8 @@
     border-radius: 5px;
     box-shadow:
       inset 0 2px 8px #000b,
-      0 0 0 1px #38c9e52b,
-      0 0 10px #38c9e511;
+      0 0 0 1px #60a3e52b,
+      0 0 10px #60a3e511;
   }
   .metal-recess code {
     grid-template-columns: 1fr;
@@ -234,24 +209,13 @@
     font-size: 20px;
     gap: 13px;
   }
-  .run-orbit {
-    width: clamp(46px, 13vw, 70px);
-    height: clamp(46px, 13vw, 70px);
-  }
-  .run-orbit > span {
-    inset: 5px;
-    border-width: 3px;
-  }
-  .run-orbit > span .icon {
-    --icon-size: 18px;
-  }
   .viewport .sql-ribbon {
     top: var(--portrait-ribbon-top, 78%);
     bottom: auto;
     height: 49px;
-    transform: rotate(-4deg);
-    width: 112%;
-    left: -6%;
+    transform: none;
+    width: 92%;
+    left: 4%;
   }
   .ribbon-sequence a {
     gap: 11px;
@@ -310,12 +274,12 @@
     height: 44px;
     padding: 0;
     flex-shrink: 0;
-    border: 1px solid #8acbdd35;
+    border: 1px solid #8ab4dd35;
     border-radius: 50%;
     background: linear-gradient(150deg, #b2e6fa14, #06121d55);
     box-shadow:
       inset 0 1px 1px #d9f5ff21,
-      inset 0 -1px 1px #57bdcc4d,
+      inset 0 -1px 1px #5792cc4d,
       0 4px 12px #0005;
     backdrop-filter: blur(15px);
   }
@@ -355,10 +319,6 @@
   }
   .intro-row p {
     font-size: 17px;
-  }
-  .run-orbit {
-    width: 44px;
-    height: 44px;
   }
   .viewport .sql-ribbon {
     height: 48px;

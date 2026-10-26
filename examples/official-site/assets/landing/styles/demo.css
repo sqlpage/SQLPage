@@ -5,7 +5,7 @@
   --tblr-body-bg: #0d1224;
   --tblr-bg-surface: #0d1224;
   --tblr-border-color: #273149;
-  --tblr-primary: #28c8d6;
+  --tblr-primary: #5a98d6;
   --tblr-body-color: #dbe0ec;
 }
 html,
@@ -155,9 +155,9 @@ form.mt-3 {
   font-size: 13px;
   padding: 9px 18px;
   border-radius: 8px;
-  box-shadow: 0 3px 14px #20c8d518;
-  background: #27c4d2;
-  border-color: #27c4d2;
+  box-shadow: 0 3px 14px #5997d518;
+  background: #5895d2;
+  border-color: #5895d2;
   color: #06121b;
 }
 .apexcharts-tooltip {
@@ -211,7 +211,7 @@ form.mt-3 {
   white-space: normal;
 }
 #landing-kpis .text-cyan {
-  color: #43ccd7 !important;
+  color: #5a99d7 !important;
 }
 @media (max-width: 480px) {
   #sqlpage_main_wrapper {
@@ -258,7 +258,7 @@ form.mt-3 {
 #landing-profile .input-group-text {
   background: #111c2e;
   border-color: #273149;
-  color: #73a4b7;
+  color: #7395b7;
 }
 #landing-profile .input-group-text svg {
   width: 17px;
@@ -272,8 +272,8 @@ form.mt-3 {
     box-shadow 180ms;
 }
 #landing-profile .form-control:focus {
-  border-color: #28c8d6;
-  box-shadow: 0 0 0 3px #28c8d61a;
+  border-color: #5a98d6;
+  box-shadow: 0 0 0 3px #5a98d61a;
 }
 #landing-profile .form-hint {
   font-size: 11px;
@@ -319,15 +319,15 @@ form.mt-3 {
 }
 .component-catalog a:hover,
 .component-catalog a:focus-visible {
-  color: #5ddddf;
+  color: #5e9edf;
   background: #122636;
-  border-color: #28c8d6;
+  border-color: #5a98d6;
 }
 .component-catalog svg {
   width: 19px;
   height: 19px;
   flex: none;
-  color: #67b9c7;
+  color: #6797c7;
 }
 .component-catalog svg:last-child {
   margin-left: auto;

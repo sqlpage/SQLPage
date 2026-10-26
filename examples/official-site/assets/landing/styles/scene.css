@@ -26,7 +26,7 @@
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(ellipse at 79% 26%, #183d4755, transparent 57%), #080e11;
+    radial-gradient(ellipse at 79% 26%, #233b5555, transparent 57%), #080e11;
 }
 /* One sculpture follows the authored section anchors. */
 .scene-layer {

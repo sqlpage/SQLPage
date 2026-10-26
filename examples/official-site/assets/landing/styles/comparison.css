@@ -16,10 +16,10 @@
   padding-bottom: calc(var(--wave-height) + 64px);
 }
 .comparison-section .eyebrow {
-  color: #146575;
+  color: #315375;
 }
 .comparison-section h2 em {
-  color: #0e8292;
+  color: #3d6892;
 }
 .comparison-section .section-heading {
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.95fr) minmax(0, 0.27fr);
@@ -208,7 +208,7 @@
   font: 12px / 1.4 var(--mono);
 }
 .comparison-deploy svg {
-  color: #29d6df;
+  color: #5e9edf;
   width: 18px;
   height: 18px;
 }
@@ -508,7 +508,7 @@
 }
 .comparison-controls button:not(:disabled):hover {
   background: #e1ecef;
-  border-color: #146575;
+  border-color: #315375;
 }
 .comparison-controls svg {
   width: 20px;

@@ -1,10 +1,10 @@
 /* Four frontend views pair concise copy with diagrams and deployment links. */
 .deployment-section {
-  --section-color: #2bc5cf;
+  --section-color: #5793cf;
   /* Match the solid wave at the edge, then retain the section's diagonal gradient. */
   background:
     linear-gradient(180deg, var(--section-color), transparent 180px),
-    linear-gradient(125deg, #29d6df, #2ba4b4);
+    linear-gradient(125deg, #5e9edf, #4c80b4);
   color: #071322;
   padding-top: 65px;
   padding-bottom: 150px;
@@ -136,7 +136,7 @@
   margin-top: 7px;
 }
 .feature-result {
-  background: linear-gradient(120deg, #29d6df, #2ba4b4);
+  background: linear-gradient(120deg, #5e9edf, #4c80b4);
   color: #071322;
   font: 700 20px / 1.2 var(--brand-font);
 }
@@ -239,10 +239,10 @@
   color: #081b2b;
   font-size: 13px;
   white-space: nowrap;
-  background: linear-gradient(90deg, #408fa2, #6c9ec3);
+  background: linear-gradient(90deg, #4473a2, #6c9ec3);
 }
 .stream-fill {
-  background: linear-gradient(90deg, #39abc0, #79b6e8);
+  background: linear-gradient(90deg, #5188c0, #79b6e8);
 }
 .stream-sheen {
   width: 35%;

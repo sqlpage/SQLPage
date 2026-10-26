@@ -13,8 +13,8 @@
   position: relative;
   overflow: hidden;
   padding: 19px 24px 20px;
-  border: 0;
-  border-radius: 3px;
+  border: 1px solid #8bb8e833;
+  border-radius: 6px;
   background:
     repeating-linear-gradient(
       0deg,
@@ -118,7 +118,7 @@
   font-size: 0.985em;
   letter-spacing: 0;
   padding: 4px 0 9px;
-  background: linear-gradient(180deg, #83deea 0%, #58c8da 48%, #39adc4 100%);
+  background: linear-gradient(180deg, #a3c7ed 0%, #8bb8e8 48%, #78a4d3 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -145,91 +145,32 @@
 .intro-row p {
   font-size: clamp(17px, 1.5vw, 27px);
   line-height: 1.35;
-  font-weight: 550;
+  font-weight: 450;
   letter-spacing: -0.01em;
   margin: 0;
   flex: 1;
-  color: #d5d7d9;
+  color: #a9b9c9;
   white-space: nowrap;
   text-shadow: 0 2px 4px #0009;
 }
 .run-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 17px;
-  color: #5fcfe2;
-  font-size: clamp(20px, 1.8vw, 29px);
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border: 1px solid #a3c7ed55;
+  border-radius: 6px;
+  background: var(--brand-accent);
+  color: #0b1724;
+  font-size: clamp(18px, 1.4vw, 23px);
+  font-weight: 600;
   white-space: nowrap;
-  transition: color 0.25s;
-  letter-spacing: -0.01em;
-}
-.run-orbit {
-  width: 70px;
-  height: 70px;
-  position: relative;
-  display: grid;
-  place-items: center;
-  border: 1px solid #4fb6ca70;
-  border-radius: 50%;
-  transition: box-shadow 0.3s;
-}
-.run-orbit > span {
-  position: absolute;
-  inset: 6px;
-  border: 5px solid #56bfd0;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  box-shadow:
-    inset 0 0 12px #42daf31a,
-    0 0 13px #42daf31a;
-  transition:
-    background 0.3s,
-    color 0.3s;
-}
-.run-orbit > span .icon {
-  margin-left: 3px;
-  --icon-size: 21px;
-}
-.run-orbit > i {
-  position: absolute;
-  inset: -6px;
-  border-top: 2px solid #57c5db;
-  border-right: 2px solid transparent;
-  border-bottom: 2px solid #57c5db;
-  border-left: 2px solid transparent;
-  border-radius: 50%;
-  transform: rotate(25deg);
-  transition: transform 0.55s;
-}
-.run-orbit > i:before,
-.run-orbit > i:after {
-  content: "";
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  top: 10px;
-  right: 9px;
-  background: #6bd7e9;
-  box-shadow: 0 0 8px #43c9ed;
-  border-radius: 50%;
-}
-.run-orbit > i:after {
-  top: auto;
-  right: auto;
-  bottom: 10px;
-  left: 9px;
+  transition: background-color 0.2s;
 }
 .run-link:hover {
-  color: #b7f2ff;
+  background: #a3c7ed;
 }
-.run-link:hover .run-orbit {
-  box-shadow: 0 0 32px #59d7ed22;
-}
-.run-link:hover .run-orbit > i {
-  transform: rotate(100deg);
-}
-.run-link:hover .run-orbit > span {
-  background: #51c1d0;
-  color: #07171c;
+.run-link .icon {
+  --icon-size: 22px;
 }

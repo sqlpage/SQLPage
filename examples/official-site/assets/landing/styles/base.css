@@ -1,7 +1,7 @@
 /* Shared tokens and native element defaults. */
 :root {
   --foreground: #f4f7f8;
-  --cyan: #58cce0;
+  --cyan: var(--brand-accent);
   --ink: #080e11;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
@@ -58,7 +58,7 @@ button:focus-visible,
   outline-offset: 6px;
 }
 ::selection {
-  background: #5bcce1;
+  background: var(--brand-accent);
   color: #081015;
 }
 .skip-link {

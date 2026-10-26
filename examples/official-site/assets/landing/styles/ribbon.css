@@ -2,22 +2,17 @@
 .sql-ribbon {
   position: absolute;
   bottom: 4.5%;
-  left: -4%;
-  width: 110%;
+  left: 4%;
+  width: 92%;
   z-index: 12;
   height: clamp(54px, 5.6svh, 76px);
   display: flex;
   align-items: center;
-  transform: rotate(-4deg);
+  transform: none;
   transform-origin: center;
-  border-top: 1px solid #4195a5;
-  border-bottom: 1px solid #23515e;
+  border: 1px solid #8bb8e830;
+  border-radius: 8px;
   background: linear-gradient(180deg, #15252cc7, #091118ed 45%, #0a1117f5);
-  box-shadow:
-    0 -6px 23px #41bbd513,
-    inset 0 1px 0 #66cfe12b,
-    inset 0 7px 13px #0006,
-    0 8px 24px #0005;
   opacity: var(--ribbon-opacity);
   overflow: hidden;
 }
@@ -53,7 +48,7 @@
   color: #89bac7;
 }
 .ribbon-sequence a:hover {
-  color: #87d6e8;
+  color: #87b8e8;
 }
 .viewport-footer {
   position: absolute;

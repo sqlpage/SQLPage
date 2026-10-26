@@ -9,8 +9,9 @@
   --brand-ink: #080e11;
   --brand-graphite: #18262d;
   --brand-paper: #f4f7f8;
-  --brand-cyan: #58cce0;
-  --brand-teal: #146575;
+  --brand-accent: #8bb8e8;
+  --brand-cyan: var(--brand-accent);
+  --brand-teal: #365b82;
   --brand-steel: #9caeb5;
   --brand-font: Outfit, system-ui, sans-serif;
   --brand-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;

@@ -24,7 +24,7 @@
   cursor: grabbing;
 }
 .model-interaction:focus-visible {
-  outline: 1px dashed #5ed7df77;
+  outline: 1px dashed #5e9edf77;
 }
 .scene-error {
   position: absolute;
@@ -49,8 +49,8 @@
   color: #deecee;
 }
 .scene-error button {
-  border: 1px solid #458897;
-  color: #70c8da;
+  border: 1px solid #456e97;
+  color: #70a5da;
   background: #15313c;
   padding: 8px 17px;
   border-radius: 50px;

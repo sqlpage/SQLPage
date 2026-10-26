@@ -30,7 +30,7 @@
   font: inherit;
 }
 .sql-editor-header button:hover {
-  color: #64d5df;
+  color: #64a2df;
 }
 .source-tabs {
   display: flex;
@@ -130,7 +130,7 @@
 }
 .component-picker button:hover {
   transform: translateX(3px);
-  background: #29c8d710;
+  background: #5a99d710;
 }
 .component-picker button[aria-selected="true"] {
   background: #07111d;
@@ -140,7 +140,7 @@
   box-shadow: 0 12px 28px #07111d30;
 }
 .component-picker button[aria-selected="true"] svg {
-  color: #29c8d7;
+  color: #5a99d7;
 }
 #demo-panel {
   position: relative;
@@ -185,7 +185,7 @@
   background: #080e1b;
   color: #b3c5d4;
   font: 13px / 1.8 var(--mono);
-  border: 1px solid #28c8d6;
+  border: 1px solid #5a98d6;
   border-radius: 12px;
   padding: 22px;
   white-space: pre-wrap;
@@ -200,7 +200,7 @@
   align-items: center;
   gap: 6px;
   font: 12px var(--mono);
-  color: #217c8a;
+  color: #3a628a;
 }
 .demo-docs:hover {
   text-decoration: underline;
@@ -287,7 +287,7 @@
 }
 #demo-source .hljs-built_in,
 #demo-source .hljs-type {
-  color: #6cd6e8;
+  color: #6caae8;
 }
 #demo-panel[data-demo="catalog"] .sql-editor,
 #demo-panel[data-demo="catalog"] .demo-annotation,
