@@ -1,10 +1,5 @@
 /* Shared tokens and native element defaults. */
-:root {
-  --foreground: #f4f7f8;
-  --cyan: #58cce0;
-  --ink: #080e11;
-  --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-}
+
 [hidden] {
   display: none !important;
 }
@@ -25,13 +20,13 @@
 html {
   color-scheme: dark;
   scrollbar-width: thin;
-  scrollbar-color: #345a62 #080e11;
+  scrollbar-color: var(--tblr-dark) var(--tblr-body-bg);
 }
 body {
   margin: 0;
-  background: var(--ink);
-  color: var(--foreground);
-  font-family: var(--brand-font);
+  background: var(--tblr-body-bg);
+  color: var(--tblr-body-color);
+  font-family: var(--tblr-font-sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 button,
@@ -54,12 +49,12 @@ a {
 a:focus-visible,
 button:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--cyan);
+  outline: 2px solid var(--tblr-primary);
   outline-offset: 6px;
 }
 ::selection {
-  background: #5bcce1;
-  color: #081015;
+  background: var(--tblr-primary);
+  color: var(--tblr-body-bg);
 }
 .skip-link {
   position: fixed;
@@ -67,9 +62,9 @@ button:focus-visible,
   left: 20px;
   transform: translateY(-180%);
   z-index: 100;
-  background: var(--cyan);
+  background: var(--tblr-primary);
   padding: 12px 16px;
-  color: var(--ink);
+  color: var(--tblr-body-bg);
 }
 .skip-link:focus {
   transform: none;

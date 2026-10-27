@@ -2,22 +2,22 @@
 .sql-ribbon {
   position: absolute;
   bottom: 4.5%;
-  left: -4%;
-  width: 110%;
-  z-index: 12;
+  left: 4%;
+  width: 92%;
+  z-index: 21;
   height: clamp(54px, 5.6svh, 76px);
   display: flex;
   align-items: center;
-  transform: rotate(-4deg);
+  transform: none;
   transform-origin: center;
-  border-top: 1px solid #4195a5;
-  border-bottom: 1px solid #23515e;
-  background: linear-gradient(180deg, #15252cc7, #091118ed 45%, #0a1117f5);
-  box-shadow:
-    0 -6px 23px #41bbd513,
-    inset 0 1px 0 #66cfe12b,
-    inset 0 7px 13px #0006,
-    0 8px 24px #0005;
+  border: 1px solid color-mix(in srgb, var(--tblr-primary) 18.82%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tblr-bg-surface-secondary) 78.04%, transparent),
+    color-mix(in srgb, var(--tblr-body-bg) 92.94%, transparent) 45%,
+    color-mix(in srgb, var(--tblr-body-bg) 96.08%, transparent)
+  );
   opacity: var(--ribbon-opacity);
   overflow: hidden;
 }
@@ -36,24 +36,26 @@
   align-items: center;
   gap: 15px;
   padding: 16px 0 16px 38px;
-  color: #8b9eaa;
+  color: var(--tblr-muted-color);
   text-shadow:
-    0 -1px 2px #000,
-    0 1px 0 #dfedf51a;
+    0 -1px 2px var(--tblr-black),
+    0 1px 0 color-mix(in srgb, var(--tblr-light) 10.20%, transparent);
   transition: color 0.3s;
   white-space: nowrap;
 }
 .ribbon-sequence code {
-  font: 600 clamp(15px, 1.37vw, 22px) var(--mono);
+  font: 600 clamp(15px, 1.37vw, 22px) var(--tblr-font-monospace);
   letter-spacing: -0.5px;
 }
-.ribbon-dot {
+.ribbon-separator {
   margin: 0 0 0 33px;
-  font-size: 20px;
-  color: #89bac7;
+  width: 1px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--tblr-border-color);
 }
 .ribbon-sequence a:hover {
-  color: #87d6e8;
+  color: var(--tblr-primary);
 }
 .viewport-footer {
   position: absolute;
@@ -65,11 +67,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  font: 12px var(--mono);
-  color: #809da7;
+  font: 12px var(--tblr-font-monospace);
+  color: var(--tblr-muted-color);
 }
 .viewport-footer > a:hover {
-  color: var(--cyan);
+  color: var(--tblr-primary);
 }
 [data-enhanced] .ribbon-track {
   animation: ribbon-travel 44s linear infinite;

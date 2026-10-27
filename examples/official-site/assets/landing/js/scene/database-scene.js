@@ -1,14 +1,14 @@
 /**
  * Owns one square renderer and its resource lifetime. Scroll supplies placement;
- * controls supply local rotation. Materials, decoration and glow stay independent.
+ * controls supply local rotation. Materials, studio surfaces and glow stay independent.
  */
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
+import { RectAreaLightUniformsLib } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/lights/RectAreaLightUniformsLib.js/+esm";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/loaders/GLTFLoader.js/+esm";
 import { createFiniteJewelLight } from "./finite-jewel-light.js";
 import { JEWEL_EDGES } from "./jewel-edges.js";
 import { MODEL_URL } from "./sculpture-assets.js";
 import { createSculptureControls } from "./sculpture-controls.js";
-import { createSculptureDecoration } from "./sculpture-decoration.js";
 import {
   CAMERA_DISTANCE,
   cameraForSculpture,
@@ -19,6 +19,7 @@ import {
   finishMetal,
   loadMetalEnvironment,
 } from "./sculpture-materials.js";
+import { createSculptureStudio } from "./sculpture-studio.js";
 import { createSelectiveGlow } from "./selective-glow.js";
 import { loadSculptureShaders } from "./shader-sources.js";
 
@@ -88,6 +89,9 @@ export function createDatabaseScene({
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.95;
   renderer.setClearColor(0x000000, 0);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   let canvas = renderer.domElement;
   const canvasStyle =
     "position:absolute;left:0;top:0;width:1000px;height:1000px;transform-origin:0 0";
@@ -127,6 +131,8 @@ export function createDatabaseScene({
     renderer.domElement.removeEventListener("webglcontextlost", onLost);
     resetBudget();
     glow?.dispose();
+    studioSet?.dispose();
+    key.shadow.dispose();
     environment?.dispose();
     renderer.dispose();
     // This scene owns the context; losing it releases all its GPU allocations.
@@ -136,7 +142,7 @@ export function createDatabaseScene({
     releaseGraphics();
     baked = new Image();
     const replacement = document.createElement("canvas");
-    replacement.width = 320;
+    replacement.width = 400;
     replacement.height = 400;
     context = replacement.getContext("2d");
     if (!context) {
@@ -146,13 +152,6 @@ export function createDatabaseScene({
     canvas.replaceWith(replacement);
     canvas = replacement;
     canvas.style.cssText = canvasStyle;
-    // Keep the square layout while rasterizing only the cropped sculpture.
-    Object.assign(canvas.style, {
-      boxSizing: "content-box",
-      width: "700px",
-      height: "850px",
-      padding: "75px 150px",
-    });
     root.dataset.renderer = "baked";
     root.dataset.scene = "loading";
     loaded = readySent = false;
@@ -189,6 +188,17 @@ export function createDatabaseScene({
   let glow, jewelReflection;
   const key = new THREE.DirectionalLight(0xe5edf1, 1.7);
   key.position.set(-3.5, 5, 5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(512, 512);
+  Object.assign(key.shadow.camera, {
+    left: -4,
+    right: 4,
+    top: 4,
+    bottom: -4,
+    near: 0.5,
+    far: 18,
+  });
+  key.shadow.normalBias = 0.025;
   scene.add(key);
   const rim = new THREE.DirectionalLight(0xa1bac7, 0.8);
   rim.position.set(4, 2, -2);
@@ -196,6 +206,17 @@ export function createDatabaseScene({
   const fill = new THREE.DirectionalLight(0x5c7987, 0.22);
   fill.position.set(-5, -0.5, -2);
   scene.add(fill);
+
+  RectAreaLightUniformsLib.init();
+  const softbox = new THREE.RectAreaLight(0xe5edf1, 7, 2.5, 6);
+  softbox.position.set(-3.5, 1.5, 4);
+  softbox.lookAt(0, 0, 0);
+  scene.add(softbox);
+  const edgeSoftbox = new THREE.RectAreaLight(0xa1bac7, 4, 1.2, 5);
+  edgeSoftbox.position.set(3.5, 1.5, 2);
+  edgeSoftbox.lookAt(0, 0, 0);
+  scene.add(edgeSoftbox);
+  scene.add(new THREE.HemisphereLight(0xa1bac7, 0x18262d, 0.55));
 
   const parallaxPivot = new THREE.Group();
   scene.add(parallaxPivot);
@@ -207,7 +228,7 @@ export function createDatabaseScene({
   let model;
   let wireMaterial;
   const modelCenter = new THREE.Vector3();
-  let decoration;
+  let studioSet;
   assets
     .then(async ([gltf, shaders, studio]) => {
       if (disposed) return;
@@ -221,8 +242,8 @@ export function createDatabaseScene({
       );
       glow.setSize(1000, 1000, 1);
       jewelReflection = createFiniteJewelLight(JEWEL_EDGES, shaders);
-      decoration = createSculptureDecoration(shaders);
-      parallaxPivot.add(decoration.group);
+      studioSet = createSculptureStudio();
+      scene.add(studioSet.group);
       performance.mark("sqlpage:assets-ready");
       const bounds = new THREE.Box3().setFromObject(gltf.scene);
       bounds.getCenter(modelCenter);
@@ -241,8 +262,10 @@ export function createDatabaseScene({
           if (
             material.name.includes("Black") ||
             material.name.includes("Gunmetal")
-          )
+          ) {
             finishMetal(material, studio, shaders);
+            child.castShadow = true;
+          }
           if (material.name.includes("Mirror Top"))
             jewelReflection.apply(material);
           if (material.name.includes("Separator"))
@@ -410,7 +433,7 @@ export function createDatabaseScene({
     ) {
       if (baked) {
         syncHitArea();
-        // 64 full-material/glow views, cropped from the original 1000px square.
+        // 64 square views preserve the complete studio floor and its soft edges.
         const turn =
           (((state.turn ?? 0) +
             yaw.setFromQuaternion(dragQuaternion, "YXZ").y) /
@@ -419,20 +442,20 @@ export function createDatabaseScene({
         if (turn !== lastTurn) {
           const whole = Math.floor(turn),
             blend = turn - whole;
-          context.clearRect(0, 0, 320, 400);
+          context.clearRect(0, 0, 400, 400);
           for (let i = 0; i < 2; i++) {
             const index = (((whole + i) % 64) + 64) % 64;
             context.globalAlpha = i ? blend : 1 - blend;
             context.globalCompositeOperation = i ? "lighter" : "source-over";
             context.drawImage(
               baked,
-              (index % 8) * 320,
+              (index % 8) * 400,
               Math.floor(index / 8) * 400,
-              320,
+              400,
               400,
               0,
               0,
-              320,
+              400,
               400,
             );
           }
@@ -440,7 +463,6 @@ export function createDatabaseScene({
         }
       } else {
         // Prepare GPU-only animation only when a new live frame can be drawn.
-        decoration?.update(time, state.motion);
         liquidClock.value = time;
         if (diamond) {
           diamond.position.y = Math.sin(time * 0.62) * 0.012;
@@ -455,14 +477,17 @@ export function createDatabaseScene({
         interior.uInteriorPulse.value = pulse;
         interiorLight.intensity = (0.6 * pulse) / 14;
         scene.updateMatrixWorld(true);
+        studioSet.update(model);
+        scene.updateMatrixWorld(true);
         interiorLight.getWorldPosition(interior.uInteriorPosition.value);
         interiorLight.getWorldScale(interiorScale);
         interior.uInteriorRadius.value = Math.abs(interiorScale.x) * 1.15;
         if (diamond && wireMaterial)
           jewelReflection.update(diamond, camera, wireMaterial);
         syncHitArea();
+        renderer.shadowMap.needsUpdate = true;
         renderer.render(scene, camera);
-        glow.render(model, [decoration.group]);
+        glow.render(model, [studioSet.group]);
         fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
         submittedAt = performance.now();
       }

@@ -30,6 +30,22 @@ for (const settings of [
     const initialHeight = await section.evaluate(
       (section) => section.clientHeight,
     );
+    if (settings.reducedMotion === "no-preference") {
+      // Click again before the previous smooth scroll reaches its destination.
+      await next.evaluate((button) => {
+        if (!(button instanceof HTMLButtonElement))
+          throw new Error("Missing next button");
+        button.click();
+        button.click();
+        button.click();
+      });
+      await expect(status).toHaveText("4–5 of 5 alternatives");
+      await expect(next).toBeDisabled();
+      await track.focus();
+      await track.press("Home");
+      await expect(previous).toBeDisabled();
+      await expect(status).toHaveText("1–2 of 5 alternatives");
+    }
     for (let index = 1; index <= 5 - settings.visible; index++) {
       await next.click();
       await expect(status).toHaveText(

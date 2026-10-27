@@ -13,12 +13,12 @@
   fill: var(--section-color);
 }
 .wave-front {
-  stroke: #39d3e5;
+  stroke: var(--tblr-blue);
   stroke-width: 0.7;
 }
 .wave-back {
   opacity: 0.24;
-  fill: #39d3e5;
+  fill: var(--tblr-blue);
 }
 @media (max-width: 900px) {
   .landing-section {
@@ -29,4 +29,9 @@
   .landing-section {
     --wave-height: 96px;
   }
+}
+
+/* Keep the first crest below the opening ribbon and footer. */
+.demo-section {
+  --wave-height: 24px;
 }

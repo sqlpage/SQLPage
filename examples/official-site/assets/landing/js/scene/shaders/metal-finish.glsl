@@ -7,8 +7,8 @@
   const float metalMinimumRoughness = .06;
 #else
   float metalToolCoordinate = vMetalPosition.y;
-  const float metalMachining = .012;
-  const float metalGrainStrength = .016;
+  const float metalMachining = .02;
+  const float metalGrainStrength = .026;
   const float metalMinimumRoughness = .15;
 #endif
 float metalGrain = fract(sin(dot(

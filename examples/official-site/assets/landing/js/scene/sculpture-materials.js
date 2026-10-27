@@ -32,13 +32,13 @@ function localPosition(shader, varying) {
 export function finishMetal(material, environment, shaders) {
   const lid = material.name.includes("Mirror Top");
   const rim = material.name.includes("Gunmetal");
-  material.color.set(lid ? "#23303a" : rim ? "#3a4651" : "#252c33");
-  material.metalness = 0.96;
+  material.color.set(lid ? "#384651" : rim ? "#adb8c2" : "#9ca8b2");
+  material.metalness = lid ? 0.96 : 0.9;
   // Keep the cap polished: the satin shell roughness blurs the reflected wires.
-  material.roughness = lid ? 0.09 : rim ? 0.23 : 0.34;
+  material.roughness = lid ? 0.09 : rim ? 0.24 : 0.3;
   material.envMap = environment;
   material.envMapIntensity =
-    (lid ? 0.62 : rim ? 0.76 : 0.68) * STUDIO_RADIANCE_SCALE;
+    (lid ? 0.82 : rim ? 1.15 : 1.08) * STUDIO_RADIANCE_SCALE;
   material.defines = { ...material.defines, METAL_LID: lid ? 1 : 0 };
   material.onBeforeCompile = (shader) => {
     localPosition(shader, "vMetalPosition");
@@ -48,7 +48,7 @@ export function finishMetal(material, environment, shaders) {
     );
   };
   material.customProgramCacheKey = () =>
-    `sqlpage-black-metal-${lid ? "lid" : "shell"}-v4`;
+    `sqlpage-black-metal-${lid ? "lid" : "shell"}-v5`;
 }
 
 export function finishLiquid(material, clock, environment, interior, shaders) {

@@ -89,7 +89,7 @@ for (const viewport of [
     const canvas = page.locator("canvas");
     await expect(canvas).toHaveJSProperty(
       "width",
-      viewport.width === 390 ? 320 : 1000,
+      viewport.width === 390 ? 400 : 1000,
     );
     if (viewport.width === 390) {
       await expect(page.locator(".sqlpage-world")).toHaveAttribute(
@@ -100,10 +100,10 @@ for (const viewport of [
         expect.stringMatching(/\/sculpture-turns\.avif$/),
       ]);
     } else {
-      // Keep the full raster while batching nodes and cropping only empty glow.
-      await expect(page.locator("html")).toHaveAttribute(
+      // The grounded studio has no instanced orbital dots.
+      await expect(page.locator("html")).not.toHaveAttribute(
         "data-test-orb-instances",
-        "8",
+        /.+/,
       );
       await expect(page.locator("html")).toHaveAttribute(
         "data-test-glow-pixels",
@@ -161,7 +161,7 @@ for (const viewport of [
           y: rect.y + scrollY,
           size: rect.width,
           turn: Number(canvas.dataset.scrollTurn),
-          pixels: canvas.width === 320 ? canvas.toDataURL() : null,
+          pixels: canvas.width === 400 ? canvas.toDataURL() : null,
           opacity: Number(
             getComputedStyle(canvas.closest(".scene-layer")!).opacity,
           ),

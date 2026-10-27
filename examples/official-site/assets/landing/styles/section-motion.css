@@ -16,7 +16,7 @@
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: #030817;
+  background: var(--tblr-body-bg);
   opacity: calc(var(--section-cover, 0) * 0.16);
   pointer-events: none;
 }

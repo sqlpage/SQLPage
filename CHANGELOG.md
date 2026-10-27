@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- Refined the official website with muted blue accents, simpler navigation, a clearer primary action, and a level SQL ribbon with vertical separators, and a grounded studio scene with brushed metal and physical reflections. Restored visible progress in the streaming comparison animation.
+
 - Restored parameter reuse for repeated variables on SQL Server, PostgreSQL, and SQLite, fixing SQL Server and PostgreSQL queries that repeat a variable-dependent expression in `SELECT` and `GROUP BY`.
 
 ## v0.47.0 (2026-10-15)

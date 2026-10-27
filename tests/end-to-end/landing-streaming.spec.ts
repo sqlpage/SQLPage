@@ -11,6 +11,23 @@ test("streaming comparison starts early, pauses and restarts with its tab", asyn
     diagram.getByText("streaming HTML", { exact: true }),
   ).toBeVisible();
   const bounds = await diagram.boundingBox();
+  // Filling a bar must visibly differ from both its rail and the panel surface.
+  expect(
+    await diagram.evaluate((element) => {
+      const panel = getComputedStyle(
+        element.closest(".frontend-panels")!,
+      ).backgroundColor;
+      const fills = [...element.querySelectorAll(".timeline-fill")];
+      const stream = element.querySelector(".stream-timeline")!;
+      return (
+        fills.every(
+          (fill) => getComputedStyle(fill).backgroundColor !== panel,
+        ) &&
+        getComputedStyle(stream.querySelector(".stream-fill")!)
+          .backgroundColor !== getComputedStyle(stream).backgroundColor
+      );
+    }),
+  ).toBe(true);
 
   // Seek the real animations to the moment SQLPage has streamed HTML while
   // the illustrative app is still loading JavaScript, before its API/render.

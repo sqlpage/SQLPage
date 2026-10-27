@@ -7,6 +7,7 @@ export function initComparison(root, signal) {
   const next = section.querySelector("[data-comparison-next]");
   const status = section.querySelector("[data-comparison-status]");
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
+  let destination = null;
 
   function update() {
     const offsets = cards.map((card) => card.offsetLeft);
@@ -27,8 +28,12 @@ export function initComparison(root, signal) {
   }
 
   function goTo(left) {
+    destination = Math.max(
+      0,
+      Math.min(left, track.scrollWidth - track.clientWidth),
+    );
     track.scrollTo({
-      left,
+      left: destination,
       behavior: motion.matches ? "instant" : "smooth",
     });
   }
@@ -36,16 +41,28 @@ export function initComparison(root, signal) {
   function move(direction) {
     // Equal-width grid columns snap one card at a time; native scrolling clamps the ends.
     const step = cards[1].offsetLeft;
+    // Repeated clicks advance from the requested card, even while a previous
+    // smooth scroll is still exposing a partial card and updating the status.
     const index =
-      direction > 0
-        ? Math.floor((track.scrollLeft + 2) / step) + 1
-        : Math.ceil((track.scrollLeft - 2) / step) - 1;
+      Math.round((destination ?? track.scrollLeft) / step) + direction;
     goTo(index * step);
   }
 
   previous.addEventListener("click", () => move(-1), { signal });
   next.addEventListener("click", () => move(1), { signal });
   track.addEventListener("scroll", update, { passive: true, signal });
+  const followNativeScroll = () => {
+    destination = null;
+  };
+  track.addEventListener("scrollend", followNativeScroll, { signal });
+  track.addEventListener("pointerdown", followNativeScroll, {
+    passive: true,
+    signal,
+  });
+  track.addEventListener("wheel", followNativeScroll, {
+    passive: true,
+    signal,
+  });
   const keys = {
     ArrowLeft: () => move(-1),
     ArrowRight: () => move(1),
@@ -61,7 +78,10 @@ export function initComparison(root, signal) {
     },
     { signal },
   );
-  const observer = new ResizeObserver(update);
+  const observer = new ResizeObserver(() => {
+    destination = null;
+    update();
+  });
   observer.observe(track);
   section.querySelector(".comparison-controls").hidden = false;
   update();

@@ -12,8 +12,6 @@ const files = {
   liquidFinish: "liquid-finish.glsl",
   liquidFlow: "liquid-flow.glsl",
   metalFinish: "metal-finish.glsl",
-  starsFragment: "stars-fragment.glsl",
-  starsVertex: "stars-vertex.glsl",
 };
 let sources;
 
