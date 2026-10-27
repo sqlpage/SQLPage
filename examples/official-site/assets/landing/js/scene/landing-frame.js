@@ -20,7 +20,7 @@ function frameAt(width, height, anchor, portrait, bodyWidth = width * 0.48) {
   const compositionLeft = (width - compositionWidth) / 2;
   const desiredWidth = portrait
     ? bodyWidth
-    : Math.min(compositionWidth * 0.335, height * 0.59);
+    : Math.min(compositionWidth * 0.26, height * 0.47);
   let size = desiredWidth / SCULPTURE_FRAME.bodyWidth;
   const align = () => {
     const left = anchor.x - SCULPTURE_FRAME.shoulder.x * size;
@@ -117,8 +117,8 @@ export function layoutLandingFrame(viewport, anchor) {
         surface.top -
         (ink.fontBoundingBoxDescent ?? fontSize * 0.2) +
         ink.actualBoundingBoxDescent -
-        fontSize * 0.025 +
-        height * 0.05,
+        fontSize * 0.025 -
+        height * 0.025,
     };
   };
   if (portrait)

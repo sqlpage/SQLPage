@@ -1,7 +1,7 @@
 // A tiny surface relief scatters the grazing studio light. Derivatives filter
 // the same grain used for roughness, avoiding a second texture or noise field.
 #include <normal_fragment_maps>
-float floorHeight = grain * detail * .00018;
+float floorHeight = (grain * detail + coarseGrain * .5) * .0004;
 vec3 floorDx = dFdx(-vViewPosition);
 vec3 floorDy = dFdy(-vViewPosition);
 vec3 floorR1 = cross(floorDy, normal);

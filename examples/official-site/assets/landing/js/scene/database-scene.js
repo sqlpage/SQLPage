@@ -54,7 +54,8 @@ export function createDatabaseScene({
     contextLost = false,
     frame = 0,
     last = 0,
-    time = 0;
+    time = 0,
+    renderedFrames = 0;
   let renderedZoom = 0,
     visible = document.visibilityState !== "hidden",
     loaded = false,
@@ -107,7 +108,8 @@ export function createDatabaseScene({
     samples = 0,
     slowFrames = 0,
     cpuBusyUntil = 0;
-  let baked, context, lastTurn;
+  let baked, context, lastTurn, pendingAtlas, previousCanvas;
+  let switchingRenderer = false;
   const resetBudget = () => {
     if (fence) gl.deleteSync(fence);
     fence = undefined;
@@ -139,33 +141,33 @@ export function createDatabaseScene({
     renderer.forceContextLoss();
   };
   const useBakedViews = () => {
-    releaseGraphics();
-    baked = new Image();
+    if (switchingRenderer) return;
+    switchingRenderer = true;
+    const atlas = new Image();
+    pendingAtlas = atlas;
     const replacement = document.createElement("canvas");
     replacement.width = 400;
     replacement.height = 400;
-    context = replacement.getContext("2d");
-    if (!context) {
+    const replacementContext = replacement.getContext("2d");
+    if (!replacementContext) {
       onError();
       return;
     }
-    canvas.replaceWith(replacement);
-    canvas = replacement;
-    canvas.style.cssText = canvasStyle;
-    root.dataset.renderer = "baked";
-    root.dataset.scene = "loading";
-    loaded = readySent = false;
-    hitArea.inert = true;
-    if (instructions)
-      instructions.textContent =
-        "Drag sideways or use left/right arrows to rotate. Use plus/minus to zoom and Home to reset. Swipe vertically or pinch to scroll or zoom the page.";
-    baked.src = new URL(
+    atlas.src = new URL(
       "../../assets/sculpture-turns.avif",
       import.meta.url,
     ).href;
-    baked.decode().then(
+    atlas.decode().then(
       () => {
-        loaded = !disposed;
+        if (disposed) return;
+        // Keep the last submitted WebGL frame visible during download/decode.
+        // The replacement is attached only after its first atlas view is drawn.
+        baked = atlas;
+        context = replacementContext;
+        previousCanvas = canvas;
+        canvas = replacement;
+        canvas.style.cssText = canvasStyle;
+        switchingRenderer = false;
         needsRender = true;
       },
       () => {
@@ -186,8 +188,8 @@ export function createDatabaseScene({
   interiorLight.name = "Soft interior database light";
   const interiorScale = new THREE.Vector3();
   let glow, jewelReflection;
-  const key = new THREE.DirectionalLight(0xe5edf1, 1.2);
-  key.position.set(-3.5, 5, 5);
+  const key = new THREE.DirectionalLight(0xd8e9fa, 1.8);
+  key.position.set(-3, 5, 2.5);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, {
@@ -209,12 +211,12 @@ export function createDatabaseScene({
   scene.add(fill);
 
   RectAreaLightUniformsLib.init();
-  const softbox = new THREE.RectAreaLight(0xe5edf1, 14, 4, 7);
-  softbox.position.set(-3, 2, 6);
+  const softbox = new THREE.RectAreaLight(0xe5eff9, 35, 1.5, 6);
+  softbox.position.set(-3, 2, 4.5);
   softbox.lookAt(0, 0, 0);
   scene.add(softbox);
-  const edgeSoftbox = new THREE.RectAreaLight(0xa1bac7, 4, 1.2, 5);
-  edgeSoftbox.position.set(3.5, 1.5, 2);
+  const edgeSoftbox = new THREE.RectAreaLight(0xa9cbec, 9, 0.7, 4);
+  edgeSoftbox.position.set(3.5, 2, 3.5);
   edgeSoftbox.lookAt(0, 0, 0);
   scene.add(edgeSoftbox);
   scene.add(new THREE.HemisphereLight(0xa1bac7, 0x18262d, 0.55));
@@ -290,9 +292,6 @@ export function createDatabaseScene({
           if (material.transparent) material.depthWrite = false;
         }
       });
-      const jewelLight = new THREE.PointLight(0x8bb8e8, 0.15, 2.4, 2);
-      jewelLight.position.set(0, 1.35, 0);
-      gltf.scene.add(jewelLight);
       // Native model coordinates: stay inside the radius-1.04 database stack.
       interiorLight.position.set(0.4, -0.45, 0);
       gltf.scene.add(interiorLight);
@@ -439,6 +438,7 @@ export function createDatabaseScene({
     }
     if (
       loaded &&
+      !switchingRenderer &&
       (inView || !readySent) &&
       (state.motion || needsRender || changing)
     ) {
@@ -472,6 +472,15 @@ export function createDatabaseScene({
           }
           lastTurn = turn;
         }
+        if (previousCanvas) {
+          previousCanvas.replaceWith(canvas);
+          previousCanvas = undefined;
+          releaseGraphics();
+          root.dataset.renderer = "baked";
+          if (instructions)
+            instructions.textContent =
+              "Drag sideways or use left/right arrows to rotate. Use plus/minus to zoom and Home to reset. Swipe vertically or pinch to scroll or zoom the page.";
+        }
       } else {
         // Prepare GPU-only animation only when a new live frame can be drawn.
         liquidClock.value = time;
@@ -496,15 +505,19 @@ export function createDatabaseScene({
         if (diamond && wireMaterial)
           jewelReflection.update(diamond, camera, wireMaterial);
         syncHitArea();
+        studioSet.renderReflection(renderer, scene, camera);
         renderer.shadowMap.needsUpdate = true;
         renderer.render(scene, camera);
         glow.render(model, [studioSet.group]);
         fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
         submittedAt = performance.now();
+        renderedFrames++;
       }
-      needsRender = false;
+      // The reflection receiver settles on the second submitted frame. Keep
+      // the matching preview visible and time frozen throughout initialization.
+      needsRender = !baked && renderedFrames < 2;
       lastOrientation.copy(dragQuaternion);
-      if (!readySent) {
+      if (!readySent && (baked || renderedFrames >= 2)) {
         readySent = true;
         performance.mark("sqlpage:first-frame");
         performance.measure(
@@ -541,7 +554,9 @@ export function createDatabaseScene({
       timing?.disconnect();
       if (instructions) instructions.textContent = originalInstructions;
       if (baked) baked.src = "";
-      if (!baked) releaseGraphics();
+      if (pendingAtlas) pendingAtlas.src = "";
+      if (!baked || previousCanvas) releaseGraphics();
+      previousCanvas?.remove();
       canvas.remove();
     },
   };

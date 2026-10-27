@@ -4,7 +4,7 @@
   right: calc(var(--composition-left) + var(--composition-width) * 0.045);
   top: 12%;
   z-index: 21;
-  width: clamp(248px, 18vw, 330px);
+  width: clamp(224px, 15vw, 260px);
   opacity: var(--intro-opacity);
   transform: translateX(calc(var(--progress) * 30px));
   pointer-events: none;

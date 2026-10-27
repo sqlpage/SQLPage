@@ -141,7 +141,10 @@ export function initScrollProgress(section, state) {
       dock(viewport);
       state.frame = heroFrame;
     } else if (heroRange && scroll <= heroDockScroll) {
-      dock(root);
+      // Keep opening controls above the floor until they have faded out.
+      // Later flight frames use viewport coordinates in the root host.
+      const inHero = p < 0.5;
+      dock(inHero ? viewport : root);
       const bounds = SCULPTURE_FRAME.bounds;
       const size = Math.min(
         (innerWidth * 0.9) / SCULPTURE_FRAME.bodyWidth,
@@ -177,6 +180,11 @@ export function initScrollProgress(section, state) {
         state.frame.left += Math.sin(t * Math.PI) * innerWidth * 0.025;
         state.frame.top += Math.sin(t * Math.PI) ** 2 * innerHeight * 0.06;
         state.frame.top -= scroll;
+      }
+      if (inHero) {
+        const rect = viewport.getBoundingClientRect();
+        state.frame.left -= rect.left;
+        state.frame.top -= rect.top;
       }
     } else {
       let index = 0;

@@ -53,8 +53,8 @@ export function finishMetal(material, environment, shaders) {
 export function finishLiquid(material, clock, environment, interior, shaders) {
   const rim = material.name.includes("Rims");
   material.color.set(rim ? "#527ba5" : "#345576");
-  material.emissive.set("#8bb8e8");
-  material.emissiveIntensity = rim ? 0.5 : 0.85;
+  material.emissive.set("#719fe8");
+  material.emissiveIntensity = rim ? 0.45 : 0.65;
   material.metalness = 0.25;
   material.roughness = rim ? 0.23 : 0.18;
   material.envMap = environment;

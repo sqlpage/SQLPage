@@ -28,13 +28,14 @@
     width: 60px;
   }
   .engraved-comment {
-    width: 248px;
+    width: 18.5vw;
+    right: 2.5%;
   }
   .metal-recess {
-    padding: 17px 21px 18px;
+    padding: 12px 14px;
   }
   .metal-recess code {
-    font-size: 13px;
+    font-size: clamp(10px, 1.2vw, 13px);
   }
   .intro-row {
     gap: 25px;

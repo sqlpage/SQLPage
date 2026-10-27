@@ -1,4 +1,5 @@
 import { expect, type Locator, test } from "@playwright/test";
+import { keepLiveSculpture } from "./landing-helpers.ts";
 
 async function visibleBounds(sculpture: Locator) {
   const rect = await sculpture.boundingBox();
@@ -190,6 +191,7 @@ test("landing sculpture keeps mouse and keyboard rotation", async ({
   page,
 }) => {
   test.setTimeout(90_000);
+  await keepLiveSculpture(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const sculpture = page.getByRole("application", {
