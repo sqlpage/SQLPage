@@ -2,7 +2,7 @@
 
 ## unreleased
 
-- Refined the landing page with blue studio lighting, satin metal, a visible textured floor with rough reflections and contact shadows, and a clearer desktop composition. Updated the fallback artwork and removed the loading blink when switching to low-power rendering.
+- Refined the landing page with blue studio lighting, a consistent dark satin metal finish with restrained highlights, a visible textured floor with rough reflections and contact shadows, and a clearer desktop composition. Updated the fallback artwork and removed the loading blink when switching to low-power rendering.
 
 - Refined the official website with muted blue accents, simpler navigation, a clearer primary action, and a level SQL ribbon with vertical separators, and a grounded studio scene with brushed metal and physical reflections. Restored visible progress in the streaming comparison animation.
 

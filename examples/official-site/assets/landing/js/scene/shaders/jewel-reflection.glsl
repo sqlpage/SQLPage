@@ -6,9 +6,8 @@ vec3 jewelRay = reflect(-geometryViewDir, geometryNormal);
 // dominates at normal viewing sizes; only distant pixels are widened.
 float jewelPixel = max(length(dFdx(jewelRay)), length(dFdy(jewelRay)));
 float jewelAlpha = sqrt(pow(material.roughness, 4.0) + .25 * jewelPixel * jewelPixel);
-// Alpha is roughness squared. A .012 floor would turn the
-// polished .09 cap back into a .11-roughness surface. Retain
-// its mirror image while the derivative term filters distant pixels.
+// Retain the material's roughness. The lower bound only protects the
+// finite-emitter approximation as the angular footprint approaches zero.
 jewelAlpha = clamp(jewelAlpha, .0036, 1.0);
 PhysicalMaterial jewelSurface = material;
 jewelSurface.roughness = sqrt(jewelAlpha);

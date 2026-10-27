@@ -188,7 +188,7 @@ export function createDatabaseScene({
   interiorLight.name = "Soft interior database light";
   const interiorScale = new THREE.Vector3();
   let glow, jewelReflection;
-  const key = new THREE.DirectionalLight(0xd8e9fa, 1.8);
+  const key = new THREE.DirectionalLight(0xd8e9fa, 1.2);
   key.position.set(-3, 5, 2.5);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -211,11 +211,11 @@ export function createDatabaseScene({
   scene.add(fill);
 
   RectAreaLightUniformsLib.init();
-  const softbox = new THREE.RectAreaLight(0xe5eff9, 35, 1.5, 6);
+  const softbox = new THREE.RectAreaLight(0xe5eff9, 9, 1.5, 6);
   softbox.position.set(-3, 2, 4.5);
   softbox.lookAt(0, 0, 0);
   scene.add(softbox);
-  const edgeSoftbox = new THREE.RectAreaLight(0xa9cbec, 9, 0.7, 4);
+  const edgeSoftbox = new THREE.RectAreaLight(0xa9cbec, 3, 0.7, 4);
   edgeSoftbox.position.set(3.5, 2, 3.5);
   edgeSoftbox.lookAt(0, 0, 0);
   scene.add(edgeSoftbox);
