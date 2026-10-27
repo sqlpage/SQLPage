@@ -1,5 +1,14 @@
 /* One sculpture: a fixed opening flight, then native scrolling in section hosts. */
 .sqlpage-world {
+  /* Keep the studio palette local to the landing page. Documentation retains
+     the shared Tabler theme, and light demo sections retain their own surface. */
+  --tblr-body-bg: #080e11;
+  --tblr-bg-surface: #0d161c;
+  --tblr-bg-surface-secondary: #14212b;
+  --tblr-bg-surface-tertiary: #1b2c38;
+  --tblr-border-color: #263d4d;
+  --tblr-secondary-color: #a1b4c6;
+  --tblr-muted-color: #8a9faf;
   position: relative;
   overflow-x: clip;
   background: var(--tblr-body-bg);
@@ -26,11 +35,7 @@
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(
-      ellipse at 79% 26%,
-      color-mix(in srgb, var(--tblr-border-color) 33.33%, transparent),
-      transparent 57%
-    ),
+    radial-gradient(ellipse at 72% 42%, #203848, transparent 58%),
     var(--tblr-body-bg);
 }
 /* One sculpture follows the authored section anchors. */
@@ -111,22 +116,6 @@
     );
   opacity: calc(0.9 - var(--progress) * 0.3);
 }
-.surface-finish {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-  pointer-events: none;
-  opacity: 0.2;
-  background: repeating-linear-gradient(
-    0deg,
-    color-mix(in srgb, var(--tblr-secondary-color) 1.18%, transparent) 0,
-    color-mix(in srgb, var(--tblr-secondary-color) 1.18%, transparent) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  mix-blend-mode: screen;
-}
-
 /* Reserve the opening flight before first paint. The static preview follows the
    same anchors while WebGL loads or fails, so readiness never shifts the page. */
 .sqlpage-world[data-enhanced][data-motion="on"] .experience {

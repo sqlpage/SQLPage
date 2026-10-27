@@ -12,6 +12,8 @@ const files = {
   liquidFinish: "liquid-finish.glsl",
   liquidFlow: "liquid-flow.glsl",
   metalFinish: "metal-finish.glsl",
+  studioFinish: "studio-finish.glsl",
+  studioNormal: "studio-normal.glsl",
 };
 let sources;
 

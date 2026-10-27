@@ -91,7 +91,7 @@ export function createDatabaseScene({
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.autoUpdate = false;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   let canvas = renderer.domElement;
   const canvasStyle =
     "position:absolute;left:0;top:0;width:1000px;height:1000px;transform-origin:0 0";
@@ -180,25 +180,26 @@ export function createDatabaseScene({
   const interior = {
     uInteriorPosition: { value: new THREE.Vector3() },
     uInteriorRadius: { value: 1 },
-    uInteriorPulse: { value: 14 },
+    uInteriorPulse: { value: 2.4 },
   };
-  const interiorLight = new THREE.PointLight(0x72c8de, 0.6, 2.1, 2);
+  const interiorLight = new THREE.PointLight(0x8bb8e8, 0.4, 2.1, 2);
   interiorLight.name = "Soft interior database light";
   const interiorScale = new THREE.Vector3();
   let glow, jewelReflection;
-  const key = new THREE.DirectionalLight(0xe5edf1, 1.7);
+  const key = new THREE.DirectionalLight(0xe5edf1, 1.2);
   key.position.set(-3.5, 5, 5);
   key.castShadow = true;
-  key.shadow.mapSize.set(512, 512);
+  key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, {
-    left: -4,
-    right: 4,
-    top: 4,
-    bottom: -4,
+    left: -3,
+    right: 3,
+    top: 3,
+    bottom: -3,
     near: 0.5,
     far: 18,
   });
-  key.shadow.normalBias = 0.025;
+  key.shadow.normalBias = 0.012;
+  key.shadow.radius = 8;
   scene.add(key);
   const rim = new THREE.DirectionalLight(0xa1bac7, 0.8);
   rim.position.set(4, 2, -2);
@@ -208,8 +209,8 @@ export function createDatabaseScene({
   scene.add(fill);
 
   RectAreaLightUniformsLib.init();
-  const softbox = new THREE.RectAreaLight(0xe5edf1, 7, 2.5, 6);
-  softbox.position.set(-3.5, 1.5, 4);
+  const softbox = new THREE.RectAreaLight(0xe5edf1, 14, 4, 7);
+  softbox.position.set(-3, 2, 6);
   softbox.lookAt(0, 0, 0);
   scene.add(softbox);
   const edgeSoftbox = new THREE.RectAreaLight(0xa1bac7, 4, 1.2, 5);
@@ -242,7 +243,7 @@ export function createDatabaseScene({
       );
       glow.setSize(1000, 1000, 1);
       jewelReflection = createFiniteJewelLight(JEWEL_EDGES, shaders);
-      studioSet = createSculptureStudio();
+      studioSet = createSculptureStudio(studio, shaders);
       scene.add(studioSet.group);
       performance.mark("sqlpage:assets-ready");
       const bounds = new THREE.Box3().setFromObject(gltf.scene);
@@ -271,15 +272,25 @@ export function createDatabaseScene({
           if (material.name.includes("Separator"))
             finishLiquid(material, liquidClock, studio, interior, shaders);
           if (material.name.includes("Jewel Wire")) {
-            material.emissiveIntensity = 1.05;
+            material.color.set("#a9d2fa");
+            material.emissive.set("#8bb8e8");
+            material.emissiveIntensity = 1.6;
             wireMaterial = material;
           }
-          if (material.name.includes("Endpoint"))
-            material.emissiveIntensity = 1.2;
+          if (material.name.includes("Endpoint")) {
+            material.color.set("#c9e2fb");
+            material.emissive.set("#a9d2fa");
+            material.emissiveIntensity = 1.8;
+          }
+          if (material.name.includes("Facets")) {
+            material.color.set("#8bb8e8");
+            material.emissive.set("#466689");
+            material.opacity = 0.035;
+          }
           if (material.transparent) material.depthWrite = false;
         }
       });
-      const jewelLight = new THREE.PointLight(0x72c8de, 0.09, 2.4, 2);
+      const jewelLight = new THREE.PointLight(0x8bb8e8, 0.15, 2.4, 2);
       jewelLight.position.set(0, 1.35, 0);
       gltf.scene.add(jewelLight);
       // Native model coordinates: stay inside the radius-1.04 database stack.
@@ -473,9 +484,9 @@ export function createDatabaseScene({
           -0.45 + Math.sin(time * ((Math.PI * 2) / 4)) * 0.28,
           Math.sin(time * ((Math.PI * 2) / 6)) * 0.4,
         );
-        const pulse = 14 + Math.sin(time * ((Math.PI * 2) / 3)) * 6;
+        const pulse = 2.4 + Math.sin(time * ((Math.PI * 2) / 6)) * 0.3;
         interior.uInteriorPulse.value = pulse;
-        interiorLight.intensity = (0.6 * pulse) / 14;
+        interiorLight.intensity = (0.4 * pulse) / 2.4;
         scene.updateMatrixWorld(true);
         studioSet.update(model);
         scene.updateMatrixWorld(true);

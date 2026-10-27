@@ -149,10 +149,6 @@
   .metal-recess {
     padding: 12px 10px;
     border-radius: 5px;
-    box-shadow:
-      inset 0 2px 8px color-mix(in srgb, var(--tblr-black) 73.33%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--tblr-blue) 16.86%, transparent),
-      0 0 10px color-mix(in srgb, var(--tblr-blue) 6.67%, transparent);
   }
   .metal-recess code {
     grid-template-columns: 1fr;

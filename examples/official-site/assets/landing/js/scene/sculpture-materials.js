@@ -32,13 +32,12 @@ function localPosition(shader, varying) {
 export function finishMetal(material, environment, shaders) {
   const lid = material.name.includes("Mirror Top");
   const rim = material.name.includes("Gunmetal");
-  material.color.set(lid ? "#384651" : rim ? "#adb8c2" : "#9ca8b2");
-  material.metalness = lid ? 0.96 : 0.9;
+  material.color.set(lid ? "#354957" : rim ? "#92a2b0" : "#8796a3");
+  material.metalness = lid ? 1 : 0.96;
   // Keep the cap polished: the satin shell roughness blurs the reflected wires.
-  material.roughness = lid ? 0.09 : rim ? 0.24 : 0.3;
+  material.roughness = lid ? 0.09 : rim ? 0.23 : 0.28;
   material.envMap = environment;
-  material.envMapIntensity =
-    (lid ? 0.82 : rim ? 1.15 : 1.08) * STUDIO_RADIANCE_SCALE;
+  material.envMapIntensity = (lid ? 0.85 : 1.05) * STUDIO_RADIANCE_SCALE;
   material.defines = { ...material.defines, METAL_LID: lid ? 1 : 0 };
   material.onBeforeCompile = (shader) => {
     localPosition(shader, "vMetalPosition");
@@ -48,16 +47,16 @@ export function finishMetal(material, environment, shaders) {
     );
   };
   material.customProgramCacheKey = () =>
-    `sqlpage-black-metal-${lid ? "lid" : "shell"}-v5`;
+    `sqlpage-black-metal-${lid ? "lid" : "shell"}-v6`;
 }
 
 export function finishLiquid(material, clock, environment, interior, shaders) {
   const rim = material.name.includes("Rims");
-  material.color.set(rim ? "#133340" : "#06131c");
-  material.emissive.set(rim ? "#246582" : "#14638a");
-  material.emissiveIntensity = rim ? 0.28 : 0.55;
-  material.metalness = 0.2;
-  material.roughness = rim ? 0.32 : 0.25;
+  material.color.set(rim ? "#527ba5" : "#345576");
+  material.emissive.set("#8bb8e8");
+  material.emissiveIntensity = rim ? 0.5 : 0.85;
+  material.metalness = 0.25;
+  material.roughness = rim ? 0.23 : 0.18;
   material.envMap = environment;
   material.envMapIntensity = 0.18 * STUDIO_RADIANCE_SCALE;
   material.transparent = false;

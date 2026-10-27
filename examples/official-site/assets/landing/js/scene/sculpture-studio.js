@@ -1,43 +1,23 @@
-/** A matte studio sweep catches real light and the sculpture's shadow. */
+/** A horizontal studio floor, lit by the same softboxes as the sculpture. */
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
+import { STUDIO_RADIANCE_SCALE } from "./sculpture-assets.js";
 
-export function createSculptureStudio() {
+export function createSculptureStudio(environment, shaders) {
   const group = new THREE.Group();
-  const profile = [
-    [5, 0],
-    [-1.8, 0],
-  ];
-  for (let i = 1; i <= 20; i++) {
-    const angle = ((i / 20) * Math.PI) / 2;
-    profile.push([-1.8 - Math.sin(angle) * 1.2, 1.2 - Math.cos(angle) * 1.2]);
-  }
-  profile.push([-3, 7]);
-  const positions = [],
-    indices = [];
-  profile.forEach(([z, y], i) => {
-    positions.push(-6, y, z, 6, y, z);
-    if (i) {
-      const n = i * 2;
-      indices.push(n - 2, n - 1, n, n - 1, n + 1, n);
-    }
-  });
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(positions, 3),
-  );
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  const theme = getComputedStyle(document.documentElement);
+  const geometry = new THREE.PlaneGeometry(12, 12);
+  geometry.rotateX(-Math.PI / 2);
+  const contact = { value: new THREE.Vector2() };
   const material = new THREE.MeshStandardMaterial({
-    color: theme.getPropertyValue("--tblr-bg-surface-tertiary").trim(),
-    roughness: 0.86,
-    metalness: 0.12,
+    color: "#263743",
+    roughness: 0.56,
+    metalness: 0.18,
+    envMap: environment,
+    envMapIntensity: 0.35 * STUDIO_RADIANCE_SCALE,
     transparent: true,
     depthWrite: false,
-    opacity: 0.65,
   });
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.uStudioContact = contact;
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
@@ -50,33 +30,29 @@ export function createSculptureStudio() {
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nvarying vec3 vStudioPosition;",
+        "#include <common>\nvarying vec3 vStudioPosition;\nuniform vec2 uStudioContact;",
       )
-      .replace(
-        "#include <alphamap_fragment>",
-        `#include <alphamap_fragment>
-        float edge = 1.0 - smoothstep(1.2, 2.8, abs(vStudioPosition.x));
-        float wall = 1.0 - smoothstep(1.8, 5.0, vStudioPosition.y);
-        float floorEdge = 1.0 - smoothstep(1.0, 3.8, vStudioPosition.z);
-        float grain = fract(sin(dot(floor(vStudioPosition.xz * 800.0), vec2(12.9898, 78.233))) * 43758.5453);
-        diffuseColor.rgb *= 0.94 + grain * 0.12;
-        diffuseColor.a *= edge * wall * floorEdge;
-      `,
-      );
+      .replace("#include <roughnessmap_fragment>", shaders.studioFinish)
+      .replace("#include <normal_fragment_maps>", shaders.studioNormal);
   };
-  material.customProgramCacheKey = () => "sqlpage-studio-sweep-v1";
-  const sweep = new THREE.Mesh(geometry, material);
-  sweep.receiveShadow = true;
-  group.add(sweep);
-  const spill = new THREE.PointLight(
-    theme.getPropertyValue("--tblr-primary").trim(),
-    2.4,
-    5,
-    2,
-  );
-  spill.position.set(0.3, 0.85, -0.6);
+  material.customProgramCacheKey = () => "sqlpage-studio-floor-v2";
+  const floor = new THREE.Mesh(geometry, material);
+  floor.receiveShadow = true;
+  group.add(floor);
+
+  // Local blue spill grazes the floor, revealing its satin texture. It stays
+  // in the room when the model turns; there is no illuminated vertical wall.
+  const spill = new THREE.PointLight(0x8bb8e8, 3, 6, 2);
+  spill.position.set(0.4, 1.2, 0.3);
   group.add(spill);
-  const bounds = new THREE.Box3();
+  const edge = new THREE.PointLight(0xb5d6f4, 1.5, 5, 2);
+  edge.position.set(-1.4, 1.4, -0.8);
+  group.add(edge);
+
+  const meshes = [];
+  const previous = new THREE.Matrix4().multiplyScalar(0);
+  const point = new THREE.Vector3();
+  const lowest = new THREE.Vector3();
   return {
     group,
     dispose() {
@@ -85,10 +61,27 @@ export function createSculptureStudio() {
       group.removeFromParent();
     },
     update(model) {
-      // Follow the lowest point of the tilted/dragged model without rotating
-      // the room with it. The shadow remains attached to the contact surface.
-      bounds.setFromObject(model);
-      group.position.y = bounds.min.y - 0.025;
+      if (previous.equals(model.matrixWorld)) return;
+      previous.copy(model.matrixWorld);
+      if (!meshes.length)
+        model.traverse((mesh) => {
+          if (mesh.isMesh && mesh.castShadow) meshes.push(mesh);
+        });
+      // A transformed bounding box includes empty corners below a tilted
+      // cylinder. Use its actual surface so the sculpture touches the floor,
+      // including after a drag, without rotating the floor with the object.
+      lowest.set(0, Infinity, 0);
+      for (const mesh of meshes) {
+        const positions = mesh.geometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+          point
+            .fromBufferAttribute(positions, i)
+            .applyMatrix4(mesh.matrixWorld);
+          if (point.y < lowest.y) lowest.copy(point);
+        }
+      }
+      group.position.y = lowest.y - 0.005;
+      contact.value.set(lowest.x, lowest.z);
     },
   };
 }

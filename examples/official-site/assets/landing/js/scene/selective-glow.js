@@ -49,7 +49,7 @@ export function createSelectiveGlow(
         uEmission: {
           value: original.emissive
             .clone()
-            .multiplyScalar(original.emissiveIntensity * (liquid ? 3 : 1)),
+            .multiplyScalar(original.emissiveIntensity),
         },
         uLiquid: { value: liquid ? 1 : 0 },
         uLiquidTime: clock,
