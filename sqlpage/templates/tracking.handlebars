@@ -18,7 +18,11 @@
 		<div class="mt-2">
 			<div class="tracking">
 				{{#each_row}}
-					<div class="tracking-block{{#if color}} bg-{{color}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{title}}"></div>
+					{{#if link}}
+						<a href="{{link}}" class="tracking-block{{#if color}} bg-{{color}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{title}}"></a>
+					{{else}}
+						<div class="tracking-block{{#if color}} bg-{{color}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{title}}"></div>
+					{{/if}}
 				{{/each_row}}
 			</div>
 		</div>
