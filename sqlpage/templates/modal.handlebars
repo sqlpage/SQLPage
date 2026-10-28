@@ -7,7 +7,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="{{id}}-title">{{title}}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{default close "close"}}"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{default (default close_label close) "close"}}"></button>
             </div>
             <div class="modal-body">
                 <div class="card bg-transparent border-0"
@@ -46,7 +46,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                {{#if close}}<button type="button" class="btn me-primary" data-bs-dismiss="modal">{{close}}</button>{{/if}}
+                {{#if (or close_label close)}}<button type="button" class="btn me-primary" data-bs-dismiss="modal">{{default close_label close}}</button>{{/if}}
             </div>
         </div>
     </div>
