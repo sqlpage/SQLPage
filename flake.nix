@@ -229,6 +229,7 @@
             packages =
               (with pkgs; [
                 biome
+                docker-compose
                 hurl
                 pkg-config
                 sqlite
