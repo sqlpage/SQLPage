@@ -64,7 +64,13 @@ npm test
 Playwright starts its servers on free ports. Set `SQLPAGE_BINARY` to use an already
 built executable. Component suites use `fixtures/<suite>/{index.sql,test.ts}` and
 import the shared `fixture.ts` harness; root-level `*.spec.ts` files cover the
-official site. For examples with `test.hurl`, run
+official site.
+
+To show that an issue exists before you fix it, set `SQLPAGE_RELEASE` to a release tag, such as `SQLPAGE_RELEASE=v0.47.0 npx playwright test fixtures/tracking`. Both servers then run that release's Docker image against the same fixtures, on ports 18080 and 18081, so the test fails on the release and passes on your working tree. Add `--ui` to watch the page in each step.
+
+The fixtures run on in-memory SQLite. To reproduce an issue with another database, start it with `docker compose up --wait <database>` and set `FIXTURES_DATABASE_URL` to its connection string from the [CI matrix](./.github/workflows/ci.yml), such as `FIXTURES_DATABASE_URL='postgres://root:Password123!@127.0.0.1/sqlpage'`. Only the fixtures server uses it, so the official site keeps its own database, and it works with `SQLPAGE_RELEASE` too.
+
+For examples with `test.hurl`, run
 `scripts/test-examples-hurl.sh '<example-path>'` from the repository root.
 
 Integration tests use the shared request helpers in [tests/common](./tests/common/mod.rs)
