@@ -179,6 +179,15 @@
               '';
             };
 
+            test-sql = {
+              description = "Run the SQL test file or files";
+              packages = cargoRuntime pkgs;
+              env = cargoEnv pkgs;
+              script = buildBrowserAssets + ''
+                SQL_TEST_FILE="''${1:-}" cargo test --test mod sql_test_files
+              '';
+            };
+
             test-browser = {
               description = "Drive the components in a browser with Playwright";
               packages = cargoRuntime pkgs;
