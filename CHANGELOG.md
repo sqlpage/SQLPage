@@ -8,6 +8,8 @@
 
 - Restored parameter reuse for repeated variables on SQL Server, PostgreSQL, and SQLite, fixing SQL Server and PostgreSQL queries that repeat a variable-dependent expression in `SELECT` and `GROUP BY`.
 
+- The modal component accepts `close_label` as another name for `close`, which is a reserved word on SQL Server. ([#1070](https://github.com/sqlpage/SQLPage/issues/1070))
+
 ## v0.47.0 (2026-10-15)
 - Redesigned the official website homepage with live SQLPage examples, an interactive database sculpture, flowing section transitions, responsive layouts, and direct links to documentation and deployment guides.
 - For sites that store their pages in a database, checking for page updates no longer makes other pages wait when the database is busy. In a test, another page loaded in under 1 ms instead of about 250 ms.
