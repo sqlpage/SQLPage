@@ -134,6 +134,17 @@
         PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
       };
 
+      # The Nix-built browsers find their own libraries; host libraries leaked in
+      # through LD_LIBRARY_PATH crash Chromium at launch.
+      inBrowserWorkspace =
+        command:
+        buildBrowserAssets
+        + ''
+          unset LD_LIBRARY_PATH
+          cd tests/end-to-end
+        ''
+        + command;
+
       gatesFor =
         pkgs:
         lib.mapAttrs
@@ -192,12 +203,17 @@
               description = "Drive the components in a browser with Playwright";
               packages = cargoRuntime pkgs;
               env = cargoEnv pkgs // playwrightEnv pkgs;
-              script = buildBrowserAssets + ''
-                # The Nix-built browsers find their own libraries; host libraries
-                # leaked in through LD_LIBRARY_PATH crash Chromium at launch.
-                unset LD_LIBRARY_PATH
-                cd tests/end-to-end
+              script = inBrowserWorkspace ''
                 npx playwright test "$@"
+              '';
+            };
+
+            reproduce = {
+              description = "Run one Playwright fixture against SQLPage releases on one database, and print the results as a table";
+              packages = cargoRuntime pkgs ++ [ pkgs.docker-compose ];
+              env = cargoEnv pkgs // playwrightEnv pkgs;
+              script = inBrowserWorkspace ''
+                ./reproduce.sh "$@"
               '';
             };
 
