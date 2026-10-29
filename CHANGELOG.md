@@ -14,6 +14,8 @@
 
 - Each item of the tracking component accepts a `link`. ([#900](https://github.com/sqlpage/SQLPage/issues/900))
 
+- Custom components can call inline partials inside `each_row` and after it, when the partials are defined before `each_row`. ([#846](https://github.com/sqlpage/SQLPage/issues/846))
+
 ## v0.47.0 (2026-10-15)
 - Redesigned the official website homepage with live SQLPage examples, an interactive database sculpture, flowing section transitions, responsive layouts, and direct links to documentation and deployment guides.
 - For sites that store their pages in a database, checking for page updates no longer makes other pages wait when the database is busy. In a test, another page loaded in under 1 ms instead of about 250 ms.
