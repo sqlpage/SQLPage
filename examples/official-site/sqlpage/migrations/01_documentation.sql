@@ -951,6 +951,7 @@ Advanced users can apply custom styles to table columns using a CSS class with t
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'table', * FROM (VALUES
     -- top level
+    ('title', 'A title displayed above the table.', 'TEXT', TRUE, TRUE),
     ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
     ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE),
     ('initial_search_value', 'Pre-fills the search bar used to filter the table. The user will still be able to edit the value to display table rows that will initially be filtered out.', 'TEXT', TRUE, TRUE),

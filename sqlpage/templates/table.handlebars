@@ -1,4 +1,9 @@
 <div class="card my-2 {{class}}" {{#if overflow}}style="width: fit-content;"{{/if}} {{#if id}}id="{{id}}"{{/if}}>
+    {{#if title}}
+        <div class="card-header">
+            <h2 class="card-title">{{title}}</h2>
+        </div>
+    {{/if}}
     <div class="card-body p-0" data-pre-init="table">
         {{#if (or search initial_search_value)}}
         <div class="p-3">
