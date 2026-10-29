@@ -193,6 +193,9 @@
               packages = cargoRuntime pkgs;
               env = cargoEnv pkgs // playwrightEnv pkgs;
               script = buildBrowserAssets + ''
+                # The Nix-built browsers find their own libraries; host libraries
+                # leaked in through LD_LIBRARY_PATH crash Chromium at launch.
+                unset LD_LIBRARY_PATH
                 cd tests/end-to-end
                 npx playwright test "$@"
               '';
