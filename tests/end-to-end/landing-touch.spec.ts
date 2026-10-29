@@ -33,7 +33,10 @@ test.describe("landing sculpture touch gestures", () => {
     });
     await expect(sculpture).toHaveAttribute("tabindex", "0");
     await expect(sculpture).toHaveCSS("touch-action", "pan-y pinch-zoom");
-    await expect(sculpture).toHaveAccessibleDescription(/swipe up or down/);
+    // The live scene and low-power views both describe native vertical scrolling.
+    await expect(sculpture).toHaveAccessibleDescription(
+      /swipe (up or down|vertically)/i,
+    );
     await sculpture.evaluate((element) => {
       element.addEventListener("pointercancel", () => {
         element.setAttribute("data-cancelled", "true");

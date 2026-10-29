@@ -16,7 +16,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     if (viewport.width === 1280) await keepLiveSculpture(page);
     // Pose tests use a virtual clock. Exercise slow graphics on the phone;
-    // give desktop fence completion a zero elapsed time instead of GPU timing.
+    // desktop waits for real fences without triggering the low-power fallback.
     await page.addInitScript((slow) => {
       const gl = WebGL2RenderingContext.prototype;
       const draw = gl.drawElementsInstanced;
@@ -43,14 +43,19 @@ for (const viewport of [
         document.documentElement.dataset.testGpuPending = "true";
         return submit.call(this, condition, flags);
       };
-      gl.clientWaitSync = function () {
-        document.documentElement.dataset.testGpuPending = "false";
-        return slow &&
+      const check = gl.clientWaitSync;
+      gl.clientWaitSync = function (sync, flags, timeout) {
+        const result =
+          slow &&
           document
             .querySelector(".sqlpage-world")
             ?.getAttribute("data-scene") === "ready"
-          ? this.TIMEOUT_EXPIRED
-          : this.ALREADY_SIGNALED;
+            ? this.TIMEOUT_EXPIRED
+            : check.call(this, sync, flags, timeout);
+        document.documentElement.dataset.testGpuPending = String(
+          result === this.TIMEOUT_EXPIRED,
+        );
+        return result;
       };
     }, viewport.width === 390);
     await page.clock.install();
@@ -373,10 +378,12 @@ for (const viewport of [
       await page.emulateMedia({ reducedMotion: "reduce" });
       await scrollLanding(page, 0);
       await page.clock.runFor(64);
-      await expect(page.locator("html")).toHaveAttribute(
-        "data-test-gpu-pending",
-        "false",
-      );
+      await expect
+        .poll(async () => {
+          await page.clock.runFor(32);
+          return page.locator("html").getAttribute("data-test-gpu-pending");
+        })
+        .toBe("false");
     }
     await page.clock.resume();
 
