@@ -1,0 +1,82 @@
+name: Bug report
+description: Something in SQLPage does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. The fastest way to get it fixed is a small SQL file that shows it, written like the files in [tests/sql_test_files](https://github.com/sqlpage/SQLPage/tree/main/tests/sql_test_files). We can run that file on our side as it is, and it becomes the test for the fix.
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: SQL file that shows the bug
+      description: |
+        Keep only what is needed to show the bug, and include any `CREATE TABLE` and `INSERT` statements it depends on.
+        If the bug is about a value, return a row with an `expected` column (what you expected) and an `actual` column (what SQLPage gives). If the bug is about how a page looks, use components, and describe the page you expected below.
+      render: sql
+      placeholder: |
+        select
+            'hello%20world' as expected,
+            sqlpage.url_encode('hello world') as actual;
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happens
+      description: Paste the error message from the page or the terminal, if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Leave this empty if the `expected` column in your SQL file already says it.
+
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - SQLite
+        - PostgreSQL
+        - MySQL
+        - MariaDB
+        - Microsoft SQL Server
+        - Oracle
+        - DuckDB
+        - Snowflake
+        - Another database through ODBC
+    validations:
+      required: true
+
+  - type: input
+    id: database-version
+    attributes:
+      label: Database version
+      placeholder: "PostgreSQL 18.1"
+
+  - type: input
+    id: sqlpage-version
+    attributes:
+      label: SQLPage version
+      description: Run `sqlpage --version`, or hover over the footer of a page that uses the default shell.
+      placeholder: v0.47.0
+    validations:
+      required: true
+
+  - type: input
+    id: last-working-version
+    attributes:
+      label: Last SQLPage version where it worked
+      description: Only if it used to work.
+      placeholder: v0.46.3
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Your operating system, how you run SQLPage (binary, Docker, Nix…), your `sqlpage.json`, or screenshots.

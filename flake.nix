@@ -93,12 +93,18 @@
 
       # odbc-sys links against a driver manager, and the C sources vendored by
       # aws-lc-sys, libsqlite3-sys and zstd-sys need a compiler. Nothing here
-      # reaches for OpenSSL: SQLPage speaks TLS through rustls.
+      # reaches for OpenSSL: SQLPage speaks TLS through rustls. build.rs embeds
+      # the browser assets, so every cargo gate builds them with npm first.
       cargoRuntime = pkgs: [
         (rustToolchainFor pkgs)
         pkgs.stdenv.cc
         pkgs.unixodbc
+        pkgs.nodejs_26
       ];
+      buildBrowserAssets = ''
+        npm ci --ignore-scripts
+        npm run build
+      '';
       # The database matrix runs prebuilt test binaries that link the unixODBC
       # driver manager statically. It still reads ODBCSYSINI at run time and
       # dlopens whatever absolute path this file names, so pointing that one
@@ -157,6 +163,9 @@
               env = cargoEnv pkgs;
               script = ''
                 cargo fmt --all -- --check
+              ''
+              + buildBrowserAssets
+              + ''
                 cargo clippy --all-targets --all-features -- -D warnings
               '';
             };
@@ -165,18 +174,25 @@
               description = "Run the Rust test suites against DATABASE_URL, or SQLite when it is unset";
               packages = cargoRuntime pkgs;
               env = cargoEnv pkgs;
-              script = ''
+              script = buildBrowserAssets + ''
                 cargo test "$@"
+              '';
+            };
+
+            test-sql = {
+              description = "Run the SQL test file or files";
+              packages = cargoRuntime pkgs;
+              env = cargoEnv pkgs;
+              script = buildBrowserAssets + ''
+                SQL_TEST_FILE="''${1:-}" cargo test --test mod sql_test_files
               '';
             };
 
             test-browser = {
               description = "Drive the components in a browser with Playwright";
-              packages = [ pkgs.nodejs_26 ] ++ cargoRuntime pkgs;
+              packages = cargoRuntime pkgs;
               env = cargoEnv pkgs // playwrightEnv pkgs;
-              script = ''
-                npm ci --ignore-scripts
-                npm run build
+              script = buildBrowserAssets + ''
                 cd tests/end-to-end
                 npx playwright test "$@"
               '';
@@ -222,8 +238,8 @@
             packages =
               (with pkgs; [
                 biome
+                docker-compose
                 hurl
-                nodejs_26
                 pkg-config
                 sqlite
               ])

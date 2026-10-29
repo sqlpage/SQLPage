@@ -100,10 +100,14 @@ fn read_sql_tests_in_dir(dir: &str, format: SqlTestFormat) -> Vec<SqlTestCase> {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new(); // no tests in this directory (e.g. no database-specific tests for this database)
     };
+    let selected_name = std::env::var("SQL_TEST_FILE").unwrap_or_default();
     entries
         .filter_map(|e| {
             let path = e.ok()?.path();
             if path.is_dir() || path.extension()? != "sql" {
+                return None;
+            }
+            if !path.to_string_lossy().contains(&selected_name) {
                 return None;
             }
             Some(SqlTestCase { path, format })
