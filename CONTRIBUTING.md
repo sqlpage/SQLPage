@@ -29,6 +29,7 @@ If you have [Nix](https://nixos.org/download/) with flakes enabled, `nix develop
 | `nix flake check` | formatting, plus the flake's own version assertions |
 | `nix run .#lint-rust` | `cargo fmt --check` and `cargo clippy` |
 | `nix run .#test-rust` | the Rust test suites |
+| `nix run .#test-sql -- <name>` | run a single [SQL test file](./tests/sql_test_files/README.md) |
 | `nix run .#test-browser` | the Playwright suites |
 | `nix run .#test-examples` | one example's Hurl suite |
 | `nix build .#odbc-drivers` | an `odbcinst.ini`; point `ODBCSYSINI` at it for the ODBC tests |
