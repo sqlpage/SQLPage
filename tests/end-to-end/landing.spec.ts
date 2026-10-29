@@ -45,13 +45,17 @@ for (const viewport of [
       };
       const check = gl.clientWaitSync;
       gl.clientWaitSync = function (sync, flags, timeout) {
-        const result =
-          slow &&
-          document
-            .querySelector(".sqlpage-world")
-            ?.getAttribute("data-scene") === "ready"
-            ? this.TIMEOUT_EXPIRED
-            : check.call(this, sync, flags, timeout);
+        let result: number;
+        if (slow) {
+          // Initialize the live frame before the deliberately held atlas can
+          // stall the fallback. Real startup latency is not this simulation.
+          result =
+            document
+              .querySelector(".sqlpage-world")
+              ?.getAttribute("data-scene") === "ready"
+              ? this.TIMEOUT_EXPIRED
+              : this.ALREADY_SIGNALED;
+        } else result = check.call(this, sync, flags, timeout);
         document.documentElement.dataset.testGpuPending = String(
           result === this.TIMEOUT_EXPIRED,
         );
