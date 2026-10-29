@@ -166,10 +166,11 @@ export async function checkToastNotifications(page: Page) {
         backgroundColor: rgba(style.backgroundColor),
         closeColor: rgba(closeStyle.backgroundColor),
         color: rgba(style.color),
+        themeDark: rgba(style.getPropertyValue("--tblr-dark")),
       };
     });
   expect(whiteToastStyle.backgroundColor).toEqual([255, 255, 255, 255]);
-  expect(whiteToastStyle.color).toEqual([31, 41, 55, 255]);
+  expect(whiteToastStyle.color).toEqual(whiteToastStyle.themeDark);
   expect(whiteToastStyle.closeColor).toEqual(whiteToastStyle.color);
 
   const bottomContainer = page.locator(

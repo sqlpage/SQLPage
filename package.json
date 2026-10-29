@@ -16,7 +16,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@tabler/core": "1.5.0",
+    "@tabler/core": "1.7.3",
     "@tabler/icons-sprite": "3.46.0",
     "apexcharts": "7.6.0",
     "tom-select": "2.6.2"
