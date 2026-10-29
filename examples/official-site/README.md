@@ -56,6 +56,19 @@ shared, while failed loads can be retried. The model, lighting map, and static
 preview are versioned local assets. The official site's `sqlpage.yaml` allows
 jsDelivr scripts while preserving SQLPage's per-request nonce.
 
+The studio is a textured horizontal floor with a 512 × 512 planar reflection,
+filtered to 256 × 256 with the same Gaussian shader as the emission halo.
+Reflection RGB and coverage are blurred together before tone mapping. Its
+contact point follows the actual metal surface as the sculpture rotates.
+Materials stay in `sculpture-materials.js`, lighting in `database-scene.js`,
+and floor shading in the `studio-*.glsl` snippets. After changing the scene,
+run the official site locally, then regenerate both fallback assets with
+`node scripts/render-landing-sculpture.mjs http://127.0.0.1:8080` from the
+repository root. This uses the production renderer at time zero and all 64
+turns; it requires Playwright Chromium and ImageMagick with WebP/AVIF support.
+The low-power handoff retains the last live frame while its atlas decodes and
+attaches the replacement only after drawing it, without showing the preview again.
+
 Without JavaScript the document retains its content, initial live example, and
 navigation. CDN or WebGL failure leaves the static sculpture preview and working
 controls, and a retry is available for the optional scene. Reduced motion disables

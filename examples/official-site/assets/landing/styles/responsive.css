@@ -28,13 +28,14 @@
     width: 60px;
   }
   .engraved-comment {
-    width: 248px;
+    width: 18.5vw;
+    right: 2.5%;
   }
   .metal-recess {
-    padding: 17px 21px 18px;
+    padding: 12px 14px;
   }
   .metal-recess code {
-    font-size: 13px;
+    font-size: clamp(10px, 1.2vw, 13px);
   }
   .intro-row {
     gap: 25px;
@@ -149,10 +150,6 @@
   .metal-recess {
     padding: 12px 10px;
     border-radius: 5px;
-    box-shadow:
-      inset 0 2px 8px color-mix(in srgb, var(--tblr-black) 73.33%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--tblr-blue) 16.86%, transparent),
-      0 0 10px color-mix(in srgb, var(--tblr-blue) 6.67%, transparent);
   }
   .metal-recess code {
     grid-template-columns: 1fr;

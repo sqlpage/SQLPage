@@ -20,7 +20,7 @@ function frameAt(width, height, anchor, portrait, bodyWidth = width * 0.48) {
   const compositionLeft = (width - compositionWidth) / 2;
   const desiredWidth = portrait
     ? bodyWidth
-    : Math.min(compositionWidth * 0.335, height * 0.59);
+    : Math.min(compositionWidth * 0.26, height * 0.47);
   let size = desiredWidth / SCULPTURE_FRAME.bodyWidth;
   const align = () => {
     const left = anchor.x - SCULPTURE_FRAME.shoulder.x * size;
@@ -60,6 +60,7 @@ function frameAt(width, height, anchor, portrait, bodyWidth = width * 0.48) {
 export function layoutLandingFrame(viewport, anchor) {
   const width = Math.max(1, viewport.clientWidth);
   const screenHeight = window.innerHeight;
+  const compositionWidth = Math.min(width, screenHeight * 1.95);
   const portrait = width < 900 && screenHeight >= width;
   const shortLandscape = !portrait && screenHeight < 560;
   const section = viewport.parentElement;
@@ -108,13 +109,16 @@ export function layoutLandingFrame(viewport, anchor) {
         rect.left -
         surface.left +
         (ink.actualBoundingBoxRight || rect.width) -
-        fontSize * 0.045,
+        fontSize * 0.045 +
+        // Leave a clear gutter between the compact headline and sculpture.
+        compositionWidth * 0.2,
       y:
         rect.bottom -
         surface.top -
         (ink.fontBoundingBoxDescent ?? fontSize * 0.2) +
         ink.actualBoundingBoxDescent -
-        fontSize * 0.025,
+        fontSize * 0.025 -
+        height * 0.025,
     };
   };
   if (portrait)

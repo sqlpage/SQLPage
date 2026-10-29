@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { scrollLanding, settleLandingPreview } from "./landing-helpers.ts";
+import {
+  keepLiveSculpture,
+  scrollLanding,
+  settleLandingPreview,
+} from "./landing-helpers.ts";
 
 for (const viewport of [
   { width: 1280, height: 720 },
@@ -10,8 +14,9 @@ for (const viewport of [
   }) => {
     test.setTimeout(90_000);
     await page.setViewportSize(viewport);
+    if (viewport.width === 1280) await keepLiveSculpture(page);
     // Pose tests use a virtual clock. Exercise slow graphics on the phone;
-    // give desktop fence completion a zero elapsed time instead of GPU timing.
+    // desktop waits for real fences without triggering the low-power fallback.
     await page.addInitScript((slow) => {
       const gl = WebGL2RenderingContext.prototype;
       const draw = gl.drawElementsInstanced;
@@ -38,29 +43,37 @@ for (const viewport of [
         document.documentElement.dataset.testGpuPending = "true";
         return submit.call(this, condition, flags);
       };
-      gl.clientWaitSync = function () {
-        document.documentElement.dataset.testGpuPending = "false";
-        return slow ? this.TIMEOUT_EXPIRED : this.ALREADY_SIGNALED;
+      const check = gl.clientWaitSync;
+      gl.clientWaitSync = function (sync, flags, timeout) {
+        let result: number;
+        if (slow) {
+          // Initialize the live frame before the deliberately held atlas can
+          // stall the fallback. Real startup latency is not this simulation.
+          result =
+            document
+              .querySelector(".sqlpage-world")
+              ?.getAttribute("data-scene") === "ready"
+              ? this.TIMEOUT_EXPIRED
+              : this.ALREADY_SIGNALED;
+        } else result = check.call(this, sync, flags, timeout);
+        document.documentElement.dataset.testGpuPending = String(
+          result === this.TIMEOUT_EXPIRED,
+        );
+        return result;
       };
     }, viewport.width === 390);
-    if (viewport.width === 1280) {
-      await page.route(
-        "**/assets/landing/js/scene/database-scene.js",
-        async (route) => {
-          const response = await route.fetch();
-          await route.fulfill({
-            response,
-            body: (await response.text()).replace(
-              "const elapsed = performance.now() - submittedAt;",
-              "const elapsed = 0;",
-            ),
-          });
-        },
-      );
-    }
     await page.clock.install();
     const errors: string[] = [];
     const atlasRequests: string[] = [];
+    let releaseAtlas = () => {};
+    const atlasHeld = new Promise<void>((resolve) => {
+      releaseAtlas = resolve;
+    });
+    if (viewport.width === 390)
+      await page.route("**/sculpture-turns.avif", async (route) => {
+        await atlasHeld;
+        await route.continue();
+      });
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("request", (request) => {
       if (request.url().includes("/sculpture-turns."))
@@ -80,6 +93,26 @@ for (const viewport of [
     // Render each sampled pose without spending software GPU time on idle frames.
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
     await page.clock.runFor(viewport.width === 390 ? 1100 : 64);
+    if (viewport.width === 390) {
+      await expect.poll(() => atlasRequests.length).toBe(1);
+      // A slow atlas download must retain the submitted live frame. Returning
+      // to the static preview here caused a visible brightness/pose blink.
+      await expect(page.locator(".sqlpage-world")).toHaveAttribute(
+        "data-scene",
+        "ready",
+      );
+      await expect(page.locator(".scene-preview")).toBeHidden();
+      await expect(page.locator("canvas")).toHaveJSProperty("width", 1000);
+      releaseAtlas();
+      await expect
+        .poll(async () => {
+          await page.clock.runFor(32);
+          return page
+            .locator("canvas")
+            .evaluate((canvas: HTMLCanvasElement) => canvas.width);
+        })
+        .toBe(400);
+    }
     await expect
       .poll(async () => {
         await page.clock.runFor(32);
@@ -349,10 +382,12 @@ for (const viewport of [
       await page.emulateMedia({ reducedMotion: "reduce" });
       await scrollLanding(page, 0);
       await page.clock.runFor(64);
-      await expect(page.locator("html")).toHaveAttribute(
-        "data-test-gpu-pending",
-        "false",
-      );
+      await expect
+        .poll(async () => {
+          await page.clock.runFor(32);
+          return page.locator("html").getAttribute("data-test-gpu-pending");
+        })
+        .toBe("false");
     }
     await page.clock.resume();
 

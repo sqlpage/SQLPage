@@ -1,5 +1,25 @@
 import { expect, type Page } from "@playwright/test";
 
+/** Pose/input tests exercise live 3D independently of software-GPU timing.
+ * The phone pose test separately covers the real low-power handoff. */
+export async function keepLiveSculpture(page: Page) {
+  // Keep real fence polling so controlled frames cannot overrun the software GPU.
+  // Ignore elapsed time only when deciding whether to switch to baked views.
+  await page.route(
+    "**/assets/landing/js/scene/database-scene.js",
+    async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        body: (await response.text()).replace(
+          "const elapsed = performance.now() - submittedAt;",
+          "const elapsed = 0;",
+        ),
+      });
+    },
+  );
+}
+
 /** Load the lazy example through normal scrolling before recording page geometry. */
 export async function settleLandingPreview(page: Page) {
   const preview = page.locator(

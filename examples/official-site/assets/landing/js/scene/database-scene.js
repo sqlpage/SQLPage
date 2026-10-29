@@ -54,7 +54,8 @@ export function createDatabaseScene({
     contextLost = false,
     frame = 0,
     last = 0,
-    time = 0;
+    time = 0,
+    renderedFrames = 0;
   let renderedZoom = 0,
     visible = document.visibilityState !== "hidden",
     loaded = false,
@@ -91,7 +92,7 @@ export function createDatabaseScene({
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.autoUpdate = false;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   let canvas = renderer.domElement;
   const canvasStyle =
     "position:absolute;left:0;top:0;width:1000px;height:1000px;transform-origin:0 0";
@@ -107,7 +108,8 @@ export function createDatabaseScene({
     samples = 0,
     slowFrames = 0,
     cpuBusyUntil = 0;
-  let baked, context, lastTurn;
+  let baked, context, lastTurn, pendingAtlas, previousCanvas;
+  let switchingRenderer = false;
   const resetBudget = () => {
     if (fence) gl.deleteSync(fence);
     fence = undefined;
@@ -139,33 +141,33 @@ export function createDatabaseScene({
     renderer.forceContextLoss();
   };
   const useBakedViews = () => {
-    releaseGraphics();
-    baked = new Image();
+    if (switchingRenderer) return;
+    switchingRenderer = true;
+    const atlas = new Image();
+    pendingAtlas = atlas;
     const replacement = document.createElement("canvas");
     replacement.width = 400;
     replacement.height = 400;
-    context = replacement.getContext("2d");
-    if (!context) {
+    const replacementContext = replacement.getContext("2d");
+    if (!replacementContext) {
       onError();
       return;
     }
-    canvas.replaceWith(replacement);
-    canvas = replacement;
-    canvas.style.cssText = canvasStyle;
-    root.dataset.renderer = "baked";
-    root.dataset.scene = "loading";
-    loaded = readySent = false;
-    hitArea.inert = true;
-    if (instructions)
-      instructions.textContent =
-        "Drag sideways or use left/right arrows to rotate. Use plus/minus to zoom and Home to reset. Swipe vertically or pinch to scroll or zoom the page.";
-    baked.src = new URL(
+    atlas.src = new URL(
       "../../assets/sculpture-turns.avif",
       import.meta.url,
     ).href;
-    baked.decode().then(
+    atlas.decode().then(
       () => {
-        loaded = !disposed;
+        if (disposed) return;
+        // Keep the last submitted WebGL frame visible during download/decode.
+        // The replacement is attached only after its first atlas view is drawn.
+        baked = atlas;
+        context = replacementContext;
+        previousCanvas = canvas;
+        canvas = replacement;
+        canvas.style.cssText = canvasStyle;
+        switchingRenderer = false;
         needsRender = true;
       },
       () => {
@@ -180,25 +182,26 @@ export function createDatabaseScene({
   const interior = {
     uInteriorPosition: { value: new THREE.Vector3() },
     uInteriorRadius: { value: 1 },
-    uInteriorPulse: { value: 14 },
+    uInteriorPulse: { value: 2.4 },
   };
-  const interiorLight = new THREE.PointLight(0x72c8de, 0.6, 2.1, 2);
+  const interiorLight = new THREE.PointLight(0x8bb8e8, 0.4, 2.1, 2);
   interiorLight.name = "Soft interior database light";
   const interiorScale = new THREE.Vector3();
   let glow, jewelReflection;
-  const key = new THREE.DirectionalLight(0xe5edf1, 1.7);
-  key.position.set(-3.5, 5, 5);
+  const key = new THREE.DirectionalLight(0xd8e9fa, 1.2);
+  key.position.set(-3, 5, 2.5);
   key.castShadow = true;
-  key.shadow.mapSize.set(512, 512);
+  key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, {
-    left: -4,
-    right: 4,
-    top: 4,
-    bottom: -4,
+    left: -3,
+    right: 3,
+    top: 3,
+    bottom: -3,
     near: 0.5,
     far: 18,
   });
-  key.shadow.normalBias = 0.025;
+  key.shadow.normalBias = 0.012;
+  key.shadow.radius = 8;
   scene.add(key);
   const rim = new THREE.DirectionalLight(0xa1bac7, 0.8);
   rim.position.set(4, 2, -2);
@@ -208,12 +211,12 @@ export function createDatabaseScene({
   scene.add(fill);
 
   RectAreaLightUniformsLib.init();
-  const softbox = new THREE.RectAreaLight(0xe5edf1, 7, 2.5, 6);
-  softbox.position.set(-3.5, 1.5, 4);
+  const softbox = new THREE.RectAreaLight(0xe5eff9, 9, 1.5, 6);
+  softbox.position.set(-3, 2, 4.5);
   softbox.lookAt(0, 0, 0);
   scene.add(softbox);
-  const edgeSoftbox = new THREE.RectAreaLight(0xa1bac7, 4, 1.2, 5);
-  edgeSoftbox.position.set(3.5, 1.5, 2);
+  const edgeSoftbox = new THREE.RectAreaLight(0xa9cbec, 3, 0.7, 4);
+  edgeSoftbox.position.set(3.5, 2, 3.5);
   edgeSoftbox.lookAt(0, 0, 0);
   scene.add(edgeSoftbox);
   scene.add(new THREE.HemisphereLight(0xa1bac7, 0x18262d, 0.55));
@@ -242,7 +245,7 @@ export function createDatabaseScene({
       );
       glow.setSize(1000, 1000, 1);
       jewelReflection = createFiniteJewelLight(JEWEL_EDGES, shaders);
-      studioSet = createSculptureStudio();
+      studioSet = createSculptureStudio(studio, shaders);
       scene.add(studioSet.group);
       performance.mark("sqlpage:assets-ready");
       const bounds = new THREE.Box3().setFromObject(gltf.scene);
@@ -271,17 +274,24 @@ export function createDatabaseScene({
           if (material.name.includes("Separator"))
             finishLiquid(material, liquidClock, studio, interior, shaders);
           if (material.name.includes("Jewel Wire")) {
-            material.emissiveIntensity = 1.05;
+            material.color.set("#a9d2fa");
+            material.emissive.set("#8bb8e8");
+            material.emissiveIntensity = 1.6;
             wireMaterial = material;
           }
-          if (material.name.includes("Endpoint"))
-            material.emissiveIntensity = 1.2;
+          if (material.name.includes("Endpoint")) {
+            material.color.set("#c9e2fb");
+            material.emissive.set("#a9d2fa");
+            material.emissiveIntensity = 1.8;
+          }
+          if (material.name.includes("Facets")) {
+            material.color.set("#8bb8e8");
+            material.emissive.set("#466689");
+            material.opacity = 0.035;
+          }
           if (material.transparent) material.depthWrite = false;
         }
       });
-      const jewelLight = new THREE.PointLight(0x72c8de, 0.09, 2.4, 2);
-      jewelLight.position.set(0, 1.35, 0);
-      gltf.scene.add(jewelLight);
       // Native model coordinates: stay inside the radius-1.04 database stack.
       interiorLight.position.set(0.4, -0.45, 0);
       gltf.scene.add(interiorLight);
@@ -428,6 +438,7 @@ export function createDatabaseScene({
     }
     if (
       loaded &&
+      !switchingRenderer &&
       (inView || !readySent) &&
       (state.motion || needsRender || changing)
     ) {
@@ -461,6 +472,15 @@ export function createDatabaseScene({
           }
           lastTurn = turn;
         }
+        if (previousCanvas) {
+          previousCanvas.replaceWith(canvas);
+          previousCanvas = undefined;
+          releaseGraphics();
+          root.dataset.renderer = "baked";
+          if (instructions)
+            instructions.textContent =
+              "Drag sideways or use left/right arrows to rotate. Use plus/minus to zoom and Home to reset. Swipe vertically or pinch to scroll or zoom the page.";
+        }
       } else {
         // Prepare GPU-only animation only when a new live frame can be drawn.
         liquidClock.value = time;
@@ -473,9 +493,9 @@ export function createDatabaseScene({
           -0.45 + Math.sin(time * ((Math.PI * 2) / 4)) * 0.28,
           Math.sin(time * ((Math.PI * 2) / 6)) * 0.4,
         );
-        const pulse = 14 + Math.sin(time * ((Math.PI * 2) / 3)) * 6;
+        const pulse = 2.4 + Math.sin(time * ((Math.PI * 2) / 6)) * 0.3;
         interior.uInteriorPulse.value = pulse;
-        interiorLight.intensity = (0.6 * pulse) / 14;
+        interiorLight.intensity = (0.4 * pulse) / 2.4;
         scene.updateMatrixWorld(true);
         studioSet.update(model);
         scene.updateMatrixWorld(true);
@@ -485,15 +505,19 @@ export function createDatabaseScene({
         if (diamond && wireMaterial)
           jewelReflection.update(diamond, camera, wireMaterial);
         syncHitArea();
+        studioSet.renderReflection(renderer, scene, camera);
         renderer.shadowMap.needsUpdate = true;
         renderer.render(scene, camera);
         glow.render(model, [studioSet.group]);
         fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
         submittedAt = performance.now();
+        renderedFrames++;
       }
-      needsRender = false;
+      // The reflection receiver settles on the second submitted frame. Keep
+      // the matching preview visible and time frozen throughout initialization.
+      needsRender = !baked && renderedFrames < 2;
       lastOrientation.copy(dragQuaternion);
-      if (!readySent) {
+      if (!readySent && (baked || renderedFrames >= 2)) {
         readySent = true;
         performance.mark("sqlpage:first-frame");
         performance.measure(
@@ -530,7 +554,9 @@ export function createDatabaseScene({
       timing?.disconnect();
       if (instructions) instructions.textContent = originalInstructions;
       if (baked) baked.src = "";
-      if (!baked) releaseGraphics();
+      if (pendingAtlas) pendingAtlas.src = "";
+      if (!baked || previousCanvas) releaseGraphics();
+      previousCanvas?.remove();
       canvas.remove();
     },
   };

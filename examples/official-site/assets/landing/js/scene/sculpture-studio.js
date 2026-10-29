@@ -1,94 +1,154 @@
-/** A matte studio sweep catches real light and the sculpture's shadow. */
+/** A horizontal studio floor, lit by the same softboxes as the sculpture. */
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
+import { Reflector } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/objects/Reflector.js/+esm";
+import { FullScreenQuad } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/Pass.js/+esm";
+import { STUDIO_RADIANCE_SCALE } from "./sculpture-assets.js";
 
-export function createSculptureStudio() {
+export function createSculptureStudio(environment, shaders) {
   const group = new THREE.Group();
-  const profile = [
-    [5, 0],
-    [-1.8, 0],
-  ];
-  for (let i = 1; i <= 20; i++) {
-    const angle = ((i / 20) * Math.PI) / 2;
-    profile.push([-1.8 - Math.sin(angle) * 1.2, 1.2 - Math.cos(angle) * 1.2]);
-  }
-  profile.push([-3, 7]);
-  const positions = [],
-    indices = [];
-  profile.forEach(([z, y], i) => {
-    positions.push(-6, y, z, 6, y, z);
-    if (i) {
-      const n = i * 2;
-      indices.push(n - 2, n - 1, n, n - 1, n + 1, n);
-    }
+  const geometry = new THREE.PlaneGeometry(20, 20);
+  // The reflected camera renders at 512 × 512; the floor filters
+  // that linear HDR image before the main scene's single tone-mapping pass.
+  const reflection = new Reflector(geometry, {
+    textureWidth: 512,
+    textureHeight: 512,
+    multisample: 0,
+    clipBias: 0.002,
   });
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(positions, 3),
+  reflection.rotation.x = -Math.PI / 2;
+  reflection.visible = false;
+  group.add(reflection);
+  const blurred = Array.from(
+    { length: 2 },
+    () =>
+      new THREE.WebGLRenderTarget(256, 256, {
+        type: THREE.HalfFloatType,
+        depthBuffer: false,
+      }),
   );
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  const theme = getComputedStyle(document.documentElement);
+  const blur = new THREE.ShaderMaterial({
+    uniforms: {
+      tSource: { value: reflection.getRenderTarget().texture },
+      uStep: { value: new THREE.Vector2() },
+      uExtract: { value: 0 },
+    },
+    vertexShader: shaders.fullscreenVertex,
+    fragmentShader: shaders.blurFragment,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const blurQuad = new FullScreenQuad(blur);
+  const contact = { value: new THREE.Vector2() };
   const material = new THREE.MeshStandardMaterial({
-    color: theme.getPropertyValue("--tblr-bg-surface-tertiary").trim(),
-    roughness: 0.86,
-    metalness: 0.12,
+    color: "#1c2932",
+    roughness: 0.48,
+    metalness: 0.3,
+    envMap: environment,
+    envMapIntensity: 0.35 * STUDIO_RADIANCE_SCALE,
     transparent: true,
     depthWrite: false,
-    opacity: 0.65,
   });
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.uStudioContact = contact;
+    shader.uniforms.uFloorReflection = { value: blurred[1].texture };
+    shader.uniforms.uFloorReflectionMatrix =
+      reflection.material.uniforms.textureMatrix;
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
-        "#include <common>\nvarying vec3 vStudioPosition;",
+        "#include <common>\nvarying vec3 vStudioPosition;\nvarying vec4 vFloorReflection;\nuniform mat4 uFloorReflectionMatrix;",
       )
       .replace(
         "#include <begin_vertex>",
-        "#include <begin_vertex>\nvStudioPosition = position;",
+        "#include <begin_vertex>\nvStudioPosition = vec3(position.x, 0.0, -position.y);\nvFloorReflection = uFloorReflectionMatrix * vec4(position, 1.0);",
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nvarying vec3 vStudioPosition;",
+        `#include <common>\nvarying vec3 vStudioPosition;\nuniform vec2 uStudioContact;\nvarying vec4 vFloorReflection;\nuniform sampler2D uFloorReflection;\n${shaders.studioNoise}`,
       )
-      .replace(
-        "#include <alphamap_fragment>",
-        `#include <alphamap_fragment>
-        float edge = 1.0 - smoothstep(1.2, 2.8, abs(vStudioPosition.x));
-        float wall = 1.0 - smoothstep(1.8, 5.0, vStudioPosition.y);
-        float floorEdge = 1.0 - smoothstep(1.0, 3.8, vStudioPosition.z);
-        float grain = fract(sin(dot(floor(vStudioPosition.xz * 800.0), vec2(12.9898, 78.233))) * 43758.5453);
-        diffuseColor.rgb *= 0.94 + grain * 0.12;
-        diffuseColor.a *= edge * wall * floorEdge;
-      `,
-      );
+      .replace("#include <roughnessmap_fragment>", shaders.studioFinish)
+      .replace("#include <normal_fragment_maps>", shaders.studioNormal)
+      .replace("#include <opaque_fragment>", shaders.studioReflection);
   };
-  material.customProgramCacheKey = () => "sqlpage-studio-sweep-v1";
-  const sweep = new THREE.Mesh(geometry, material);
-  sweep.receiveShadow = true;
-  group.add(sweep);
-  const spill = new THREE.PointLight(
-    theme.getPropertyValue("--tblr-primary").trim(),
-    2.4,
-    5,
-    2,
-  );
-  spill.position.set(0.3, 0.85, -0.6);
+  material.customProgramCacheKey = () => "sqlpage-studio-floor-v3";
+  const floor = new THREE.Mesh(geometry, material);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  group.add(floor);
+
+  // Local blue spill grazes the floor, revealing its satin texture. It stays
+  // in the room when the model turns; there is no illuminated vertical wall.
+  const spill = new THREE.RectAreaLight(0xc3ddf8, 5, 3, 1.5);
+  spill.position.set(-1.5, 2, -1.3);
+  spill.lookAt(0, 0, 0.2);
   group.add(spill);
-  const bounds = new THREE.Box3();
+  const edge = new THREE.RectAreaLight(0x8abaf0, 2.5, 2, 2);
+  edge.position.set(1.8, 2, -1.5);
+  edge.lookAt(0, 0, 0.2);
+  group.add(edge);
+
+  const meshes = [];
+  const previous = new THREE.Matrix4().multiplyScalar(0);
+  const point = new THREE.Vector3();
+  const lowest = new THREE.Vector3();
   return {
     group,
     dispose() {
       geometry.dispose();
       material.dispose();
+      reflection.dispose();
+      blurred.forEach((target) => {
+        target.dispose();
+      });
+      blur.dispose();
+      blurQuad.dispose();
       group.removeFromParent();
     },
+    renderReflection(renderer, scene, camera) {
+      const savedTarget = renderer.getRenderTarget();
+      floor.visible = false;
+      try {
+        reflection.onBeforeRender(renderer, scene, camera);
+        // A continuous Gaussian footprint avoids repeated, offset copies of
+        // the luminous bands. RGB and coverage are filtered together.
+        blur.uniforms.tSource.value = reflection.getRenderTarget().texture;
+        blur.uniforms.uStep.value.set(1.2 / 512, 0);
+        renderer.setRenderTarget(blurred[0]);
+        blurQuad.render(renderer);
+        blur.uniforms.tSource.value = blurred[0].texture;
+        blur.uniforms.uStep.value.set(0, 0.8 / 256);
+        renderer.setRenderTarget(blurred[1]);
+        blurQuad.render(renderer);
+      } finally {
+        renderer.setRenderTarget(savedTarget);
+        floor.visible = true;
+        reflection.visible = false;
+      }
+    },
     update(model) {
-      // Follow the lowest point of the tilted/dragged model without rotating
-      // the room with it. The shadow remains attached to the contact surface.
-      bounds.setFromObject(model);
-      group.position.y = bounds.min.y - 0.025;
+      if (previous.equals(model.matrixWorld)) return;
+      previous.copy(model.matrixWorld);
+      if (!meshes.length)
+        model.traverse((mesh) => {
+          if (mesh.isMesh && mesh.castShadow) meshes.push(mesh);
+        });
+      // A transformed bounding box includes empty corners below a tilted
+      // cylinder. Use its actual surface so the sculpture touches the floor,
+      // including after a drag, without rotating the floor with the object.
+      lowest.set(0, Infinity, 0);
+      for (const mesh of meshes) {
+        const positions = mesh.geometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+          point
+            .fromBufferAttribute(positions, i)
+            .applyMatrix4(mesh.matrixWorld);
+          if (point.y < lowest.y) lowest.copy(point);
+        }
+      }
+      group.position.y = lowest.y - 0.005;
+      contact.value.set(lowest.x, lowest.z);
     },
   };
 }
