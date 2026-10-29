@@ -43,7 +43,7 @@ services:
   mysql:
     profiles: ["mysql"]
     ports: ["3306:3306"]
-    image: mysql
+    image: docker.io/library/mysql:26.10
     environment:
       MYSQL_ROOT_PASSWORD: Password123!
       MYSQL_DATABASE: sqlpage
@@ -68,7 +68,7 @@ services:
   mariadb:
     profiles: ["mariadb"]
     ports: ["3306:3306"]
-    image: mariadb
+    image: docker.io/library/mariadb:13.0
     environment:
       MYSQL_ROOT_PASSWORD: Password123!
       MYSQL_DATABASE: sqlpage
@@ -82,7 +82,7 @@ services:
   oracle:
     profiles: ["oracle"]
     ports: ["1521:1521"]
-    image: gvenzl/oracle-free:23.26.2-slim
+    image: docker.io/gvenzl/oracle-free:23.26.2-slim
     environment:
       ORACLE_PASSWORD: Password123!
       APP_USER: root

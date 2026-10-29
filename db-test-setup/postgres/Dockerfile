@@ -1,4 +1,4 @@
-FROM postgres:18-alpine
+FROM docker.io/library/postgres:18-alpine
 
 # Copy the SSL certificates
 
