@@ -1188,6 +1188,25 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn inline_partials_defined_before_each_row_render_in_every_part() -> anyhow::Result<()> {
+        let template = Template::compile(
+            "{{#*inline \"item\"}}[{{x}}]{{/inline}}\
+            {{> item x=\"start\"}}{{#each_row}}{{> item}}{{/each_row}}{{> item x=\"end\"}}",
+        )?;
+        let split = split_template(template);
+        let mut output = Vec::new();
+        let config = app_config::tests::test_config();
+        let app_state = Arc::new(AppState::init(&config).await.unwrap());
+        let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0, 0);
+        rdr.render_start(&mut output, json!(null))?;
+        rdr.render_item(&mut output, json!({"x": 1}))?;
+        rdr.render_item(&mut output, json!({"x": 2}))?;
+        rdr.render_end(&mut output)?;
+        assert_eq!(String::from_utf8_lossy(&output), "[start][1][2][end]");
+        Ok(())
+    }
+
+    #[actix_web::test]
     async fn test_delayed() -> anyhow::Result<()> {
         let template = Template::compile(
             "{{#each_row}}<b> {{x}} {{#delay}} {{x}} </b>{{/delay}}{{/each_row}}{{flush_delayed}}",
