@@ -6,6 +6,8 @@
 
 - Refined the official website with muted blue accents, simpler navigation, a clearer primary action, and a level SQL ribbon with vertical separators, and a grounded studio scene with brushed metal and physical reflections. Restored visible progress in the streaming comparison animation.
 
+- A hero with `reverse` shows its image above the text on small screens. ([#828](https://github.com/sqlpage/SQLPage/issues/828))
+
 - The table component accepts a top-level `title`, shown in a header above the table like in the list and datagrid components. ([#1261](https://github.com/sqlpage/SQLPage/issues/1261))
 
 - Restored parameter reuse for repeated variables on SQL Server, PostgreSQL, and SQLite, fixing SQL Server and PostgreSQL queries that repeat a variable-dependent expression in `SELECT` and `GROUP BY`.
