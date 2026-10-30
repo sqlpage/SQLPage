@@ -24,6 +24,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('footer', 'Muted text to display at the bottom of the card.', 'TEXT', FALSE, TRUE),
     ('footer_md', 'Muted text to display at the bottom of the card, with rich text formatting in Markdown format.', 'TEXT', FALSE, TRUE),
     ('link', 'An URL to which the user should be taken when they click on the card.', 'URL', FALSE, TRUE),
+    ('target', 'Where the card''s link opens: "_blank" for a new tab, "_self" for the same tab, "_parent" for the parent frame, or "_top" for the full body of the window.', 'TEXT', FALSE, TRUE),
     ('footer_link', 'An URL to which the user should be taken when they click on the footer.', 'URL', FALSE, TRUE),
     ('style', 'Inline style property to your iframe embed code. For example "background-color: #FFFFFF"', 'TEXT', FALSE, TRUE),
     ('height', 'Height of the iframe embed code, in pixels. Used only when embed_mode is ''iframe''.', 'INTEGER', FALSE, TRUE),
