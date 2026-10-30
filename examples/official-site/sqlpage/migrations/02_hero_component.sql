@@ -92,7 +92,7 @@ FROM
             ('loop', 'Loop the video', 'BOOLEAN', TRUE, TRUE),
             (
                 'reverse',
-                'Reverse the order of the image and text: the image will be on the left, and the text on the right.',
+                'Reverse the order of the image and text: the image will be on the left, and the text on the right. On small screens, the image will be above the text.',
                 'BOOLEAN',
                 TRUE,
                 TRUE
