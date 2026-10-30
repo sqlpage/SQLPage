@@ -22,6 +22,8 @@
 
 - Each item of the tracking component accepts a `link`. ([#900](https://github.com/sqlpage/SQLPage/issues/900))
 
+- The `height` of the modal component sets the height of its content. Overflow content scrolls. ([#1046](https://github.com/sqlpage/SQLPage/issues/1046))
+
 - Custom components can call inline partials inside `each_row` and after it, when the partials are defined before `each_row`. ([#846](https://github.com/sqlpage/SQLPage/issues/846))
 
 ## v0.47.0 (2026-10-15)

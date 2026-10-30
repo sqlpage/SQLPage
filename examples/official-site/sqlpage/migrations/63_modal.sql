@@ -18,7 +18,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('small','Indicates that the modal box has a reduced width.','BOOLEAN',TRUE,TRUE),
     ('embed','Embed remote content in an iframe.','TEXT',TRUE,TRUE),
     ('embed_mode','Use "iframe" to display embedded content within an iframe.','TEXT',TRUE,TRUE),
-    ('height','Height of the embedded content.','INTEGER',TRUE,TRUE),
+    ('height','Height of the modal content, in pixels. Overflow content scrolls.','INTEGER',TRUE,TRUE),
     ('allow','For embedded content, this attribute specifies the features or permissions that can be used.','TEXT',TRUE,TRUE),
     ('sandbox','For embedded content, this attribute specifies the security restrictions on the loaded content.','TEXT',TRUE,TRUE),
     ('style','Applies CSS styles to the embedded content.','TEXT',TRUE,TRUE)
