@@ -5,7 +5,7 @@
             class="nav-link {{#if active~}}
                 active
             {{~/if}} {{#if color~}}
-                text-{{color}} border-{{color}}
+                text-{{color}}{{#if active}} border-{{color}}{{/if}}
             {{~/if}} {{#if center~}}
                 mx-auto
             {{~/if}}"

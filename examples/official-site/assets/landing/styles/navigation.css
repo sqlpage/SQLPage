@@ -1,0 +1,63 @@
+/* Shared brand and desktop glass navigation; the native mobile dialog is in dialog.css. */
+.site-header {
+  height: 12.5%;
+  max-height: 145px;
+  min-height: 96px;
+  margin: 0 calc(var(--composition-left) + var(--composition-width) * 0.045);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  position: relative;
+  z-index: 30;
+}
+.brand {
+  font-weight: 600;
+  font-size: clamp(25px, 2.6vw, 43px);
+  letter-spacing: -0.015em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-shadow: 0 2px 3px
+    color-mix(in srgb, var(--tblr-black) 60.00%, transparent);
+}
+.brand-symbol {
+  display: block;
+  width: 72px;
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(
+    0 0 10px color-mix(in srgb, var(--tblr-blue) 10.20%, transparent)
+  );
+}
+/* Quiet navigation leaves the sculpture as the page's reflective surface. */
+.desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.desktop-nav .glass-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 22px;
+  border-radius: 6px;
+  font-size: clamp(14px, 1.32vw, 21px);
+  color: var(--tblr-gray-300);
+  transition:
+    color 0.2s,
+    background-color 0.2s;
+}
+.desktop-nav .glass-button:hover,
+.desktop-nav .glass-button:focus-visible {
+  color: var(--tblr-body-color);
+  background: color-mix(in srgb, var(--tblr-primary) 6.27%, transparent);
+}
+.mobile-menu {
+  display: none;
+  background: none;
+  border: 0;
+  color: var(--tblr-body-color);
+  padding: 10px;
+}

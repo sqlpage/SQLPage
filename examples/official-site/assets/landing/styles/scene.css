@@ -1,0 +1,148 @@
+/* One sculpture: a fixed opening flight, then native scrolling in section hosts. */
+.sqlpage-world {
+  /* Keep the studio palette local to the landing page. Documentation retains
+     the shared Tabler theme, and light demo sections retain their own surface. */
+  --tblr-body-bg: #080e11;
+  --tblr-bg-surface: #0d161c;
+  --tblr-bg-surface-secondary: #14212b;
+  --tblr-bg-surface-tertiary: #1b2c38;
+  --tblr-border-color: #263d4d;
+  --tblr-secondary-color: #a1b4c6;
+  --tblr-muted-color: #8a9faf;
+  position: relative;
+  overflow-x: clip;
+  background: var(--tblr-body-bg);
+}
+.experience {
+  position: relative;
+  --composition-width: min(100vw, 195svh);
+  --composition-left: max(0px, calc((100vw - 195svh) / 2));
+  --progress: 0;
+  --intro-opacity: 1;
+  --intro-shift: 0px;
+  --ribbon-opacity: 1;
+}
+/* Scene loading, reduced motion, and the ordinary first frame share one height. */
+.sqlpage-world[data-scene] .experience {
+  height: var(--stage-height, 100svh);
+  min-height: 560px;
+}
+.viewport {
+  height: 100svh;
+  min-height: 560px;
+  position: relative;
+  top: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 72% 42%, #203848, transparent 58%),
+    var(--tblr-body-bg);
+}
+/* One sculpture follows the authored section anchors. */
+.scene-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.sqlpage-world:not([data-enhanced]) .scene-layer {
+  position: absolute;
+  height: 100svh;
+}
+.scene-layer[data-docked] {
+  position: absolute;
+  height: auto;
+}
+.scene-layer .model-interaction[data-ready="true"] {
+  pointer-events: auto;
+}
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+}
+.scene-preview {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  max-width: none;
+  width: min(85vw, 140svh);
+  height: auto;
+  left: 32%;
+  top: 8%;
+}
+[data-scene="ready"] .scene-preview {
+  visibility: hidden;
+}
+/* Avoid painting the approximate fallback position before its letter anchor is measured. */
+.sqlpage-world[data-enhanced]:not([data-frame-ready]) .scene-preview {
+  visibility: hidden;
+}
+
+[data-scene="ready"] .scene-canvas {
+  opacity: 1;
+}
+.scene-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cinematic-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(
+        in srgb,
+        color-mix(in srgb, var(--tblr-body-bg), var(--tblr-black) 70%) 65.10%,
+        transparent
+      ),
+      transparent 66%
+    ),
+    radial-gradient(
+      ellipse at 53% 49%,
+      transparent 39%,
+      color-mix(
+          in srgb,
+          color-mix(in srgb, var(--tblr-body-bg), var(--tblr-black) 70%) 40.00%,
+          transparent
+        )
+        100%
+    );
+  opacity: calc(0.9 - var(--progress) * 0.3);
+}
+/* Reserve the opening flight before first paint. The static preview follows the
+   same anchors while WebGL loads or fails, so readiness never shifts the page. */
+.sqlpage-world[data-enhanced][data-motion="on"] .experience {
+  height: calc(var(--stage-height, 100svh) + 165svh);
+}
+.sqlpage-world[data-enhanced][data-motion="on"] .viewport {
+  position: sticky;
+  top: var(--sticky-top, 0px);
+}
+.site-header,
+.viewport-footer {
+  opacity: var(--intro-opacity);
+}
+
+/* Motion hides tiny shading differences. Reuse the finished sculpture, retain
+   gradients/borders, and restore the full CSS finish as soon as scrolling rests. */
+.sqlpage-world[data-renderer="baked"][data-scrolling] *,
+.sqlpage-world[data-renderer="baked"][data-scrolling] *::before,
+.sqlpage-world[data-renderer="baked"][data-scrolling] *::after {
+  filter: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  mix-blend-mode: normal;
+}
+
+[data-renderer="baked"] .navigation-dialog,
+[data-renderer="baked"] .navigation-dialog::backdrop {
+  backdrop-filter: none;
+}

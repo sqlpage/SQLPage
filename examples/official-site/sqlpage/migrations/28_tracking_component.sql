@@ -80,6 +80,14 @@ VALUES (
     ),
     (
         'tracking',
+        'link',
+        'A URL to open when the user clicks on the tracked item.',
+        'URL',
+        FALSE,
+        TRUE
+    ),
+    (
+        'tracking',
         'center',
         'Whether to center the component.',
         'BOOLEAN',

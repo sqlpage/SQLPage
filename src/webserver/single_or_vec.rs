@@ -63,7 +63,7 @@ impl SingleOrVec {
             (Self::Single(old), Self::Single(new)) => *old = new,
             (old, mut new) => {
                 let mut v = old.take_vec();
-                v.extend_from_slice(&new.take_vec());
+                v.extend(new.take_vec());
                 *old = Self::Vec(v);
             }
         }
@@ -120,6 +120,25 @@ mod single_or_vec_tests {
                 .contains("expected an array of strings, but item at index 1 is 1"),
             "{err}"
         );
+    }
+
+    #[test]
+    fn merges_preserve_scalar_replacement_and_array_order() {
+        let single = |s: &str| SingleOrVec::Single(s.into());
+        let array =
+            |values: &[&str]| SingleOrVec::Vec(values.iter().map(|s| (*s).into()).collect());
+        for (mut old, new, expected) in [
+            (single("old"), single("new"), single("new")),
+            (single("a"), array(&["b", "c"]), array(&["a", "b", "c"])),
+            (array(&["a", "b"]), single("c"), array(&["a", "b", "c"])),
+            (array(&["a"]), array(&["b", "c"]), array(&["a", "b", "c"])),
+            (single("a"), array(&[]), array(&["a"])),
+            (array(&[]), single("b"), array(&["b"])),
+            (array(&[]), array(&[]), array(&[])),
+        ] {
+            old.merge(new);
+            assert_eq!(old, expected);
+        }
     }
 
     #[test]

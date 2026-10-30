@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use actix_web::{
     App, HttpResponse, HttpServer,
-    dev::{ServiceRequest, fn_service},
+    dev::{ServiceRequest, ServiceResponse, fn_service},
     http::header,
     http::header::ContentType,
-    test::TestRequest,
+    test::{self, TestRequest},
     web,
     web::Data,
 };
@@ -14,101 +14,112 @@ use sqlpage::{
     AppState,
     app_config::{AppConfig, test_database_url},
     telemetry,
-    webserver::http::{form_config, main_handler, payload_config},
+    webserver::http::create_app,
 };
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
-pub(crate) async fn get_request_to_with_data(
-    path: &str,
-    data: Data<AppState>,
-) -> actix_web::Result<TestRequest> {
-    Ok(TestRequest::get()
-        .uri(path)
+/// Builds a GET request with the defaults used by the SQL fixtures.
+pub(crate) fn request_for(path: impl AsRef<str>) -> TestRequest {
+    TestRequest::get()
+        .uri(path.as_ref())
         .insert_header(ContentType::plaintext())
         .insert_header(header::Accept::html())
-        .app_data(payload_config(&data))
-        .app_data(form_config(&data))
-        .app_data(data))
 }
 
-pub(crate) async fn get_request_to(path: &str) -> actix_web::Result<TestRequest> {
-    let data = make_app_data().await;
-    get_request_to_with_data(path, data).await
+pub(crate) fn multipart_request(path: &str, body: impl Into<web::Bytes>) -> TestRequest {
+    request_for(path)
+        .insert_header(("content-type", "multipart/form-data; boundary=1234567890"))
+        .set_payload(body)
 }
 
-pub(crate) async fn make_app_data_from_config(config: AppConfig) -> Data<AppState> {
-    let state = AppState::init(&config).await.unwrap();
-    Data::new(state)
+pub(crate) async fn make_app_data_from_config(
+    config: AppConfig,
+) -> actix_web::Result<Data<AppState>> {
+    init_log();
+    AppState::init(&config)
+        .await
+        .map(Data::new)
+        .map_err(actix_web::error::ErrorInternalServerError)
+}
+
+/// Sends a GET request with the default test configuration, failing the test on error.
+pub(crate) async fn response_for(path: impl AsRef<str>) -> ServiceResponse {
+    response_with(path.as_ref(), test_config())
+        .await
+        .unwrap_or_else(|err| panic!("Request to {} failed: {err:#}", path.as_ref()))
+}
+
+/// Sends a GET request with custom application configuration.
+pub(crate) async fn response_with(
+    path: impl AsRef<str>,
+    config: AppConfig,
+) -> actix_web::Result<ServiceResponse> {
+    send_request(request_for(path), make_app_data_from_config(config).await?).await
+}
+
+/// Sends a custom request with the default test configuration.
+pub(crate) async fn response_from(request: TestRequest) -> actix_web::Result<ServiceResponse> {
+    send_request(request, make_app_data_from_config(test_config()).await?).await
+}
+
+/// Sends a GET request using existing state, for tests that share a database or cache.
+pub(crate) async fn response_with_data(
+    path: impl AsRef<str>,
+    data: Data<AppState>,
+) -> actix_web::Result<ServiceResponse> {
+    send_request(request_for(path), data).await
+}
+
+/// Runs a request through the production app, including its routes and middleware.
+/// Dropping the service disables and drains the pool, including on error or panic.
+/// Standalone `TestRequest::to_srv_request()` would instead leak the application state.
+pub(crate) async fn send_request(
+    request: TestRequest,
+    data: Data<AppState>,
+) -> actix_web::Result<ServiceResponse> {
+    let app = test::init_service(create_app(data)).await;
+    tokio::time::timeout(
+        Duration::from_secs(8),
+        test::try_call_service(&app, request.to_request()),
+    )
+    .await
+    .map_err(actix_web::error::ErrorGatewayTimeout)?
+    .map(ServiceResponse::map_into_boxed_body)
+}
+
+/// Reads a whole response body as a UTF-8 string, failing the test otherwise.
+pub(crate) async fn read_body_string<B>(resp: ServiceResponse<B>) -> String
+where
+    B: actix_web::body::MessageBody,
+{
+    String::from_utf8(test::read_body(resp).await.to_vec()).unwrap()
+}
+
+/// Whether the database engine is one of `kinds`.
+/// Tests that only run on some engines return early otherwise.
+pub(crate) fn supports_database(
+    db: &sqlpage::webserver::database::Database,
+    kinds: &[sqlpage::webserver::database::SupportedDatabase],
+) -> bool {
+    kinds.contains(&db.info.database_type)
 }
 
 pub(crate) async fn make_app_data() -> Data<AppState> {
-    init_log();
-    let config = test_config();
-    make_app_data_from_config(config).await
-}
-
-pub(crate) async fn req_path(
-    path: impl AsRef<str>,
-) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
-    let req = get_request_to(path.as_ref()).await?.to_srv_request();
-    main_handler(req).await
-}
-
-const REQ_TIMEOUT: Duration = Duration::from_secs(8);
-pub(crate) async fn req_path_with_app_data(
-    path: impl AsRef<str>,
-    app_data: Data<AppState>,
-) -> anyhow::Result<actix_web::dev::ServiceResponse> {
-    req_path_with_app_data_and_accept(path, app_data, header::Accept::html()).await
-}
-
-pub(crate) async fn req_path_with_app_data_json(
-    path: impl AsRef<str>,
-    app_data: Data<AppState>,
-) -> anyhow::Result<actix_web::dev::ServiceResponse> {
-    req_path_with_app_data_and_accept(path, app_data, header::Accept::json()).await
-}
-
-async fn req_path_with_app_data_and_accept(
-    path: impl AsRef<str>,
-    app_data: Data<AppState>,
-    accept: header::Accept,
-) -> anyhow::Result<actix_web::dev::ServiceResponse> {
-    let path = path.as_ref();
-    let req = TestRequest::get()
-        .uri(path)
-        .app_data(app_data)
-        .insert_header(("cookie", "test_cook=123"))
-        .insert_header(("authorization", "Basic dGVzdDp0ZXN0"))
-        .insert_header(accept)
-        .to_srv_request();
-    let resp = tokio::time::timeout(REQ_TIMEOUT, main_handler(req))
-        .await
-        .map_err(|e| anyhow::anyhow!("Request to {path} timed out: {e}"))?
-        .map_err(|e| {
-            anyhow::anyhow!(
-                "Request to {path} failed with status {}: {e:#}",
-                e.as_response_error().status_code()
-            )
-        })?;
-    Ok(resp)
+    make_app_data_from_config(test_config()).await.unwrap()
 }
 
 pub(crate) fn test_config() -> AppConfig {
-    let db_url = test_database_url();
-    serde_json::from_str::<AppConfig>(&format!(
-        r#"{{
-        "database_url": "{db_url}",
+    serde_json::from_value(serde_json::json!({
+        "database_url": test_database_url(),
         "max_database_pool_connections": 1,
         "database_connection_retries": 3,
         "database_connection_acquire_timeout_seconds": 15,
         "allow_exec": true,
-        "max_uploaded_file_size": 123456,
+        "max_uploaded_file_size": 123_456,
         "listen_on": "111.111.111.111:1",
-        "system_root_ca_certificates" : false
-    }}"#
-    ))
+        "system_root_ca_certificates": false
+    }))
     .unwrap()
 }
 

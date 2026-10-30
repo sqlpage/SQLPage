@@ -1,11 +1,13 @@
 {
   "name": "end-to-end",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "playwright test --reporter=line",
-    "gui": "playwright test --ui"
+    "gui": "playwright test --ui",
+    "reproduce": "./reproduce.sh"
   },
   "keywords": [],
   "author": "",

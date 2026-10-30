@@ -1,19 +1,19 @@
-// Names the browser bundle relies on at runtime rather than through an import:
-// libraries loaded on demand, and what a page may provide for our scripts.
-
-/**
- * A library this project ships no type definitions for. Saying `unknown`
- * instead would only move the guesswork to a cast at every call site.
- */
-// biome-ignore lint/suspicious/noExplicitAny: that is what an untyped library is
-type Untyped = any;
-
-/** Leaflet, loaded from a CDN by sqlpage_map when a page holds a map. */
-declare const L: Untyped;
+// What the bundle installs on the page at runtime rather than through an
+// import: the page's own scripts and the browser tests read these back.
 
 interface Window {
   /** Every chart rendered on the page, in the order they were built. */
-  charts?: unknown[];
+  charts?: import("./apexcharts.ts").RenderedChart[];
   /** A Bootstrap a page loaded for itself, preferred over the bundled copy. */
   bootstrap?: typeof import("@tabler/core").bootstrap;
+}
+
+interface HTMLElement {
+  /** Attached by sqlpage_select_dropdown to every select it takes over. */
+  tomselect?: import("tom-select/popular").default;
+}
+
+interface HTMLScriptElement {
+  /** Roots queued while an independently bundled initializer loads. */
+  sqlpage_init_roots?: Set<import("./init.ts").InitRoot>;
 }

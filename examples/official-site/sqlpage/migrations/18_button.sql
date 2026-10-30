@@ -101,7 +101,7 @@ In the target page, we could then use the GET variable `$action` to determine wh
 INSERT INTO example(component, description, properties) VALUES
     ('button', 'A button that downloads a file when clicked, and prevents search engines from following the link.',
     json('[{"component":"button"}, 
-        {"link":"/sqlpage_introduction_video.webm",
+        {"link":"/sqlpage_introduction_video.mp4",
             "title":"Download Video",
             "icon":"download",
             "download":"Introduction Video.webm",

@@ -1,7 +1,7 @@
 -- Exercise every form layout that renders a field description:
 -- standard controls, the legacy checkbox/radio controls, and switches.
 SELECT
-    'form' AS component,
+    'form' AS component, $id AS id, $fragment AS auto_submit,
     'Form description markdown' AS title,
     '' AS validate;
 
@@ -19,7 +19,7 @@ SELECT
 SELECT
     'modern_select' AS name,
     'Modern select' AS label,
-    'select' AS type,
+    'select' AS type, $fragment AS searchable,
     '[{"label":"Option","value":"option"}]' AS options,
     '**Bold select** and *italic select*.' AS description_md;
 
@@ -43,3 +43,6 @@ SELECT
     'switch' AS type,
     'switch' AS value,
     '**Bold switch** and *italic switch*.' AS description_md;
+
+-- The lifecycle suite reuses this form with searchable and upload fields.
+SELECT 'upload' AS name, 'Upload' AS label, 'file' AS type WHERE $fragment;

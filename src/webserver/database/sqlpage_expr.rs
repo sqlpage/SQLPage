@@ -12,7 +12,6 @@ use serde_json::Value;
 use super::execute_queries::DbConn;
 use super::sqlpage_functions::functions::SqlPageFunctionName;
 use crate::webserver::http_request_info::ExecutionContext;
-use crate::webserver::single_or_vec::SingleOrVec;
 
 /// An expression evaluated by `SQLPage`.
 ///
@@ -163,50 +162,21 @@ fn value_to_sqlpage_value(value: Value) -> SqlPageValue<'static> {
 
 impl VariableRef {
     fn evaluate<'a>(&self, request: &'a ExecutionContext) -> SqlPageValue<'a> {
-        let value = match self.source {
-            VariableSource::Url => request
-                .url_params
-                .get(&self.name)
-                .map(SingleOrVec::as_json_str),
-            VariableSource::SetOrForm => {
-                if let Some(value) = request.set_variables.borrow().get(&self.name) {
-                    return value.as_ref().map_or(SqlPageValue::Null, |value| {
-                        SqlPageValue::Text(Cow::Owned(value.as_json_str().into_owned()))
-                    });
-                }
-                request
-                    .post_variables
-                    .get(&self.name)
-                    .map(SingleOrVec::as_json_str)
-            }
-            VariableSource::SetOrUrl => {
-                if let Some(value) = request.set_variables.borrow().get(&self.name) {
-                    return value.as_ref().map_or(SqlPageValue::Null, |value| {
-                        SqlPageValue::Text(Cow::Owned(value.as_json_str().into_owned()))
-                    });
-                }
-                let url_value = request.url_params.get(&self.name);
-                if request.post_variables.contains_key(&self.name) {
-                    if url_value.is_some() {
-                        log::warn!(
-                            "Deprecation warning! There is both a URL parameter named '{}' and a form field named '{}'. SQLPage is using the URL parameter for ${}. Please use :{} to reference the form field explicitly.",
-                            self.name,
-                            self.name,
-                            self.name,
-                            self.name,
-                        );
-                    } else {
-                        log::warn!(
-                            "Deprecation warning! ${} was used to reference a form field value (a POST variable). This now uses only URL parameters. Please use :{} instead.",
-                            self.name,
-                            self.name,
-                        );
-                    }
-                }
-                url_value.map(SingleOrVec::as_json_str)
-            }
+        use crate::webserver::request_variables::{LookupPolicy, VariableAccess, VariableValue};
+        let policy = match self.source {
+            VariableSource::Url => LookupPolicy::GetOnly,
+            VariableSource::SetOrForm => LookupPolicy::SetThenPost,
+            VariableSource::SetOrUrl => LookupPolicy::SetThenGet,
         };
-        value.map_or(SqlPageValue::Null, SqlPageValue::Text)
+        let variables = VariableAccess::new(
+            &request.url_params,
+            &request.post_variables,
+            &request.set_variables,
+        );
+        match variables.lookup(&self.name, policy) {
+            VariableValue::Missing | VariableValue::Null => SqlPageValue::Null,
+            VariableValue::Text(value) => SqlPageValue::Text(value),
+        }
     }
 }
 

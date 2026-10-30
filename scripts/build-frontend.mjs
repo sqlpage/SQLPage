@@ -33,7 +33,7 @@ async function serve(name, content) {
 
 async function script(entry) {
   const build = await rolldown({
-    input: { [entry]: `frontend/src/${entry}.js` },
+    input: { [entry]: `frontend/src/${entry}` },
     onwarn: refuse,
   });
   const { output } = await build.generate({ format: "iife", minify: true });
@@ -41,9 +41,12 @@ async function script(entry) {
   await serve(`${entry}.js`, output[0].code);
 }
 
+const SOURCE_MAP_COMMENT = /\/\*# sourceMappingURL=\S+ \*\//g;
+
 async function stylesheet() {
   const parts = await Promise.all(STYLESHEET.map((p) => readFile(p, "utf8")));
-  await serve("sqlpage.css", parts.join("\n"));
+  const joined = parts.join("\n").replaceAll(SOURCE_MAP_COMMENT, "");
+  await serve("sqlpage.css", joined);
 }
 
 await mkdir(DIST, { recursive: true });

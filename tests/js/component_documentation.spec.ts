@@ -144,6 +144,7 @@ function properties_of_template(source: string): TemplateProperties {
   const contexts: Context[] = ["top"];
 
   for (const [, raw_body] of source.matchAll(/\{\{([^}]*)\}\}/g)) {
+    assert.ok(raw_body !== undefined);
     let body = raw_body
       .replace(/^[{~]+/, "")
       .replace(/[~}]+$/, "")
@@ -203,7 +204,7 @@ function properties_of_template(source: string): TemplateProperties {
         continue;
       if (name.startsWith("this.")) name = name.slice(5);
       if (name === "this" || name === "") continue;
-      name = name.split(/[.[]/)[0]; // `a.b` and `a.[0]` are reads of `a`
+      name = name.split(/[.[]/)[0] ?? ""; // `a.b` and `a.[0]` are reads of `a`
       if (!/^[A-Za-z_][A-Za-z_0-9]*$/.test(name)) continue;
       if (LITERALS.has(name)) continue;
       if (parents === 0 && in_callee_position && HELPERS.has(name)) continue;
@@ -249,8 +250,10 @@ function read_documentation(): Map<string, TemplateProperties> {
   const documented = new Map<string, TemplateProperties>();
   const rows = db
     .prepare("select component, name, top_level from parameter")
-    .all() as { component: string; name: string; top_level: number }[];
+    .all();
   for (const { component, name, top_level } of rows) {
+    assert.ok(typeof component === "string" && typeof name === "string");
+    assert.equal(typeof top_level, "number");
     let entry = documented.get(component);
     if (!entry) {
       entry = { top: new Set(), row: new Set() };

@@ -1,0 +1,111 @@
+# Shared changes run every examples/*/test.hurl, including newly added examples.
+all_examples:
+  - 'examples/**'
+  - 'Dockerfile'
+  - '.dockerignore'
+  - 'Cargo.toml'
+  - 'Cargo.lock'
+  - 'build.rs'
+  - '.cargo/**'
+  - 'scripts/**'
+  - '.github/workflows/ci.yml'
+  - '.github/hurl-examples.yml'
+
+# Keys are example folders; add one glob per line to associate more files.
+# Keep suites with distinctive integration coverage; describe it above each entry.
+
+# Trace propagation through nginx and actual OTLP export into Tempo.
+'examples/telemetry':
+  - 'src/telemetry.rs'
+  - 'src/app_config.rs'
+  - 'src/main.rs'
+  - 'src/webserver/http.rs'
+  - 'src/webserver/http_client.rs'
+  - 'src/webserver/database/execute_queries.rs'
+
+# Mailpit checks delivered MIME parts; the form asserts delayed multipart encoding.
+'examples/sending emails':
+  - 'src/app_config.rs'
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/send_mail.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/uploaded_file_name.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/uploaded_file_path.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/read_file_as_data_url.rs'
+  - 'sqlpage/templates/form.handlebars'
+
+# Real Keycloak discovery, login, callback cookies, and identity claims in SQL.
+'examples/single sign on':
+  - 'src/app_config.rs'
+  - 'src/lib.rs'
+  - 'src/webserver/oidc.rs'
+  - 'src/webserver/http.rs'
+  - 'src/webserver/routing.rs'
+  - 'src/webserver/http_client.rs'
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/user_info*.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/oidc_logout_url.rs'
+
+# A real proxy connects to SQLPage's Unix socket and rewrites pretty URLs.
+'examples/nginx':
+  - 'src/app_config.rs'
+  - 'src/main.rs'
+  - 'src/webserver/http.rs'
+  - 'src/webserver/routing.rs'
+
+# Apache proxies a site prefix, including the missing trailing slash redirect.
+'examples/web servers - apache':
+  - 'src/app_config.rs'
+  - 'src/webserver/http.rs'
+  - 'src/webserver/routing.rs'
+
+# Load SpatiaLite's native library and use its spatial functions on pooled SQLite.
+'examples/make a geographic data application using sqlite extensions':
+  - 'src/app_config.rs'
+  - 'src/webserver/database/connect.rs'
+
+# Create a PostgreSQL-backed page, request it, and render dynamic rows in a table.
+'examples/SQLPage developer user interface':
+  - 'src/filesystem.rs'
+  - 'src/file_cache.rs'
+  - 'src/webserver/routing.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/link.rs'
+  - 'sqlpage/templates/table.handlebars'
+
+# Posted arrays feed MySQL JSON_TABLE; native JSON builds the select options.
+'examples/mysql json handling':
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/request_variables.rs'
+  - 'src/webserver/single_or_vec.rs'
+  - 'src/webserver/database/sql.rs'
+  - 'src/webserver/database/sql/**'
+  - 'src/webserver/database/execute_queries.rs'
+  - 'src/webserver/database/sql_to_json.rs'
+  - 'sqlpage/templates/form.handlebars'
+
+# A real cookie jar round-trips an encoded space and removes it from a subfolder.
+'examples/read-and-set-http-cookies':
+  - 'src/render.rs'
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/cookie.rs'
+
+# Hash a new signup's password, authenticate it, and invalidate its login session.
+'examples/user-authentication':
+  - 'src/render.rs'
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/hash_password.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/random_string.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/cookie.rs'
+
+# Authenticated multipart upload persists an image into a writable container mount.
+'examples/image gallery with user uploads':
+  - 'src/app_config.rs'
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/persist_uploaded_file.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/uploaded_file_mime_type.rs'
+  - 'src/webserver/database/sqlpage_functions/functions/random_string.rs'
+
+# JSON menus with icon-only submenus and arrays of custom scripts/styles.
+'examples/CRUD - Authentication': ['sqlpage/templates/shell.handlebars']
+
+# Cards combine Markdown and remote chart/map/table embed markup.
+'examples/cards-with-remote-content': ['sqlpage/templates/card.handlebars']

@@ -48,7 +48,7 @@ VALUES (
     (
         'tab',
         'color',
-        'Color of the tab. See preview.tabler.io/colors.html for a list of available colors.',
+        'Color of the tab''s text, and of its underline when it is active. See preview.tabler.io/colors.html for a list of available colors.',
         'TEXT',
         FALSE,
         TRUE

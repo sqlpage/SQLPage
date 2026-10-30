@@ -7,7 +7,8 @@
     "test": "biome check . && npm run typecheck && node --test \"tests/js/**/*.spec.ts\"",
     "typecheck": "tsc && tsc -p tests/js && tsc -p tests/end-to-end",
     "format": "biome format --write .",
-    "fix": "biome check --fix --unsafe ."
+    "fix": "biome check --fix --unsafe .",
+    "site": "npm run build && cd examples/official-site && cargo run"
   },
   "repository": {
     "type": "git",
@@ -17,11 +18,12 @@
   "dependencies": {
     "@tabler/core": "1.5.0",
     "@tabler/icons-sprite": "3.46.0",
-    "apexcharts": "7.1.0",
+    "apexcharts": "7.6.0",
     "tom-select": "2.6.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^26.4.0",
     "rolldown": "^1.2.8",
     "typescript": "^7.0.2"

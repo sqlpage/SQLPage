@@ -1,0 +1,83 @@
+/* One authored SQL sequence plus its inert copy form the seamless, pausable ribbon. */
+.sql-ribbon {
+  position: absolute;
+  bottom: 4.5%;
+  left: 4%;
+  width: 92%;
+  z-index: 21;
+  height: clamp(54px, 5.6svh, 76px);
+  display: flex;
+  align-items: center;
+  transform: none;
+  transform-origin: center;
+  border: 1px solid color-mix(in srgb, var(--tblr-primary) 18.82%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tblr-bg-surface-secondary) 78.04%, transparent),
+    color-mix(in srgb, var(--tblr-body-bg) 92.94%, transparent) 45%,
+    color-mix(in srgb, var(--tblr-body-bg) 96.08%, transparent)
+  );
+  opacity: var(--ribbon-opacity);
+  overflow: hidden;
+}
+.ribbon-track {
+  display: flex;
+  width: max-content;
+  animation: none;
+  will-change: transform;
+}
+.ribbon-sequence {
+  display: flex;
+  flex-shrink: 0;
+}
+.ribbon-sequence a {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 0 16px 38px;
+  color: var(--tblr-muted-color);
+  text-shadow:
+    0 -1px 2px var(--tblr-black),
+    0 1px 0 color-mix(in srgb, var(--tblr-light) 10.20%, transparent);
+  transition: color 0.3s;
+  white-space: nowrap;
+}
+.ribbon-sequence code {
+  font: 600 clamp(15px, 1.37vw, 22px) var(--tblr-font-monospace);
+  letter-spacing: -0.5px;
+}
+.ribbon-separator {
+  margin: 0 0 0 33px;
+  width: 1px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--tblr-border-color);
+}
+.ribbon-sequence a:hover {
+  color: var(--tblr-primary);
+}
+.viewport-footer {
+  position: absolute;
+  left: 4.65%;
+  right: 4.65%;
+  bottom: 18px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font: 12px var(--tblr-font-monospace);
+  color: var(--tblr-muted-color);
+}
+.viewport-footer > a:hover {
+  color: var(--tblr-primary);
+}
+[data-enhanced] .ribbon-track {
+  animation: ribbon-travel 44s linear infinite;
+}
+.sql-ribbon:hover .ribbon-track,
+.sql-ribbon:focus-within .ribbon-track,
+[data-motion="off"] .ribbon-track {
+  animation-play-state: paused;
+}

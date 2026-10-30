@@ -1,26 +1,30 @@
 use actix_web::{http::StatusCode, test};
-use sqlpage::webserver::http::main_handler;
 
-use crate::common::get_request_to;
+use crate::common::{request_for, response_from};
 
-#[actix_web::test]
-async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
+/// Builds a webhook validation request, optionally signed with `signature`.
+/// Sets `WEBHOOK_SECRET` so every test signs against the same secret.
+async fn webhook_request(
+    signature: Option<&str>,
+) -> actix_web::Result<actix_web::dev::ServiceResponse> {
     // Set up environment variable for webhook secret
     unsafe {
         std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
     }
 
     let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
+    let mut req = request_for("/tests/webhook_hmac_validation.sql")
+        .insert_header(("content-type", "application/json"));
+    if let Some(signature) = signature {
+        req = req.insert_header(("X-Webhook-Signature", signature));
+    }
+    response_from(req.set_payload(webhook_body)).await
+}
+
+#[actix_web::test]
+async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     let invalid_signature = "96a5f6f65c85a2d4d1f3a37813ab2c0b44041bdc17691fbb0884e3eb52b7c54b";
-
-    let req = get_request_to("/tests/webhook_hmac_validation.sql")
-        .await?
-        .insert_header(("content-type", "application/json"))
-        .insert_header(("X-Webhook-Signature", invalid_signature))
-        .set_payload(webhook_body)
-        .to_srv_request();
-
-    let resp = main_handler(req).await?;
+    let resp = webhook_request(Some(invalid_signature)).await?;
 
     // Should redirect to error page when signature is invalid
     assert!(
@@ -41,22 +45,8 @@ async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
-    // Set up environment variable for webhook secret
-    unsafe {
-        std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
-    }
-
-    let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
     let valid_signature = "260b3b5ead84843645588af82d5d2c3fe24c598a950d36c45438c3a5f5bb941c";
-
-    let req = get_request_to("/tests/webhook_hmac_validation.sql")
-        .await?
-        .insert_header(("content-type", "application/json"))
-        .insert_header(("X-Webhook-Signature", valid_signature))
-        .set_payload(webhook_body)
-        .to_srv_request();
-
-    let resp = main_handler(req).await?;
+    let resp = webhook_request(Some(valid_signature)).await?;
 
     // Should return success when signature is valid
     assert_eq!(resp.status(), StatusCode::OK, "200 resp for signed req");
@@ -71,21 +61,8 @@ async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_webhook_hmac_missing_signature() -> actix_web::Result<()> {
-    // Set up environment variable for webhook secret
-    unsafe {
-        std::env::set_var("WEBHOOK_SECRET", "test-secret-key");
-    }
-
-    let webhook_body = r#"{"order_id":12345,"total":"99.99"}"#;
-
     // Don't include the X-Webhook-Signature header
-    let req = get_request_to("/tests/webhook_hmac_validation.sql")
-        .await?
-        .insert_header(("content-type", "application/json"))
-        .set_payload(webhook_body)
-        .to_srv_request();
-
-    let resp = main_handler(req).await?;
+    let resp = webhook_request(None).await?;
 
     let location = resp
         .headers()

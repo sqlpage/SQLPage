@@ -50,12 +50,33 @@ while IFS= read -r -d "" test_file; do
     echo "::endgroup::"
     exit 1
   fi
-  if ! hurl --test \
+  hurl_args=(
+    --test
+    --connect-timeout 2s
+    --error-format long
+  )
+
+  # Each suite starts with a safe GET served by SQLPage, including through
+  # reverse proxies. Retry only this readiness entry so a failure
+  # in a later POST is reported once instead of replaying the request.
+  if ! hurl "${hurl_args[@]}" \
     --retry 60 \
     --retry-interval 1s \
-    --connect-timeout 2s \
-    --error-format long \
+    --from-entry 1 \
+    --to-entry 1 \
     "$test_file"; then
+    echo "::error file=$rel_dir/test.hurl,title=Example readiness check failed::$rel_dir did not become ready"
+    echo "::group::docker compose ps for $rel_dir"
+    docker compose -p "$current_project" -f "$current_compose" ps
+    echo "::endgroup::"
+    echo "::group::docker compose logs for $rel_dir"
+    docker compose -p "$current_project" -f "$current_compose" logs
+    echo "::endgroup::"
+    echo "::endgroup::"
+    exit 1
+  fi
+
+  if ! hurl "${hurl_args[@]}" "$test_file"; then
     echo "::error file=$rel_dir/test.hurl,title=Hurl example test failed::$rel_dir failed"
     echo "::group::docker compose ps for $rel_dir"
     docker compose -p "$current_project" -f "$current_compose" ps

@@ -3,7 +3,12 @@ HTTP 200
 [Asserts]
 body contains "SQLPage"
 body contains "Documentation"
-body contains "Get Started"
+body contains "Run it"
+body contains "Instant by default."
+body contains "Override any component."
+body contains "Copy files. Or don't."
+xpath "string(//button[@id='instant-tab']/@aria-selected)" == "true"
+body contains "/assets/landing/js/main.js"
 body not contains "An error occurred"
 
 GET http://localhost:8080/documentation.sql
@@ -70,3 +75,75 @@ GET http://localhost:8080/examples/authentication/logout.sql
 HTTP 302
 [Asserts]
 header "Location" == "login.sql"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=table
+HTTP 200
+[Asserts]
+body contains "Acme Corp"
+body contains "data-pre-init=\"table\""
+body not contains "An error occurred"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=chart
+HTTP 200
+[Asserts]
+body contains "Tickets resolved"
+body contains "2026-09-30"
+body not contains "An error occurred"
+
+POST http://localhost:8080/landing-demos/save.sql
+[FormParams]
+name: Ada
+team: Query crew
+HTTP 200
+[Asserts]
+body contains "Hello, Ada!"
+body contains "Query crew"
+body contains "This preview is private to your submission."
+body not contains "An error occurred"
+
+# A fresh visitor always sees the seeded profile, never another submission.
+GET http://localhost:8080/landing-demos/demo.sql?component=form
+HTTP 200
+[Asserts]
+body contains "SQL builders"
+body not contains "Query crew"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=big_number
+HTTP 200
+[Asserts]
+body contains "98%"
+body not contains "An error occurred"
+
+GET http://localhost:8080/landing-demos/source.sql?component=../../configuration
+HTTP 200
+[Asserts]
+jsonpath "$.source" contains "from customers"
+
+
+GET http://localhost:8080/landing-demos/source.sql?component=form
+HTTP 200
+[Asserts]
+jsonpath "$.save_source" contains "sqlpage.run_sql"
+jsonpath "$.save_source" not contains "update profiles"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=catalog
+HTTP 200
+[Asserts]
+body contains "component-catalog"
+xpath "string(//a[span='form']/@href)" == "/component.sql?component=form"
+body not contains "An error occurred"
+
+POST http://localhost:8080/landing-demos/save.sql
+[FormParams]
+name:
+team: Rejected input
+HTTP 200
+[Asserts]
+body contains "Please check your profile"
+body not contains "Hello,"
+
+GET http://localhost:8080/landing-demos/demo.sql?component=form
+HTTP 200
+[Asserts]
+body contains "SQL builders"
+body not contains "Rejected input"

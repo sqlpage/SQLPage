@@ -5,7 +5,7 @@ use std::time::Duration;
 use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
 use tokio::time::Instant;
 
-use crate::webserver::http_client::get_http_client_from_appdata;
+use crate::webserver::http_client::{get_http_client_from_appdata, send_http_request};
 use crate::webserver::routing::{
     AppFileStore, CanonicalRequestPath, RoutingAction, canonical_url_path, resolve_route,
 };
@@ -1022,53 +1022,19 @@ impl<'c> AsyncHttpClient<'c> for AwcHttpClient<'c> {
         Pin<Box<dyn Future<Output = Result<openidconnect::HttpResponse, Self::Error>> + 'c>>;
 
     fn call(&'c self, request: openidconnect::HttpRequest) -> Self::Future {
-        let client = self.client.clone();
         Box::pin(async move {
-            execute_oidc_request_with_awc(client, request)
+            // OIDC accepts only text request headers; OTLP also accepts opaque bytes.
+            for value in request.headers().values() {
+                value
+                    .to_str()
+                    .map_err(|error| AwcWrapperError(error.into()))?;
+            }
+            send_http_request(self.client, request, Some(OIDC_HTTP_BODY_TIMEOUT))
                 .await
+                .map(|response| response.map(|body| body.to_vec()))
                 .map_err(AwcWrapperError)
         })
     }
-}
-
-async fn execute_oidc_request_with_awc(
-    client: Client,
-    request: openidconnect::HttpRequest,
-) -> Result<openidconnect::http::Response<Vec<u8>>, anyhow::Error> {
-    let awc_method = awc::http::Method::from_bytes(request.method().as_str().as_bytes())?;
-    let awc_uri = awc::http::Uri::from_str(&request.uri().to_string())?;
-    log::debug!("Executing OIDC request: {awc_method} {awc_uri}");
-    let mut req = client.request(awc_method, awc_uri);
-    for (name, value) in request.headers() {
-        req = req.insert_header((name.as_str(), value.to_str()?));
-    }
-    let (req_head, body) = request.into_parts();
-    let response = req.send_body(body).await.map_err(|e| {
-        anyhow!(e.to_string()).context(format!(
-            "Failed to send request: {} {}",
-            req_head.method, req_head.uri
-        ))
-    })?;
-    let head = response.headers();
-    log::debug!(
-        "Received OIDC response headers: status={}, content_type={:?}",
-        response.status(),
-        head.get(header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-    );
-    let mut resp_builder =
-        openidconnect::http::Response::builder().status(response.status().as_u16());
-    for (name, value) in head {
-        resp_builder = resp_builder.header(name.as_str(), value.to_str()?);
-    }
-    let mut response = response.timeout(OIDC_HTTP_BODY_TIMEOUT);
-    let body = response
-        .body()
-        .await
-        .with_context(|| format!("Couldnt read from {}", req_head.uri))?;
-    log::debug!("Received OIDC response body_len={} bytes", body.len());
-    let resp = resp_builder.body(body.to_vec())?;
-    Ok(resp)
 }
 
 #[derive(Debug)]

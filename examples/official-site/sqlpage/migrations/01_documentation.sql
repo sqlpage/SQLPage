@@ -386,6 +386,7 @@ In SQLite, the query would look like
 SELECT 
     ''select'' as type,
     ''Select a fruit...'' as empty_option,
+    ''cherry'' as prefix_icon,
     json_group_array(json_object(
         ''label'', name,
         ''value'', id
@@ -685,6 +686,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('x', 'The value of the point on the horizontal axis. Numeric values use continuous, proportionate positioning; text values are evenly spaced categories. Set the top-level time property for dates and timestamps.', 'REAL', FALSE, FALSE),
     ('y', 'The value of the point on the vertical axis', 'REAL', FALSE, FALSE),
     ('z', 'A third value carried by the point. Used as the bubble radius in a bubble chart, and shown in the tooltip under the name given by the top-level "ztitle".', 'REAL', FALSE, TRUE),
+    ('link', 'A URL to open when the data point is clicked. The tooltip value also links to the point, as does a text x value when shown as the tooltip title.', 'URL', FALSE, TRUE),
     ('label', 'An alias for parameter "x". On a row that draws a reference line, the text to display next to the line.', 'TEXT', FALSE, TRUE),
     ('value', 'An alias for parameter "y"', 'REAL', FALSE, TRUE),
     ('series', 'If multiple series are represented and share the same y-axis, this parameter can be used to distinguish between them.', 'TEXT', FALSE, TRUE),
@@ -789,10 +791,10 @@ The `color` property sets the color of each series separately, in order.
         { "series": "PostgreSQL", "x": "2010", "y": 65},{ "series": "SQLite", "x": "2010", "y": 62},{ "series": "MySQL", "x": "2010", "y": 83},
         { "series": "PostgreSQL", "x": "2020", "y": 73},{ "series": "SQLite", "x": "2020", "y": 38},{ "series": "MySQL", "x": "2020", "y": 87}
       ]')),
-    ('chart', 'A timeline displaying events with a start and an end date',
+    ('chart', 'A timeline displaying events with a start and an end date. A data row can include a `link` to open when its bar or tooltip title is clicked.',
     json('[
         {"component":"chart", "title": "Project Timeline", "type": "rangeBar", "time": true, "color": ["teal", "cyan"], "labels": true, "xmin": "2021-12-28", "xmax": "2022-01-04" },
-        {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"]},
+        {"series": "Phase 1", "label": "Operations", "value": ["2021-12-29", "2022-01-02"], "link": "/examples/chart.sql?phase=1"},
         {"series": "Phase 2", "label": "Operations", "value": ["2022-01-03", "2022-01-04"]},
         {"series": "Yearly maintenance", "label": "Maintenance", "value": ["2022-01-01", "2022-01-03"]}
     ]')),
@@ -949,6 +951,7 @@ Advanced users can apply custom styles to table columns using a CSS class with t
 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'table', * FROM (VALUES
     -- top level
+    ('title', 'A title displayed above the table.', 'TEXT', TRUE, TRUE),
     ('sort', 'Make the columns clickable to let the user sort by the value contained in the column.', 'BOOLEAN', TRUE, TRUE),
     ('search', 'Add a search bar at the top of the table, letting users easily filter table rows by value.', 'BOOLEAN', TRUE, TRUE),
     ('initial_search_value', 'Pre-fills the search bar used to filter the table. The user will still be able to edit the value to display table rows that will initially be filtered out.', 'TEXT', TRUE, TRUE),
@@ -1596,7 +1599,6 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
      json('[{
             "component": "shell",
             "title": "SQLPage: SQL websites",
-            "icon": "database",
             "link": "/",
             "menu_item": [
                 {"title": "About", "submenu": [
@@ -1635,7 +1637,9 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "description": "Go from SQL queries to web applications in an instant.",
             "preview_image": "https://sql-page.com/sqlpage_social_preview.webp",
             "theme": "dark",
-            "font": "Poppins",
+            "font_size": 19,
+            "image": "/assets/icon.webp",
+            "favicon": "/favicon.ico",
             "javascript": [
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
                 "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/sql.min.js",

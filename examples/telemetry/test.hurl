@@ -22,18 +22,27 @@ body contains "Hurl telemetry todo"
 body not contains "An error occurred"
 
 GET http://localhost:3200/api/search?q=%7Bresource.service.name%3D%22sqlpage%22%7D&limit=20
+[Options]
+retry: 60
+retry-interval: 1s
 HTTP 200
 [Asserts]
 body contains "sqlpage"
 body contains "\"traceID\":\"3\""
 
 GET http://localhost:3200/api/search?q=%7Bresource.service.name%3D%22nginx%22%7D&limit=20
+[Options]
+retry: 60
+retry-interval: 1s
 HTTP 200
 [Asserts]
 body contains "nginx"
 body contains "\"traceID\":\"3\""
 
 GET http://localhost:3200/api/traces/3
+[Options]
+retry: 60
+retry-interval: 1s
 HTTP 200
 [Asserts]
 body contains "\"service.name\""

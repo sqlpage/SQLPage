@@ -1,14 +1,44 @@
 # CHANGELOG.md
 
-## v0.47.0 (unreleased)
+## unreleased
+
 - Added loading indicators and progress bars for pages that stream results while queries run.
-- **Mac users:** the downloadable `sqlpage-macos.tgz` now runs natively on Apple silicon (M-series Macs) and no longer runs on Intel Macs. Homebrew remains the recommended and easiest installation method. On an Intel Mac, [install Homebrew](https://brew.sh/) if needed, then run `brew install sqlpage` (or `brew update` followed by `brew upgrade sqlpage` if you already installed it with Homebrew). Open Terminal in your existing website folder and run `sqlpage` instead of `./sqlpage.bin`; keep your SQL files, database, and `sqlpage` configuration folder in place. Intel installations may build from source and take longer; see the [macOS installation guide](https://sql-page.com/your-first-sql-website/?os=macos#download) for setup and older macOS requirements.
+
+- Now a tab with a `color` is underlined only when it is active. ([#791](https://github.com/sqlpage/SQLPage/issues/791))
+
+- Shell submenus stay open again when you click inside them. ([#1011](https://github.com/sqlpage/SQLPage/issues/1011))
+
+- Refined the official website with muted blue accents, simpler navigation, a clearer primary action, and a level SQL ribbon with vertical separators, and a grounded studio scene with brushed metal and physical reflections. Restored visible progress in the streaming comparison animation.
+
+- A hero with `reverse` shows its image above the text on small screens. ([#828](https://github.com/sqlpage/SQLPage/issues/828))
+
+- The table component accepts a top-level `title`, shown in a header above the table like in the list and datagrid components. ([#1261](https://github.com/sqlpage/SQLPage/issues/1261))
+
+- Browser developer tools no longer report missing `.css.map` files. ([#1163](https://github.com/sqlpage/SQLPage/issues/1163))
+
+- Restored parameter reuse for repeated variables on SQL Server, PostgreSQL, and SQLite, fixing SQL Server and PostgreSQL queries that repeat a variable-dependent expression in `SELECT` and `GROUP BY`.
+
+- The modal component accepts `close_label` as another name for `close`, which is a reserved word on SQL Server. ([#1070](https://github.com/sqlpage/SQLPage/issues/1070))
+
+- Each item of the tracking component accepts a `link`. ([#900](https://github.com/sqlpage/SQLPage/issues/900))
+
+- Custom components can call inline partials inside `each_row` and after it, when the partials are defined before `each_row`. ([#846](https://github.com/sqlpage/SQLPage/issues/846))
+
+## v0.47.0 (2026-10-15)
+- Redesigned the official website homepage with live SQLPage examples, an interactive database sculpture, flowing section transitions, responsive layouts, and direct links to documentation and deployment guides.
+- For sites that store their pages in a database, checking for page updates no longer makes other pages wait when the database is busy. In a test, another page loaded in under 1 ms instead of about 250 ms.
+- Loading embedded card content no longer adds duplicate form submission or file validation handlers to existing fields. Fragment initialization also includes the element announcing the fragment.
+- **Mac users:** the downloadable `sqlpage-macos.tgz` is now code-signed with a Developer ID certificate and notarized by Apple. macOS may still ask you to confirm opening it the first time. The binary can still load third-party ODBC database drivers.
+  - the downloadable `sqlpage-macos.tgz` now runs natively on Apple silicon (M-series Macs) and no longer runs on Intel Macs. Homebrew remains the recommended and easiest installation method. On an Intel Mac, [install Homebrew](https://brew.sh/) if needed, then run `brew install sqlpage` (or `brew update` followed by `brew upgrade sqlpage` if you already installed it with Homebrew). Open Terminal in your existing website folder and run `sqlpage` instead of `./sqlpage.bin`; keep your SQL files, database, and `sqlpage` configuration folder in place. Intel installations may build from source and take longer; see the [macOS installation guide](https://sql-page.com/your-first-sql-website/?os=macos#download) for setup and older macOS requirements.
+- Chart data points can now include a `link`. Clicking a point or its tooltip value opens that URL; a text x value in the tooltip title links to it too. The tooltip remains open while the pointer moves onto the link. ApexCharts was updated to [v7.6.0](https://github.com/apexcharts/apexcharts.js/releases/tag/v7.6.0) to support this.
 - Updated sqlx-oldapi to v0.6.57 to fix SQL Server fallback expressions such as `ISNULL($missing, 'default')` truncating defaults or failing for date values when the bound variable is `NULL`.
 - Fixed MSSQL `JSON_OBJECT('key': value)` expressions being rejected by SQLPage's parser, including when used in `SET` statements or nested in `sqlpage.*` function calls.
 - OIDC now checks both normalized request paths and their resolved SQL files against protected prefixes, closing authentication bypasses through path and clean-URL aliases. Nonce verification also rejects provider-returned Argon2 parameters outside SQLPage's fixed low-cost profile before hashing.
+- SQL files with a mixed-case `.sql` extension are executed instead of served as static files. HTTP paths with trailing spaces, and Windows file aliases with trailing dots or NTFS stream names, are rejected to prevent source disclosure through storage aliases.
 - `cargo install sqlpage`, and any build from the crates.io tarball, no longer needs internet access. The browser libraries now come from npm and ship inside the published crate. Building from a git checkout needs `npm ci` first. Pre-built binaries and the Docker image are unaffected.
 - The browser libraries are now part of the browser scripts. SQLPage no longer defines the `window.tabler` and `window.bootstrap` globals; custom scripts that reached for them should load their own copy of Bootstrap.
 - The startup message now reports the address the server actually bound instead of the one it was configured with.
+- Inside a form component you can now use the `prefix`, `prefix_icon` and `suffix` row-level parameters when `type` is `select`. 
 
 ## v0.46.3
 

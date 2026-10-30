@@ -4,12 +4,21 @@
     "lib": ["es2022", "dom", "dom.iterable"],
     "module": "preserve",
     "moduleResolution": "bundler",
-    "allowJs": true,
-    "checkJs": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "strict": true,
-    "noImplicitAny": false,
-    "types": []
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "types": [],
+    "noImplicitReturns": true
   },
   "include": ["frontend/src"]
 }

@@ -20,5 +20,18 @@
     "enabled": true,
     "useIgnoreFile": true,
     "clientKind": "git"
+  },
+  "linter": {
+    "rules": {
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noMisusedPromises": "error",
+        "useAwaitThenable": "error",
+        "noPlaywrightMissingAwait": "error"
+      },
+      "suspicious": {
+        "noImportCycles": "error"
+      }
+    }
   }
 }

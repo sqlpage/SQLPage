@@ -278,11 +278,22 @@ pub fn render_markdown_to_html(
     config: &impl MarkdownConfig,
     markdown_src: &str,
 ) -> Result<String, String> {
-    let mut options = markdown::Options::gfm();
-    options.compile.allow_dangerous_html = config.allow_dangerous_html();
-    options.compile.allow_dangerous_protocol = config.allow_dangerous_protocol();
-    options.compile.allow_any_img_src = true;
+    let options = markdown_options(
+        config.allow_dangerous_html(),
+        config.allow_dangerous_protocol(),
+    );
     markdown::to_html_with_options(markdown_src, &options).map_err(|e| e.to_string())
+}
+
+fn markdown_options(
+    allow_dangerous_html: bool,
+    allow_dangerous_protocol: bool,
+) -> markdown::Options {
+    let mut options = markdown::Options::gfm();
+    options.compile.allow_dangerous_html = allow_dangerous_html;
+    options.compile.allow_dangerous_protocol = allow_dangerous_protocol;
+    options.compile.allow_any_img_src = true;
+    options
 }
 
 /// Helper to render markdown with configurable options
@@ -301,10 +312,8 @@ impl MarkdownHelper {
     }
 
     fn get_preset_options(&self, preset_name: &str) -> Result<markdown::Options, String> {
-        let mut options = markdown::Options::gfm();
-        options.compile.allow_dangerous_html = self.allow_dangerous_html;
-        options.compile.allow_dangerous_protocol = self.allow_dangerous_protocol;
-        options.compile.allow_any_img_src = true;
+        let mut options =
+            markdown_options(self.allow_dangerous_html, self.allow_dangerous_protocol);
 
         match preset_name {
             "default" => {}
@@ -643,6 +652,47 @@ mod tests {
     mod markdown_html_blocks {
 
         use super::*;
+
+        #[test]
+        fn rendering_paths_share_configured_policy() {
+            use crate::template_helpers::render_markdown_to_html;
+            let unsafe_preset = Value::String("allow_unsafe".into());
+            for source in [
+                UNSAFE_MARKUP,
+                "[click](javascript:alert(1))",
+                "![image](data:image/png;base64,aGVsbG8=)",
+                "~~struck~~",
+            ] {
+                let content = Value::String(source.into());
+                let mut config = crate::app_config::tests::test_config();
+                config.markdown_allow_dangerous_html = true;
+                config.markdown_allow_dangerous_protocol = true;
+                let unsafe_html = render_markdown_to_html(&config, source).unwrap();
+                for (html, protocol) in [(false, false), (false, true), (true, false), (true, true)]
+                {
+                    config.markdown_allow_dangerous_html = html;
+                    config.markdown_allow_dangerous_protocol = protocol;
+                    let helper = MarkdownHelper::new(&config);
+                    assert_eq!(
+                        helper.call(&as_args(&content)).unwrap(),
+                        render_markdown_to_html(&config, source).unwrap()
+                    );
+                    assert_eq!(
+                        helper
+                            .call(&as_args_with_unsafe(&content, &unsafe_preset))
+                            .unwrap(),
+                        unsafe_html
+                    );
+                    let unknown = Value::String("unknown".into());
+                    assert_eq!(
+                        helper
+                            .call(&as_args_with_unsafe(&content, &unknown))
+                            .unwrap_err(),
+                        "unknown markdown preset: unknown"
+                    );
+                }
+            }
+        }
 
         const UNSAFE_MARKUP: &str = "<table><tr><td>";
         const ESCAPED_UNSAFE_MARKUP: &str = "&lt;table&gt;&lt;tr&gt;&lt;td&gt;";
