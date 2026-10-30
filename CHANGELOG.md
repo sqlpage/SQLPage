@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- Now a tab with a `color` is underlined only when it is active. ([#791](https://github.com/sqlpage/SQLPage/issues/791))
+
 - Shell submenus stay open again when you click inside them. ([#1011](https://github.com/sqlpage/SQLPage/issues/1011))
 
 - Refined the official website with muted blue accents, simpler navigation, a clearer primary action, and a level SQL ribbon with vertical separators, and a grounded studio scene with brushed metal and physical reflections. Restored visible progress in the streaming comparison animation.
