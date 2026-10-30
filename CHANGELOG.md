@@ -8,6 +8,8 @@
 
 - The table component accepts a top-level `title`, shown in a header above the table like in the list and datagrid components. ([#1261](https://github.com/sqlpage/SQLPage/issues/1261))
 
+- Browser developer tools no longer report missing `.css.map` files. ([#1163](https://github.com/sqlpage/SQLPage/issues/1163))
+
 - Restored parameter reuse for repeated variables on SQL Server, PostgreSQL, and SQLite, fixing SQL Server and PostgreSQL queries that repeat a variable-dependent expression in `SELECT` and `GROUP BY`.
 
 - The modal component accepts `close_label` as another name for `close`, which is a reserved word on SQL Server. ([#1070](https://github.com/sqlpage/SQLPage/issues/1070))
