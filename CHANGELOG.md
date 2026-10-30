@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- Added loading indicators and progress bars for pages that stream results while queries run.
+
 - Now a tab with a `color` is underlined only when it is active. ([#791](https://github.com/sqlpage/SQLPage/issues/791))
 
 - Shell submenus stay open again when you click inside them. ([#1011](https://github.com/sqlpage/SQLPage/issues/1011))
