@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- Modals can set a header `color`, and `visible` opens that dialog once when the page loads. The page address stays unchanged, and closing it does not open it again when later content loads.
+
 - Now a tab with a `color` is underlined only when it is active. ([#791](https://github.com/sqlpage/SQLPage/issues/791))
 
 - Striped table rows are visible in dark mode again. Tabler was updated to [v1.7.3](https://github.com/tabler/tabler/releases/tag/%40tabler%2Fcore%401.7.3) to fix this. ([#957](https://github.com/sqlpage/SQLPage/issues/957))

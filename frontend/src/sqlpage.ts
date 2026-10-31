@@ -520,11 +520,37 @@ function sqlpage_modal(root: InitRoot) {
   // .page instead of the viewport. The modal then scrolls with the page
   // content and ends up behind its own backdrop, so its buttons cannot be
   // clicked. Moving modals to <body> keeps them viewport-fixed.
-  for (const modal of select_all(root, "body .page .modal", HTMLElement)) {
-    document.body.appendChild(modal);
-    // The modal leaves the original root; announce its subtree separately so
-    // every initializer, including later-loaded bundles, can still see it.
+  const modals = select_all(root, "body .page .modal", HTMLElement);
+  for (const modal of modals) document.body.appendChild(modal);
+  // The modals left the original root; announce each subtree separately so
+  // every initializer, including later-loaded bundles, can still see it. The
+  // event runs this function again, so move them all first: a dialog opened
+  // below must not be moved afterwards.
+  for (const modal of modals) {
     modal.dispatchEvent(new CustomEvent("fragment-loaded", { bubbles: true }));
+  }
+
+  // `visible` opens the last such dialog once. A hash that already names a
+  // different modal keeps that dialog. Clearing every marker stops a later
+  // pass from opening an earlier dialog or reopening one the user closed.
+  const visible_modals = document.querySelectorAll<HTMLElement>(
+    ".modal[data-modal-visible]",
+  );
+  const modal = visible_modals[visible_modals.length - 1];
+  if (!modal) return;
+  const hash = window.location.hash.substring(1);
+  const hashed = hash ? document.getElementById(hash) : null;
+  const hash_names_other_modal =
+    hashed?.classList.contains("modal") === true && hashed !== modal;
+  if (!hash_names_other_modal) {
+    const Modal = page_bootstrap().Modal;
+    const bootstrap_modal = Modal.getOrCreateInstance(modal);
+    if (!(bootstrap_modal instanceof Modal))
+      throw new Error("Invalid modal instance");
+    bootstrap_modal.show();
+  }
+  for (const visible of visible_modals) {
+    visible.removeAttribute("data-modal-visible");
   }
 }
 
