@@ -11,14 +11,11 @@ on:
       - "README.md"
       - ".github/workflows/release.yml"
       - ".github/workflows/official-site.yml"
+  # Required checks must be reported for every PR, including docs-only changes.
   pull_request:
     branches:
       - "main"
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-      - ".github/workflows/release.yml"
-      - ".github/workflows/official-site.yml"
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -26,12 +23,35 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  HURL_VERSION: 8.0.1
   REGISTRY_USERNAME: lovasoa
   REGISTRY_IMAGE: lovasoa/sqlpage
 
 jobs:
+  ci_selection:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      # Only a confirmed excluded-files-only PR may skip the core jobs.
+      full: ${{ github.event_name != 'pull_request' || steps.paths.outputs.full != 'false' }}
+    steps:
+      - id: paths
+        name: Select test jobs
+        # The PR files API is limited to 3000 files; larger PRs select core jobs.
+        if: github.event_name == 'pull_request' && github.event.pull_request.changed_files <= 3000
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          predicate-quantifier: every
+          filters: |
+            full:
+              - '!docs/**'
+              - '!README.md'
+              - '!.github/workflows/release.yml'
+              - '!.github/workflows/official-site.yml'
+
   compile_and_lint:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -65,6 +85,8 @@ jobs:
           path: "target/debug/sqlpage"
 
   published_crate:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -78,6 +100,27 @@ jobs:
           save-if: false
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - run: cargo package --locked --allow-dirty
+
+  fuzz_sql_regression_fixtures:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FUZZ_TOOLCHAIN: nightly-2026-10-21
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/install-frontend-dependencies
+      - run: rustup toolchain install "$FUZZ_TOOLCHAIN" --profile minimal --component rust-src
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        with:
+          shared-key: rust-sqlpage-fuzz
+          workspaces: fuzz -> target
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo install cargo-fuzz --locked --version 0.13.2
+      - name: Fuzz SQL regression fixtures across database selectors
+        run: scripts/test-sql-fixture-fuzz.sh
 
   test:
     runs-on: ubuntu-latest
@@ -98,8 +141,9 @@ jobs:
             container: mssql
             db_url: "mssql://root:Password123!@127.0.0.1/sqlpage"
           - database: oracle
+            test_args: --test-threads=2
             container: oracle
-            db_url: "Driver=Oracle 21 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
+            db_url: "Driver=Oracle 23 ODBC driver;Dbq=//127.0.0.1:1521/FREEPDB1;Uid=root;Pwd=Password123!"
           - database: duckdb
             container: ""
             db_url: "Driver=DuckDB;Database=/tmp/sqlpage-test.duckdb"
@@ -122,17 +166,17 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y unixodbc unzip
           sudo scripts/install-duckdb-odbc.sh
+      - name: Cache Oracle Instant Client archives
+        if: matrix.database == 'oracle'
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/sqlpage-oracle-instantclient-archives
+          key: oracle-instantclient-linux-x64-23.26.0.0.0-v1
       - name: Install Oracle ODBC driver
         if: matrix.database == 'oracle'
         run: |
-          sudo apt-get install -y alien libaio1t64 libodbcinst2 unixodbc
-          sudo rpm --import https://yum.oracle.com/RPM-GPG-KEY-oracle-ol8
-          wget https://yum.oracle.com/repo/OracleLinux/OL8/oracle/instantclient21/x86_64/getPackage/oracle-instantclient-{basic,odbc}-21.21.0.0.0-1.el8.x86_64.rpm
-          sudo alien -i oracle-instantclient-basic-21.21.0.0.0-1.el8.x86_64.rpm
-          sudo alien -i oracle-instantclient-odbc-21.21.0.0.0-1.el8.x86_64.rpm
-          sudo ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/libaio.so.1
-          sudo /usr/lib/oracle/21/client64/bin/odbc_update_ini.sh / /usr/lib/oracle/21/client64/lib
-          echo "LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          sudo apt-get install -y libaio1t64 libodbcinst2 unixodbc unzip
+          scripts/install-oracle-odbc.sh
       - name: Start database container
         if: matrix.container != ''
         run: docker compose up --wait ${{ matrix.container }}
@@ -141,13 +185,15 @@ jobs:
         run: docker compose logs ${{ matrix.container }}
       - name: Run tests against ${{ matrix.database }}
         timeout-minutes: 5
-        run: scripts/run-test-binaries.sh
+        run: scripts/run-test-binaries.sh ${{ matrix.test_args }}
         env:
           DATABASE_URL: ${{ matrix.db_url }}
           MALLOC_CHECK_: 3
           MALLOC_PERTURB_: 10
 
   windows_test:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -189,6 +235,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/install-frontend-dependencies
+        with:
+          build-frontend: 'false'
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - run: npx playwright install --with-deps --only-shell chromium
       # The browser tests exercise the official site, but they do not need a
@@ -210,6 +258,8 @@ jobs:
           retention-days: 30
 
   docker_build:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     name: docker_build (${{ matrix.platform }}, ${{ matrix.variant }})
     runs-on: ubuntu-latest
     strategy:
@@ -263,7 +313,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         uses: docker/login-action@v4
         with:
           username: ${{ env.REGISTRY_USERNAME }}
@@ -298,7 +348,7 @@ jobs:
           retention-days: 1
       - name: Build and push by digest
         id: build
-        if: github.event_name != 'pull_request' || !matrix.export
+        if: github.event_name == 'push' || !matrix.export
         uses: docker/build-push-action@v7
         with:
           # Use BuildKit's Git context instead of the mutable runner workspace.
@@ -308,69 +358,64 @@ jobs:
           platforms: ${{ matrix.platform }}
           target: ${{ matrix.variant }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: |
+            type=gha,scope=${{ steps.cache-scope.outputs.artifact }}
             type=gha,scope=${{ steps.cache-scope.outputs.current }}
             type=gha,scope=${{ steps.cache-scope.outputs.main }}
             type=registry,ref=${{ env.REGISTRY_IMAGE }}:main${{ matrix.tag_suffix }}
           cache-to: type=gha,scope=${{ steps.cache-scope.outputs.current }},mode=max
       - name: Export digest
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
       - name: Upload digest
         uses: actions/upload-artifact@v7
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         with:
           name: digests-${{ matrix.variant }}${{ matrix.tag_suffix }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
   hurl_examples:
+    needs: ci_selection
+    if: needs.ci_selection.outputs.full == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
     outputs:
       examples: ${{ steps.examples.outputs.examples }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: paths
+        name: Match changed paths to Hurl suites
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: ${{ github.ref_type != 'tag' && env.DIFF_BASE != '' && !startsWith(env.DIFF_BASE, '0000000') }}
+        continue-on-error: true
+        with:
+          base: ${{ env.DIFF_BASE }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          filters: .github/hurl-examples.yml
       - id: examples
-        run: |
-          examples="$(find examples -mindepth 2 -maxdepth 2 -name test.hurl -print | sed 's#/test.hurl$##' | sort | jq -R -s -c 'split("\n")[:-1]')"
-          echo "examples=$examples" >> "$GITHUB_OUTPUT"
-      - name: Restore Hurl archive
-        id: hurl-cache
-        uses: actions/cache@v6
-        with:
-          path: .cache/hurl
-          key: hurl-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ env.HURL_VERSION }}
-      - name: Download Hurl archive
-        if: steps.hurl-cache.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-          archive="hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-          base_url="https://github.com/Orange-OpenSource/hurl/releases/download/${HURL_VERSION}"
-          mkdir -p .cache/hurl
-          curl --fail --location --retry 5 --retry-delay 2 --output ".cache/hurl/${archive}" "${base_url}/${archive}"
-          curl --fail --location --retry 5 --retry-delay 2 --output ".cache/hurl/${archive}.sha256" "${base_url}/${archive}.sha256"
-          (
-            cd .cache/hurl
-            expected_sha="$(tr -d '[:space:]' < "${archive}.sha256")"
-            actual_sha="$(sha256sum "$archive" | cut -d ' ' -f 1)"
-            test "$expected_sha" = "$actual_sha"
-          )
-      - name: Upload Hurl archive
-        uses: actions/upload-artifact@v7
-        with:
-          name: hurl-${{ env.HURL_VERSION }}-x86_64-unknown-linux-gnu
-          path: .cache/hurl/*
-          if-no-files-found: error
-          retention-days: 1
+        name: Select relevant Hurl examples
+        run: scripts/select-hurl-examples.sh
+        env:
+          PATHS_OUTCOME: ${{ steps.paths.outcome }}
+          ALL_EXAMPLES: ${{ steps.paths.outputs.all_examples }}
+          MATCHED_EXAMPLES: ${{ steps.paths.outputs.changes }}
 
   hurl:
     name: hurl (${{ matrix.example }})
     runs-on: ubuntu-latest
+    if: ${{ needs.hurl_examples.result == 'success' && needs.hurl_examples.outputs.examples != '[]' }}
     timeout-minutes: 15
     needs:
       - docker_build
@@ -381,23 +426,12 @@ jobs:
         example: ${{ fromJSON(needs.hurl_examples.outputs.examples) }}
     steps:
       - uses: actions/checkout@v7
-      - name: Download Hurl archive
-        uses: actions/download-artifact@v8
-        with:
-          name: hurl-${{ env.HURL_VERSION }}-x86_64-unknown-linux-gnu
-          path: ${{ runner.temp }}/hurl
       - name: Install Hurl
+        # Use Ubuntu's build so apt resolves the matching libcurl/libxml2 ABI.
         run: |
-          set -euo pipefail
-          archive="hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-          (
-            cd "$RUNNER_TEMP/hurl"
-            expected_sha="$(tr -d '[:space:]' < "${archive}.sha256")"
-            actual_sha="$(sha256sum "$archive" | cut -d ' ' -f 1)"
-            test "$expected_sha" = "$actual_sha"
-            tar xzf "$archive" -C "$RUNNER_TEMP/hurl"
-          )
-          echo "$RUNNER_TEMP/hurl/hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends hurl
+          hurl --version
       - name: Download SQLPage image
         uses: actions/download-artifact@v8
         with:
@@ -410,9 +444,35 @@ jobs:
       - name: Run example Hurl test
         run: scripts/test-examples-hurl.sh "${{ matrix.example }}"
 
+  # Require this single check in branch protection instead of individual jobs.
+  ci_gate:
+    name: CI gate
+    if: always()
+    needs:
+      - ci_selection
+      - compile_and_lint
+      - published_crate
+      - fuzz_sql_regression_fixtures
+      - test
+      - windows_test
+      - playwright
+      - docker_build
+      - hurl_examples
+      - hurl
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check selected job results
+        run: node scripts/check-ci-results.mjs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+
   docker_push:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push'
     needs:
       - docker_build
     strategy:

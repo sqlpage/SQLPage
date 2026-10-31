@@ -8,6 +8,7 @@ Modals are closed by default, and can be opened by clicking on a button or link 
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'modal', * FROM (VALUES
     ('title','Description of the modal box.','TEXT',TRUE,FALSE),
     ('close','The text to display in the Close button.','TEXT',TRUE,TRUE),
+    ('close_label','The same as `close`. Use it on databases where `close` is a reserved word, such as SQL Server.','TEXT',TRUE,TRUE),
     ('contents','A paragraph of text to display, without any formatting, without having to make additional queries.','TEXT',FALSE,TRUE),
     ('contents_md','Rich text in the markdown format. Among others, this allows you to write bold text using `**bold**`, italics using `*italics*`, and links using `[text](https://example.com)`.','TEXT',FALSE,TRUE),
     ('scrollable','Create a scrollable modal that allows scroll the modal body.','BOOLEAN',TRUE,TRUE),

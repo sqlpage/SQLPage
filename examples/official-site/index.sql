@@ -2,4 +2,10 @@ select 'http_header' as component,
     'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     '<https://sql-page.com/>; rel="canonical"' as "Link";
 
-select 'shell-home' as component;
+-- A full document template uses an empty shell rather than the default site chrome.
+-- Section grids host the shared sculpture after its opening flight so it scrolls
+-- with the page even when rendering or JavaScript updates fall behind.
+select 'shell-empty' as component;
+select 'landing-page' as component,
+    (select count(*) from component) as component_count,
+    sqlpage.read_file_as_text('landing-demos/table.sql') as demo_source;

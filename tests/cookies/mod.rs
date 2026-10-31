@@ -1,9 +1,9 @@
-use crate::common::req_path;
+use crate::common::response_for;
 use actix_web::http::StatusCode;
 use actix_web::http::header::SET_COOKIE;
 
 async fn set_cookie_header(path: &str) -> String {
-    let resp = req_path(path).await.unwrap();
+    let resp = response_for(path).await;
     resp.headers()
         .get(SET_COOKIE)
         .unwrap_or_else(|| panic!("{path} should have sent a Set-Cookie header"))
@@ -33,9 +33,7 @@ async fn zero_turns_off_a_cookie_protection() {
 
 #[actix_web::test]
 async fn a_page_made_only_of_header_components_still_sends_them() {
-    let resp = req_path("/tests/cookies/header_only_response.sql")
-        .await
-        .unwrap();
+    let resp = response_for("/tests/cookies/header_only_response.sql").await;
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
     assert!(resp.headers().contains_key(SET_COOKIE));
 }

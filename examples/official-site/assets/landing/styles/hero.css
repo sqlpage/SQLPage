@@ -1,0 +1,130 @@
+/* Opening typography and its call to action; responsive.css owns viewport overrides. */
+.engraved-comment {
+  position: absolute;
+  right: calc(var(--composition-left) + var(--composition-width) * 0.045);
+  top: 12%;
+  z-index: 21;
+  width: clamp(224px, 15vw, 260px);
+  opacity: var(--intro-opacity);
+  transform: translateX(calc(var(--progress) * 30px));
+  pointer-events: none;
+}
+.metal-recess {
+  padding: 16px 24px;
+  border: 1px solid color-mix(in srgb, var(--tblr-primary) 28%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tblr-body-bg) 58%, transparent);
+}
+.metal-recess code {
+  display: grid;
+  gap: 6px;
+  color: var(--tblr-secondary-color);
+  font: clamp(13px, 0.95vw, 16px) / 1.65 var(--tblr-font-monospace);
+  letter-spacing: -0.025em;
+}
+.metal-recess code b {
+  font-weight: 400;
+  color: var(--tblr-primary);
+}
+.hero-copy {
+  z-index: 21;
+  position: absolute;
+  top: 20.5%;
+  left: calc(var(--composition-left) + var(--composition-width) * 0.07);
+  width: calc(var(--composition-width) * 0.45);
+  pointer-events: none;
+}
+.hero-copy h1 {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: clamp(64px, min(7.1vw, 11.5svh), 160px);
+  line-height: 0.94;
+  letter-spacing: 0;
+  font-weight: 800;
+}
+.hero-copy h1 > span {
+  display: block;
+  position: relative;
+  width: max-content;
+  white-space: nowrap;
+  opacity: var(--intro-opacity);
+  transform: translate3d(var(--intro-shift), 0, 0);
+  will-change: transform, opacity;
+  /* Leave a painted gutter around the final glyph. */
+  padding-inline-end: 0.105em;
+  overflow: visible;
+}
+.hero-copy .title-select,
+.hero-copy .title-from {
+  z-index: 6;
+}
+.hero-copy .title-website {
+  z-index: 4;
+  align-self: flex-start;
+  margin-inline-end: 0;
+}
+.hero-copy .title-from {
+  align-self: flex-start;
+  margin-right: 0;
+}
+.title-select,
+.title-from {
+  color: var(--tblr-light);
+}
+.title-website {
+  font-size: 0.985em;
+  padding: 4px 0 9px;
+  color: var(--tblr-primary);
+}
+.title-from {
+  font-size: 0.985em;
+  line-height: 1.03;
+}
+.intro-row {
+  position: absolute;
+  left: 7%;
+  top: 57%;
+  width: fit-content;
+  max-width: calc(var(--composition-width) * 0.5);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+  opacity: var(--intro-opacity);
+  transform: translateX(var(--intro-shift));
+  pointer-events: auto;
+}
+.intro-row p {
+  font-size: clamp(17px, 1.5vw, 27px);
+  line-height: 1.35;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  margin: 0;
+  flex: 1;
+  color: var(--tblr-secondary-color);
+  white-space: nowrap;
+}
+.run-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border: 1px solid
+    color-mix(in srgb, var(--tblr-link-hover-color) 33.33%, transparent);
+  border-radius: 6px;
+  background: var(--tblr-primary);
+  color: var(--tblr-bg-surface);
+  font-size: clamp(18px, 1.4vw, 23px);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+.run-link:hover {
+  background: var(--tblr-link-hover-color);
+}
+.run-link .icon {
+  --icon-size: 22px;
+}

@@ -40,9 +40,21 @@ impl<'a> DatabaseLowerer<'a> {
     }
 
     fn add_binding(&mut self, value: StandaloneExpr) -> SqlExpr {
-        let sequence = self.bindings.len();
-        self.bindings.push(value);
-        let placeholder = match placeholder_style(self.database.kind) {
+        let style = placeholder_style(self.database.kind);
+        // Variable identity includes its lookup source. Calls may have side effects,
+        // and positional placeholders need a separate argument for each occurrence.
+        let existing = match (&value, style) {
+            (SqlPageExpr::Variable(_), PlaceholderStyle::Numbered { .. }) => {
+                self.bindings.iter().position(|binding| binding == &value)
+            }
+            _ => None,
+        };
+        let sequence = existing.unwrap_or_else(|| {
+            let sequence = self.bindings.len();
+            self.bindings.push(value);
+            sequence
+        });
+        let placeholder = match style {
             PlaceholderStyle::Numbered { prefix } => format!("{prefix}{}", sequence + 1),
             PlaceholderStyle::Positional { .. } => format!("${}", sequence + 1),
         };

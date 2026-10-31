@@ -44,6 +44,10 @@ pub fn split_template(mut original: Template) -> SplitTemplate {
     after_list.name = Some(format!("{original_name} after each block"));
     after_list.elements = elements_after;
     after_list.mapping = mapping_after;
+    // Each part renders in a fresh render context, which is where handlebars
+    // registers inline partials, so every part has to define them again.
+    prepend_inline_partials(&before_list, &mut list_content);
+    prepend_inline_partials(&before_list, &mut after_list);
     SplitTemplate {
         before_list,
         list_content,
@@ -62,6 +66,25 @@ impl AsyncFromStrWithState for SplitTemplate {
         let tpl = Template::compile_with_name(source, "SQLPage component".to_string())?;
         Ok(split_template(tpl))
     }
+}
+
+fn prepend_inline_partials(defining: &Template, using: &mut Template) {
+    let (elements, mapping): (Vec<_>, Vec<_>) = defining
+        .elements
+        .iter()
+        .zip(&defining.mapping)
+        .filter(|(element, _)| is_inline_partial(element))
+        .map(|(element, position)| (element.clone(), position.clone()))
+        .unzip();
+    using.elements.splice(0..0, elements);
+    using.mapping.splice(0..0, mapping);
+}
+
+fn is_inline_partial(element: &TemplateElement) -> bool {
+    use handlebars::template::Parameter::Name;
+    matches!(element,
+                    TemplateElement::DecoratorBlock(decorator)
+                        if matches!(&decorator.name, Name(name) if name == "inline"))
 }
 
 fn is_template_list_item(element: &TemplateElement) -> bool {

@@ -41,24 +41,29 @@ mod dialect;
 mod rewrite;
 mod statement;
 
-#[cfg(test)]
-pub(super) use statement::SourceLocation;
 pub use statement::SqlFile;
 pub(super) use statement::{
-    DatabaseQuery, FileStatement, OutputColumn, Query, QueryBody, SourceSpan, StaticSimpleSelect,
-    VariableName,
+    DatabaseQuery, FileStatement, Query, QueryBody, SourceSpan, StaticSimpleSelect, VariableName,
 };
+#[cfg(test)]
+pub(super) use statement::{OutputColumn, SourceLocation};
 
 impl SqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> Self {
-        let dialect = dialect::parser_dialect(db.info.database_type);
+        Self::from_db_info(&db.info, sql, source_path)
+    }
+
+    /// Parses and rewrites a SQL file without opening a database connection.
+    #[must_use]
+    pub fn from_db_info(database: &DbInfo, sql: &str, source_path: &Path) -> Self {
+        let dialect = dialect::parser_dialect(database.database_type);
         log::debug!(
             "Parsing SQL file {} using dialect {:?}",
             source_path.display(),
             dialect
         );
-        let statements = match parse_sql(&db.info, dialect.as_ref(), sql) {
+        let statements = match parse_sql(database, dialect.as_ref(), sql) {
             Ok(statements) => statements.collect::<Vec<_>>().into_boxed_slice(),
             Err(error) => {
                 return Self::from_error(error, source_path);
@@ -674,6 +679,120 @@ mod tests {
         };
         assert!(query.sql.contains("'@SQLPAGE_TEMP1'"));
         assert_eq!(query.bindings.len(), 1);
+    }
+
+    #[test]
+    fn repeated_variables_follow_placeholder_style() {
+        use SupportedDatabase::{Mssql, MySql, Postgres, Sqlite};
+        for (db, kind, expected_sql, reuse) in [
+            (
+                Postgres,
+                AnyKind::Postgres,
+                "SELECT $1, $2, $1 FROM t",
+                true,
+            ),
+            (Mssql, AnyKind::Mssql, "SELECT @p1, @p2, @p1 FROM t", true),
+            (
+                Sqlite,
+                AnyKind::Sqlite,
+                "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?1 AS TEXT) FROM t",
+                true,
+            ),
+            (MySql, AnyKind::MySql, "SELECT ?, ?, ? FROM t", false),
+            (Mssql, AnyKind::Odbc, "SELECT ?, ?, ? FROM t", false),
+            (
+                Postgres,
+                AnyKind::Odbc,
+                "SELECT CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT) FROM t",
+                false,
+            ),
+            (
+                Sqlite,
+                AnyKind::Odbc,
+                "SELECT CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT) FROM t",
+                false,
+            ),
+        ] {
+            let mut info = database(db);
+            info.kind = kind;
+            let dialect = dialect::parser_dialect(db);
+            let FileStatement::Query(Query {
+                body: QueryBody::Database(query),
+                ..
+            }) = parse_sql(&info, dialect.as_ref(), "select $b, $a, $b from t")
+                .unwrap()
+                .next()
+                .unwrap()
+            else {
+                panic!("expected database query for {db:?} via {kind:?}");
+            };
+            assert_eq!(query.sql, expected_sql, "{db:?} via {kind:?}");
+            let mut expected_bindings = vec![variable("b"), variable("a")];
+            if !reuse {
+                expected_bindings.push(variable("b"));
+            }
+            assert_eq!(
+                query.bindings.as_ref(),
+                expected_bindings,
+                "{db:?} via {kind:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn repeated_variables_preserve_lookup_source() {
+        let query = rewrite_database("select $b, :b, $b, :b from t");
+        assert_eq!(query.sql, "SELECT $1, $2, $1, $2 FROM t");
+        assert_eq!(
+            query.bindings.as_ref(),
+            [
+                variable("b"),
+                SqlPageExpr::Variable(VariableRef {
+                    name: "b".into(),
+                    source: VariableSource::SetOrForm
+                }),
+            ]
+        );
+    }
+
+    #[test]
+    fn mssql_group_by_reuses_variable() {
+        let FileStatement::Query(Query {
+            body: QueryBody::Database(query),
+            ..
+        }) = one_mssql(
+            "SELECT n % CAST($b AS int) AS bucket, COUNT(*) AS cnt FROM (VALUES (1),(2),(3),(4),(5),(6)) t(n) GROUP BY n % CAST($b AS int);",
+        )
+        else {
+            panic!("expected database query");
+        };
+        assert_eq!(
+            query.sql,
+            "SELECT n % CAST(@p1 AS INT) AS bucket, COUNT(*) AS cnt FROM (VALUES (1), (2), (3), (4), (5), (6)) t (n) GROUP BY n % CAST(@p1 AS INT);"
+        );
+        assert_eq!(query.bindings.as_ref(), [variable("b")]);
+    }
+
+    #[test]
+    fn reused_variables_preserve_function_binding_order() {
+        let query = rewrite_database(
+            "select $b from t where sqlpage.random_string(1) <> $b and sqlpage.random_string(1) <> $b",
+        );
+        assert_eq!(query.sql, "SELECT $1 FROM t WHERE $2 <> $1 AND $3 <> $1");
+        assert_eq!(
+            query.bindings.as_ref(),
+            [
+                variable("b"),
+                call(
+                    SqlPageFunctionName::random_string,
+                    [SqlPageExpr::Literal(1.into())]
+                ),
+                call(
+                    SqlPageFunctionName::random_string,
+                    [SqlPageExpr::Literal(1.into())]
+                ),
+            ]
+        );
     }
 
     #[test]

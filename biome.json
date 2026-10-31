@@ -24,7 +24,13 @@
   "linter": {
     "rules": {
       "nursery": {
-        "noFloatingPromises": "error"
+        "noFloatingPromises": "error",
+        "noMisusedPromises": "error",
+        "useAwaitThenable": "error",
+        "noPlaywrightMissingAwait": "error"
+      },
+      "suspicious": {
+        "noImportCycles": "error"
       }
     }
   }

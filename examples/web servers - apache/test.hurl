@@ -1,3 +1,13 @@
+# Probe SQLPage through Apache, including its database connection.
+GET http://localhost:8080/my_website/
+HTTP 200
+[Asserts]
+header "Content-Type" contains "text/html"
+body contains "Welcome to my website"
+body contains "Using SQLPage v"
+body contains "Connected to"
+body contains "MySQL"
+
 GET http://localhost:8080/
 HTTP 200
 [Asserts]
@@ -9,12 +19,3 @@ GET http://localhost:8080/my_website
 HTTP 301
 [Asserts]
 header "Location" == "/my_website/"
-
-GET http://localhost:8080/my_website/
-HTTP 200
-[Asserts]
-header "Content-Type" contains "text/html"
-body contains "Welcome to my website"
-body contains "Using SQLPage v"
-body contains "Connected to"
-body contains "MySQL"

@@ -7,7 +7,8 @@
     "test": "biome check . && npm run typecheck && node --test \"tests/js/**/*.spec.ts\"",
     "typecheck": "tsc && tsc -p tests/js && tsc -p tests/end-to-end",
     "format": "biome format --write .",
-    "fix": "biome check --fix --unsafe ."
+    "fix": "biome check --fix --unsafe .",
+    "site": "npm run build && cd examples/official-site && cargo run"
   },
   "repository": {
     "type": "git",
@@ -15,7 +16,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@tabler/core": "1.5.0",
+    "@tabler/core": "1.7.3",
     "@tabler/icons-sprite": "3.46.0",
     "apexcharts": "7.6.0",
     "tom-select": "2.6.2"

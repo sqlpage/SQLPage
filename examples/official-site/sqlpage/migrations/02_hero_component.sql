@@ -92,7 +92,7 @@ FROM
             ('loop', 'Loop the video', 'BOOLEAN', TRUE, TRUE),
             (
                 'reverse',
-                'Reverse the order of the image and text: the image will be on the left, and the text on the right.',
+                'Reverse the order of the image and text: the image will be on the left, and the text on the right. On small screens, the image will be above the text.',
                 'BOOLEAN',
                 TRUE,
                 TRUE
@@ -179,6 +179,6 @@ VALUES
             "reverse": true,
             "description_md": "# “The goal is to turn data into information, and information into insight.”",
             "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Lac_de_Zoug.jpg/640px-Lac_de_Zoug.jpg",
-            "video": "/sqlpage_introduction_video.webm"
+            "video": "/sqlpage_introduction_video.mp4"
         }]')
     );

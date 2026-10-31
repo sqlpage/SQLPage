@@ -1,11 +1,9 @@
 use actix_web::{body::to_bytes, http::StatusCode};
-use sqlpage::webserver::http::main_handler;
 
-use crate::common::get_request_to;
+use crate::common::{response_with, test_config};
 
 async fn assert_sql_response(path: &str, expected_status: StatusCode) {
-    let request = get_request_to(path).await.unwrap().to_srv_request();
-    let response = match main_handler(request).await {
+    let response = match response_with(path, test_config()).await {
         Ok(response) => response.into_parts().1,
         Err(error) => error.error_response(),
     };

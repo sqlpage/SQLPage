@@ -5,5 +5,5 @@
     "moduleResolution": "nodenext",
     "types": ["node"]
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "../../frontend/src/globals.d.ts"]
 }

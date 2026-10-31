@@ -1,5 +1,5 @@
-use crate::common::req_path;
-use actix_web::{http::StatusCode, test};
+use crate::common::response_for;
+use actix_web::http::StatusCode;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde_json::{Value, json};
 
@@ -13,12 +13,7 @@ async fn assert_invalid_header_response(case: &InvalidHeaderCase) {
     let properties = utf8_percent_encode(&properties, NON_ALPHANUMERIC).to_string();
     let path = format!("/tests/errors/invalid_header.sql?properties={properties}");
 
-    let resp = req_path(&path).await.unwrap_or_else(|err| {
-        panic!(
-            "{} should return an error response instead of failing the request: {err:#}",
-            case.name
-        )
-    });
+    let resp = response_for(&path).await;
 
     assert_eq!(
         resp.status(),
@@ -27,8 +22,7 @@ async fn assert_invalid_header_response(case: &InvalidHeaderCase) {
         case.name
     );
 
-    let body = test::read_body(resp).await;
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    let body_str = crate::common::read_body_string(resp).await;
     assert!(
         body_str.to_lowercase().contains("error"),
         "{} should render an error response body, got:\n{body_str}",

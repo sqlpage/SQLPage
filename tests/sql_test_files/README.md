@@ -25,3 +25,11 @@ engine-specific SQL syntax) live in a subdirectory named after that database
 `generic`). They are run by a separate test, only when the current database
 matches. Unlike the other directories, their file names do not need `_no...`
 suffixes to exclude incompatible backends.
+
+## Running one file
+
+`SQL_TEST_FILE` limits a run to the files whose path contains its value. The `test-sql` gate sets it from its argument:
+
+```bash
+DATABASE_URL='postgres://root:Password123!@127.0.0.1/sqlpage' nix run .#test-sql -- money_with_parameters_983
+```

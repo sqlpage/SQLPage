@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   align_series,
   align_series_for,
+  type ChartPoint,
+  type ChartSeries,
   merged_x_values,
   xaxis_type_for,
 } from "../../frontend/src/chart_series.ts";
@@ -12,17 +14,11 @@ const LEAVES_A_GAP = null;
 const STACKED = true;
 const UNSTACKED = false;
 
-type XValue = number | string | Date;
-type Point = {
-  x: XValue;
-  y: number | string | null | number[];
-  z?: number;
-  fillColor?: string;
-};
-type Series = { name: string; data: Point[] };
-
-const series = (name: string, ...data: Point[]): Series => ({ name, data });
-const xs = (s: Series) => s.data.map((p) => p.x);
+const series = (name: string, ...data: ChartPoint[]): ChartSeries => ({
+  name,
+  data,
+});
+const xs = (s: ChartSeries) => s.data.map((p) => p.x);
 
 test("uses a continuous axis for numeric Cartesian x values", () => {
   const numeric = [series("a", { x: 1, y: 1 }, { x: 12, y: 12 })];
@@ -95,6 +91,20 @@ test("merged_x_values ignores series that hold no points", () => {
   assert.deepEqual(merged, [1]);
 });
 
+test("merged_x_values returns no labels when every series is empty", () => {
+  assert.deepEqual(merged_x_values([]), []);
+  assert.deepEqual(merged_x_values([series("a"), series("b")]), []);
+});
+
+test("merged_x_values keeps null and zero as distinct labels", () => {
+  const merged = merged_x_values([
+    series("a", { x: null, y: 1 }, { x: 1, y: 2 }),
+    series("b", { x: 0, y: 3 }),
+  ]);
+
+  assert.deepEqual(merged, [null, 0, 1]);
+});
+
 test("align_series gives every series a point at every x (#727)", () => {
   const [a, b] = align_series(
     [
@@ -104,6 +114,8 @@ test("align_series gives every series a point at every x (#727)", () => {
     ADDS_NOTHING_TO_THE_STACK,
   );
 
+  assert.ok(a);
+  assert.ok(b);
   assert.deepEqual(xs(a), ["Q1", "Q2"]);
   assert.deepEqual(xs(b), ["Q1", "Q2"]);
 });
@@ -117,7 +129,7 @@ test("align_series counts an x a stacked series skipped as zero (#727)", () => {
     ADDS_NOTHING_TO_THE_STACK,
   );
 
-  assert.deepEqual(b.data, [
+  assert.deepEqual(b?.data, [
     { x: "Q1", y: 0 },
     { x: "Q2", y: 3 },
   ]);
@@ -132,7 +144,7 @@ test("align_series leaves a gap where an unstacked series has no value", () => {
     LEAVES_A_GAP,
   );
 
-  assert.deepEqual(b.data, [
+  assert.deepEqual(b?.data, [
     { x: "Q1", y: null },
     { x: "Q2", y: 3 },
   ]);
@@ -147,7 +159,7 @@ test("align_series keeps a measured zero apart from a missing value", () => {
     LEAVES_A_GAP,
   );
 
-  assert.deepEqual(b.data, [
+  assert.deepEqual(b?.data, [
     { x: "Q1", y: null },
     { x: "Q2", y: 0 },
   ]);
@@ -159,7 +171,7 @@ test("align_series counts a null value as missing", () => {
     ADDS_NOTHING_TO_THE_STACK,
   );
 
-  assert.deepEqual(b.data, [{ x: "Q1", y: 0 }]);
+  assert.deepEqual(b?.data, [{ x: "Q1", y: 0 }]);
 });
 
 test("align_series keeps a blank value the series wrote", () => {
@@ -168,7 +180,7 @@ test("align_series keeps a blank value the series wrote", () => {
     ADDS_NOTHING_TO_THE_STACK,
   );
 
-  assert.deepEqual(b.data, [{ x: "Q1", y: "" }]);
+  assert.deepEqual(b?.data, [{ x: "Q1", y: "" }]);
 });
 
 test("align_series keeps a value the series wrote as text", () => {
@@ -177,7 +189,7 @@ test("align_series keeps a value the series wrote as text", () => {
     ADDS_NOTHING_TO_THE_STACK,
   );
 
-  assert.deepEqual(b.data, [{ x: "Q1", y: "7" }]);
+  assert.deepEqual(b?.data, [{ x: "Q1", y: "7" }]);
 });
 
 test("align_series keeps the third dimension of points it did not fill in", () => {
@@ -186,7 +198,7 @@ test("align_series keeps the third dimension of points it did not fill in", () =
     LEAVES_A_GAP,
   );
 
-  assert.equal(a.data[0].z, 42);
+  assert.equal(a?.data[0]?.z, 42);
 });
 
 test("align_series keeps the color of a point on the x it belongs to", () => {
@@ -199,7 +211,7 @@ test("align_series keeps the color of a point on the x it belongs to", () => {
   );
 
   assert.deepEqual(
-    b.data.map((point) => point.fillColor),
+    b?.data.map((point) => point.fillColor),
     [undefined, "#37b24d"],
   );
 });
@@ -213,9 +225,9 @@ test("align_series matches dates by value rather than by identity", () => {
     ADDS_NOTHING_TO_THE_STACK,
   );
 
-  assert.equal(a.data.length, 1);
-  assert.equal(b.data.length, 1);
-  assert.equal(b.data[0].y, 2);
+  assert.equal(a?.data.length, 1);
+  assert.equal(b?.data.length, 1);
+  assert.equal(b?.data[0]?.y, 2);
 });
 
 test("align_series leaves a lone series in the order it arrived (#930)", () => {
@@ -224,7 +236,7 @@ test("align_series leaves a lone series in the order it arrived (#930)", () => {
     LEAVES_A_GAP,
   );
 
-  assert.deepEqual(only.data, [
+  assert.deepEqual(only?.data, [
     { x: "Q2", y: 1 },
     { x: "Q1", y: 2 },
   ]);
@@ -260,7 +272,7 @@ test("align_series keeps the last of duplicated x values", () => {
     ADDS_NOTHING_TO_THE_STACK,
   );
 
-  assert.deepEqual(a.data, [
+  assert.deepEqual(a?.data, [
     { x: "Q1", y: 9 },
     { x: "Q2", y: 0 },
   ]);
@@ -273,7 +285,7 @@ test("align_series_for gives a stacked series a zero at every x it skipped", () 
     STACKED,
   );
 
-  assert.deepEqual(b.data, [
+  assert.deepEqual(b?.data, [
     { x: 1, y: 0 },
     { x: 2, y: 3 },
   ]);
@@ -290,7 +302,7 @@ for (const type of ["line", "area", "scatter", "bubble", "heatmap"]) {
       UNSTACKED,
     );
 
-    assert.deepEqual(b.data, [
+    assert.deepEqual(b?.data, [
       { x: "Q1", y: null },
       { x: "Q2", y: 3 },
     ]);
@@ -307,7 +319,7 @@ test("align_series_for counts a label a bar series skipped as zero", () => {
     UNSTACKED,
   );
 
-  assert.deepEqual(b.data, [
+  assert.deepEqual(b?.data, [
     { x: "Q1", y: 0 },
     { x: "Q2", y: 3 },
   ]);

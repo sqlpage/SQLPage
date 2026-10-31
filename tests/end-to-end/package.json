@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test --reporter=line",
-    "gui": "playwright test --ui"
+    "gui": "playwright test --ui",
+    "reproduce": "./reproduce.sh"
   },
   "keywords": [],
   "author": "",
